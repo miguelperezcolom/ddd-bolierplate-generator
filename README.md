@@ -19,3 +19,5 @@ We can later add our own logic to those classes by:
 - fill abstract methods (defined in the source yaml?)
 - provide beans implementing interfaces
 
+We will also create here a dependency with some default implementations for the event bus 
+and things like that. 
