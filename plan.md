@@ -8,7 +8,13 @@
 Templates:
 - jacoco
 - enforcer
+- linter
+- spotbug
+- formatter
+- análisis estático (ej. sonarqube / alternativa)
 - proyecto multimódulo
 - camunda
 - docker-compose para levantar kafka y bd
-- 
+- github actions para ci/cd
+- dockerfiles
+- terraform
