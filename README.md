@@ -1,6 +1,6 @@
 This is a maven plugin (or other thing) for creating bolierplate code.
 
-The idea is to use a set of yaml/json/xml files (we need an schema to enable ide's autocompletion)
+The idea is to use a set of yaml files (we need an schema to enable ide's autocompletion)
 to describe our aggregates and, from those files, generate:
 
 - The root aggregate
@@ -11,6 +11,8 @@ to describe our aggregates and, from those files, generate:
 - Repository implementation
 - Use cases
 - UI (crud, creation form, view and editor)
+- DDL increment files 
+- Tests
 
 We can later add our own logic to those classes by:
 
@@ -32,6 +34,16 @@ implementing the created interfaces.
 # Notes
 
 - Generate springboot / micronaut / jakarta CDI annotations
+- Generate flyway / liquibase files
+- Create also one / multiple template repos
+
+So, we typically start by creating:
+
+- One repo for our project, using one of the available templates
+- There we have even the github actions for CI/CD and infrastructure creation
+
+And we just create the ddd.yaml files and provide implementations for the generated interfaces 
+to provide our own logic.
 
 # References
 
