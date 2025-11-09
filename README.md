@@ -36,6 +36,9 @@ implementing the created interfaces.
 - Generate springboot / micronaut / jakarta CDI annotations
 - Generate flyway / liquibase files
 - Create also one / multiple template repos
+- Add permissions
+- Add retries / idempotency
+- Domain / integration events
 
 So, we typically start by creating:
 
