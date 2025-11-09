@@ -12,6 +12,7 @@ to describe our aggregates and, from those files, generate:
 - Use cases
 - UI (crud, creation form, view and editor)
 - DDL increment files 
+- Foreign keys for entities only
 - Tests
 
 We can later add our own logic to those classes by:
@@ -35,6 +36,7 @@ implementing the created interfaces.
 
 - Generate springboot / micronaut / jakarta CDI annotations
 - Generate flyway / liquibase files
+- Document / relational databases
 - Create also one / multiple template repos
 - Add permissions
 - Add retries / idempotency
