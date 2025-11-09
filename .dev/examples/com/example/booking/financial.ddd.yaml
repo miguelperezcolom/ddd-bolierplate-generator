@@ -1,0 +1,27 @@
+entities:
+  - name: Currency
+    type: aggregate
+    fields:
+      - name: code
+        type: string
+      - name: decimals
+        type: integer
+    ui: true
+  - name: Amount
+    type: value-object
+    fields:
+      - name: currencyIsoCode
+        type: string
+      - name: value
+        type: bigDecimal
+  - name: Payment
+    type: aggregate
+    fields:
+      - name: id
+        type: uuid
+        id: true
+      - name: date
+        type: date
+      - name: amount
+        type: Amount
+    ui: true
