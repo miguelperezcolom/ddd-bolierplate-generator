@@ -21,3 +21,8 @@ We can later add our own logic to those classes by:
 
 We will also create here a dependency with some default implementations for the event bus 
 and things like that. 
+
+# References
+
+- https://developers.redhat.com/blog/2020/11/25/how-to-configure-yaml-schema-to-make-editing-files-easier
+- https://www.baeldung.com/maven-plugin
