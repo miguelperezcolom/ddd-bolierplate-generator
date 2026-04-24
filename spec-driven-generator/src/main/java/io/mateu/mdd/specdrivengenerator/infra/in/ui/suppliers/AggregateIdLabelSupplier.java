@@ -13,7 +13,7 @@ public class AggregateIdLabelSupplier implements LabelSupplier {
     final AggregateQueryService queryService;
 
     @Override
-    public String label(Object id, HttpRequest httpRequest) {
+    public String label(String fieldName, Object id, HttpRequest httpRequest) {
         return queryService.getLabel((String) id);
     }
 }

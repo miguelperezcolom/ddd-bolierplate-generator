@@ -34,24 +34,25 @@ public class InvariantCrudAdapter implements CrudAdapter<
     @Override
     public ListingData<InvariantRow> search(String searchText,
                                        NoFilters filters,
-                                       Pageable pageable) {
+                                       Pageable pageable,
+                                            HttpRequest httpRequest) {
         return queryService.findAll(searchText, filters, pageable);
     }
 
     @Override
-    public void deleteAllById(List<String> selectedIds) {
+    public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         deleteUseCase.handle(new DeleteInvariantCommand(selectedIds));
     }
 
     @Override
-    public InvariantViewModel getView(String id) {
+    public InvariantViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());
     }
 
     @Override
-    public InvariantViewModel getEditor(String id) {
+    public InvariantViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());

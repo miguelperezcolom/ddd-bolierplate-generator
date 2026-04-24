@@ -14,7 +14,7 @@ public class ProjectIdLabelSupplier implements LabelSupplier {
     final ProjectQueryService queryService;
 
     @Override
-    public String label(Object id, HttpRequest httpRequest) {
+    public String label(String fieldName, Object id, HttpRequest httpRequest) {
         return queryService.getLabel((String) id);
     }
 }

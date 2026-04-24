@@ -34,24 +34,25 @@ public class AggregateCrudAdapter implements CrudAdapter<
     @Override
     public ListingData<AggregateRow> search(String searchText,
                                        NoFilters filters,
-                                       Pageable pageable) {
+                                       Pageable pageable,
+                                            HttpRequest httpRequest) {
         return queryService.findAll(searchText, filters, pageable);
     }
 
     @Override
-    public void deleteAllById(List<String> selectedIds) {
+    public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         deleteUseCase.handle(new DeleteAggregateCommand(selectedIds));
     }
 
     @Override
-    public AggregateViewModel getView(String id) {
+    public AggregateViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());
     }
 
     @Override
-    public AggregateViewModel getEditor(String id) {
+    public AggregateViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());

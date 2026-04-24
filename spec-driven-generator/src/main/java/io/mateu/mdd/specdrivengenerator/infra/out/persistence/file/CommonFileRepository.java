@@ -7,6 +7,7 @@ import io.mateu.uidl.data.Pageable;
 import io.mateu.uidl.interfaces.Identifiable;
 import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -20,6 +21,7 @@ import static io.mateu.core.infra.JsonSerializer.pojoFromJson;
 import static io.mateu.core.infra.JsonSerializer.toJson;
 
 @Service
+@Slf4j
 public class CommonFileRepository {
 
     private final Map<String, Object> store = new HashMap<>();
@@ -46,6 +48,7 @@ public class CommonFileRepository {
     @SneakyThrows
     @PostConstruct
     public void init() {
+        log.info("spec store in {}", Path.of(".dev/data/spec-driven-store.json").toAbsolutePath());
         String json = Files.readString(Path.of(".dev/data/spec-driven-store.json"));
         AllData data = pojoFromJson(json, AllData.class);
         store.clear();

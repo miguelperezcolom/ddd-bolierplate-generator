@@ -31,27 +31,26 @@ public class ValueObjectCrudAdapter implements CrudAdapter<
     final DeleteValueObjectUseCase deleteUseCase;
     final ValueObjectQueryService queryService;
 
+
     @Override
-    public ListingData<ValueObjectRow> search(String searchText,
-                                       NoFilters filters,
-                                       Pageable pageable) {
+    public ListingData<ValueObjectRow> search(String searchText, NoFilters filters, Pageable pageable, HttpRequest httpRequest) {
         return queryService.findAll(searchText, filters, pageable);
     }
 
     @Override
-    public void deleteAllById(List<String> selectedIds) {
+    public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         deleteUseCase.handle(new DeleteValueObjectCommand(selectedIds));
     }
 
     @Override
-    public ValueObjectViewModel getView(String id) {
+    public ValueObjectViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());
     }
 
     @Override
-    public ValueObjectViewModel getEditor(String id) {
+    public ValueObjectViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());

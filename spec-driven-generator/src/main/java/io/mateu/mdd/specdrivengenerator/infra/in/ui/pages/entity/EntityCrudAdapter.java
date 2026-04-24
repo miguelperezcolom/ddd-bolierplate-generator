@@ -34,24 +34,25 @@ public class EntityCrudAdapter implements CrudAdapter<
     @Override
     public ListingData<EntityRow> search(String searchText,
                                        NoFilters filters,
-                                       Pageable pageable) {
+                                       Pageable pageable,
+                                         HttpRequest httpRequest) {
         return queryService.findAll(searchText, filters, pageable);
     }
 
     @Override
-    public void deleteAllById(List<String> selectedIds) {
+    public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         deleteUseCase.handle(new DeleteEntityCommand(selectedIds));
     }
 
     @Override
-    public EntityViewModel getView(String id) {
+    public EntityViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());
     }
 
     @Override
-    public EntityViewModel getEditor(String id) {
+    public EntityViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
                 .orElseThrow());

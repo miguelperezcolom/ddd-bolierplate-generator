@@ -32,7 +32,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String outputPath;
     @NotEmpty
     String packageName;
-    @ForeignKey(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     List<String> modules;
 
     final CreateProjectUseCase createUseCase;
