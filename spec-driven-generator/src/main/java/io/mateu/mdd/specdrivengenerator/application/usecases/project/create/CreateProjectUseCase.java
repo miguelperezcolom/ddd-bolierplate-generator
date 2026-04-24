@@ -10,6 +10,8 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPack
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class CreateProjectUseCase {
@@ -21,7 +23,7 @@ public class CreateProjectUseCase {
                 new ProjectName(command.name()),
                 new ProjectOutputPath(command.outputPath()),
                 new ProjectPackageName(command.packageName()),
-                command.moduleIds().stream().map(ModuleId::new).toList());
+                command.moduleIds() != null?command.moduleIds().stream().map(ModuleId::new).toList(): List.of());
         repository.save(project);
     }
 

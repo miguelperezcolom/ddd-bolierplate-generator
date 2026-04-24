@@ -1,1 +1,93 @@
-{}
+{
+  "projects" : [ {
+    "id" : "32954999-722f-4e0e-a32d-6b8a6e9a83d2",
+    "name" : "poc sagas",
+    "outputPath" : "sample/poc-sagas",
+    "packageName" : "com.riu.sagas",
+    "moduleIds" : [ ]
+  } ],
+  "modules" : [ {
+    "id" : "4066c768-809c-4b2d-8628-a1879fdc5d2d",
+    "name" : "booking",
+    "aggregateIds" : [ ]
+  } ],
+  "aggregates" : [ {
+    "id" : "51907e72-9210-4173-9017-c69333fc58b9",
+    "name" : "Payment",
+    "fields" : [ {
+      "name" : "id",
+      "label" : "Id",
+      "type" : "ValueObject",
+      "help" : "",
+      "valueObjectId" : "",
+      "entityId" : "",
+      "mandatory" : false,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
+    }, {
+      "name" : "value",
+      "label" : "Value",
+      "type" : "ValueObject",
+      "help" : "",
+      "valueObjectId" : "",
+      "entityId" : "",
+      "mandatory" : false,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
+    } ],
+    "invariants" : [ ]
+  }, {
+    "id" : "33489d8b-fd4a-4161-82ca-45e02e4b89cf",
+    "name" : "Booking",
+    "fields" : [ {
+      "name" : "locator",
+      "label" : "Locator",
+      "type" : "ValueObject",
+      "help" : null,
+      "valueObjectId" : null,
+      "entityId" : null,
+      "mandatory" : true,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
+    }, {
+      "name" : "leadName",
+      "label" : "Lead name",
+      "type" : "ValueObject",
+      "help" : null,
+      "valueObjectId" : null,
+      "entityId" : null,
+      "mandatory" : true,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
+    }, {
+      "name" : "comments",
+      "label" : "Comments",
+      "type" : "ValueObject",
+      "help" : null,
+      "valueObjectId" : null,
+      "entityId" : null,
+      "mandatory" : true,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
+    } ],
+    "invariants" : [ ]
+  } ],
+  "entities" : [ ],
+  "valueObjects" : [ ],
+  "invariants" : [ ]
+}
