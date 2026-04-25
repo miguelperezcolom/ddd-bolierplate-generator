@@ -3,48 +3,66 @@ package ${project.packageName}.infra.out.persistence;
 import ${project.packageName}.application.out.${aggregate.name}Repository;
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
-import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Name;
+<#list aggregate.fields as field>
+    <#if field.type == "ValueObject">
+import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
+    </#if>
+</#list>
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
-import static io.mateu.core.infra.JsonSerializer.listFromJson;
-import static io.mateu.core.infra.JsonSerializer.toJson;
-
 @Service
 @RequiredArgsConstructor
 public class ${aggregate.name}DBRepository implements ${aggregate.name}Repository {
 
-final ${aggregate.name}EntityRepository repository;
+    final ${aggregate.name}EntityRepository repository;
 
-@Override
-public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
-    return repository.findById(id.id()).map(this::toDomain);
+    @Override
+    public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
+        return repository.findById(id.id()).map(this::toDomain);
     }
 
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
-    return new ${aggregate.name}(
-    new ${aggregate.name}Id(entity.id),
-    new ${aggregate.name}Name(entity.name)
-    );
+        return new ${aggregate.name}(
+                new ${aggregate.name}Id(entity.getId()),
+<#list aggregate.fields as field>
+    <#if field.type == "ValueObject">
+                new ${field.name?cap_first}(entity.get${field.name?cap_first}())<#sep>,</#sep>
+    <#elseif field.type == "Entity">
+                entity.get${field.name?cap_first}Id()<#sep>,</#sep>
+    <#else>
+                entity.get${field.name?cap_first}()<#sep>,</#sep>
+    </#if>
+</#list>
+        );
     }
 
-    private ${aggregate.name}Entity toEntity(${aggregate.name} ${aggregate.name?lower_case}) {
-    return new ${aggregate.name}Entity(
-${aggregate.name?lower_case}.getId() != null?Long.valueOf(${aggregate.name?lower_case}.getId().id()):null,
-${aggregate.name?lower_case}.getName().name()
-    );
+    private ${aggregate.name}Entity toEntity(${aggregate.name} domain) {
+        return new ${aggregate.name}Entity(
+                domain.getId() != null ? domain.getId().id() : null,
+<#list aggregate.fields as field>
+    <#if field.type == "ValueObject">
+                domain.get${field.name?cap_first}() != null ? domain.get${field.name?cap_first}().value() : null<#sep>,</#sep>
+    <#elseif field.type == "Entity">
+                domain.get${field.name?cap_first}Id()<#sep>,</#sep>
+    <#else>
+                domain.get${field.name?cap_first}()<#sep>,</#sep>
+    </#if>
+</#list>
+        );
     }
 
     @Override
-    public ${aggregate.name}Id save(${aggregate.name} ${aggregate.name?lower_case}) {
-    return new ${aggregate.name}Id(repository.save(toEntity(${aggregate.name?lower_case})).id);
+    public ${aggregate.name}Id save(${aggregate.name} domain) {
+        return new ${aggregate.name}Id(repository.save(toEntity(domain)).getId());
     }
 
     @Override
     public void deleteAllById(List<${aggregate.name}Id> selectedIds) {
         repository.deleteAllById(selectedIds.stream().map(${aggregate.name}Id::id).toList());
-        }
-        }
+    }
+
+}
