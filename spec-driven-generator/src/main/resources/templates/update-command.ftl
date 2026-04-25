@@ -1,25 +1,14 @@
 package ${project.packageName}.application.usecases.${aggregate.name?lower_case}.update;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
-<#assign hasDate = false>
-<#assign hasTime = false>
-<#assign hasDateTime = false>
-<#assign hasBigDecimal = false>
-<#list aggregate.fields as field>
-    <#if field.type == "Wrapper">
-        <#if field.primitiveType == "date"><#assign hasDate = true></#if>
-        <#if field.primitiveType == "time"><#assign hasTime = true></#if>
-        <#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if>
-        <#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if>
-    </#if>
-</#list>
-<#if hasDate>import java.time.LocalDate;</#if>
-<#if hasTime>import java.time.LocalTime;</#if>
-<#if hasDateTime>import java.time.LocalDateTime;</#if>
-<#if hasBigDecimal>import java.math.BigDecimal;</#if>
-
-public record Update${aggregate.name}Command(
-        String id<#if aggregate.fields?has_content>,</#if>
-<#list aggregate.fields as field>
+<#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false><#list safeFields as field><#if field.type == "Wrapper"><#if field.primitiveType == "date"><#assign hasDate = true></#if><#if field.primitiveType == "time"><#assign hasTime = true></#if><#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if><#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if></#if></#list>
+<#if hasDate>import java.time.LocalDate;
+</#if><#if hasTime>import java.time.LocalTime;
+</#if><#if hasDateTime>import java.time.LocalDateTime;
+</#if><#if hasBigDecimal>import java.math.BigDecimal;
+</#if>public record Update${aggregate.name}Command(
+        String id<#if safeFields?has_content>,</#if>
+<#list safeFields as field>
     <#if field.type == "ValueObject" || field.type == "Entity">
         String ${field.name}<#if field.type == "Entity">Id</#if><#sep>,</#sep>
     <#else>

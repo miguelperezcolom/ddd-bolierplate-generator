@@ -1,9 +1,10 @@
 package ${project.packageName}.infra.out.persistence;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import ${project.packageName}.application.out.${aggregate.name}Repository;
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.type == "ValueObject">
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
     </#if>
@@ -22,13 +23,13 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
-        return repository.findById(id.id()).map(this::toDomain);
+        return repository.findById(id.value()).map(this::toDomain);
     }
 
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
         return new ${aggregate.name}(
                 new ${aggregate.name}Id(entity.getId()),
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.type == "ValueObject">
                 new ${field.name?cap_first}(entity.get${field.name?cap_first}())<#sep>,</#sep>
     <#elseif field.type == "Entity">
@@ -42,8 +43,8 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     private ${aggregate.name}Entity toEntity(${aggregate.name} domain) {
         return new ${aggregate.name}Entity(
-                domain.getId() != null ? domain.getId().id() : null,
-<#list aggregate.fields as field>
+                domain.getId() != null ? domain.getId().value() : null,
+<#list safeFields as field>
     <#if field.type == "ValueObject">
                 domain.get${field.name?cap_first}() != null ? domain.get${field.name?cap_first}().value() : null<#sep>,</#sep>
     <#elseif field.type == "Entity">
@@ -62,7 +63,7 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public void deleteAllById(List<${aggregate.name}Id> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(${aggregate.name}Id::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(${aggregate.name}Id::value).toList());
     }
 
 }

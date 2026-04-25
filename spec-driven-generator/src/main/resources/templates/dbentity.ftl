@@ -1,22 +1,12 @@
 package ${project.packageName}.infra.out.persistence;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
-<#assign hasDate = false>
-<#assign hasTime = false>
-<#assign hasDateTime = false>
-<#assign hasBigDecimal = false>
-<#list aggregate.fields as field>
-    <#if field.type == "Wrapper">
-        <#if field.primitiveType == "date"><#assign hasDate = true></#if>
-        <#if field.primitiveType == "time"><#assign hasTime = true></#if>
-        <#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if>
-        <#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if>
-    </#if>
-</#list>
-<#if hasDate>import java.time.LocalDate;</#if>
-<#if hasTime>import java.time.LocalTime;</#if>
-<#if hasDateTime>import java.time.LocalDateTime;</#if>
-<#if hasBigDecimal>import java.math.BigDecimal;</#if>
-import jakarta.persistence.Entity;
+<#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false><#list safeFields as field><#if field.type == "Wrapper"><#if field.primitiveType == "date"><#assign hasDate = true></#if><#if field.primitiveType == "time"><#assign hasTime = true></#if><#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if><#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if></#if></#list>
+<#if hasDate>import java.time.LocalDate;
+</#if><#if hasTime>import java.time.LocalTime;
+</#if><#if hasDateTime>import java.time.LocalDateTime;
+</#if><#if hasBigDecimal>import java.math.BigDecimal;
+</#if>import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -40,7 +30,7 @@ public class ${aggregate.name}Entity {
     )
     Long id;
 
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.type == "Entity">
     String ${field.name}Id;
     <#elseif field.type == "ValueObject">

@@ -10,14 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class Delete${aggregate.name}UseCase {
 
-final ${aggregate.name}Repository repository;
+    final ${aggregate.name}Repository repository;
 
-@Transactional
-public void handle(Delete${aggregate.name}Command command) {
-repository.deleteAllById(command.ids().stream()
-.map(Long::valueOf)
-.map(${aggregate.name}Id::new)
-.toList());
-}
+    @Transactional
+    public void handle(Delete${aggregate.name}Command command) {
+        repository.deleteAllById(command.ids().stream()
+                .map(Long::valueOf)
+                .map(${aggregate.name}Id::new)
+                .toList());
+    }
 
 }

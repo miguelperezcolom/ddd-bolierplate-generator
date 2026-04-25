@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.mateu.annotationprocessing.Helper.capitalize;
 import static io.mateu.core.infra.JsonSerializer.fromJson;
 import static io.mateu.core.infra.JsonSerializer.toJson;
 
@@ -56,39 +57,63 @@ public class GenerateCodeUseCase {
         createFile(project.outputPath(), project, "queryservice.ftl", "src/main/java/" + packageDir + "/application/query/QueryService.java");
         createFile(project.outputPath(), project, "home.ftl", "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
 
-        project.moduleIds().stream().map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow()).forEach(module -> {
-            module.aggregateIds().stream().map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow()).forEach(aggregate -> {
-                var aggregatePackageName = aggregate.name().toLowerCase();
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create");
-                createFile(project.outputPath(), project, aggregate, "aggregate-repository.ftl", "src/main/java/" + packageDir + "/application/out/" + aggregate.name() + "Repository.java");
-                createFile(project.outputPath(), project, aggregate, "aggregate-queryservice.ftl", "src/main/java/" + packageDir + "/application/query/" + aggregate.name() + "QueryService.java");
-                createFile(project.outputPath(), project, aggregate, "row.ftl", "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
-                createFile(project.outputPath(), project, aggregate, "dto.ftl", "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
-                createFile(project.outputPath(), project, aggregate, "create-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create/Create" + aggregate.name() + "Command.java");
-                createFile(project.outputPath(), project, aggregate, "create-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create/Create" + aggregate.name() + "UseCase.java");
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update");
-                createFile(project.outputPath(), project, aggregate, "update-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update/Update" + aggregate.name() + "Command.java");
-                createFile(project.outputPath(), project, aggregate, "update-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update/Update" + aggregate.name() + "UseCase.java");
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete");
-                createFile(project.outputPath(), project, aggregate, "delete-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete/Delete" + aggregate.name() + "Command.java");
-                createFile(project.outputPath(), project, aggregate, "delete-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete/Delete" + aggregate.name() + "UseCase.java");
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName);
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
-                createFile(project.outputPath(), project, aggregate, "vo-id.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo/" + aggregate.name() + "Id.java");
-                createFile(project.outputPath(), project, aggregate, "vo-name.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo/" + aggregate.name() + "Name.java");
-                createFile(project.outputPath(), project, aggregate, "aggregate.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/" + aggregate.name() + ".java");
-                createFile(project.outputPath(), project, aggregate, "dbentity.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
-                createFile(project.outputPath(), project, aggregate, "dbrepository.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
-                createFile(project.outputPath(), project, aggregate, "dbqueryservice.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
-                createFile(project.outputPath(), project, aggregate, "entityrepository.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
-                createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName);
-                createFile(project.outputPath(), project, aggregate, "crud-adapter.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "CrudAdapter.java");
-                createFile(project.outputPath(), project, aggregate, "crud-orchestrator.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "CrudOrchestrator.java");
-                createFile(project.outputPath(), project, aggregate, "crud-viewmodel.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "ViewModel.java");
-                createFile(project.outputPath(), project, aggregate, "options-supplier.ftl", "src/main/java/" + packageDir + "/infra/in/ui/suppliers/" + aggregate.name() + "IdOptionsSupplier.java");
-                createFile(project.outputPath(), project, aggregate, "label-supplier.ftl", "src/main/java/" + packageDir + "/infra/in/ui/suppliers/" + aggregate.name() + "IdLabelSupplier.java");
-            });
-        });
+        project.moduleIds().stream()
+                .map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow())
+                .forEach(module -> {
+                    module.aggregateIds().stream()
+                            .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
+                            .forEach(aggregate -> {
+                                var aggregatePackageName = aggregate.name().toLowerCase();
+                                var hasValueObjectFields = aggregate.fields().stream()
+                                        .anyMatch(f -> "ValueObject".equals(f.type()));
+
+                                // Directorios de dominio primero, antes de generar los VOs
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName);
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
+
+                                // Un VO por cada field de tipo ValueObject
+                                aggregate.fields().stream()
+                                        .filter(field -> "ValueObject".equals(field.type()))
+                                        .forEach(field -> {
+                                            Map<String, Object> voModel = new HashMap<>();
+                                            voModel.put("project", fromJson(toJson(project)));
+                                            voModel.put("aggregate", fromJson(toJson(aggregate)));
+                                            voModel.put("field", fromJson(toJson(field)));
+                                            createFile(project.outputPath(), voModel, "vo.ftl",
+                                                    "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo/" + capitalize(field.name()) + ".java");
+                                        });
+
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create");
+                                createFile(project.outputPath(), project, aggregate, "aggregate-repository.ftl", "src/main/java/" + packageDir + "/application/out/" + aggregate.name() + "Repository.java");
+                                createFile(project.outputPath(), project, aggregate, "aggregate-queryservice.ftl", "src/main/java/" + packageDir + "/application/query/" + aggregate.name() + "QueryService.java");
+                                createFile(project.outputPath(), project, aggregate, "row.ftl", "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
+                                createFile(project.outputPath(), project, aggregate, "dto.ftl", "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
+                                createFile(project.outputPath(), project, aggregate, "create-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create/Create" + aggregate.name() + "Command.java");
+                                createFile(project.outputPath(), project, aggregate, "create-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create/Create" + aggregate.name() + "UseCase.java");
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update");
+                                createFile(project.outputPath(), project, aggregate, "update-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update/Update" + aggregate.name() + "Command.java");
+                                createFile(project.outputPath(), project, aggregate, "update-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update/Update" + aggregate.name() + "UseCase.java");
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete");
+                                createFile(project.outputPath(), project, aggregate, "delete-command.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete/Delete" + aggregate.name() + "Command.java");
+                                createFile(project.outputPath(), project, aggregate, "delete-usecase.ftl", "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete/Delete" + aggregate.name() + "UseCase.java");
+                                createFile(project.outputPath(), project, aggregate, "vo-id.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo/" + aggregate.name() + "Id.java");
+                                // vo-name.ftl solo si el aggregate tiene fields de tipo ValueObject
+                                if (hasValueObjectFields) {
+                                    createFile(project.outputPath(), project, aggregate, "vo-name.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo/" + aggregate.name() + "Name.java");
+                                }
+                                createFile(project.outputPath(), project, aggregate, "aggregate.ftl", "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/" + aggregate.name() + ".java");
+                                createFile(project.outputPath(), project, aggregate, "dbentity.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
+                                createFile(project.outputPath(), project, aggregate, "dbrepository.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
+                                createFile(project.outputPath(), project, aggregate, "dbqueryservice.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
+                                createFile(project.outputPath(), project, aggregate, "entityrepository.ftl", "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
+                                createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName);
+                                createFile(project.outputPath(), project, aggregate, "crud-adapter.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "CrudAdapter.java");
+                                createFile(project.outputPath(), project, aggregate, "crud-orchestrator.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "CrudOrchestrator.java");
+                                createFile(project.outputPath(), project, aggregate, "crud-viewmodel.ftl", "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName + "/" + aggregate.name() + "ViewModel.java");
+                                createFile(project.outputPath(), project, aggregate, "options-supplier.ftl", "src/main/java/" + packageDir + "/infra/in/ui/suppliers/" + aggregate.name() + "IdOptionsSupplier.java");
+                                createFile(project.outputPath(), project, aggregate, "label-supplier.ftl", "src/main/java/" + packageDir + "/infra/in/ui/suppliers/" + aggregate.name() + "IdLabelSupplier.java");
+                            });
+                });
 
     }
 
@@ -110,21 +135,24 @@ public class GenerateCodeUseCase {
     private Map<String, Object> projectToMap(ProjectEntity project) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(project)));
-        map.put("modules", ((List<String>)map.get("moduleIds")).stream().map(moduleId -> moduleToMap(repository.findById(moduleId, ModuleEntity.class).orElseThrow())).toList());
+        map.put("modules", ((List<String>) map.get("moduleIds")).stream()
+                .map(moduleId -> moduleToMap(repository.findById(moduleId, ModuleEntity.class).orElseThrow()))
+                .toList());
         return map;
     }
 
     private Map<String, Object> moduleToMap(ModuleEntity module) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(module)));
-        map.put("aggregates", ((List<String>)map.get("aggregateIds")).stream().map(aggregateId -> aggregateToMap(repository.findById(aggregateId, AggregateEntity.class).orElseThrow())).toList());
+        map.put("aggregates", ((List<String>) map.get("aggregateIds")).stream()
+                .map(aggregateId -> aggregateToMap(repository.findById(aggregateId, AggregateEntity.class).orElseThrow()))
+                .toList());
         return map;
     }
 
     private Map<String, Object> aggregateToMap(AggregateEntity aggregate) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(aggregate)));
-        //map.put("aggregates", ((List<String>)map.get("aggregateIds")).stream().map(aggregateId -> toMap(repository.findById(aggregateId, AggregateEntity.class)))).toList();
         return map;
     }
 

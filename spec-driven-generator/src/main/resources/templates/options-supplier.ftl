@@ -14,17 +14,19 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ${aggregate.name}IdOptionsSupplier implements ForeignKeyOptionsSupplier {
 
-final ${aggregate.name}QueryService queryService;
+    final ${aggregate.name}QueryService queryService;
 
-@Override
-public ListingData<Option> search(String searchText, Pageable pageable, HttpRequest httpRequest) {
-    var found = queryService.findAll(searchText, null, pageable);
-    return new ListingData<>(new Page<>(
-    searchText,
-    found.page().pageSize(),
-    found.page().pageNumber(),
-    found.page().totalElements(),
-    found.page().content().stream().map(${aggregate.name?lower_case} ->
-    new Option(${aggregate.name?lower_case}.id(), ${aggregate.name?lower_case}.name())).toList()));
+    @Override
+    public ListingData<Option> search(String searchText, Pageable pageable, HttpRequest httpRequest) {
+        var found = queryService.findAll(searchText, null, pageable);
+        return new ListingData<>(new Page<>(
+                searchText,
+                found.page().pageSize(),
+                found.page().pageNumber(),
+                found.page().totalElements(),
+                found.page().content().stream()
+                        .map(row -> new Option(row.id(), queryService.getLabel(row.id())))
+                        .toList()));
     }
-    }
+
+}

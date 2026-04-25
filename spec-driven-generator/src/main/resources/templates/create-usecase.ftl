@@ -1,9 +1,10 @@
 package ${project.packageName}.application.usecases.${aggregate.name?lower_case}.create;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import ${project.packageName}.application.out.${aggregate.name}Repository;
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.type == "ValueObject">
 import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
     </#if>
@@ -21,7 +22,7 @@ public class Create${aggregate.name}UseCase {
     @Transactional
     public String handle(Create${aggregate.name}Command command) {
         return repository.save(${aggregate.name}.of(
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.type == "ValueObject">
                 new ${field.name?cap_first}(command.${field.name}())<#sep>,</#sep>
     <#elseif field.type == "Entity">
@@ -30,7 +31,7 @@ public class Create${aggregate.name}UseCase {
                 command.${field.name}()<#sep>,</#sep>
     </#if>
 </#list>
-        )).id().toString();
+        )).value().toString();
     }
 
 }

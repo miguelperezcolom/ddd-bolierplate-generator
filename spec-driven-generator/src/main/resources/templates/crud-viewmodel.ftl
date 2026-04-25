@@ -1,4 +1,5 @@
 package ${project.packageName}.infra.in.ui.pages.${aggregate.name?lower_case};
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import io.mateu.uidl.annotations.HiddenInCreate;
 import io.mateu.uidl.annotations.ReadOnly;
@@ -16,24 +17,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-<#assign hasDate = false>
-<#assign hasTime = false>
-<#assign hasDateTime = false>
-<#assign hasBigDecimal = false>
-<#list aggregate.fields as field>
-    <#if field.type == "Wrapper">
-        <#if field.primitiveType == "date"><#assign hasDate = true></#if>
-        <#if field.primitiveType == "time"><#assign hasTime = true></#if>
-        <#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if>
-        <#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if>
-    </#if>
-</#list>
-<#if hasDate>import java.time.LocalDate;</#if>
-<#if hasTime>import java.time.LocalTime;</#if>
-<#if hasDateTime>import java.time.LocalDateTime;</#if>
-<#if hasBigDecimal>import java.math.BigDecimal;</#if>
-
-@Service
+<#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false><#list safeFields as field><#if field.type == "Wrapper"><#if field.primitiveType == "date"><#assign hasDate = true></#if><#if field.primitiveType == "time"><#assign hasTime = true></#if><#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if><#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if></#if></#list>
+<#if hasDate>import java.time.LocalDate;
+</#if><#if hasTime>import java.time.LocalTime;
+</#if><#if hasDateTime>import java.time.LocalDateTime;
+</#if><#if hasBigDecimal>import java.math.BigDecimal;
+</#if>@Service
 @Scope("prototype")
 @RequiredArgsConstructor
 public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
@@ -42,7 +31,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
     @ReadOnly
     String id;
 
-<#list aggregate.fields as field>
+<#list safeFields as field>
     <#if field.readonly>
     @ReadOnly
     </#if>
@@ -78,7 +67,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
     @Override
     public String create(HttpRequest httpRequest) {
         return create${aggregate.name}UseCase.handle(new Create${aggregate.name}Command(
-<#list aggregate.fields as field>
+<#list safeFields as field>
                 ${field.name}<#if field.type == "Entity">Id</#if><#sep>,</#sep>
 </#list>
         ));
@@ -88,7 +77,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
     public void save(HttpRequest httpRequest) {
         update${aggregate.name}UseCase.handle(new Update${aggregate.name}Command(
                 id,
-<#list aggregate.fields as field>
+<#list safeFields as field>
                 ${field.name}<#if field.type == "Entity">Id</#if><#sep>,</#sep>
 </#list>
         ));
@@ -101,7 +90,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
 
     public ${aggregate.name}ViewModel load(${aggregate.name}Dto dto) {
         id = dto.id();
-<#list aggregate.fields as field>
+<#list safeFields as field>
         ${field.name}<#if field.type == "Entity">Id</#if> = dto.${field.name}<#if field.type == "Entity">Id</#if>();
 </#list>
         return this;
@@ -109,7 +98,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
 
     @Override
     public String toString() {
-        return id != null ? "<#if aggregate.fields?has_content>${r"${" + aggregate.fields?first.name + "}"}<#else>${aggregate.name?lower_case}</#if>" : "New ${aggregate.name}";
+        return id != null ? String.valueOf(<#if safeFields?has_content>${safeFields?first.name}<#else>id</#if>) : "New ${aggregate.name}";
     }
 
 }
