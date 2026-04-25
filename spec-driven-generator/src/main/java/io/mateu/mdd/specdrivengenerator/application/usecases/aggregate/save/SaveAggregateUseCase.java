@@ -25,6 +25,7 @@ public class SaveAggregateUseCase {
                         field.help(),
                         field.valueObjectId(),
                         field.entityId(),
+                        field.primitiveType(),
                         field.mandatory(),
                         field.readonly(),
                         field.visible(),
@@ -32,6 +33,7 @@ public class SaveAggregateUseCase {
                         field.searchable(),
                         field.filterable()
                 )).toList(),
+                command.operations(),
                 command.invariants()
         );
         repository.save(role);

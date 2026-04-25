@@ -2,19 +2,30 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.AggregateRepository;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.Aggregate;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.DomainEventName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.FieldValueSetting;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo.Field;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.InvariantEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.OperationEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+
+import static io.mateu.core.infra.JsonSerializer.listFromJson;
+import static io.mateu.core.infra.JsonSerializer.toJson;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +46,7 @@ public class AggregateFileRepository implements AggregateRepository {
                                 field.help(),
                                 field.valueObjectId(),
                                 field.entityId(),
+                                field.primitiveType(),
                                 field.mandatory(),
                                 field.readonly(),
                                 field.visible(),
@@ -42,6 +54,16 @@ public class AggregateFileRepository implements AggregateRepository {
                                 field.searchable(),
                                 field.filterable()
                         )).toList(),
+                        entity.operations().stream()
+                                .map(operationEntity -> new OperationDto(
+                                        operationEntity.id(),
+                                        operationEntity.name(),
+                                        Arrays.asList(operationEntity.preconditions().split(",")),
+                                        listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
+                                        Arrays.asList(operationEntity.emits().split(",")),
+                                        OperationType.valueOf(operationEntity.type())
+                                ))
+                                .toList(),
                         entity.invariants().stream().map(invariantEntity -> new InvariantDto(
                                 invariantEntity.id(),
                                 invariantEntity.name()
@@ -59,6 +81,7 @@ public class AggregateFileRepository implements AggregateRepository {
                         field.help(),
                         field.valueObjectId(),
                         field.entityId(),
+                        field.primitiveType(),
                         field.mandatory(),
                         field.readonly(),
                         field.visible(),
@@ -66,8 +89,21 @@ public class AggregateFileRepository implements AggregateRepository {
                         field.searchable(),
                         field.filterable()
                 )).toList(),
+                entity.getOperations().stream()
+                        .map(operation -> new OperationEntity(
+                                operation.getId().id(),
+                                operation.getName().name(),
+                                        String.join(",", operation.getPreconditions().stream()
+                                                .map(OperationPrecondition::precondition).toList()),
+                                toJson(operation.getSets()),
+                                String.join(",", operation.getEmits().stream()
+                                        .map(DomainEventName::eventName).toList()),
+                                operation.getType().name()
+                        )).toList(),
                 entity.getInvariants().stream()
-                        .map(invariant -> new InvariantEntity(invariant.getId().id(), invariant.getName().name())).toList()));
+                        .map(invariant -> new InvariantEntity(
+                                invariant.getId().id(),
+                                invariant.getName().name())).toList()));
         return entity;
     }
 

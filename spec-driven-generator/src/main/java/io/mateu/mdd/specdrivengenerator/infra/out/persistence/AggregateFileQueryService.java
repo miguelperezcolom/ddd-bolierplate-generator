@@ -4,7 +4,10 @@ import io.mateu.mdd.specdrivengenerator.application.query.AggregateQueryService;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateDto;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateRow;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.uidl.data.ListingData;
@@ -13,7 +16,10 @@ import io.mateu.uidl.data.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Optional;
+
+import static io.mateu.core.infra.JsonSerializer.listFromJson;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +56,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                 field.help(),
                                 field.valueObjectId(),
                                 field.entityId(),
+                                field.primitiveType(),
                                 field.mandatory(),
                                 field.readonly(),
                                 field.visible(),
@@ -57,6 +64,16 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                 field.searchable(),
                                 field.filterable()
                         )).toList(),
+                        entity.operations().stream()
+                                .map(operationEntity -> new OperationDto(
+                                        operationEntity.id(),
+                                        operationEntity.name(),
+                                        Arrays.asList(operationEntity.preconditions().split(",")),
+                                        listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
+                                                Arrays.asList(operationEntity.emits().split(",")),
+                                        OperationType.valueOf(operationEntity.type())
+                                ))
+                                .toList(),
                         entity.invariants().stream()
                                 .map(invariant -> new InvariantDto(invariant.id(), invariant.name()))
                                 .toList()));

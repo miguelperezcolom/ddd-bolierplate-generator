@@ -3,7 +3,9 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateDto;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateCommand;
@@ -23,6 +25,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Scope("prototype")
@@ -36,6 +39,9 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     @Tab
             @MasterDetail(minHeightWhenDetailVisible = "24rem")
     List<FieldViewModel> fields;
+    @Tab
+    @MasterDetail(minHeightWhenDetailVisible = "16rem")
+    List<OperationViewModel> operations;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<InvariantViewModel> invariants;
@@ -59,6 +65,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                         field.help(),
                         field.valueObject(),
                         field.entity(),
+                        field.primitiveType(),
                         field.mandatory(),
                         field.readonly(),
                         field.visible(),
@@ -66,6 +73,21 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                         field.searchable(),
                         field.filterable()
                 )).toList(),
+                operations.stream()
+                        .map(operationViewModel -> new OperationDto(
+                                operationViewModel.id(),
+                                operationViewModel.name(),
+                                operationViewModel.preconditions(),
+                                operationViewModel.sets().stream()
+                                        .map(settingViewModel -> new FieldValueSettingDto(
+                                                settingViewModel.fieldName(),
+                                                settingViewModel.value()
+                                        ))
+                                        .toList(),
+                                operationViewModel.emits(),
+                                operationViewModel.type()
+                        ))
+                        .toList(),
                 invariants.stream()
                         .map(invariantViewModel -> new InvariantDto(
                                 invariantViewModel.id(),
@@ -92,6 +114,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                         field.help(),
                         field.valueObject(),
                         field.entity(),
+                        field.primitiveType(),
                         field.mandatory(),
                         field.readonly(),
                         field.visible(),
@@ -99,6 +122,21 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                         field.searchable(),
                         field.filterable()
                 )).toList(),
+                operations.stream()
+                        .map(operationViewModel -> new OperationDto(
+                                operationViewModel.id(),
+                                operationViewModel.name(),
+                                operationViewModel.preconditions(),
+                                operationViewModel.sets().stream()
+                                        .map(settingViewModel -> new FieldValueSettingDto(
+                                                settingViewModel.fieldName(),
+                                                settingViewModel.value()
+                                        ))
+                                        .toList(),
+                                operationViewModel.emits(),
+                                operationViewModel.type()
+                        ))
+                        .toList(),
                 invariants.stream().map(invariant -> new InvariantDto(
                         invariant.id(),
                         invariant.name()
@@ -120,12 +158,18 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 field.help(),
                 field.valueObjectId(),
                 field.entityId(),
+                field.primitiveType(),
                 field.mandatory(),
                 field.readonly(),
                 field.visible(),
                 field.editable(),
                 field.searchable(),
                 field.filterable())).toList();
+       operations = model.operations().stream().map(operationDto -> new OperationViewModel(
+               operationDto.id(), operationDto.name(), operationDto.preconditions(),
+               operationDto.sets().stream().map(settingDto -> new FieldValueSettingViewModel(
+                       settingDto.fieldName(), settingDto.value())).toList(),
+               operationDto.emits(), operationDto.type())).toList();
         invariants = model.invariants().stream()
                 .map(invariant -> new InvariantViewModel(invariant.id(), invariant.name()))
                 .toList();

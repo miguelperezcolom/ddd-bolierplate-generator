@@ -9,6 +9,7 @@ public record AggregateEntity(
         String id,
         String name,
         List<Field> fields,
+        List<OperationEntity> operations,
         List<InvariantEntity> invariants
         ) implements Identifiable {
 }
