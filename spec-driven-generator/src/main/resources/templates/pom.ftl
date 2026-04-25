@@ -8,27 +8,16 @@
         <version>4.0.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>io.mateu.workflow</groupId>
-    <artifactId>users-service</artifactId>
+    <groupId>${project.packageName}</groupId>
+    <artifactId>${project.name?replace(" ", "-")?lower_case}</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>users-service</name>
-    <description>users-service</description>
-    <url/>
-    <licenses>
-        <license/>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
+    <name>${project.name}</name>
+    <description>${project.name}</description>
+
     <properties>
         <java.version>21</java.version>
     </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -40,6 +29,7 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -52,6 +42,11 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
 
@@ -68,7 +63,6 @@
             <artifactId>spring-cloud-stream-binder-kafka-streams</artifactId>
         </dependency>
 
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -79,6 +73,7 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>io.mateu.workflow</groupId>
             <artifactId>shared</artifactId>

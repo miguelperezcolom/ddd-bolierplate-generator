@@ -127,12 +127,12 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                                 operationViewModel.id(),
                                 operationViewModel.name(),
                                 operationViewModel.preconditions(),
-                                operationViewModel.sets().stream()
+                                operationViewModel.sets() != null?operationViewModel.sets().stream()
                                         .map(settingViewModel -> new FieldValueSettingDto(
                                                 settingViewModel.fieldName(),
                                                 settingViewModel.value()
                                         ))
-                                        .toList(),
+                                        .toList():List.of(),
                                 operationViewModel.emits(),
                                 operationViewModel.type()
                         ))

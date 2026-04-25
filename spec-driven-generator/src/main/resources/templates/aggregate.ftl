@@ -7,53 +7,52 @@ package ${project.packageName}.domain.aggregates.${aggregate.name?lower_case};
 </#if><#if hasTime>import java.time.LocalTime;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
-</#if>import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
+</#if>import io.mateu.workflow.ddd.AggregateRoot;
+import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
 <#list safeFields as field><#if field.type == "ValueObject">import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
 </#if></#list>import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 public class ${aggregate.name} extends AggregateRoot {
 
-    ${aggregate.name}Id id;
+${aggregate.name}Id id;
 
 <#list safeFields as field>
     <#if field.type == "ValueObject">
-    ${field.name?cap_first} ${field.name};
+        ${field.name?cap_first} ${field.name};
     <#elseif field.type == "Entity">
-    String ${field.name}Id;
+        String ${field.name}Id;
     <#else>
-    <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
-    String ${field.name};
-    <#elseif field.primitiveType == "integer">
-    Integer ${field.name};
-    <#elseif field.primitiveType == "decimal">
-    BigDecimal ${field.name};
-    <#elseif field.primitiveType == "bool">
-    Boolean ${field.name};
-    <#elseif field.primitiveType == "date">
-    LocalDate ${field.name};
-    <#elseif field.primitiveType == "time">
-    LocalTime ${field.name};
-    <#elseif field.primitiveType == "datetime">
-    LocalDateTime ${field.name};
-    <#else>
-    String ${field.name};
-    </#if>
+        <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
+            String ${field.name};
+        <#elseif field.primitiveType == "integer">
+            Integer ${field.name};
+        <#elseif field.primitiveType == "decimal">
+            BigDecimal ${field.name};
+        <#elseif field.primitiveType == "bool">
+            Boolean ${field.name};
+        <#elseif field.primitiveType == "date">
+            LocalDate ${field.name};
+        <#elseif field.primitiveType == "time">
+            LocalTime ${field.name};
+        <#elseif field.primitiveType == "datetime">
+            LocalDateTime ${field.name};
+        <#else>
+            String ${field.name};
+        </#if>
     </#if>
 </#list>
 
-    public static ${aggregate.name} of(
+public static ${aggregate.name} of(
 <#list safeFields as field>
     <#if field.type == "ValueObject">
-            ${field.name?cap_first} ${field.name}<#sep>,</#sep>
+        ${field.name?cap_first} ${field.name}<#sep>,</#sep>
     <#elseif field.type == "Entity">
-            String ${field.name}Id<#sep>,</#sep>
+        String ${field.name}Id<#sep>,</#sep>
     <#else>
         <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
             String ${field.name}<#sep>,</#sep>
@@ -74,20 +73,21 @@ public class ${aggregate.name} extends AggregateRoot {
         </#if>
     </#if>
 </#list>
-    ) {
-        ${aggregate.name} p = new ${aggregate.name}();
+) {
+${aggregate.name} p = new ${aggregate.name}();
 <#list safeFields as field>
-        p.${field.name}<#if field.type == "Entity">Id</#if> = ${field.name}<#if field.type == "Entity">Id</#if>;
+    p.${field.name}<#if field.type == "Entity">Id</#if> = ${field.name}<#if field.type == "Entity">Id</#if>;
 </#list>
-        return p;
-    }
+p.checkInvariants();
+return p;
+}
 
-    public void update(
+public void update(
 <#list safeFields as field>
     <#if field.type == "ValueObject">
-            ${field.name?cap_first} ${field.name}<#sep>,</#sep>
+        ${field.name?cap_first} ${field.name}<#sep>,</#sep>
     <#elseif field.type == "Entity">
-            String ${field.name}Id<#sep>,</#sep>
+        String ${field.name}Id<#sep>,</#sep>
     <#else>
         <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
             String ${field.name}<#sep>,</#sep>
@@ -108,10 +108,180 @@ public class ${aggregate.name} extends AggregateRoot {
         </#if>
     </#if>
 </#list>
-    ) {
+) {
 <#list safeFields as field>
-        this.${field.name}<#if field.type == "Entity">Id</#if> = ${field.name}<#if field.type == "Entity">Id</#if>;
+    this.${field.name}<#if field.type == "Entity">Id</#if> = ${field.name}<#if field.type == "Entity">Id</#if>;
 </#list>
+checkInvariants();
+}
+
+<#list aggregate.operations as operation>
+    <#assign operationName = operation.name?lower_case>
+    <#assign operationNameCap = operationName?cap_first>
+
+    <#if operation.type == "CUSTOM">
+        public void ${operationName}(${operationNameCap}${aggregate.name}Operation operation) {
+        check${operationNameCap}Preconditions();
+
+        operation.execute(new Default${aggregate.name}OperationContext());
+
+        checkInvariants();
+        }
+
+    <#else>
+        public void ${operationName}() {
+        check${operationNameCap}Preconditions();
+
+        <#list operation.sets as setting>
+            this.${setting.fieldName} = ${setting.value};
+        </#list>
+
+        checkInvariants();
+        }
+
+    </#if>
+    private void check${operationNameCap}Preconditions() {
+    <#list operation.preconditions as precondition>
+        // TODO precondition: ${precondition}
+    </#list>
     }
 
+</#list>
+private void checkInvariants() {
+<#list aggregate.invariants as invariant>
+    // TODO invariant: ${invariant.name}
+</#list>
+}
+
+<#if aggregate.operations?has_content>
+private class Default${aggregate.name}OperationContext implements ${aggregate.name}OperationContext {
+
+@Override
+public ${aggregate.name}Id id() {
+return ${aggregate.name}.this.id;
+}
+
+@Override
+public void id(${aggregate.name}Id id) {
+${aggregate.name}.this.id = id;
+}
+
+<#list safeFields as field>
+    <#if field.type == "ValueObject">
+        @Override
+        public ${field.name?cap_first} ${field.name}() {
+        return ${aggregate.name}.this.${field.name};
+        }
+
+        @Override
+        public void ${field.name}(${field.name?cap_first} ${field.name}) {
+        ${aggregate.name}.this.${field.name} = ${field.name};
+        }
+
+    <#elseif field.type == "Entity">
+        @Override
+        public String ${field.name}Id() {
+        return ${aggregate.name}.this.${field.name}Id;
+        }
+
+        @Override
+        public void ${field.name}Id(String ${field.name}Id) {
+        ${aggregate.name}.this.${field.name}Id = ${field.name}Id;
+        }
+
+    <#else>
+        <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
+            @Override
+            public String ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(String ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "integer">
+            @Override
+            public Integer ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(Integer ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "decimal">
+            @Override
+            public BigDecimal ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(BigDecimal ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "bool">
+            @Override
+            public Boolean ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(Boolean ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "date">
+            @Override
+            public LocalDate ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(LocalDate ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "time">
+            @Override
+            public LocalTime ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(LocalTime ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#elseif field.primitiveType == "datetime">
+            @Override
+            public LocalDateTime ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(LocalDateTime ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        <#else>
+            @Override
+            public String ${field.name}() {
+            return ${aggregate.name}.this.${field.name};
+            }
+
+            @Override
+            public void ${field.name}(String ${field.name}) {
+            ${aggregate.name}.this.${field.name} = ${field.name};
+            }
+
+        </#if>
+    </#if>
+</#list>
+}
+
+</#if>
 }

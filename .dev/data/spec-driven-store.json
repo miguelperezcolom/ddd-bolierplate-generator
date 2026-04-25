@@ -91,7 +91,14 @@
       "searchable" : false,
       "filterable" : false
     } ],
-    "operations" : [ ],
+    "operations" : [ {
+      "id" : "confirm",
+      "name" : "Confirm",
+      "preconditions" : "",
+      "sets" : "[ ]",
+      "emits" : "",
+      "type" : "CUSTOM"
+    } ],
     "invariants" : [ ]
   } ],
   "entities" : [ ],

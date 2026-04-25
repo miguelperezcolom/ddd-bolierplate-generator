@@ -78,9 +78,9 @@ public class Aggregate {
         this.operations = operations.stream().map(operationDto -> Operation.of(
                 new OperationId(operationDto.id()),
                 new OperationName(operationDto.name()),
-                operationDto.preconditions().stream().map(OperationPrecondition::new).toList(),
-                operationDto.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList(),
-                operationDto.emits().stream().map(DomainEventName::new).toList(),
+                operationDto.preconditions() != null?operationDto.preconditions().stream().map(OperationPrecondition::new).toList():List.of(),
+                operationDto.sets() != null?operationDto.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList():List.of(),
+                operationDto.emits() != null?operationDto.emits().stream().map(DomainEventName::new).toList():List.of(),
                 operationDto.type()
         )).toList();
         this.invariants = invariants.stream()

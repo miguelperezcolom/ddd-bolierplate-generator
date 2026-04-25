@@ -6,7 +6,9 @@ package ${project.packageName}.infra.out.persistence;
 </#if><#if hasTime>import java.time.LocalTime;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
-</#if>import jakarta.persistence.Entity;
+</#if>
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,26 +34,35 @@ public class ${aggregate.name}Entity {
 
 <#list safeFields as field>
     <#if field.type == "Entity">
+    @Column(name = "col_${field.name}_id")
     String ${field.name}Id;
     <#elseif field.type == "ValueObject">
-    <#-- ValueObjects are flattened to their string/primitive representation in the DB entity -->
+    @Column(name = "col_${field.name}")
     String ${field.name};
     <#else>
         <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
+    @Column(name = "col_${field.name}")
     String ${field.name};
         <#elseif field.primitiveType == "integer">
+    @Column(name = "col_${field.name}")
     Integer ${field.name};
         <#elseif field.primitiveType == "decimal">
+    @Column(name = "col_${field.name}")
     BigDecimal ${field.name};
         <#elseif field.primitiveType == "bool">
+    @Column(name = "col_${field.name}")
     Boolean ${field.name};
         <#elseif field.primitiveType == "date">
+    @Column(name = "col_${field.name}")
     LocalDate ${field.name};
         <#elseif field.primitiveType == "time">
+    @Column(name = "col_${field.name}")
     LocalTime ${field.name};
         <#elseif field.primitiveType == "datetime">
+    @Column(name = "col_${field.name}")
     LocalDateTime ${field.name};
         <#else>
+    @Column(name = "col_${field.name}")
     String ${field.name};
         </#if>
     </#if>

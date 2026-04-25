@@ -12,4 +12,10 @@ public record OperationDto(
         List<FieldValueSettingDto> sets,
         List<String> emits,
         OperationType type) {
+
+    public OperationDto {
+        if (sets == null) sets = List.of();
+        if (emits == null) emits = List.of();
+        if (preconditions == null) preconditions = List.of();
+    }
 }
