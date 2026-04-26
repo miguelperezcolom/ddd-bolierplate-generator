@@ -1,0 +1,7 @@
+- archi/sparx (importar/exportar)
+- generar en git / local
+- cli
+- definir apis y eventos
+- tests
+- gherkin
+- 
