@@ -9,15 +9,29 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdOptio
 import io.mateu.uidl.annotations.Colspan;
 import io.mateu.uidl.annotations.FormLayout;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.HiddenInList;
 import io.mateu.uidl.annotations.Lookup;
 
 @FormLayout(columns = 6)
 public record FieldViewModel(String name, String label, FieldTypeDto type, @Colspan(3) String help,
+                             @HiddenInList
                              @Lookup(search = ValueObjectIdOptionsSupplier.class, label = ValueObjectIdLabelSupplier.class)
                              String valueObject,
                              @Lookup(search = EntityIdOptionsSupplier.class, label = EntityIdLabelSupplier.class)
+                             @HiddenInList
                              String entity,
+                             @HiddenInList
                              PrimitiveType primitiveType,
-                             boolean mandatory, boolean readonly, boolean visible,
-                             boolean editable, boolean searchable, boolean filterable) {
+                             @HiddenInList
+                             boolean mandatory,
+                             @HiddenInList
+                             boolean readonly,
+                             @HiddenInList
+                             boolean visible,
+                             @HiddenInList
+                             boolean editable,
+                             @HiddenInList
+                             boolean searchable,
+                             @HiddenInList
+                             boolean filterable) {
 }
