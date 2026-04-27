@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project;
 
-import io.mateu.mdd.specdrivengenerator.application.query.ProjectQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ProjectRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.delete.DeleteProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.delete.DeleteProjectUseCase;
 import io.mateu.uidl.data.ListingData;

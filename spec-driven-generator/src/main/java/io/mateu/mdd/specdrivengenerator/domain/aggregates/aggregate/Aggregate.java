@@ -1,8 +1,8 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.Invariant;

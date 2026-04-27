@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module;
 
-import io.mateu.mdd.specdrivengenerator.application.query.ModuleQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ModuleRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.delete.DeleteModuleCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.delete.DeleteModuleUseCase;
 import io.mateu.uidl.data.ListingData;

@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.invariant.save;
 
-import io.mateu.mdd.specdrivengenerator.application.out.InvariantRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.InvariantRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantName;
 import lombok.RequiredArgsConstructor;

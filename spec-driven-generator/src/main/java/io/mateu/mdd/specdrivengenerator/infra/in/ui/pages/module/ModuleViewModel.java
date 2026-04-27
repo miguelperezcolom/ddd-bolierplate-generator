@@ -1,16 +1,13 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ModuleDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveModuleCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveModuleUseCase;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
-import io.mateu.uidl.annotations.EditableOnlyWhenCreating;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;

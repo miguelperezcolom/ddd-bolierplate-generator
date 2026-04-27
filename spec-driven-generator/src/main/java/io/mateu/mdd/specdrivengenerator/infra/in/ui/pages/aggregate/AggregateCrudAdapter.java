@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 
-import io.mateu.mdd.specdrivengenerator.application.query.AggregateQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.AggregateQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AggregateRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.delete.DeleteAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.delete.DeleteAggregateUseCase;
 import io.mateu.uidl.data.ListingData;

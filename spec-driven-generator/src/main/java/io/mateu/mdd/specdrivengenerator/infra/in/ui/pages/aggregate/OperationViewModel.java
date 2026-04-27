@@ -1,6 +1,5 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.uidl.annotations.HiddenInList;
 

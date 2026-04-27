@@ -1,16 +1,11 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.entity;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.EntityDto;
-import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateCommand;
-import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateUseCase;
-import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateCommand;
-import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateUseCase;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.EntityDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.create.CreateEntityCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.create.CreateEntityUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.save.SaveEntityCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.save.SaveEntityUseCase;
-import io.mateu.uidl.annotations.EditableOnlyWhenCreating;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.interfaces.CrudCreationForm;

@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project;
 
 import io.mateu.core.infra.declarative.CrudOrchestrator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ProjectRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.ViewToolbarButton;
 import io.mateu.uidl.data.NoFilters;

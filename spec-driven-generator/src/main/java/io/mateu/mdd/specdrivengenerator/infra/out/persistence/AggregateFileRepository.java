@@ -1,15 +1,13 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
-import io.mateu.mdd.specdrivengenerator.application.out.AggregateRepository;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.AggregateRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.Aggregate;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.DomainEventName;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.FieldValueSetting;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo.Field;

@@ -1,14 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
-import io.mateu.mdd.specdrivengenerator.application.query.EntityQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.ModuleQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.EntityDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.EntityRow;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ModuleDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ModuleRow;
-import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;

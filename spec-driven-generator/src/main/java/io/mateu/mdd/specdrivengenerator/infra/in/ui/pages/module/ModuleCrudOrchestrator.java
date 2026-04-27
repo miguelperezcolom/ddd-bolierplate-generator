@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module;
 
 import io.mateu.core.infra.declarative.CrudOrchestrator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ModuleRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.interfaces.CrudAdapter;

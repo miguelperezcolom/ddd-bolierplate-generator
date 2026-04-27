@@ -1,13 +1,10 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
-import io.mateu.mdd.specdrivengenerator.application.out.ModuleRepository;
-import io.mateu.mdd.specdrivengenerator.application.out.ProjectRepository;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.Module;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

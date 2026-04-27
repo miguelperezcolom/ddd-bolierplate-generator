@@ -1,13 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
-import io.mateu.mdd.specdrivengenerator.application.query.ProjectQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.ValueObjectQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ProjectDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ProjectRow;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ValueObjectDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ValueObjectRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ValueObjectQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ValueObjectDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ValueObjectRow;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;

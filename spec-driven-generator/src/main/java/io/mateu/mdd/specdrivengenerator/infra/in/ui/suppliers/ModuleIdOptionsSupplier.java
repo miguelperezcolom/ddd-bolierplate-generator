@@ -1,7 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers;
 
-import io.mateu.mdd.specdrivengenerator.application.query.ModuleQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.ProjectQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Option;
 import io.mateu.uidl.data.Page;

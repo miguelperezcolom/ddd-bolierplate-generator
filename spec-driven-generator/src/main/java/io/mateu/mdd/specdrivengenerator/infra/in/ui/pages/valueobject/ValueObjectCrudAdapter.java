@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.valueobject;
 
-import io.mateu.mdd.specdrivengenerator.application.query.ValueObjectQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ValueObjectRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.ValueObjectQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ValueObjectRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.delete.DeleteValueObjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.delete.DeleteValueObjectUseCase;
 import io.mateu.uidl.data.ListingData;

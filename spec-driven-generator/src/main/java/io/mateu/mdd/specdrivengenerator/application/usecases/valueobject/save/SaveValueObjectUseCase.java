@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.save;
 
-import io.mateu.mdd.specdrivengenerator.application.out.ValueObjectRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.ValueObjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.valueobject.vo.ValueObjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.valueobject.vo.ValueObjectName;
 import lombok.RequiredArgsConstructor;

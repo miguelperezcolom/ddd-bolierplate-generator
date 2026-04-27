@@ -1,8 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.module.create;
 
-import io.mateu.mdd.specdrivengenerator.application.out.ModuleRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.ModuleRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.Module;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleName;

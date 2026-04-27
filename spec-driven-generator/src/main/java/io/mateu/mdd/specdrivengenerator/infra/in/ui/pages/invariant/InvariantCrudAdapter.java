@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.invariant;
 
-import io.mateu.mdd.specdrivengenerator.application.query.InvariantQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.InvariantQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.delete.DeleteInvariantCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.delete.DeleteInvariantUseCase;
 import io.mateu.uidl.data.ListingData;

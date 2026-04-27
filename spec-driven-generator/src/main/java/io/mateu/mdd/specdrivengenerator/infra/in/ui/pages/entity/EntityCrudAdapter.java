@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.entity;
 
-import io.mateu.mdd.specdrivengenerator.application.query.EntityQueryService;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.EntityRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.EntityQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.EntityRow;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.delete.DeleteEntityCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.delete.DeleteEntityUseCase;
 import io.mateu.uidl.data.ListingData;

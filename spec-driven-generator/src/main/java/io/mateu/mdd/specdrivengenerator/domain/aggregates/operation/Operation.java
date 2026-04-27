@@ -1,9 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.operation;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.Invariant;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantName;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.DomainEventName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.FieldValueSetting;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationId;

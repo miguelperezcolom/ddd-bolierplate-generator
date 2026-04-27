@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.entity.create;
 
-import io.mateu.mdd.specdrivengenerator.application.out.EntityRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.EntityRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.entity.Entity;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.entity.vo.EntityId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.entity.vo.EntityName;

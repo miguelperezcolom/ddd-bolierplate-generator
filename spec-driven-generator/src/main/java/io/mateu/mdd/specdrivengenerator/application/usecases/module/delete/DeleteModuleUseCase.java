@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.module.delete;
 
-import io.mateu.mdd.specdrivengenerator.application.out.ModuleRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.ModuleRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

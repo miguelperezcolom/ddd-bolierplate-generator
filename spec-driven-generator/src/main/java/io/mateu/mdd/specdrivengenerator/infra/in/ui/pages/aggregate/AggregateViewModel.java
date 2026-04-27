@@ -1,19 +1,15 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldValueSettingDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.OperationDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AggregateDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateUseCase;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.InvariantIdLabelSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.InvariantIdOptionsSupplier;
 import io.mateu.uidl.annotations.*;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -25,7 +21,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Scope("prototype")

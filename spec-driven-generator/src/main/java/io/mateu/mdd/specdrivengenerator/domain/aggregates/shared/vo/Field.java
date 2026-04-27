@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldTypeDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldTypeDto;
 
 public record Field(String name, String label, FieldTypeDto type, String help,
                     String valueObjectId,

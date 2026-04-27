@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 
-import io.mateu.mdd.specdrivengenerator.application.out.ProjectRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;

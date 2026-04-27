@@ -1,6 +1,5 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.AggregateRow;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;

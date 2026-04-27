@@ -1,12 +1,11 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.invariant;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.InvariantDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.create.CreateInvariantCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.create.CreateInvariantUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.save.SaveInvariantCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.invariant.save.SaveInvariantUseCase;
-import io.mateu.uidl.annotations.EditableOnlyWhenCreating;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.interfaces.CrudCreationForm;

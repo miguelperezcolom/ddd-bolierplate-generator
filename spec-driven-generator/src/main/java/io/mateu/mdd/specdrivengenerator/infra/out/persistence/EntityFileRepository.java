@@ -1,12 +1,8 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
-import io.mateu.mdd.specdrivengenerator.application.out.AggregateRepository;
-import io.mateu.mdd.specdrivengenerator.application.out.EntityRepository;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.Aggregate;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.EntityRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.entity.Entity;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.entity.vo.EntityId;
-import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.EntityEntity;
 import lombok.RequiredArgsConstructor;

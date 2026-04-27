@@ -1,9 +1,8 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save;
 
-import io.mateu.mdd.specdrivengenerator.application.out.AggregateRepository;
+import io.mateu.mdd.specdrivengenerator.application.out.repositories.AggregateRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo.Field;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

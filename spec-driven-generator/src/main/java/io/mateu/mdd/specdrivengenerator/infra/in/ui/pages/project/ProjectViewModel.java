@@ -1,7 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.ProjectDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;

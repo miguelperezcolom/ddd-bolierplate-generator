@@ -1,6 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 
-import io.mateu.mdd.specdrivengenerator.application.query.dtos.FieldTypeDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldTypeDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo.PrimitiveType;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdOptionsSupplier;
@@ -8,7 +8,6 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdLabel
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdOptionsSupplier;
 import io.mateu.uidl.annotations.Colspan;
 import io.mateu.uidl.annotations.FormLayout;
-import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.HiddenInList;
 import io.mateu.uidl.annotations.Lookup;
 
