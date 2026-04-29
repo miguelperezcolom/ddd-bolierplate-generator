@@ -14,7 +14,14 @@ public class CreateValueObjectUseCase {
     final ValueObjectRepository repository;
 
     public void handle(CreateValueObjectCommand command) {
-        var valueobject = ValueObject.of(new ValueObjectId(command.id()), new ValueObjectName(command.name()));
+        var valueobject = ValueObject.of(
+                new ValueObjectId(command.id()),
+                new ValueObjectName(command.name()),
+                command.type(),
+                command.values(),
+                command.fields(),
+                command.dataType()
+        );
         repository.save(valueobject);
     }
 

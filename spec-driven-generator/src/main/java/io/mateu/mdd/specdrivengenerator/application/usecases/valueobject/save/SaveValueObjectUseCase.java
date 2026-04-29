@@ -14,7 +14,13 @@ public class SaveValueObjectUseCase {
 
     public void handle(SaveValueObjectCommand command) {
         var role = repository.findById(new ValueObjectId(command.id())).orElseThrow();
-        role.update(new ValueObjectName(command.name()));
+        role.update(
+                new ValueObjectName(command.name()),
+                command.type(),
+                command.values(),
+                command.fields(),
+                command.dataType()
+                );
         repository.save(role);
     }
 

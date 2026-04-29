@@ -7,9 +7,13 @@
     "moduleIds" : [ "4066c768-809c-4b2d-8628-a1879fdc5d2d" ]
   } ],
   "modules" : [ {
+    "id" : "ec54a203-2f56-4d50-bb18-92afff6451a8",
+    "name" : "payments",
+    "aggregateIds" : [ "51907e72-9210-4173-9017-c69333fc58b9" ]
+  }, {
     "id" : "4066c768-809c-4b2d-8628-a1879fdc5d2d",
     "name" : "booking",
-    "aggregateIds" : [ "51907e72-9210-4173-9017-c69333fc58b9", "33489d8b-fd4a-4161-82ca-45e02e4b89cf" ]
+    "aggregateIds" : [ "33489d8b-fd4a-4161-82ca-45e02e4b89cf" ]
   } ],
   "aggregates" : [ {
     "id" : "51907e72-9210-4173-9017-c69333fc58b9",
@@ -90,6 +94,20 @@
       "editable" : false,
       "searchable" : false,
       "filterable" : false
+    }, {
+      "name" : "hotel",
+      "label" : "Hotel",
+      "type" : "Wrapper",
+      "help" : "",
+      "valueObjectId" : "",
+      "entityId" : "",
+      "primitiveType" : "string",
+      "mandatory" : false,
+      "readonly" : false,
+      "visible" : false,
+      "editable" : false,
+      "searchable" : false,
+      "filterable" : false
     } ],
     "operations" : [ {
       "id" : "confirm",
@@ -99,9 +117,21 @@
       "emits" : "",
       "type" : "CUSTOM"
     } ],
-    "invariants" : [ ]
+    "invariants" : [ {
+      "id" : "hotel_obligatorio",
+      "name" : "Servicio hotel obligatorio para transfer"
+    } ]
   } ],
-  "entities" : [ ],
-  "valueObjects" : [ ],
-  "invariants" : [ ]
+  "entities" : [ {
+    "id" : "28354082-6daf-436a-819f-63075c842706",
+    "name" : "BookingLine"
+  } ],
+  "valueObjects" : [ {
+    "id" : "3db08bce-174c-4d17-b6d4-8eea84557f26",
+    "name" : "PersonName"
+  } ],
+  "invariants" : [ {
+    "id" : "356374e7-ac7f-47a6-8efa-a27187a9fdc2",
+    "name" : "Solo una reserva activa por cliente"
+  } ]
 }

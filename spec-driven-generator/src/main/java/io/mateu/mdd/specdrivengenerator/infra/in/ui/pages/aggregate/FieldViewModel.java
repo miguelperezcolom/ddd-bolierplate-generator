@@ -6,10 +6,7 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdLabelSuppl
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdOptionsSupplier;
-import io.mateu.uidl.annotations.Colspan;
-import io.mateu.uidl.annotations.FormLayout;
-import io.mateu.uidl.annotations.HiddenInList;
-import io.mateu.uidl.annotations.Lookup;
+import io.mateu.uidl.annotations.*;
 
 @FormLayout(columns = 6)
 public record FieldViewModel(String name, String label, FieldTypeDto type, @Colspan(3) String help,
