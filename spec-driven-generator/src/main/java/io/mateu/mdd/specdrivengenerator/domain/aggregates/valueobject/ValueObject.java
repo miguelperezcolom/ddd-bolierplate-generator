@@ -51,7 +51,7 @@ public class ValueObject {
         valueObject.values = listFromJson(values, EnumValue.class);
         valueObject.fields = listFromJson(fields, ValueObjectField.class);
         valueObject.dataType = dataType != null?FieldDataType.valueOf(dataType):null;
-        valueObject.type = ValueObjectType.valueOf(type);
+        valueObject.type = type != null?ValueObjectType.valueOf(type):null;
         return valueObject;
     }
 

@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.create.
 import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.create.CreateValueObjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.save.SaveValueObjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.valueobject.save.SaveValueObjectUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.FieldValueSetting;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.valueobject.EnumValue;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.valueobject.ValueObjectField;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.valueobject.ValueObjectType;
@@ -79,6 +80,20 @@ public class ValueObjectViewModel implements Identifiable, CrudEditorForm<String
     public ValueObjectViewModel load(ValueObjectDto model) {
         id = model.id();
         name = model.name();
+        type = model.type();
+        values = model.values() != null?model.values().stream()
+                .map(value -> new EnumValue(
+                        value.value(),
+                        value.label()))
+                .toList():null;
+        fields = model.fields() != null?model.fields().stream()
+                .map(field -> new ValueObjectField(
+                        field.name(),
+                        field.dataType(),
+                        field.stereotype()
+                ))
+                .toList():null;
+        dataType = model.dataType();
         return this;
     }
 
