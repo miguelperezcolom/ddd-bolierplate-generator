@@ -8,6 +8,7 @@ public record ReadModelEntity(
         String id,
         String name,
         String modelId,
+        String storageType,
         List<String> filterFields,
         List<String> sortFields,
         boolean cacheable,

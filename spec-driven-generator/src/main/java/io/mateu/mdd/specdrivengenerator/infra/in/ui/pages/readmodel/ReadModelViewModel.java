@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.create.Cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.create.CreateReadModelUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.save.SaveReadModelCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.save.SaveReadModelUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -38,6 +39,8 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String modelId;
 
+    ReadModelStorageType storageType;
+
     List<String> filterFields = new ArrayList<>();
     List<String> sortFields = new ArrayList<>();
     boolean cacheable;
@@ -49,6 +52,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateReadModelCommand(id, name, modelId,
+                storageType != null ? storageType.name() : null,
                 filterFields, sortFields, cacheable, cacheTtlSeconds));
         return id;
     }
@@ -56,6 +60,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveReadModelCommand(id, name, modelId,
+                storageType != null ? storageType.name() : null,
                 filterFields, sortFields, cacheable, cacheTtlSeconds));
     }
 
@@ -68,6 +73,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
         id = model.id();
         name = model.name();
         modelId = model.modelId();
+        storageType = model.storageType() != null ? ReadModelStorageType.valueOf(model.storageType()) : null;
         filterFields = model.filterFields() != null ? new ArrayList<>(model.filterFields()) : new ArrayList<>();
         sortFields = model.sortFields() != null ? new ArrayList<>(model.sortFields()) : new ArrayList<>();
         cacheable = model.cacheable();

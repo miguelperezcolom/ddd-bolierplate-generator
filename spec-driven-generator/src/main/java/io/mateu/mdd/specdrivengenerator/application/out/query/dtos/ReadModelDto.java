@@ -4,6 +4,7 @@ import java.util.List;
 
 public record ReadModelDto(String id, String name,
                            String modelId,
+                           String storageType,
                            List<String> filterFields,
                            List<String> sortFields,
                            boolean cacheable,

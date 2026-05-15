@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.ReadModelRe
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.ReadModel;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class CreateReadModelUseCase {
                 new ReadModelId(command.id()),
                 new ReadModelName(command.name()),
                 command.modelId(),
+                command.storageType() != null ? ReadModelStorageType.valueOf(command.storageType()) : null,
                 command.filterFields(),
                 command.sortFields(),
                 command.cacheable(),

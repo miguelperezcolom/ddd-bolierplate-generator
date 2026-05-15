@@ -45,6 +45,7 @@ public class ReadModelFileQueryService implements ReadModelQueryService {
                         entity.id(),
                         entity.name(),
                         entity.modelId(),
+                        entity.storageType(),
                         entity.filterFields() != null ? entity.filterFields() : List.of(),
                         entity.sortFields() != null ? entity.sortFields() : List.of(),
                         entity.cacheable(),

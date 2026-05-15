@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import lombok.Getter;
 
 import java.util.List;
@@ -12,6 +13,7 @@ public class ReadModel {
     private ReadModelId id;
     private ReadModelName name;
     private String modelId;
+    private ReadModelStorageType storageType;
     private List<String> filterFields;
     private List<String> sortFields;
     private boolean cacheable;
@@ -19,6 +21,7 @@ public class ReadModel {
 
     public static ReadModel of(ReadModelId id, ReadModelName name,
                                String modelId,
+                               ReadModelStorageType storageType,
                                List<String> filterFields,
                                List<String> sortFields,
                                boolean cacheable,
@@ -27,6 +30,7 @@ public class ReadModel {
         readModel.id = id;
         readModel.name = name;
         readModel.modelId = modelId;
+        readModel.storageType = storageType;
         readModel.filterFields = filterFields != null ? filterFields : List.of();
         readModel.sortFields = sortFields != null ? sortFields : List.of();
         readModel.cacheable = cacheable;
@@ -36,6 +40,7 @@ public class ReadModel {
 
     public static ReadModel load(String id, String name,
                                  String modelId,
+                                 String storageType,
                                  List<String> filterFields,
                                  List<String> sortFields,
                                  boolean cacheable,
@@ -44,6 +49,7 @@ public class ReadModel {
         readModel.id = new ReadModelId(id);
         readModel.name = new ReadModelName(name);
         readModel.modelId = modelId;
+        readModel.storageType = storageType != null ? ReadModelStorageType.valueOf(storageType) : null;
         readModel.filterFields = filterFields != null ? filterFields : List.of();
         readModel.sortFields = sortFields != null ? sortFields : List.of();
         readModel.cacheable = cacheable;
@@ -53,12 +59,14 @@ public class ReadModel {
 
     public void update(ReadModelName name,
                        String modelId,
+                       ReadModelStorageType storageType,
                        List<String> filterFields,
                        List<String> sortFields,
                        boolean cacheable,
                        Integer cacheTtlSeconds) {
         this.name = name;
         this.modelId = modelId;
+        this.storageType = storageType;
         this.filterFields = filterFields != null ? filterFields : List.of();
         this.sortFields = sortFields != null ? sortFields : List.of();
         this.cacheable = cacheable;

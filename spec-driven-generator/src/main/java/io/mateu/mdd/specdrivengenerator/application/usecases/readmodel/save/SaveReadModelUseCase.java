@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.save;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ReadModelRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ public class SaveReadModelUseCase {
         readModel.update(
                 new ReadModelName(command.name()),
                 command.modelId(),
+                command.storageType() != null ? ReadModelStorageType.valueOf(command.storageType()) : null,
                 command.filterFields(),
                 command.sortFields(),
                 command.cacheable(),
