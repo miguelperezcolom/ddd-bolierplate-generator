@@ -9,6 +9,9 @@ import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.data.FieldDataType;
 import jakarta.validation.constraints.NotEmpty;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ModelFieldViewModel {
 
     @GeneratedValue(UUIDValueGenerator.class)
@@ -24,5 +27,7 @@ public class ModelFieldViewModel {
 
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String modelId;
+
+    List<ModelFieldValidationViewModel> validations = new ArrayList<>();
 
 }

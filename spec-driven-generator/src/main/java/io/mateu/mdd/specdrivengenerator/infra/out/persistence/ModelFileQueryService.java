@@ -3,17 +3,18 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.query.ModelQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelFieldDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelFieldValidationDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelRow;
-
-import java.util.List;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -46,7 +47,15 @@ public class ModelFileQueryService implements ModelQueryService {
                 .map(entity -> new ModelDto(entity.id(), entity.name(),
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
-                                        .map(f -> new ModelFieldDto(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
+                                        .map(f -> new ModelFieldDto(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
+                                                toValidationDtos(f.validations())))
                                         .toList()));
+    }
+
+    private List<ModelFieldValidationDto> toValidationDtos(List<ModelFieldValidationEntity> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelFieldValidationDto(v.id(), v.type(), v.params()))
+                .toList();
     }
 }
