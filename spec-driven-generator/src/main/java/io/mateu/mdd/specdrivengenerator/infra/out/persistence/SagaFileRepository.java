@@ -25,6 +25,7 @@ public class SagaFileRepository implements SagaRepository {
                 .map(entity -> Saga.load(
                         entity.id(),
                         entity.name(),
+                        entity.timeoutMs(),
                         entity.triggeringEventIds(),
                         toSteps(entity.steps())));
     }
@@ -34,6 +35,7 @@ public class SagaFileRepository implements SagaRepository {
         repository.save(new SagaEntity(
                 entity.getId().id(),
                 entity.getName().name(),
+                entity.getTimeoutMs(),
                 entity.getTriggeringEventIds(),
                 toStepEntities(entity.getSteps())));
         return entity;

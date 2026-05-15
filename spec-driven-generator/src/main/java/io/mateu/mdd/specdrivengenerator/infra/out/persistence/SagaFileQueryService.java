@@ -45,6 +45,7 @@ public class SagaFileQueryService implements SagaQueryService {
                 .map(entity -> new SagaDto(
                         entity.id(),
                         entity.name(),
+                        entity.timeoutMs(),
                         entity.triggeringEventIds() != null ? entity.triggeringEventIds() : List.of(),
                         entity.steps() == null ? List.of() : entity.steps().stream()
                                 .map(s -> new SagaStepDto(s.id(), s.name(), s.type(), s.compensatingStepId(),

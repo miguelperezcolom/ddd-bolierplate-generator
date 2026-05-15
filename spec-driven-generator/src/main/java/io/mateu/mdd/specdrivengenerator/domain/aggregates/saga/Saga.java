@@ -10,35 +10,42 @@ public class Saga {
 
     private SagaId id;
     private SagaName name;
+    private Long timeoutMs;
     private List<String> triggeringEventIds;
     private List<SagaStep> steps;
 
     public static Saga of(SagaId id, SagaName name,
+                          Long timeoutMs,
                           List<String> triggeringEventIds,
                           List<SagaStep> steps) {
         var saga = new Saga();
         saga.id = id;
         saga.name = name;
+        saga.timeoutMs = timeoutMs;
         saga.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         saga.steps = steps != null ? steps : List.of();
         return saga;
     }
 
     public static Saga load(String id, String name,
+                            Long timeoutMs,
                             List<String> triggeringEventIds,
                             List<SagaStep> steps) {
         var saga = new Saga();
         saga.id = new SagaId(id);
         saga.name = new SagaName(name);
+        saga.timeoutMs = timeoutMs;
         saga.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         saga.steps = steps != null ? steps : List.of();
         return saga;
     }
 
     public void update(SagaName name,
+                       Long timeoutMs,
                        List<String> triggeringEventIds,
                        List<SagaStep> steps) {
         this.name = name;
+        this.timeoutMs = timeoutMs;
         this.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         this.steps = steps != null ? steps : List.of();
     }

@@ -7,6 +7,7 @@ import java.util.List;
 public record SagaEntity(
         String id,
         String name,
+        Long timeoutMs,
         List<String> triggeringEventIds,
         List<SagaStepEntity> steps
 ) implements Identifiable {

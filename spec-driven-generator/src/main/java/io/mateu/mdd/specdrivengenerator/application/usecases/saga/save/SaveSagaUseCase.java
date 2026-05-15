@@ -20,6 +20,7 @@ public class SaveSagaUseCase {
         var saga = repository.findById(new SagaId(command.id())).orElseThrow();
         saga.update(
                 new SagaName(command.name()),
+                command.timeoutMs(),
                 command.triggeringEventIds(),
                 toSteps(command.steps()));
         repository.save(saga);

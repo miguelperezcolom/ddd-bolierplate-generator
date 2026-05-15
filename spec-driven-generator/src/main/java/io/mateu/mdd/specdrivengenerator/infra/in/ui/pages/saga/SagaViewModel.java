@@ -37,6 +37,8 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @NotEmpty
     String name;
 
+    Long timeoutMs;
+
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> triggeringEventIds = new ArrayList<>();
 
@@ -48,13 +50,13 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSagaCommand(id, name, triggeringEventIds, toStepData(steps)));
+        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, triggeringEventIds, toStepData(steps)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSagaCommand(id, name, triggeringEventIds, toStepData(steps)));
+        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, triggeringEventIds, toStepData(steps)));
     }
 
     @Override
@@ -65,6 +67,7 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
     public SagaViewModel load(SagaDto model) {
         id = model.id();
         name = model.name();
+        timeoutMs = model.timeoutMs();
         triggeringEventIds = model.triggeringEventIds() != null ? new ArrayList<>(model.triggeringEventIds()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new SagaStepViewModel();

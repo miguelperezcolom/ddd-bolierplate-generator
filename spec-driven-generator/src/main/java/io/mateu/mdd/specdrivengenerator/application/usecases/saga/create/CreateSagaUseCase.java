@@ -21,6 +21,7 @@ public class CreateSagaUseCase {
         var saga = Saga.of(
                 new SagaId(command.id()),
                 new SagaName(command.name()),
+                command.timeoutMs(),
                 command.triggeringEventIds(),
                 toSteps(command.steps()));
         repository.save(saga);
