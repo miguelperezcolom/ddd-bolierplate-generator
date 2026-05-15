@@ -5,6 +5,8 @@ import io.mateu.uidl.interfaces.Identifiable;
 public record DomainEventEntity(
         String id,
         String name,
-        String modelId
+        String modelId,
+        boolean publishAsIntegrationEvent,
+        String integrationModelId
 ) implements Identifiable {
 }
