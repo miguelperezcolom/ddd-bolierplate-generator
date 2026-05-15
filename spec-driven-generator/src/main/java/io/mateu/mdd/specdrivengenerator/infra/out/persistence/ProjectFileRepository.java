@@ -1,9 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.name(),
                         entity.outputPath(),
                         entity.packageName(),
-                        entity.moduleIds()));
+                        entity.serviceIds()));
     }
 
     @Override
@@ -36,8 +36,8 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getName().name(),
                 entity.getOutputPath().path(),
                 entity.getPackageName().packageName(),
-                entity.getModules().stream()
-                        .map(ModuleId::id)
+                entity.getServices().stream()
+                        .map(ServiceId::id)
                         .toList()));
         return entity;
     }

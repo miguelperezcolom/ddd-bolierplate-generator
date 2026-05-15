@@ -1,4 +1,10 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.service.save;
 
-public record SaveServiceCommand(String id, String name) {
+import java.util.List;
+
+public record SaveServiceCommand(String id, String name, List<String> moduleIds) {
+
+    public SaveServiceCommand {
+        if (moduleIds == null) moduleIds = List.of();
+    }
 }

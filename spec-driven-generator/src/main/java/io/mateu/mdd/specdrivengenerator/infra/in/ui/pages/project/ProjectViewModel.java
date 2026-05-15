@@ -6,8 +6,8 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.*;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -32,21 +32,21 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String outputPath;
     @NotEmpty
     String packageName;
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    List<String> modules;
+    @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
+    List<String> services;
 
     final CreateProjectUseCase createUseCase;
     final SaveProjectUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName, modules));
+        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName, services));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName, modules));
+        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName, services));
     }
 
     @Override
@@ -59,7 +59,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         outputPath = model.outputPath();
         packageName = model.packageName();
-        modules = model.moduleIds();
+        services = model.serviceIds();
         return this;
     }
 

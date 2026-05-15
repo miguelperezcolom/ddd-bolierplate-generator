@@ -1,12 +1,12 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +23,7 @@ public class CreateProjectUseCase {
                 new ProjectName(command.name()),
                 new ProjectOutputPath(command.outputPath()),
                 new ProjectPackageName(command.packageName()),
-                command.moduleIds() != null?command.moduleIds().stream().map(ModuleId::new).toList(): List.of());
+                command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }
 

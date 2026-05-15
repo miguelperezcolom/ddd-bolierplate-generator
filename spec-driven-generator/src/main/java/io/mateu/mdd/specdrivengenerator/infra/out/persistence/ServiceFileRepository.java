@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ServiceRepository;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -17,19 +18,17 @@ public class ServiceFileRepository implements ServiceRepository {
     final CommonFileRepository repository;
 
     @Override
-    public Optional<io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service> findById(ServiceId id) {
+    public Optional<Service> findById(ServiceId id) {
         return repository.findById(id.id(), ServiceEntity.class)
-                .map(entity -> io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service.load(
-                        entity.id(),
-                        entity.name()));
+                .map(entity -> Service.load(entity.id(), entity.name(), entity.moduleIds()));
     }
 
     @Override
-    public io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service save(
-            io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service entity) {
+    public Service save(Service entity) {
         repository.save(new ServiceEntity(
                 entity.getId().id(),
-                entity.getName().name()));
+                entity.getName().name(),
+                entity.getModules().stream().map(ModuleId::id).toList()));
         return entity;
     }
 

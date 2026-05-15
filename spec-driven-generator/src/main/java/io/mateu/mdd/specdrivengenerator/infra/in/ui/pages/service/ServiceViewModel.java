@@ -6,8 +6,11 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.CreateServiceUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -16,6 +19,8 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Scope("prototype")
@@ -29,18 +34,21 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String name;
 
+    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    List<String> modules;
+
     final CreateServiceUseCase createUseCase;
     final SaveServiceUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateServiceCommand(id, name));
+        createUseCase.handle(new CreateServiceCommand(id, name, modules));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveServiceCommand(id, name));
+        saveUseCase.handle(new SaveServiceCommand(id, name, modules));
     }
 
     @Override
@@ -51,6 +59,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     public ServiceViewModel load(ServiceDto model) {
         id = model.id();
         name = model.name();
+        modules = model.moduleIds();
         return this;
     }
 

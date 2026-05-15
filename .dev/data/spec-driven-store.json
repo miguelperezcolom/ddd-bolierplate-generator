@@ -4,13 +4,13 @@
     "name" : "poc sagas",
     "outputPath" : "sample/poc-sagas",
     "packageName" : "com.riu.sagas",
-    "moduleIds" : [ "ec54a203-2f56-4d50-bb18-92afff6451a8" ]
+    "serviceIds" : [ ]
   }, {
     "id" : "abb19cfc-94ee-41fd-bb7a-28976e552dfd",
     "name" : "test 2",
     "outputPath" : "sss",
     "packageName" : "uuuu",
-    "moduleIds" : [ ]
+    "serviceIds" : [ ]
   } ],
   "services" : [ ],
   "modules" : [ {
