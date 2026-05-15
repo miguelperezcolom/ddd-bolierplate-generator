@@ -20,14 +20,15 @@ public class DomainEventFileRepository implements DomainEventRepository {
     @Override
     public Optional<DomainEvent> findById(DomainEventId id) {
         return repository.findById(id.id(), DomainEventEntity.class)
-                .map(entity -> DomainEvent.load(entity.id(), entity.name()));
+                .map(entity -> DomainEvent.load(entity.id(), entity.name(), entity.modelId()));
     }
 
     @Override
     public DomainEvent save(DomainEvent entity) {
         repository.save(new DomainEventEntity(
                 entity.getId().id(),
-                entity.getName().name()));
+                entity.getName().name(),
+                entity.getModelId() != null ? entity.getModelId().id() : null));
         return entity;
     }
 

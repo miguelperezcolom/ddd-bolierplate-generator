@@ -40,6 +40,6 @@ public class DomainEventFileQueryService implements DomainEventQueryService {
     @Override
     public Optional<DomainEventDto> getById(String id) {
         return repository.findById(id, DomainEventEntity.class)
-                .map(entity -> new DomainEventDto(entity.id(), entity.name()));
+                .map(entity -> new DomainEventDto(entity.id(), entity.name(), entity.modelId()));
     }
 }

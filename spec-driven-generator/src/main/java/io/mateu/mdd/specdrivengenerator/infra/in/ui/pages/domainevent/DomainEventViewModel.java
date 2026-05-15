@@ -6,8 +6,11 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.create.
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.create.CreateDomainEventUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.save.SaveDomainEventCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.save.SaveDomainEventUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -29,18 +32,21 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     @NotEmpty
     String name;
 
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String modelId;
+
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId));
     }
 
     @Override
@@ -51,6 +57,7 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     public DomainEventViewModel load(DomainEventDto model) {
         id = model.id();
         name = model.name();
+        modelId = model.modelId();
         return this;
     }
 
