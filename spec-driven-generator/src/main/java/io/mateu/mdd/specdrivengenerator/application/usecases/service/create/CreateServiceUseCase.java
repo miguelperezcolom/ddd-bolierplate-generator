@@ -20,6 +20,7 @@ public class CreateServiceUseCase {
                 new ServiceId(command.id()),
                 new ServiceName(command.name()),
                 command.gitRepository(),
+                command.database(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of());
         repository.save(service);
     }

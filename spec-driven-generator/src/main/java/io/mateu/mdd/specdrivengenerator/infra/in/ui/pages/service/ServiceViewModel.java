@@ -35,6 +35,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String name;
 
     String gitRepository;
+    String database;
 
     @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     List<String> modules;
@@ -44,13 +45,13 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, modules));
+        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, database, modules));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, modules));
+        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, database, modules));
     }
 
     @Override
@@ -62,6 +63,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         id = model.id();
         name = model.name();
         gitRepository = model.gitRepository();
+        database = model.database();
         modules = model.moduleIds();
         return this;
     }

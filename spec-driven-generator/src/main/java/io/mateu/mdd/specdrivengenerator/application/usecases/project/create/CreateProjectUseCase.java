@@ -24,6 +24,7 @@ public class CreateProjectUseCase {
                 new ProjectOutputPath(command.outputPath()),
                 new ProjectPackageName(command.packageName()),
                 command.gitRepository(),
+                command.database(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }

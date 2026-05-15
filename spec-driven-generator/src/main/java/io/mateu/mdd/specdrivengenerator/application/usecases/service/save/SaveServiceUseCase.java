@@ -17,6 +17,7 @@ public class SaveServiceUseCase {
         var service = repository.findById(new ServiceId(command.id())).orElseThrow();
         service.update(new ServiceName(command.name()),
                 command.gitRepository(),
+                command.database(),
                 command.moduleIds().stream().map(ModuleId::new).toList());
         repository.save(service);
     }

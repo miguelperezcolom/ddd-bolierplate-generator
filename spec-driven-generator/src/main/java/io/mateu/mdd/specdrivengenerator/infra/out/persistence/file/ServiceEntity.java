@@ -8,6 +8,7 @@ public record ServiceEntity(
         String id,
         String name,
         String gitRepository,
+        String database,
         List<String> moduleIds
 ) implements Identifiable {
 

@@ -33,6 +33,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String packageName;
     String gitRepository;
+    String database;
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
 
@@ -41,13 +42,13 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName, gitRepository, services));
+        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName, gitRepository, database, services));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName, gitRepository, services));
+        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName, gitRepository, database, services));
     }
 
     @Override
@@ -61,6 +62,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         outputPath = model.outputPath();
         packageName = model.packageName();
         gitRepository = model.gitRepository();
+        database = model.database();
         services = model.serviceIds();
         return this;
     }

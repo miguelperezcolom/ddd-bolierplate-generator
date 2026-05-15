@@ -2,5 +2,5 @@ package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
 import java.util.List;
 
-public record ProjectDto(String id, String name, String outputPath, String packageName, String gitRepository, List<String> serviceIds) {
+public record ProjectDto(String id, String name, String outputPath, String packageName, String gitRepository, String database, List<String> serviceIds) {
 }

@@ -2,6 +2,6 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 
 import java.util.List;
 
-public record CreateProjectCommand(String id, String name, String outputPath, String packageName, String gitRepository, List<String> serviceIds) {
+public record CreateProjectCommand(String id, String name, String outputPath, String packageName, String gitRepository, String database, List<String> serviceIds) {
 
 }

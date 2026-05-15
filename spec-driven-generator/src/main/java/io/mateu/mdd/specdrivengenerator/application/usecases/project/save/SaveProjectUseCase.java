@@ -21,6 +21,7 @@ public class SaveProjectUseCase {
                 new ProjectOutputPath(command.outputPath()),
                 new ProjectPackageName(command.packageName()),
                 command.gitRepository(),
+                command.database(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }
