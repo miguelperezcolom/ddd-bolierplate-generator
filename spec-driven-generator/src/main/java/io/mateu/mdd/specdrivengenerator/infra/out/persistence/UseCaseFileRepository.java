@@ -44,7 +44,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.asyncDeadLetterQueue(),
                         entity.asyncOrderingKey(),
                         entity.asyncTopicName(),
-                        entity.asyncConsumerGroup()));
+                        entity.asyncConsumerGroup(),
+                        entity.cacheable(),
+                        entity.cacheTtlSeconds()));
     }
 
     @Override
@@ -70,7 +72,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getAsyncDeadLetterQueue(),
                 entity.getAsyncOrderingKey(),
                 entity.getAsyncTopicName(),
-                entity.getAsyncConsumerGroup()));
+                entity.getAsyncConsumerGroup(),
+                entity.isCacheable(),
+                entity.getCacheTtlSeconds()));
         return entity;
     }
 

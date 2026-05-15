@@ -63,6 +63,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     String asyncOrderingKey;
     String asyncTopicName;
     String asyncConsumerGroup;
+    boolean cacheable;
+    Integer cacheTtlSeconds;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -76,7 +78,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
-                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup));
+                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
+                cacheable, cacheTtlSeconds));
         return id;
     }
 
@@ -86,7 +89,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
-                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup));
+                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
+                cacheable, cacheTtlSeconds));
     }
 
     @Override
@@ -115,6 +119,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         asyncOrderingKey = model.asyncOrderingKey();
         asyncTopicName = model.asyncTopicName();
         asyncConsumerGroup = model.asyncConsumerGroup();
+        cacheable = model.cacheable();
+        cacheTtlSeconds = model.cacheTtlSeconds();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

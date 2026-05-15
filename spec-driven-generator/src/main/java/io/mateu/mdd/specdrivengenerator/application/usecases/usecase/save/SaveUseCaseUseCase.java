@@ -37,7 +37,9 @@ public class SaveUseCaseUseCase {
                 command.asyncDeadLetterQueue(),
                 command.asyncOrderingKey(),
                 command.asyncTopicName(),
-                command.asyncConsumerGroup());
+                command.asyncConsumerGroup(),
+                command.cacheable(),
+                command.cacheTtlSeconds());
         repository.save(useCase);
     }
 

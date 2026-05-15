@@ -29,6 +29,8 @@ public class UseCase {
     private String asyncOrderingKey;
     private String asyncTopicName;
     private String asyncConsumerGroup;
+    private boolean cacheable;
+    private Integer cacheTtlSeconds;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -49,7 +51,9 @@ public class UseCase {
                              String asyncDeadLetterQueue,
                              String asyncOrderingKey,
                              String asyncTopicName,
-                             String asyncConsumerGroup) {
+                             String asyncConsumerGroup,
+                             boolean cacheable,
+                             Integer cacheTtlSeconds) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -72,6 +76,8 @@ public class UseCase {
         useCase.asyncOrderingKey = asyncOrderingKey;
         useCase.asyncTopicName = asyncTopicName;
         useCase.asyncConsumerGroup = asyncConsumerGroup;
+        useCase.cacheable = cacheable;
+        useCase.cacheTtlSeconds = cacheTtlSeconds;
         return useCase;
     }
 
@@ -94,7 +100,9 @@ public class UseCase {
                                String asyncDeadLetterQueue,
                                String asyncOrderingKey,
                                String asyncTopicName,
-                               String asyncConsumerGroup) {
+                               String asyncConsumerGroup,
+                               boolean cacheable,
+                               Integer cacheTtlSeconds) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -117,6 +125,8 @@ public class UseCase {
         useCase.asyncOrderingKey = asyncOrderingKey;
         useCase.asyncTopicName = asyncTopicName;
         useCase.asyncConsumerGroup = asyncConsumerGroup;
+        useCase.cacheable = cacheable;
+        useCase.cacheTtlSeconds = cacheTtlSeconds;
         return useCase;
     }
 
@@ -139,7 +149,9 @@ public class UseCase {
                        String asyncDeadLetterQueue,
                        String asyncOrderingKey,
                        String asyncTopicName,
-                       String asyncConsumerGroup) {
+                       String asyncConsumerGroup,
+                       boolean cacheable,
+                       Integer cacheTtlSeconds) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -160,5 +172,7 @@ public class UseCase {
         this.asyncOrderingKey = asyncOrderingKey;
         this.asyncTopicName = asyncTopicName;
         this.asyncConsumerGroup = asyncConsumerGroup;
+        this.cacheable = cacheable;
+        this.cacheTtlSeconds = cacheTtlSeconds;
     }
 }

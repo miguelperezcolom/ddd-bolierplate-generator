@@ -21,5 +21,7 @@ public record UseCaseDto(String id, String name,
                          String asyncDeadLetterQueue,
                          String asyncOrderingKey,
                          String asyncTopicName,
-                         String asyncConsumerGroup) {
+                         String asyncConsumerGroup,
+                         boolean cacheable,
+                         Integer cacheTtlSeconds) {
 }

@@ -25,6 +25,8 @@ public record UseCaseEntity(
         String asyncDeadLetterQueue,
         String asyncOrderingKey,
         String asyncTopicName,
-        String asyncConsumerGroup
+        String asyncConsumerGroup,
+        boolean cacheable,
+        Integer cacheTtlSeconds
 ) implements Identifiable {
 }
