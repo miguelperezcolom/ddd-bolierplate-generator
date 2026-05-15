@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.entity.EntityCrudOrche
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.domainevent.DomainEventCrudOrchestrator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.usecase.UseCaseCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.service.ServiceCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
@@ -39,5 +40,8 @@ public class SpecDrivenGeneratorHome {
 
     @Menu
     DomainEventCrudOrchestrator domainEvents;
+
+    @Menu
+    UseCaseCrudOrchestrator useCases;
 
 }

@@ -10,7 +10,8 @@ public record AllData(
         List<EntityEntity> entities,
         List<ValueObjectEntity> valueObjects,
         List<InvariantEntity> invariants,
-        List<DomainEventEntity> domainEvents
+        List<DomainEventEntity> domainEvents,
+        List<UseCaseEntity> useCases
         ) {
 
     public AllData {
@@ -22,5 +23,6 @@ public record AllData(
         valueObjects = valueObjects != null ? valueObjects : List.of();
         invariants = invariants != null ? invariants : List.of();
         domainEvents = domainEvents != null ? domainEvents : List.of();
+        useCases = useCases != null ? useCases : List.of();
     }
 }
