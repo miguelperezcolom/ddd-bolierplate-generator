@@ -5,6 +5,8 @@ import io.mateu.uidl.data.FieldDataType;
 public record ModelFieldEntity(
         String id,
         String name,
-        FieldDataType type
+        boolean basicType,
+        FieldDataType type,
+        String modelId
 ) {
 }

@@ -46,7 +46,7 @@ public class ModelFileQueryService implements ModelQueryService {
                 .map(entity -> new ModelDto(entity.id(), entity.name(),
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
-                                        .map(f -> new ModelFieldDto(f.id(), f.name(), f.type()))
+                                        .map(f -> new ModelFieldDto(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
                                         .toList()));
     }
 }

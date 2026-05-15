@@ -19,7 +19,7 @@ public class SaveModelUseCase {
         var model = repository.findById(new ModelId(command.id())).orElseThrow();
         var fields = command.fields() == null ? List.<ModelField>of() :
                 command.fields().stream()
-                        .map(f -> new ModelField(f.id(), f.name(), f.type()))
+                        .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
                         .toList();
         model.update(new ModelName(command.name()), fields);
         repository.save(model);

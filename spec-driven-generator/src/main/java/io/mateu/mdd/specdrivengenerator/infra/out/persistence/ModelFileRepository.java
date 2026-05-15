@@ -25,7 +25,7 @@ public class ModelFileRepository implements ModelRepository {
                 .map(entity -> Model.load(entity.id(), entity.name(),
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
-                                        .map(f -> new ModelField(f.id(), f.name(), f.type()))
+                                        .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
                                         .toList()));
     }
 
@@ -33,7 +33,7 @@ public class ModelFileRepository implements ModelRepository {
     public Model save(Model entity) {
         var fieldEntities = entity.getFields() == null ? List.<ModelFieldEntity>of() :
                 entity.getFields().stream()
-                        .map(f -> new ModelFieldEntity(f.id(), f.name(), f.type()))
+                        .map(f -> new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
                         .toList();
         repository.save(new ModelEntity(
                 entity.getId().id(),

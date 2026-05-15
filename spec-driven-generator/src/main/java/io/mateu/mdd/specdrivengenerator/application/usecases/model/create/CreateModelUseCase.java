@@ -19,7 +19,7 @@ public class CreateModelUseCase {
     public void handle(CreateModelCommand command) {
         var fields = command.fields() == null ? List.<ModelField>of() :
                 command.fields().stream()
-                        .map(f -> new ModelField(f.id(), f.name(), f.type()))
+                        .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId()))
                         .toList();
         var model = Model.of(
                 new ModelId(command.id()),

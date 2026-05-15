@@ -1,11 +1,13 @@
 package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.model;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.data.FieldDataType;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 public class ModelFieldViewModel {
 
@@ -16,7 +18,11 @@ public class ModelFieldViewModel {
     @NotEmpty
     String name;
 
-    @NotNull
+    boolean basicType;
+
     FieldDataType type;
+
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String modelId;
 
 }

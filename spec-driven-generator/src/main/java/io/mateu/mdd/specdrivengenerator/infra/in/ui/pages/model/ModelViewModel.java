@@ -62,7 +62,9 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                     var vm = new ModelFieldViewModel();
                     vm.id = f.id();
                     vm.name = f.name();
+                    vm.basicType = f.basicType();
                     vm.type = f.type();
+                    vm.modelId = f.modelId();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
@@ -71,7 +73,7 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     private List<ModelFieldData> toFieldData(List<ModelFieldViewModel> fields) {
         if (fields == null) return List.of();
         return fields.stream()
-                .map(f -> new ModelFieldData(f.id, f.name, f.type))
+                .map(f -> new ModelFieldData(f.id, f.name, f.basicType, f.type, f.modelId))
                 .toList();
     }
 
