@@ -27,6 +27,7 @@ public class CreateGatewayUseCase {
         var gateway = Gateway.of(
                 new GatewayId(command.id()),
                 new GatewayName(command.name()),
+                command.serviceId(),
                 command.baseUrl(),
                 command.authType(), command.authUsername(), command.authPassword(),
                 command.authApiKeyHeaderName(), command.authBearerToken(),

@@ -8,8 +8,11 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.gateway.GatewayOper
 import io.mateu.mdd.specdrivengenerator.application.usecases.gateway.save.SaveGatewayCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.gateway.save.SaveGatewayUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.gateway.vo.GatewayAuthType;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.annotations.Tab;
 
 import java.util.ArrayList;
@@ -35,6 +38,8 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String name;
 
+    @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
+    String serviceId;
     String baseUrl;
 
     @Tab("Authentication")
@@ -56,7 +61,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateGatewayCommand(id, name, baseUrl,
+        createUseCase.handle(new CreateGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations)));
@@ -65,7 +70,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveGatewayCommand(id, name, baseUrl,
+        saveUseCase.handle(new SaveGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations)));
@@ -79,6 +84,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     public GatewayViewModel load(GatewayDto model) {
         id = model.id();
         name = model.name();
+        serviceId = model.serviceId();
         baseUrl = model.baseUrl();
         authType = model.authType();
         authUsername = model.authUsername();

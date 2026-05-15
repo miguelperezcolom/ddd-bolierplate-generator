@@ -7,6 +7,7 @@ import java.util.List;
 public record GatewayDto(
         String id,
         String name,
+        String serviceId,
         String baseUrl,
         GatewayAuthType authType,
         String authUsername,

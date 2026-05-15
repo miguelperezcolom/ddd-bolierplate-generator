@@ -8,6 +8,7 @@ import java.util.List;
 public record SaveGatewayCommand(
         String id,
         String name,
+        String serviceId,
         String baseUrl,
         GatewayAuthType authType,
         String authUsername,
