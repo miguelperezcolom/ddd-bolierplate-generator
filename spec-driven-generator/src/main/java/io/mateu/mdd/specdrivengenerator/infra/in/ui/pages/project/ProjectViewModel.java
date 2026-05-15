@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
@@ -62,6 +63,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String iamClientSecret;
     String iamAudience;
 
+    @Tab("Messaging")
+    MessageBrokerType messageBrokerType;
+    String messageBrokerUrl;
+    String messageBrokerUsername;
+    String messageBrokerPassword;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -80,6 +87,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 terraformBackendKey, terraformWorkspace,
                 iamProvider, iamServerUrl, iamRealm,
                 iamClientId, iamClientSecret, iamAudience,
+                messageBrokerType, messageBrokerUrl,
+                messageBrokerUsername, messageBrokerPassword,
                 services));
         return id;
     }
@@ -95,6 +104,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 terraformBackendKey, terraformWorkspace,
                 iamProvider, iamServerUrl, iamRealm,
                 iamClientId, iamClientSecret, iamAudience,
+                messageBrokerType, messageBrokerUrl,
+                messageBrokerUsername, messageBrokerPassword,
                 services));
     }
 
@@ -128,6 +139,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         iamClientId = model.iamClientId();
         iamClientSecret = model.iamClientSecret();
         iamAudience = model.iamAudience();
+        messageBrokerType = model.messageBrokerType();
+        messageBrokerUrl = model.messageBrokerUrl();
+        messageBrokerUsername = model.messageBrokerUsername();
+        messageBrokerPassword = model.messageBrokerPassword();
         services = model.serviceIds();
         return this;
     }

@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
@@ -39,6 +40,10 @@ public class Project {
     private String iamClientId;
     private String iamClientSecret;
     private String iamAudience;
+    private MessageBrokerType messageBrokerType;
+    private String messageBrokerUrl;
+    private String messageBrokerUsername;
+    private String messageBrokerPassword;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -58,6 +63,8 @@ public class Project {
                              String terraformBackendKey, String terraformWorkspace,
                              IamProvider iamProvider, String iamServerUrl, String iamRealm,
                              String iamClientId, String iamClientSecret, String iamAudience,
+                             MessageBrokerType messageBrokerType, String messageBrokerUrl,
+                             String messageBrokerUsername, String messageBrokerPassword,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -84,6 +91,10 @@ public class Project {
         project.iamClientId = iamClientId;
         project.iamClientSecret = iamClientSecret;
         project.iamAudience = iamAudience;
+        project.messageBrokerType = messageBrokerType;
+        project.messageBrokerUrl = messageBrokerUrl;
+        project.messageBrokerUsername = messageBrokerUsername;
+        project.messageBrokerPassword = messageBrokerPassword;
         project.services = services;
         return project;
     }
@@ -99,6 +110,8 @@ public class Project {
                                 String terraformBackendKey, String terraformWorkspace,
                                 IamProvider iamProvider, String iamServerUrl, String iamRealm,
                                 String iamClientId, String iamClientSecret, String iamAudience,
+                                MessageBrokerType messageBrokerType, String messageBrokerUrl,
+                                String messageBrokerUsername, String messageBrokerPassword,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -125,6 +138,10 @@ public class Project {
         project.iamClientId = iamClientId;
         project.iamClientSecret = iamClientSecret;
         project.iamAudience = iamAudience;
+        project.messageBrokerType = messageBrokerType;
+        project.messageBrokerUrl = messageBrokerUrl;
+        project.messageBrokerUsername = messageBrokerUsername;
+        project.messageBrokerPassword = messageBrokerPassword;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -140,6 +157,8 @@ public class Project {
                        String terraformBackendKey, String terraformWorkspace,
                        IamProvider iamProvider, String iamServerUrl, String iamRealm,
                        String iamClientId, String iamClientSecret, String iamAudience,
+                       MessageBrokerType messageBrokerType, String messageBrokerUrl,
+                       String messageBrokerUsername, String messageBrokerPassword,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -164,6 +183,10 @@ public class Project {
         this.iamClientId = iamClientId;
         this.iamClientSecret = iamClientSecret;
         this.iamAudience = iamAudience;
+        this.messageBrokerType = messageBrokerType;
+        this.messageBrokerUrl = messageBrokerUrl;
+        this.messageBrokerUsername = messageBrokerUsername;
+        this.messageBrokerPassword = messageBrokerPassword;
         this.services = services;
     }
 }

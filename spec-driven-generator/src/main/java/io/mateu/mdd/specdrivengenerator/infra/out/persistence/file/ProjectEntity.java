@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.uidl.interfaces.Identifiable;
@@ -32,6 +33,10 @@ public record ProjectEntity(
         String iamClientId,
         String iamClientSecret,
         String iamAudience,
+        MessageBrokerType messageBrokerType,
+        String messageBrokerUrl,
+        String messageBrokerUsername,
+        String messageBrokerPassword,
         List<String> serviceIds
 ) implements Identifiable {
 
