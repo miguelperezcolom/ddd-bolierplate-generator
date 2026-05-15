@@ -1,8 +1,11 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.BddScenarioDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
+
+import java.util.List;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.uidl.data.ListingData;
@@ -41,6 +44,10 @@ public class ModuleFileQueryService implements ModuleQueryService {
     public Optional<ModuleDto> getById(String id) {
         return repository.findById(id, ModuleEntity.class)
                 .map(entity -> new ModuleDto(entity.id(), entity.name(), entity.gitRepository(),
-                        entity.aggregateIds()));
+                        entity.aggregateIds(),
+                        entity.bddScenarios() == null ? List.of() :
+                                entity.bddScenarios().stream()
+                                        .map(s -> new BddScenarioDto(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
+                                        .toList()));
     }
 }

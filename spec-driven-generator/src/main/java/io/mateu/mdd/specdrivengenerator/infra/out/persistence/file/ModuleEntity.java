@@ -8,6 +8,7 @@ public record ModuleEntity(
         String id,
         String name,
         String gitRepository,
-        List<String> aggregateIds
+        List<String> aggregateIds,
+        List<BddScenarioEntity> bddScenarios
 ) implements Identifiable {
 }
