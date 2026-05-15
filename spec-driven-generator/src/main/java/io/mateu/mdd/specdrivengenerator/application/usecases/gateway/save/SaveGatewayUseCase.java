@@ -25,6 +25,7 @@ public class SaveGatewayUseCase {
                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();
         gateway.update(new GatewayName(command.name()),
+                command.baseUrl(),
                 command.authType(), command.authUsername(), command.authPassword(),
                 command.authApiKeyHeaderName(), command.authBearerToken(),
                 command.authOAuth2ClientId(), command.authOAuth2ClientSecret(),

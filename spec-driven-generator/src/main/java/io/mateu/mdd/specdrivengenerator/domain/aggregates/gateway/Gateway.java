@@ -13,6 +13,7 @@ public class Gateway {
 
     private GatewayId id;
     private GatewayName name;
+    private String baseUrl;
     private GatewayAuthType authType;
     private String authUsername;
     private String authPassword;
@@ -24,7 +25,7 @@ public class Gateway {
     private String authOAuth2Scopes;
     private List<GatewayOperation> operations;
 
-    public static Gateway of(GatewayId id, GatewayName name,
+    public static Gateway of(GatewayId id, GatewayName name, String baseUrl,
                               GatewayAuthType authType, String authUsername, String authPassword,
                               String authApiKeyHeaderName, String authBearerToken,
                               String authOAuth2ClientId, String authOAuth2ClientSecret,
@@ -33,6 +34,7 @@ public class Gateway {
         var gateway = new Gateway();
         gateway.id = id;
         gateway.name = name;
+        gateway.baseUrl = baseUrl;
         gateway.authType = authType;
         gateway.authUsername = authUsername;
         gateway.authPassword = authPassword;
@@ -46,7 +48,7 @@ public class Gateway {
         return gateway;
     }
 
-    public static Gateway load(String id, String name,
+    public static Gateway load(String id, String name, String baseUrl,
                                 GatewayAuthType authType, String authUsername, String authPassword,
                                 String authApiKeyHeaderName, String authBearerToken,
                                 String authOAuth2ClientId, String authOAuth2ClientSecret,
@@ -55,6 +57,7 @@ public class Gateway {
         var gateway = new Gateway();
         gateway.id = new GatewayId(id);
         gateway.name = new GatewayName(name);
+        gateway.baseUrl = baseUrl;
         gateway.authType = authType;
         gateway.authUsername = authUsername;
         gateway.authPassword = authPassword;
@@ -68,13 +71,14 @@ public class Gateway {
         return gateway;
     }
 
-    public void update(GatewayName name,
+    public void update(GatewayName name, String baseUrl,
                        GatewayAuthType authType, String authUsername, String authPassword,
                        String authApiKeyHeaderName, String authBearerToken,
                        String authOAuth2ClientId, String authOAuth2ClientSecret,
                        String authOAuth2TokenUrl, String authOAuth2Scopes,
                        List<GatewayOperation> operations) {
         this.name = name;
+        this.baseUrl = baseUrl;
         this.authType = authType;
         this.authUsername = authUsername;
         this.authPassword = authPassword;

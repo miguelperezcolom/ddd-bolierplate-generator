@@ -43,7 +43,7 @@ public class GatewayFileQueryService implements GatewayQueryService {
     @Override
     public Optional<GatewayDto> getById(String id) {
         return repository.findById(id, GatewayEntity.class)
-                .map(entity -> new GatewayDto(entity.id(), entity.name(),
+                .map(entity -> new GatewayDto(entity.id(), entity.name(), entity.baseUrl(),
                         entity.authType(), entity.authUsername(), entity.authPassword(),
                         entity.authApiKeyHeaderName(), entity.authBearerToken(),
                         entity.authOAuth2ClientId(), entity.authOAuth2ClientSecret(),

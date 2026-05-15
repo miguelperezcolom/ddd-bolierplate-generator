@@ -35,6 +35,8 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String name;
 
+    String baseUrl;
+
     @Tab("Authentication")
     GatewayAuthType authType;
     String authUsername;
@@ -54,7 +56,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateGatewayCommand(id, name,
+        createUseCase.handle(new CreateGatewayCommand(id, name, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations)));
@@ -63,7 +65,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveGatewayCommand(id, name,
+        saveUseCase.handle(new SaveGatewayCommand(id, name, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations)));
@@ -77,6 +79,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     public GatewayViewModel load(GatewayDto model) {
         id = model.id();
         name = model.name();
+        baseUrl = model.baseUrl();
         authType = model.authType();
         authUsername = model.authUsername();
         authPassword = model.authPassword();
