@@ -2,7 +2,11 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.ModelMappingQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelMappingDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelMappingExpressionDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelMappingRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelMappingRuleDto;
+
+import java.util.List;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.uidl.data.ListingData;
@@ -41,6 +45,16 @@ public class ModelMappingFileQueryService implements ModelMappingQueryService {
     public Optional<ModelMappingDto> getById(String id) {
         return repository.findById(id, ModelMappingEntity.class)
                 .map(entity -> new ModelMappingDto(entity.id(), entity.name(),
-                        entity.sourceModelId(), entity.targetModelId()));
+                        entity.sourceModelId(), entity.targetModelId(),
+                        entity.hasCustomPart(), toRuleDtos(entity.rules())));
+    }
+
+    private List<ModelMappingRuleDto> toRuleDtos(List<io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity> rules) {
+        if (rules == null) return List.of();
+        return rules.stream().map(r -> new ModelMappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId(),
+                r.expressions() == null ? List.of() :
+                        r.expressions().stream()
+                                .map(e -> new ModelMappingExpressionDto(e.id(), e.inputExpression(), e.outputExpression()))
+                                .toList())).toList();
     }
 }
