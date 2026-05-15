@@ -29,7 +29,8 @@ public class ModuleFileRepository implements ModuleRepository {
                                 entity.bddScenarios().stream()
                                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                                         .toList(),
-                        entity.llmSystemPrompt()));
+                        entity.llmSystemPrompt(),
+                        entity.tableNamePrefix(), entity.autoTableNamePrefix()));
     }
 
     @Override
@@ -41,7 +42,8 @@ public class ModuleFileRepository implements ModuleRepository {
         repository.save(new ModuleEntity(entity.getId().id(), entity.getName().name(), entity.getGitRepository(),
                 entity.getAggregateIds().stream().map(AggregateId::id).toList(),
                 bddScenarioEntities,
-                entity.getLlmSystemPrompt()));
+                entity.getLlmSystemPrompt(),
+                entity.getTableNamePrefix(), entity.isAutoTableNamePrefix()));
         return entity;
     }
 

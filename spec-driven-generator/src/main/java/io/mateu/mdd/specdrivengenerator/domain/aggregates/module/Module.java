@@ -17,8 +17,10 @@ public class Module {
     private List<AggregateId> aggregateIds;
     private List<BddScenario> bddScenarios;
     private String llmSystemPrompt;
+    private String tableNamePrefix;
+    private boolean autoTableNamePrefix;
 
-    public static Module of(ModuleId id, ModuleName name, String gitRepository, List<AggregateId> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt) {
+    public static Module of(ModuleId id, ModuleName name, String gitRepository, List<AggregateId> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt, String tableNamePrefix, boolean autoTableNamePrefix) {
         var module = new Module();
         module.id = id;
         module.name = name;
@@ -26,10 +28,12 @@ public class Module {
         module.aggregateIds = aggregateIds;
         module.bddScenarios = bddScenarios != null ? bddScenarios : List.of();
         module.llmSystemPrompt = llmSystemPrompt;
+        module.tableNamePrefix = tableNamePrefix;
+        module.autoTableNamePrefix = autoTableNamePrefix;
         return module;
     }
 
-    public static Module load(String id, String name, String gitRepository, List<String> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt) {
+    public static Module load(String id, String name, String gitRepository, List<String> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt, String tableNamePrefix, boolean autoTableNamePrefix) {
         var module = new Module();
         module.id = new ModuleId(id);
         module.name = new ModuleName(name);
@@ -37,14 +41,18 @@ public class Module {
         module.aggregateIds = aggregateIds.stream().map(AggregateId::new).toList();
         module.bddScenarios = bddScenarios != null ? bddScenarios : List.of();
         module.llmSystemPrompt = llmSystemPrompt;
+        module.tableNamePrefix = tableNamePrefix;
+        module.autoTableNamePrefix = autoTableNamePrefix;
         return module;
     }
 
-    public void update(ModuleName name, String gitRepository, List<AggregateId> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt) {
+    public void update(ModuleName name, String gitRepository, List<AggregateId> aggregateIds, List<BddScenario> bddScenarios, String llmSystemPrompt, String tableNamePrefix, boolean autoTableNamePrefix) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds;
         this.bddScenarios = bddScenarios != null ? bddScenarios : List.of();
         this.llmSystemPrompt = llmSystemPrompt;
+        this.tableNamePrefix = tableNamePrefix;
+        this.autoTableNamePrefix = autoTableNamePrefix;
     }
 }

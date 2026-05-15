@@ -38,6 +38,8 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     List<String> aggregates;
 
     String llmSystemPrompt;
+    String tableNamePrefix;
+    boolean autoTableNamePrefix;
 
     @Tab("BDD Tests")
     List<BddScenarioViewModel> bddScenarios = new ArrayList<>();
@@ -47,13 +49,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
     }
 
     @Override
@@ -67,6 +69,8 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         gitRepository = model.gitRepository();
         aggregates = model.aggregateIds();
         llmSystemPrompt = model.llmSystemPrompt();
+        tableNamePrefix = model.tableNamePrefix();
+        autoTableNamePrefix = model.autoTableNamePrefix();
         bddScenarios = model.bddScenarios() == null ? new ArrayList<>() :
                 model.bddScenarios().stream().map(s -> {
                     var vm = new BddScenarioViewModel();

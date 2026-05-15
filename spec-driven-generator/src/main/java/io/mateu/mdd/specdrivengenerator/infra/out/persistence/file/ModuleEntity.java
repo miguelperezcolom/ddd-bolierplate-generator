@@ -10,6 +10,8 @@ public record ModuleEntity(
         String gitRepository,
         List<String> aggregateIds,
         List<BddScenarioEntity> bddScenarios,
-        String llmSystemPrompt
+        String llmSystemPrompt,
+        String tableNamePrefix,
+        boolean autoTableNamePrefix
 ) implements Identifiable {
 }

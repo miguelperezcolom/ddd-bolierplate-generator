@@ -22,7 +22,7 @@ public class SaveModuleUseCase {
                 command.bddScenarios().stream()
                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                         .toList();
-        role.update(new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList(), bddScenarios, command.llmSystemPrompt());
+        role.update(new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList(), bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix());
         repository.save(role);
     }
 
