@@ -7,6 +7,8 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.GatewayIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
@@ -58,6 +60,9 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     List<String> modules;
 
+    @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
+    List<String> gatewayIds;
+
     @Tab("Environment")
     @MasterDetail
     List<EnvVarViewModel> envVars = new java.util.ArrayList<>();
@@ -72,7 +77,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
-                modules, toEnvVars(envVars)));
+                modules, gatewayIds, toEnvVars(envVars)));
         return id;
     }
 
@@ -83,7 +88,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
-                modules, toEnvVars(envVars)));
+                modules, gatewayIds, toEnvVars(envVars)));
     }
 
     @Override
@@ -109,6 +114,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         kubernetesHpaMaxReplicas = model.kubernetesHpaMaxReplicas();
         kubernetesHpaCpuThreshold = model.kubernetesHpaCpuThreshold();
         modules = model.moduleIds();
+        gatewayIds = model.gatewayIds();
         envVars = model.envVars() != null ? model.envVars().stream().map(e -> {
             var vm = new EnvVarViewModel();
             vm.name = e.name();

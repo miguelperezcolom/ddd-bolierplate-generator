@@ -23,11 +23,13 @@ public record ServiceEntity(
         Integer kubernetesHpaMaxReplicas,
         Integer kubernetesHpaCpuThreshold,
         List<String> moduleIds,
+        List<String> gatewayIds,
         List<EnvVarEntity> envVars
 ) implements Identifiable {
 
     public ServiceEntity {
         if (moduleIds == null) moduleIds = List.of();
+        if (gatewayIds == null) gatewayIds = List.of();
         if (envVars == null) envVars = List.of();
     }
 }

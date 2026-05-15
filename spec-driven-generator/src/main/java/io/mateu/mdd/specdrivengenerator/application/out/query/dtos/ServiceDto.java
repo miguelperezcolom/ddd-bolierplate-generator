@@ -11,5 +11,6 @@ public record ServiceDto(String id, String name, String gitRepository, Integer p
                          boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                          Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                          List<String> moduleIds,
+                         List<String> gatewayIds,
                          List<EnvVar> envVars) {
 }

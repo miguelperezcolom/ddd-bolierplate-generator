@@ -29,6 +29,7 @@ public class Service {
     private Integer kubernetesHpaMaxReplicas;
     private Integer kubernetesHpaCpuThreshold;
     private List<ModuleId> modules;
+    private List<String> gatewayIds;
     private List<EnvVar> envVars;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository,
@@ -37,7 +38,7 @@ public class Service {
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                             List<ModuleId> modules, List<EnvVar> envVars) {
+                             List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
         service.name = name;
@@ -56,6 +57,7 @@ public class Service {
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         service.modules = modules;
+        service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         return service;
     }
@@ -66,7 +68,7 @@ public class Service {
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                               List<String> modules, List<EnvVar> envVars) {
+                               List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
@@ -85,6 +87,7 @@ public class Service {
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         service.modules = modules.stream().map(ModuleId::new).toList();
+        service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         return service;
     }
@@ -95,7 +98,7 @@ public class Service {
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                       List<ModuleId> modules, List<EnvVar> envVars) {
+                       List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.port = port;
@@ -112,6 +115,7 @@ public class Service {
         this.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         this.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         this.modules = modules;
+        this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();
     }
 }

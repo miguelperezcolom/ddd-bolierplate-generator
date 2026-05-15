@@ -48,6 +48,7 @@ public class ServiceFileQueryService implements ServiceQueryService {
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
                         entity.moduleIds(),
+                        entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                                 .toList() : java.util.List.of()));

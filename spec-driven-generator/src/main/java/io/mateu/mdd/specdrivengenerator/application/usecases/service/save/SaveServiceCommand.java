@@ -11,10 +11,12 @@ public record SaveServiceCommand(String id, String name, String gitRepository, I
                                  boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                  Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                                  List<String> moduleIds,
+                                 List<String> gatewayIds,
                                  List<EnvVar> envVars) {
 
     public SaveServiceCommand {
         if (moduleIds == null) moduleIds = List.of();
+        if (gatewayIds == null) gatewayIds = List.of();
         if (envVars == null) envVars = List.of();
     }
 }

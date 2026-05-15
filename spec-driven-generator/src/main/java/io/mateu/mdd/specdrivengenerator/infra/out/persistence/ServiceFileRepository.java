@@ -29,6 +29,7 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
                         entity.moduleIds(),
+                        entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                                 .toList() : List.of()));
@@ -54,6 +55,7 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getKubernetesHpaMaxReplicas(),
                 entity.getKubernetesHpaCpuThreshold(),
                 entity.getModules().stream().map(ModuleId::id).toList(),
+                entity.getGatewayIds(),
                 entity.getEnvVars() != null ? entity.getEnvVars().stream()
                         .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                         .toList() : List.of()));
