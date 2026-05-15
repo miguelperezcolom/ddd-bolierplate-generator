@@ -42,7 +42,7 @@ public class ServiceFileQueryService implements ServiceQueryService {
     @Override
     public Optional<ServiceDto> getById(String id) {
         return repository.findById(id, ServiceEntity.class)
-                .map(entity -> new ServiceDto(entity.id(), entity.name(), entity.gitRepository(), entity.database(),
+                .map(entity -> new ServiceDto(entity.id(), entity.name(), entity.gitRepository(), entity.port(), entity.contextPath(), entity.database(),
                         entity.dbMigrationTool(), entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),

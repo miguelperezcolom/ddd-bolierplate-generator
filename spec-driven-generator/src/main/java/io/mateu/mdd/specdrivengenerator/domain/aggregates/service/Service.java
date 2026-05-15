@@ -15,6 +15,8 @@ public class Service {
     private ServiceId id;
     private ServiceName name;
     private String gitRepository;
+    private Integer port;
+    private String contextPath;
     private String database;
     private DbMigrationTool dbMigrationTool;
     private Integer kubernetesReplicas;
@@ -29,7 +31,8 @@ public class Service {
     private List<ModuleId> modules;
     private List<EnvVar> envVars;
 
-    public static Service of(ServiceId id, ServiceName name, String gitRepository, String database,
+    public static Service of(ServiceId id, ServiceName name, String gitRepository,
+                             Integer port, String contextPath, String database,
                              DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
@@ -39,6 +42,8 @@ public class Service {
         service.id = id;
         service.name = name;
         service.gitRepository = gitRepository;
+        service.port = port;
+        service.contextPath = contextPath;
         service.database = database;
         service.dbMigrationTool = dbMigrationTool;
         service.kubernetesReplicas = kubernetesReplicas;
@@ -55,7 +60,8 @@ public class Service {
         return service;
     }
 
-    public static Service load(String id, String name, String gitRepository, String database,
+    public static Service load(String id, String name, String gitRepository,
+                               Integer port, String contextPath, String database,
                                DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
@@ -65,6 +71,8 @@ public class Service {
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
         service.gitRepository = gitRepository;
+        service.port = port;
+        service.contextPath = contextPath;
         service.database = database;
         service.dbMigrationTool = dbMigrationTool;
         service.kubernetesReplicas = kubernetesReplicas;
@@ -81,7 +89,8 @@ public class Service {
         return service;
     }
 
-    public void update(ServiceName name, String gitRepository, String database,
+    public void update(ServiceName name, String gitRepository,
+                       Integer port, String contextPath, String database,
                        DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
@@ -89,6 +98,8 @@ public class Service {
                        List<ModuleId> modules, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
+        this.port = port;
+        this.contextPath = contextPath;
         this.database = database;
         this.dbMigrationTool = dbMigrationTool;
         this.kubernetesReplicas = kubernetesReplicas;

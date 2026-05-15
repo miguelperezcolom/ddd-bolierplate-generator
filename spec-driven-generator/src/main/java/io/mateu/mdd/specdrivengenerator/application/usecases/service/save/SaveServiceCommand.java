@@ -5,7 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 
 import java.util.List;
 
-public record SaveServiceCommand(String id, String name, String gitRepository, String database,
+public record SaveServiceCommand(String id, String name, String gitRepository, Integer port, String contextPath, String database,
                                  DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                                  String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                  boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,

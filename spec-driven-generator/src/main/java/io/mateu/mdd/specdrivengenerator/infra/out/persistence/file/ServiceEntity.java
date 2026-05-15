@@ -9,6 +9,8 @@ public record ServiceEntity(
         String id,
         String name,
         String gitRepository,
+        Integer port,
+        String contextPath,
         String database,
         DbMigrationTool dbMigrationTool,
         Integer kubernetesReplicas,

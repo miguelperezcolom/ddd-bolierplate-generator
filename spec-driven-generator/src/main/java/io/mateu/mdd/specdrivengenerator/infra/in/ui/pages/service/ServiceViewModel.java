@@ -39,6 +39,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String name;
 
     String gitRepository;
+    Integer port;
+    String contextPath;
     String database;
     DbMigrationTool dbMigrationTool;
 
@@ -65,7 +67,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, database,
+        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
@@ -76,7 +78,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, database,
+        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
@@ -93,6 +95,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         id = model.id();
         name = model.name();
         gitRepository = model.gitRepository();
+        port = model.port();
+        contextPath = model.contextPath();
         database = model.database();
         dbMigrationTool = model.dbMigrationTool();
         kubernetesReplicas = model.kubernetesReplicas();

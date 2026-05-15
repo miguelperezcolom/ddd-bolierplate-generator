@@ -21,6 +21,8 @@ public class CreateServiceUseCase {
                 new ServiceId(command.id()),
                 new ServiceName(command.name()),
                 command.gitRepository(),
+                command.port(),
+                command.contextPath(),
                 command.database(),
                 command.dbMigrationTool(),
                 command.kubernetesReplicas(),
