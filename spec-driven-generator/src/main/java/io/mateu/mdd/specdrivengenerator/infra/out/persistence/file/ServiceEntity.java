@@ -1,5 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.uidl.interfaces.Identifiable;
 
 import java.util.List;
@@ -9,6 +10,7 @@ public record ServiceEntity(
         String name,
         String gitRepository,
         String database,
+        DbMigrationTool dbMigrationTool,
         Integer kubernetesReplicas,
         String kubernetesCpuRequest,
         String kubernetesCpuLimit,

@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -23,6 +24,7 @@ public record ProjectEntity(
         String packageName,
         String gitRepository,
         String database,
+        DbMigrationTool dbMigrationTool,
         String kubernetesClusterUrl,
         String kubernetesNamespace,
         String kubernetesContext,

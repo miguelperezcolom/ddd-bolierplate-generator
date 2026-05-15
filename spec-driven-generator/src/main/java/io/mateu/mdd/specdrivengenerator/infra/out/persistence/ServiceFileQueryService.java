@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.query.ServiceQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceRow;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.uidl.data.ListingData;
@@ -41,7 +42,7 @@ public class ServiceFileQueryService implements ServiceQueryService {
     public Optional<ServiceDto> getById(String id) {
         return repository.findById(id, ServiceEntity.class)
                 .map(entity -> new ServiceDto(entity.id(), entity.name(), entity.gitRepository(), entity.database(),
-                        entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
+                        entity.dbMigrationTool(), entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),

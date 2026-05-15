@@ -8,6 +8,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveSe
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceUseCase;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -37,6 +38,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     String gitRepository;
     String database;
+    DbMigrationTool dbMigrationTool;
 
     @Tab("Kubernetes")
     Integer kubernetesReplicas;
@@ -58,7 +60,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, database,
-                kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
+                dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
@@ -69,7 +71,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, database,
-                kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
+                dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
@@ -86,6 +88,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         gitRepository = model.gitRepository();
         database = model.database();
+        dbMigrationTool = model.dbMigrationTool();
         kubernetesReplicas = model.kubernetesReplicas();
         kubernetesCpuRequest = model.kubernetesCpuRequest();
         kubernetesCpuLimit = model.kubernetesCpuLimit();

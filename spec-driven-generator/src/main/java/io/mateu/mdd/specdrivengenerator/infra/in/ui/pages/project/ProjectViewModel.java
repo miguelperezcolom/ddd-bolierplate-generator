@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -46,6 +47,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String packageName;
     String gitRepository;
     String database;
+    DbMigrationTool dbMigrationTool;
 
     @Tab("Kubernetes")
     String kubernetesClusterUrl;
@@ -133,7 +135,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName,
-                gitRepository, database,
+                gitRepository, database, dbMigrationTool,
                 kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
                 terraformProvider, terraformProviderVersion,
                 terraformBackendType,
@@ -160,7 +162,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName,
-                gitRepository, database,
+                gitRepository, database, dbMigrationTool,
                 kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
                 terraformProvider, terraformProviderVersion,
                 terraformBackendType,
@@ -195,6 +197,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         packageName = model.packageName();
         gitRepository = model.gitRepository();
         database = model.database();
+        dbMigrationTool = model.dbMigrationTool();
         kubernetesClusterUrl = model.kubernetesClusterUrl();
         kubernetesNamespace = model.kubernetesNamespace();
         kubernetesContext = model.kubernetesContext();

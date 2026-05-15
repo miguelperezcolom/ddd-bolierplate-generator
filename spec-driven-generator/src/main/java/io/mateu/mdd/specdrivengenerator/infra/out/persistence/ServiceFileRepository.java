@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ServiceRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -21,7 +22,7 @@ public class ServiceFileRepository implements ServiceRepository {
     public Optional<Service> findById(ServiceId id) {
         return repository.findById(id.id(), ServiceEntity.class)
                 .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.database(),
-                        entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
+                        entity.dbMigrationTool(), entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
@@ -35,6 +36,7 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getName().name(),
                 entity.getGitRepository(),
                 entity.getDatabase(),
+                entity.getDbMigrationTool(),
                 entity.getKubernetesReplicas(),
                 entity.getKubernetesCpuRequest(),
                 entity.getKubernetesCpuLimit(),

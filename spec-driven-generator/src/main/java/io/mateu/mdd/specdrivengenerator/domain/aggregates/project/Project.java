@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -30,6 +31,7 @@ public class Project {
     private ProjectPackageName packageName;
     private String gitRepository;
     private String database;
+    private DbMigrationTool dbMigrationTool;
     private String kubernetesClusterUrl;
     private String kubernetesNamespace;
     private String kubernetesContext;
@@ -92,6 +94,7 @@ public class Project {
                              ProjectPackageName packageName,
                              String gitRepository,
                              String database,
+                             DbMigrationTool dbMigrationTool,
                              String kubernetesClusterUrl,
                              String kubernetesNamespace,
                              String kubernetesContext,
@@ -127,6 +130,7 @@ public class Project {
         project.packageName = packageName;
         project.gitRepository = gitRepository;
         project.database = database;
+        project.dbMigrationTool = dbMigrationTool;
         project.kubernetesClusterUrl = kubernetesClusterUrl;
         project.kubernetesNamespace = kubernetesNamespace;
         project.kubernetesContext = kubernetesContext;
@@ -187,6 +191,7 @@ public class Project {
 
     public static Project load(String id, String name, String outputPath, String packageName,
                                 String gitRepository, String database,
+                                DbMigrationTool dbMigrationTool,
                                 String kubernetesClusterUrl, String kubernetesNamespace,
                                 String kubernetesContext, String kubernetesToken,
                                 String kubernetesCertificateAuthorityData,
@@ -220,6 +225,7 @@ public class Project {
         project.packageName = new ProjectPackageName(packageName);
         project.gitRepository = gitRepository;
         project.database = database;
+        project.dbMigrationTool = dbMigrationTool;
         project.kubernetesClusterUrl = kubernetesClusterUrl;
         project.kubernetesNamespace = kubernetesNamespace;
         project.kubernetesContext = kubernetesContext;
@@ -280,6 +286,7 @@ public class Project {
 
     public void update(ProjectName name, ProjectOutputPath outputPath, ProjectPackageName packageName,
                        String gitRepository, String database,
+                       DbMigrationTool dbMigrationTool,
                        String kubernetesClusterUrl, String kubernetesNamespace,
                        String kubernetesContext, String kubernetesToken,
                        String kubernetesCertificateAuthorityData,
@@ -311,6 +318,7 @@ public class Project {
         this.packageName = packageName;
         this.gitRepository = gitRepository;
         this.database = database;
+        this.dbMigrationTool = dbMigrationTool;
         this.kubernetesClusterUrl = kubernetesClusterUrl;
         this.kubernetesNamespace = kubernetesNamespace;
         this.kubernetesContext = kubernetesContext;

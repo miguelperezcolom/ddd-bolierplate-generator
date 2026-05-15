@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -17,6 +18,7 @@ import java.util.List;
 
 public record CreateProjectCommand(String id, String name, String outputPath, String packageName,
                                    String gitRepository, String database,
+                                   DbMigrationTool dbMigrationTool,
                                    String kubernetesClusterUrl, String kubernetesNamespace,
                                    String kubernetesContext, String kubernetesToken,
                                    String kubernetesCertificateAuthorityData,

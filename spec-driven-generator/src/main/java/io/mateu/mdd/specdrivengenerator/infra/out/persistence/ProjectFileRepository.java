@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -40,6 +41,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.packageName(),
                         entity.gitRepository(),
                         entity.database(),
+                        entity.dbMigrationTool(),
                         entity.kubernetesClusterUrl(),
                         entity.kubernetesNamespace(),
                         entity.kubernetesContext(),
@@ -79,6 +81,7 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getPackageName().packageName(),
                 entity.getGitRepository(),
                 entity.getDatabase(),
+                entity.getDbMigrationTool(),
                 entity.getKubernetesClusterUrl(),
                 entity.getKubernetesNamespace(),
                 entity.getKubernetesContext(),

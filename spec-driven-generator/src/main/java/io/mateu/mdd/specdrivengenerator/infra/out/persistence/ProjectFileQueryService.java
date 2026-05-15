@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryServic
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -59,6 +60,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.packageName(),
                         entity.gitRepository(),
                         entity.database(),
+                        entity.dbMigrationTool(),
                         entity.kubernetesClusterUrl(),
                         entity.kubernetesNamespace(),
                         entity.kubernetesContext(),

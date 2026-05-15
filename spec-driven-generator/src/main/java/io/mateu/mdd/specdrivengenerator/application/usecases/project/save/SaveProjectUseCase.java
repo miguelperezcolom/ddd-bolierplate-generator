@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.project.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
@@ -32,6 +33,7 @@ public class SaveProjectUseCase {
                 new ProjectPackageName(command.packageName()),
                 command.gitRepository(),
                 command.database(),
+                command.dbMigrationTool(),
                 command.kubernetesClusterUrl(),
                 command.kubernetesNamespace(),
                 command.kubernetesContext(),

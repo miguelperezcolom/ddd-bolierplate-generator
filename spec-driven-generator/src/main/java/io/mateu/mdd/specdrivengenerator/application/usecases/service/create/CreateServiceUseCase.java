@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.service.create;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ServiceRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceName;
@@ -21,6 +22,7 @@ public class CreateServiceUseCase {
                 new ServiceName(command.name()),
                 command.gitRepository(),
                 command.database(),
+                command.dbMigrationTool(),
                 command.kubernetesReplicas(),
                 command.kubernetesCpuRequest(),
                 command.kubernetesCpuLimit(),

@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.service;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceName;
 import lombok.Getter;
@@ -14,6 +15,7 @@ public class Service {
     private ServiceName name;
     private String gitRepository;
     private String database;
+    private DbMigrationTool dbMigrationTool;
     private Integer kubernetesReplicas;
     private String kubernetesCpuRequest;
     private String kubernetesCpuLimit;
@@ -26,7 +28,7 @@ public class Service {
     private List<ModuleId> modules;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository, String database,
-                             Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
+                             DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
@@ -36,6 +38,7 @@ public class Service {
         service.name = name;
         service.gitRepository = gitRepository;
         service.database = database;
+        service.dbMigrationTool = dbMigrationTool;
         service.kubernetesReplicas = kubernetesReplicas;
         service.kubernetesCpuRequest = kubernetesCpuRequest;
         service.kubernetesCpuLimit = kubernetesCpuLimit;
@@ -50,7 +53,7 @@ public class Service {
     }
 
     public static Service load(String id, String name, String gitRepository, String database,
-                               Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
+                               DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
@@ -60,6 +63,7 @@ public class Service {
         service.name = new ServiceName(name);
         service.gitRepository = gitRepository;
         service.database = database;
+        service.dbMigrationTool = dbMigrationTool;
         service.kubernetesReplicas = kubernetesReplicas;
         service.kubernetesCpuRequest = kubernetesCpuRequest;
         service.kubernetesCpuLimit = kubernetesCpuLimit;
@@ -74,7 +78,7 @@ public class Service {
     }
 
     public void update(ServiceName name, String gitRepository, String database,
-                       Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
+                       DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
@@ -82,6 +86,7 @@ public class Service {
         this.name = name;
         this.gitRepository = gitRepository;
         this.database = database;
+        this.dbMigrationTool = dbMigrationTool;
         this.kubernetesReplicas = kubernetesReplicas;
         this.kubernetesCpuRequest = kubernetesCpuRequest;
         this.kubernetesCpuLimit = kubernetesCpuLimit;
