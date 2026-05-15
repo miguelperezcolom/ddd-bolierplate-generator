@@ -1,0 +1,72 @@
+package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.modelmapping;
+
+import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelMappingDto;
+import io.mateu.mdd.specdrivengenerator.application.usecases.modelmapping.create.CreateModelMappingCommand;
+import io.mateu.mdd.specdrivengenerator.application.usecases.modelmapping.create.CreateModelMappingUseCase;
+import io.mateu.mdd.specdrivengenerator.application.usecases.modelmapping.save.SaveModelMappingCommand;
+import io.mateu.mdd.specdrivengenerator.application.usecases.modelmapping.save.SaveModelMappingUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
+import io.mateu.uidl.annotations.GeneratedValue;
+import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
+import io.mateu.uidl.interfaces.CrudCreationForm;
+import io.mateu.uidl.interfaces.CrudEditorForm;
+import io.mateu.uidl.interfaces.HttpRequest;
+import io.mateu.uidl.interfaces.Identifiable;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+
+@Service
+@Scope("prototype")
+@RequiredArgsConstructor
+public class ModelMappingViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
+
+    @GeneratedValue(UUIDValueGenerator.class)
+    @Hidden
+    String id;
+
+    @NotEmpty
+    String name;
+
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String sourceModelId;
+
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String targetModelId;
+
+    final CreateModelMappingUseCase createUseCase;
+    final SaveModelMappingUseCase saveUseCase;
+
+    @Override
+    public String create(HttpRequest httpRequest) {
+        createUseCase.handle(new CreateModelMappingCommand(id, name, sourceModelId, targetModelId));
+        return id;
+    }
+
+    @Override
+    public void save(HttpRequest httpRequest) {
+        saveUseCase.handle(new SaveModelMappingCommand(id, name, sourceModelId, targetModelId));
+    }
+
+    @Override
+    public String id() {
+        return id;
+    }
+
+    public ModelMappingViewModel load(ModelMappingDto model) {
+        id = model.id();
+        name = model.name();
+        sourceModelId = model.sourceModelId();
+        targetModelId = model.targetModelId();
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return id != null ? name : "New model mapping";
+    }
+}

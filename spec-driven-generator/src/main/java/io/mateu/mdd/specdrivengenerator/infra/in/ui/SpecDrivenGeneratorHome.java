@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.invariant.InvariantCru
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.domainevent.DomainEventCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.gateway.GatewayCrudOrchestrator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.modelmapping.ModelMappingCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.model.ModelCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.usecase.UseCaseCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
@@ -51,5 +52,8 @@ public class SpecDrivenGeneratorHome {
 
     @Menu
     GatewayCrudOrchestrator gateways;
+
+    @Menu
+    ModelMappingCrudOrchestrator modelMappings;
 
 }

@@ -13,7 +13,8 @@ public record AllData(
         List<DomainEventEntity> domainEvents,
         List<UseCaseEntity> useCases,
         List<ModelEntity> models,
-        List<GatewayEntity> gateways
+        List<GatewayEntity> gateways,
+        List<ModelMappingEntity> modelMappings
         ) {
 
     public AllData {
@@ -28,5 +29,6 @@ public record AllData(
         useCases = useCases != null ? useCases : List.of();
         models = models != null ? models : List.of();
         gateways = gateways != null ? gateways : List.of();
+        modelMappings = modelMappings != null ? modelMappings : List.of();
     }
 }
