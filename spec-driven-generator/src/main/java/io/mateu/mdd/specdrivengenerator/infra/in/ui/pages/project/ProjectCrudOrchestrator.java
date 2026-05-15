@@ -43,7 +43,6 @@ public class ProjectCrudOrchestrator extends CrudOrchestrator<
 
     @ViewToolbarButton
     public GenerateBoilerplateCodeForm generateCode(ProjectViewModel project, HttpRequest httpRequest) {
-        log.info("hola!");
         form.projectId = project.id;
         form.outputPath = project.outputPath;
         form.packageName = project.packageName;

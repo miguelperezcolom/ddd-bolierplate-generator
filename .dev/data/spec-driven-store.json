@@ -4,7 +4,13 @@
     "name" : "poc sagas",
     "outputPath" : "sample/poc-sagas",
     "packageName" : "com.riu.sagas",
-    "moduleIds" : [ "4066c768-809c-4b2d-8628-a1879fdc5d2d" ]
+    "moduleIds" : [ "ec54a203-2f56-4d50-bb18-92afff6451a8" ]
+  }, {
+    "id" : "abb19cfc-94ee-41fd-bb7a-28976e552dfd",
+    "name" : "test 2",
+    "outputPath" : "sss",
+    "packageName" : "uuuu",
+    "moduleIds" : [ ]
   } ],
   "modules" : [ {
     "id" : "ec54a203-2f56-4d50-bb18-92afff6451a8",
@@ -48,7 +54,10 @@
       "filterable" : false
     } ],
     "operations" : [ ],
-    "invariants" : [ ]
+    "invariants" : [ {
+      "id" : "ygyedg",
+      "name" : "ygyug"
+    } ]
   }, {
     "id" : "33489d8b-fd4a-4161-82ca-45e02e4b89cf",
     "name" : "Booking",
