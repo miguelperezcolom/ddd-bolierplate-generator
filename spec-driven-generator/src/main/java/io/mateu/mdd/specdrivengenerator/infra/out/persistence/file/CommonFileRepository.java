@@ -59,6 +59,7 @@ public class CommonFileRepository {
         data.invariants().forEach(p -> store.put(p.id(), p));
         data.domainEvents().forEach(p -> store.put(p.id(), p));
         data.useCases().forEach(p -> store.put(p.id(), p));
+        data.models().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -72,6 +73,7 @@ public class CommonFileRepository {
         List<InvariantEntity> ivariants = store.values().stream().filter(v -> v instanceof InvariantEntity).map(v -> (InvariantEntity) v).toList();
         List<DomainEventEntity> domainEvents = store.values().stream().filter(v -> v instanceof DomainEventEntity).map(v -> (DomainEventEntity) v).toList();
         List<UseCaseEntity> useCases = store.values().stream().filter(v -> v instanceof UseCaseEntity).map(v -> (UseCaseEntity) v).toList();
+        List<ModelEntity> models = store.values().stream().filter(v -> v instanceof ModelEntity).map(v -> (ModelEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -81,7 +83,8 @@ public class CommonFileRepository {
                 valueObjects,
                 ivariants,
                 domainEvents,
-                useCases
+                useCases,
+                models
         );
         Files.writeString(Path.of(".dev/data/spec-driven-store.json"), toJson(data));
     }
