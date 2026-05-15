@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -63,6 +64,12 @@ public class Project {
     private String cacheUrl;
     private String cacheUsername;
     private String cachePassword;
+    private FileStorageProvider fileStorageProvider;
+    private String fileStorageBucket;
+    private String fileStorageRegion;
+    private String fileStorageAccessKey;
+    private String fileStorageSecretKey;
+    private String fileStorageEndpoint;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -91,6 +98,9 @@ public class Project {
                              String llmApiKey, String llmModel,
                              CacheProvider cacheProvider, String cacheUrl,
                              String cacheUsername, String cachePassword,
+                             FileStorageProvider fileStorageProvider, String fileStorageBucket,
+                             String fileStorageRegion, String fileStorageAccessKey,
+                             String fileStorageSecretKey, String fileStorageEndpoint,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -135,6 +145,12 @@ public class Project {
         project.cacheUrl = cacheUrl;
         project.cacheUsername = cacheUsername;
         project.cachePassword = cachePassword;
+        project.fileStorageProvider = fileStorageProvider;
+        project.fileStorageBucket = fileStorageBucket;
+        project.fileStorageRegion = fileStorageRegion;
+        project.fileStorageAccessKey = fileStorageAccessKey;
+        project.fileStorageSecretKey = fileStorageSecretKey;
+        project.fileStorageEndpoint = fileStorageEndpoint;
         project.services = services;
         return project;
     }
@@ -159,6 +175,9 @@ public class Project {
                                 String llmApiKey, String llmModel,
                                 CacheProvider cacheProvider, String cacheUrl,
                                 String cacheUsername, String cachePassword,
+                                FileStorageProvider fileStorageProvider, String fileStorageBucket,
+                                String fileStorageRegion, String fileStorageAccessKey,
+                                String fileStorageSecretKey, String fileStorageEndpoint,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -203,6 +222,12 @@ public class Project {
         project.cacheUrl = cacheUrl;
         project.cacheUsername = cacheUsername;
         project.cachePassword = cachePassword;
+        project.fileStorageProvider = fileStorageProvider;
+        project.fileStorageBucket = fileStorageBucket;
+        project.fileStorageRegion = fileStorageRegion;
+        project.fileStorageAccessKey = fileStorageAccessKey;
+        project.fileStorageSecretKey = fileStorageSecretKey;
+        project.fileStorageEndpoint = fileStorageEndpoint;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -227,6 +252,9 @@ public class Project {
                        String llmApiKey, String llmModel,
                        CacheProvider cacheProvider, String cacheUrl,
                        String cacheUsername, String cachePassword,
+                       FileStorageProvider fileStorageProvider, String fileStorageBucket,
+                       String fileStorageRegion, String fileStorageAccessKey,
+                       String fileStorageSecretKey, String fileStorageEndpoint,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -269,6 +297,12 @@ public class Project {
         this.cacheUrl = cacheUrl;
         this.cacheUsername = cacheUsername;
         this.cachePassword = cachePassword;
+        this.fileStorageProvider = fileStorageProvider;
+        this.fileStorageBucket = fileStorageBucket;
+        this.fileStorageRegion = fileStorageRegion;
+        this.fileStorageAccessKey = fileStorageAccessKey;
+        this.fileStorageSecretKey = fileStorageSecretKey;
+        this.fileStorageEndpoint = fileStorageEndpoint;
         this.services = services;
     }
 }

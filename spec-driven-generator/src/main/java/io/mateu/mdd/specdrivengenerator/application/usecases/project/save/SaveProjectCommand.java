@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.save;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -32,6 +33,9 @@ public record SaveProjectCommand(String id, String name, String outputPath, Stri
                                  String llmApiKey, String llmModel,
                                  CacheProvider cacheProvider, String cacheUrl,
                                  String cacheUsername, String cachePassword,
+                                 FileStorageProvider fileStorageProvider, String fileStorageBucket,
+                                 String fileStorageRegion, String fileStorageAccessKey,
+                                 String fileStorageSecretKey, String fileStorageEndpoint,
                                  List<String> serviceIds) {
 
     public SaveProjectCommand {

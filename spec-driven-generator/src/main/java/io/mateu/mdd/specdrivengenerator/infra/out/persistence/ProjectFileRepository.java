@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -57,6 +58,9 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.llmApiKey(), entity.llmModel(),
                         entity.cacheProvider(), entity.cacheUrl(),
                         entity.cacheUsername(), entity.cachePassword(),
+                        entity.fileStorageProvider(), entity.fileStorageBucket(),
+                        entity.fileStorageRegion(), entity.fileStorageAccessKey(),
+                        entity.fileStorageSecretKey(), entity.fileStorageEndpoint(),
                         entity.serviceIds()));
     }
 
@@ -89,6 +93,9 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getLlmApiKey(), entity.getLlmModel(),
                 entity.getCacheProvider(), entity.getCacheUrl(),
                 entity.getCacheUsername(), entity.getCachePassword(),
+                entity.getFileStorageProvider(), entity.getFileStorageBucket(),
+                entity.getFileStorageRegion(), entity.getFileStorageAccessKey(),
+                entity.getFileStorageSecretKey(), entity.getFileStorageEndpoint(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

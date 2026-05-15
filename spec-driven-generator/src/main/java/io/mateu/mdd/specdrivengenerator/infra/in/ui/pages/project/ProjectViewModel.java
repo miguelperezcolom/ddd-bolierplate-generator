@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -94,6 +95,14 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String cacheUsername;
     String cachePassword;
 
+    @Tab("File Storage")
+    FileStorageProvider fileStorageProvider;
+    String fileStorageBucket;
+    String fileStorageRegion;
+    String fileStorageAccessKey;
+    String fileStorageSecretKey;
+    String fileStorageEndpoint;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -119,6 +128,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 loggingProvider, loggingEndpoint,
                 llmProvider, llmApiUrl, llmApiKey, llmModel,
                 cacheProvider, cacheUrl, cacheUsername, cachePassword,
+                fileStorageProvider, fileStorageBucket, fileStorageRegion,
+                fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 services));
         return id;
     }
@@ -141,6 +152,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 loggingProvider, loggingEndpoint,
                 llmProvider, llmApiUrl, llmApiKey, llmModel,
                 cacheProvider, cacheUrl, cacheUsername, cachePassword,
+                fileStorageProvider, fileStorageBucket, fileStorageRegion,
+                fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 services));
     }
 
@@ -192,6 +205,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         cacheUrl = model.cacheUrl();
         cacheUsername = model.cacheUsername();
         cachePassword = model.cachePassword();
+        fileStorageProvider = model.fileStorageProvider();
+        fileStorageBucket = model.fileStorageBucket();
+        fileStorageRegion = model.fileStorageRegion();
+        fileStorageAccessKey = model.fileStorageAccessKey();
+        fileStorageSecretKey = model.fileStorageSecretKey();
+        fileStorageEndpoint = model.fileStorageEndpoint();
         services = model.serviceIds();
         return this;
     }

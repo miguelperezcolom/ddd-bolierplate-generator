@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryServic
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -76,6 +77,9 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.llmApiKey(), entity.llmModel(),
                         entity.cacheProvider(), entity.cacheUrl(),
                         entity.cacheUsername(), entity.cachePassword(),
+                        entity.fileStorageProvider(), entity.fileStorageBucket(),
+                        entity.fileStorageRegion(), entity.fileStorageAccessKey(),
+                        entity.fileStorageSecretKey(), entity.fileStorageEndpoint(),
                         entity.serviceIds()));
     }
 }
