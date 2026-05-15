@@ -1,0 +1,17 @@
+package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
+
+import io.mateu.uidl.interfaces.Identifiable;
+
+import java.util.List;
+
+public record SubscriptionEntity(
+        String id,
+        String name,
+        String eventName,
+        String sourceService,
+        String inputModelId,
+        String topicName,
+        String consumerGroup,
+        List<SubscriptionActionEntity> actions
+) implements Identifiable {
+}
