@@ -1,5 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
+import java.util.List;
+
 public record UseCaseDto(String id, String name,
                          boolean exposedAsRest,
                          boolean exposedAsGrpc,
@@ -7,5 +9,6 @@ public record UseCaseDto(String id, String name,
                          boolean exposedAsAsync,
                          boolean exposedAsUi,
                          String inputModelId,
-                         String outputModelId) {
+                         String outputModelId,
+                         List<UseCaseStepDto> steps) {
 }

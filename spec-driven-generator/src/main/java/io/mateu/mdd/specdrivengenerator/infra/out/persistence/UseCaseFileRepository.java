@@ -3,8 +3,10 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.UseCaseRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.UseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseStep;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.UseCaseEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +31,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.exposedAsAsync(),
                         entity.exposedAsUi(),
                         entity.inputModelId(),
-                        entity.outputModelId()));
+                        entity.outputModelId(),
+                        toSteps(entity.steps())));
     }
 
     @Override
@@ -43,12 +46,33 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getExposedAsAsync().value(),
                 entity.getExposedAsUi().value(),
                 entity.getInputModelId() != null ? entity.getInputModelId().id() : null,
-                entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null));
+                entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null,
+                toStepEntities(entity.getSteps())));
         return entity;
     }
 
     @Override
     public void deleteAllById(List<UseCaseId> selectedIds) {
         repository.deleteAllById(selectedIds.stream().map(UseCaseId::id).toList());
+    }
+
+    private List<UseCaseStep> toSteps(List<UseCaseStepEntity> steps) {
+        if (steps == null) return List.of();
+        return steps.stream()
+                .map(s -> new UseCaseStep(s.id(), s.name(), s.type(),
+                        s.aggregateId(), s.operationId(),
+                        s.gatewayId(), s.gatewayOperationId(),
+                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                .toList();
+    }
+
+    private List<UseCaseStepEntity> toStepEntities(List<UseCaseStep> steps) {
+        if (steps == null) return List.of();
+        return steps.stream()
+                .map(s -> new UseCaseStepEntity(s.id(), s.name(), s.type(),
+                        s.aggregateId(), s.operationId(),
+                        s.gatewayId(), s.gatewayOperationId(),
+                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                .toList();
     }
 }

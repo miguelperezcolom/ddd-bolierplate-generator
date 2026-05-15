@@ -1,5 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create;
 
+import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.UseCaseStepData;
+
+import java.util.List;
+
 public record CreateUseCaseCommand(String id, String name,
                                    boolean exposedAsRest,
                                    boolean exposedAsGrpc,
@@ -7,5 +11,6 @@ public record CreateUseCaseCommand(String id, String name,
                                    boolean exposedAsAsync,
                                    boolean exposedAsUi,
                                    String inputModelId,
-                                   String outputModelId) {
+                                   String outputModelId,
+                                   List<UseCaseStepData> steps) {
 }

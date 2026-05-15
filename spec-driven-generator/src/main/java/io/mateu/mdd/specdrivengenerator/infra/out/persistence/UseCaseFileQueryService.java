@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.query.UseCaseQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.UseCaseDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.UseCaseRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.UseCaseStepDto;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.uidl.data.ListingData;
@@ -11,6 +12,7 @@ import io.mateu.uidl.data.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -49,6 +51,12 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.exposedAsAsync(),
                         entity.exposedAsUi(),
                         entity.inputModelId(),
-                        entity.outputModelId()));
+                        entity.outputModelId(),
+                        entity.steps() == null ? List.of() : entity.steps().stream()
+                                .map(s -> new UseCaseStepDto(s.id(), s.name(), s.type(),
+                                        s.aggregateId(), s.operationId(),
+                                        s.gatewayId(), s.gatewayOperationId(),
+                                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                                .toList()));
     }
 }
