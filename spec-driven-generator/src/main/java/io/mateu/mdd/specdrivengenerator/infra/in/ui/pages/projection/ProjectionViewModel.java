@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.projection.create.C
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.create.CreateProjectionUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.save.SaveProjectionCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.save.SaveProjectionUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -40,6 +41,8 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String modelId;
 
+    ProjectionStorageType storageType;
+
     @Tab
     List<ProjectionEventHandlerViewModel> handlers = new ArrayList<>();
 
@@ -48,13 +51,13 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, toHandlerData(handlers)));
+        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, toHandlerData(handlers)));
+        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers)));
     }
 
     @Override
@@ -66,6 +69,7 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
         id = model.id();
         name = model.name();
         modelId = model.modelId();
+        storageType = model.storageType() != null ? ProjectionStorageType.valueOf(model.storageType()) : null;
         handlers = model.handlers() == null ? new ArrayList<>() : model.handlers().stream().map(h -> {
             var vm = new ProjectionEventHandlerViewModel();
             vm.id = h.id();

@@ -6,6 +6,7 @@ public record ProjectionDto(
         String id,
         String name,
         String modelId,
+        String storageType,
         List<ProjectionEventHandlerDto> handlers
 ) {
 }

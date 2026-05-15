@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectionR
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.ProjectionEventHandlerData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.Projection;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.*;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class CreateProjectionUseCase {
                 new ProjectionId(command.id()),
                 new ProjectionName(command.name()),
                 command.modelId() != null ? new ProjectionModelId(command.modelId()) : null,
+                command.storageType() != null ? ProjectionStorageType.valueOf(command.storageType()) : null,
                 toHandlers(command.handlers()));
         repository.save(projection);
     }

@@ -26,6 +26,7 @@ public class ProjectionFileRepository implements ProjectionRepository {
                         entity.id(),
                         entity.name(),
                         entity.modelId(),
+                        entity.storageType(),
                         toHandlers(entity.handlers())));
     }
 
@@ -35,6 +36,7 @@ public class ProjectionFileRepository implements ProjectionRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getModelId() != null ? entity.getModelId().id() : null,
+                entity.getStorageType() != null ? entity.getStorageType().name() : null,
                 toHandlerEntities(entity.getHandlers())));
         return entity;
     }
