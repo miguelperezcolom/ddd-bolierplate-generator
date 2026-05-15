@@ -2,7 +2,10 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.ModelQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelFieldDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelRow;
+
+import java.util.List;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.uidl.data.ListingData;
@@ -40,6 +43,10 @@ public class ModelFileQueryService implements ModelQueryService {
     @Override
     public Optional<ModelDto> getById(String id) {
         return repository.findById(id, ModelEntity.class)
-                .map(entity -> new ModelDto(entity.id(), entity.name()));
+                .map(entity -> new ModelDto(entity.id(), entity.name(),
+                        entity.fields() == null ? List.of() :
+                                entity.fields().stream()
+                                        .map(f -> new ModelFieldDto(f.id(), f.name(), f.type()))
+                                        .toList()));
     }
 }

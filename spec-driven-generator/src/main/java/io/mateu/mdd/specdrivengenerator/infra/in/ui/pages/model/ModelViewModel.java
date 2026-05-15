@@ -4,10 +4,14 @@ import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.create.CreateModelCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.create.CreateModelUseCase;
+import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelFieldData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.save.SaveModelCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.save.SaveModelUseCase;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+
+import java.util.ArrayList;
+import java.util.List;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -29,18 +33,20 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     @NotEmpty
     String name;
 
+    List<ModelFieldViewModel> fields = new ArrayList<>();
+
     final CreateModelUseCase createUseCase;
     final SaveModelUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModelCommand(id, name));
+        createUseCase.handle(new CreateModelCommand(id, name, toFieldData(fields)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModelCommand(id, name));
+        saveUseCase.handle(new SaveModelCommand(id, name, toFieldData(fields)));
     }
 
     @Override
@@ -51,7 +57,22 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     public ModelViewModel load(ModelDto model) {
         id = model.id();
         name = model.name();
+        fields = model.fields() == null ? new ArrayList<>() :
+                model.fields().stream().map(f -> {
+                    var vm = new ModelFieldViewModel();
+                    vm.id = f.id();
+                    vm.name = f.name();
+                    vm.type = f.type();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
+    }
+
+    private List<ModelFieldData> toFieldData(List<ModelFieldViewModel> fields) {
+        if (fields == null) return List.of();
+        return fields.stream()
+                .map(f -> new ModelFieldData(f.id, f.name, f.type))
+                .toList();
     }
 
     @Override
