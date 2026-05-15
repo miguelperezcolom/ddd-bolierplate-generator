@@ -27,7 +27,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.exposedAsGrpc(),
                         entity.exposedAsMcp(),
                         entity.exposedAsAsync(),
-                        entity.exposedAsUi()));
+                        entity.exposedAsUi(),
+                        entity.inputModelId(),
+                        entity.outputModelId()));
     }
 
     @Override
@@ -39,7 +41,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getExposedAsGrpc().value(),
                 entity.getExposedAsMcp().value(),
                 entity.getExposedAsAsync().value(),
-                entity.getExposedAsUi().value()));
+                entity.getExposedAsUi().value(),
+                entity.getInputModelId() != null ? entity.getInputModelId().id() : null,
+                entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null));
         return entity;
     }
 

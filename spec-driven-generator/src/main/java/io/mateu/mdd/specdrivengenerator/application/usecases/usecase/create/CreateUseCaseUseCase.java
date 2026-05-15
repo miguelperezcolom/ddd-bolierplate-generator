@@ -20,7 +20,9 @@ public class CreateUseCaseUseCase {
                 new UseCaseExposedAsGrpc(command.exposedAsGrpc()),
                 new UseCaseExposedAsMcp(command.exposedAsMcp()),
                 new UseCaseExposedAsAsync(command.exposedAsAsync()),
-                new UseCaseExposedAsUi(command.exposedAsUi()));
+                new UseCaseExposedAsUi(command.exposedAsUi()),
+                command.inputModelId() != null ? new UseCaseInputModelId(command.inputModelId()) : null,
+                command.outputModelId() != null ? new UseCaseOutputModelId(command.outputModelId()) : null);
         repository.save(useCase);
     }
 

@@ -13,13 +13,17 @@ public class UseCase {
     private UseCaseExposedAsMcp exposedAsMcp;
     private UseCaseExposedAsAsync exposedAsAsync;
     private UseCaseExposedAsUi exposedAsUi;
+    private UseCaseInputModelId inputModelId;
+    private UseCaseOutputModelId outputModelId;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
                              UseCaseExposedAsGrpc exposedAsGrpc,
                              UseCaseExposedAsMcp exposedAsMcp,
                              UseCaseExposedAsAsync exposedAsAsync,
-                             UseCaseExposedAsUi exposedAsUi) {
+                             UseCaseExposedAsUi exposedAsUi,
+                             UseCaseInputModelId inputModelId,
+                             UseCaseOutputModelId outputModelId) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -28,6 +32,8 @@ public class UseCase {
         useCase.exposedAsMcp = exposedAsMcp;
         useCase.exposedAsAsync = exposedAsAsync;
         useCase.exposedAsUi = exposedAsUi;
+        useCase.inputModelId = inputModelId;
+        useCase.outputModelId = outputModelId;
         return useCase;
     }
 
@@ -36,7 +42,9 @@ public class UseCase {
                                boolean exposedAsGrpc,
                                boolean exposedAsMcp,
                                boolean exposedAsAsync,
-                               boolean exposedAsUi) {
+                               boolean exposedAsUi,
+                               String inputModelId,
+                               String outputModelId) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -45,6 +53,8 @@ public class UseCase {
         useCase.exposedAsMcp = new UseCaseExposedAsMcp(exposedAsMcp);
         useCase.exposedAsAsync = new UseCaseExposedAsAsync(exposedAsAsync);
         useCase.exposedAsUi = new UseCaseExposedAsUi(exposedAsUi);
+        useCase.inputModelId = inputModelId != null ? new UseCaseInputModelId(inputModelId) : null;
+        useCase.outputModelId = outputModelId != null ? new UseCaseOutputModelId(outputModelId) : null;
         return useCase;
     }
 
@@ -53,12 +63,16 @@ public class UseCase {
                        UseCaseExposedAsGrpc exposedAsGrpc,
                        UseCaseExposedAsMcp exposedAsMcp,
                        UseCaseExposedAsAsync exposedAsAsync,
-                       UseCaseExposedAsUi exposedAsUi) {
+                       UseCaseExposedAsUi exposedAsUi,
+                       UseCaseInputModelId inputModelId,
+                       UseCaseOutputModelId outputModelId) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
         this.exposedAsMcp = exposedAsMcp;
         this.exposedAsAsync = exposedAsAsync;
         this.exposedAsUi = exposedAsUi;
+        this.inputModelId = inputModelId;
+        this.outputModelId = outputModelId;
     }
 }

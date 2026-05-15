@@ -6,8 +6,11 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.CreateUseCaseUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.save.SaveUseCaseCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.save.SaveUseCaseUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -35,20 +38,28 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     boolean exposedAsAsync;
     boolean exposedAsUi;
 
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String inputModelId;
+
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String outputModelId;
+
     final CreateUseCaseUseCase createUseCase;
     final SaveUseCaseUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateUseCaseCommand(id, name,
-                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi));
+                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
+                inputModelId, outputModelId));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveUseCaseCommand(id, name,
-                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi));
+                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
+                inputModelId, outputModelId));
     }
 
     @Override
@@ -64,6 +75,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         exposedAsMcp = model.exposedAsMcp();
         exposedAsAsync = model.exposedAsAsync();
         exposedAsUi = model.exposedAsUi();
+        inputModelId = model.inputModelId();
+        outputModelId = model.outputModelId();
         return this;
     }
 

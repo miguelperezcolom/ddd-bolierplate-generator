@@ -47,6 +47,8 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.exposedAsGrpc(),
                         entity.exposedAsMcp(),
                         entity.exposedAsAsync(),
-                        entity.exposedAsUi()));
+                        entity.exposedAsUi(),
+                        entity.inputModelId(),
+                        entity.outputModelId()));
     }
 }

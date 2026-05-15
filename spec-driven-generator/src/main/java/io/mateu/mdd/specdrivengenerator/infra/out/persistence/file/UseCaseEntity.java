@@ -9,6 +9,8 @@ public record UseCaseEntity(
         boolean exposedAsGrpc,
         boolean exposedAsMcp,
         boolean exposedAsAsync,
-        boolean exposedAsUi
+        boolean exposedAsUi,
+        String inputModelId,
+        String outputModelId
 ) implements Identifiable {
 }

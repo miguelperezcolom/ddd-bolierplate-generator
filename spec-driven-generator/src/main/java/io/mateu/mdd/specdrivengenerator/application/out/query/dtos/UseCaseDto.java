@@ -5,5 +5,7 @@ public record UseCaseDto(String id, String name,
                          boolean exposedAsGrpc,
                          boolean exposedAsMcp,
                          boolean exposedAsAsync,
-                         boolean exposedAsUi) {
+                         boolean exposedAsUi,
+                         String inputModelId,
+                         String outputModelId) {
 }
