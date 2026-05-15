@@ -64,6 +64,12 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
                     vm.name = o.name();
                     vm.inputModelId = o.inputModelId();
                     vm.outputModelId = o.outputModelId();
+                    vm.timeoutMs = o.timeoutMs();
+                    vm.retryMaxAttempts = o.retryMaxAttempts();
+                    vm.retryWaitDurationMs = o.retryWaitDurationMs();
+                    vm.circuitBreakerEnabled = o.circuitBreakerEnabled();
+                    vm.circuitBreakerFailureRateThreshold = o.circuitBreakerFailureRateThreshold();
+                    vm.circuitBreakerSlidingWindowSize = o.circuitBreakerSlidingWindowSize();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
@@ -72,7 +78,9 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     private List<GatewayOperationData> toOperationData(List<GatewayOperationViewModel> ops) {
         if (ops == null) return List.of();
         return ops.stream()
-                .map(o -> new GatewayOperationData(o.id, o.name, o.inputModelId, o.outputModelId))
+                .map(o -> new GatewayOperationData(o.id, o.name, o.inputModelId, o.outputModelId,
+                        o.timeoutMs, o.retryMaxAttempts, o.retryWaitDurationMs,
+                        o.circuitBreakerEnabled, o.circuitBreakerFailureRateThreshold, o.circuitBreakerSlidingWindowSize))
                 .toList();
     }
 

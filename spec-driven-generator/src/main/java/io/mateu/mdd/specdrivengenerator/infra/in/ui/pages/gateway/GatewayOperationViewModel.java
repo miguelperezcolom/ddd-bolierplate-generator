@@ -23,4 +23,11 @@ public class GatewayOperationViewModel {
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String outputModelId;
 
+    Integer timeoutMs;
+    Integer retryMaxAttempts;
+    Integer retryWaitDurationMs;
+    boolean circuitBreakerEnabled;
+    Integer circuitBreakerFailureRateThreshold;
+    Integer circuitBreakerSlidingWindowSize;
+
 }

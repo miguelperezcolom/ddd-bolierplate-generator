@@ -20,7 +20,9 @@ public class SaveGatewayUseCase {
         var gateway = repository.findById(new GatewayId(command.id())).orElseThrow();
         var operations = command.operations() == null ? List.of() :
                 command.operations().stream()
-                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId()))
+                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                                o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
+                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();
         gateway.update(new GatewayName(command.name()), operations);
         repository.save(gateway);

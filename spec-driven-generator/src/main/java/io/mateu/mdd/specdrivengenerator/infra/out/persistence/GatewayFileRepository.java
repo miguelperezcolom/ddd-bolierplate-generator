@@ -27,7 +27,9 @@ public class GatewayFileRepository implements GatewayRepository {
                 .map(entity -> Gateway.load(entity.id(), entity.name(),
                         entity.operations() == null ? List.of() :
                                 entity.operations().stream()
-                                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId()))
+                                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                                                o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
+                                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                                         .toList()));
     }
 
@@ -35,7 +37,9 @@ public class GatewayFileRepository implements GatewayRepository {
     public Gateway save(Gateway entity) {
         var operationEntities = entity.getOperations() == null ? List.<GatewayOperationEntity>of() :
                 entity.getOperations().stream()
-                        .map(o -> new GatewayOperationEntity(o.id(), o.name(), o.inputModelId(), o.outputModelId()))
+                        .map(o -> new GatewayOperationEntity(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                                o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
+                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();
         repository.save(new GatewayEntity(
                 entity.getId().id(),

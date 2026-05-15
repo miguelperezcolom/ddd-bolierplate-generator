@@ -20,7 +20,9 @@ public class CreateGatewayUseCase {
     public void handle(CreateGatewayCommand command) {
         var operations = command.operations() == null ? List.of() :
                 command.operations().stream()
-                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId()))
+                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                                o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
+                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();
         var gateway = Gateway.of(
                 new GatewayId(command.id()),
