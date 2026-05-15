@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -49,6 +50,8 @@ public class CreateProjectUseCase {
                 command.loggingProvider(), command.loggingEndpoint(),
                 command.llmProvider(), command.llmApiUrl(),
                 command.llmApiKey(), command.llmModel(),
+                command.cacheProvider(), command.cacheUrl(),
+                command.cacheUsername(), command.cachePassword(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }

@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -54,6 +55,8 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.loggingProvider(), entity.loggingEndpoint(),
                         entity.llmProvider(), entity.llmApiUrl(),
                         entity.llmApiKey(), entity.llmModel(),
+                        entity.cacheProvider(), entity.cacheUrl(),
+                        entity.cacheUsername(), entity.cachePassword(),
                         entity.serviceIds()));
     }
 
@@ -84,6 +87,8 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getLoggingProvider(), entity.getLoggingEndpoint(),
                 entity.getLlmProvider(), entity.getLlmApiUrl(),
                 entity.getLlmApiKey(), entity.getLlmModel(),
+                entity.getCacheProvider(), entity.getCacheUrl(),
+                entity.getCacheUsername(), entity.getCachePassword(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

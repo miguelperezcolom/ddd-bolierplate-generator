@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -73,6 +74,8 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.loggingProvider(), entity.loggingEndpoint(),
                         entity.llmProvider(), entity.llmApiUrl(),
                         entity.llmApiKey(), entity.llmModel(),
+                        entity.cacheProvider(), entity.cacheUrl(),
+                        entity.cacheUsername(), entity.cachePassword(),
                         entity.serviceIds()));
     }
 }

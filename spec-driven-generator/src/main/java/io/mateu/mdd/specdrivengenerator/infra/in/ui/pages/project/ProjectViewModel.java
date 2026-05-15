@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -87,6 +88,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String llmApiKey;
     String llmModel;
 
+    @Tab("Cache")
+    CacheProvider cacheProvider;
+    String cacheUrl;
+    String cacheUsername;
+    String cachePassword;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -111,6 +118,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 metricsProvider, metricsEndpoint,
                 loggingProvider, loggingEndpoint,
                 llmProvider, llmApiUrl, llmApiKey, llmModel,
+                cacheProvider, cacheUrl, cacheUsername, cachePassword,
                 services));
         return id;
     }
@@ -132,6 +140,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 metricsProvider, metricsEndpoint,
                 loggingProvider, loggingEndpoint,
                 llmProvider, llmApiUrl, llmApiKey, llmModel,
+                cacheProvider, cacheUrl, cacheUsername, cachePassword,
                 services));
     }
 
@@ -179,6 +188,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         llmApiUrl = model.llmApiUrl();
         llmApiKey = model.llmApiKey();
         llmModel = model.llmModel();
+        cacheProvider = model.cacheProvider();
+        cacheUrl = model.cacheUrl();
+        cacheUsername = model.cacheUsername();
+        cachePassword = model.cachePassword();
         services = model.serviceIds();
         return this;
     }

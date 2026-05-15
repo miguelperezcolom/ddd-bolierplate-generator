@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -58,6 +59,10 @@ public class Project {
     private String llmApiUrl;
     private String llmApiKey;
     private String llmModel;
+    private CacheProvider cacheProvider;
+    private String cacheUrl;
+    private String cacheUsername;
+    private String cachePassword;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -84,6 +89,8 @@ public class Project {
                              LoggingProvider loggingProvider, String loggingEndpoint,
                              LlmProvider llmProvider, String llmApiUrl,
                              String llmApiKey, String llmModel,
+                             CacheProvider cacheProvider, String cacheUrl,
+                             String cacheUsername, String cachePassword,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -124,6 +131,10 @@ public class Project {
         project.llmApiUrl = llmApiUrl;
         project.llmApiKey = llmApiKey;
         project.llmModel = llmModel;
+        project.cacheProvider = cacheProvider;
+        project.cacheUrl = cacheUrl;
+        project.cacheUsername = cacheUsername;
+        project.cachePassword = cachePassword;
         project.services = services;
         return project;
     }
@@ -146,6 +157,8 @@ public class Project {
                                 LoggingProvider loggingProvider, String loggingEndpoint,
                                 LlmProvider llmProvider, String llmApiUrl,
                                 String llmApiKey, String llmModel,
+                                CacheProvider cacheProvider, String cacheUrl,
+                                String cacheUsername, String cachePassword,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -186,6 +199,10 @@ public class Project {
         project.llmApiUrl = llmApiUrl;
         project.llmApiKey = llmApiKey;
         project.llmModel = llmModel;
+        project.cacheProvider = cacheProvider;
+        project.cacheUrl = cacheUrl;
+        project.cacheUsername = cacheUsername;
+        project.cachePassword = cachePassword;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -208,6 +225,8 @@ public class Project {
                        LoggingProvider loggingProvider, String loggingEndpoint,
                        LlmProvider llmProvider, String llmApiUrl,
                        String llmApiKey, String llmModel,
+                       CacheProvider cacheProvider, String cacheUrl,
+                       String cacheUsername, String cachePassword,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -246,6 +265,10 @@ public class Project {
         this.llmApiUrl = llmApiUrl;
         this.llmApiKey = llmApiKey;
         this.llmModel = llmModel;
+        this.cacheProvider = cacheProvider;
+        this.cacheUrl = cacheUrl;
+        this.cacheUsername = cacheUsername;
+        this.cachePassword = cachePassword;
         this.services = services;
     }
 }
