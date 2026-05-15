@@ -50,6 +50,8 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                         entity.inputModelId(),
                         entity.topicName(),
                         entity.consumerGroup(),
+                        entity.retryCount(),
+                        entity.deadLetterTopic(),
                         entity.actions() == null ? List.of() : entity.actions().stream()
                                 .map(a -> new SubscriptionActionDto(a.id(), a.name(), a.type(),
                                         a.useCaseId(), a.sagaId(), a.projectionId(), a.modelMappingId()))

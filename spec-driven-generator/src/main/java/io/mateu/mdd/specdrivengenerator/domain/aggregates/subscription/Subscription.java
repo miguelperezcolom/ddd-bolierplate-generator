@@ -15,11 +15,14 @@ public class Subscription {
     private String inputModelId;
     private String topicName;
     private String consumerGroup;
+    private Integer retryCount;
+    private String deadLetterTopic;
     private List<SubscriptionAction> actions;
 
     public static Subscription of(SubscriptionId id, SubscriptionName name,
                                   String eventName, String sourceService, String inputModelId,
                                   String topicName, String consumerGroup,
+                                  Integer retryCount, String deadLetterTopic,
                                   List<SubscriptionAction> actions) {
         var subscription = new Subscription();
         subscription.id = id;
@@ -29,6 +32,8 @@ public class Subscription {
         subscription.inputModelId = inputModelId;
         subscription.topicName = topicName;
         subscription.consumerGroup = consumerGroup;
+        subscription.retryCount = retryCount;
+        subscription.deadLetterTopic = deadLetterTopic;
         subscription.actions = actions != null ? actions : List.of();
         return subscription;
     }
@@ -36,6 +41,7 @@ public class Subscription {
     public static Subscription load(String id, String name,
                                     String eventName, String sourceService, String inputModelId,
                                     String topicName, String consumerGroup,
+                                    Integer retryCount, String deadLetterTopic,
                                     List<SubscriptionAction> actions) {
         var subscription = new Subscription();
         subscription.id = new SubscriptionId(id);
@@ -45,6 +51,8 @@ public class Subscription {
         subscription.inputModelId = inputModelId;
         subscription.topicName = topicName;
         subscription.consumerGroup = consumerGroup;
+        subscription.retryCount = retryCount;
+        subscription.deadLetterTopic = deadLetterTopic;
         subscription.actions = actions != null ? actions : List.of();
         return subscription;
     }
@@ -52,6 +60,7 @@ public class Subscription {
     public void update(SubscriptionName name,
                        String eventName, String sourceService, String inputModelId,
                        String topicName, String consumerGroup,
+                       Integer retryCount, String deadLetterTopic,
                        List<SubscriptionAction> actions) {
         this.name = name;
         this.eventName = eventName;
@@ -59,6 +68,8 @@ public class Subscription {
         this.inputModelId = inputModelId;
         this.topicName = topicName;
         this.consumerGroup = consumerGroup;
+        this.retryCount = retryCount;
+        this.deadLetterTopic = deadLetterTopic;
         this.actions = actions != null ? actions : List.of();
     }
 }

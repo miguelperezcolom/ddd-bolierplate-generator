@@ -10,6 +10,8 @@ public record SubscriptionDto(
         String inputModelId,
         String topicName,
         String consumerGroup,
+        Integer retryCount,
+        String deadLetterTopic,
         List<SubscriptionActionDto> actions
 ) {
 }

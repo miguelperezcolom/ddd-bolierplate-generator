@@ -30,6 +30,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                         entity.inputModelId(),
                         entity.topicName(),
                         entity.consumerGroup(),
+                        entity.retryCount(),
+                        entity.deadLetterTopic(),
                         toActions(entity.actions())));
     }
 
@@ -43,6 +45,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                 entity.getInputModelId(),
                 entity.getTopicName(),
                 entity.getConsumerGroup(),
+                entity.getRetryCount(),
+                entity.getDeadLetterTopic(),
                 toActionEntities(entity.getActions())));
         return entity;
     }

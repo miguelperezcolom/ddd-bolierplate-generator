@@ -12,6 +12,8 @@ public record CreateSubscriptionCommand(
         String inputModelId,
         String topicName,
         String consumerGroup,
+        Integer retryCount,
+        String deadLetterTopic,
         List<SubscriptionActionData> actions
 ) {
 }

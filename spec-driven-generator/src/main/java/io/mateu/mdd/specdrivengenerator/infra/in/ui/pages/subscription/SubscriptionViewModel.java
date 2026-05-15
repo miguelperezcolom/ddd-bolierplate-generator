@@ -47,6 +47,8 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     String topicName;
     String consumerGroup;
+    Integer retryCount;
+    String deadLetterTopic;
 
     @Tab
     List<SubscriptionActionViewModel> actions = new ArrayList<>();
@@ -56,13 +58,13 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, toActionData(actions)));
+        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, toActionData(actions)));
+        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions)));
     }
 
     @Override
@@ -78,6 +80,8 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
         inputModelId = model.inputModelId();
         topicName = model.topicName();
         consumerGroup = model.consumerGroup();
+        retryCount = model.retryCount();
+        deadLetterTopic = model.deadLetterTopic();
         actions = model.actions() == null ? new ArrayList<>() : model.actions().stream().map(a -> {
             var vm = new SubscriptionActionViewModel();
             vm.id = a.id();

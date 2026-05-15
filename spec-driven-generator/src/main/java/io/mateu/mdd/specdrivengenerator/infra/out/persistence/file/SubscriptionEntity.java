@@ -12,6 +12,8 @@ public record SubscriptionEntity(
         String inputModelId,
         String topicName,
         String consumerGroup,
+        Integer retryCount,
+        String deadLetterTopic,
         List<SubscriptionActionEntity> actions
 ) implements Identifiable {
 }

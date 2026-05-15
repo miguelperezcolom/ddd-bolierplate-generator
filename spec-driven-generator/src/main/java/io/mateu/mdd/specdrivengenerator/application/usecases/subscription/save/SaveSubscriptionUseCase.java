@@ -25,6 +25,8 @@ public class SaveSubscriptionUseCase {
                 command.inputModelId(),
                 command.topicName(),
                 command.consumerGroup(),
+                command.retryCount(),
+                command.deadLetterTopic(),
                 toActions(command.actions()));
         repository.save(subscription);
     }
