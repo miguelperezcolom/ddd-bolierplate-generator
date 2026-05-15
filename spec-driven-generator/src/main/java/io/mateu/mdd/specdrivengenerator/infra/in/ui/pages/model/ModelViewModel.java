@@ -84,7 +84,7 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                     var vm = new ModelValidationViewModel();
                     vm.id = v.id();
                     vm.condition = v.condition();
-                    vm.fieldId = v.fieldId();
+                    vm.fieldIds = v.fieldIdss();
                     vm.message = v.message();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -105,7 +105,7 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     private List<ModelValidationData> toValidationData(List<ModelValidationViewModel> validations) {
         if (validations == null) return List.of();
         return validations.stream()
-                .map(v -> new ModelValidationData(v.id, v.condition, v.fieldId, v.message))
+                .map(v -> new ModelValidationData(v.id, v.condition, v.fieldIds, v.message))
                 .toList();
     }
 

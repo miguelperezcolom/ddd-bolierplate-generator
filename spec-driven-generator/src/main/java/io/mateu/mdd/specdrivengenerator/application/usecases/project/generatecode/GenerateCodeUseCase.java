@@ -63,7 +63,7 @@ public class GenerateCodeUseCase {
         createFile(project.outputPath(), project, "home.ftl",
                 "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
 
-        project.moduleIds().stream()
+        project.serviceIds().stream()
                 .map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow())
                 .forEach(module -> module.aggregateIds().stream()
                         .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
@@ -214,7 +214,7 @@ public class GenerateCodeUseCase {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(project)));
 
-        var modules = project.moduleIds().stream()
+        var modules = project.serviceIds().stream()
                 .map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow())
                 .map(this::moduleToMap)
                 .toList();

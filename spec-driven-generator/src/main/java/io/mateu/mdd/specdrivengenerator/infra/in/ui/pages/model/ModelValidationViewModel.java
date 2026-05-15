@@ -12,7 +12,7 @@ public class ModelValidationViewModel {
 
     String condition;
 
-    String fieldId;
+    String fieldIds;
 
     String message;
 

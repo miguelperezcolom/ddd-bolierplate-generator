@@ -72,14 +72,14 @@ public class ModelFileRepository implements ModelRepository {
     private List<ModelValidation> toValidations(List<ModelValidationEntity> validations) {
         if (validations == null) return List.of();
         return validations.stream()
-                .map(v -> new ModelValidation(v.id(), v.condition(), v.fieldId(), v.message()))
+                .map(v -> new ModelValidation(v.id(), v.condition(), v.fieldIds(), v.message()))
                 .toList();
     }
 
     private List<ModelValidationEntity> toValidationEntities(List<ModelValidation> validations) {
         if (validations == null) return List.of();
         return validations.stream()
-                .map(v -> new ModelValidationEntity(v.id(), v.condition(), v.fieldId(), v.message()))
+                .map(v -> new ModelValidationEntity(v.id(), v.condition(), v.fieldIds(), v.message()))
                 .toList();
     }
 }

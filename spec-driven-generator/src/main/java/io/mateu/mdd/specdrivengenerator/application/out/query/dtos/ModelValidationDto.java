@@ -3,7 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 public record ModelValidationDto(
         String id,
         String condition,
-        String fieldId,
+        String fieldIds,
         String message
 ) {
 }

@@ -65,7 +65,7 @@ public class ModelFileQueryService implements ModelQueryService {
     private List<ModelValidationDto> toValidationDtos(List<ModelValidationEntity> validations) {
         if (validations == null) return List.of();
         return validations.stream()
-                .map(v -> new ModelValidationDto(v.id(), v.condition(), v.fieldId(), v.message()))
+                .map(v -> new ModelValidationDto(v.id(), v.condition(), v.fieldIds(), v.message()))
                 .toList();
     }
 }
