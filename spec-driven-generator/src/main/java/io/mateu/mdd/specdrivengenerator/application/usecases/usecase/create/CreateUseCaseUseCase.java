@@ -26,7 +26,8 @@ public class CreateUseCaseUseCase {
                 new UseCaseExposedAsUi(command.exposedAsUi()),
                 command.inputModelId() != null ? new UseCaseInputModelId(command.inputModelId()) : null,
                 command.outputModelId() != null ? new UseCaseOutputModelId(command.outputModelId()) : null,
-                toSteps(command.steps()));
+                toSteps(command.steps()),
+                command.allowedRoles());
         repository.save(useCase);
     }
 

@@ -49,6 +49,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String outputModelId;
 
+    List<String> allowedRoles = new ArrayList<>();
+
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
 
@@ -59,7 +61,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps)));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles));
         return id;
     }
 
@@ -67,7 +69,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps)));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles));
     }
 
     @Override
@@ -85,6 +87,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         exposedAsUi = model.exposedAsUi();
         inputModelId = model.inputModelId();
         outputModelId = model.outputModelId();
+        allowedRoles = model.allowedRoles() != null ? new ArrayList<>(model.allowedRoles()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

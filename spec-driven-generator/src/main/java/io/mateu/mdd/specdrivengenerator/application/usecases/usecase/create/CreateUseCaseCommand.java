@@ -12,5 +12,6 @@ public record CreateUseCaseCommand(String id, String name,
                                    boolean exposedAsUi,
                                    String inputModelId,
                                    String outputModelId,
-                                   List<UseCaseStepData> steps) {
+                                   List<UseCaseStepData> steps,
+                                   List<String> allowedRoles) {
 }

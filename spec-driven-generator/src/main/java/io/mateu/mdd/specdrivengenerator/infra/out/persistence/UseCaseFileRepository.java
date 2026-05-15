@@ -32,7 +32,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.exposedAsUi(),
                         entity.inputModelId(),
                         entity.outputModelId(),
-                        toSteps(entity.steps())));
+                        toSteps(entity.steps()),
+                        entity.allowedRoles()));
     }
 
     @Override
@@ -47,7 +48,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getExposedAsUi().value(),
                 entity.getInputModelId() != null ? entity.getInputModelId().id() : null,
                 entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null,
-                toStepEntities(entity.getSteps())));
+                toStepEntities(entity.getSteps()),
+                entity.getAllowedRoles()));
         return entity;
     }
 

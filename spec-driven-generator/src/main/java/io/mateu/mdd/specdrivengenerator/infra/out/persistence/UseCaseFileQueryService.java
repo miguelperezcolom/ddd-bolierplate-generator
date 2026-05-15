@@ -57,6 +57,7 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                                         s.aggregateId(), s.operationId(),
                                         s.gatewayId(), s.gatewayOperationId(),
                                         s.domainEventId(), s.useCaseId(), s.modelMappingId()))
-                                .toList()));
+                                .toList(),
+                        entity.allowedRoles() != null ? entity.allowedRoles() : List.of()));
     }
 }

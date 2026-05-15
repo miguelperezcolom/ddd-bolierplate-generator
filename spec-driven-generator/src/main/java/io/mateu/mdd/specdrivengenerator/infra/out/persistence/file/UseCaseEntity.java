@@ -14,6 +14,7 @@ public record UseCaseEntity(
         boolean exposedAsUi,
         String inputModelId,
         String outputModelId,
-        List<UseCaseStepEntity> steps
+        List<UseCaseStepEntity> steps,
+        List<String> allowedRoles
 ) implements Identifiable {
 }

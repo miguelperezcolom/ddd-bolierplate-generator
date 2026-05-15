@@ -10,5 +10,6 @@ public record UseCaseDto(String id, String name,
                          boolean exposedAsUi,
                          String inputModelId,
                          String outputModelId,
-                         List<UseCaseStepDto> steps) {
+                         List<UseCaseStepDto> steps,
+                         List<String> allowedRoles) {
 }
