@@ -1,0 +1,45 @@
+package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
+
+import io.mateu.mdd.specdrivengenerator.application.out.query.ServiceQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceRow;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.uidl.data.ListingData;
+import io.mateu.uidl.data.Page;
+import io.mateu.uidl.data.Pageable;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class ServiceFileQueryService implements ServiceQueryService {
+
+    final CommonFileRepository repository;
+
+    @Override
+    public ListingData<ServiceRow> findAll(String searchText, Object filters, Pageable pageable) {
+        var data = repository.findAll(searchText, filters, pageable, ServiceEntity.class);
+        return new ListingData<>(new Page<>(
+                data.page().searchSignature(),
+                data.page().pageSize(),
+                data.page().pageNumber(),
+                data.page().totalElements(),
+                data.page().content().stream()
+                        .map(entity -> new ServiceRow(entity.id(), entity.name()))
+                        .toList()));
+    }
+
+    @Override
+    public String getLabel(String id) {
+        return repository.findById(id, ServiceEntity.class).map(ServiceEntity::name).orElseThrow();
+    }
+
+    @Override
+    public Optional<ServiceDto> getById(String id) {
+        return repository.findById(id, ServiceEntity.class)
+                .map(entity -> new ServiceDto(entity.id(), entity.name()));
+    }
+}

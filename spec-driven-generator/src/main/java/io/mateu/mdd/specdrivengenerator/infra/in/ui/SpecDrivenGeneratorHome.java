@@ -4,7 +4,9 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate.AggregateCru
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.entity.EntityCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.domainevent.DomainEventCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.service.ServiceCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
@@ -16,6 +18,9 @@ public class SpecDrivenGeneratorHome {
 
     @Menu
     ProjectCrudOrchestrator projects;
+
+    @Menu
+    ServiceCrudOrchestrator services;
 
     @Menu
     ModuleCrudOrchestrator modules;
@@ -32,5 +37,7 @@ public class SpecDrivenGeneratorHome {
     @Menu
     InvariantCrudOrchestrator invariants;
 
+    @Menu
+    DomainEventCrudOrchestrator domainEvents;
 
 }

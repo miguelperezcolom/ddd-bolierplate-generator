@@ -57,23 +57,28 @@ public class CommonFileRepository {
         data.entities().forEach(p -> store.put(p.id(), p));
         data.valueObjects().forEach(p -> store.put(p.id(), p));
         data.invariants().forEach(p -> store.put(p.id(), p));
+        data.domainEvents().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
     private void persist() {
         List<ProjectEntity> projects = store.values().stream().filter(v -> v instanceof ProjectEntity).map(v -> (ProjectEntity) v).toList();
+        List<ServiceEntity> services = store.values().stream().filter(v -> v instanceof ServiceEntity).map(v -> (ServiceEntity) v).toList();
         List<ModuleEntity> modules = store.values().stream().filter(v -> v instanceof ModuleEntity).map(v -> (ModuleEntity) v).toList();
         List<AggregateEntity> aggregates = store.values().stream().filter(v -> v instanceof AggregateEntity).map(v -> (AggregateEntity) v).toList();
         List<EntityEntity> entities = store.values().stream().filter(v -> v instanceof EntityEntity).map(v -> (EntityEntity) v).toList();
         List<ValueObjectEntity> valueObjects = store.values().stream().filter(v -> v instanceof ValueObjectEntity).map(v -> (ValueObjectEntity) v).toList();
         List<InvariantEntity> ivariants = store.values().stream().filter(v -> v instanceof InvariantEntity).map(v -> (InvariantEntity) v).toList();
+        List<DomainEventEntity> domainEvents = store.values().stream().filter(v -> v instanceof DomainEventEntity).map(v -> (DomainEventEntity) v).toList();
         AllData data = new AllData(
                 projects,
+                services,
                 modules,
                 aggregates,
                 entities,
                 valueObjects,
-                ivariants
+                ivariants,
+                domainEvents
         );
         Files.writeString(Path.of(".dev/data/spec-driven-store.json"), toJson(data));
     }

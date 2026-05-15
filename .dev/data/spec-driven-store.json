@@ -12,6 +12,10 @@
     "packageName" : "uuuu",
     "moduleIds" : [ ]
   } ],
+  "services" : [ {
+    "id" : "88eac07d-77d1-4099-ac87-16bf4b4348c8",
+    "name" : "servicio 1"
+  } ],
   "modules" : [ {
     "id" : "ec54a203-2f56-4d50-bb18-92afff6451a8",
     "name" : "payments",
@@ -146,5 +150,6 @@
   "invariants" : [ {
     "id" : "356374e7-ac7f-47a6-8efa-a27187a9fdc2",
     "name" : "Solo una reserva activa por cliente"
-  } ]
+  } ],
+  "domainEvents" : [ ]
 }
