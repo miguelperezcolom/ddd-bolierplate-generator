@@ -37,6 +37,8 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
     @NotEmpty
     String cronExpression;
 
+    String timezone;
+
     @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
     String useCaseId;
 
@@ -50,13 +52,13 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, useCaseId, modelMappingId, description));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, useCaseId, modelMappingId, description));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description));
     }
 
     @Override
@@ -68,6 +70,7 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         id = model.id();
         name = model.name();
         cronExpression = model.cronExpression();
+        timezone = model.timezone();
         useCaseId = model.useCaseId();
         modelMappingId = model.modelMappingId();
         description = model.description();

@@ -18,6 +18,7 @@ public class CreateScheduledTriggerUseCase {
                 new ScheduledTriggerId(command.id()),
                 new ScheduledTriggerName(command.name()),
                 command.cronExpression(),
+                command.timezone(),
                 command.useCaseId(),
                 command.modelMappingId(),
                 command.description());

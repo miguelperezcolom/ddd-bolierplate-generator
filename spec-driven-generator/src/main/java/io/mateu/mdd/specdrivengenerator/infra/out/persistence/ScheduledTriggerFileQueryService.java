@@ -44,6 +44,7 @@ public class ScheduledTriggerFileQueryService implements ScheduledTriggerQuerySe
                         entity.id(),
                         entity.name(),
                         entity.cronExpression(),
+                        entity.timezone(),
                         entity.useCaseId(),
                         entity.modelMappingId(),
                         entity.description()));

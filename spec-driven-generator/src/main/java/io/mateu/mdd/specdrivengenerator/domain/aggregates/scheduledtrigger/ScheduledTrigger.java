@@ -10,17 +10,19 @@ public class ScheduledTrigger {
     private ScheduledTriggerId id;
     private ScheduledTriggerName name;
     private String cronExpression;
+    private String timezone;
     private String useCaseId;
     private String modelMappingId;
     private String description;
 
     public static ScheduledTrigger of(ScheduledTriggerId id, ScheduledTriggerName name,
-                                      String cronExpression, String useCaseId,
+                                      String cronExpression, String timezone, String useCaseId,
                                       String modelMappingId, String description) {
         var trigger = new ScheduledTrigger();
         trigger.id = id;
         trigger.name = name;
         trigger.cronExpression = cronExpression;
+        trigger.timezone = timezone;
         trigger.useCaseId = useCaseId;
         trigger.modelMappingId = modelMappingId;
         trigger.description = description;
@@ -28,12 +30,13 @@ public class ScheduledTrigger {
     }
 
     public static ScheduledTrigger load(String id, String name,
-                                        String cronExpression, String useCaseId,
+                                        String cronExpression, String timezone, String useCaseId,
                                         String modelMappingId, String description) {
         var trigger = new ScheduledTrigger();
         trigger.id = new ScheduledTriggerId(id);
         trigger.name = new ScheduledTriggerName(name);
         trigger.cronExpression = cronExpression;
+        trigger.timezone = timezone;
         trigger.useCaseId = useCaseId;
         trigger.modelMappingId = modelMappingId;
         trigger.description = description;
@@ -41,10 +44,11 @@ public class ScheduledTrigger {
     }
 
     public void update(ScheduledTriggerName name,
-                       String cronExpression, String useCaseId,
+                       String cronExpression, String timezone, String useCaseId,
                        String modelMappingId, String description) {
         this.name = name;
         this.cronExpression = cronExpression;
+        this.timezone = timezone;
         this.useCaseId = useCaseId;
         this.modelMappingId = modelMappingId;
         this.description = description;

@@ -24,6 +24,7 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.id(),
                         entity.name(),
                         entity.cronExpression(),
+                        entity.timezone(),
                         entity.useCaseId(),
                         entity.modelMappingId(),
                         entity.description()));
@@ -35,6 +36,7 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getCronExpression(),
+                entity.getTimezone(),
                 entity.getUseCaseId(),
                 entity.getModelMappingId(),
                 entity.getDescription()));
