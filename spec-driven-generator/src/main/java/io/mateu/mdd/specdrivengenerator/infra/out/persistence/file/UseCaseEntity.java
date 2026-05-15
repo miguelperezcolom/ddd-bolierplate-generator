@@ -18,6 +18,8 @@ public record UseCaseEntity(
         List<String> allowedRoles,
         List<String> allowedScopes,
         String apiVersion,
-        String mcpDescription
+        String mcpDescription,
+        String restHttpMethod,
+        String restPath
 ) implements Identifiable {
 }

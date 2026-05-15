@@ -16,5 +16,7 @@ public record CreateUseCaseCommand(String id, String name,
                                    List<String> allowedRoles,
                                    List<String> allowedScopes,
                                    String apiVersion,
-                                   String mcpDescription) {
+                                   String mcpDescription,
+                                   String restHttpMethod,
+                                   String restPath) {
 }

@@ -61,6 +61,8 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.allowedRoles() != null ? entity.allowedRoles() : List.of(),
                         entity.allowedScopes() != null ? entity.allowedScopes() : List.of(),
                         entity.apiVersion(),
-                        entity.mcpDescription()));
+                        entity.mcpDescription(),
+                        entity.restHttpMethod(),
+                        entity.restPath()));
     }
 }

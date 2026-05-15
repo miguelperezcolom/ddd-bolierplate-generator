@@ -22,6 +22,8 @@ public class UseCase {
     private List<String> allowedScopes;
     private UseCaseApiVersion apiVersion;
     private String mcpDescription;
+    private HttpMethod restHttpMethod;
+    private String restPath;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -35,7 +37,9 @@ public class UseCase {
                              List<String> allowedRoles,
                              List<String> allowedScopes,
                              UseCaseApiVersion apiVersion,
-                             String mcpDescription) {
+                             String mcpDescription,
+                             HttpMethod restHttpMethod,
+                             String restPath) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -51,6 +55,8 @@ public class UseCase {
         useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
         useCase.apiVersion = apiVersion;
         useCase.mcpDescription = mcpDescription;
+        useCase.restHttpMethod = restHttpMethod;
+        useCase.restPath = restPath;
         return useCase;
     }
 
@@ -66,7 +72,9 @@ public class UseCase {
                                List<String> allowedRoles,
                                List<String> allowedScopes,
                                String apiVersion,
-                               String mcpDescription) {
+                               String mcpDescription,
+                               HttpMethod restHttpMethod,
+                               String restPath) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -82,6 +90,8 @@ public class UseCase {
         useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
         useCase.apiVersion = apiVersion != null ? new UseCaseApiVersion(apiVersion) : null;
         useCase.mcpDescription = mcpDescription;
+        useCase.restHttpMethod = restHttpMethod;
+        useCase.restPath = restPath;
         return useCase;
     }
 
@@ -97,7 +107,9 @@ public class UseCase {
                        List<String> allowedRoles,
                        List<String> allowedScopes,
                        UseCaseApiVersion apiVersion,
-                       String mcpDescription) {
+                       String mcpDescription,
+                       HttpMethod restHttpMethod,
+                       String restPath) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -111,5 +123,7 @@ public class UseCase {
         this.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
         this.apiVersion = apiVersion;
         this.mcpDescription = mcpDescription;
+        this.restHttpMethod = restHttpMethod;
+        this.restPath = restPath;
     }
 }

@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.UseCaseRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.UseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseStep;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -36,7 +37,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.allowedRoles(),
                         entity.allowedScopes(),
                         entity.apiVersion(),
-                        entity.mcpDescription()));
+                        entity.mcpDescription(),
+                        entity.restHttpMethod() != null ? HttpMethod.valueOf(entity.restHttpMethod()) : null,
+                        entity.restPath()));
     }
 
     @Override
@@ -55,7 +58,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getAllowedRoles(),
                 entity.getAllowedScopes(),
                 entity.getApiVersion() != null ? entity.getApiVersion().version() : null,
-                entity.getMcpDescription()));
+                entity.getMcpDescription(),
+                entity.getRestHttpMethod() != null ? entity.getRestHttpMethod().name() : null,
+                entity.getRestPath()));
         return entity;
     }
 

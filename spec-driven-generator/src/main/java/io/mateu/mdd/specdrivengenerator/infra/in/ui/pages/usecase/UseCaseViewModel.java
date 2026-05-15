@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.usecase;
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.UseCaseDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.UseCaseStepData;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.CreateUseCaseCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.CreateUseCaseUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.save.SaveUseCaseCommand;
@@ -55,6 +56,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
 
     String apiVersion;
     String mcpDescription;
+    HttpMethod restHttpMethod;
+    String restPath;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -66,7 +69,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
+                restHttpMethod != null ? restHttpMethod.name() : null, restPath));
         return id;
     }
 
@@ -74,7 +78,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
+                restHttpMethod != null ? restHttpMethod.name() : null, restPath));
     }
 
     @Override
@@ -96,6 +101,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         allowedScopes = model.allowedScopes() != null ? new ArrayList<>(model.allowedScopes()) : new ArrayList<>();
         apiVersion = model.apiVersion();
         mcpDescription = model.mcpDescription();
+        restHttpMethod = model.restHttpMethod() != null ? HttpMethod.valueOf(model.restHttpMethod()) : null;
+        restPath = model.restPath();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

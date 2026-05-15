@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.UseCaseRepo
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.UseCaseStepData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.UseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.*;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,9 @@ public class CreateUseCaseUseCase {
                 command.allowedRoles(),
                 command.allowedScopes(),
                 command.apiVersion() != null ? new UseCaseApiVersion(command.apiVersion()) : null,
-                command.mcpDescription());
+                command.mcpDescription(),
+                command.restHttpMethod() != null ? HttpMethod.valueOf(command.restHttpMethod()) : null,
+                command.restPath());
         repository.save(useCase);
     }
 
