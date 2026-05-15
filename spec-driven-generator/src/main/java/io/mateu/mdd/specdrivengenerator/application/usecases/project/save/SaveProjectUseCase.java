@@ -20,6 +20,7 @@ public class SaveProjectUseCase {
         project.update(new ProjectName(command.name()),
                 new ProjectOutputPath(command.outputPath()),
                 new ProjectPackageName(command.packageName()),
+                command.gitRepository(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

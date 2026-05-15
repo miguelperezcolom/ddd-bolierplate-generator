@@ -30,6 +30,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Hidden
     String id;
     @NotEmpty String name;
+    String gitRepository;
     @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
     List<String> aggregates;
 
@@ -38,13 +39,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, aggregates));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, aggregates));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates));
     }
 
     @Override
@@ -55,6 +56,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     public ModuleViewModel load(ModuleDto model) {
         id = model.id();
         name = model.name();
+        gitRepository = model.gitRepository();
         aggregates = model.aggregateIds();
         return this;
     }

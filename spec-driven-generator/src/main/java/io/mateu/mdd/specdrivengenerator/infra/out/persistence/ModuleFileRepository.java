@@ -21,13 +21,13 @@ public class ModuleFileRepository implements ModuleRepository {
     @Override
     public Optional<Module> findById(ModuleId id) {
         return repository.findById(id.id(), ModuleEntity.class)
-                .map(entity -> Module.load(entity.id(), entity.name(),
+                .map(entity -> Module.load(entity.id(), entity.name(), entity.gitRepository(),
                         entity.aggregateIds()));
     }
 
     @Override
     public Module save(Module entity) {
-        repository.save(new ModuleEntity(entity.getId().id(), entity.getName().name(),
+        repository.save(new ModuleEntity(entity.getId().id(), entity.getName().name(), entity.getGitRepository(),
                 entity.getAggregateIds().stream().map(AggregateId::id).toList()));
         return entity;
     }

@@ -9,6 +9,7 @@ public record ProjectEntity(
         String name,
         String outputPath,
         String packageName,
+        String gitRepository,
         List<String> serviceIds
 ) implements Identifiable {
 

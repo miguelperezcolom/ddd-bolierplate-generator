@@ -7,6 +7,7 @@ import java.util.List;
 public record ServiceEntity(
         String id,
         String name,
+        String gitRepository,
         List<String> moduleIds
 ) implements Identifiable {
 

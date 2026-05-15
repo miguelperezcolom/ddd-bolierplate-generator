@@ -40,6 +40,6 @@ public class ServiceFileQueryService implements ServiceQueryService {
     @Override
     public Optional<ServiceDto> getById(String id) {
         return repository.findById(id, ServiceEntity.class)
-                .map(entity -> new ServiceDto(entity.id(), entity.name(), entity.moduleIds()));
+                .map(entity -> new ServiceDto(entity.id(), entity.name(), entity.gitRepository(), entity.moduleIds()));
     }
 }

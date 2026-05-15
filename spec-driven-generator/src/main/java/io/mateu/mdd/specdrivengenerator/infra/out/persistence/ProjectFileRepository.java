@@ -26,6 +26,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.name(),
                         entity.outputPath(),
                         entity.packageName(),
+                        entity.gitRepository(),
                         entity.serviceIds()));
     }
 
@@ -36,6 +37,7 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getName().name(),
                 entity.getOutputPath().path(),
                 entity.getPackageName().packageName(),
+                entity.getGitRepository(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

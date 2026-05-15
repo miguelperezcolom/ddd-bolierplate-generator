@@ -45,6 +45,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.name(),
                         entity.outputPath(),
                         entity.packageName(),
+                        entity.gitRepository(),
                         entity.serviceIds()));
     }
 }

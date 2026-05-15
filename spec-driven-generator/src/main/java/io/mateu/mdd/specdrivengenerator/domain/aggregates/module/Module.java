@@ -12,26 +12,30 @@ public class Module {
 
     private ModuleId id;
     private ModuleName name;
+    private String gitRepository;
     private List<AggregateId> aggregateIds;
 
-    public static Module of(ModuleId id, ModuleName name, List<AggregateId> aggregateIds) {
+    public static Module of(ModuleId id, ModuleName name, String gitRepository, List<AggregateId> aggregateIds) {
         var module = new Module();
         module.id = id;
         module.name = name;
+        module.gitRepository = gitRepository;
         module.aggregateIds = aggregateIds;
         return module;
     }
 
-    public static Module load(String id, String name, List<String> aggregateIds) {
+    public static Module load(String id, String name, String gitRepository, List<String> aggregateIds) {
         var module = new Module();
         module.id = new ModuleId(id);
         module.name = new ModuleName(name);
+        module.gitRepository = gitRepository;
         module.aggregateIds = aggregateIds.stream().map(AggregateId::new).toList();
         return module;
     }
 
-    public void update(ModuleName name, List<AggregateId> aggregateIds) {
+    public void update(ModuleName name, String gitRepository, List<AggregateId> aggregateIds) {
         this.name = name;
+        this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds;
     }
 }

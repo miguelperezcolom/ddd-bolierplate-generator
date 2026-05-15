@@ -15,7 +15,7 @@ public class CreateModuleUseCase {
     final ModuleRepository repository;
 
     public void handle(CreateModuleCommand command) {
-        var module = Module.of(new ModuleId(command.id()), new ModuleName(command.name()), command.aggregates().stream().map(AggregateId::new).toList());
+        var module = Module.of(new ModuleId(command.id()), new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList());
         repository.save(module);
     }
 

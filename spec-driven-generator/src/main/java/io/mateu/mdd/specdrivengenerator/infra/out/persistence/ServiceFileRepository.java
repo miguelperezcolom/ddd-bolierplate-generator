@@ -20,7 +20,7 @@ public class ServiceFileRepository implements ServiceRepository {
     @Override
     public Optional<Service> findById(ServiceId id) {
         return repository.findById(id.id(), ServiceEntity.class)
-                .map(entity -> Service.load(entity.id(), entity.name(), entity.moduleIds()));
+                .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.moduleIds()));
     }
 
     @Override
@@ -28,6 +28,7 @@ public class ServiceFileRepository implements ServiceRepository {
         repository.save(new ServiceEntity(
                 entity.getId().id(),
                 entity.getName().name(),
+                entity.getGitRepository(),
                 entity.getModules().stream().map(ModuleId::id).toList()));
         return entity;
     }

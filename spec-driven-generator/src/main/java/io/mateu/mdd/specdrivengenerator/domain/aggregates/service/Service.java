@@ -12,26 +12,30 @@ public class Service {
 
     private ServiceId id;
     private ServiceName name;
+    private String gitRepository;
     private List<ModuleId> modules;
 
-    public static Service of(ServiceId id, ServiceName name, List<ModuleId> modules) {
+    public static Service of(ServiceId id, ServiceName name, String gitRepository, List<ModuleId> modules) {
         var service = new Service();
         service.id = id;
         service.name = name;
+        service.gitRepository = gitRepository;
         service.modules = modules;
         return service;
     }
 
-    public static Service load(String id, String name, List<String> modules) {
+    public static Service load(String id, String name, String gitRepository, List<String> modules) {
         var service = new Service();
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
+        service.gitRepository = gitRepository;
         service.modules = modules.stream().map(ModuleId::new).toList();
         return service;
     }
 
-    public void update(ServiceName name, List<ModuleId> modules) {
+    public void update(ServiceName name, String gitRepository, List<ModuleId> modules) {
         this.name = name;
+        this.gitRepository = gitRepository;
         this.modules = modules;
     }
 }

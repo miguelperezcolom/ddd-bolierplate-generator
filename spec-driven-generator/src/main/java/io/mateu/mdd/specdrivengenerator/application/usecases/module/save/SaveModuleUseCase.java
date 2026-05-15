@@ -15,7 +15,7 @@ public class SaveModuleUseCase {
 
     public void handle(SaveModuleCommand command) {
         var role = repository.findById(new ModuleId(command.id())).orElseThrow();
-        role.update(new ModuleName(command.name()), command.aggregates().stream().map(AggregateId::new).toList());
+        role.update(new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList());
         repository.save(role);
     }
 
