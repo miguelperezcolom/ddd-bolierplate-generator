@@ -46,7 +46,9 @@ public class Aggregate {
                 operation.preconditions().stream().map(OperationPrecondition::new).toList(),
                 operation.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList(),
                 operation.emits().stream().map(DomainEventName::new).toList(),
-                operation.type()
+                operation.type(),
+                operation.paginated(),
+                operation.defaultPageSize()
         )).toList();
         aggregate.invariants = invariants.stream()
                 .map(invariant -> Invariant.of(new InvariantId(invariant.id()),
@@ -80,7 +82,9 @@ public class Aggregate {
                 operationDto.preconditions() != null ? operationDto.preconditions().stream().map(OperationPrecondition::new).toList() : List.of(),
                 operationDto.sets() != null ? operationDto.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList() : List.of(),
                 operationDto.emits() != null ? operationDto.emits().stream().map(DomainEventName::new).toList() : List.of(),
-                operationDto.type()
+                operationDto.type(),
+                operationDto.paginated(),
+                operationDto.defaultPageSize()
         )).toList();
         this.invariants = invariants.stream()
                 .map(invariant -> Invariant.of(new InvariantId(invariant.id()),

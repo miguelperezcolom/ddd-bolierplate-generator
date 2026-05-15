@@ -21,6 +21,8 @@ public class Operation {
     List<FieldValueSetting> sets;
     List<DomainEventName> emits;
     OperationType type;
+    boolean paginated;
+    Integer defaultPageSize;
 
     public static Operation of(OperationId id,
                                OperationName name,
@@ -29,7 +31,9 @@ public class Operation {
                                List<OperationPrecondition> preconditions,
                                List<FieldValueSetting> sets,
                                List<DomainEventName> emits,
-                               OperationType type) {
+                               OperationType type,
+                               boolean paginated,
+                               Integer defaultPageSize) {
         var operation = new Operation();
         operation.id = id;
         operation.name = name;
@@ -39,6 +43,8 @@ public class Operation {
         operation.sets = sets;
         operation.emits = emits;
         operation.type = type;
+        operation.paginated = paginated;
+        operation.defaultPageSize = defaultPageSize;
         return operation;
     }
 
@@ -49,7 +55,9 @@ public class Operation {
                                  List<String> preconditions,
                                  List<FieldValueSettingDto> sets,
                                  List<String> emits,
-                                 OperationType type) {
+                                 OperationType type,
+                                 boolean paginated,
+                                 Integer defaultPageSize) {
         var operation = new Operation();
         operation.id = new OperationId(id);
         operation.name = new OperationName(name);
@@ -59,6 +67,8 @@ public class Operation {
         operation.sets = sets.stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList();
         operation.emits = emits.stream().map(DomainEventName::new).toList();
         operation.type = type;
+        operation.paginated = paginated;
+        operation.defaultPageSize = defaultPageSize;
         return operation;
     }
 

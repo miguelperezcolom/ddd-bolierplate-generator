@@ -10,6 +10,8 @@ public record OperationEntity(
         String preconditions,
         String sets,
         String emits,
-        String type
+        String type,
+        boolean paginated,
+        Integer defaultPageSize
 ) implements Identifiable {
 }

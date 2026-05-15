@@ -15,5 +15,7 @@ public record OperationViewModel(String id,
                                  List<FieldValueSettingViewModel> sets,
                                  @HiddenInList
                                  List<String> emits,
-                                 OperationType type) {
+                                 OperationType type,
+                                 boolean paginated,
+                                 Integer defaultPageSize) {
 }

@@ -60,7 +60,9 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                         Arrays.asList(operationEntity.preconditions().split(",")),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                                         Arrays.asList(operationEntity.emits().split(",")),
-                                        OperationType.valueOf(operationEntity.type())
+                                        OperationType.valueOf(operationEntity.type()),
+                                        operationEntity.paginated(),
+                                        operationEntity.defaultPageSize()
                                 ))
                                 .toList(),
                         entity.invariants().stream()

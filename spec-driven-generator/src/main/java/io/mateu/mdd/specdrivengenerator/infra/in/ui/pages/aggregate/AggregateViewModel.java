@@ -71,7 +71,9 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                                         ))
                                         .toList(),
                                 operationViewModel.emits(),
-                                operationViewModel.type()
+                                operationViewModel.type(),
+                                operationViewModel.paginated(),
+                                operationViewModel.defaultPageSize()
                         ))
                         .toList(),
                 invariants.stream()
@@ -107,7 +109,9 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                                         ))
                                         .toList() : List.of(),
                                 operationViewModel.emits(),
-                                operationViewModel.type()
+                                operationViewModel.type(),
+                                operationViewModel.paginated(),
+                                operationViewModel.defaultPageSize()
                         ))
                         .toList(),
                 invariants.stream().map(invariant -> new InvariantDto(
@@ -133,7 +137,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                operationDto.preconditions(),
                operationDto.sets().stream().map(settingDto -> new FieldValueSettingViewModel(
                        settingDto.fieldName(), settingDto.value())).toList(),
-               operationDto.emits(), operationDto.type())).toList();
+               operationDto.emits(), operationDto.type(),
+               operationDto.paginated(), operationDto.defaultPageSize())).toList();
         invariants = model.invariants().stream()
                 .map(invariant -> new InvariantViewModel(invariant.id(), invariant.name()))
                 .toList();

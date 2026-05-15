@@ -41,7 +41,9 @@ public class CreateAggregateUseCase {
                                 operation.preconditions().stream().map(OperationPrecondition::new).toList(),
                                 operation.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList(),
                                 operation.emits().stream().map(DomainEventName::new).toList(),
-                                operation.type()
+                                operation.type(),
+                                operation.paginated(),
+                                operation.defaultPageSize()
                         )).toList(),
                 command.invariants().stream()
                         .map(invariant -> Invariant.of(new InvariantId(invariant.id()),

@@ -12,7 +12,9 @@ public record OperationDto(
         List<String> preconditions,
         List<FieldValueSettingDto> sets,
         List<String> emits,
-        OperationType type) {
+        OperationType type,
+        boolean paginated,
+        Integer defaultPageSize) {
 
     public OperationDto {
         if (sets == null) sets = List.of();

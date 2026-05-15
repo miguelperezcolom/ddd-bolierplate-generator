@@ -47,7 +47,9 @@ public class AggregateFileRepository implements AggregateRepository {
                                         Arrays.asList(operationEntity.preconditions().split(",")),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                                         Arrays.asList(operationEntity.emits().split(",")),
-                                        OperationType.valueOf(operationEntity.type())
+                                        OperationType.valueOf(operationEntity.type()),
+                                        operationEntity.paginated(),
+                                        operationEntity.defaultPageSize()
                                 ))
                                 .toList(),
                         entity.invariants().stream().map(invariantEntity -> new InvariantDto(
@@ -76,7 +78,9 @@ public class AggregateFileRepository implements AggregateRepository {
                                 toJson(operation.getSets()),
                                 String.join(",", operation.getEmits().stream()
                                         .map(DomainEventName::eventName).toList()),
-                                operation.getType().name()
+                                operation.getType().name(),
+                                operation.isPaginated(),
+                                operation.getDefaultPageSize()
                         )).toList(),
                 entity.getInvariants().stream()
                         .map(invariant -> new InvariantEntity(
