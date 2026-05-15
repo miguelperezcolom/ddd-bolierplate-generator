@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateIdType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregatePersistenceType;
@@ -26,15 +27,17 @@ public class Aggregate {
     private AggregateName name;
     private AggregateModelId modelId;
     private AggregatePersistenceType persistenceType;
+    private AggregateIdType idType;
     private List<Operation> operations;
     private List<Invariant> invariants;
 
-    public static Aggregate load(String id, String name, String modelId, String persistenceType, List<OperationDto> operations, List<InvariantDto> invariants) {
+    public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, List<OperationDto> operations, List<InvariantDto> invariants) {
         var aggregate = new Aggregate();
         aggregate.id = new AggregateId(id);
         aggregate.name = new AggregateName(name);
         aggregate.modelId = modelId != null ? new AggregateModelId(modelId) : null;
         aggregate.persistenceType = persistenceType != null ? AggregatePersistenceType.valueOf(persistenceType) : null;
+        aggregate.idType = idType != null ? AggregateIdType.valueOf(idType) : null;
         aggregate.operations = operations.stream().map(operation -> Operation.of(
                 new OperationId(operation.id()),
                 new OperationName(operation.name()),
@@ -52,21 +55,23 @@ public class Aggregate {
         return aggregate;
     }
 
-    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, List<Operation> operations, List<Invariant> invariants) {
+    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, List<Operation> operations, List<Invariant> invariants) {
         var aggregate = new Aggregate();
         aggregate.id = id;
         aggregate.name = name;
         aggregate.modelId = modelId;
         aggregate.persistenceType = persistenceType;
+        aggregate.idType = idType;
         aggregate.operations = operations;
         aggregate.invariants = invariants;
         return aggregate;
     }
 
-    public void update(AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, List<OperationDto> operations, List<InvariantDto> invariants) {
+    public void update(AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, List<OperationDto> operations, List<InvariantDto> invariants) {
         this.name = name;
         this.modelId = modelId;
         this.persistenceType = persistenceType;
+        this.idType = idType;
         this.operations = operations.stream().map(operationDto -> Operation.of(
                 new OperationId(operationDto.id()),
                 new OperationName(operationDto.name()),

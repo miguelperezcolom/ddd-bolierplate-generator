@@ -50,6 +50,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                 .map(entity -> new AggregateDto(entity.id(), entity.name(),
                         entity.modelId(),
                         entity.persistenceType(),
+                        entity.idType(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
