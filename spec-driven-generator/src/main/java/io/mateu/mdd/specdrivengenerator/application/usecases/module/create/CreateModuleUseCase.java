@@ -26,6 +26,8 @@ public class CreateModuleUseCase {
                 command.aggregates().stream().map(AggregateId::new).toList(),
                 command.entityIds(), command.valueObjectIds(),
                 command.useCaseIds(), command.domainEventIds(),
+                command.projectionIds(), command.readModelIds(),
+                command.subscriptionIds(), command.sagaIds(), command.scheduledTriggerIds(),
                 bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix());
         repository.save(module);
     }

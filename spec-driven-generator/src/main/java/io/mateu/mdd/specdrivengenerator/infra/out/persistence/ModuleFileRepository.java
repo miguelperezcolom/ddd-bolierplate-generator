@@ -29,6 +29,11 @@ public class ModuleFileRepository implements ModuleRepository {
                         entity.valueObjectIds(),
                         entity.useCaseIds(),
                         entity.domainEventIds(),
+                        entity.projectionIds(),
+                        entity.readModelIds(),
+                        entity.subscriptionIds(),
+                        entity.sagaIds(),
+                        entity.scheduledTriggerIds(),
                         entity.bddScenarios() == null ? List.of() :
                                 entity.bddScenarios().stream()
                                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
@@ -49,6 +54,11 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getValueObjectIds(),
                 entity.getUseCaseIds(),
                 entity.getDomainEventIds(),
+                entity.getProjectionIds(),
+                entity.getReadModelIds(),
+                entity.getSubscriptionIds(),
+                entity.getSagaIds(),
+                entity.getScheduledTriggerIds(),
                 bddScenarioEntities,
                 entity.getLlmSystemPrompt(),
                 entity.getTableNamePrefix(), entity.isAutoTableNamePrefix()));

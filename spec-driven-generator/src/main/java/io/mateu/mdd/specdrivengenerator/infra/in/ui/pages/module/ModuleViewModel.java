@@ -17,6 +17,16 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupp
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.UseCaseIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.DomainEventIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.DomainEventIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ProjectionIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ProjectionIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.SubscriptionIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.SubscriptionIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.SagaIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.SagaIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ScheduledTriggerIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ScheduledTriggerIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -57,6 +67,21 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> domainEventIds;
 
+    @Lookup(search = ProjectionIdOptionsSupplier.class, label = ProjectionIdLabelSupplier.class)
+    List<String> projectionIds;
+
+    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
+    List<String> readModelIds;
+
+    @Lookup(search = SubscriptionIdOptionsSupplier.class, label = SubscriptionIdLabelSupplier.class)
+    List<String> subscriptionIds;
+
+    @Lookup(search = SagaIdOptionsSupplier.class, label = SagaIdLabelSupplier.class)
+    List<String> sagaIds;
+
+    @Lookup(search = ScheduledTriggerIdOptionsSupplier.class, label = ScheduledTriggerIdLabelSupplier.class)
+    List<String> scheduledTriggerIds;
+
     String llmSystemPrompt;
     String tableNamePrefix;
     boolean autoTableNamePrefix;
@@ -69,13 +94,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
     }
 
     @Override
@@ -92,6 +117,11 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         valueObjectIds = model.valueObjectIds();
         useCaseIds = model.useCaseIds();
         domainEventIds = model.domainEventIds();
+        projectionIds = model.projectionIds();
+        readModelIds = model.readModelIds();
+        subscriptionIds = model.subscriptionIds();
+        sagaIds = model.sagaIds();
+        scheduledTriggerIds = model.scheduledTriggerIds();
         llmSystemPrompt = model.llmSystemPrompt();
         tableNamePrefix = model.tableNamePrefix();
         autoTableNamePrefix = model.autoTableNamePrefix();

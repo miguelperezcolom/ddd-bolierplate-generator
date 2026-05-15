@@ -49,6 +49,11 @@ public class ModuleFileQueryService implements ModuleQueryService {
                         entity.valueObjectIds(),
                         entity.useCaseIds(),
                         entity.domainEventIds(),
+                        entity.projectionIds(),
+                        entity.readModelIds(),
+                        entity.subscriptionIds(),
+                        entity.sagaIds(),
+                        entity.scheduledTriggerIds(),
                         entity.bddScenarios() == null ? List.of() :
                                 entity.bddScenarios().stream()
                                         .map(s -> new BddScenarioDto(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
