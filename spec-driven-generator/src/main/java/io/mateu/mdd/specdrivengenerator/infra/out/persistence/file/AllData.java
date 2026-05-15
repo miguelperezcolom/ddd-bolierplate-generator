@@ -14,7 +14,11 @@ public record AllData(
         List<UseCaseEntity> useCases,
         List<ModelEntity> models,
         List<GatewayEntity> gateways,
-        List<ModelMappingEntity> modelMappings
+        List<ModelMappingEntity> modelMappings,
+        List<SagaEntity> sagas,
+        List<ProjectionEntity> projections,
+        List<SubscriptionEntity> subscriptions,
+        List<ScheduledTriggerEntity> scheduledTriggers
         ) {
 
     public AllData {
@@ -30,5 +34,9 @@ public record AllData(
         models = models != null ? models : List.of();
         gateways = gateways != null ? gateways : List.of();
         modelMappings = modelMappings != null ? modelMappings : List.of();
+        sagas = sagas != null ? sagas : List.of();
+        projections = projections != null ? projections : List.of();
+        subscriptions = subscriptions != null ? subscriptions : List.of();
+        scheduledTriggers = scheduledTriggers != null ? scheduledTriggers : List.of();
     }
 }

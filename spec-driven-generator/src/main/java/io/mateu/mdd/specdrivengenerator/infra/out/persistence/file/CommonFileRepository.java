@@ -62,6 +62,10 @@ public class CommonFileRepository {
         data.models().forEach(p -> store.put(p.id(), p));
         data.gateways().forEach(p -> store.put(p.id(), p));
         data.modelMappings().forEach(p -> store.put(p.id(), p));
+        data.sagas().forEach(p -> store.put(p.id(), p));
+        data.projections().forEach(p -> store.put(p.id(), p));
+        data.subscriptions().forEach(p -> store.put(p.id(), p));
+        data.scheduledTriggers().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -78,6 +82,10 @@ public class CommonFileRepository {
         List<ModelEntity> models = store.values().stream().filter(v -> v instanceof ModelEntity).map(v -> (ModelEntity) v).toList();
         List<GatewayEntity> gateways = store.values().stream().filter(v -> v instanceof GatewayEntity).map(v -> (GatewayEntity) v).toList();
         List<ModelMappingEntity> modelMappings = store.values().stream().filter(v -> v instanceof ModelMappingEntity).map(v -> (ModelMappingEntity) v).toList();
+        List<SagaEntity> sagas = store.values().stream().filter(v -> v instanceof SagaEntity).map(v -> (SagaEntity) v).toList();
+        List<ProjectionEntity> projections = store.values().stream().filter(v -> v instanceof ProjectionEntity).map(v -> (ProjectionEntity) v).toList();
+        List<SubscriptionEntity> subscriptions = store.values().stream().filter(v -> v instanceof SubscriptionEntity).map(v -> (SubscriptionEntity) v).toList();
+        List<ScheduledTriggerEntity> scheduledTriggers = store.values().stream().filter(v -> v instanceof ScheduledTriggerEntity).map(v -> (ScheduledTriggerEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -90,7 +98,11 @@ public class CommonFileRepository {
                 useCases,
                 models,
                 gateways,
-                modelMappings
+                modelMappings,
+                sagas,
+                projections,
+                subscriptions,
+                scheduledTriggers
         );
         Files.writeString(Path.of(".dev/data/spec-driven-store.json"), toJson(data));
     }
