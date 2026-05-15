@@ -9,6 +9,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.Cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregatePersistenceType;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.*;
@@ -34,6 +35,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     @NotEmpty String name;
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String modelId;
+    AggregatePersistenceType persistenceType;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<OperationViewModel> operations;
@@ -51,6 +53,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         }
         createUseCase.handle(new CreateAggregateCommand(id, name,
                 modelId,
+                persistenceType != null ? persistenceType.name() : null,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -84,6 +87,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         }
         saveUseCase.handle(new SaveAggregateCommand(id, name,
                 modelId,
+                persistenceType != null ? persistenceType.name() : null,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -116,6 +120,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         id = model.id();
         name = model.name();
         modelId = model.modelId();
+        persistenceType = model.persistenceType() != null ? AggregatePersistenceType.valueOf(model.persistenceType()) : null;
         operations = model.operations().stream().map(operationDto -> new OperationViewModel(
                operationDto.id(), operationDto.name(), operationDto.inputModelId(),
                operationDto.preconditions(),

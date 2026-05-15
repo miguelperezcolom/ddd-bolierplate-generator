@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.AggregateRe
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregatePersistenceType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class SaveAggregateUseCase {
         aggregate.update(
                 new AggregateName(command.name()),
                 command.modelId() != null ? new AggregateModelId(command.modelId()) : null,
+                command.persistenceType() != null ? AggregatePersistenceType.valueOf(command.persistenceType()) : null,
                 command.operations(),
                 command.invariants()
         );

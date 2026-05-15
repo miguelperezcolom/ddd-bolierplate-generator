@@ -49,6 +49,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
         return repository.findById(id, AggregateEntity.class)
                 .map(entity -> new AggregateDto(entity.id(), entity.name(),
                         entity.modelId(),
+                        entity.persistenceType(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),

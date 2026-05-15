@@ -7,6 +7,7 @@ import java.util.List;
 
 public record SaveAggregateCommand(String id, String name,
                                    String modelId,
+                                   String persistenceType,
                                    List<OperationDto> operations,
                                    List<InvariantDto> invariants) {
 
