@@ -34,6 +34,9 @@ public class CreateServiceUseCase {
                 command.kubernetesHpaMinReplicas(),
                 command.kubernetesHpaMaxReplicas(),
                 command.kubernetesHpaCpuThreshold(),
+                command.livenessProbe(),
+                command.readinessProbe(),
+                command.startupProbe(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
                 command.envVars());

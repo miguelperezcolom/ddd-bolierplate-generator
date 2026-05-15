@@ -28,6 +28,9 @@ public class Service {
     private Integer kubernetesHpaMinReplicas;
     private Integer kubernetesHpaMaxReplicas;
     private Integer kubernetesHpaCpuThreshold;
+    private String livenessProbe;
+    private String readinessProbe;
+    private String startupProbe;
     private List<ModuleId> modules;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
@@ -38,6 +41,7 @@ public class Service {
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
+                             String livenessProbe, String readinessProbe, String startupProbe,
                              List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
@@ -56,6 +60,9 @@ public class Service {
         service.kubernetesHpaMinReplicas = kubernetesHpaMinReplicas;
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
+        service.livenessProbe = livenessProbe;
+        service.readinessProbe = readinessProbe;
+        service.startupProbe = startupProbe;
         service.modules = modules;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -68,6 +75,7 @@ public class Service {
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
+                               String livenessProbe, String readinessProbe, String startupProbe,
                                List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
@@ -86,6 +94,9 @@ public class Service {
         service.kubernetesHpaMinReplicas = kubernetesHpaMinReplicas;
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
+        service.livenessProbe = livenessProbe;
+        service.readinessProbe = readinessProbe;
+        service.startupProbe = startupProbe;
         service.modules = modules.stream().map(ModuleId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -98,6 +109,7 @@ public class Service {
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
+                       String livenessProbe, String readinessProbe, String startupProbe,
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
@@ -114,6 +126,9 @@ public class Service {
         this.kubernetesHpaMinReplicas = kubernetesHpaMinReplicas;
         this.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         this.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
+        this.livenessProbe = livenessProbe;
+        this.readinessProbe = readinessProbe;
+        this.startupProbe = startupProbe;
         this.modules = modules;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();

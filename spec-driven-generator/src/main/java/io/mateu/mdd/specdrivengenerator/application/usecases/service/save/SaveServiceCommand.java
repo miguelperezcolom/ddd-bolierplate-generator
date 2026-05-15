@@ -10,6 +10,7 @@ public record SaveServiceCommand(String id, String name, String gitRepository, I
                                  String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                  boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                  Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
+                                 String livenessProbe, String readinessProbe, String startupProbe,
                                  List<String> moduleIds,
                                  List<String> gatewayIds,
                                  List<EnvVar> envVars) {

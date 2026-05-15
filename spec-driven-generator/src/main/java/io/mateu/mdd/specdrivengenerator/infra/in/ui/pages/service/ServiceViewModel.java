@@ -47,6 +47,9 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     DbMigrationTool dbMigrationTool;
 
     @Tab("Kubernetes")
+    String livenessProbe;
+    String readinessProbe;
+    String startupProbe;
     Integer kubernetesReplicas;
     String kubernetesCpuRequest;
     String kubernetesCpuLimit;
@@ -77,6 +80,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
+                livenessProbe, readinessProbe, startupProbe,
                 modules, gatewayIds, toEnvVars(envVars)));
         return id;
     }
@@ -88,6 +92,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
+                livenessProbe, readinessProbe, startupProbe,
                 modules, gatewayIds, toEnvVars(envVars)));
     }
 
@@ -104,6 +109,9 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         contextPath = model.contextPath();
         database = model.database();
         dbMigrationTool = model.dbMigrationTool();
+        livenessProbe = model.livenessProbe();
+        readinessProbe = model.readinessProbe();
+        startupProbe = model.startupProbe();
         kubernetesReplicas = model.kubernetesReplicas();
         kubernetesCpuRequest = model.kubernetesCpuRequest();
         kubernetesCpuLimit = model.kubernetesCpuLimit();
