@@ -24,6 +24,7 @@ public class SaveModuleUseCase {
                         .toList();
         role.update(new ModuleName(command.name()), command.gitRepository(),
                 command.aggregates().stream().map(AggregateId::new).toList(),
+                command.entityIds(), command.valueObjectIds(),
                 command.useCaseIds(), command.domainEventIds(),
                 bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix());
         repository.save(role);

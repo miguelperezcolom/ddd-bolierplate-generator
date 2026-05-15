@@ -15,6 +15,8 @@ public class Module {
     private ModuleName name;
     private String gitRepository;
     private List<AggregateId> aggregateIds;
+    private List<String> entityIds;
+    private List<String> valueObjectIds;
     private List<String> useCaseIds;
     private List<String> domainEventIds;
     private List<BddScenario> bddScenarios;
@@ -23,7 +25,8 @@ public class Module {
     private boolean autoTableNamePrefix;
 
     public static Module of(ModuleId id, ModuleName name, String gitRepository,
-                            List<AggregateId> aggregateIds, List<String> useCaseIds, List<String> domainEventIds,
+                            List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
+                            List<String> useCaseIds, List<String> domainEventIds,
                             List<BddScenario> bddScenarios, String llmSystemPrompt,
                             String tableNamePrefix, boolean autoTableNamePrefix) {
         var module = new Module();
@@ -31,6 +34,8 @@ public class Module {
         module.name = name;
         module.gitRepository = gitRepository;
         module.aggregateIds = aggregateIds != null ? aggregateIds : List.of();
+        module.entityIds = entityIds != null ? entityIds : List.of();
+        module.valueObjectIds = valueObjectIds != null ? valueObjectIds : List.of();
         module.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         module.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         module.bddScenarios = bddScenarios != null ? bddScenarios : List.of();
@@ -41,7 +46,8 @@ public class Module {
     }
 
     public static Module load(String id, String name, String gitRepository,
-                              List<String> aggregateIds, List<String> useCaseIds, List<String> domainEventIds,
+                              List<String> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
+                              List<String> useCaseIds, List<String> domainEventIds,
                               List<BddScenario> bddScenarios, String llmSystemPrompt,
                               String tableNamePrefix, boolean autoTableNamePrefix) {
         var module = new Module();
@@ -49,6 +55,8 @@ public class Module {
         module.name = new ModuleName(name);
         module.gitRepository = gitRepository;
         module.aggregateIds = aggregateIds != null ? aggregateIds.stream().map(AggregateId::new).toList() : List.of();
+        module.entityIds = entityIds != null ? entityIds : List.of();
+        module.valueObjectIds = valueObjectIds != null ? valueObjectIds : List.of();
         module.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         module.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         module.bddScenarios = bddScenarios != null ? bddScenarios : List.of();
@@ -59,12 +67,15 @@ public class Module {
     }
 
     public void update(ModuleName name, String gitRepository,
-                       List<AggregateId> aggregateIds, List<String> useCaseIds, List<String> domainEventIds,
+                       List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
+                       List<String> useCaseIds, List<String> domainEventIds,
                        List<BddScenario> bddScenarios, String llmSystemPrompt,
                        String tableNamePrefix, boolean autoTableNamePrefix) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds != null ? aggregateIds : List.of();
+        this.entityIds = entityIds != null ? entityIds : List.of();
+        this.valueObjectIds = valueObjectIds != null ? valueObjectIds : List.of();
         this.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         this.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         this.bddScenarios = bddScenarios != null ? bddScenarios : List.of();

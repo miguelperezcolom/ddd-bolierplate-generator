@@ -45,6 +45,8 @@ public class ModuleFileQueryService implements ModuleQueryService {
         return repository.findById(id, ModuleEntity.class)
                 .map(entity -> new ModuleDto(entity.id(), entity.name(), entity.gitRepository(),
                         entity.aggregateIds(),
+                        entity.entityIds(),
+                        entity.valueObjectIds(),
                         entity.useCaseIds(),
                         entity.domainEventIds(),
                         entity.bddScenarios() == null ? List.of() :

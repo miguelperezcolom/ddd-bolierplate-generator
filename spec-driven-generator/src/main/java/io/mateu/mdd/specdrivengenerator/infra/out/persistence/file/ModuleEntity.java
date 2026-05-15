@@ -9,6 +9,8 @@ public record ModuleEntity(
         String name,
         String gitRepository,
         List<String> aggregateIds,
+        List<String> entityIds,
+        List<String> valueObjectIds,
         List<String> useCaseIds,
         List<String> domainEventIds,
         List<BddScenarioEntity> bddScenarios,

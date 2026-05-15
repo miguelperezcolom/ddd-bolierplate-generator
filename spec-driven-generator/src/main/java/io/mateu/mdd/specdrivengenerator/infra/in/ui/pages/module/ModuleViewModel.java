@@ -9,6 +9,10 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveMod
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveModuleUseCase;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.EntityIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ValueObjectIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.UseCaseIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.DomainEventIdLabelSupplier;
@@ -41,6 +45,12 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
     List<String> aggregates;
 
+    @Lookup(search = EntityIdOptionsSupplier.class, label = EntityIdLabelSupplier.class)
+    List<String> entityIds;
+
+    @Lookup(search = ValueObjectIdOptionsSupplier.class, label = ValueObjectIdLabelSupplier.class)
+    List<String> valueObjectIds;
+
     @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
     List<String> useCaseIds;
 
@@ -59,13 +69,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
     }
 
     @Override
@@ -78,6 +88,8 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         name = model.name();
         gitRepository = model.gitRepository();
         aggregates = model.aggregateIds();
+        entityIds = model.entityIds();
+        valueObjectIds = model.valueObjectIds();
         useCaseIds = model.useCaseIds();
         domainEventIds = model.domainEventIds();
         llmSystemPrompt = model.llmSystemPrompt();
