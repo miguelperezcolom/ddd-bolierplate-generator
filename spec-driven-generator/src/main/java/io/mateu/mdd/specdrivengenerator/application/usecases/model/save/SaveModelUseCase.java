@@ -2,10 +2,12 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.model.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ModelRepository;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelFieldValidationData;
+import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelValidationData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelField;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelFieldValidation;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelValidation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,16 +24,24 @@ public class SaveModelUseCase {
         var fields = command.fields() == null ? List.<ModelField>of() :
                 command.fields().stream()
                         .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                toValidations(f.validations())))
+                                toFieldValidations(f.validations())))
                         .toList();
-        model.update(new ModelName(command.name()), fields);
+        var validations = toValidations(command.validations());
+        model.update(new ModelName(command.name()), fields, validations);
         repository.save(model);
     }
 
-    private List<ModelFieldValidation> toValidations(List<ModelFieldValidationData> validations) {
+    private List<ModelFieldValidation> toFieldValidations(List<ModelFieldValidationData> validations) {
         if (validations == null) return List.of();
         return validations.stream()
                 .map(v -> new ModelFieldValidation(v.id(), v.type(), v.params()))
+                .toList();
+    }
+
+    private List<ModelValidation> toValidations(List<ModelValidationData> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelValidation(v.id(), v.condition(), v.fieldId(), v.message()))
                 .toList();
     }
 

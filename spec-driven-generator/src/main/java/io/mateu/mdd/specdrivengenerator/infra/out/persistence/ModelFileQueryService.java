@@ -5,9 +5,11 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelFieldDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelFieldValidationDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelRow;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelValidationDto;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelValidationEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
@@ -48,14 +50,22 @@ public class ModelFileQueryService implements ModelQueryService {
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
                                         .map(f -> new ModelFieldDto(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                                toValidationDtos(f.validations())))
-                                        .toList()));
+                                                toFieldValidationDtos(f.validations())))
+                                        .toList(),
+                        toValidationDtos(entity.validations())));
     }
 
-    private List<ModelFieldValidationDto> toValidationDtos(List<ModelFieldValidationEntity> validations) {
+    private List<ModelFieldValidationDto> toFieldValidationDtos(List<ModelFieldValidationEntity> validations) {
         if (validations == null) return List.of();
         return validations.stream()
                 .map(v -> new ModelFieldValidationDto(v.id(), v.type(), v.params()))
+                .toList();
+    }
+
+    private List<ModelValidationDto> toValidationDtos(List<ModelValidationEntity> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelValidationDto(v.id(), v.condition(), v.fieldId(), v.message()))
                 .toList();
     }
 }

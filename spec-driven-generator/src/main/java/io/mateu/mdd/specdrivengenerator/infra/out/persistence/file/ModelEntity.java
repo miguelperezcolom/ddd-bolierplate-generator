@@ -7,6 +7,7 @@ import java.util.List;
 public record ModelEntity(
         String id,
         String name,
-        List<ModelFieldEntity> fields
+        List<ModelFieldEntity> fields,
+        List<ModelValidationEntity> validations
 ) implements Identifiable {
 }

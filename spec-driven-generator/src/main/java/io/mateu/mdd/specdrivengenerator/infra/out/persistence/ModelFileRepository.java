@@ -5,10 +5,12 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.Model;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelField;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelFieldValidation;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.model.vo.ModelValidation;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModelValidationEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,8 +30,9 @@ public class ModelFileRepository implements ModelRepository {
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
                                         .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                                toValidations(f.validations())))
-                                        .toList()));
+                                                toFieldValidations(f.validations())))
+                                        .toList(),
+                        toValidations(entity.validations())));
     }
 
     @Override
@@ -37,12 +40,13 @@ public class ModelFileRepository implements ModelRepository {
         var fieldEntities = entity.getFields() == null ? List.<ModelFieldEntity>of() :
                 entity.getFields().stream()
                         .map(f -> new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                toValidationEntities(f.validations())))
+                                toFieldValidationEntities(f.validations())))
                         .toList();
+        var validationEntities = toValidationEntities(entity.getValidations());
         repository.save(new ModelEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                fieldEntities));
+                fieldEntities, validationEntities));
         return entity;
     }
 
@@ -51,17 +55,31 @@ public class ModelFileRepository implements ModelRepository {
         repository.deleteAllById(selectedIds.stream().map(ModelId::id).toList());
     }
 
-    private List<ModelFieldValidation> toValidations(List<ModelFieldValidationEntity> validations) {
+    private List<ModelFieldValidation> toFieldValidations(List<ModelFieldValidationEntity> validations) {
         if (validations == null) return List.of();
         return validations.stream()
                 .map(v -> new ModelFieldValidation(v.id(), v.type(), v.params()))
                 .toList();
     }
 
-    private List<ModelFieldValidationEntity> toValidationEntities(List<ModelFieldValidation> validations) {
+    private List<ModelFieldValidationEntity> toFieldValidationEntities(List<ModelFieldValidation> validations) {
         if (validations == null) return List.of();
         return validations.stream()
                 .map(v -> new ModelFieldValidationEntity(v.id(), v.type(), v.params()))
+                .toList();
+    }
+
+    private List<ModelValidation> toValidations(List<ModelValidationEntity> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelValidation(v.id(), v.condition(), v.fieldId(), v.message()))
+                .toList();
+    }
+
+    private List<ModelValidationEntity> toValidationEntities(List<ModelValidation> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelValidationEntity(v.id(), v.condition(), v.fieldId(), v.message()))
                 .toList();
     }
 }

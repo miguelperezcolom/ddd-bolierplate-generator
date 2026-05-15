@@ -4,6 +4,7 @@ import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModelDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelFieldData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelFieldValidationData;
+import io.mateu.mdd.specdrivengenerator.application.usecases.model.ModelValidationData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.create.CreateModelCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.create.CreateModelUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.model.save.SaveModelCommand;
@@ -36,18 +37,20 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
 
     List<ModelFieldViewModel> fields = new ArrayList<>();
 
+    List<ModelValidationViewModel> validations = new ArrayList<>();
+
     final CreateModelUseCase createUseCase;
     final SaveModelUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModelCommand(id, name, toFieldData(fields)));
+        createUseCase.handle(new CreateModelCommand(id, name, toFieldData(fields), toValidationData(validations)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModelCommand(id, name, toFieldData(fields)));
+        saveUseCase.handle(new SaveModelCommand(id, name, toFieldData(fields), toValidationData(validations)));
     }
 
     @Override
@@ -76,6 +79,15 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                             }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        validations = model.validations() == null ? new ArrayList<>() :
+                model.validations().stream().map(v -> {
+                    var vm = new ModelValidationViewModel();
+                    vm.id = v.id();
+                    vm.condition = v.condition();
+                    vm.fieldId = v.fieldId();
+                    vm.message = v.message();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
     }
 
@@ -87,6 +99,13 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                                 f.validations.stream()
                                         .map(v -> new ModelFieldValidationData(v.id, v.type, v.params))
                                         .toList()))
+                .toList();
+    }
+
+    private List<ModelValidationData> toValidationData(List<ModelValidationViewModel> validations) {
+        if (validations == null) return List.of();
+        return validations.stream()
+                .map(v -> new ModelValidationData(v.id, v.condition, v.fieldId, v.message))
                 .toList();
     }
 
