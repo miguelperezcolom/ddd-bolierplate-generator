@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ServiceQueryServic
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ServiceRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.uidl.data.ListingData;
@@ -46,6 +47,9 @@ public class ServiceFileQueryService implements ServiceQueryService {
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
-                        entity.moduleIds()));
+                        entity.moduleIds(),
+                        entity.envVars() != null ? entity.envVars().stream()
+                                .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
+                                .toList() : java.util.List.of()));
     }
 }

@@ -20,10 +20,12 @@ public record ServiceEntity(
         Integer kubernetesHpaMinReplicas,
         Integer kubernetesHpaMaxReplicas,
         Integer kubernetesHpaCpuThreshold,
-        List<String> moduleIds
+        List<String> moduleIds,
+        List<EnvVarEntity> envVars
 ) implements Identifiable {
 
     public ServiceEntity {
         if (moduleIds == null) moduleIds = List.of();
+        if (envVars == null) envVars = List.of();
     }
 }

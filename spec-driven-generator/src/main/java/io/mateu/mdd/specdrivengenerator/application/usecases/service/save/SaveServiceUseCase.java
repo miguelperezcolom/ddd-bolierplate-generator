@@ -29,7 +29,8 @@ public class SaveServiceUseCase {
                 command.kubernetesHpaMinReplicas(),
                 command.kubernetesHpaMaxReplicas(),
                 command.kubernetesHpaCpuThreshold(),
-                command.moduleIds().stream().map(ModuleId::new).toList());
+                command.moduleIds().stream().map(ModuleId::new).toList(),
+                command.envVars());
         repository.save(service);
     }
 

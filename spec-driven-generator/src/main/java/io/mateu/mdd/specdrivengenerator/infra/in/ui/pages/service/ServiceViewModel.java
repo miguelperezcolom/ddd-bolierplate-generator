@@ -6,12 +6,14 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.CreateServiceUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
+import io.mateu.uidl.annotations.MasterDetail;
 import io.mateu.uidl.annotations.Tab;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -54,6 +56,10 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     List<String> modules;
 
+    @Tab("Environment")
+    @MasterDetail
+    List<EnvVarViewModel> envVars = new java.util.ArrayList<>();
+
     final CreateServiceUseCase createUseCase;
     final SaveServiceUseCase saveUseCase;
 
@@ -64,7 +70,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
-                modules));
+                modules, toEnvVars(envVars)));
         return id;
     }
 
@@ -75,7 +81,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
-                modules));
+                modules, toEnvVars(envVars)));
     }
 
     @Override
@@ -99,7 +105,23 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         kubernetesHpaMaxReplicas = model.kubernetesHpaMaxReplicas();
         kubernetesHpaCpuThreshold = model.kubernetesHpaCpuThreshold();
         modules = model.moduleIds();
+        envVars = model.envVars() != null ? model.envVars().stream().map(e -> {
+            var vm = new EnvVarViewModel();
+            vm.name = e.name();
+            vm.defaultValue = e.defaultValue();
+            vm.secret = e.secret();
+            vm.required = e.required();
+            vm.description = e.description();
+            return vm;
+        }).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new)) : new java.util.ArrayList<>();
         return this;
+    }
+
+    private List<EnvVar> toEnvVars(List<EnvVarViewModel> vms) {
+        if (vms == null) return List.of();
+        return vms.stream()
+                .map(vm -> new EnvVar(vm.name, vm.defaultValue, vm.secret, vm.required, vm.description))
+                .toList();
     }
 
     @Override

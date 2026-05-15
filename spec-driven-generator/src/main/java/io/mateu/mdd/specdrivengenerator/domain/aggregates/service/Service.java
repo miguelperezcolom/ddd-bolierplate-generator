@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.domain.aggregates.service;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceName;
 import lombok.Getter;
@@ -26,13 +27,14 @@ public class Service {
     private Integer kubernetesHpaMaxReplicas;
     private Integer kubernetesHpaCpuThreshold;
     private List<ModuleId> modules;
+    private List<EnvVar> envVars;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository, String database,
                              DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                             List<ModuleId> modules) {
+                             List<ModuleId> modules, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
         service.name = name;
@@ -49,6 +51,7 @@ public class Service {
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         service.modules = modules;
+        service.envVars = envVars != null ? envVars : List.of();
         return service;
     }
 
@@ -57,7 +60,7 @@ public class Service {
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                               List<String> modules) {
+                               List<String> modules, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
@@ -74,6 +77,7 @@ public class Service {
         service.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         service.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         service.modules = modules.stream().map(ModuleId::new).toList();
+        service.envVars = envVars != null ? envVars : List.of();
         return service;
     }
 
@@ -82,7 +86,7 @@ public class Service {
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
-                       List<ModuleId> modules) {
+                       List<ModuleId> modules, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.database = database;
@@ -97,5 +101,6 @@ public class Service {
         this.kubernetesHpaMaxReplicas = kubernetesHpaMaxReplicas;
         this.kubernetesHpaCpuThreshold = kubernetesHpaCpuThreshold;
         this.modules = modules;
+        this.envVars = envVars != null ? envVars : List.of();
     }
 }

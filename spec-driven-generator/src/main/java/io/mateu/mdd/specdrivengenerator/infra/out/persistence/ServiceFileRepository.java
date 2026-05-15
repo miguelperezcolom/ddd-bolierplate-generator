@@ -4,8 +4,10 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.ServiceRepo
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.EnvVarEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
 import lombok.RequiredArgsConstructor;
 
@@ -26,7 +28,10 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
-                        entity.moduleIds()));
+                        entity.moduleIds(),
+                        entity.envVars() != null ? entity.envVars().stream()
+                                .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
+                                .toList() : List.of()));
     }
 
     @Override
@@ -46,7 +51,10 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getKubernetesHpaMinReplicas(),
                 entity.getKubernetesHpaMaxReplicas(),
                 entity.getKubernetesHpaCpuThreshold(),
-                entity.getModules().stream().map(ModuleId::id).toList()));
+                entity.getModules().stream().map(ModuleId::id).toList(),
+                entity.getEnvVars() != null ? entity.getEnvVars().stream()
+                        .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
+                        .toList() : List.of()));
         return entity;
     }
 
