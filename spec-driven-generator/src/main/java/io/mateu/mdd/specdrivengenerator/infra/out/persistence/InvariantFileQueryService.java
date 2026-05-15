@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.InvariantQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantConditionDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantRow;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -11,6 +12,7 @@ import io.mateu.uidl.data.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -40,6 +42,11 @@ public class InvariantFileQueryService implements InvariantQueryService {
     @Override
     public Optional<InvariantDto> getById(String id) {
         return repository.findById(id, InvariantEntity.class)
-                .map(entity -> new InvariantDto(entity.id(), entity.name()));
+                .map(entity -> new InvariantDto(
+                        entity.id(),
+                        entity.name(),
+                        entity.conditions() == null ? List.of() : entity.conditions().stream()
+                                .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                .toList()));
     }
 }
