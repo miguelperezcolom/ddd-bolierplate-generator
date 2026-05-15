@@ -3,7 +3,10 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
@@ -45,6 +48,9 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.iamClientId(), entity.iamClientSecret(), entity.iamAudience(),
                         entity.messageBrokerType(), entity.messageBrokerUrl(),
                         entity.messageBrokerUsername(), entity.messageBrokerPassword(),
+                        entity.tracingProvider(), entity.tracingEndpoint(),
+                        entity.metricsProvider(), entity.metricsEndpoint(),
+                        entity.loggingProvider(), entity.loggingEndpoint(),
                         entity.serviceIds()));
     }
 
@@ -70,6 +76,9 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getIamClientId(), entity.getIamClientSecret(), entity.getIamAudience(),
                 entity.getMessageBrokerType(), entity.getMessageBrokerUrl(),
                 entity.getMessageBrokerUsername(), entity.getMessageBrokerPassword(),
+                entity.getTracingProvider(), entity.getTracingEndpoint(),
+                entity.getMetricsProvider(), entity.getMetricsEndpoint(),
+                entity.getLoggingProvider(), entity.getLoggingEndpoint(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

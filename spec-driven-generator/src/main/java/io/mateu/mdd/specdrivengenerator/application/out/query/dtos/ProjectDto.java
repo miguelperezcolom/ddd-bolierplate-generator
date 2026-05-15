@@ -1,7 +1,10 @@
 package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 
@@ -20,5 +23,8 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          String iamClientId, String iamClientSecret, String iamAudience,
                          MessageBrokerType messageBrokerType, String messageBrokerUrl,
                          String messageBrokerUsername, String messageBrokerPassword,
+                         TracingProvider tracingProvider, String tracingEndpoint,
+                         MetricsProvider metricsProvider, String metricsEndpoint,
+                         LoggingProvider loggingProvider, String loggingEndpoint,
                          List<String> serviceIds) {
 }
