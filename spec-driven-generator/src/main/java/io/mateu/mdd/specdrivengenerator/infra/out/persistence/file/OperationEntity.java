@@ -5,6 +5,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 public record OperationEntity(
         String id,
         String name,
+        String inputModelId,
         String preconditions,
         String sets,
         String emits,

@@ -7,6 +7,7 @@ import java.util.List;
 public record OperationDto(
         String id,
         String name,
+        String inputModelId,
         List<String> preconditions,
         List<FieldValueSettingDto> sets,
         List<String> emits,

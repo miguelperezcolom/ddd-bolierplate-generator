@@ -35,6 +35,7 @@ public class Aggregate {
         aggregate.operations = operations.stream().map(operation -> Operation.of(
                 new OperationId(operation.id()),
                 new OperationName(operation.name()),
+                operation.inputModelId(),
                 operation.preconditions().stream().map(OperationPrecondition::new).toList(),
                 operation.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList(),
                 operation.emits().stream().map(DomainEventName::new).toList(),
@@ -63,6 +64,7 @@ public class Aggregate {
         this.operations = operations.stream().map(operationDto -> Operation.of(
                 new OperationId(operationDto.id()),
                 new OperationName(operationDto.name()),
+                operationDto.inputModelId(),
                 operationDto.preconditions() != null ? operationDto.preconditions().stream().map(OperationPrecondition::new).toList() : List.of(),
                 operationDto.sets() != null ? operationDto.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList() : List.of(),
                 operationDto.emits() != null ? operationDto.emits().stream().map(DomainEventName::new).toList() : List.of(),

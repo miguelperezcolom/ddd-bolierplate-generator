@@ -40,6 +40,7 @@ public class AggregateFileRepository implements AggregateRepository {
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
                                         operationEntity.name(),
+                                        operationEntity.inputModelId(),
                                         Arrays.asList(operationEntity.preconditions().split(",")),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                                         Arrays.asList(operationEntity.emits().split(",")),
@@ -63,6 +64,7 @@ public class AggregateFileRepository implements AggregateRepository {
                         .map(operation -> new OperationEntity(
                                 operation.getId().id(),
                                 operation.getName().name(),
+                                operation.getInputModelId(),
                                 String.join(",", operation.getPreconditions().stream()
                                         .map(OperationPrecondition::precondition).toList()),
                                 toJson(operation.getSets()),

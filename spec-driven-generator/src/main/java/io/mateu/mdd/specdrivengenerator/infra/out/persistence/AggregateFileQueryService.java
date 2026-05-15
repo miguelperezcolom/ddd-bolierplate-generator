@@ -53,6 +53,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
                                         operationEntity.name(),
+                                        operationEntity.inputModelId(),
                                         Arrays.asList(operationEntity.preconditions().split(",")),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                                         Arrays.asList(operationEntity.emits().split(",")),

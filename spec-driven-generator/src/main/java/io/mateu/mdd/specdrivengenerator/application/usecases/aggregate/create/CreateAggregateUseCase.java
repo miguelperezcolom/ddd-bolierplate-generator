@@ -32,6 +32,7 @@ public class CreateAggregateUseCase {
                         .map(operation -> Operation.of(
                                 new OperationId(operation.id()),
                                 new OperationName(operation.name()),
+                                operation.inputModelId(),
                                 operation.preconditions().stream().map(OperationPrecondition::new).toList(),
                                 operation.sets().stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList(),
                                 operation.emits().stream().map(DomainEventName::new).toList(),
