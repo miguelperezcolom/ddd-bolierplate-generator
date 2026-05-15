@@ -7,6 +7,9 @@ public record DomainEventEntity(
         String name,
         String modelId,
         boolean publishAsIntegrationEvent,
-        String integrationModelId
+        String integrationModelId,
+        String topicName,
+        Integer partitions,
+        Long retentionMs
 ) implements Identifiable {
 }

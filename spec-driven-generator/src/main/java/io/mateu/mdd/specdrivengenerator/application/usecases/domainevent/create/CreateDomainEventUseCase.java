@@ -22,7 +22,8 @@ public class CreateDomainEventUseCase {
                 new DomainEventName(command.name()),
                 command.modelId() != null ? new DomainEventModelId(command.modelId()) : null,
                 new DomainEventPublishAsIntegrationEvent(command.publishAsIntegrationEvent()),
-                command.integrationModelId() != null ? new DomainEventIntegrationModelId(command.integrationModelId()) : null);
+                command.integrationModelId() != null ? new DomainEventIntegrationModelId(command.integrationModelId()) : null,
+                command.topicName(), command.partitions(), command.retentionMs());
         repository.save(domainEvent);
     }
 

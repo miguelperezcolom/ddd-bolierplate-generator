@@ -21,7 +21,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
     public Optional<DomainEvent> findById(DomainEventId id) {
         return repository.findById(id.id(), DomainEventEntity.class)
                 .map(entity -> DomainEvent.load(entity.id(), entity.name(), entity.modelId(),
-                        entity.publishAsIntegrationEvent(), entity.integrationModelId()));
+                        entity.publishAsIntegrationEvent(), entity.integrationModelId(),
+                        entity.topicName(), entity.partitions(), entity.retentionMs()));
     }
 
     @Override
@@ -31,7 +32,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 entity.getName().name(),
                 entity.getModelId() != null ? entity.getModelId().id() : null,
                 entity.getPublishAsIntegrationEvent().value(),
-                entity.getIntegrationModelId() != null ? entity.getIntegrationModelId().id() : null));
+                entity.getIntegrationModelId() != null ? entity.getIntegrationModelId().id() : null,
+                entity.getTopicName(), entity.getPartitions(), entity.getRetentionMs()));
         return entity;
     }
 

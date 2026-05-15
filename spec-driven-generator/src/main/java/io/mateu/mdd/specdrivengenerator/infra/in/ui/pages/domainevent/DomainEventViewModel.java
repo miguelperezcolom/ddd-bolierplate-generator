@@ -40,18 +40,22 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String integrationModelId;
 
+    String topicName;
+    Integer partitions;
+    Long retentionMs;
+
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs));
     }
 
     @Override
@@ -65,6 +69,9 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         modelId = model.modelId();
         publishAsIntegrationEvent = model.publishAsIntegrationEvent();
         integrationModelId = model.integrationModelId();
+        topicName = model.topicName();
+        partitions = model.partitions();
+        retentionMs = model.retentionMs();
         return this;
     }
 
