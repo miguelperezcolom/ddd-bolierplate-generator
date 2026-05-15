@@ -51,6 +51,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                         entity.modelId(),
                         entity.persistenceType(),
                         entity.idType(),
+                        entity.tableName(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),

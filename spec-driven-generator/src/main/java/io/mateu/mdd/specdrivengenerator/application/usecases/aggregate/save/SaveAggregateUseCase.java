@@ -22,6 +22,7 @@ public class SaveAggregateUseCase {
                 command.modelId() != null ? new AggregateModelId(command.modelId()) : null,
                 command.persistenceType() != null ? AggregatePersistenceType.valueOf(command.persistenceType()) : null,
                 command.idType() != null ? AggregateIdType.valueOf(command.idType()) : null,
+                command.tableName(),
                 command.operations(),
                 command.invariants()
         );

@@ -38,6 +38,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     String modelId;
     AggregatePersistenceType persistenceType;
     AggregateIdType idType;
+    String tableName;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<OperationViewModel> operations;
@@ -57,6 +58,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 modelId,
                 persistenceType != null ? persistenceType.name() : null,
                 idType != null ? idType.name() : null,
+                tableName,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -95,6 +97,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 modelId,
                 persistenceType != null ? persistenceType.name() : null,
                 idType != null ? idType.name() : null,
+                tableName,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -132,6 +135,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         modelId = model.modelId();
         persistenceType = model.persistenceType() != null ? AggregatePersistenceType.valueOf(model.persistenceType()) : null;
         idType = model.idType() != null ? AggregateIdType.valueOf(model.idType()) : null;
+        tableName = model.tableName();
         operations = model.operations().stream().map(operationDto -> new OperationViewModel(
                operationDto.id(), operationDto.name(), operationDto.inputModelId(), operationDto.outputModelId(),
                operationDto.preconditions(),

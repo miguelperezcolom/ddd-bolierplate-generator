@@ -38,6 +38,7 @@ public class AggregateFileRepository implements AggregateRepository {
                         entity.modelId(),
                         entity.persistenceType(),
                         entity.idType(),
+                        entity.tableName(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
@@ -67,6 +68,7 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.getModelId() != null ? entity.getModelId().id() : null,
                 entity.getPersistenceType() != null ? entity.getPersistenceType().name() : null,
                 entity.getIdType() != null ? entity.getIdType().name() : null,
+                entity.getTableName(),
                 entity.getOperations().stream()
                         .map(operation -> new OperationEntity(
                                 operation.getId().id(),

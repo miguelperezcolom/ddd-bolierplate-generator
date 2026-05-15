@@ -9,6 +9,7 @@ public record CreateAggregateCommand(String id, String name,
                                      String modelId,
                                      String persistenceType,
                                      String idType,
+                                     String tableName,
                                      List<OperationDto> operations,
                                      List<InvariantDto> invariants) {
 
