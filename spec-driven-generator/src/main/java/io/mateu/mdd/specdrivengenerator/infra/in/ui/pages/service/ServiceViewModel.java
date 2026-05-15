@@ -11,6 +11,7 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSup
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
+import io.mateu.uidl.annotations.Tab;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -37,6 +38,17 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String gitRepository;
     String database;
 
+    @Tab("Kubernetes")
+    Integer kubernetesReplicas;
+    String kubernetesCpuRequest;
+    String kubernetesCpuLimit;
+    String kubernetesMemoryRequest;
+    String kubernetesMemoryLimit;
+    boolean kubernetesHpaEnabled;
+    Integer kubernetesHpaMinReplicas;
+    Integer kubernetesHpaMaxReplicas;
+    Integer kubernetesHpaCpuThreshold;
+
     @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     List<String> modules;
 
@@ -45,13 +57,23 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, database, modules));
+        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, database,
+                kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
+                kubernetesMemoryRequest, kubernetesMemoryLimit,
+                kubernetesHpaEnabled, kubernetesHpaMinReplicas,
+                kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
+                modules));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, database, modules));
+        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, database,
+                kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
+                kubernetesMemoryRequest, kubernetesMemoryLimit,
+                kubernetesHpaEnabled, kubernetesHpaMinReplicas,
+                kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
+                modules));
     }
 
     @Override
@@ -64,6 +86,15 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         gitRepository = model.gitRepository();
         database = model.database();
+        kubernetesReplicas = model.kubernetesReplicas();
+        kubernetesCpuRequest = model.kubernetesCpuRequest();
+        kubernetesCpuLimit = model.kubernetesCpuLimit();
+        kubernetesMemoryRequest = model.kubernetesMemoryRequest();
+        kubernetesMemoryLimit = model.kubernetesMemoryLimit();
+        kubernetesHpaEnabled = model.kubernetesHpaEnabled();
+        kubernetesHpaMinReplicas = model.kubernetesHpaMinReplicas();
+        kubernetesHpaMaxReplicas = model.kubernetesHpaMaxReplicas();
+        kubernetesHpaCpuThreshold = model.kubernetesHpaCpuThreshold();
         modules = model.moduleIds();
         return this;
     }

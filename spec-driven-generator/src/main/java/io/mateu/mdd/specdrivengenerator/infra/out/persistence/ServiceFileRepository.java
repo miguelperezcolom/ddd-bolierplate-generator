@@ -20,7 +20,12 @@ public class ServiceFileRepository implements ServiceRepository {
     @Override
     public Optional<Service> findById(ServiceId id) {
         return repository.findById(id.id(), ServiceEntity.class)
-                .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.database(), entity.moduleIds()));
+                .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.database(),
+                        entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
+                        entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
+                        entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
+                        entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
+                        entity.moduleIds()));
     }
 
     @Override
@@ -30,6 +35,15 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getName().name(),
                 entity.getGitRepository(),
                 entity.getDatabase(),
+                entity.getKubernetesReplicas(),
+                entity.getKubernetesCpuRequest(),
+                entity.getKubernetesCpuLimit(),
+                entity.getKubernetesMemoryRequest(),
+                entity.getKubernetesMemoryLimit(),
+                entity.isKubernetesHpaEnabled(),
+                entity.getKubernetesHpaMinReplicas(),
+                entity.getKubernetesHpaMaxReplicas(),
+                entity.getKubernetesHpaCpuThreshold(),
                 entity.getModules().stream().map(ModuleId::id).toList()));
         return entity;
     }

@@ -18,6 +18,15 @@ public class SaveServiceUseCase {
         service.update(new ServiceName(command.name()),
                 command.gitRepository(),
                 command.database(),
+                command.kubernetesReplicas(),
+                command.kubernetesCpuRequest(),
+                command.kubernetesCpuLimit(),
+                command.kubernetesMemoryRequest(),
+                command.kubernetesMemoryLimit(),
+                command.kubernetesHpaEnabled(),
+                command.kubernetesHpaMinReplicas(),
+                command.kubernetesHpaMaxReplicas(),
+                command.kubernetesHpaCpuThreshold(),
                 command.moduleIds().stream().map(ModuleId::new).toList());
         repository.save(service);
     }
