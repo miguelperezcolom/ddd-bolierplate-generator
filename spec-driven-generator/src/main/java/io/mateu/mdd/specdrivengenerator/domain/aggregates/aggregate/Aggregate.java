@@ -29,10 +29,12 @@ public class Aggregate {
     private AggregatePersistenceType persistenceType;
     private AggregateIdType idType;
     private String tableName;
+    private String tableSchema;
+    private boolean optimisticLockingEnabled;
     private List<Operation> operations;
     private List<Invariant> invariants;
 
-    public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, String tableName, List<OperationDto> operations, List<InvariantDto> invariants) {
+    public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, List<OperationDto> operations, List<InvariantDto> invariants) {
         var aggregate = new Aggregate();
         aggregate.id = new AggregateId(id);
         aggregate.name = new AggregateName(name);
@@ -40,6 +42,8 @@ public class Aggregate {
         aggregate.persistenceType = persistenceType != null ? AggregatePersistenceType.valueOf(persistenceType) : null;
         aggregate.idType = idType != null ? AggregateIdType.valueOf(idType) : null;
         aggregate.tableName = tableName;
+        aggregate.tableSchema = tableSchema;
+        aggregate.optimisticLockingEnabled = optimisticLockingEnabled;
         aggregate.operations = operations.stream().map(operation -> Operation.of(
                 new OperationId(operation.id()),
                 new OperationName(operation.name()),
@@ -59,7 +63,7 @@ public class Aggregate {
         return aggregate;
     }
 
-    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, List<Operation> operations, List<Invariant> invariants) {
+    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, List<Operation> operations, List<Invariant> invariants) {
         var aggregate = new Aggregate();
         aggregate.id = id;
         aggregate.name = name;
@@ -67,17 +71,21 @@ public class Aggregate {
         aggregate.persistenceType = persistenceType;
         aggregate.idType = idType;
         aggregate.tableName = tableName;
+        aggregate.tableSchema = tableSchema;
+        aggregate.optimisticLockingEnabled = optimisticLockingEnabled;
         aggregate.operations = operations;
         aggregate.invariants = invariants;
         return aggregate;
     }
 
-    public void update(AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, List<OperationDto> operations, List<InvariantDto> invariants) {
+    public void update(AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, List<OperationDto> operations, List<InvariantDto> invariants) {
         this.name = name;
         this.modelId = modelId;
         this.persistenceType = persistenceType;
         this.idType = idType;
         this.tableName = tableName;
+        this.tableSchema = tableSchema;
+        this.optimisticLockingEnabled = optimisticLockingEnabled;
         this.operations = operations.stream().map(operationDto -> Operation.of(
                 new OperationId(operationDto.id()),
                 new OperationName(operationDto.name()),

@@ -33,6 +33,8 @@ public class CreateAggregateUseCase {
                 command.persistenceType() != null ? AggregatePersistenceType.valueOf(command.persistenceType()) : null,
                 command.idType() != null ? AggregateIdType.valueOf(command.idType()) : null,
                 command.tableName(),
+                command.tableSchema(),
+                command.optimisticLockingEnabled(),
                 command.operations().stream()
                         .map(operation -> Operation.of(
                                 new OperationId(operation.id()),

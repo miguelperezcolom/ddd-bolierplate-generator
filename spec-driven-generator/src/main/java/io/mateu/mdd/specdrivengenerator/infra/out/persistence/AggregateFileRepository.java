@@ -39,6 +39,8 @@ public class AggregateFileRepository implements AggregateRepository {
                         entity.persistenceType(),
                         entity.idType(),
                         entity.tableName(),
+                        entity.tableSchema(),
+                        entity.optimisticLockingEnabled(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
@@ -69,6 +71,8 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.getPersistenceType() != null ? entity.getPersistenceType().name() : null,
                 entity.getIdType() != null ? entity.getIdType().name() : null,
                 entity.getTableName(),
+                entity.getTableSchema(),
+                entity.isOptimisticLockingEnabled(),
                 entity.getOperations().stream()
                         .map(operation -> new OperationEntity(
                                 operation.getId().id(),

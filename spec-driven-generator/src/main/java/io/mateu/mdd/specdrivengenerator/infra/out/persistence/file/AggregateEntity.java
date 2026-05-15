@@ -11,6 +11,8 @@ public record AggregateEntity(
         String persistenceType,
         String idType,
         String tableName,
+        String tableSchema,
+        boolean optimisticLockingEnabled,
         List<OperationEntity> operations,
         List<InvariantEntity> invariants
         ) implements Identifiable {

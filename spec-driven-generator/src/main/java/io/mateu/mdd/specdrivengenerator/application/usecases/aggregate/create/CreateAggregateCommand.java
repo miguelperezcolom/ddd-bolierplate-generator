@@ -10,6 +10,8 @@ public record CreateAggregateCommand(String id, String name,
                                      String persistenceType,
                                      String idType,
                                      String tableName,
+                                     String tableSchema,
+                                     boolean optimisticLockingEnabled,
                                      List<OperationDto> operations,
                                      List<InvariantDto> invariants) {
 

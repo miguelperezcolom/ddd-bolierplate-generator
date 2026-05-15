@@ -23,6 +23,8 @@ public class SaveAggregateUseCase {
                 command.persistenceType() != null ? AggregatePersistenceType.valueOf(command.persistenceType()) : null,
                 command.idType() != null ? AggregateIdType.valueOf(command.idType()) : null,
                 command.tableName(),
+                command.tableSchema(),
+                command.optimisticLockingEnabled(),
                 command.operations(),
                 command.invariants()
         );

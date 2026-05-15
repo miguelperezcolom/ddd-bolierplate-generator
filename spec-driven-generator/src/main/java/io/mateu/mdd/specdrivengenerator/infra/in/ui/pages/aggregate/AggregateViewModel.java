@@ -39,6 +39,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     AggregatePersistenceType persistenceType;
     AggregateIdType idType;
     String tableName;
+    String tableSchema;
+    boolean optimisticLockingEnabled;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<OperationViewModel> operations;
@@ -59,6 +61,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 persistenceType != null ? persistenceType.name() : null,
                 idType != null ? idType.name() : null,
                 tableName,
+                tableSchema,
+                optimisticLockingEnabled,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -98,6 +102,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 persistenceType != null ? persistenceType.name() : null,
                 idType != null ? idType.name() : null,
                 tableName,
+                tableSchema,
+                optimisticLockingEnabled,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -136,6 +142,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         persistenceType = model.persistenceType() != null ? AggregatePersistenceType.valueOf(model.persistenceType()) : null;
         idType = model.idType() != null ? AggregateIdType.valueOf(model.idType()) : null;
         tableName = model.tableName();
+        tableSchema = model.tableSchema();
+        optimisticLockingEnabled = model.optimisticLockingEnabled();
         operations = model.operations().stream().map(operationDto -> new OperationViewModel(
                operationDto.id(), operationDto.name(), operationDto.inputModelId(), operationDto.outputModelId(),
                operationDto.preconditions(),
