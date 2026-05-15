@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -80,6 +81,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     LoggingProvider loggingProvider;
     String loggingEndpoint;
 
+    @Tab("LLM")
+    LlmProvider llmProvider;
+    String llmApiUrl;
+    String llmApiKey;
+    String llmModel;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -103,6 +110,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 tracingProvider, tracingEndpoint,
                 metricsProvider, metricsEndpoint,
                 loggingProvider, loggingEndpoint,
+                llmProvider, llmApiUrl, llmApiKey, llmModel,
                 services));
         return id;
     }
@@ -123,6 +131,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 tracingProvider, tracingEndpoint,
                 metricsProvider, metricsEndpoint,
                 loggingProvider, loggingEndpoint,
+                llmProvider, llmApiUrl, llmApiKey, llmModel,
                 services));
     }
 
@@ -166,6 +175,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         metricsEndpoint = model.metricsEndpoint();
         loggingProvider = model.loggingProvider();
         loggingEndpoint = model.loggingEndpoint();
+        llmProvider = model.llmProvider();
+        llmApiUrl = model.llmApiUrl();
+        llmApiKey = model.llmApiKey();
+        llmModel = model.llmModel();
         services = model.serviceIds();
         return this;
     }

@@ -14,5 +14,7 @@ public record CreateUseCaseCommand(String id, String name,
                                    String outputModelId,
                                    List<UseCaseStepData> steps,
                                    List<String> allowedRoles,
-                                   List<String> allowedScopes) {
+                                   List<String> allowedScopes,
+                                   String apiVersion,
+                                   String mcpDescription) {
 }

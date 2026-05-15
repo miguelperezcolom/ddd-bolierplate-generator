@@ -12,5 +12,7 @@ public record UseCaseDto(String id, String name,
                          String outputModelId,
                          List<UseCaseStepDto> steps,
                          List<String> allowedRoles,
-                         List<String> allowedScopes) {
+                         List<String> allowedScopes,
+                         String apiVersion,
+                         String mcpDescription) {
 }

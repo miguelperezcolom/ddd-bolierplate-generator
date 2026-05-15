@@ -9,6 +9,7 @@ public record ModuleEntity(
         String name,
         String gitRepository,
         List<String> aggregateIds,
-        List<BddScenarioEntity> bddScenarios
+        List<BddScenarioEntity> bddScenarios,
+        String llmSystemPrompt
 ) implements Identifiable {
 }

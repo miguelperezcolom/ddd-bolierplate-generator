@@ -28,7 +28,8 @@ public class ModuleFileRepository implements ModuleRepository {
                         entity.bddScenarios() == null ? List.of() :
                                 entity.bddScenarios().stream()
                                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
-                                        .toList()));
+                                        .toList(),
+                        entity.llmSystemPrompt()));
     }
 
     @Override
@@ -39,7 +40,8 @@ public class ModuleFileRepository implements ModuleRepository {
                         .toList();
         repository.save(new ModuleEntity(entity.getId().id(), entity.getName().name(), entity.getGitRepository(),
                 entity.getAggregateIds().stream().map(AggregateId::id).toList(),
-                bddScenarioEntities));
+                bddScenarioEntities,
+                entity.getLlmSystemPrompt()));
         return entity;
     }
 

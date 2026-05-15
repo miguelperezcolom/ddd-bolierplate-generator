@@ -34,7 +34,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.outputModelId(),
                         toSteps(entity.steps()),
                         entity.allowedRoles(),
-                        entity.allowedScopes()));
+                        entity.allowedScopes(),
+                        entity.apiVersion(),
+                        entity.mcpDescription()));
     }
 
     @Override
@@ -51,7 +53,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null,
                 toStepEntities(entity.getSteps()),
                 entity.getAllowedRoles(),
-                entity.getAllowedScopes()));
+                entity.getAllowedScopes(),
+                entity.getApiVersion() != null ? entity.getApiVersion().version() : null,
+                entity.getMcpDescription()));
         return entity;
     }
 

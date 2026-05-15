@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -53,6 +54,10 @@ public class Project {
     private String metricsEndpoint;
     private LoggingProvider loggingProvider;
     private String loggingEndpoint;
+    private LlmProvider llmProvider;
+    private String llmApiUrl;
+    private String llmApiKey;
+    private String llmModel;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -77,6 +82,8 @@ public class Project {
                              TracingProvider tracingProvider, String tracingEndpoint,
                              MetricsProvider metricsProvider, String metricsEndpoint,
                              LoggingProvider loggingProvider, String loggingEndpoint,
+                             LlmProvider llmProvider, String llmApiUrl,
+                             String llmApiKey, String llmModel,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -113,6 +120,10 @@ public class Project {
         project.metricsEndpoint = metricsEndpoint;
         project.loggingProvider = loggingProvider;
         project.loggingEndpoint = loggingEndpoint;
+        project.llmProvider = llmProvider;
+        project.llmApiUrl = llmApiUrl;
+        project.llmApiKey = llmApiKey;
+        project.llmModel = llmModel;
         project.services = services;
         return project;
     }
@@ -133,6 +144,8 @@ public class Project {
                                 TracingProvider tracingProvider, String tracingEndpoint,
                                 MetricsProvider metricsProvider, String metricsEndpoint,
                                 LoggingProvider loggingProvider, String loggingEndpoint,
+                                LlmProvider llmProvider, String llmApiUrl,
+                                String llmApiKey, String llmModel,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -169,6 +182,10 @@ public class Project {
         project.metricsEndpoint = metricsEndpoint;
         project.loggingProvider = loggingProvider;
         project.loggingEndpoint = loggingEndpoint;
+        project.llmProvider = llmProvider;
+        project.llmApiUrl = llmApiUrl;
+        project.llmApiKey = llmApiKey;
+        project.llmModel = llmModel;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -189,6 +206,8 @@ public class Project {
                        TracingProvider tracingProvider, String tracingEndpoint,
                        MetricsProvider metricsProvider, String metricsEndpoint,
                        LoggingProvider loggingProvider, String loggingEndpoint,
+                       LlmProvider llmProvider, String llmApiUrl,
+                       String llmApiKey, String llmModel,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -223,6 +242,10 @@ public class Project {
         this.metricsEndpoint = metricsEndpoint;
         this.loggingProvider = loggingProvider;
         this.loggingEndpoint = loggingEndpoint;
+        this.llmProvider = llmProvider;
+        this.llmApiUrl = llmApiUrl;
+        this.llmApiKey = llmApiKey;
+        this.llmModel = llmModel;
         this.services = services;
     }
 }

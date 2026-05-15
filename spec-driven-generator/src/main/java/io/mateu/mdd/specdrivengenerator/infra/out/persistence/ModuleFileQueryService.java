@@ -48,6 +48,7 @@ public class ModuleFileQueryService implements ModuleQueryService {
                         entity.bddScenarios() == null ? List.of() :
                                 entity.bddScenarios().stream()
                                         .map(s -> new BddScenarioDto(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
-                                        .toList()));
+                                        .toList(),
+                        entity.llmSystemPrompt()));
     }
 }

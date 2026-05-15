@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -51,6 +52,8 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.tracingProvider(), entity.tracingEndpoint(),
                         entity.metricsProvider(), entity.metricsEndpoint(),
                         entity.loggingProvider(), entity.loggingEndpoint(),
+                        entity.llmProvider(), entity.llmApiUrl(),
+                        entity.llmApiKey(), entity.llmModel(),
                         entity.serviceIds()));
     }
 
@@ -79,6 +82,8 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getTracingProvider(), entity.getTracingEndpoint(),
                 entity.getMetricsProvider(), entity.getMetricsEndpoint(),
                 entity.getLoggingProvider(), entity.getLoggingEndpoint(),
+                entity.getLlmProvider(), entity.getLlmApiUrl(),
+                entity.getLlmApiKey(), entity.getLlmModel(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

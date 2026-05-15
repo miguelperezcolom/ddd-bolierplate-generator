@@ -22,7 +22,7 @@ public class CreateModuleUseCase {
                 command.bddScenarios().stream()
                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                         .toList();
-        var module = Module.of(new ModuleId(command.id()), new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList(), bddScenarios);
+        var module = Module.of(new ModuleId(command.id()), new ModuleName(command.name()), command.gitRepository(), command.aggregates().stream().map(AggregateId::new).toList(), bddScenarios, command.llmSystemPrompt());
         repository.save(module);
     }
 

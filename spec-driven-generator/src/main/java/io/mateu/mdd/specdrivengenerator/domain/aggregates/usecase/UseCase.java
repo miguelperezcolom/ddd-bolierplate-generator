@@ -20,6 +20,8 @@ public class UseCase {
     private List<UseCaseStep> steps;
     private List<String> allowedRoles;
     private List<String> allowedScopes;
+    private UseCaseApiVersion apiVersion;
+    private String mcpDescription;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -31,7 +33,9 @@ public class UseCase {
                              UseCaseOutputModelId outputModelId,
                              List<UseCaseStep> steps,
                              List<String> allowedRoles,
-                             List<String> allowedScopes) {
+                             List<String> allowedScopes,
+                             UseCaseApiVersion apiVersion,
+                             String mcpDescription) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -45,6 +49,8 @@ public class UseCase {
         useCase.steps = steps != null ? steps : List.of();
         useCase.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
         useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
+        useCase.apiVersion = apiVersion;
+        useCase.mcpDescription = mcpDescription;
         return useCase;
     }
 
@@ -58,7 +64,9 @@ public class UseCase {
                                String outputModelId,
                                List<UseCaseStep> steps,
                                List<String> allowedRoles,
-                               List<String> allowedScopes) {
+                               List<String> allowedScopes,
+                               String apiVersion,
+                               String mcpDescription) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -72,6 +80,8 @@ public class UseCase {
         useCase.steps = steps != null ? steps : List.of();
         useCase.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
         useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
+        useCase.apiVersion = apiVersion != null ? new UseCaseApiVersion(apiVersion) : null;
+        useCase.mcpDescription = mcpDescription;
         return useCase;
     }
 
@@ -85,7 +95,9 @@ public class UseCase {
                        UseCaseOutputModelId outputModelId,
                        List<UseCaseStep> steps,
                        List<String> allowedRoles,
-                       List<String> allowedScopes) {
+                       List<String> allowedScopes,
+                       UseCaseApiVersion apiVersion,
+                       String mcpDescription) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -97,5 +109,7 @@ public class UseCase {
         this.steps = steps != null ? steps : List.of();
         this.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
         this.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
+        this.apiVersion = apiVersion;
+        this.mcpDescription = mcpDescription;
     }
 }

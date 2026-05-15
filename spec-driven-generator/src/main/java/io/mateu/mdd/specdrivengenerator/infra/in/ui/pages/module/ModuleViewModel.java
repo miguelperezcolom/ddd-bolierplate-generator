@@ -37,6 +37,8 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
     List<String> aggregates;
 
+    String llmSystemPrompt;
+
     @Tab("BDD Tests")
     List<BddScenarioViewModel> bddScenarios = new ArrayList<>();
 
@@ -45,13 +47,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios)));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios)));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, toBddScenarioData(bddScenarios), llmSystemPrompt));
     }
 
     @Override
@@ -64,6 +66,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         name = model.name();
         gitRepository = model.gitRepository();
         aggregates = model.aggregateIds();
+        llmSystemPrompt = model.llmSystemPrompt();
         bddScenarios = model.bddScenarios() == null ? new ArrayList<>() :
                 model.bddScenarios().stream().map(s -> {
                     var vm = new BddScenarioViewModel();

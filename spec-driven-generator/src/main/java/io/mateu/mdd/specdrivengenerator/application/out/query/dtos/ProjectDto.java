@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -26,5 +27,7 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          TracingProvider tracingProvider, String tracingEndpoint,
                          MetricsProvider metricsProvider, String metricsEndpoint,
                          LoggingProvider loggingProvider, String loggingEndpoint,
+                         LlmProvider llmProvider, String llmApiUrl,
+                         String llmApiKey, String llmModel,
                          List<String> serviceIds) {
 }

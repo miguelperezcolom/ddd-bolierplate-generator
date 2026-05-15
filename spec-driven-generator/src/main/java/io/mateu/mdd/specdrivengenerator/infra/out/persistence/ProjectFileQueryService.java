@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryServic
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -70,6 +71,8 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.tracingProvider(), entity.tracingEndpoint(),
                         entity.metricsProvider(), entity.metricsEndpoint(),
                         entity.loggingProvider(), entity.loggingEndpoint(),
+                        entity.llmProvider(), entity.llmApiUrl(),
+                        entity.llmApiKey(), entity.llmModel(),
                         entity.serviceIds()));
     }
 }

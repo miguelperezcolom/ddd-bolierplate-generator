@@ -28,7 +28,9 @@ public class CreateUseCaseUseCase {
                 command.outputModelId() != null ? new UseCaseOutputModelId(command.outputModelId()) : null,
                 toSteps(command.steps()),
                 command.allowedRoles(),
-                command.allowedScopes());
+                command.allowedScopes(),
+                command.apiVersion() != null ? new UseCaseApiVersion(command.apiVersion()) : null,
+                command.mcpDescription());
         repository.save(useCase);
     }
 

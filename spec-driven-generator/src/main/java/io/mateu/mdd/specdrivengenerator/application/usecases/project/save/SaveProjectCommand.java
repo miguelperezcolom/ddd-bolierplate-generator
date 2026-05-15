@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.save;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
@@ -26,6 +27,8 @@ public record SaveProjectCommand(String id, String name, String outputPath, Stri
                                  TracingProvider tracingProvider, String tracingEndpoint,
                                  MetricsProvider metricsProvider, String metricsEndpoint,
                                  LoggingProvider loggingProvider, String loggingEndpoint,
+                                 LlmProvider llmProvider, String llmApiUrl,
+                                 String llmApiKey, String llmModel,
                                  List<String> serviceIds) {
 
     public SaveProjectCommand {

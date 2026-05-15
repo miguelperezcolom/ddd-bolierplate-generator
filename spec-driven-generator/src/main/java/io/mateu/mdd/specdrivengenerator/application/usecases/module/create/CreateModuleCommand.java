@@ -4,7 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.module.BddScenarioD
 
 import java.util.List;
 
-public record CreateModuleCommand(String id, String name, String gitRepository, List<String> aggregates, List<BddScenarioData> bddScenarios) {
+public record CreateModuleCommand(String id, String name, String gitRepository, List<String> aggregates, List<BddScenarioData> bddScenarios, String llmSystemPrompt) {
 
     public CreateModuleCommand {
         if (aggregates == null) aggregates = List.of();
