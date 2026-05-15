@@ -55,6 +55,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                         operationEntity.id(),
                                         operationEntity.name(),
                                         operationEntity.inputModelId(),
+                                        operationEntity.outputModelId(),
                                         Arrays.asList(operationEntity.preconditions().split(",")),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                                         Arrays.asList(operationEntity.emits().split(",")),

@@ -8,6 +8,7 @@ import java.util.List;
 public record OperationViewModel(String id,
                                  String name,
                                  String inputModelId,
+                                 String outputModelId,
                                  @HiddenInList
                                  List<String> preconditions,
                                  @HiddenInList

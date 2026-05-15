@@ -8,6 +8,7 @@ public record OperationDto(
         String id,
         String name,
         String inputModelId,
+        String outputModelId,
         List<String> preconditions,
         List<FieldValueSettingDto> sets,
         List<String> emits,

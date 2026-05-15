@@ -16,6 +16,7 @@ public class Operation {
     OperationId id;
     OperationName name;
     String inputModelId;
+    String outputModelId;
     List<OperationPrecondition> preconditions;
     List<FieldValueSetting> sets;
     List<DomainEventName> emits;
@@ -24,6 +25,7 @@ public class Operation {
     public static Operation of(OperationId id,
                                OperationName name,
                                String inputModelId,
+                               String outputModelId,
                                List<OperationPrecondition> preconditions,
                                List<FieldValueSetting> sets,
                                List<DomainEventName> emits,
@@ -32,6 +34,7 @@ public class Operation {
         operation.id = id;
         operation.name = name;
         operation.inputModelId = inputModelId;
+        operation.outputModelId = outputModelId;
         operation.preconditions = preconditions;
         operation.sets = sets;
         operation.emits = emits;
@@ -42,6 +45,7 @@ public class Operation {
     public static Operation load(String id,
                                  String name,
                                  String inputModelId,
+                                 String outputModelId,
                                  List<String> preconditions,
                                  List<FieldValueSettingDto> sets,
                                  List<String> emits,
@@ -50,6 +54,7 @@ public class Operation {
         operation.id = new OperationId(id);
         operation.name = new OperationName(name);
         operation.inputModelId = inputModelId;
+        operation.outputModelId = outputModelId;
         operation.preconditions = preconditions.stream().map(OperationPrecondition::new).toList();
         operation.sets = sets.stream().map(setting -> new FieldValueSetting(setting.fieldName(), setting.value())).toList();
         operation.emits = emits.stream().map(DomainEventName::new).toList();

@@ -6,6 +6,7 @@ public record OperationEntity(
         String id,
         String name,
         String inputModelId,
+        String outputModelId,
         String preconditions,
         String sets,
         String emits,

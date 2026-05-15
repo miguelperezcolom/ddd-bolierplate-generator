@@ -59,6 +59,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                                 operationViewModel.id(),
                                 operationViewModel.name(),
                                 operationViewModel.inputModelId(),
+                                operationViewModel.outputModelId(),
                                 operationViewModel.preconditions(),
                                 operationViewModel.sets().stream()
                                         .map(settingViewModel -> new FieldValueSettingDto(
@@ -93,6 +94,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                                 operationViewModel.id(),
                                 operationViewModel.name(),
                                 operationViewModel.inputModelId(),
+                                operationViewModel.outputModelId(),
                                 operationViewModel.preconditions(),
                                 operationViewModel.sets() != null ? operationViewModel.sets().stream()
                                         .map(settingViewModel -> new FieldValueSettingDto(
@@ -122,7 +124,7 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         modelId = model.modelId();
         persistenceType = model.persistenceType() != null ? AggregatePersistenceType.valueOf(model.persistenceType()) : null;
         operations = model.operations().stream().map(operationDto -> new OperationViewModel(
-               operationDto.id(), operationDto.name(), operationDto.inputModelId(),
+               operationDto.id(), operationDto.name(), operationDto.inputModelId(), operationDto.outputModelId(),
                operationDto.preconditions(),
                operationDto.sets().stream().map(settingDto -> new FieldValueSettingViewModel(
                        settingDto.fieldName(), settingDto.value())).toList(),
