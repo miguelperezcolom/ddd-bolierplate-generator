@@ -14,6 +14,7 @@ import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.projection.ProjectionC
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.subscription.SubscriptionCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.scheduledtrigger.ScheduledTriggerCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.readmodel.ReadModelCrudOrchestrator;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.role.RoleCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.service.ServiceCrudOrchestrator;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
@@ -75,5 +76,8 @@ public class SpecDrivenGeneratorHome {
 
     @Menu
     ReadModelCrudOrchestrator readModels;
+
+    @Menu
+    RoleCrudOrchestrator roles;
 
 }
