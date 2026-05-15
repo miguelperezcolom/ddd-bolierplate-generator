@@ -153,5 +153,6 @@
     "id" : "22d8b5aa-83cb-4e5f-ab52-3e8d8e0ecf15",
     "name" : "caso de uso"
   } ],
-  "models" : [ ]
+  "models" : [ ],
+  "gateways" : [ ]
 }
