@@ -43,6 +43,6 @@ public class DomainEventFileQueryService implements DomainEventQueryService {
                 .map(entity -> new DomainEventDto(entity.id(), entity.name(), entity.modelId(),
                         entity.publishAsIntegrationEvent(), entity.integrationModelId(),
                         entity.topicName(), entity.partitions(), entity.retentionMs(),
-                        entity.serializationFormat()));
+                        entity.serializationFormat(), entity.compressionType()));
     }
 }

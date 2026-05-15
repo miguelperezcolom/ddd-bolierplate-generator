@@ -11,6 +11,7 @@ public record DomainEventEntity(
         String topicName,
         Integer partitions,
         Long retentionMs,
-        String serializationFormat
+        String serializationFormat,
+        String compressionType
 ) implements Identifiable {
 }

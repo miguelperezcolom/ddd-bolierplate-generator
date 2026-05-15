@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainE
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventPublishAsIntegrationEvent;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventCompressionType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventSerializationFormat;
 import lombok.Getter;
 
@@ -20,12 +21,14 @@ public class DomainEvent {
     private Integer partitions;
     private Long retentionMs;
     private DomainEventSerializationFormat serializationFormat;
+    private DomainEventCompressionType compressionType;
 
     public static DomainEvent of(DomainEventId id, DomainEventName name, DomainEventModelId modelId,
                                  DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
                                  DomainEventIntegrationModelId integrationModelId,
                                  String topicName, Integer partitions, Long retentionMs,
-                                 DomainEventSerializationFormat serializationFormat) {
+                                 DomainEventSerializationFormat serializationFormat,
+                                 DomainEventCompressionType compressionType) {
         var domainEvent = new DomainEvent();
         domainEvent.id = id;
         domainEvent.name = name;
@@ -36,13 +39,14 @@ public class DomainEvent {
         domainEvent.partitions = partitions;
         domainEvent.retentionMs = retentionMs;
         domainEvent.serializationFormat = serializationFormat;
+        domainEvent.compressionType = compressionType;
         return domainEvent;
     }
 
     public static DomainEvent load(String id, String name, String modelId,
                                    boolean publishAsIntegrationEvent, String integrationModelId,
                                    String topicName, Integer partitions, Long retentionMs,
-                                   String serializationFormat) {
+                                   String serializationFormat, String compressionType) {
         var domainEvent = new DomainEvent();
         domainEvent.id = new DomainEventId(id);
         domainEvent.name = new DomainEventName(name);
@@ -53,6 +57,7 @@ public class DomainEvent {
         domainEvent.partitions = partitions;
         domainEvent.retentionMs = retentionMs;
         domainEvent.serializationFormat = serializationFormat != null ? DomainEventSerializationFormat.valueOf(serializationFormat) : null;
+        domainEvent.compressionType = compressionType != null ? DomainEventCompressionType.valueOf(compressionType) : null;
         return domainEvent;
     }
 
@@ -60,7 +65,8 @@ public class DomainEvent {
                        DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
                        DomainEventIntegrationModelId integrationModelId,
                        String topicName, Integer partitions, Long retentionMs,
-                       DomainEventSerializationFormat serializationFormat) {
+                       DomainEventSerializationFormat serializationFormat,
+                       DomainEventCompressionType compressionType) {
         this.name = name;
         this.modelId = modelId;
         this.publishAsIntegrationEvent = publishAsIntegrationEvent;
@@ -69,5 +75,6 @@ public class DomainEvent {
         this.partitions = partitions;
         this.retentionMs = retentionMs;
         this.serializationFormat = serializationFormat;
+        this.compressionType = compressionType;
     }
 }
