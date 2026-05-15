@@ -15,6 +15,7 @@ public record UseCaseEntity(
         String inputModelId,
         String outputModelId,
         List<UseCaseStepEntity> steps,
-        List<String> allowedRoles
+        List<String> allowedRoles,
+        List<String> allowedScopes
 ) implements Identifiable {
 }

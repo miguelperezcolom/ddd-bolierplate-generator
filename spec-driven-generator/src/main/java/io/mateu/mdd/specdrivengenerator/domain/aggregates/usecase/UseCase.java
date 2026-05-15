@@ -19,6 +19,7 @@ public class UseCase {
     private UseCaseOutputModelId outputModelId;
     private List<UseCaseStep> steps;
     private List<String> allowedRoles;
+    private List<String> allowedScopes;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -29,7 +30,8 @@ public class UseCase {
                              UseCaseInputModelId inputModelId,
                              UseCaseOutputModelId outputModelId,
                              List<UseCaseStep> steps,
-                             List<String> allowedRoles) {
+                             List<String> allowedRoles,
+                             List<String> allowedScopes) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -42,6 +44,7 @@ public class UseCase {
         useCase.outputModelId = outputModelId;
         useCase.steps = steps != null ? steps : List.of();
         useCase.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
+        useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
         return useCase;
     }
 
@@ -54,7 +57,8 @@ public class UseCase {
                                String inputModelId,
                                String outputModelId,
                                List<UseCaseStep> steps,
-                               List<String> allowedRoles) {
+                               List<String> allowedRoles,
+                               List<String> allowedScopes) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -67,6 +71,7 @@ public class UseCase {
         useCase.outputModelId = outputModelId != null ? new UseCaseOutputModelId(outputModelId) : null;
         useCase.steps = steps != null ? steps : List.of();
         useCase.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
+        useCase.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
         return useCase;
     }
 
@@ -79,7 +84,8 @@ public class UseCase {
                        UseCaseInputModelId inputModelId,
                        UseCaseOutputModelId outputModelId,
                        List<UseCaseStep> steps,
-                       List<String> allowedRoles) {
+                       List<String> allowedRoles,
+                       List<String> allowedScopes) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -90,5 +96,6 @@ public class UseCase {
         this.outputModelId = outputModelId;
         this.steps = steps != null ? steps : List.of();
         this.allowedRoles = allowedRoles != null ? allowedRoles : List.of();
+        this.allowedScopes = allowedScopes != null ? allowedScopes : List.of();
     }
 }

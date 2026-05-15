@@ -26,7 +26,8 @@ public class SaveUseCaseUseCase {
                 command.inputModelId() != null ? new UseCaseInputModelId(command.inputModelId()) : null,
                 command.outputModelId() != null ? new UseCaseOutputModelId(command.outputModelId()) : null,
                 toSteps(command.steps()),
-                command.allowedRoles());
+                command.allowedRoles(),
+                command.allowedScopes());
         repository.save(useCase);
     }
 

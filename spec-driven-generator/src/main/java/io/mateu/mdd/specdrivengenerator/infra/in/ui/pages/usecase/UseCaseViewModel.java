@@ -51,6 +51,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
 
     List<String> allowedRoles = new ArrayList<>();
 
+    List<String> allowedScopes = new ArrayList<>();
+
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
 
@@ -61,7 +63,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps), allowedRoles));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes));
         return id;
     }
 
@@ -69,7 +71,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
-                inputModelId, outputModelId, toStepData(steps), allowedRoles));
+                inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes));
     }
 
     @Override
@@ -88,6 +90,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         inputModelId = model.inputModelId();
         outputModelId = model.outputModelId();
         allowedRoles = model.allowedRoles() != null ? new ArrayList<>(model.allowedRoles()) : new ArrayList<>();
+        allowedScopes = model.allowedScopes() != null ? new ArrayList<>(model.allowedScopes()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

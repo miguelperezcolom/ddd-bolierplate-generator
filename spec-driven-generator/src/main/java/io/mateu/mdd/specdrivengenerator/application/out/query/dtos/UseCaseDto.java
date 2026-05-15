@@ -11,5 +11,6 @@ public record UseCaseDto(String id, String name,
                          String inputModelId,
                          String outputModelId,
                          List<UseCaseStepDto> steps,
-                         List<String> allowedRoles) {
+                         List<String> allowedRoles,
+                         List<String> allowedScopes) {
 }
