@@ -2,7 +2,10 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.GatewayQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.GatewayDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.GatewayOperationDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.GatewayRow;
+
+import java.util.List;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.uidl.data.ListingData;
@@ -40,6 +43,10 @@ public class GatewayFileQueryService implements GatewayQueryService {
     @Override
     public Optional<GatewayDto> getById(String id) {
         return repository.findById(id, GatewayEntity.class)
-                .map(entity -> new GatewayDto(entity.id(), entity.name()));
+                .map(entity -> new GatewayDto(entity.id(), entity.name(),
+                        entity.operations() == null ? List.of() :
+                                entity.operations().stream()
+                                        .map(o -> new GatewayOperationDto(o.id(), o.name(), o.inputModelId(), o.outputModelId()))
+                                        .toList()));
     }
 }
