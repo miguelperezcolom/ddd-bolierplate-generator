@@ -27,6 +27,10 @@ public class CreateGatewayUseCase {
         var gateway = Gateway.of(
                 new GatewayId(command.id()),
                 new GatewayName(command.name()),
+                command.authType(), command.authUsername(), command.authPassword(),
+                command.authApiKeyHeaderName(), command.authBearerToken(),
+                command.authOAuth2ClientId(), command.authOAuth2ClientSecret(),
+                command.authOAuth2TokenUrl(), command.authOAuth2Scopes(),
                 operations);
         repository.save(gateway);
     }

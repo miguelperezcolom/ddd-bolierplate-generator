@@ -24,7 +24,12 @@ public class SaveGatewayUseCase {
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();
-        gateway.update(new GatewayName(command.name()), operations);
+        gateway.update(new GatewayName(command.name()),
+                command.authType(), command.authUsername(), command.authPassword(),
+                command.authApiKeyHeaderName(), command.authBearerToken(),
+                command.authOAuth2ClientId(), command.authOAuth2ClientSecret(),
+                command.authOAuth2TokenUrl(), command.authOAuth2Scopes(),
+                operations);
         repository.save(gateway);
     }
 

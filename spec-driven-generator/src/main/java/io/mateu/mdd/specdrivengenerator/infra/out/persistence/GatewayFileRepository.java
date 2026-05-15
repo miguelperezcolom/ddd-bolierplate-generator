@@ -25,6 +25,10 @@ public class GatewayFileRepository implements GatewayRepository {
     public Optional<Gateway> findById(GatewayId id) {
         return repository.findById(id.id(), GatewayEntity.class)
                 .map(entity -> Gateway.load(entity.id(), entity.name(),
+                        entity.authType(), entity.authUsername(), entity.authPassword(),
+                        entity.authApiKeyHeaderName(), entity.authBearerToken(),
+                        entity.authOAuth2ClientId(), entity.authOAuth2ClientSecret(),
+                        entity.authOAuth2TokenUrl(), entity.authOAuth2Scopes(),
                         entity.operations() == null ? List.of() :
                                 entity.operations().stream()
                                         .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
@@ -44,6 +48,10 @@ public class GatewayFileRepository implements GatewayRepository {
         repository.save(new GatewayEntity(
                 entity.getId().id(),
                 entity.getName().name(),
+                entity.getAuthType(), entity.getAuthUsername(), entity.getAuthPassword(),
+                entity.getAuthApiKeyHeaderName(), entity.getAuthBearerToken(),
+                entity.getAuthOAuth2ClientId(), entity.getAuthOAuth2ClientSecret(),
+                entity.getAuthOAuth2TokenUrl(), entity.getAuthOAuth2Scopes(),
                 operationEntities));
         return entity;
     }
