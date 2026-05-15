@@ -4,6 +4,8 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import lombok.Getter;
 
@@ -23,6 +25,13 @@ public class Project {
     private String kubernetesContext;
     private String kubernetesToken;
     private String kubernetesCertificateAuthorityData;
+    private TerraformProvider terraformProvider;
+    private String terraformProviderVersion;
+    private TerraformBackendType terraformBackendType;
+    private String terraformBackendBucket;
+    private String terraformBackendRegion;
+    private String terraformBackendKey;
+    private String terraformWorkspace;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -36,6 +45,10 @@ public class Project {
                              String kubernetesContext,
                              String kubernetesToken,
                              String kubernetesCertificateAuthorityData,
+                             TerraformProvider terraformProvider, String terraformProviderVersion,
+                             TerraformBackendType terraformBackendType,
+                             String terraformBackendBucket, String terraformBackendRegion,
+                             String terraformBackendKey, String terraformWorkspace,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -49,6 +62,13 @@ public class Project {
         project.kubernetesContext = kubernetesContext;
         project.kubernetesToken = kubernetesToken;
         project.kubernetesCertificateAuthorityData = kubernetesCertificateAuthorityData;
+        project.terraformProvider = terraformProvider;
+        project.terraformProviderVersion = terraformProviderVersion;
+        project.terraformBackendType = terraformBackendType;
+        project.terraformBackendBucket = terraformBackendBucket;
+        project.terraformBackendRegion = terraformBackendRegion;
+        project.terraformBackendKey = terraformBackendKey;
+        project.terraformWorkspace = terraformWorkspace;
         project.services = services;
         return project;
     }
@@ -58,6 +78,10 @@ public class Project {
                                 String kubernetesClusterUrl, String kubernetesNamespace,
                                 String kubernetesContext, String kubernetesToken,
                                 String kubernetesCertificateAuthorityData,
+                                TerraformProvider terraformProvider, String terraformProviderVersion,
+                                TerraformBackendType terraformBackendType,
+                                String terraformBackendBucket, String terraformBackendRegion,
+                                String terraformBackendKey, String terraformWorkspace,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -71,6 +95,13 @@ public class Project {
         project.kubernetesContext = kubernetesContext;
         project.kubernetesToken = kubernetesToken;
         project.kubernetesCertificateAuthorityData = kubernetesCertificateAuthorityData;
+        project.terraformProvider = terraformProvider;
+        project.terraformProviderVersion = terraformProviderVersion;
+        project.terraformBackendType = terraformBackendType;
+        project.terraformBackendBucket = terraformBackendBucket;
+        project.terraformBackendRegion = terraformBackendRegion;
+        project.terraformBackendKey = terraformBackendKey;
+        project.terraformWorkspace = terraformWorkspace;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -80,6 +111,10 @@ public class Project {
                        String kubernetesClusterUrl, String kubernetesNamespace,
                        String kubernetesContext, String kubernetesToken,
                        String kubernetesCertificateAuthorityData,
+                       TerraformProvider terraformProvider, String terraformProviderVersion,
+                       TerraformBackendType terraformBackendType,
+                       String terraformBackendBucket, String terraformBackendRegion,
+                       String terraformBackendKey, String terraformWorkspace,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -91,6 +126,13 @@ public class Project {
         this.kubernetesContext = kubernetesContext;
         this.kubernetesToken = kubernetesToken;
         this.kubernetesCertificateAuthorityData = kubernetesCertificateAuthorityData;
+        this.terraformProvider = terraformProvider;
+        this.terraformProviderVersion = terraformProviderVersion;
+        this.terraformBackendType = terraformBackendType;
+        this.terraformBackendBucket = terraformBackendBucket;
+        this.terraformBackendRegion = terraformBackendRegion;
+        this.terraformBackendKey = terraformBackendKey;
+        this.terraformWorkspace = terraformWorkspace;
         this.services = services;
     }
 }

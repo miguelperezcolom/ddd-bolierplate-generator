@@ -3,6 +3,8 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryService;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
@@ -52,6 +54,10 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.kubernetesContext(),
                         entity.kubernetesToken(),
                         entity.kubernetesCertificateAuthorityData(),
+                        entity.terraformProvider(), entity.terraformProviderVersion(),
+                        entity.terraformBackendType(),
+                        entity.terraformBackendBucket(), entity.terraformBackendRegion(),
+                        entity.terraformBackendKey(), entity.terraformWorkspace(),
                         entity.serviceIds()));
     }
 }

@@ -3,6 +3,8 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
@@ -33,6 +35,10 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.kubernetesContext(),
                         entity.kubernetesToken(),
                         entity.kubernetesCertificateAuthorityData(),
+                        entity.terraformProvider(), entity.terraformProviderVersion(),
+                        entity.terraformBackendType(),
+                        entity.terraformBackendBucket(), entity.terraformBackendRegion(),
+                        entity.terraformBackendKey(), entity.terraformWorkspace(),
                         entity.serviceIds()));
     }
 
@@ -50,6 +56,10 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getKubernetesContext(),
                 entity.getKubernetesToken(),
                 entity.getKubernetesCertificateAuthorityData(),
+                entity.getTerraformProvider(), entity.getTerraformProviderVersion(),
+                entity.getTerraformBackendType(),
+                entity.getTerraformBackendBucket(), entity.getTerraformBackendRegion(),
+                entity.getTerraformBackendKey(), entity.getTerraformWorkspace(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

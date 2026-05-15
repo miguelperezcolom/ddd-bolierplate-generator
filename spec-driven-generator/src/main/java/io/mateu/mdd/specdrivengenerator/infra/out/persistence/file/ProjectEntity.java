@@ -1,5 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence.file;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.uidl.interfaces.Identifiable;
 
 import java.util.List;
@@ -16,6 +18,13 @@ public record ProjectEntity(
         String kubernetesContext,
         String kubernetesToken,
         String kubernetesCertificateAuthorityData,
+        TerraformProvider terraformProvider,
+        String terraformProviderVersion,
+        TerraformBackendType terraformBackendType,
+        String terraformBackendBucket,
+        String terraformBackendRegion,
+        String terraformBackendKey,
+        String terraformWorkspace,
         List<String> serviceIds
 ) implements Identifiable {
 

@@ -27,6 +27,10 @@ public class SaveProjectUseCase {
                 command.kubernetesContext(),
                 command.kubernetesToken(),
                 command.kubernetesCertificateAuthorityData(),
+                command.terraformProvider(), command.terraformProviderVersion(),
+                command.terraformBackendType(),
+                command.terraformBackendBucket(), command.terraformBackendRegion(),
+                command.terraformBackendKey(), command.terraformWorkspace(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

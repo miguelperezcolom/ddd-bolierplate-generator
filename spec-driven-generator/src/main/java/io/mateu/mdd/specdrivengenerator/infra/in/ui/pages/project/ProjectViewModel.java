@@ -6,6 +6,8 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.*;
@@ -42,6 +44,15 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String kubernetesToken;
     String kubernetesCertificateAuthorityData;
 
+    @Tab("Terraform")
+    TerraformProvider terraformProvider;
+    String terraformProviderVersion;
+    TerraformBackendType terraformBackendType;
+    String terraformBackendBucket;
+    String terraformBackendRegion;
+    String terraformBackendKey;
+    String terraformWorkspace;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -54,6 +65,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database,
                 kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
+                terraformProvider, terraformProviderVersion,
+                terraformBackendType,
+                terraformBackendBucket, terraformBackendRegion,
+                terraformBackendKey, terraformWorkspace,
                 services));
         return id;
     }
@@ -63,6 +78,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database,
                 kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
+                terraformProvider, terraformProviderVersion,
+                terraformBackendType,
+                terraformBackendBucket, terraformBackendRegion,
+                terraformBackendKey, terraformWorkspace,
                 services));
     }
 
@@ -83,6 +102,13 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         kubernetesContext = model.kubernetesContext();
         kubernetesToken = model.kubernetesToken();
         kubernetesCertificateAuthorityData = model.kubernetesCertificateAuthorityData();
+        terraformProvider = model.terraformProvider();
+        terraformProviderVersion = model.terraformProviderVersion();
+        terraformBackendType = model.terraformBackendType();
+        terraformBackendBucket = model.terraformBackendBucket();
+        terraformBackendRegion = model.terraformBackendRegion();
+        terraformBackendKey = model.terraformBackendKey();
+        terraformWorkspace = model.terraformWorkspace();
         services = model.serviceIds();
         return this;
     }

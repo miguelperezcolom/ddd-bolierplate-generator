@@ -1,5 +1,8 @@
 package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
+
 import java.util.List;
 
 public record ProjectDto(String id, String name, String outputPath, String packageName,
@@ -7,5 +10,9 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          String kubernetesClusterUrl, String kubernetesNamespace,
                          String kubernetesContext, String kubernetesToken,
                          String kubernetesCertificateAuthorityData,
+                         TerraformProvider terraformProvider, String terraformProviderVersion,
+                         TerraformBackendType terraformBackendType,
+                         String terraformBackendBucket, String terraformBackendRegion,
+                         String terraformBackendKey, String terraformWorkspace,
                          List<String> serviceIds) {
 }
