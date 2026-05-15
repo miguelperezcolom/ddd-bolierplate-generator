@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -39,6 +40,7 @@ public record CreateProjectCommand(String id, String name, String outputPath, St
                                    String fileStorageSecretKey, String fileStorageEndpoint,
                                    EmailProvider emailProvider, String emailHost, Integer emailPort,
                                    String emailUsername, String emailPassword, String emailFrom,
+                                   SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                                    List<String> serviceIds) {
 
 }

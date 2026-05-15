@@ -9,6 +9,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SavePr
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -112,6 +113,11 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String emailPassword;
     String emailFrom;
 
+    @Tab("Secrets")
+    SecretsProvider secretsProvider;
+    String secretsEndpoint;
+    String secretsToken;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -140,6 +146,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 fileStorageProvider, fileStorageBucket, fileStorageRegion,
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
+                secretsProvider, secretsEndpoint, secretsToken,
                 services));
         return id;
     }
@@ -165,6 +172,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 fileStorageProvider, fileStorageBucket, fileStorageRegion,
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
+                secretsProvider, secretsEndpoint, secretsToken,
                 services));
     }
 
@@ -228,6 +236,9 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         emailUsername = model.emailUsername();
         emailPassword = model.emailPassword();
         emailFrom = model.emailFrom();
+        secretsProvider = model.secretsProvider();
+        secretsEndpoint = model.secretsEndpoint();
+        secretsToken = model.secretsToken();
         services = model.serviceIds();
         return this;
     }

@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -39,5 +40,6 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          String fileStorageSecretKey, String fileStorageEndpoint,
                          EmailProvider emailProvider, String emailHost, Integer emailPort,
                          String emailUsername, String emailPassword, String emailFrom,
+                         SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                          List<String> serviceIds) {
 }

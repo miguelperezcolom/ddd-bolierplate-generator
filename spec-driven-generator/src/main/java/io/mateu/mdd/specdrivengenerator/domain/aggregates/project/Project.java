@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPack
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -77,6 +78,9 @@ public class Project {
     private String emailUsername;
     private String emailPassword;
     private String emailFrom;
+    private SecretsProvider secretsProvider;
+    private String secretsEndpoint;
+    private String secretsToken;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -110,6 +114,7 @@ public class Project {
                              String fileStorageSecretKey, String fileStorageEndpoint,
                              EmailProvider emailProvider, String emailHost, Integer emailPort,
                              String emailUsername, String emailPassword, String emailFrom,
+                             SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -166,6 +171,9 @@ public class Project {
         project.emailUsername = emailUsername;
         project.emailPassword = emailPassword;
         project.emailFrom = emailFrom;
+        project.secretsProvider = secretsProvider;
+        project.secretsEndpoint = secretsEndpoint;
+        project.secretsToken = secretsToken;
         project.services = services;
         return project;
     }
@@ -195,6 +203,7 @@ public class Project {
                                 String fileStorageSecretKey, String fileStorageEndpoint,
                                 EmailProvider emailProvider, String emailHost, Integer emailPort,
                                 String emailUsername, String emailPassword, String emailFrom,
+                                SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -251,6 +260,9 @@ public class Project {
         project.emailUsername = emailUsername;
         project.emailPassword = emailPassword;
         project.emailFrom = emailFrom;
+        project.secretsProvider = secretsProvider;
+        project.secretsEndpoint = secretsEndpoint;
+        project.secretsToken = secretsToken;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -280,6 +292,7 @@ public class Project {
                        String fileStorageSecretKey, String fileStorageEndpoint,
                        EmailProvider emailProvider, String emailHost, Integer emailPort,
                        String emailUsername, String emailPassword, String emailFrom,
+                       SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -334,6 +347,9 @@ public class Project {
         this.emailUsername = emailUsername;
         this.emailPassword = emailPassword;
         this.emailFrom = emailFrom;
+        this.secretsProvider = secretsProvider;
+        this.secretsEndpoint = secretsEndpoint;
+        this.secretsToken = secretsToken;
         this.services = services;
     }
 }

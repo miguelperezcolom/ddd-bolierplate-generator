@@ -9,6 +9,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPack
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -59,6 +60,7 @@ public class CreateProjectUseCase {
                 command.fileStorageSecretKey(), command.fileStorageEndpoint(),
                 command.emailProvider(), command.emailHost(), command.emailPort(),
                 command.emailUsername(), command.emailPassword(), command.emailFrom(),
+                command.secretsProvider(), command.secretsEndpoint(), command.secretsToken(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }
