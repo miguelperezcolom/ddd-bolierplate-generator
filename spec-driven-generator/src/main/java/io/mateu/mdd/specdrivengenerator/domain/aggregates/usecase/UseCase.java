@@ -24,6 +24,11 @@ public class UseCase {
     private String mcpDescription;
     private HttpMethod restHttpMethod;
     private String restPath;
+    private Integer asyncRetryCount;
+    private String asyncDeadLetterQueue;
+    private String asyncOrderingKey;
+    private String asyncTopicName;
+    private String asyncConsumerGroup;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -39,7 +44,12 @@ public class UseCase {
                              UseCaseApiVersion apiVersion,
                              String mcpDescription,
                              HttpMethod restHttpMethod,
-                             String restPath) {
+                             String restPath,
+                             Integer asyncRetryCount,
+                             String asyncDeadLetterQueue,
+                             String asyncOrderingKey,
+                             String asyncTopicName,
+                             String asyncConsumerGroup) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -57,6 +67,11 @@ public class UseCase {
         useCase.mcpDescription = mcpDescription;
         useCase.restHttpMethod = restHttpMethod;
         useCase.restPath = restPath;
+        useCase.asyncRetryCount = asyncRetryCount;
+        useCase.asyncDeadLetterQueue = asyncDeadLetterQueue;
+        useCase.asyncOrderingKey = asyncOrderingKey;
+        useCase.asyncTopicName = asyncTopicName;
+        useCase.asyncConsumerGroup = asyncConsumerGroup;
         return useCase;
     }
 
@@ -74,7 +89,12 @@ public class UseCase {
                                String apiVersion,
                                String mcpDescription,
                                HttpMethod restHttpMethod,
-                               String restPath) {
+                               String restPath,
+                               Integer asyncRetryCount,
+                               String asyncDeadLetterQueue,
+                               String asyncOrderingKey,
+                               String asyncTopicName,
+                               String asyncConsumerGroup) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -92,6 +112,11 @@ public class UseCase {
         useCase.mcpDescription = mcpDescription;
         useCase.restHttpMethod = restHttpMethod;
         useCase.restPath = restPath;
+        useCase.asyncRetryCount = asyncRetryCount;
+        useCase.asyncDeadLetterQueue = asyncDeadLetterQueue;
+        useCase.asyncOrderingKey = asyncOrderingKey;
+        useCase.asyncTopicName = asyncTopicName;
+        useCase.asyncConsumerGroup = asyncConsumerGroup;
         return useCase;
     }
 
@@ -109,7 +134,12 @@ public class UseCase {
                        UseCaseApiVersion apiVersion,
                        String mcpDescription,
                        HttpMethod restHttpMethod,
-                       String restPath) {
+                       String restPath,
+                       Integer asyncRetryCount,
+                       String asyncDeadLetterQueue,
+                       String asyncOrderingKey,
+                       String asyncTopicName,
+                       String asyncConsumerGroup) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -125,5 +155,10 @@ public class UseCase {
         this.mcpDescription = mcpDescription;
         this.restHttpMethod = restHttpMethod;
         this.restPath = restPath;
+        this.asyncRetryCount = asyncRetryCount;
+        this.asyncDeadLetterQueue = asyncDeadLetterQueue;
+        this.asyncOrderingKey = asyncOrderingKey;
+        this.asyncTopicName = asyncTopicName;
+        this.asyncConsumerGroup = asyncConsumerGroup;
     }
 }

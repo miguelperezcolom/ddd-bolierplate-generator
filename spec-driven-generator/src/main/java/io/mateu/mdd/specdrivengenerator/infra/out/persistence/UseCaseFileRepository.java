@@ -39,7 +39,12 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.apiVersion(),
                         entity.mcpDescription(),
                         entity.restHttpMethod() != null ? HttpMethod.valueOf(entity.restHttpMethod()) : null,
-                        entity.restPath()));
+                        entity.restPath(),
+                        entity.asyncRetryCount(),
+                        entity.asyncDeadLetterQueue(),
+                        entity.asyncOrderingKey(),
+                        entity.asyncTopicName(),
+                        entity.asyncConsumerGroup()));
     }
 
     @Override
@@ -60,7 +65,12 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getApiVersion() != null ? entity.getApiVersion().version() : null,
                 entity.getMcpDescription(),
                 entity.getRestHttpMethod() != null ? entity.getRestHttpMethod().name() : null,
-                entity.getRestPath()));
+                entity.getRestPath(),
+                entity.getAsyncRetryCount(),
+                entity.getAsyncDeadLetterQueue(),
+                entity.getAsyncOrderingKey(),
+                entity.getAsyncTopicName(),
+                entity.getAsyncConsumerGroup()));
         return entity;
     }
 

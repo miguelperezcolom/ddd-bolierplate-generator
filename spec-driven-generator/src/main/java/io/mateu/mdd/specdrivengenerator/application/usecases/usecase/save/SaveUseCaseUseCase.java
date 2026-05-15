@@ -32,7 +32,12 @@ public class SaveUseCaseUseCase {
                 command.apiVersion() != null ? new UseCaseApiVersion(command.apiVersion()) : null,
                 command.mcpDescription(),
                 command.restHttpMethod() != null ? HttpMethod.valueOf(command.restHttpMethod()) : null,
-                command.restPath());
+                command.restPath(),
+                command.asyncRetryCount(),
+                command.asyncDeadLetterQueue(),
+                command.asyncOrderingKey(),
+                command.asyncTopicName(),
+                command.asyncConsumerGroup());
         repository.save(useCase);
     }
 

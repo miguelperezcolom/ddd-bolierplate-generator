@@ -58,6 +58,11 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     String mcpDescription;
     HttpMethod restHttpMethod;
     String restPath;
+    Integer asyncRetryCount;
+    String asyncDeadLetterQueue;
+    String asyncOrderingKey;
+    String asyncTopicName;
+    String asyncConsumerGroup;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -70,7 +75,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         createUseCase.handle(new CreateUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
-                restHttpMethod != null ? restHttpMethod.name() : null, restPath));
+                restHttpMethod != null ? restHttpMethod.name() : null, restPath,
+                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup));
         return id;
     }
 
@@ -79,7 +85,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         saveUseCase.handle(new SaveUseCaseCommand(id, name,
                 exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
-                restHttpMethod != null ? restHttpMethod.name() : null, restPath));
+                restHttpMethod != null ? restHttpMethod.name() : null, restPath,
+                asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup));
     }
 
     @Override
@@ -103,6 +110,11 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         mcpDescription = model.mcpDescription();
         restHttpMethod = model.restHttpMethod() != null ? HttpMethod.valueOf(model.restHttpMethod()) : null;
         restPath = model.restPath();
+        asyncRetryCount = model.asyncRetryCount();
+        asyncDeadLetterQueue = model.asyncDeadLetterQueue();
+        asyncOrderingKey = model.asyncOrderingKey();
+        asyncTopicName = model.asyncTopicName();
+        asyncConsumerGroup = model.asyncConsumerGroup();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

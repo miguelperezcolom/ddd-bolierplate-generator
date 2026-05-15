@@ -16,5 +16,10 @@ public record UseCaseDto(String id, String name,
                          String apiVersion,
                          String mcpDescription,
                          String restHttpMethod,
-                         String restPath) {
+                         String restPath,
+                         Integer asyncRetryCount,
+                         String asyncDeadLetterQueue,
+                         String asyncOrderingKey,
+                         String asyncTopicName,
+                         String asyncConsumerGroup) {
 }

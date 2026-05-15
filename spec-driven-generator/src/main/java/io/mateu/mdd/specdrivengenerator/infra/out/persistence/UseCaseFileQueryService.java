@@ -63,6 +63,11 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.apiVersion(),
                         entity.mcpDescription(),
                         entity.restHttpMethod(),
-                        entity.restPath()));
+                        entity.restPath(),
+                        entity.asyncRetryCount(),
+                        entity.asyncDeadLetterQueue(),
+                        entity.asyncOrderingKey(),
+                        entity.asyncTopicName(),
+                        entity.asyncConsumerGroup()));
     }
 }
