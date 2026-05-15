@@ -2,7 +2,6 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.aggregate;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AggregateDto;
-import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
@@ -10,6 +9,8 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.Cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.create.CreateAggregateUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.aggregate.save.SaveAggregateUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.*;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -31,9 +32,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     @Hidden
     String id;
     @NotEmpty String name;
-    @Tab
-            @MasterDetail(minHeightWhenDetailVisible = "24rem")
-    List<FieldViewModel> fields;
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String modelId;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<OperationViewModel> operations;
@@ -46,28 +46,11 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
 
     @Override
     public String create(HttpRequest httpRequest) {
-        if (fields == null) {
-            fields = List.of();
-        }
         if (invariants == null) {
             invariants = List.of();
         }
         createUseCase.handle(new CreateAggregateCommand(id, name,
-                fields.stream().map(field -> new FieldDto(
-                        field.name(),
-                        field.label(),
-                        field.type(),
-                        field.help(),
-                        field.valueObject(),
-                        field.entity(),
-                        field.primitiveType(),
-                        field.mandatory(),
-                        field.readonly(),
-                        field.visible(),
-                        field.editable(),
-                        field.searchable(),
-                        field.filterable()
-                )).toList(),
+                modelId,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -95,39 +78,22 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
 
     @Override
     public void save(HttpRequest httpRequest) {
-        if (fields == null) {
-            fields = List.of();
-        }
         if (invariants == null) {
             invariants = List.of();
         }
         saveUseCase.handle(new SaveAggregateCommand(id, name,
-                fields.stream().map(field -> new FieldDto(
-                        field.name(),
-                        field.label(),
-                        field.type(),
-                        field.help(),
-                        field.valueObject(),
-                        field.entity(),
-                        field.primitiveType(),
-                        field.mandatory(),
-                        field.readonly(),
-                        field.visible(),
-                        field.editable(),
-                        field.searchable(),
-                        field.filterable()
-                )).toList(),
+                modelId,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
                                 operationViewModel.name(),
                                 operationViewModel.preconditions(),
-                                operationViewModel.sets() != null?operationViewModel.sets().stream()
+                                operationViewModel.sets() != null ? operationViewModel.sets().stream()
                                         .map(settingViewModel -> new FieldValueSettingDto(
                                                 settingViewModel.fieldName(),
                                                 settingViewModel.value()
                                         ))
-                                        .toList():List.of(),
+                                        .toList() : List.of(),
                                 operationViewModel.emits(),
                                 operationViewModel.type()
                         ))
@@ -147,20 +113,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     public AggregateViewModel load(AggregateDto model) {
         id = model.id();
         name = model.name();
-        fields = model.fields().stream().map(field -> new FieldViewModel(field.name(),
-                field.label(),
-                field.type(),
-                field.help(),
-                field.valueObjectId(),
-                field.entityId(),
-                field.primitiveType(),
-                field.mandatory(),
-                field.readonly(),
-                field.visible(),
-                field.editable(),
-                field.searchable(),
-                field.filterable())).toList();
-       operations = model.operations().stream().map(operationDto -> new OperationViewModel(
+        modelId = model.modelId();
+        operations = model.operations().stream().map(operationDto -> new OperationViewModel(
                operationDto.id(), operationDto.name(), operationDto.preconditions(),
                operationDto.sets().stream().map(settingDto -> new FieldValueSettingViewModel(
                        settingDto.fieldName(), settingDto.value())).toList(),

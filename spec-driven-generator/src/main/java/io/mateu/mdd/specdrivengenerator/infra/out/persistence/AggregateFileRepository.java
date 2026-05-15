@@ -1,7 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.AggregateRepository;
-import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
@@ -10,7 +9,6 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.Aggregate
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.DomainEventName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
-import io.mateu.mdd.specdrivengenerator.domain.aggregates.shared.vo.Field;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.InvariantEntity;
@@ -37,21 +35,7 @@ public class AggregateFileRepository implements AggregateRepository {
                 .map(entity -> Aggregate.load(
                         entity.id(),
                         entity.name(),
-                        entity.fields().stream().map(field -> new FieldDto(
-                                field.name(),
-                                field.label(),
-                                field.type(),
-                                field.help(),
-                                field.valueObjectId(),
-                                field.entityId(),
-                                field.primitiveType(),
-                                field.mandatory(),
-                                field.readonly(),
-                                field.visible(),
-                                field.editable(),
-                                field.searchable(),
-                                field.filterable()
-                        )).toList(),
+                        entity.modelId(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
@@ -71,28 +55,16 @@ public class AggregateFileRepository implements AggregateRepository {
 
     @Override
     public Aggregate save(Aggregate entity) {
-        repository.save(new AggregateEntity(entity.getId().id(), entity.getName().name(),
-                entity.getFields().stream().map(field -> new Field(
-                        field.name(),
-                        field.label(),
-                        field.type(),
-                        field.help(),
-                        field.valueObjectId(),
-                        field.entityId(),
-                        field.primitiveType(),
-                        field.mandatory(),
-                        field.readonly(),
-                        field.visible(),
-                        field.editable(),
-                        field.searchable(),
-                        field.filterable()
-                )).toList(),
+        repository.save(new AggregateEntity(
+                entity.getId().id(),
+                entity.getName().name(),
+                entity.getModelId() != null ? entity.getModelId().id() : null,
                 entity.getOperations().stream()
                         .map(operation -> new OperationEntity(
                                 operation.getId().id(),
                                 operation.getName().name(),
-                                        String.join(",", operation.getPreconditions().stream()
-                                                .map(OperationPrecondition::precondition).toList()),
+                                String.join(",", operation.getPreconditions().stream()
+                                        .map(OperationPrecondition::precondition).toList()),
                                 toJson(operation.getSets()),
                                 String.join(",", operation.getEmits().stream()
                                         .map(DomainEventName::eventName).toList()),
