@@ -29,18 +29,26 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String name;
 
+    boolean exposedAsRest;
+    boolean exposedAsGrpc;
+    boolean exposedAsMcp;
+    boolean exposedAsAsync;
+    boolean exposedAsUi;
+
     final CreateUseCaseUseCase createUseCase;
     final SaveUseCaseUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateUseCaseCommand(id, name));
+        createUseCase.handle(new CreateUseCaseCommand(id, name,
+                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveUseCaseCommand(id, name));
+        saveUseCase.handle(new SaveUseCaseCommand(id, name,
+                exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi));
     }
 
     @Override
@@ -51,6 +59,11 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     public UseCaseViewModel load(UseCaseDto model) {
         id = model.id();
         name = model.name();
+        exposedAsRest = model.exposedAsRest();
+        exposedAsGrpc = model.exposedAsGrpc();
+        exposedAsMcp = model.exposedAsMcp();
+        exposedAsAsync = model.exposedAsAsync();
+        exposedAsUi = model.exposedAsUi();
         return this;
     }
 

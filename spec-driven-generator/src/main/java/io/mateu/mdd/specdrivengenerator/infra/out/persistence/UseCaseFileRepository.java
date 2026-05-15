@@ -20,14 +20,26 @@ public class UseCaseFileRepository implements UseCaseRepository {
     @Override
     public Optional<UseCase> findById(UseCaseId id) {
         return repository.findById(id.id(), UseCaseEntity.class)
-                .map(entity -> UseCase.load(entity.id(), entity.name()));
+                .map(entity -> UseCase.load(
+                        entity.id(),
+                        entity.name(),
+                        entity.exposedAsRest(),
+                        entity.exposedAsGrpc(),
+                        entity.exposedAsMcp(),
+                        entity.exposedAsAsync(),
+                        entity.exposedAsUi()));
     }
 
     @Override
     public UseCase save(UseCase entity) {
         repository.save(new UseCaseEntity(
                 entity.getId().id(),
-                entity.getName().name()));
+                entity.getName().name(),
+                entity.getExposedAsRest().value(),
+                entity.getExposedAsGrpc().value(),
+                entity.getExposedAsMcp().value(),
+                entity.getExposedAsAsync().value(),
+                entity.getExposedAsUi().value()));
         return entity;
     }
 

@@ -40,6 +40,13 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
     @Override
     public Optional<UseCaseDto> getById(String id) {
         return repository.findById(id, UseCaseEntity.class)
-                .map(entity -> new UseCaseDto(entity.id(), entity.name()));
+                .map(entity -> new UseCaseDto(
+                        entity.id(),
+                        entity.name(),
+                        entity.exposedAsRest(),
+                        entity.exposedAsGrpc(),
+                        entity.exposedAsMcp(),
+                        entity.exposedAsAsync(),
+                        entity.exposedAsUi()));
     }
 }

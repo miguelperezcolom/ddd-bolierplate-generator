@@ -4,6 +4,11 @@ import io.mateu.uidl.interfaces.Identifiable;
 
 public record UseCaseEntity(
         String id,
-        String name
+        String name,
+        boolean exposedAsRest,
+        boolean exposedAsGrpc,
+        boolean exposedAsMcp,
+        boolean exposedAsAsync,
+        boolean exposedAsUi
 ) implements Identifiable {
 }
