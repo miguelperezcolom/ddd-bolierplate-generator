@@ -14,7 +14,8 @@ public class CreateEntityUseCase {
     final EntityRepository repository;
 
     public void handle(CreateEntityCommand command) {
-        var entity = Entity.of(new EntityId(command.id()), new EntityName(command.name()));
+        var entity = Entity.of(new EntityId(command.id()), new EntityName(command.name()),
+                command.modelId(), command.parentAggregateId(), command.isCollection());
         repository.save(entity);
     }
 

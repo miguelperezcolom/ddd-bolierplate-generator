@@ -14,7 +14,8 @@ public class SaveEntityUseCase {
 
     public void handle(SaveEntityCommand command) {
         var role = repository.findById(new EntityId(command.id())).orElseThrow();
-        role.update(new EntityName(command.name()));
+        role.update(new EntityName(command.name()),
+                command.modelId(), command.parentAggregateId(), command.isCollection());
         repository.save(role);
     }
 

@@ -1,4 +1,5 @@
 package io.mateu.mdd.specdrivengenerator.application.out.query.dtos;
 
-public record EntityDto(String id, String name) {
+public record EntityDto(String id, String name,
+                        String modelId, String parentAggregateId, boolean isCollection) {
 }

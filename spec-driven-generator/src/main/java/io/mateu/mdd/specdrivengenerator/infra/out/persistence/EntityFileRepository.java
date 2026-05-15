@@ -20,12 +20,14 @@ public class EntityFileRepository implements EntityRepository {
     @Override
     public Optional<Entity> findById(EntityId id) {
         return repository.findById(id.id(), EntityEntity.class)
-                .map(entity -> Entity.load(entity.id(), entity.name()));
+                .map(entity -> Entity.load(entity.id(), entity.name(),
+                        entity.modelId(), entity.parentAggregateId(), entity.isCollection()));
     }
 
     @Override
     public Entity save(Entity entity) {
-        repository.save(new EntityEntity(entity.getId().id(), entity.getName().name()));
+        repository.save(new EntityEntity(entity.getId().id(), entity.getName().name(),
+                entity.getModelId(), entity.getParentAggregateId(), entity.isCollection()));
         return entity;
     }
 

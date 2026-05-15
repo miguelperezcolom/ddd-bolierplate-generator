@@ -6,8 +6,13 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.entity.create.Creat
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.create.CreateEntityUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.save.SaveEntityCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.entity.save.SaveEntityUseCase;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
+import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -26,18 +31,26 @@ public class EntityViewModel implements Identifiable, CrudEditorForm<String>, Cr
     String id;
     @NotEmpty String name;
 
+    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
+    String modelId;
+
+    @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
+    String parentAggregateId;
+
+    boolean isCollection;
+
     final CreateEntityUseCase createUseCase;
     final SaveEntityUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateEntityCommand(id, name));
+        createUseCase.handle(new CreateEntityCommand(id, name, modelId, parentAggregateId, isCollection));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveEntityCommand(id, name));
+        saveUseCase.handle(new SaveEntityCommand(id, name, modelId, parentAggregateId, isCollection));
     }
 
     @Override
@@ -48,6 +61,9 @@ public class EntityViewModel implements Identifiable, CrudEditorForm<String>, Cr
     public EntityViewModel load(EntityDto model) {
         id = model.id();
         name = model.name();
+        modelId = model.modelId();
+        parentAggregateId = model.parentAggregateId();
+        isCollection = model.isCollection();
         return this;
     }
 

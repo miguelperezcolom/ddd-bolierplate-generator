@@ -40,6 +40,7 @@ public class EntityFileQueryService implements EntityQueryService {
     @Override
     public Optional<EntityDto> getById(String id) {
         return repository.findById(id, EntityEntity.class)
-                .map(entity -> new EntityDto(entity.id(), entity.name()));
+                .map(entity -> new EntityDto(entity.id(), entity.name(),
+                        entity.modelId(), entity.parentAggregateId(), entity.isCollection()));
     }
 }
