@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,8 @@ public class CreateProjectUseCase {
                 command.terraformBackendType(),
                 command.terraformBackendBucket(), command.terraformBackendRegion(),
                 command.terraformBackendKey(), command.terraformWorkspace(),
+                command.iamProvider(), command.iamServerUrl(), command.iamRealm(),
+                command.iamClientId(), command.iamClientSecret(), command.iamAudience(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }

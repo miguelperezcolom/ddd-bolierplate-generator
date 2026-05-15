@@ -1,5 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.create;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 
@@ -14,6 +15,8 @@ public record CreateProjectCommand(String id, String name, String outputPath, St
                                    TerraformBackendType terraformBackendType,
                                    String terraformBackendBucket, String terraformBackendRegion,
                                    String terraformBackendKey, String terraformWorkspace,
+                                   IamProvider iamProvider, String iamServerUrl, String iamRealm,
+                                   String iamClientId, String iamClientSecret, String iamAudience,
                                    List<String> serviceIds) {
 
 }

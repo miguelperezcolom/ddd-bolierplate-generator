@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.project.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
@@ -31,6 +32,8 @@ public class SaveProjectUseCase {
                 command.terraformBackendType(),
                 command.terraformBackendBucket(), command.terraformBackendRegion(),
                 command.terraformBackendKey(), command.terraformWorkspace(),
+                command.iamProvider(), command.iamServerUrl(), command.iamRealm(),
+                command.iamClientId(), command.iamClientSecret(), command.iamAudience(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

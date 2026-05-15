@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
@@ -53,6 +54,14 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String terraformBackendKey;
     String terraformWorkspace;
 
+    @Tab("IAM")
+    IamProvider iamProvider;
+    String iamServerUrl;
+    String iamRealm;
+    String iamClientId;
+    String iamClientSecret;
+    String iamAudience;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -69,6 +78,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 terraformBackendType,
                 terraformBackendBucket, terraformBackendRegion,
                 terraformBackendKey, terraformWorkspace,
+                iamProvider, iamServerUrl, iamRealm,
+                iamClientId, iamClientSecret, iamAudience,
                 services));
         return id;
     }
@@ -82,6 +93,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 terraformBackendType,
                 terraformBackendBucket, terraformBackendRegion,
                 terraformBackendKey, terraformWorkspace,
+                iamProvider, iamServerUrl, iamRealm,
+                iamClientId, iamClientSecret, iamAudience,
                 services));
     }
 
@@ -109,6 +122,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         terraformBackendRegion = model.terraformBackendRegion();
         terraformBackendKey = model.terraformBackendKey();
         terraformWorkspace = model.terraformWorkspace();
+        iamProvider = model.iamProvider();
+        iamServerUrl = model.iamServerUrl();
+        iamRealm = model.iamRealm();
+        iamClientId = model.iamClientId();
+        iamClientSecret = model.iamClientSecret();
+        iamAudience = model.iamAudience();
         services = model.serviceIds();
         return this;
     }

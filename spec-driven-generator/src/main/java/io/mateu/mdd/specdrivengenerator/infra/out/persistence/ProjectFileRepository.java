@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
@@ -39,6 +40,8 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.terraformBackendType(),
                         entity.terraformBackendBucket(), entity.terraformBackendRegion(),
                         entity.terraformBackendKey(), entity.terraformWorkspace(),
+                        entity.iamProvider(), entity.iamServerUrl(), entity.iamRealm(),
+                        entity.iamClientId(), entity.iamClientSecret(), entity.iamAudience(),
                         entity.serviceIds()));
     }
 
@@ -60,6 +63,8 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getTerraformBackendType(),
                 entity.getTerraformBackendBucket(), entity.getTerraformBackendRegion(),
                 entity.getTerraformBackendKey(), entity.getTerraformWorkspace(),
+                entity.getIamProvider(), entity.getIamServerUrl(), entity.getIamRealm(),
+                entity.getIamClientId(), entity.getIamClientSecret(), entity.getIamAudience(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

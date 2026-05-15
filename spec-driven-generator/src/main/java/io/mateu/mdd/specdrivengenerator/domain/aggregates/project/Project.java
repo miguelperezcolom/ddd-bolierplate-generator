@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
@@ -32,6 +33,12 @@ public class Project {
     private String terraformBackendRegion;
     private String terraformBackendKey;
     private String terraformWorkspace;
+    private IamProvider iamProvider;
+    private String iamServerUrl;
+    private String iamRealm;
+    private String iamClientId;
+    private String iamClientSecret;
+    private String iamAudience;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -49,6 +56,8 @@ public class Project {
                              TerraformBackendType terraformBackendType,
                              String terraformBackendBucket, String terraformBackendRegion,
                              String terraformBackendKey, String terraformWorkspace,
+                             IamProvider iamProvider, String iamServerUrl, String iamRealm,
+                             String iamClientId, String iamClientSecret, String iamAudience,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -69,6 +78,12 @@ public class Project {
         project.terraformBackendRegion = terraformBackendRegion;
         project.terraformBackendKey = terraformBackendKey;
         project.terraformWorkspace = terraformWorkspace;
+        project.iamProvider = iamProvider;
+        project.iamServerUrl = iamServerUrl;
+        project.iamRealm = iamRealm;
+        project.iamClientId = iamClientId;
+        project.iamClientSecret = iamClientSecret;
+        project.iamAudience = iamAudience;
         project.services = services;
         return project;
     }
@@ -82,6 +97,8 @@ public class Project {
                                 TerraformBackendType terraformBackendType,
                                 String terraformBackendBucket, String terraformBackendRegion,
                                 String terraformBackendKey, String terraformWorkspace,
+                                IamProvider iamProvider, String iamServerUrl, String iamRealm,
+                                String iamClientId, String iamClientSecret, String iamAudience,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -102,6 +119,12 @@ public class Project {
         project.terraformBackendRegion = terraformBackendRegion;
         project.terraformBackendKey = terraformBackendKey;
         project.terraformWorkspace = terraformWorkspace;
+        project.iamProvider = iamProvider;
+        project.iamServerUrl = iamServerUrl;
+        project.iamRealm = iamRealm;
+        project.iamClientId = iamClientId;
+        project.iamClientSecret = iamClientSecret;
+        project.iamAudience = iamAudience;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -115,6 +138,8 @@ public class Project {
                        TerraformBackendType terraformBackendType,
                        String terraformBackendBucket, String terraformBackendRegion,
                        String terraformBackendKey, String terraformWorkspace,
+                       IamProvider iamProvider, String iamServerUrl, String iamRealm,
+                       String iamClientId, String iamClientSecret, String iamAudience,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -133,6 +158,12 @@ public class Project {
         this.terraformBackendRegion = terraformBackendRegion;
         this.terraformBackendKey = terraformBackendKey;
         this.terraformWorkspace = terraformWorkspace;
+        this.iamProvider = iamProvider;
+        this.iamServerUrl = iamServerUrl;
+        this.iamRealm = iamRealm;
+        this.iamClientId = iamClientId;
+        this.iamClientSecret = iamClientSecret;
+        this.iamAudience = iamAudience;
         this.services = services;
     }
 }
