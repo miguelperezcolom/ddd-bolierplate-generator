@@ -11,6 +11,11 @@ public record ProjectEntity(
         String packageName,
         String gitRepository,
         String database,
+        String kubernetesClusterUrl,
+        String kubernetesNamespace,
+        String kubernetesContext,
+        String kubernetesToken,
+        String kubernetesCertificateAuthorityData,
         List<String> serviceIds
 ) implements Identifiable {
 

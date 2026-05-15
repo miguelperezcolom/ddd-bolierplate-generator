@@ -47,6 +47,11 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.packageName(),
                         entity.gitRepository(),
                         entity.database(),
+                        entity.kubernetesClusterUrl(),
+                        entity.kubernetesNamespace(),
+                        entity.kubernetesContext(),
+                        entity.kubernetesToken(),
+                        entity.kubernetesCertificateAuthorityData(),
                         entity.serviceIds()));
     }
 }

@@ -22,6 +22,11 @@ public class SaveProjectUseCase {
                 new ProjectPackageName(command.packageName()),
                 command.gitRepository(),
                 command.database(),
+                command.kubernetesClusterUrl(),
+                command.kubernetesNamespace(),
+                command.kubernetesContext(),
+                command.kubernetesToken(),
+                command.kubernetesCertificateAuthorityData(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

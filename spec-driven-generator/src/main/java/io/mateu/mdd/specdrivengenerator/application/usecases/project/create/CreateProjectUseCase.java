@@ -25,6 +25,11 @@ public class CreateProjectUseCase {
                 new ProjectPackageName(command.packageName()),
                 command.gitRepository(),
                 command.database(),
+                command.kubernetesClusterUrl(),
+                command.kubernetesNamespace(),
+                command.kubernetesContext(),
+                command.kubernetesToken(),
+                command.kubernetesCertificateAuthorityData(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }

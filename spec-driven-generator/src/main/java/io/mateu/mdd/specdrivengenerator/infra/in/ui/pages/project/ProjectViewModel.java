@@ -34,6 +34,15 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String packageName;
     String gitRepository;
     String database;
+
+    @Tab("Kubernetes")
+    String kubernetesClusterUrl;
+    String kubernetesNamespace;
+    String kubernetesContext;
+    String kubernetesToken;
+    String kubernetesCertificateAuthorityData;
+
+    @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
 
@@ -42,13 +51,19 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName, gitRepository, database, services));
+        createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName,
+                gitRepository, database,
+                kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
+                services));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName, gitRepository, database, services));
+        saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName,
+                gitRepository, database,
+                kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
+                services));
     }
 
     @Override
@@ -63,6 +78,11 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         packageName = model.packageName();
         gitRepository = model.gitRepository();
         database = model.database();
+        kubernetesClusterUrl = model.kubernetesClusterUrl();
+        kubernetesNamespace = model.kubernetesNamespace();
+        kubernetesContext = model.kubernetesContext();
+        kubernetesToken = model.kubernetesToken();
+        kubernetesCertificateAuthorityData = model.kubernetesCertificateAuthorityData();
         services = model.serviceIds();
         return this;
     }

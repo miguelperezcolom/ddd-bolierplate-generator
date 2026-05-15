@@ -28,6 +28,11 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.packageName(),
                         entity.gitRepository(),
                         entity.database(),
+                        entity.kubernetesClusterUrl(),
+                        entity.kubernetesNamespace(),
+                        entity.kubernetesContext(),
+                        entity.kubernetesToken(),
+                        entity.kubernetesCertificateAuthorityData(),
                         entity.serviceIds()));
     }
 
@@ -40,6 +45,11 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getPackageName().packageName(),
                 entity.getGitRepository(),
                 entity.getDatabase(),
+                entity.getKubernetesClusterUrl(),
+                entity.getKubernetesNamespace(),
+                entity.getKubernetesContext(),
+                entity.getKubernetesToken(),
+                entity.getKubernetesCertificateAuthorityData(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));
