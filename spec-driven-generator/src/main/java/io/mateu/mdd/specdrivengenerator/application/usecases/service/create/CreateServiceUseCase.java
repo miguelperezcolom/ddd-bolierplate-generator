@@ -21,6 +21,8 @@ public class CreateServiceUseCase {
                 new ServiceId(command.id()),
                 new ServiceName(command.name()),
                 command.gitRepository(),
+                command.dockerImageRegistry(),
+                command.dockerImageName(),
                 command.port(),
                 command.contextPath(),
                 command.database(),

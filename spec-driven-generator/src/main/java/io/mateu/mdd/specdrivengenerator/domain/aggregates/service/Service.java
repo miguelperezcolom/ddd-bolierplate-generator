@@ -15,6 +15,8 @@ public class Service {
     private ServiceId id;
     private ServiceName name;
     private String gitRepository;
+    private String dockerImageRegistry;
+    private String dockerImageName;
     private Integer port;
     private String contextPath;
     private String database;
@@ -36,6 +38,7 @@ public class Service {
     private List<EnvVar> envVars;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository,
+                             String dockerImageRegistry, String dockerImageName,
                              Integer port, String contextPath, String database,
                              DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                              String kubernetesMemoryRequest, String kubernetesMemoryLimit,
@@ -47,6 +50,8 @@ public class Service {
         service.id = id;
         service.name = name;
         service.gitRepository = gitRepository;
+        service.dockerImageRegistry = dockerImageRegistry;
+        service.dockerImageName = dockerImageName;
         service.port = port;
         service.contextPath = contextPath;
         service.database = database;
@@ -70,6 +75,7 @@ public class Service {
     }
 
     public static Service load(String id, String name, String gitRepository,
+                               String dockerImageRegistry, String dockerImageName,
                                Integer port, String contextPath, String database,
                                DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                                String kubernetesMemoryRequest, String kubernetesMemoryLimit,
@@ -81,6 +87,8 @@ public class Service {
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
         service.gitRepository = gitRepository;
+        service.dockerImageRegistry = dockerImageRegistry;
+        service.dockerImageName = dockerImageName;
         service.port = port;
         service.contextPath = contextPath;
         service.database = database;
@@ -104,6 +112,7 @@ public class Service {
     }
 
     public void update(ServiceName name, String gitRepository,
+                       String dockerImageRegistry, String dockerImageName,
                        Integer port, String contextPath, String database,
                        DbMigrationTool dbMigrationTool, Integer kubernetesReplicas, String kubernetesCpuRequest, String kubernetesCpuLimit,
                        String kubernetesMemoryRequest, String kubernetesMemoryLimit,
@@ -113,6 +122,8 @@ public class Service {
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
+        this.dockerImageRegistry = dockerImageRegistry;
+        this.dockerImageName = dockerImageName;
         this.port = port;
         this.contextPath = contextPath;
         this.database = database;

@@ -41,6 +41,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String name;
 
     String gitRepository;
+    String dockerImageRegistry;
+    String dockerImageName;
     Integer port;
     String contextPath;
     String database;
@@ -75,7 +77,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, port, contextPath, database,
+        createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, dockerImageRegistry, dockerImageName, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
@@ -87,7 +89,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, port, contextPath, database,
+        saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, dockerImageRegistry, dockerImageName, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
@@ -105,6 +107,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         id = model.id();
         name = model.name();
         gitRepository = model.gitRepository();
+        dockerImageRegistry = model.dockerImageRegistry();
+        dockerImageName = model.dockerImageName();
         port = model.port();
         contextPath = model.contextPath();
         database = model.database();

@@ -9,6 +9,8 @@ public record ServiceEntity(
         String id,
         String name,
         String gitRepository,
+        String dockerImageRegistry,
+        String dockerImageName,
         Integer port,
         String contextPath,
         String database,

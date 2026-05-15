@@ -23,7 +23,7 @@ public class ServiceFileRepository implements ServiceRepository {
     @Override
     public Optional<Service> findById(ServiceId id) {
         return repository.findById(id.id(), ServiceEntity.class)
-                .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.port(), entity.contextPath(), entity.database(),
+                .map(entity -> Service.load(entity.id(), entity.name(), entity.gitRepository(), entity.dockerImageRegistry(), entity.dockerImageName(), entity.port(), entity.contextPath(), entity.database(),
                         entity.dbMigrationTool(), entity.kubernetesReplicas(), entity.kubernetesCpuRequest(), entity.kubernetesCpuLimit(),
                         entity.kubernetesMemoryRequest(), entity.kubernetesMemoryLimit(),
                         entity.kubernetesHpaEnabled(), entity.kubernetesHpaMinReplicas(),
@@ -42,6 +42,8 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getGitRepository(),
+                entity.getDockerImageRegistry(),
+                entity.getDockerImageName(),
                 entity.getPort(),
                 entity.getContextPath(),
                 entity.getDatabase(),
