@@ -21,6 +21,7 @@ public class SaveSagaUseCase {
         saga.update(
                 new SagaName(command.name()),
                 command.timeoutMs(),
+                command.compensationTimeoutMs(),
                 command.triggeringEventIds(),
                 toSteps(command.steps()));
         repository.save(saga);

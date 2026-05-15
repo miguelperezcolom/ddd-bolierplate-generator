@@ -8,6 +8,7 @@ public record CreateSagaCommand(
         String id,
         String name,
         Long timeoutMs,
+        Long compensationTimeoutMs,
         List<String> triggeringEventIds,
         List<SagaStepData> steps
 ) {

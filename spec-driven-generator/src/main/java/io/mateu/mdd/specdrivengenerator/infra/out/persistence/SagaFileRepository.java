@@ -26,6 +26,7 @@ public class SagaFileRepository implements SagaRepository {
                         entity.id(),
                         entity.name(),
                         entity.timeoutMs(),
+                        entity.compensationTimeoutMs(),
                         entity.triggeringEventIds(),
                         toSteps(entity.steps())));
     }
@@ -36,6 +37,7 @@ public class SagaFileRepository implements SagaRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getTimeoutMs(),
+                entity.getCompensationTimeoutMs(),
                 entity.getTriggeringEventIds(),
                 toStepEntities(entity.getSteps())));
         return entity;

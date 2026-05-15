@@ -6,6 +6,7 @@ public record SagaDto(
         String id,
         String name,
         Long timeoutMs,
+        Long compensationTimeoutMs,
         List<String> triggeringEventIds,
         List<SagaStepDto> steps
 ) {

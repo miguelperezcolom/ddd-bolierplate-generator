@@ -22,6 +22,7 @@ public class CreateSagaUseCase {
                 new SagaId(command.id()),
                 new SagaName(command.name()),
                 command.timeoutMs(),
+                command.compensationTimeoutMs(),
                 command.triggeringEventIds(),
                 toSteps(command.steps()));
         repository.save(saga);

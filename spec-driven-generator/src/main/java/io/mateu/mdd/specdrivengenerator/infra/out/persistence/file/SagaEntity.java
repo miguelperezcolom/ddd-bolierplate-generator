@@ -8,6 +8,7 @@ public record SagaEntity(
         String id,
         String name,
         Long timeoutMs,
+        Long compensationTimeoutMs,
         List<String> triggeringEventIds,
         List<SagaStepEntity> steps
 ) implements Identifiable {
