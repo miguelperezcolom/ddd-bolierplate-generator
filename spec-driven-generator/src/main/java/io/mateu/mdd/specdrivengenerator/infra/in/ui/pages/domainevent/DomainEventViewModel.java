@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.create.
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.create.CreateDomainEventUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.save.SaveDomainEventCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.domainevent.save.SaveDomainEventUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventSerializationFormat;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -43,19 +44,20 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     String topicName;
     Integer partitions;
     Long retentionMs;
+    DomainEventSerializationFormat serializationFormat;
 
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null));
     }
 
     @Override
@@ -72,6 +74,7 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         topicName = model.topicName();
         partitions = model.partitions();
         retentionMs = model.retentionMs();
+        serializationFormat = model.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(model.serializationFormat()) : null;
         return this;
     }
 

@@ -42,6 +42,7 @@ public class DomainEventFileQueryService implements DomainEventQueryService {
         return repository.findById(id, DomainEventEntity.class)
                 .map(entity -> new DomainEventDto(entity.id(), entity.name(), entity.modelId(),
                         entity.publishAsIntegrationEvent(), entity.integrationModelId(),
-                        entity.topicName(), entity.partitions(), entity.retentionMs()));
+                        entity.topicName(), entity.partitions(), entity.retentionMs(),
+                        entity.serializationFormat()));
     }
 }

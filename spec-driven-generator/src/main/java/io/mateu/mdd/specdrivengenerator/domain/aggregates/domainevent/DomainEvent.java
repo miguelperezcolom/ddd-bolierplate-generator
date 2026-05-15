@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainE
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventPublishAsIntegrationEvent;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventSerializationFormat;
 import lombok.Getter;
 
 @Getter
@@ -18,11 +19,13 @@ public class DomainEvent {
     private String topicName;
     private Integer partitions;
     private Long retentionMs;
+    private DomainEventSerializationFormat serializationFormat;
 
     public static DomainEvent of(DomainEventId id, DomainEventName name, DomainEventModelId modelId,
                                  DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
                                  DomainEventIntegrationModelId integrationModelId,
-                                 String topicName, Integer partitions, Long retentionMs) {
+                                 String topicName, Integer partitions, Long retentionMs,
+                                 DomainEventSerializationFormat serializationFormat) {
         var domainEvent = new DomainEvent();
         domainEvent.id = id;
         domainEvent.name = name;
@@ -32,12 +35,14 @@ public class DomainEvent {
         domainEvent.topicName = topicName;
         domainEvent.partitions = partitions;
         domainEvent.retentionMs = retentionMs;
+        domainEvent.serializationFormat = serializationFormat;
         return domainEvent;
     }
 
     public static DomainEvent load(String id, String name, String modelId,
                                    boolean publishAsIntegrationEvent, String integrationModelId,
-                                   String topicName, Integer partitions, Long retentionMs) {
+                                   String topicName, Integer partitions, Long retentionMs,
+                                   String serializationFormat) {
         var domainEvent = new DomainEvent();
         domainEvent.id = new DomainEventId(id);
         domainEvent.name = new DomainEventName(name);
@@ -47,13 +52,15 @@ public class DomainEvent {
         domainEvent.topicName = topicName;
         domainEvent.partitions = partitions;
         domainEvent.retentionMs = retentionMs;
+        domainEvent.serializationFormat = serializationFormat != null ? DomainEventSerializationFormat.valueOf(serializationFormat) : null;
         return domainEvent;
     }
 
     public void update(DomainEventName name, DomainEventModelId modelId,
                        DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
                        DomainEventIntegrationModelId integrationModelId,
-                       String topicName, Integer partitions, Long retentionMs) {
+                       String topicName, Integer partitions, Long retentionMs,
+                       DomainEventSerializationFormat serializationFormat) {
         this.name = name;
         this.modelId = modelId;
         this.publishAsIntegrationEvent = publishAsIntegrationEvent;
@@ -61,5 +68,6 @@ public class DomainEvent {
         this.topicName = topicName;
         this.partitions = partitions;
         this.retentionMs = retentionMs;
+        this.serializationFormat = serializationFormat;
     }
 }

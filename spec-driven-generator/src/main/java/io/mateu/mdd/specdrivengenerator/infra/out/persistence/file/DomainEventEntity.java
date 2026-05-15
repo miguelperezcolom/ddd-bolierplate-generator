@@ -10,6 +10,7 @@ public record DomainEventEntity(
         String integrationModelId,
         String topicName,
         Integer partitions,
-        Long retentionMs
+        Long retentionMs,
+        String serializationFormat
 ) implements Identifiable {
 }

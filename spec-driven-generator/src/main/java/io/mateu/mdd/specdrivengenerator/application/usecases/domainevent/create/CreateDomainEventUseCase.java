@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainE
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventPublishAsIntegrationEvent;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.domainevent.vo.DomainEventSerializationFormat;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,8 @@ public class CreateDomainEventUseCase {
                 command.modelId() != null ? new DomainEventModelId(command.modelId()) : null,
                 new DomainEventPublishAsIntegrationEvent(command.publishAsIntegrationEvent()),
                 command.integrationModelId() != null ? new DomainEventIntegrationModelId(command.integrationModelId()) : null,
-                command.topicName(), command.partitions(), command.retentionMs());
+                command.topicName(), command.partitions(), command.retentionMs(),
+                command.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(command.serializationFormat()) : null);
         repository.save(domainEvent);
     }
 
