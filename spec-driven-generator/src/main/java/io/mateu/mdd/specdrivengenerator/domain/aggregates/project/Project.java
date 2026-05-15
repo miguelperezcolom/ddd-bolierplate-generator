@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
@@ -86,6 +87,7 @@ public class Project {
     private String ingressDomain;
     private boolean ingressTlsEnabled;
     private String ingressClassName;
+    private CicdProvider cicdProvider;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -122,6 +124,7 @@ public class Project {
                              String emailUsername, String emailPassword, String emailFrom,
                              SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                              String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
+                             CicdProvider cicdProvider,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -185,6 +188,7 @@ public class Project {
         project.ingressDomain = ingressDomain;
         project.ingressTlsEnabled = ingressTlsEnabled;
         project.ingressClassName = ingressClassName;
+        project.cicdProvider = cicdProvider;
         project.services = services;
         return project;
     }
@@ -217,6 +221,7 @@ public class Project {
                                 String emailUsername, String emailPassword, String emailFrom,
                                 SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                                 String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
+                                String cicdProvider,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -280,6 +285,7 @@ public class Project {
         project.ingressDomain = ingressDomain;
         project.ingressTlsEnabled = ingressTlsEnabled;
         project.ingressClassName = ingressClassName;
+        project.cicdProvider = cicdProvider != null ? CicdProvider.valueOf(cicdProvider) : null;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -312,6 +318,7 @@ public class Project {
                        String emailUsername, String emailPassword, String emailFrom,
                        SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                        String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
+                       CicdProvider cicdProvider,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -373,6 +380,7 @@ public class Project {
         this.ingressDomain = ingressDomain;
         this.ingressTlsEnabled = ingressTlsEnabled;
         this.ingressClassName = ingressClassName;
+        this.cicdProvider = cicdProvider;
         this.services = services;
     }
 }

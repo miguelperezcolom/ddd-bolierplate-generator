@@ -79,6 +79,7 @@ public record ProjectEntity(
         String ingressDomain,
         boolean ingressTlsEnabled,
         String ingressClassName,
+        String cicdProvider,
         List<String> serviceIds
 ) implements Identifiable {
 

@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
@@ -125,6 +126,9 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     boolean ingressTlsEnabled;
     String ingressClassName;
 
+    @Tab("CI/CD")
+    CicdProvider cicdProvider;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -155,6 +159,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 secretsProvider, secretsEndpoint, secretsToken,
                 ingressDomain, ingressTlsEnabled, ingressClassName,
+                cicdProvider != null ? cicdProvider.name() : null,
                 services));
         return id;
     }
@@ -182,6 +187,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 secretsProvider, secretsEndpoint, secretsToken,
                 ingressDomain, ingressTlsEnabled, ingressClassName,
+                cicdProvider != null ? cicdProvider.name() : null,
                 services));
     }
 
@@ -252,6 +258,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         ingressDomain = model.ingressDomain();
         ingressTlsEnabled = model.ingressTlsEnabled();
         ingressClassName = model.ingressClassName();
+        cicdProvider = model.cicdProvider() != null ? CicdProvider.valueOf(model.cicdProvider()) : null;
         services = model.serviceIds();
         return this;
     }

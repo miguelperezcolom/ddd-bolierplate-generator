@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
@@ -64,6 +65,7 @@ public class CreateProjectUseCase {
                 command.emailUsername(), command.emailPassword(), command.emailFrom(),
                 command.secretsProvider(), command.secretsEndpoint(), command.secretsToken(),
                 command.ingressDomain(), command.ingressTlsEnabled(), command.ingressClassName(),
+                command.cicdProvider() != null ? CicdProvider.valueOf(command.cicdProvider()) : null,
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }
