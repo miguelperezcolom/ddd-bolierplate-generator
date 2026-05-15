@@ -66,6 +66,7 @@ public class CommonFileRepository {
         data.projections().forEach(p -> store.put(p.id(), p));
         data.subscriptions().forEach(p -> store.put(p.id(), p));
         data.scheduledTriggers().forEach(p -> store.put(p.id(), p));
+        data.readModels().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -86,6 +87,7 @@ public class CommonFileRepository {
         List<ProjectionEntity> projections = store.values().stream().filter(v -> v instanceof ProjectionEntity).map(v -> (ProjectionEntity) v).toList();
         List<SubscriptionEntity> subscriptions = store.values().stream().filter(v -> v instanceof SubscriptionEntity).map(v -> (SubscriptionEntity) v).toList();
         List<ScheduledTriggerEntity> scheduledTriggers = store.values().stream().filter(v -> v instanceof ScheduledTriggerEntity).map(v -> (ScheduledTriggerEntity) v).toList();
+        List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -102,7 +104,8 @@ public class CommonFileRepository {
                 sagas,
                 projections,
                 subscriptions,
-                scheduledTriggers
+                scheduledTriggers,
+                readModels
         );
         Files.writeString(Path.of(".dev/data/spec-driven-store.json"), toJson(data));
     }

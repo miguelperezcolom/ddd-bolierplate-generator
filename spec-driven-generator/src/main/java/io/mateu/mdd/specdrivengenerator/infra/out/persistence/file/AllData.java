@@ -18,7 +18,8 @@ public record AllData(
         List<SagaEntity> sagas,
         List<ProjectionEntity> projections,
         List<SubscriptionEntity> subscriptions,
-        List<ScheduledTriggerEntity> scheduledTriggers
+        List<ScheduledTriggerEntity> scheduledTriggers,
+        List<ReadModelEntity> readModels
         ) {
 
     public AllData {
@@ -38,5 +39,6 @@ public record AllData(
         projections = projections != null ? projections : List.of();
         subscriptions = subscriptions != null ? subscriptions : List.of();
         scheduledTriggers = scheduledTriggers != null ? scheduledTriggers : List.of();
+        readModels = readModels != null ? readModels : List.of();
     }
 }
