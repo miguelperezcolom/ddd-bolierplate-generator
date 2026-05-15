@@ -36,6 +36,7 @@ public class SaveServiceUseCase {
                 command.livenessProbe(),
                 command.readinessProbe(),
                 command.startupProbe(),
+                command.openApiDocumentationEnabled(),
                 command.moduleIds().stream().map(ModuleId::new).toList(),
                 command.gatewayIds(),
                 command.envVars());

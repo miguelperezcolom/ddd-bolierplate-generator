@@ -33,6 +33,7 @@ public class Service {
     private String livenessProbe;
     private String readinessProbe;
     private String startupProbe;
+    private boolean openApiDocumentationEnabled;
     private List<ModuleId> modules;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
@@ -45,6 +46,7 @@ public class Service {
                              boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                              String livenessProbe, String readinessProbe, String startupProbe,
+                             boolean openApiDocumentationEnabled,
                              List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
@@ -68,6 +70,7 @@ public class Service {
         service.livenessProbe = livenessProbe;
         service.readinessProbe = readinessProbe;
         service.startupProbe = startupProbe;
+        service.openApiDocumentationEnabled = openApiDocumentationEnabled;
         service.modules = modules;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -82,6 +85,7 @@ public class Service {
                                boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                                String livenessProbe, String readinessProbe, String startupProbe,
+                               boolean openApiDocumentationEnabled,
                                List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
@@ -105,6 +109,7 @@ public class Service {
         service.livenessProbe = livenessProbe;
         service.readinessProbe = readinessProbe;
         service.startupProbe = startupProbe;
+        service.openApiDocumentationEnabled = openApiDocumentationEnabled;
         service.modules = modules.stream().map(ModuleId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -119,6 +124,7 @@ public class Service {
                        boolean kubernetesHpaEnabled, Integer kubernetesHpaMinReplicas,
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                        String livenessProbe, String readinessProbe, String startupProbe,
+                       boolean openApiDocumentationEnabled,
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
@@ -140,6 +146,7 @@ public class Service {
         this.livenessProbe = livenessProbe;
         this.readinessProbe = readinessProbe;
         this.startupProbe = startupProbe;
+        this.openApiDocumentationEnabled = openApiDocumentationEnabled;
         this.modules = modules;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();

@@ -39,6 +39,7 @@ public class CreateServiceUseCase {
                 command.livenessProbe(),
                 command.readinessProbe(),
                 command.startupProbe(),
+                command.openApiDocumentationEnabled(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
                 command.envVars());

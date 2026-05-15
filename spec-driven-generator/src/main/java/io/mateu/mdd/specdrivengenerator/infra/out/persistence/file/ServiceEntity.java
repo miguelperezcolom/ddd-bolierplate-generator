@@ -27,6 +27,7 @@ public record ServiceEntity(
         String livenessProbe,
         String readinessProbe,
         String startupProbe,
+        boolean openApiDocumentationEnabled,
         List<String> moduleIds,
         List<String> gatewayIds,
         List<EnvVarEntity> envVars

@@ -43,6 +43,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String gitRepository;
     String dockerImageRegistry;
     String dockerImageName;
+    boolean openApiDocumentationEnabled;
     Integer port;
     String contextPath;
     String database;
@@ -83,6 +84,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
                 livenessProbe, readinessProbe, startupProbe,
+                openApiDocumentationEnabled,
                 modules, gatewayIds, toEnvVars(envVars)));
         return id;
     }
@@ -95,6 +97,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesHpaEnabled, kubernetesHpaMinReplicas,
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
                 livenessProbe, readinessProbe, startupProbe,
+                openApiDocumentationEnabled,
                 modules, gatewayIds, toEnvVars(envVars)));
     }
 
@@ -109,6 +112,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         gitRepository = model.gitRepository();
         dockerImageRegistry = model.dockerImageRegistry();
         dockerImageName = model.dockerImageName();
+        openApiDocumentationEnabled = model.openApiDocumentationEnabled();
         port = model.port();
         contextPath = model.contextPath();
         database = model.database();
