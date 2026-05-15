@@ -7,6 +7,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
@@ -103,6 +104,14 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String fileStorageSecretKey;
     String fileStorageEndpoint;
 
+    @Tab("Email")
+    EmailProvider emailProvider;
+    String emailHost;
+    Integer emailPort;
+    String emailUsername;
+    String emailPassword;
+    String emailFrom;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -130,6 +139,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 cacheProvider, cacheUrl, cacheUsername, cachePassword,
                 fileStorageProvider, fileStorageBucket, fileStorageRegion,
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
+                emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 services));
         return id;
     }
@@ -154,6 +164,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 cacheProvider, cacheUrl, cacheUsername, cachePassword,
                 fileStorageProvider, fileStorageBucket, fileStorageRegion,
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
+                emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 services));
     }
 
@@ -211,6 +222,12 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         fileStorageAccessKey = model.fileStorageAccessKey();
         fileStorageSecretKey = model.fileStorageSecretKey();
         fileStorageEndpoint = model.fileStorageEndpoint();
+        emailProvider = model.emailProvider();
+        emailHost = model.emailHost();
+        emailPort = model.emailPort();
+        emailUsername = model.emailUsername();
+        emailPassword = model.emailPassword();
+        emailFrom = model.emailFrom();
         services = model.serviceIds();
         return this;
     }

@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.project.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
@@ -53,6 +54,8 @@ public class SaveProjectUseCase {
                 command.fileStorageProvider(), command.fileStorageBucket(),
                 command.fileStorageRegion(), command.fileStorageAccessKey(),
                 command.fileStorageSecretKey(), command.fileStorageEndpoint(),
+                command.emailProvider(), command.emailHost(), command.emailPort(),
+                command.emailUsername(), command.emailPassword(), command.emailFrom(),
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

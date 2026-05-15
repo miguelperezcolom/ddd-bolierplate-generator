@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.Project;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
@@ -61,6 +62,8 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.fileStorageProvider(), entity.fileStorageBucket(),
                         entity.fileStorageRegion(), entity.fileStorageAccessKey(),
                         entity.fileStorageSecretKey(), entity.fileStorageEndpoint(),
+                        entity.emailProvider(), entity.emailHost(), entity.emailPort(),
+                        entity.emailUsername(), entity.emailPassword(), entity.emailFrom(),
                         entity.serviceIds()));
     }
 
@@ -96,6 +99,8 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getFileStorageProvider(), entity.getFileStorageBucket(),
                 entity.getFileStorageRegion(), entity.getFileStorageAccessKey(),
                 entity.getFileStorageSecretKey(), entity.getFileStorageEndpoint(),
+                entity.getEmailProvider(), entity.getEmailHost(), entity.getEmailPort(),
+                entity.getEmailUsername(), entity.getEmailPassword(), entity.getEmailFrom(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

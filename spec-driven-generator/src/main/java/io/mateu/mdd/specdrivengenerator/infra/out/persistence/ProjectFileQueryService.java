@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryServic
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
@@ -80,6 +81,8 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.fileStorageProvider(), entity.fileStorageBucket(),
                         entity.fileStorageRegion(), entity.fileStorageAccessKey(),
                         entity.fileStorageSecretKey(), entity.fileStorageEndpoint(),
+                        entity.emailProvider(), entity.emailHost(), entity.emailPort(),
+                        entity.emailUsername(), entity.emailPassword(), entity.emailFrom(),
                         entity.serviceIds()));
     }
 }

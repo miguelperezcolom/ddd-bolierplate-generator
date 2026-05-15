@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectOutputPath;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectPackageName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
@@ -70,6 +71,12 @@ public class Project {
     private String fileStorageAccessKey;
     private String fileStorageSecretKey;
     private String fileStorageEndpoint;
+    private EmailProvider emailProvider;
+    private String emailHost;
+    private Integer emailPort;
+    private String emailUsername;
+    private String emailPassword;
+    private String emailFrom;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -101,6 +108,8 @@ public class Project {
                              FileStorageProvider fileStorageProvider, String fileStorageBucket,
                              String fileStorageRegion, String fileStorageAccessKey,
                              String fileStorageSecretKey, String fileStorageEndpoint,
+                             EmailProvider emailProvider, String emailHost, Integer emailPort,
+                             String emailUsername, String emailPassword, String emailFrom,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -151,6 +160,12 @@ public class Project {
         project.fileStorageAccessKey = fileStorageAccessKey;
         project.fileStorageSecretKey = fileStorageSecretKey;
         project.fileStorageEndpoint = fileStorageEndpoint;
+        project.emailProvider = emailProvider;
+        project.emailHost = emailHost;
+        project.emailPort = emailPort;
+        project.emailUsername = emailUsername;
+        project.emailPassword = emailPassword;
+        project.emailFrom = emailFrom;
         project.services = services;
         return project;
     }
@@ -178,6 +193,8 @@ public class Project {
                                 FileStorageProvider fileStorageProvider, String fileStorageBucket,
                                 String fileStorageRegion, String fileStorageAccessKey,
                                 String fileStorageSecretKey, String fileStorageEndpoint,
+                                EmailProvider emailProvider, String emailHost, Integer emailPort,
+                                String emailUsername, String emailPassword, String emailFrom,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -228,6 +245,12 @@ public class Project {
         project.fileStorageAccessKey = fileStorageAccessKey;
         project.fileStorageSecretKey = fileStorageSecretKey;
         project.fileStorageEndpoint = fileStorageEndpoint;
+        project.emailProvider = emailProvider;
+        project.emailHost = emailHost;
+        project.emailPort = emailPort;
+        project.emailUsername = emailUsername;
+        project.emailPassword = emailPassword;
+        project.emailFrom = emailFrom;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -255,6 +278,8 @@ public class Project {
                        FileStorageProvider fileStorageProvider, String fileStorageBucket,
                        String fileStorageRegion, String fileStorageAccessKey,
                        String fileStorageSecretKey, String fileStorageEndpoint,
+                       EmailProvider emailProvider, String emailHost, Integer emailPort,
+                       String emailUsername, String emailPassword, String emailFrom,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -303,6 +328,12 @@ public class Project {
         this.fileStorageAccessKey = fileStorageAccessKey;
         this.fileStorageSecretKey = fileStorageSecretKey;
         this.fileStorageEndpoint = fileStorageEndpoint;
+        this.emailProvider = emailProvider;
+        this.emailHost = emailHost;
+        this.emailPort = emailPort;
+        this.emailUsername = emailUsername;
+        this.emailPassword = emailPassword;
+        this.emailFrom = emailFrom;
         this.services = services;
     }
 }
