@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.create.CreateScheduledTriggerUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.save.SaveScheduledTriggerCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.save.SaveScheduledTriggerUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerExecutionEnvironment;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelMappingIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelMappingIdOptionsSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupplier;
@@ -46,19 +47,20 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
     String modelMappingId;
 
     String description;
+    ScheduledTriggerExecutionEnvironment executionEnvironment;
 
     final CreateScheduledTriggerUseCase createUseCase;
     final SaveScheduledTriggerUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null));
     }
 
     @Override
@@ -74,6 +76,7 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         useCaseId = model.useCaseId();
         modelMappingId = model.modelMappingId();
         description = model.description();
+        executionEnvironment = model.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(model.executionEnvironment()) : null;
         return this;
     }
 

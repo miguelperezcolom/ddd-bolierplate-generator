@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.s
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ScheduledTriggerRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerExecutionEnvironment;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerName;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,8 @@ public class SaveScheduledTriggerUseCase {
                 command.timezone(),
                 command.useCaseId(),
                 command.modelMappingId(),
-                command.description());
+                command.description(),
+                command.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(command.executionEnvironment()) : null);
         repository.save(trigger);
     }
 }

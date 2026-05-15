@@ -47,6 +47,7 @@ public class ScheduledTriggerFileQueryService implements ScheduledTriggerQuerySe
                         entity.timezone(),
                         entity.useCaseId(),
                         entity.modelMappingId(),
-                        entity.description()));
+                        entity.description(),
+                        entity.executionEnvironment()));
     }
 }

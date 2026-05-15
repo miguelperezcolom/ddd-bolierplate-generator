@@ -27,7 +27,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.timezone(),
                         entity.useCaseId(),
                         entity.modelMappingId(),
-                        entity.description()));
+                        entity.description(),
+                        entity.executionEnvironment()));
     }
 
     @Override
@@ -39,7 +40,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getTimezone(),
                 entity.getUseCaseId(),
                 entity.getModelMappingId(),
-                entity.getDescription()));
+                entity.getDescription(),
+                entity.getExecutionEnvironment() != null ? entity.getExecutionEnvironment().name() : null));
         return entity;
     }
 

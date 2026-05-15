@@ -7,6 +7,7 @@ public record ScheduledTriggerDto(
         String timezone,
         String useCaseId,
         String modelMappingId,
-        String description
+        String description,
+        String executionEnvironment
 ) {
 }
