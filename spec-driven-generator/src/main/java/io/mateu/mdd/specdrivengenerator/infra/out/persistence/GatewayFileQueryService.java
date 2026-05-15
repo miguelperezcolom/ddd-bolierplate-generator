@@ -50,7 +50,7 @@ public class GatewayFileQueryService implements GatewayQueryService {
                         entity.authOAuth2TokenUrl(), entity.authOAuth2Scopes(),
                         entity.operations() == null ? List.of() :
                                 entity.operations().stream()
-                                        .map(o -> new GatewayOperationDto(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                                        .map(o -> new GatewayOperationDto(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                                         .toList()));

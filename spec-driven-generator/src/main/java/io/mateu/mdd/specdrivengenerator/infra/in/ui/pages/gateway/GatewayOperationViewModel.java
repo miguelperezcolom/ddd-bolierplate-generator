@@ -17,6 +17,9 @@ public class GatewayOperationViewModel {
     @NotEmpty
     String name;
 
+    String httpMethod;
+    String path;
+
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String inputModelId;
 

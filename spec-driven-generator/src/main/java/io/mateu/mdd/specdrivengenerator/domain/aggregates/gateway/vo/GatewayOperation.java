@@ -3,6 +3,8 @@ package io.mateu.mdd.specdrivengenerator.domain.aggregates.gateway.vo;
 public record GatewayOperation(
         String id,
         String name,
+        String httpMethod,
+        String path,
         String inputModelId,
         String outputModelId,
         Integer timeoutMs,
