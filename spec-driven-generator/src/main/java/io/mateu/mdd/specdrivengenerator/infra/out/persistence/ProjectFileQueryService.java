@@ -85,6 +85,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.emailProvider(), entity.emailHost(), entity.emailPort(),
                         entity.emailUsername(), entity.emailPassword(), entity.emailFrom(),
                         entity.secretsProvider(), entity.secretsEndpoint(), entity.secretsToken(),
+                        entity.ingressDomain(), entity.ingressTlsEnabled(), entity.ingressClassName(),
                         entity.serviceIds()));
     }
 }

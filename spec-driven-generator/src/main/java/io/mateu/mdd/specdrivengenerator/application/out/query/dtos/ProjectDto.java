@@ -41,5 +41,6 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          EmailProvider emailProvider, String emailHost, Integer emailPort,
                          String emailUsername, String emailPassword, String emailFrom,
                          SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                         String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                          List<String> serviceIds) {
 }

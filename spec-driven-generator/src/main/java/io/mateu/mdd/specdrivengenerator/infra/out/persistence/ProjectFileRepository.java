@@ -66,6 +66,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.emailProvider(), entity.emailHost(), entity.emailPort(),
                         entity.emailUsername(), entity.emailPassword(), entity.emailFrom(),
                         entity.secretsProvider(), entity.secretsEndpoint(), entity.secretsToken(),
+                        entity.ingressDomain(), entity.ingressTlsEnabled(), entity.ingressClassName(),
                         entity.serviceIds()));
     }
 
@@ -104,6 +105,7 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getEmailProvider(), entity.getEmailHost(), entity.getEmailPort(),
                 entity.getEmailUsername(), entity.getEmailPassword(), entity.getEmailFrom(),
                 entity.getSecretsProvider(), entity.getSecretsEndpoint(), entity.getSecretsToken(),
+                entity.getIngressDomain(), entity.isIngressTlsEnabled(), entity.getIngressClassName(),
                 entity.getServices().stream()
                         .map(ServiceId::id)
                         .toList()));

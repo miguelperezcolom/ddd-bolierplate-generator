@@ -74,6 +74,9 @@ public record ProjectEntity(
         SecretsProvider secretsProvider,
         String secretsEndpoint,
         String secretsToken,
+        String ingressDomain,
+        boolean ingressTlsEnabled,
+        String ingressClassName,
         List<String> serviceIds
 ) implements Identifiable {
 

@@ -81,6 +81,9 @@ public class Project {
     private SecretsProvider secretsProvider;
     private String secretsEndpoint;
     private String secretsToken;
+    private String ingressDomain;
+    private boolean ingressTlsEnabled;
+    private String ingressClassName;
     private List<ServiceId> services;
 
     public static Project of(ProjectId id,
@@ -115,6 +118,7 @@ public class Project {
                              EmailProvider emailProvider, String emailHost, Integer emailPort,
                              String emailUsername, String emailPassword, String emailFrom,
                              SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                             String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                              List<ServiceId> services) {
         var project = new Project();
         project.id = id;
@@ -174,6 +178,9 @@ public class Project {
         project.secretsProvider = secretsProvider;
         project.secretsEndpoint = secretsEndpoint;
         project.secretsToken = secretsToken;
+        project.ingressDomain = ingressDomain;
+        project.ingressTlsEnabled = ingressTlsEnabled;
+        project.ingressClassName = ingressClassName;
         project.services = services;
         return project;
     }
@@ -204,6 +211,7 @@ public class Project {
                                 EmailProvider emailProvider, String emailHost, Integer emailPort,
                                 String emailUsername, String emailPassword, String emailFrom,
                                 SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                                String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                                 List<String> services) {
         var project = new Project();
         project.id = new ProjectId(id);
@@ -263,6 +271,9 @@ public class Project {
         project.secretsProvider = secretsProvider;
         project.secretsEndpoint = secretsEndpoint;
         project.secretsToken = secretsToken;
+        project.ingressDomain = ingressDomain;
+        project.ingressTlsEnabled = ingressTlsEnabled;
+        project.ingressClassName = ingressClassName;
         project.services = services.stream().map(ServiceId::new).toList();
         return project;
     }
@@ -293,6 +304,7 @@ public class Project {
                        EmailProvider emailProvider, String emailHost, Integer emailPort,
                        String emailUsername, String emailPassword, String emailFrom,
                        SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                       String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                        List<ServiceId> services) {
         this.name = name;
         this.outputPath = outputPath;
@@ -350,6 +362,9 @@ public class Project {
         this.secretsProvider = secretsProvider;
         this.secretsEndpoint = secretsEndpoint;
         this.secretsToken = secretsToken;
+        this.ingressDomain = ingressDomain;
+        this.ingressTlsEnabled = ingressTlsEnabled;
+        this.ingressClassName = ingressClassName;
         this.services = services;
     }
 }

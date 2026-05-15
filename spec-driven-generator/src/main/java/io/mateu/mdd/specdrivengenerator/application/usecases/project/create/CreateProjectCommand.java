@@ -41,6 +41,7 @@ public record CreateProjectCommand(String id, String name, String outputPath, St
                                    EmailProvider emailProvider, String emailHost, Integer emailPort,
                                    String emailUsername, String emailPassword, String emailFrom,
                                    SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                                   String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                                    List<String> serviceIds) {
 
 }

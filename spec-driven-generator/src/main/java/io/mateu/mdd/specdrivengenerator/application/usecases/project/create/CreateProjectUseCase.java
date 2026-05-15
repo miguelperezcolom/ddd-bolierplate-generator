@@ -61,6 +61,7 @@ public class CreateProjectUseCase {
                 command.emailProvider(), command.emailHost(), command.emailPort(),
                 command.emailUsername(), command.emailPassword(), command.emailFrom(),
                 command.secretsProvider(), command.secretsEndpoint(), command.secretsToken(),
+                command.ingressDomain(), command.ingressTlsEnabled(), command.ingressClassName(),
                 command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
         repository.save(project);
     }

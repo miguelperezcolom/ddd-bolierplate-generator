@@ -118,6 +118,11 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String secretsEndpoint;
     String secretsToken;
 
+    @Tab("Ingress")
+    String ingressDomain;
+    boolean ingressTlsEnabled;
+    String ingressClassName;
+
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
@@ -147,6 +152,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 secretsProvider, secretsEndpoint, secretsToken,
+                ingressDomain, ingressTlsEnabled, ingressClassName,
                 services));
         return id;
     }
@@ -173,6 +179,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
                 emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
                 secretsProvider, secretsEndpoint, secretsToken,
+                ingressDomain, ingressTlsEnabled, ingressClassName,
                 services));
     }
 
@@ -239,6 +246,9 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         secretsProvider = model.secretsProvider();
         secretsEndpoint = model.secretsEndpoint();
         secretsToken = model.secretsToken();
+        ingressDomain = model.ingressDomain();
+        ingressTlsEnabled = model.ingressTlsEnabled();
+        ingressClassName = model.ingressClassName();
         services = model.serviceIds();
         return this;
     }
