@@ -28,6 +28,7 @@ public record UseCaseEntity(
         String asyncConsumerGroup,
         boolean cacheable,
         Integer cacheTtlSeconds,
-        Long timeoutMs
+        Long timeoutMs,
+        String transactionBoundary
 ) implements Identifiable {
 }

@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.usecase.save;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.UseCaseRepository;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.UseCaseStepData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.*;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.TransactionBoundary;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,8 @@ public class SaveUseCaseUseCase {
                 command.asyncConsumerGroup(),
                 command.cacheable(),
                 command.cacheTtlSeconds(),
-                command.timeoutMs());
+                command.timeoutMs(),
+                command.transactionBoundary() != null ? TransactionBoundary.valueOf(command.transactionBoundary()) : null);
         repository.save(useCase);
     }
 

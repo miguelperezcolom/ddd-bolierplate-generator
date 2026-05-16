@@ -71,6 +71,7 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.asyncConsumerGroup(),
                         entity.cacheable(),
                         entity.cacheTtlSeconds(),
-                        entity.timeoutMs()));
+                        entity.timeoutMs(),
+                        entity.transactionBoundary()));
     }
 }

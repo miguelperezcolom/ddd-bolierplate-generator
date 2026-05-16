@@ -24,5 +24,6 @@ public record UseCaseDto(String id, String name,
                          String asyncConsumerGroup,
                          boolean cacheable,
                          Integer cacheTtlSeconds,
-                         Long timeoutMs) {
+                         Long timeoutMs,
+                         String transactionBoundary) {
 }

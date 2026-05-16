@@ -47,7 +47,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.asyncConsumerGroup(),
                         entity.cacheable(),
                         entity.cacheTtlSeconds(),
-                        entity.timeoutMs()));
+                        entity.timeoutMs(),
+                        entity.transactionBoundary()));
     }
 
     @Override
@@ -76,7 +77,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getAsyncConsumerGroup(),
                 entity.isCacheable(),
                 entity.getCacheTtlSeconds(),
-                entity.getTimeoutMs()));
+                entity.getTimeoutMs(),
+                entity.getTransactionBoundary() != null ? entity.getTransactionBoundary().name() : null));
         return entity;
     }
 

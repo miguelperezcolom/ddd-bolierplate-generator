@@ -4,6 +4,7 @@ import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.UseCaseDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.UseCaseStepData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.TransactionBoundary;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.CreateUseCaseCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.create.CreateUseCaseUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.usecase.save.SaveUseCaseCommand;
@@ -66,6 +67,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     boolean cacheable;
     Integer cacheTtlSeconds;
     Long timeoutMs;
+    TransactionBoundary transactionBoundary;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -80,7 +82,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
-                cacheable, cacheTtlSeconds, timeoutMs));
+                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null));
         return id;
     }
 
@@ -91,7 +93,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
-                cacheable, cacheTtlSeconds, timeoutMs));
+                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null));
     }
 
     @Override
@@ -123,6 +125,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         cacheable = model.cacheable();
         cacheTtlSeconds = model.cacheTtlSeconds();
         timeoutMs = model.timeoutMs();
+        transactionBoundary = model.transactionBoundary() != null ? TransactionBoundary.valueOf(model.transactionBoundary()) : null;
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

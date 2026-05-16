@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.*;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.usecase.vo.TransactionBoundary;
 import lombok.Getter;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class UseCase {
     private boolean cacheable;
     private Integer cacheTtlSeconds;
     private Long timeoutMs;
+    private TransactionBoundary transactionBoundary;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -55,7 +57,8 @@ public class UseCase {
                              String asyncConsumerGroup,
                              boolean cacheable,
                              Integer cacheTtlSeconds,
-                             Long timeoutMs) {
+                             Long timeoutMs,
+                             TransactionBoundary transactionBoundary) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -81,6 +84,7 @@ public class UseCase {
         useCase.cacheable = cacheable;
         useCase.cacheTtlSeconds = cacheTtlSeconds;
         useCase.timeoutMs = timeoutMs;
+        useCase.transactionBoundary = transactionBoundary;
         return useCase;
     }
 
@@ -106,7 +110,8 @@ public class UseCase {
                                String asyncConsumerGroup,
                                boolean cacheable,
                                Integer cacheTtlSeconds,
-                               Long timeoutMs) {
+                               Long timeoutMs,
+                               String transactionBoundary) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -132,6 +137,7 @@ public class UseCase {
         useCase.cacheable = cacheable;
         useCase.cacheTtlSeconds = cacheTtlSeconds;
         useCase.timeoutMs = timeoutMs;
+        useCase.transactionBoundary = transactionBoundary != null ? TransactionBoundary.valueOf(transactionBoundary) : null;
         return useCase;
     }
 
@@ -157,7 +163,8 @@ public class UseCase {
                        String asyncConsumerGroup,
                        boolean cacheable,
                        Integer cacheTtlSeconds,
-                       Long timeoutMs) {
+                       Long timeoutMs,
+                       TransactionBoundary transactionBoundary) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -181,5 +188,6 @@ public class UseCase {
         this.cacheable = cacheable;
         this.cacheTtlSeconds = cacheTtlSeconds;
         this.timeoutMs = timeoutMs;
+        this.transactionBoundary = transactionBoundary;
     }
 }
