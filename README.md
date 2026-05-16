@@ -2,6 +2,8 @@
 
 **Modux** is a spec-driven code generation framework for Domain-Driven Design (DDD) systems. Define your domain model using YAML files and let Modux generate the full Java boilerplate — aggregates, use cases, repositories, UI, and database migrations — so you can focus on business logic.
 
+**Documentation:** [modux.mateu.io](https://modux.mateu.io)
+
 ---
 
 ## What it does
