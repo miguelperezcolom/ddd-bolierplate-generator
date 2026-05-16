@@ -24,6 +24,7 @@ public class DomainEvent {
     private DomainEventCompressionType compressionType;
     private boolean deadLetterQueueEnabled;
     private String schemaVersion;
+    private String routingKeyField;
 
     public static DomainEvent of(DomainEventId id, DomainEventName name, DomainEventModelId modelId,
                                  DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
@@ -31,7 +32,8 @@ public class DomainEvent {
                                  String topicName, Integer partitions, Long retentionMs,
                                  DomainEventSerializationFormat serializationFormat,
                                  DomainEventCompressionType compressionType,
-                                 boolean deadLetterQueueEnabled, String schemaVersion) {
+                                 boolean deadLetterQueueEnabled, String schemaVersion,
+                                 String routingKeyField) {
         var domainEvent = new DomainEvent();
         domainEvent.id = id;
         domainEvent.name = name;
@@ -45,6 +47,7 @@ public class DomainEvent {
         domainEvent.compressionType = compressionType;
         domainEvent.deadLetterQueueEnabled = deadLetterQueueEnabled;
         domainEvent.schemaVersion = schemaVersion;
+        domainEvent.routingKeyField = routingKeyField;
         return domainEvent;
     }
 
@@ -52,7 +55,8 @@ public class DomainEvent {
                                    boolean publishAsIntegrationEvent, String integrationModelId,
                                    String topicName, Integer partitions, Long retentionMs,
                                    String serializationFormat, String compressionType,
-                                   boolean deadLetterQueueEnabled, String schemaVersion) {
+                                   boolean deadLetterQueueEnabled, String schemaVersion,
+                                   String routingKeyField) {
         var domainEvent = new DomainEvent();
         domainEvent.id = new DomainEventId(id);
         domainEvent.name = new DomainEventName(name);
@@ -66,6 +70,7 @@ public class DomainEvent {
         domainEvent.compressionType = compressionType != null ? DomainEventCompressionType.valueOf(compressionType) : null;
         domainEvent.deadLetterQueueEnabled = deadLetterQueueEnabled;
         domainEvent.schemaVersion = schemaVersion;
+        domainEvent.routingKeyField = routingKeyField;
         return domainEvent;
     }
 
@@ -75,7 +80,8 @@ public class DomainEvent {
                        String topicName, Integer partitions, Long retentionMs,
                        DomainEventSerializationFormat serializationFormat,
                        DomainEventCompressionType compressionType,
-                       boolean deadLetterQueueEnabled, String schemaVersion) {
+                       boolean deadLetterQueueEnabled, String schemaVersion,
+                       String routingKeyField) {
         this.name = name;
         this.modelId = modelId;
         this.publishAsIntegrationEvent = publishAsIntegrationEvent;
@@ -87,5 +93,6 @@ public class DomainEvent {
         this.compressionType = compressionType;
         this.deadLetterQueueEnabled = deadLetterQueueEnabled;
         this.schemaVersion = schemaVersion;
+        this.routingKeyField = routingKeyField;
     }
 }

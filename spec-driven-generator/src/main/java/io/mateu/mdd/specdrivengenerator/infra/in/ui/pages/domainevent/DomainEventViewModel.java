@@ -49,19 +49,20 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     DomainEventCompressionType compressionType;
     boolean deadLetterQueueEnabled;
     String schemaVersion;
+    String routingKeyField;
 
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion, routingKeyField));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion, routingKeyField));
     }
 
     @Override
@@ -82,6 +83,7 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         compressionType = model.compressionType() != null ? DomainEventCompressionType.valueOf(model.compressionType()) : null;
         deadLetterQueueEnabled = model.deadLetterQueueEnabled();
         schemaVersion = model.schemaVersion();
+        routingKeyField = model.routingKeyField();
         return this;
     }
 
