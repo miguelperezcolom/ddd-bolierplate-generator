@@ -12,6 +12,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProv
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectName;
@@ -63,6 +64,7 @@ public class SaveProjectUseCase {
                 command.secretsProvider(), command.secretsEndpoint(), command.secretsToken(),
                 command.ingressDomain(), command.ingressTlsEnabled(), command.ingressClassName(),
                 command.cicdProvider() != null ? CicdProvider.valueOf(command.cicdProvider()) : null,
+                command.environment() != null ? ProjectEnvironment.valueOf(command.environment()) : null,
                 command.serviceIds().stream().map(ServiceId::new).toList());
         repository.save(project);
     }

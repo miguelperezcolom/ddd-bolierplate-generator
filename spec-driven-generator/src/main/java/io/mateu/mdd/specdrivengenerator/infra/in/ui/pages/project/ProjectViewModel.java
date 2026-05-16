@@ -8,6 +8,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SavePr
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
@@ -128,6 +129,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Tab("CI/CD")
     CicdProvider cicdProvider;
+    ProjectEnvironment environment;
 
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
@@ -160,6 +162,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 secretsProvider, secretsEndpoint, secretsToken,
                 ingressDomain, ingressTlsEnabled, ingressClassName,
                 cicdProvider != null ? cicdProvider.name() : null,
+                environment != null ? environment.name() : null,
                 services));
         return id;
     }
@@ -188,6 +191,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 secretsProvider, secretsEndpoint, secretsToken,
                 ingressDomain, ingressTlsEnabled, ingressClassName,
                 cicdProvider != null ? cicdProvider.name() : null,
+                environment != null ? environment.name() : null,
                 services));
     }
 
@@ -259,6 +263,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         ingressTlsEnabled = model.ingressTlsEnabled();
         ingressClassName = model.ingressClassName();
         cicdProvider = model.cicdProvider() != null ? CicdProvider.valueOf(model.cicdProvider()) : null;
+        environment = model.environment() != null ? ProjectEnvironment.valueOf(model.environment()) : null;
         services = model.serviceIds();
         return this;
     }

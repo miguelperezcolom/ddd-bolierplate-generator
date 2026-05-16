@@ -45,6 +45,7 @@ public record SaveProjectCommand(String id, String name, String outputPath, Stri
                                  SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
                                  String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                                  String cicdProvider,
+                                 String environment,
                                  List<String> serviceIds) {
 
     public SaveProjectCommand {
