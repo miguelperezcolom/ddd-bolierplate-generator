@@ -28,7 +28,9 @@ public class SagaFileRepository implements SagaRepository {
                         entity.timeoutMs(),
                         entity.compensationTimeoutMs(),
                         entity.triggeringEventIds(),
-                        toSteps(entity.steps())));
+                        toSteps(entity.steps()),
+                        entity.maxRetries(),
+                        entity.retryBackoffMs()));
     }
 
     @Override
@@ -39,7 +41,9 @@ public class SagaFileRepository implements SagaRepository {
                 entity.getTimeoutMs(),
                 entity.getCompensationTimeoutMs(),
                 entity.getTriggeringEventIds(),
-                toStepEntities(entity.getSteps())));
+                toStepEntities(entity.getSteps()),
+                entity.getMaxRetries(),
+                entity.getRetryBackoffMs()));
         return entity;
     }
 

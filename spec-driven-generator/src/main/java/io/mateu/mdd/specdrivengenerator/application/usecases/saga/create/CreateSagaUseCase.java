@@ -24,7 +24,9 @@ public class CreateSagaUseCase {
                 command.timeoutMs(),
                 command.compensationTimeoutMs(),
                 command.triggeringEventIds(),
-                toSteps(command.steps()));
+                toSteps(command.steps()),
+                command.maxRetries(),
+                command.retryBackoffMs());
         repository.save(saga);
     }
 

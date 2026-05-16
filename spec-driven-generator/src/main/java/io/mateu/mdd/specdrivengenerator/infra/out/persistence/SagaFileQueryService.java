@@ -53,6 +53,8 @@ public class SagaFileQueryService implements SagaQueryService {
                                         s.aggregateId(), s.operationId(),
                                         s.gatewayId(), s.gatewayOperationId(),
                                         s.domainEventId(), s.useCaseId(), s.modelMappingId()))
-                                .toList()));
+                                .toList(),
+                        entity.maxRetries(),
+                        entity.retryBackoffMs()));
     }
 }

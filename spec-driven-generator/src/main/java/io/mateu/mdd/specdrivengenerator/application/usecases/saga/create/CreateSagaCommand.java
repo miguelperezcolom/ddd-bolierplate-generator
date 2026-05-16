@@ -10,6 +10,8 @@ public record CreateSagaCommand(
         Long timeoutMs,
         Long compensationTimeoutMs,
         List<String> triggeringEventIds,
-        List<SagaStepData> steps
+        List<SagaStepData> steps,
+        Integer maxRetries,
+        Long retryBackoffMs
 ) {
 }

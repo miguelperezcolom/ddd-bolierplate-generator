@@ -8,6 +8,8 @@ public record SagaDto(
         Long timeoutMs,
         Long compensationTimeoutMs,
         List<String> triggeringEventIds,
-        List<SagaStepDto> steps
+        List<SagaStepDto> steps,
+        Integer maxRetries,
+        Long retryBackoffMs
 ) {
 }

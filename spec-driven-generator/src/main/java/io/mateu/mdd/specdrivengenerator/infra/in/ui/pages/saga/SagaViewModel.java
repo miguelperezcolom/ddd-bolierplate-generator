@@ -39,6 +39,8 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
 
     Long timeoutMs;
     Long compensationTimeoutMs;
+    Integer maxRetries;
+    Long retryBackoffMs;
 
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> triggeringEventIds = new ArrayList<>();
@@ -51,13 +53,13 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps)));
+        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps)));
+        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs));
     }
 
     @Override
@@ -70,6 +72,8 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
         name = model.name();
         timeoutMs = model.timeoutMs();
         compensationTimeoutMs = model.compensationTimeoutMs();
+        maxRetries = model.maxRetries();
+        retryBackoffMs = model.retryBackoffMs();
         triggeringEventIds = model.triggeringEventIds() != null ? new ArrayList<>(model.triggeringEventIds()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new SagaStepViewModel();

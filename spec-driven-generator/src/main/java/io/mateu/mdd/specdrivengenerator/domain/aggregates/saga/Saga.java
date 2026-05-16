@@ -14,12 +14,16 @@ public class Saga {
     private Long compensationTimeoutMs;
     private List<String> triggeringEventIds;
     private List<SagaStep> steps;
+    private Integer maxRetries;
+    private Long retryBackoffMs;
 
     public static Saga of(SagaId id, SagaName name,
                           Long timeoutMs,
                           Long compensationTimeoutMs,
                           List<String> triggeringEventIds,
-                          List<SagaStep> steps) {
+                          List<SagaStep> steps,
+                          Integer maxRetries,
+                          Long retryBackoffMs) {
         var saga = new Saga();
         saga.id = id;
         saga.name = name;
@@ -27,6 +31,8 @@ public class Saga {
         saga.compensationTimeoutMs = compensationTimeoutMs;
         saga.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         saga.steps = steps != null ? steps : List.of();
+        saga.maxRetries = maxRetries;
+        saga.retryBackoffMs = retryBackoffMs;
         return saga;
     }
 
@@ -34,7 +40,9 @@ public class Saga {
                             Long timeoutMs,
                             Long compensationTimeoutMs,
                             List<String> triggeringEventIds,
-                            List<SagaStep> steps) {
+                            List<SagaStep> steps,
+                            Integer maxRetries,
+                            Long retryBackoffMs) {
         var saga = new Saga();
         saga.id = new SagaId(id);
         saga.name = new SagaName(name);
@@ -42,6 +50,8 @@ public class Saga {
         saga.compensationTimeoutMs = compensationTimeoutMs;
         saga.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         saga.steps = steps != null ? steps : List.of();
+        saga.maxRetries = maxRetries;
+        saga.retryBackoffMs = retryBackoffMs;
         return saga;
     }
 
@@ -49,11 +59,15 @@ public class Saga {
                        Long timeoutMs,
                        Long compensationTimeoutMs,
                        List<String> triggeringEventIds,
-                       List<SagaStep> steps) {
+                       List<SagaStep> steps,
+                       Integer maxRetries,
+                       Long retryBackoffMs) {
         this.name = name;
         this.timeoutMs = timeoutMs;
         this.compensationTimeoutMs = compensationTimeoutMs;
         this.triggeringEventIds = triggeringEventIds != null ? triggeringEventIds : List.of();
         this.steps = steps != null ? steps : List.of();
+        this.maxRetries = maxRetries;
+        this.retryBackoffMs = retryBackoffMs;
     }
 }
