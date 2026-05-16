@@ -35,6 +35,8 @@ public class CreateAggregateUseCase {
                 command.tableName(),
                 command.tableSchema(),
                 command.optimisticLockingEnabled(),
+                command.eventSourcingEnabled(),
+                command.snapshotFrequency(),
                 command.operations().stream()
                         .map(operation -> Operation.of(
                                 new OperationId(operation.id()),

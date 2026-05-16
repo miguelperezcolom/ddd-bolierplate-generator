@@ -12,6 +12,8 @@ public record SaveAggregateCommand(String id, String name,
                                    String tableName,
                                    String tableSchema,
                                    boolean optimisticLockingEnabled,
+                                   boolean eventSourcingEnabled,
+                                   Integer snapshotFrequency,
                                    List<OperationDto> operations,
                                    List<InvariantDto> invariants) {
 

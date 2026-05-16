@@ -13,6 +13,8 @@ public record AggregateEntity(
         String tableName,
         String tableSchema,
         boolean optimisticLockingEnabled,
+        boolean eventSourcingEnabled,
+        Integer snapshotFrequency,
         List<OperationEntity> operations,
         List<InvariantEntity> invariants
         ) implements Identifiable {

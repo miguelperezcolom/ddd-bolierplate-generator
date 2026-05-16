@@ -25,6 +25,8 @@ public class SaveAggregateUseCase {
                 command.tableName(),
                 command.tableSchema(),
                 command.optimisticLockingEnabled(),
+                command.eventSourcingEnabled(),
+                command.snapshotFrequency(),
                 command.operations(),
                 command.invariants()
         );

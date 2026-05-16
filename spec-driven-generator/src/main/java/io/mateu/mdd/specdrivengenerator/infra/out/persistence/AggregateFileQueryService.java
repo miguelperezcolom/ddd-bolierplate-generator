@@ -54,6 +54,8 @@ public class AggregateFileQueryService implements AggregateQueryService {
                         entity.tableName(),
                         entity.tableSchema(),
                         entity.optimisticLockingEnabled(),
+                        entity.eventSourcingEnabled(),
+                        entity.snapshotFrequency(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),

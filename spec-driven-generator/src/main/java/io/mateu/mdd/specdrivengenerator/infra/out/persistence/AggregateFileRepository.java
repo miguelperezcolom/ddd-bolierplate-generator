@@ -41,6 +41,8 @@ public class AggregateFileRepository implements AggregateRepository {
                         entity.tableName(),
                         entity.tableSchema(),
                         entity.optimisticLockingEnabled(),
+                        entity.eventSourcingEnabled(),
+                        entity.snapshotFrequency(),
                         entity.operations().stream()
                                 .map(operationEntity -> new OperationDto(
                                         operationEntity.id(),
@@ -73,6 +75,8 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.getTableName(),
                 entity.getTableSchema(),
                 entity.isOptimisticLockingEnabled(),
+                entity.isEventSourcingEnabled(),
+                entity.getSnapshotFrequency(),
                 entity.getOperations().stream()
                         .map(operation -> new OperationEntity(
                                 operation.getId().id(),

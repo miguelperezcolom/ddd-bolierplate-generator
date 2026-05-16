@@ -41,6 +41,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
     String tableName;
     String tableSchema;
     boolean optimisticLockingEnabled;
+    boolean eventSourcingEnabled;
+    Integer snapshotFrequency;
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<OperationViewModel> operations;
@@ -63,6 +65,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 tableName,
                 tableSchema,
                 optimisticLockingEnabled,
+                eventSourcingEnabled,
+                snapshotFrequency,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -104,6 +108,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 tableName,
                 tableSchema,
                 optimisticLockingEnabled,
+                eventSourcingEnabled,
+                snapshotFrequency,
                 operations.stream()
                         .map(operationViewModel -> new OperationDto(
                                 operationViewModel.id(),
@@ -144,6 +150,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
         tableName = model.tableName();
         tableSchema = model.tableSchema();
         optimisticLockingEnabled = model.optimisticLockingEnabled();
+        eventSourcingEnabled = model.eventSourcingEnabled();
+        snapshotFrequency = model.snapshotFrequency();
         operations = model.operations().stream().map(operationDto -> new OperationViewModel(
                operationDto.id(), operationDto.name(), operationDto.inputModelId(), operationDto.outputModelId(),
                operationDto.preconditions(),
