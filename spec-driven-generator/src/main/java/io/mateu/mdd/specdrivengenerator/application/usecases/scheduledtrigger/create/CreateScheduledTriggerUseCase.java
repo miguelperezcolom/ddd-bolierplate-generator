@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.c
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ScheduledTriggerRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.ScheduledTrigger;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.MisfirePolicy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerExecutionEnvironment;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerName;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,9 @@ public class CreateScheduledTriggerUseCase {
                 command.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(command.executionEnvironment()) : null,
                 command.lockProvider(),
                 command.maxExecutionTimeMs(),
-                command.failureNotificationEmail());
+                command.failureNotificationEmail(),
+                command.misfirePolicy() != null ? MisfirePolicy.valueOf(command.misfirePolicy()) : null,
+                command.allowConcurrentExecution());
         repository.save(trigger);
     }
 }

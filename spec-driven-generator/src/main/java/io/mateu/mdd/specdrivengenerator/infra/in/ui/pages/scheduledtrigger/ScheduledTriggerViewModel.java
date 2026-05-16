@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.create.CreateScheduledTriggerUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.save.SaveScheduledTriggerCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.scheduledtrigger.save.SaveScheduledTriggerUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.MisfirePolicy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerExecutionEnvironment;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelMappingIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelMappingIdOptionsSupplier;
@@ -51,19 +52,21 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
     String lockProvider;
     Long maxExecutionTimeMs;
     String failureNotificationEmail;
+    MisfirePolicy misfirePolicy;
+    boolean allowConcurrentExecution;
 
     final CreateScheduledTriggerUseCase createUseCase;
     final SaveScheduledTriggerUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution));
     }
 
     @Override
@@ -83,6 +86,8 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         lockProvider = model.lockProvider();
         maxExecutionTimeMs = model.maxExecutionTimeMs();
         failureNotificationEmail = model.failureNotificationEmail();
+        misfirePolicy = model.misfirePolicy() != null ? MisfirePolicy.valueOf(model.misfirePolicy()) : null;
+        allowConcurrentExecution = model.allowConcurrentExecution();
         return this;
     }
 

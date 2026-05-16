@@ -19,13 +19,16 @@ public class ScheduledTrigger {
     private String lockProvider;
     private Long maxExecutionTimeMs;
     private String failureNotificationEmail;
+    private MisfirePolicy misfirePolicy;
+    private boolean allowConcurrentExecution;
 
     public static ScheduledTrigger of(ScheduledTriggerId id, ScheduledTriggerName name,
                                       String cronExpression, String timezone, String useCaseId,
                                       String modelMappingId, String description,
                                       ScheduledTriggerExecutionEnvironment executionEnvironment,
                                       String lockProvider,
-                                      Long maxExecutionTimeMs, String failureNotificationEmail) {
+                                      Long maxExecutionTimeMs, String failureNotificationEmail,
+                                      MisfirePolicy misfirePolicy, boolean allowConcurrentExecution) {
         var trigger = new ScheduledTrigger();
         trigger.id = id;
         trigger.name = name;
@@ -38,6 +41,8 @@ public class ScheduledTrigger {
         trigger.lockProvider = lockProvider;
         trigger.maxExecutionTimeMs = maxExecutionTimeMs;
         trigger.failureNotificationEmail = failureNotificationEmail;
+        trigger.misfirePolicy = misfirePolicy;
+        trigger.allowConcurrentExecution = allowConcurrentExecution;
         return trigger;
     }
 
@@ -46,7 +51,8 @@ public class ScheduledTrigger {
                                         String modelMappingId, String description,
                                         String executionEnvironment,
                                         String lockProvider,
-                                        Long maxExecutionTimeMs, String failureNotificationEmail) {
+                                        Long maxExecutionTimeMs, String failureNotificationEmail,
+                                        String misfirePolicy, boolean allowConcurrentExecution) {
         var trigger = new ScheduledTrigger();
         trigger.id = new ScheduledTriggerId(id);
         trigger.name = new ScheduledTriggerName(name);
@@ -59,6 +65,8 @@ public class ScheduledTrigger {
         trigger.lockProvider = lockProvider;
         trigger.maxExecutionTimeMs = maxExecutionTimeMs;
         trigger.failureNotificationEmail = failureNotificationEmail;
+        trigger.misfirePolicy = misfirePolicy != null ? MisfirePolicy.valueOf(misfirePolicy) : null;
+        trigger.allowConcurrentExecution = allowConcurrentExecution;
         return trigger;
     }
 
@@ -67,7 +75,8 @@ public class ScheduledTrigger {
                        String modelMappingId, String description,
                        ScheduledTriggerExecutionEnvironment executionEnvironment,
                        String lockProvider,
-                       Long maxExecutionTimeMs, String failureNotificationEmail) {
+                       Long maxExecutionTimeMs, String failureNotificationEmail,
+                       MisfirePolicy misfirePolicy, boolean allowConcurrentExecution) {
         this.name = name;
         this.cronExpression = cronExpression;
         this.timezone = timezone;
@@ -78,5 +87,7 @@ public class ScheduledTrigger {
         this.lockProvider = lockProvider;
         this.maxExecutionTimeMs = maxExecutionTimeMs;
         this.failureNotificationEmail = failureNotificationEmail;
+        this.misfirePolicy = misfirePolicy;
+        this.allowConcurrentExecution = allowConcurrentExecution;
     }
 }

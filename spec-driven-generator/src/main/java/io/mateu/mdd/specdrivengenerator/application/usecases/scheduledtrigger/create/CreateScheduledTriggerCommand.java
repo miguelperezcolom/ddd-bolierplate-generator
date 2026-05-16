@@ -11,6 +11,8 @@ public record CreateScheduledTriggerCommand(
         String executionEnvironment,
         String lockProvider,
         Long maxExecutionTimeMs,
-        String failureNotificationEmail
+        String failureNotificationEmail,
+        String misfirePolicy,
+        boolean allowConcurrentExecution
 ) {
 }

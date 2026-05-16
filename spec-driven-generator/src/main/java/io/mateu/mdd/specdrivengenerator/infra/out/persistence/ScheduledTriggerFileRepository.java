@@ -31,7 +31,9 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.executionEnvironment(),
                         entity.lockProvider(),
                         entity.maxExecutionTimeMs(),
-                        entity.failureNotificationEmail()));
+                        entity.failureNotificationEmail(),
+                        entity.misfirePolicy(),
+                        entity.allowConcurrentExecution()));
     }
 
     @Override
@@ -47,7 +49,9 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getExecutionEnvironment() != null ? entity.getExecutionEnvironment().name() : null,
                 entity.getLockProvider(),
                 entity.getMaxExecutionTimeMs(),
-                entity.getFailureNotificationEmail()));
+                entity.getFailureNotificationEmail(),
+                entity.getMisfirePolicy() != null ? entity.getMisfirePolicy().name() : null,
+                entity.isAllowConcurrentExecution()));
         return entity;
     }
 
