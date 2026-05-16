@@ -24,7 +24,9 @@ public class CreateScheduledTriggerUseCase {
                 command.modelMappingId(),
                 command.description(),
                 command.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(command.executionEnvironment()) : null,
-                command.lockProvider());
+                command.lockProvider(),
+                command.maxExecutionTimeMs(),
+                command.failureNotificationEmail());
         repository.save(trigger);
     }
 }

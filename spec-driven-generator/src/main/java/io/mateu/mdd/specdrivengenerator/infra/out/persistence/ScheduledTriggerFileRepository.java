@@ -29,7 +29,9 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.modelMappingId(),
                         entity.description(),
                         entity.executionEnvironment(),
-                        entity.lockProvider()));
+                        entity.lockProvider(),
+                        entity.maxExecutionTimeMs(),
+                        entity.failureNotificationEmail()));
     }
 
     @Override
@@ -43,7 +45,9 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getModelMappingId(),
                 entity.getDescription(),
                 entity.getExecutionEnvironment() != null ? entity.getExecutionEnvironment().name() : null,
-                entity.getLockProvider()));
+                entity.getLockProvider(),
+                entity.getMaxExecutionTimeMs(),
+                entity.getFailureNotificationEmail()));
         return entity;
     }
 

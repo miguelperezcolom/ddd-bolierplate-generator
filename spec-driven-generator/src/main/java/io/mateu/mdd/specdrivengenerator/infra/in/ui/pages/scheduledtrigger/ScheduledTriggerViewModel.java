@@ -49,19 +49,21 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
     String description;
     ScheduledTriggerExecutionEnvironment executionEnvironment;
     String lockProvider;
+    Long maxExecutionTimeMs;
+    String failureNotificationEmail;
 
     final CreateScheduledTriggerUseCase createUseCase;
     final SaveScheduledTriggerUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail));
     }
 
     @Override
@@ -79,6 +81,8 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         description = model.description();
         executionEnvironment = model.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(model.executionEnvironment()) : null;
         lockProvider = model.lockProvider();
+        maxExecutionTimeMs = model.maxExecutionTimeMs();
+        failureNotificationEmail = model.failureNotificationEmail();
         return this;
     }
 

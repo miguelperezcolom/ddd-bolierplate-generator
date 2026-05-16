@@ -17,12 +17,15 @@ public class ScheduledTrigger {
     private String description;
     private ScheduledTriggerExecutionEnvironment executionEnvironment;
     private String lockProvider;
+    private Long maxExecutionTimeMs;
+    private String failureNotificationEmail;
 
     public static ScheduledTrigger of(ScheduledTriggerId id, ScheduledTriggerName name,
                                       String cronExpression, String timezone, String useCaseId,
                                       String modelMappingId, String description,
                                       ScheduledTriggerExecutionEnvironment executionEnvironment,
-                                      String lockProvider) {
+                                      String lockProvider,
+                                      Long maxExecutionTimeMs, String failureNotificationEmail) {
         var trigger = new ScheduledTrigger();
         trigger.id = id;
         trigger.name = name;
@@ -33,6 +36,8 @@ public class ScheduledTrigger {
         trigger.description = description;
         trigger.executionEnvironment = executionEnvironment;
         trigger.lockProvider = lockProvider;
+        trigger.maxExecutionTimeMs = maxExecutionTimeMs;
+        trigger.failureNotificationEmail = failureNotificationEmail;
         return trigger;
     }
 
@@ -40,7 +45,8 @@ public class ScheduledTrigger {
                                         String cronExpression, String timezone, String useCaseId,
                                         String modelMappingId, String description,
                                         String executionEnvironment,
-                                        String lockProvider) {
+                                        String lockProvider,
+                                        Long maxExecutionTimeMs, String failureNotificationEmail) {
         var trigger = new ScheduledTrigger();
         trigger.id = new ScheduledTriggerId(id);
         trigger.name = new ScheduledTriggerName(name);
@@ -51,6 +57,8 @@ public class ScheduledTrigger {
         trigger.description = description;
         trigger.executionEnvironment = executionEnvironment != null ? ScheduledTriggerExecutionEnvironment.valueOf(executionEnvironment) : null;
         trigger.lockProvider = lockProvider;
+        trigger.maxExecutionTimeMs = maxExecutionTimeMs;
+        trigger.failureNotificationEmail = failureNotificationEmail;
         return trigger;
     }
 
@@ -58,7 +66,8 @@ public class ScheduledTrigger {
                        String cronExpression, String timezone, String useCaseId,
                        String modelMappingId, String description,
                        ScheduledTriggerExecutionEnvironment executionEnvironment,
-                       String lockProvider) {
+                       String lockProvider,
+                       Long maxExecutionTimeMs, String failureNotificationEmail) {
         this.name = name;
         this.cronExpression = cronExpression;
         this.timezone = timezone;
@@ -67,5 +76,7 @@ public class ScheduledTrigger {
         this.description = description;
         this.executionEnvironment = executionEnvironment;
         this.lockProvider = lockProvider;
+        this.maxExecutionTimeMs = maxExecutionTimeMs;
+        this.failureNotificationEmail = failureNotificationEmail;
     }
 }

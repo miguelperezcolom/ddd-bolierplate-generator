@@ -9,6 +9,8 @@ public record ScheduledTriggerDto(
         String modelMappingId,
         String description,
         String executionEnvironment,
-        String lockProvider
+        String lockProvider,
+        Long maxExecutionTimeMs,
+        String failureNotificationEmail
 ) {
 }
