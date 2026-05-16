@@ -72,7 +72,8 @@ public class Gateway {
                                 String authOAuth2TokenUrl, String authOAuth2Scopes,
                                 List<GatewayOperation> operations,
                                 boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
-                                boolean corsEnabled, String corsAllowedOrigins) {
+                                boolean corsEnabled, String corsAllowedOrigins,
+                                Long globalTimeoutMs) {
         var gateway = new Gateway();
         gateway.id = new GatewayId(id);
         gateway.name = new GatewayName(name);
