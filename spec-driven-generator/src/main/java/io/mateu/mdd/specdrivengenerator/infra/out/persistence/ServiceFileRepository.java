@@ -32,6 +32,7 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.openApiDocumentationEnabled(),
                         entity.circuitBreakerEnabled(), entity.circuitBreakerThreshold(),
                         entity.connectionTimeoutMs(), entity.readTimeoutMs(), entity.writeTimeoutMs(),
+                        entity.deploymentStrategy(), entity.owner(),
                         entity.moduleIds(),
                         entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()
@@ -69,6 +70,8 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getConnectionTimeoutMs(),
                 entity.getReadTimeoutMs(),
                 entity.getWriteTimeoutMs(),
+                entity.getDeploymentStrategy() != null ? entity.getDeploymentStrategy().name() : null,
+                entity.getOwner(),
                 entity.getModules().stream().map(ModuleId::id).toList(),
                 entity.getGatewayIds(),
                 entity.getEnvVars() != null ? entity.getEnvVars().stream()

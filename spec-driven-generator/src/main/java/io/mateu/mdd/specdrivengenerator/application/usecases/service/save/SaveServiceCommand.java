@@ -14,6 +14,8 @@ public record SaveServiceCommand(String id, String name, String gitRepository, S
                                  boolean openApiDocumentationEnabled,
                                  boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                                  Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
+                                 String deploymentStrategy,
+                                 String owner,
                                  List<String> moduleIds,
                                  List<String> gatewayIds,
                                  List<EnvVar> envVars) {

@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.repositories.ServiceRepo
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.Service;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.DeploymentStrategy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceName;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,8 @@ public class CreateServiceUseCase {
                 command.connectionTimeoutMs(),
                 command.readTimeoutMs(),
                 command.writeTimeoutMs(),
+                command.deploymentStrategy() != null ? DeploymentStrategy.valueOf(command.deploymentStrategy()) : null,
+                command.owner(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
                 command.envVars());

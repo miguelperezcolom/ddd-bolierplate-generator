@@ -51,6 +51,7 @@ public class ServiceFileQueryService implements ServiceQueryService {
                         entity.openApiDocumentationEnabled(),
                         entity.circuitBreakerEnabled(), entity.circuitBreakerThreshold(),
                         entity.connectionTimeoutMs(), entity.readTimeoutMs(), entity.writeTimeoutMs(),
+                        entity.deploymentStrategy(), entity.owner(),
                         entity.moduleIds(),
                         entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()

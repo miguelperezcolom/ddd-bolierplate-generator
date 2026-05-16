@@ -33,6 +33,8 @@ public record ServiceEntity(
         Long connectionTimeoutMs,
         Long readTimeoutMs,
         Long writeTimeoutMs,
+        String deploymentStrategy,
+        String owner,
         List<String> moduleIds,
         List<String> gatewayIds,
         List<EnvVarEntity> envVars

@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.Crea
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.create.CreateServiceUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.service.save.SaveServiceUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.DeploymentStrategy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.GatewayIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
@@ -44,6 +45,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String dockerImageRegistry;
     String dockerImageName;
     boolean openApiDocumentationEnabled;
+    DeploymentStrategy deploymentStrategy;
+    String owner;
 
     @Tab("Resilience")
     boolean circuitBreakerEnabled;
@@ -95,6 +98,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 openApiDocumentationEnabled,
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
+                deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
                 modules, gatewayIds, toEnvVars(envVars)));
         return id;
     }
@@ -110,6 +114,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 openApiDocumentationEnabled,
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
+                deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
                 modules, gatewayIds, toEnvVars(envVars)));
     }
 
@@ -125,6 +130,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         dockerImageRegistry = model.dockerImageRegistry();
         dockerImageName = model.dockerImageName();
         openApiDocumentationEnabled = model.openApiDocumentationEnabled();
+        deploymentStrategy = model.deploymentStrategy() != null ? DeploymentStrategy.valueOf(model.deploymentStrategy()) : null;
+        owner = model.owner();
         circuitBreakerEnabled = model.circuitBreakerEnabled();
         circuitBreakerThreshold = model.circuitBreakerThreshold();
         connectionTimeoutMs = model.connectionTimeoutMs();

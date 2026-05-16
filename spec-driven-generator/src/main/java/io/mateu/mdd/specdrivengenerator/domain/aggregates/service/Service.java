@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.domain.aggregates.service;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.DeploymentStrategy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceName;
@@ -39,6 +40,8 @@ public class Service {
     private Long connectionTimeoutMs;
     private Long readTimeoutMs;
     private Long writeTimeoutMs;
+    private DeploymentStrategy deploymentStrategy;
+    private String owner;
     private List<ModuleId> modules;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
@@ -54,6 +57,7 @@ public class Service {
                              boolean openApiDocumentationEnabled,
                              boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                              Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
+                             DeploymentStrategy deploymentStrategy, String owner,
                              List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
@@ -83,6 +87,8 @@ public class Service {
         service.connectionTimeoutMs = connectionTimeoutMs;
         service.readTimeoutMs = readTimeoutMs;
         service.writeTimeoutMs = writeTimeoutMs;
+        service.deploymentStrategy = deploymentStrategy;
+        service.owner = owner;
         service.modules = modules;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -100,6 +106,7 @@ public class Service {
                                boolean openApiDocumentationEnabled,
                                boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                                Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
+                               String deploymentStrategy, String owner,
                                List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
@@ -129,6 +136,8 @@ public class Service {
         service.connectionTimeoutMs = connectionTimeoutMs;
         service.readTimeoutMs = readTimeoutMs;
         service.writeTimeoutMs = writeTimeoutMs;
+        service.deploymentStrategy = deploymentStrategy != null ? DeploymentStrategy.valueOf(deploymentStrategy) : null;
+        service.owner = owner;
         service.modules = modules.stream().map(ModuleId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -146,6 +155,7 @@ public class Service {
                        boolean openApiDocumentationEnabled,
                        boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                        Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
+                       DeploymentStrategy deploymentStrategy, String owner,
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
@@ -173,6 +183,8 @@ public class Service {
         this.connectionTimeoutMs = connectionTimeoutMs;
         this.readTimeoutMs = readTimeoutMs;
         this.writeTimeoutMs = writeTimeoutMs;
+        this.deploymentStrategy = deploymentStrategy;
+        this.owner = owner;
         this.modules = modules;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();
