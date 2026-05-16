@@ -33,7 +33,8 @@ public class CreateGatewayUseCase {
                 command.authApiKeyHeaderName(), command.authBearerToken(),
                 command.authOAuth2ClientId(), command.authOAuth2ClientSecret(),
                 command.authOAuth2TokenUrl(), command.authOAuth2Scopes(),
-                operations);
+                operations,
+                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond(), command.rateLimitBurstSize());
         repository.save(gateway);
     }
 

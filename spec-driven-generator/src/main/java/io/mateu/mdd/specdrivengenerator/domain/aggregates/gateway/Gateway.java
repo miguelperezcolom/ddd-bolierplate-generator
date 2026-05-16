@@ -25,13 +25,17 @@ public class Gateway {
     private String authOAuth2TokenUrl;
     private String authOAuth2Scopes;
     private List<GatewayOperation> operations;
+    private boolean rateLimitEnabled;
+    private Integer rateLimitRequestsPerSecond;
+    private Integer rateLimitBurstSize;
 
     public static Gateway of(GatewayId id, GatewayName name, String serviceId, String baseUrl,
                               GatewayAuthType authType, String authUsername, String authPassword,
                               String authApiKeyHeaderName, String authBearerToken,
                               String authOAuth2ClientId, String authOAuth2ClientSecret,
                               String authOAuth2TokenUrl, String authOAuth2Scopes,
-                              List<GatewayOperation> operations) {
+                              List<GatewayOperation> operations,
+                              boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
         var gateway = new Gateway();
         gateway.id = id;
         gateway.name = name;
@@ -47,6 +51,9 @@ public class Gateway {
         gateway.authOAuth2TokenUrl = authOAuth2TokenUrl;
         gateway.authOAuth2Scopes = authOAuth2Scopes;
         gateway.operations = operations != null ? operations : List.of();
+        gateway.rateLimitEnabled = rateLimitEnabled;
+        gateway.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        gateway.rateLimitBurstSize = rateLimitBurstSize;
         return gateway;
     }
 
@@ -55,7 +62,8 @@ public class Gateway {
                                 String authApiKeyHeaderName, String authBearerToken,
                                 String authOAuth2ClientId, String authOAuth2ClientSecret,
                                 String authOAuth2TokenUrl, String authOAuth2Scopes,
-                                List<GatewayOperation> operations) {
+                                List<GatewayOperation> operations,
+                                boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
         var gateway = new Gateway();
         gateway.id = new GatewayId(id);
         gateway.name = new GatewayName(name);
@@ -71,6 +79,9 @@ public class Gateway {
         gateway.authOAuth2TokenUrl = authOAuth2TokenUrl;
         gateway.authOAuth2Scopes = authOAuth2Scopes;
         gateway.operations = operations != null ? operations : List.of();
+        gateway.rateLimitEnabled = rateLimitEnabled;
+        gateway.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        gateway.rateLimitBurstSize = rateLimitBurstSize;
         return gateway;
     }
 
@@ -79,7 +90,8 @@ public class Gateway {
                        String authApiKeyHeaderName, String authBearerToken,
                        String authOAuth2ClientId, String authOAuth2ClientSecret,
                        String authOAuth2TokenUrl, String authOAuth2Scopes,
-                       List<GatewayOperation> operations) {
+                       List<GatewayOperation> operations,
+                       boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
         this.name = name;
         this.serviceId = serviceId;
         this.baseUrl = baseUrl;
@@ -93,5 +105,8 @@ public class Gateway {
         this.authOAuth2TokenUrl = authOAuth2TokenUrl;
         this.authOAuth2Scopes = authOAuth2Scopes;
         this.operations = operations != null ? operations : List.of();
+        this.rateLimitEnabled = rateLimitEnabled;
+        this.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        this.rateLimitBurstSize = rateLimitBurstSize;
     }
 }

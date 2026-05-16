@@ -19,6 +19,9 @@ public record SaveGatewayCommand(
         String authOAuth2ClientSecret,
         String authOAuth2TokenUrl,
         String authOAuth2Scopes,
-        List<GatewayOperationData> operations
+        List<GatewayOperationData> operations,
+        boolean rateLimitEnabled,
+        Integer rateLimitRequestsPerSecond,
+        Integer rateLimitBurstSize
 ) {
 }

@@ -18,6 +18,9 @@ public record GatewayDto(
         String authOAuth2ClientSecret,
         String authOAuth2TokenUrl,
         String authOAuth2Scopes,
-        List<GatewayOperationDto> operations
+        List<GatewayOperationDto> operations,
+        boolean rateLimitEnabled,
+        Integer rateLimitRequestsPerSecond,
+        Integer rateLimitBurstSize
 ) {
 }

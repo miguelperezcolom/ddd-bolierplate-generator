@@ -53,6 +53,11 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     String authOAuth2TokenUrl;
     String authOAuth2Scopes;
 
+    @Tab("Rate Limiting")
+    boolean rateLimitEnabled;
+    Integer rateLimitRequestsPerSecond;
+    Integer rateLimitBurstSize;
+
     @Tab("Operations")
     List<GatewayOperationViewModel> operations = new ArrayList<>();
 
@@ -64,7 +69,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         createUseCase.handle(new CreateGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
-                toOperationData(operations)));
+                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize));
         return id;
     }
 
@@ -73,7 +78,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         saveUseCase.handle(new SaveGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
-                toOperationData(operations)));
+                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize));
     }
 
     @Override
@@ -95,6 +100,9 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         authOAuth2ClientSecret = model.authOAuth2ClientSecret();
         authOAuth2TokenUrl = model.authOAuth2TokenUrl();
         authOAuth2Scopes = model.authOAuth2Scopes();
+        rateLimitEnabled = model.rateLimitEnabled();
+        rateLimitRequestsPerSecond = model.rateLimitRequestsPerSecond();
+        rateLimitBurstSize = model.rateLimitBurstSize();
         operations = model.operations() == null ? new ArrayList<>() :
                 model.operations().stream().map(o -> {
                     var vm = new GatewayOperationViewModel();

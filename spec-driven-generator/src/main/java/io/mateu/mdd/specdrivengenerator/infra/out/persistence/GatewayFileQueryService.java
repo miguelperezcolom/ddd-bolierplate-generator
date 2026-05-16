@@ -53,6 +53,7 @@ public class GatewayFileQueryService implements GatewayQueryService {
                                         .map(o -> new GatewayOperationDto(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
-                                        .toList()));
+                                        .toList(),
+                        entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize()));
     }
 }

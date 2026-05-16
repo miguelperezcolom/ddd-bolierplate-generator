@@ -12,7 +12,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -34,7 +33,8 @@ public class GatewayFileRepository implements GatewayRepository {
                                         .map(o -> new GatewayOperation(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
-                                        .toList()));
+                                        .toList(),
+                        entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize()));
     }
 
     @Override
@@ -54,7 +54,8 @@ public class GatewayFileRepository implements GatewayRepository {
                 entity.getAuthApiKeyHeaderName(), entity.getAuthBearerToken(),
                 entity.getAuthOAuth2ClientId(), entity.getAuthOAuth2ClientSecret(),
                 entity.getAuthOAuth2TokenUrl(), entity.getAuthOAuth2Scopes(),
-                operationEntities));
+                operationEntities,
+                entity.isRateLimitEnabled(), entity.getRateLimitRequestsPerSecond(), entity.getRateLimitBurstSize()));
         return entity;
     }
 

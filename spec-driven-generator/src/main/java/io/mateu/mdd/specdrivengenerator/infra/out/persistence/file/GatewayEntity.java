@@ -19,6 +19,9 @@ public record GatewayEntity(
         String authOAuth2ClientSecret,
         String authOAuth2TokenUrl,
         String authOAuth2Scopes,
-        List<GatewayOperationEntity> operations
+        List<GatewayOperationEntity> operations,
+        boolean rateLimitEnabled,
+        Integer rateLimitRequestsPerSecond,
+        Integer rateLimitBurstSize
 ) implements Identifiable {
 }
