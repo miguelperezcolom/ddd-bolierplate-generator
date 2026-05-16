@@ -29,6 +29,8 @@ public record UseCaseEntity(
         boolean cacheable,
         Integer cacheTtlSeconds,
         Long timeoutMs,
-        String transactionBoundary
+        String transactionBoundary,
+        boolean idempotencyEnabled,
+        String idempotencyKeyField
 ) implements Identifiable {
 }

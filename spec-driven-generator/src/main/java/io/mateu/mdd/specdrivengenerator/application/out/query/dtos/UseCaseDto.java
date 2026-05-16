@@ -25,5 +25,7 @@ public record UseCaseDto(String id, String name,
                          boolean cacheable,
                          Integer cacheTtlSeconds,
                          Long timeoutMs,
-                         String transactionBoundary) {
+                         String transactionBoundary,
+                         boolean idempotencyEnabled,
+                         String idempotencyKeyField) {
 }

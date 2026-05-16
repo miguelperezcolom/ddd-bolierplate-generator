@@ -48,7 +48,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.cacheable(),
                         entity.cacheTtlSeconds(),
                         entity.timeoutMs(),
-                        entity.transactionBoundary()));
+                        entity.transactionBoundary(),
+                        entity.idempotencyEnabled(),
+                        entity.idempotencyKeyField()));
     }
 
     @Override
@@ -78,7 +80,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.isCacheable(),
                 entity.getCacheTtlSeconds(),
                 entity.getTimeoutMs(),
-                entity.getTransactionBoundary() != null ? entity.getTransactionBoundary().name() : null));
+                entity.getTransactionBoundary() != null ? entity.getTransactionBoundary().name() : null,
+                entity.isIdempotencyEnabled(),
+                entity.getIdempotencyKeyField()));
         return entity;
     }
 

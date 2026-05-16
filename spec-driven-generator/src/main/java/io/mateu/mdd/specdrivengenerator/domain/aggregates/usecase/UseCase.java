@@ -34,6 +34,8 @@ public class UseCase {
     private Integer cacheTtlSeconds;
     private Long timeoutMs;
     private TransactionBoundary transactionBoundary;
+    private boolean idempotencyEnabled;
+    private String idempotencyKeyField;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -58,7 +60,9 @@ public class UseCase {
                              boolean cacheable,
                              Integer cacheTtlSeconds,
                              Long timeoutMs,
-                             TransactionBoundary transactionBoundary) {
+                             TransactionBoundary transactionBoundary,
+                             boolean idempotencyEnabled,
+                             String idempotencyKeyField) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -85,6 +89,8 @@ public class UseCase {
         useCase.cacheTtlSeconds = cacheTtlSeconds;
         useCase.timeoutMs = timeoutMs;
         useCase.transactionBoundary = transactionBoundary;
+        useCase.idempotencyEnabled = idempotencyEnabled;
+        useCase.idempotencyKeyField = idempotencyKeyField;
         return useCase;
     }
 
@@ -111,7 +117,9 @@ public class UseCase {
                                boolean cacheable,
                                Integer cacheTtlSeconds,
                                Long timeoutMs,
-                               String transactionBoundary) {
+                               String transactionBoundary,
+                               boolean idempotencyEnabled,
+                               String idempotencyKeyField) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -138,6 +146,8 @@ public class UseCase {
         useCase.cacheTtlSeconds = cacheTtlSeconds;
         useCase.timeoutMs = timeoutMs;
         useCase.transactionBoundary = transactionBoundary != null ? TransactionBoundary.valueOf(transactionBoundary) : null;
+        useCase.idempotencyEnabled = idempotencyEnabled;
+        useCase.idempotencyKeyField = idempotencyKeyField;
         return useCase;
     }
 
@@ -164,7 +174,9 @@ public class UseCase {
                        boolean cacheable,
                        Integer cacheTtlSeconds,
                        Long timeoutMs,
-                       TransactionBoundary transactionBoundary) {
+                       TransactionBoundary transactionBoundary,
+                       boolean idempotencyEnabled,
+                       String idempotencyKeyField) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -189,5 +201,7 @@ public class UseCase {
         this.cacheTtlSeconds = cacheTtlSeconds;
         this.timeoutMs = timeoutMs;
         this.transactionBoundary = transactionBoundary;
+        this.idempotencyEnabled = idempotencyEnabled;
+        this.idempotencyKeyField = idempotencyKeyField;
     }
 }

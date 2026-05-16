@@ -68,6 +68,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     Integer cacheTtlSeconds;
     Long timeoutMs;
     TransactionBoundary transactionBoundary;
+    boolean idempotencyEnabled;
+    String idempotencyKeyField;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -82,7 +84,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
-                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null));
+                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
+                idempotencyEnabled, idempotencyKeyField));
         return id;
     }
 
@@ -93,7 +96,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 inputModelId, outputModelId, toStepData(steps), allowedRoles, allowedScopes, apiVersion, mcpDescription,
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
-                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null));
+                cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
+                idempotencyEnabled, idempotencyKeyField));
     }
 
     @Override
@@ -126,6 +130,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         cacheTtlSeconds = model.cacheTtlSeconds();
         timeoutMs = model.timeoutMs();
         transactionBoundary = model.transactionBoundary() != null ? TransactionBoundary.valueOf(model.transactionBoundary()) : null;
+        idempotencyEnabled = model.idempotencyEnabled();
+        idempotencyKeyField = model.idempotencyKeyField();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();
