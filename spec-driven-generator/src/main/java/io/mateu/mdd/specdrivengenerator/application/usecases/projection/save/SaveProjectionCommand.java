@@ -9,6 +9,7 @@ public record SaveProjectionCommand(
         String name,
         String modelId,
         String storageType,
-        List<ProjectionEventHandlerData> handlers
+        List<ProjectionEventHandlerData> handlers,
+        String rebuildStrategy
 ) {
 }

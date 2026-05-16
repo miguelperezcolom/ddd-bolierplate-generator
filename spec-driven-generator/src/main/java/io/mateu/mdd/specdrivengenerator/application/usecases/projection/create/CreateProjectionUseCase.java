@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.projection.Projecti
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.Projection;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.*;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.RebuildStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,8 @@ public class CreateProjectionUseCase {
                 new ProjectionName(command.name()),
                 command.modelId() != null ? new ProjectionModelId(command.modelId()) : null,
                 command.storageType() != null ? ProjectionStorageType.valueOf(command.storageType()) : null,
-                toHandlers(command.handlers()));
+                toHandlers(command.handlers()),
+                command.rebuildStrategy() != null ? RebuildStrategy.valueOf(command.rebuildStrategy()) : null);
         repository.save(projection);
     }
 

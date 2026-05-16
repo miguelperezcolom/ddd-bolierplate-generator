@@ -13,40 +13,47 @@ public class Projection {
     private ProjectionModelId modelId;
     private ProjectionStorageType storageType;
     private List<ProjectionEventHandler> handlers;
+    private RebuildStrategy rebuildStrategy;
 
     public static Projection of(ProjectionId id, ProjectionName name,
                                 ProjectionModelId modelId,
                                 ProjectionStorageType storageType,
-                                List<ProjectionEventHandler> handlers) {
+                                List<ProjectionEventHandler> handlers,
+                                RebuildStrategy rebuildStrategy) {
         var projection = new Projection();
         projection.id = id;
         projection.name = name;
         projection.modelId = modelId;
         projection.storageType = storageType;
         projection.handlers = handlers != null ? handlers : List.of();
+        projection.rebuildStrategy = rebuildStrategy;
         return projection;
     }
 
     public static Projection load(String id, String name,
                                   String modelId,
                                   String storageType,
-                                  List<ProjectionEventHandler> handlers) {
+                                  List<ProjectionEventHandler> handlers,
+                                  String rebuildStrategy) {
         var projection = new Projection();
         projection.id = new ProjectionId(id);
         projection.name = new ProjectionName(name);
         projection.modelId = modelId != null ? new ProjectionModelId(modelId) : null;
         projection.storageType = storageType != null ? ProjectionStorageType.valueOf(storageType) : null;
         projection.handlers = handlers != null ? handlers : List.of();
+        projection.rebuildStrategy = rebuildStrategy != null ? RebuildStrategy.valueOf(rebuildStrategy) : null;
         return projection;
     }
 
     public void update(ProjectionName name,
                        ProjectionModelId modelId,
                        ProjectionStorageType storageType,
-                       List<ProjectionEventHandler> handlers) {
+                       List<ProjectionEventHandler> handlers,
+                       RebuildStrategy rebuildStrategy) {
         this.name = name;
         this.modelId = modelId;
         this.storageType = storageType;
         this.handlers = handlers != null ? handlers : List.of();
+        this.rebuildStrategy = rebuildStrategy;
     }
 }

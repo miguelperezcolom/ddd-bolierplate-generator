@@ -9,6 +9,7 @@ public record ProjectionEntity(
         String name,
         String modelId,
         String storageType,
-        List<ProjectionEventHandlerEntity> handlers
+        List<ProjectionEventHandlerEntity> handlers,
+        String rebuildStrategy
 ) implements Identifiable {
 }

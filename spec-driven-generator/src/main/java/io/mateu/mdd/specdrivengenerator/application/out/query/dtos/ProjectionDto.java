@@ -7,6 +7,7 @@ public record ProjectionDto(
         String name,
         String modelId,
         String storageType,
-        List<ProjectionEventHandlerDto> handlers
+        List<ProjectionEventHandlerDto> handlers,
+        String rebuildStrategy
 ) {
 }

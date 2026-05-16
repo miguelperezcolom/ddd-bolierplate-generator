@@ -8,6 +8,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.projection.create.C
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.save.SaveProjectionCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.save.SaveProjectionUseCase;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.RebuildStrategy;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -42,6 +43,7 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
     String modelId;
 
     ProjectionStorageType storageType;
+    RebuildStrategy rebuildStrategy;
 
     @Tab
     List<ProjectionEventHandlerViewModel> handlers = new ArrayList<>();
@@ -51,13 +53,13 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers)));
+        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers)));
+        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null));
     }
 
     @Override
@@ -70,6 +72,7 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
         name = model.name();
         modelId = model.modelId();
         storageType = model.storageType() != null ? ProjectionStorageType.valueOf(model.storageType()) : null;
+        rebuildStrategy = model.rebuildStrategy() != null ? RebuildStrategy.valueOf(model.rebuildStrategy()) : null;
         handlers = model.handlers() == null ? new ArrayList<>() : model.handlers().stream().map(h -> {
             var vm = new ProjectionEventHandlerViewModel();
             vm.id = h.id();
