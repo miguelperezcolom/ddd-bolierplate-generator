@@ -16,7 +16,6 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.DbMigration
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
-import io.mateu.uidl.annotations.MasterDetail;
 import io.mateu.uidl.annotations.Tab;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -83,7 +82,6 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String javaVersion;
 
     @Tab("Environment")
-    @MasterDetail
     List<EnvVarViewModel> envVars = new java.util.ArrayList<>();
 
     final CreateServiceUseCase createUseCase;
