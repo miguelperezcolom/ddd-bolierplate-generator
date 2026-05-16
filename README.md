@@ -1,56 +1,156 @@
-This is a maven plugin (or other thing) for creating bolierplate code.
+# Modux
 
-The idea is to use a set of yaml files (we need an schema to enable ide's autocompletion)
-to describe our aggregates and, from those files, generate:
+**Modux** is a spec-driven code generation framework for Domain-Driven Design (DDD) systems. Define your domain model using YAML files and let Modux generate the full Java boilerplate — aggregates, use cases, repositories, UI, and database migrations — so you can focus on business logic.
 
-- The root aggregate
-- Entities
-- Value objects
-- Domain events
-- Repositories
-- Repository implementation
-- Use cases
-- UI (crud, creation form, view and editor)
-- DDL increment files 
-- Foreign keys for entities only
-- Tests
+---
 
-We can later add our own logic to those classes by:
+## What it does
 
-- Copy/paste and modify
-- Extend
-- Fill abstract methods (defined in the source yaml?)
-- Provide beans implementing interfaces
+You write a YAML specification describing your domain (aggregates, entities, value objects, events, operations…) and Modux generates a production-ready Spring Boot application with:
 
-We will also create here a dependency with some abstract classes, interfaces and default implementations 
-for the aggregate root, event bus, exceptions and things like that. 
+- Domain layer: aggregate roots, entities, value objects, domain events
+- Application layer: use cases (create/update/delete), query services, DTOs
+- Infrastructure layer: JPA entities, Spring Data repositories, DB implementations
+- UI layer: auto-generated CRUD pages (Vaadin / Mateu UIDL)
+- Database migrations: DDL files, foreign key scripts
 
-# Usage
+The generated code follows **Hexagonal Architecture** (ports & adapters) with clear separation between domain, application, and infrastructure.
 
-We will usually create a maven module in our project where we will define our aggregates using 
-yaml files like *.ddd.yaml, in a directory tree which we will use to determine the packages,
-and later add this module as a dependency from another modules where we will create our beans
-implementing the created interfaces.
+---
 
-# Notes
+## Architecture patterns supported
 
-- Generate springboot / micronaut / jakarta CDI annotations
-- Generate flyway / liquibase files
-- Document / relational databases
-- Create also one / multiple template repos
-- Add permissions
-- Add retries / idempotency
-- Domain / integration events
+- **DDD** — Aggregates, entities, value objects, domain events, invariants
+- **CQRS** — Separate command handlers and query services
+- **Event Sourcing** — Optional per aggregate, with snapshot support
+- **Saga Pattern** — Choreography/orchestration with compensations and retries
+- **Projections & Read Models** — Event-driven denormalized views
+- **Outbox Pattern** — Transactional outboxing for reliable messaging
+- **RBAC** — Role-based access control definitions
+- **Gateway** — External service call definitions with circuit breakers and rate limiting
+- **Scheduled Triggers** — Cron-based task definitions
 
-So, we typically start by creating:
+---
 
-- One repo for our project, using one of the available templates
-- There we have even the github actions for CI/CD and infrastructure creation
+## Tech stack
 
-And we just create the ddd.yaml files and provide implementations for the generated interfaces 
-to provide our own logic.
+| Layer | Technology |
+|---|---|
+| Language | Java 21 |
+| Build | Maven |
+| Framework | Spring Boot 4.x |
+| Messaging | Apache Kafka (Spring Cloud Stream) |
+| Persistence | Spring Data JPA / Hibernate (PostgreSQL, H2) |
+| UI | Vaadin + Mateu UIDL |
+| Templates | Freemarker |
+| Code formatting | Google Java Format |
+| Database migrations | Flyway / Liquibase (configurable) |
 
-# References
+---
 
-- https://developers.redhat.com/blog/2020/11/25/how-to-configure-yaml-schema-to-make-editing-files-easier
-- https://www.baeldung.com/maven-plugin
+## Project modules
+
+| Module | Description |
+|---|---|
+| `spec-driven-generator` | Main Spring Boot application with UI for defining specs and generating code |
+| `plugin` | Maven plugin skeleton (experimental) |
+| `sample/poc-sagas` | Example application demonstrating sagas and Kafka integration |
+| `io` | Shared UIDL field type definitions |
+
+---
+
+## Domain model overview
+
+A **Project** contains one or more **Services** (microservices), each with one or more **Modules** (bounded contexts). Each module contains:
+
+- **Aggregates** — DDD aggregate roots with fields, operations, invariants, and events
+- **Entities** — Domain entities belonging to an aggregate
+- **Value Objects** — Immutable typed wrappers (e.g. `BookingId`, `Email`)
+- **Domain Events** — Events emitted by aggregates
+- **Use Cases** — Application services
+- **Sagas** — Multi-step workflows with compensation logic
+- **Projections** — Read models built from domain events
+- **Gateways** — External service definitions
+- **Subscriptions** — Message handlers with filtering and retry policies
+- **Scheduled Triggers** — Cron-based tasks
+- **Roles** — RBAC role definitions
+- **Context Map Relations** — Relationships between bounded contexts (Shared Kernel, ACL, Open Host Service, etc.)
+
+---
+
+## Generated code structure
+
+```
+src/main/java/{package}
+├── domain/
+│   └── aggregates/{aggregate}/
+│       ├── {Aggregate}.java          # Aggregate root
+│       ├── vo/
+│       │   ├── {Aggregate}Id.java
+│       │   └── {Field}.java          # Typed value objects
+│       └── events/
+├── application/
+│   ├── usecases/                     # Create / Update / Delete use cases
+│   ├── query/                        # Query services and DTOs
+│   └── out/                          # Repository interfaces
+└── infra/
+    ├── in/ui/                        # CRUD pages and adapters
+    └── out/persistence/              # JPA entities, Spring Data repos
+src/main/resources/
+└── application.yaml
+pom.xml
+```
+
+---
+
+## Getting started
+
+### 1. Run the generator
+
+```bash
+cd spec-driven-generator
+mvn spring-boot:run
+```
+
+Open `http://localhost:8080` in your browser.
+
+### 2. Define your domain
+
+Use the UI to create:
+
+1. **Project** — name, package, output path
+2. **Services** — one per microservice
+3. **Modules** — bounded contexts within each service
+4. **Aggregates** — domain objects with fields, operations, and events
+
+### 3. Generate code
+
+Click **Generate Code**. The project is written to the configured output directory, ready to build and run.
+
+### 4. Add your business logic
+
+The generated code is designed to be extended:
+
+- Implement generated interfaces in separate Maven modules
+- Fill in abstract methods
+- Provide Spring beans for custom logic
+- The generator can be run again without overwriting your custom code (configurable per file)
+
+---
+
+## Roadmap
+
+- Maven plugin for CI/CD integration
+- Multi-framework support: Micronaut, Jakarta CDI
+- Infrastructure-as-code templates: Terraform, Kubernetes, Docker Compose
+- CI/CD pipeline templates (GitHub Actions)
+- Code quality templates: Jacoco, Spotbugs, Checkstyle, SonarQube
+- Project template repositories (one-click bootstrap)
+- YAML schema with IDE autocomplete support
+
+---
+
+## References
+
+- [YAML Schema for IDE autocomplete](https://developers.redhat.com/blog/2020/11/25/how-to-configure-yaml-schema-to-make-editing-files-easier)
+- [Maven Plugin development](https://www.baeldung.com/maven-plugin)
