@@ -22,6 +22,8 @@ public record CreateGatewayCommand(
         List<GatewayOperationData> operations,
         boolean rateLimitEnabled,
         Integer rateLimitRequestsPerSecond,
-        Integer rateLimitBurstSize
+        Integer rateLimitBurstSize,
+        boolean corsEnabled,
+        String corsAllowedOrigins
 ) {
 }

@@ -58,6 +58,10 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     Integer rateLimitRequestsPerSecond;
     Integer rateLimitBurstSize;
 
+    @Tab("CORS")
+    boolean corsEnabled;
+    String corsAllowedOrigins;
+
     @Tab("Operations")
     List<GatewayOperationViewModel> operations = new ArrayList<>();
 
@@ -69,7 +73,8 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         createUseCase.handle(new CreateGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
-                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize));
+                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize,
+                corsEnabled, corsAllowedOrigins));
         return id;
     }
 
@@ -78,7 +83,8 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         saveUseCase.handle(new SaveGatewayCommand(id, name, serviceId, baseUrl,
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
-                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize));
+                toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize,
+                corsEnabled, corsAllowedOrigins));
     }
 
     @Override
@@ -103,6 +109,8 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         rateLimitEnabled = model.rateLimitEnabled();
         rateLimitRequestsPerSecond = model.rateLimitRequestsPerSecond();
         rateLimitBurstSize = model.rateLimitBurstSize();
+        corsEnabled = model.corsEnabled();
+        corsAllowedOrigins = model.corsAllowedOrigins();
         operations = model.operations() == null ? new ArrayList<>() :
                 model.operations().stream().map(o -> {
                     var vm = new GatewayOperationViewModel();

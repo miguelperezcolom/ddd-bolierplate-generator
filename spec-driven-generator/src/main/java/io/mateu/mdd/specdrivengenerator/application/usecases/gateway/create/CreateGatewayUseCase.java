@@ -34,7 +34,8 @@ public class CreateGatewayUseCase {
                 command.authOAuth2ClientId(), command.authOAuth2ClientSecret(),
                 command.authOAuth2TokenUrl(), command.authOAuth2Scopes(),
                 operations,
-                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond(), command.rateLimitBurstSize());
+                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond(), command.rateLimitBurstSize(),
+                command.corsEnabled(), command.corsAllowedOrigins());
         repository.save(gateway);
     }
 

@@ -22,6 +22,8 @@ public record GatewayEntity(
         List<GatewayOperationEntity> operations,
         boolean rateLimitEnabled,
         Integer rateLimitRequestsPerSecond,
-        Integer rateLimitBurstSize
+        Integer rateLimitBurstSize,
+        boolean corsEnabled,
+        String corsAllowedOrigins
 ) implements Identifiable {
 }

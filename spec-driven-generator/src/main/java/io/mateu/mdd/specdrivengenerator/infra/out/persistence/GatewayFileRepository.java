@@ -34,7 +34,8 @@ public class GatewayFileRepository implements GatewayRepository {
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                                         .toList(),
-                        entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize()));
+                        entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize(),
+                        entity.corsEnabled(), entity.corsAllowedOrigins()));
     }
 
     @Override
@@ -55,7 +56,8 @@ public class GatewayFileRepository implements GatewayRepository {
                 entity.getAuthOAuth2ClientId(), entity.getAuthOAuth2ClientSecret(),
                 entity.getAuthOAuth2TokenUrl(), entity.getAuthOAuth2Scopes(),
                 operationEntities,
-                entity.isRateLimitEnabled(), entity.getRateLimitRequestsPerSecond(), entity.getRateLimitBurstSize()));
+                entity.isRateLimitEnabled(), entity.getRateLimitRequestsPerSecond(), entity.getRateLimitBurstSize(),
+                entity.isCorsEnabled(), entity.getCorsAllowedOrigins()));
         return entity;
     }
 

@@ -28,6 +28,8 @@ public class Gateway {
     private boolean rateLimitEnabled;
     private Integer rateLimitRequestsPerSecond;
     private Integer rateLimitBurstSize;
+    private boolean corsEnabled;
+    private String corsAllowedOrigins;
 
     public static Gateway of(GatewayId id, GatewayName name, String serviceId, String baseUrl,
                               GatewayAuthType authType, String authUsername, String authPassword,
@@ -35,7 +37,8 @@ public class Gateway {
                               String authOAuth2ClientId, String authOAuth2ClientSecret,
                               String authOAuth2TokenUrl, String authOAuth2Scopes,
                               List<GatewayOperation> operations,
-                              boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
+                              boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
+                              boolean corsEnabled, String corsAllowedOrigins) {
         var gateway = new Gateway();
         gateway.id = id;
         gateway.name = name;
@@ -54,6 +57,8 @@ public class Gateway {
         gateway.rateLimitEnabled = rateLimitEnabled;
         gateway.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
         gateway.rateLimitBurstSize = rateLimitBurstSize;
+        gateway.corsEnabled = corsEnabled;
+        gateway.corsAllowedOrigins = corsAllowedOrigins;
         return gateway;
     }
 
@@ -63,7 +68,8 @@ public class Gateway {
                                 String authOAuth2ClientId, String authOAuth2ClientSecret,
                                 String authOAuth2TokenUrl, String authOAuth2Scopes,
                                 List<GatewayOperation> operations,
-                                boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
+                                boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
+                                boolean corsEnabled, String corsAllowedOrigins) {
         var gateway = new Gateway();
         gateway.id = new GatewayId(id);
         gateway.name = new GatewayName(name);
@@ -82,6 +88,8 @@ public class Gateway {
         gateway.rateLimitEnabled = rateLimitEnabled;
         gateway.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
         gateway.rateLimitBurstSize = rateLimitBurstSize;
+        gateway.corsEnabled = corsEnabled;
+        gateway.corsAllowedOrigins = corsAllowedOrigins;
         return gateway;
     }
 
@@ -91,7 +99,8 @@ public class Gateway {
                        String authOAuth2ClientId, String authOAuth2ClientSecret,
                        String authOAuth2TokenUrl, String authOAuth2Scopes,
                        List<GatewayOperation> operations,
-                       boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize) {
+                       boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
+                       boolean corsEnabled, String corsAllowedOrigins) {
         this.name = name;
         this.serviceId = serviceId;
         this.baseUrl = baseUrl;
@@ -108,5 +117,7 @@ public class Gateway {
         this.rateLimitEnabled = rateLimitEnabled;
         this.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
         this.rateLimitBurstSize = rateLimitBurstSize;
+        this.corsEnabled = corsEnabled;
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 }
