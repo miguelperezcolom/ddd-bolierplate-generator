@@ -70,6 +70,7 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.asyncTopicName(),
                         entity.asyncConsumerGroup(),
                         entity.cacheable(),
-                        entity.cacheTtlSeconds()));
+                        entity.cacheTtlSeconds(),
+                        entity.timeoutMs()));
     }
 }

@@ -39,7 +39,8 @@ public class SaveUseCaseUseCase {
                 command.asyncTopicName(),
                 command.asyncConsumerGroup(),
                 command.cacheable(),
-                command.cacheTtlSeconds());
+                command.cacheTtlSeconds(),
+                command.timeoutMs());
         repository.save(useCase);
     }
 

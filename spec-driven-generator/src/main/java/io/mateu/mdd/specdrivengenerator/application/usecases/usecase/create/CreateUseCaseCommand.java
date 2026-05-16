@@ -25,5 +25,6 @@ public record CreateUseCaseCommand(String id, String name,
                                    String asyncTopicName,
                                    String asyncConsumerGroup,
                                    boolean cacheable,
-                                   Integer cacheTtlSeconds) {
+                                   Integer cacheTtlSeconds,
+                                   Long timeoutMs) {
 }

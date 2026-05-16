@@ -31,6 +31,7 @@ public class UseCase {
     private String asyncConsumerGroup;
     private boolean cacheable;
     private Integer cacheTtlSeconds;
+    private Long timeoutMs;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -53,7 +54,8 @@ public class UseCase {
                              String asyncTopicName,
                              String asyncConsumerGroup,
                              boolean cacheable,
-                             Integer cacheTtlSeconds) {
+                             Integer cacheTtlSeconds,
+                             Long timeoutMs) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -78,6 +80,7 @@ public class UseCase {
         useCase.asyncConsumerGroup = asyncConsumerGroup;
         useCase.cacheable = cacheable;
         useCase.cacheTtlSeconds = cacheTtlSeconds;
+        useCase.timeoutMs = timeoutMs;
         return useCase;
     }
 
@@ -102,7 +105,8 @@ public class UseCase {
                                String asyncTopicName,
                                String asyncConsumerGroup,
                                boolean cacheable,
-                               Integer cacheTtlSeconds) {
+                               Integer cacheTtlSeconds,
+                               Long timeoutMs) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -127,6 +131,7 @@ public class UseCase {
         useCase.asyncConsumerGroup = asyncConsumerGroup;
         useCase.cacheable = cacheable;
         useCase.cacheTtlSeconds = cacheTtlSeconds;
+        useCase.timeoutMs = timeoutMs;
         return useCase;
     }
 
@@ -151,7 +156,8 @@ public class UseCase {
                        String asyncTopicName,
                        String asyncConsumerGroup,
                        boolean cacheable,
-                       Integer cacheTtlSeconds) {
+                       Integer cacheTtlSeconds,
+                       Long timeoutMs) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -174,5 +180,6 @@ public class UseCase {
         this.asyncConsumerGroup = asyncConsumerGroup;
         this.cacheable = cacheable;
         this.cacheTtlSeconds = cacheTtlSeconds;
+        this.timeoutMs = timeoutMs;
     }
 }
