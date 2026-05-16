@@ -89,7 +89,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                 invariants.stream()
                         .map(invariantViewModel -> new InvariantDto(
                                 invariantViewModel.id(),
-                                invariantViewModel.name()
+                                invariantViewModel.name(),
+                                invariantViewModel.conditions() != null ? invariantViewModel.conditions() : List.of()
                         ))
                         .toList()
         ));
@@ -131,7 +132,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                         .toList(),
                 invariants.stream().map(invariant -> new InvariantDto(
                         invariant.id(),
-                        invariant.name()
+                        invariant.name(),
+                        invariant.conditions() != null ? invariant.conditions() : List.of()
                 )).toList()
         ));
     }
@@ -160,7 +162,8 @@ public class AggregateViewModel implements Identifiable, CrudEditorForm<String>,
                operationDto.emits(), operationDto.type(),
                operationDto.paginated(), operationDto.defaultPageSize())).toList();
         invariants = model.invariants().stream()
-                .map(invariant -> new InvariantViewModel(invariant.id(), invariant.name()))
+                .map(invariant -> new InvariantViewModel(invariant.id(), invariant.name(),
+                        invariant.conditions() != null ? invariant.conditions() : List.of()))
                 .toList();
         return this;
     }

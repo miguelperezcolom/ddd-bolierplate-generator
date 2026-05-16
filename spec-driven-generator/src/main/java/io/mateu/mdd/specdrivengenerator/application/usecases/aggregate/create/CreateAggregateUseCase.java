@@ -8,6 +8,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.Aggregate
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.Invariant;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantCondition;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.invariant.vo.InvariantName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.Operation;
@@ -52,7 +53,10 @@ public class CreateAggregateUseCase {
                         )).toList(),
                 command.invariants().stream()
                         .map(invariant -> Invariant.of(new InvariantId(invariant.id()),
-                                new InvariantName(invariant.name())))
+                                new InvariantName(invariant.name()),
+                                invariant.conditions() != null ? invariant.conditions().stream()
+                                        .map(c -> new InvariantCondition(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                        .toList() : java.util.List.of()))
                         .toList()
         );
         repository.save(aggregate);

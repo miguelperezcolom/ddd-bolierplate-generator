@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.AggregateRepository;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantConditionDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.Aggregate;
@@ -11,6 +12,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.Operation
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.OperationEntity;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +61,10 @@ public class AggregateFileRepository implements AggregateRepository {
                                 .toList(),
                         entity.invariants().stream().map(invariantEntity -> new InvariantDto(
                                 invariantEntity.id(),
-                                invariantEntity.name()
+                                invariantEntity.name(),
+                                invariantEntity.conditions() != null ? invariantEntity.conditions().stream()
+                                        .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                        .toList() : List.of()
                         )).toList()
                 ));
     }
@@ -95,7 +100,11 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.getInvariants().stream()
                         .map(invariant -> new InvariantEntity(
                                 invariant.getId().id(),
-                                invariant.getName().name())).toList()));
+                                invariant.getName().name(),
+                                invariant.getConditions() != null ? invariant.getConditions().stream()
+                                        .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                        .toList() : List.of()
+                        )).toList()));
         return entity;
     }
 

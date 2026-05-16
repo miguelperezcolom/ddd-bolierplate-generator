@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.AggregateQueryServ
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AggregateDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AggregateRow;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.FieldValueSettingDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantConditionDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
@@ -71,7 +72,12 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                 ))
                                 .toList(),
                         entity.invariants().stream()
-                                .map(invariant -> new InvariantDto(invariant.id(), invariant.name()))
+                                .map(invariant -> new InvariantDto(
+                                        invariant.id(),
+                                        invariant.name(),
+                                        invariant.conditions() != null ? invariant.conditions().stream()
+                                                .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                                .toList() : java.util.List.of()))
                                 .toList()));
     }
 }
