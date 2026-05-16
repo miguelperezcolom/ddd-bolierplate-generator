@@ -24,7 +24,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                         entity.publishAsIntegrationEvent(), entity.integrationModelId(),
                         entity.topicName(), entity.partitions(), entity.retentionMs(),
                         entity.serializationFormat(), entity.compressionType(),
-                        entity.deadLetterQueueEnabled(), entity.schemaVersion(), entity.routingKeyField()));
+                        entity.deadLetterQueueEnabled(), entity.deadLetterQueueName(),
+                        entity.maxDeliveryAttempts(), entity.schemaVersion(), entity.routingKeyField()));
     }
 
     @Override
@@ -38,7 +39,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 entity.getTopicName(), entity.getPartitions(), entity.getRetentionMs(),
                 entity.getSerializationFormat() != null ? entity.getSerializationFormat().name() : null,
                 entity.getCompressionType() != null ? entity.getCompressionType().name() : null,
-                entity.isDeadLetterQueueEnabled(), entity.getSchemaVersion(), entity.getRoutingKeyField()));
+                entity.isDeadLetterQueueEnabled(), entity.getDeadLetterQueueName(),
+                entity.getMaxDeliveryAttempts(), entity.getSchemaVersion(), entity.getRoutingKeyField()));
         return entity;
     }
 

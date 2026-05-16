@@ -14,6 +14,8 @@ public record DomainEventEntity(
         String serializationFormat,
         String compressionType,
         boolean deadLetterQueueEnabled,
+        String deadLetterQueueName,
+        Integer maxDeliveryAttempts,
         String schemaVersion,
         String routingKeyField
 ) implements Identifiable {

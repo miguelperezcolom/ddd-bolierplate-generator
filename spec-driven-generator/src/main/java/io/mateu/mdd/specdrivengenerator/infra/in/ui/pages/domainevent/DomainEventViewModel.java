@@ -48,6 +48,8 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     DomainEventSerializationFormat serializationFormat;
     DomainEventCompressionType compressionType;
     boolean deadLetterQueueEnabled;
+    String deadLetterQueueName;
+    Integer maxDeliveryAttempts;
     String schemaVersion;
     String routingKeyField;
 
@@ -56,13 +58,13 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion, routingKeyField));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion, routingKeyField));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField));
     }
 
     @Override
@@ -82,6 +84,8 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         serializationFormat = model.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(model.serializationFormat()) : null;
         compressionType = model.compressionType() != null ? DomainEventCompressionType.valueOf(model.compressionType()) : null;
         deadLetterQueueEnabled = model.deadLetterQueueEnabled();
+        deadLetterQueueName = model.deadLetterQueueName();
+        maxDeliveryAttempts = model.maxDeliveryAttempts();
         schemaVersion = model.schemaVersion();
         routingKeyField = model.routingKeyField();
         return this;

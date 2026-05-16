@@ -27,7 +27,8 @@ public class SaveDomainEventUseCase {
                 command.topicName(), command.partitions(), command.retentionMs(),
                 command.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(command.serializationFormat()) : null,
                 command.compressionType() != null ? DomainEventCompressionType.valueOf(command.compressionType()) : null,
-                command.deadLetterQueueEnabled(), command.schemaVersion(), command.routingKeyField());
+                command.deadLetterQueueEnabled(), command.deadLetterQueueName(),
+                command.maxDeliveryAttempts(), command.schemaVersion(), command.routingKeyField());
         repository.save(domainEvent);
     }
 
