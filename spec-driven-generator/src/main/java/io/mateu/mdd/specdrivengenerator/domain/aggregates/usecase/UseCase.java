@@ -38,6 +38,8 @@ public class UseCase {
     private String idempotencyKeyField;
     private boolean rateLimitEnabled;
     private Integer rateLimitRequestsPerSecond;
+    private String grpcServiceName;
+    private String grpcMethodName;
 
     public static UseCase of(UseCaseId id, UseCaseName name,
                              UseCaseExposedAsRest exposedAsRest,
@@ -66,7 +68,9 @@ public class UseCase {
                              boolean idempotencyEnabled,
                              String idempotencyKeyField,
                              boolean rateLimitEnabled,
-                             Integer rateLimitRequestsPerSecond) {
+                             Integer rateLimitRequestsPerSecond,
+                             String grpcServiceName,
+                             String grpcMethodName) {
         var useCase = new UseCase();
         useCase.id = id;
         useCase.name = name;
@@ -97,6 +101,8 @@ public class UseCase {
         useCase.idempotencyKeyField = idempotencyKeyField;
         useCase.rateLimitEnabled = rateLimitEnabled;
         useCase.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        useCase.grpcServiceName = grpcServiceName;
+        useCase.grpcMethodName = grpcMethodName;
         return useCase;
     }
 
@@ -127,7 +133,9 @@ public class UseCase {
                                boolean idempotencyEnabled,
                                String idempotencyKeyField,
                                boolean rateLimitEnabled,
-                               Integer rateLimitRequestsPerSecond) {
+                               Integer rateLimitRequestsPerSecond,
+                               String grpcServiceName,
+                               String grpcMethodName) {
         var useCase = new UseCase();
         useCase.id = new UseCaseId(id);
         useCase.name = new UseCaseName(name);
@@ -158,6 +166,8 @@ public class UseCase {
         useCase.idempotencyKeyField = idempotencyKeyField;
         useCase.rateLimitEnabled = rateLimitEnabled;
         useCase.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        useCase.grpcServiceName = grpcServiceName;
+        useCase.grpcMethodName = grpcMethodName;
         return useCase;
     }
 
@@ -188,7 +198,9 @@ public class UseCase {
                        boolean idempotencyEnabled,
                        String idempotencyKeyField,
                        boolean rateLimitEnabled,
-                       Integer rateLimitRequestsPerSecond) {
+                       Integer rateLimitRequestsPerSecond,
+                       String grpcServiceName,
+                       String grpcMethodName) {
         this.name = name;
         this.exposedAsRest = exposedAsRest;
         this.exposedAsGrpc = exposedAsGrpc;
@@ -217,5 +229,7 @@ public class UseCase {
         this.idempotencyKeyField = idempotencyKeyField;
         this.rateLimitEnabled = rateLimitEnabled;
         this.rateLimitRequestsPerSecond = rateLimitRequestsPerSecond;
+        this.grpcServiceName = grpcServiceName;
+        this.grpcMethodName = grpcMethodName;
     }
 }

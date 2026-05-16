@@ -45,7 +45,8 @@ public class CreateUseCaseUseCase {
                 command.timeoutMs(),
                 command.transactionBoundary() != null ? TransactionBoundary.valueOf(command.transactionBoundary()) : null,
                 command.idempotencyEnabled(), command.idempotencyKeyField(),
-                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond());
+                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond(),
+                command.grpcServiceName(), command.grpcMethodName());
         repository.save(useCase);
     }
 

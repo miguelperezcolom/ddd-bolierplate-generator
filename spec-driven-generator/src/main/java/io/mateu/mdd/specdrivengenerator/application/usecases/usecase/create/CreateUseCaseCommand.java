@@ -31,5 +31,7 @@ public record CreateUseCaseCommand(String id, String name,
                                    boolean idempotencyEnabled,
                                    String idempotencyKeyField,
                                    boolean rateLimitEnabled,
-                                   Integer rateLimitRequestsPerSecond) {
+                                   Integer rateLimitRequestsPerSecond,
+                                   String grpcServiceName,
+                                   String grpcMethodName) {
 }

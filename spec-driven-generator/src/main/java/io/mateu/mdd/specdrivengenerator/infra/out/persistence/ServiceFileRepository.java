@@ -37,7 +37,8 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
-                                .toList() : List.of()));
+                                .toList() : List.of(),
+                        entity.javaVersion()));
     }
 
     @Override
@@ -76,7 +77,8 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getGatewayIds(),
                 entity.getEnvVars() != null ? entity.getEnvVars().stream()
                         .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
-                        .toList() : List.of()));
+                        .toList() : List.of(),
+                entity.getJavaVersion()));
         return entity;
     }
 

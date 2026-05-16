@@ -6,5 +6,6 @@ public record CreateDomainEventCommand(String id, String name, String modelId,
                                        String serializationFormat, String compressionType,
                                        boolean deadLetterQueueEnabled, String deadLetterQueueName,
                                        Integer maxDeliveryAttempts, String schemaVersion,
-                                       String routingKeyField) {
+                                       String routingKeyField,
+                                       boolean replayable) {
 }

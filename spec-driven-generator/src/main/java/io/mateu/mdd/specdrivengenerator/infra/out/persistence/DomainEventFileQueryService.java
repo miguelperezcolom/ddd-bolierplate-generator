@@ -45,6 +45,7 @@ public class DomainEventFileQueryService implements DomainEventQueryService {
                         entity.topicName(), entity.partitions(), entity.retentionMs(),
                         entity.serializationFormat(), entity.compressionType(),
                         entity.deadLetterQueueEnabled(), entity.deadLetterQueueName(),
-                        entity.maxDeliveryAttempts(), entity.schemaVersion(), entity.routingKeyField()));
+                        entity.maxDeliveryAttempts(), entity.schemaVersion(), entity.routingKeyField(),
+                        entity.replayable()));
     }
 }

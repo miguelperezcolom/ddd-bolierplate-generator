@@ -18,5 +18,6 @@ public record CreateServiceCommand(String id, String name, String gitRepository,
                                    String owner,
                                    List<String> moduleIds,
                                    List<String> gatewayIds,
-                                   List<EnvVar> envVars) {
+                                   List<EnvVar> envVars,
+                                   String javaVersion) {
 }

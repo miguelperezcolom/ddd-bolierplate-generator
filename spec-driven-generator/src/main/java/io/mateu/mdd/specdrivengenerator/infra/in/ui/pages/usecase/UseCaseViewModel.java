@@ -72,6 +72,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     String idempotencyKeyField;
     boolean rateLimitEnabled;
     Integer rateLimitRequestsPerSecond;
+    String grpcServiceName;
+    String grpcMethodName;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -87,7 +89,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
                 cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
-                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond));
+                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond,
+                grpcServiceName, grpcMethodName));
         return id;
     }
 
@@ -99,7 +102,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
                 cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
-                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond));
+                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond,
+                grpcServiceName, grpcMethodName));
     }
 
     @Override
@@ -136,6 +140,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         idempotencyKeyField = model.idempotencyKeyField();
         rateLimitEnabled = model.rateLimitEnabled();
         rateLimitRequestsPerSecond = model.rateLimitRequestsPerSecond();
+        grpcServiceName = model.grpcServiceName();
+        grpcMethodName = model.grpcMethodName();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

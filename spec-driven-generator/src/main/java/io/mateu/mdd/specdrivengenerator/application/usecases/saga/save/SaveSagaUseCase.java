@@ -26,7 +26,8 @@ public class SaveSagaUseCase {
                 toSteps(command.steps()),
                 command.maxRetries(),
                 command.retryBackoffMs(),
-                command.deadLetterQueue());
+                command.deadLetterQueue(),
+                command.persistenceEnabled());
         repository.save(saga);
     }
 

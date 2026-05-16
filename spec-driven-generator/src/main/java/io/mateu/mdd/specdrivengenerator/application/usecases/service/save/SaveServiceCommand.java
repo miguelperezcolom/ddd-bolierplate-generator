@@ -18,7 +18,8 @@ public record SaveServiceCommand(String id, String name, String gitRepository, S
                                  String owner,
                                  List<String> moduleIds,
                                  List<String> gatewayIds,
-                                 List<EnvVar> envVars) {
+                                 List<EnvVar> envVars,
+                                 String javaVersion) {
 
     public SaveServiceCommand {
         if (moduleIds == null) moduleIds = List.of();

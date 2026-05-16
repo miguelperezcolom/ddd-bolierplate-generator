@@ -18,5 +18,6 @@ public record ServiceDto(String id, String name, String gitRepository, String do
                          String owner,
                          List<String> moduleIds,
                          List<String> gatewayIds,
-                         List<EnvVar> envVars) {
+                         List<EnvVar> envVars,
+                         String javaVersion) {
 }

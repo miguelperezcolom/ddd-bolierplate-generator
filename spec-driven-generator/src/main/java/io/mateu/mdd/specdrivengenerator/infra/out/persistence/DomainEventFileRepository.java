@@ -25,7 +25,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                         entity.topicName(), entity.partitions(), entity.retentionMs(),
                         entity.serializationFormat(), entity.compressionType(),
                         entity.deadLetterQueueEnabled(), entity.deadLetterQueueName(),
-                        entity.maxDeliveryAttempts(), entity.schemaVersion(), entity.routingKeyField()));
+                        entity.maxDeliveryAttempts(), entity.schemaVersion(), entity.routingKeyField(),
+                        entity.replayable()));
     }
 
     @Override
@@ -40,7 +41,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 entity.getSerializationFormat() != null ? entity.getSerializationFormat().name() : null,
                 entity.getCompressionType() != null ? entity.getCompressionType().name() : null,
                 entity.isDeadLetterQueueEnabled(), entity.getDeadLetterQueueName(),
-                entity.getMaxDeliveryAttempts(), entity.getSchemaVersion(), entity.getRoutingKeyField()));
+                entity.getMaxDeliveryAttempts(), entity.getSchemaVersion(), entity.getRoutingKeyField(),
+                entity.isReplayable()));
         return entity;
     }
 

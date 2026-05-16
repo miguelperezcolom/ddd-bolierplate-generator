@@ -47,7 +47,8 @@ public class SaveServiceUseCase {
                 command.owner(),
                 command.moduleIds().stream().map(ModuleId::new).toList(),
                 command.gatewayIds(),
-                command.envVars());
+                command.envVars(),
+                command.javaVersion());
         repository.save(service);
     }
 

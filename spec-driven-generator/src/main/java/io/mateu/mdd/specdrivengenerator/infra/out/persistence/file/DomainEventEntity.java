@@ -17,6 +17,7 @@ public record DomainEventEntity(
         String deadLetterQueueName,
         Integer maxDeliveryAttempts,
         String schemaVersion,
-        String routingKeyField
+        String routingKeyField,
+        boolean replayable
 ) implements Identifiable {
 }

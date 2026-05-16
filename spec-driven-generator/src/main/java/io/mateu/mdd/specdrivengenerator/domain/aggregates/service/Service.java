@@ -45,6 +45,7 @@ public class Service {
     private List<ModuleId> modules;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
+    private String javaVersion;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository,
                              String dockerImageRegistry, String dockerImageName,
@@ -58,7 +59,8 @@ public class Service {
                              boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                              Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                              DeploymentStrategy deploymentStrategy, String owner,
-                             List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
+                             List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                             String javaVersion) {
         var service = new Service();
         service.id = id;
         service.name = name;
@@ -92,6 +94,7 @@ public class Service {
         service.modules = modules;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
+        service.javaVersion = javaVersion;
         return service;
     }
 
@@ -107,7 +110,8 @@ public class Service {
                                boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                                Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                String deploymentStrategy, String owner,
-                               List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
+                               List<String> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                               String javaVersion) {
         var service = new Service();
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
@@ -141,6 +145,7 @@ public class Service {
         service.modules = modules.stream().map(ModuleId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
+        service.javaVersion = javaVersion;
         return service;
     }
 
@@ -156,7 +161,8 @@ public class Service {
                        boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                        Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                        DeploymentStrategy deploymentStrategy, String owner,
-                       List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
+                       List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                       String javaVersion) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.dockerImageRegistry = dockerImageRegistry;
@@ -188,5 +194,6 @@ public class Service {
         this.modules = modules;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();
+        this.javaVersion = javaVersion;
     }
 }

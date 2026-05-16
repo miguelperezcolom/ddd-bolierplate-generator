@@ -37,7 +37,8 @@ public record ServiceEntity(
         String owner,
         List<String> moduleIds,
         List<String> gatewayIds,
-        List<EnvVarEntity> envVars
+        List<EnvVarEntity> envVars,
+        String javaVersion
 ) implements Identifiable {
 
     public ServiceEntity {

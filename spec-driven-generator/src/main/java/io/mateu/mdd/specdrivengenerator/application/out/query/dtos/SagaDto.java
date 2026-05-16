@@ -11,6 +11,7 @@ public record SagaDto(
         List<SagaStepDto> steps,
         Integer maxRetries,
         Long retryBackoffMs,
-        String deadLetterQueue
+        String deadLetterQueue,
+        boolean persistenceEnabled
 ) {
 }

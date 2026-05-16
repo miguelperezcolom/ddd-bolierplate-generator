@@ -17,6 +17,7 @@ public class Saga {
     private Integer maxRetries;
     private Long retryBackoffMs;
     private String deadLetterQueue;
+    private boolean persistenceEnabled;
 
     public static Saga of(SagaId id, SagaName name,
                           Long timeoutMs,
@@ -25,7 +26,8 @@ public class Saga {
                           List<SagaStep> steps,
                           Integer maxRetries,
                           Long retryBackoffMs,
-                          String deadLetterQueue) {
+                          String deadLetterQueue,
+                          boolean persistenceEnabled) {
         var saga = new Saga();
         saga.id = id;
         saga.name = name;
@@ -36,6 +38,7 @@ public class Saga {
         saga.maxRetries = maxRetries;
         saga.retryBackoffMs = retryBackoffMs;
         saga.deadLetterQueue = deadLetterQueue;
+        saga.persistenceEnabled = persistenceEnabled;
         return saga;
     }
 
@@ -46,7 +49,8 @@ public class Saga {
                             List<SagaStep> steps,
                             Integer maxRetries,
                             Long retryBackoffMs,
-                            String deadLetterQueue) {
+                            String deadLetterQueue,
+                            boolean persistenceEnabled) {
         var saga = new Saga();
         saga.id = new SagaId(id);
         saga.name = new SagaName(name);
@@ -57,6 +61,7 @@ public class Saga {
         saga.maxRetries = maxRetries;
         saga.retryBackoffMs = retryBackoffMs;
         saga.deadLetterQueue = deadLetterQueue;
+        saga.persistenceEnabled = persistenceEnabled;
         return saga;
     }
 
@@ -67,7 +72,8 @@ public class Saga {
                        List<SagaStep> steps,
                        Integer maxRetries,
                        Long retryBackoffMs,
-                       String deadLetterQueue) {
+                       String deadLetterQueue,
+                       boolean persistenceEnabled) {
         this.name = name;
         this.timeoutMs = timeoutMs;
         this.compensationTimeoutMs = compensationTimeoutMs;
@@ -76,5 +82,6 @@ public class Saga {
         this.maxRetries = maxRetries;
         this.retryBackoffMs = retryBackoffMs;
         this.deadLetterQueue = deadLetterQueue;
+        this.persistenceEnabled = persistenceEnabled;
     }
 }

@@ -80,6 +80,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
     List<String> gatewayIds;
 
+    String javaVersion;
+
     @Tab("Environment")
     @MasterDetail
     List<EnvVarViewModel> envVars = new java.util.ArrayList<>();
@@ -99,7 +101,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                modules, gatewayIds, toEnvVars(envVars)));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion));
         return id;
     }
 
@@ -115,7 +117,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                modules, gatewayIds, toEnvVars(envVars)));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion));
     }
 
     @Override
@@ -155,6 +157,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         kubernetesHpaCpuThreshold = model.kubernetesHpaCpuThreshold();
         modules = model.moduleIds();
         gatewayIds = model.gatewayIds();
+        javaVersion = model.javaVersion();
         envVars = model.envVars() != null ? model.envVars().stream().map(e -> {
             var vm = new EnvVarViewModel();
             vm.name = e.name();

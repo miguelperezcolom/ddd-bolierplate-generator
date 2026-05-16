@@ -50,7 +50,8 @@ public class CreateServiceUseCase {
                 command.owner(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
-                command.envVars());
+                command.envVars(),
+                command.javaVersion());
         repository.save(service);
     }
 

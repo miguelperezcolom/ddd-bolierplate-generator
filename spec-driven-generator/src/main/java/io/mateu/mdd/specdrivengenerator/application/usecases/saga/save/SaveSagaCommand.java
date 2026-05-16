@@ -13,6 +13,7 @@ public record SaveSagaCommand(
         List<SagaStepData> steps,
         Integer maxRetries,
         Long retryBackoffMs,
-        String deadLetterQueue
+        String deadLetterQueue,
+        boolean persistenceEnabled
 ) {
 }

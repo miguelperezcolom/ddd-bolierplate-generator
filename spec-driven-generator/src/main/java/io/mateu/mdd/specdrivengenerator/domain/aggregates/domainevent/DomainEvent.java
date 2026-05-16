@@ -27,6 +27,7 @@ public class DomainEvent {
     private Integer maxDeliveryAttempts;
     private String schemaVersion;
     private String routingKeyField;
+    private boolean replayable;
 
     public static DomainEvent of(DomainEventId id, DomainEventName name, DomainEventModelId modelId,
                                  DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
@@ -36,7 +37,8 @@ public class DomainEvent {
                                  DomainEventCompressionType compressionType,
                                  boolean deadLetterQueueEnabled, String deadLetterQueueName,
                                  Integer maxDeliveryAttempts, String schemaVersion,
-                                 String routingKeyField) {
+                                 String routingKeyField,
+                                 boolean replayable) {
         var domainEvent = new DomainEvent();
         domainEvent.id = id;
         domainEvent.name = name;
@@ -53,6 +55,7 @@ public class DomainEvent {
         domainEvent.maxDeliveryAttempts = maxDeliveryAttempts;
         domainEvent.schemaVersion = schemaVersion;
         domainEvent.routingKeyField = routingKeyField;
+        domainEvent.replayable = replayable;
         return domainEvent;
     }
 
@@ -62,7 +65,8 @@ public class DomainEvent {
                                    String serializationFormat, String compressionType,
                                    boolean deadLetterQueueEnabled, String deadLetterQueueName,
                                    Integer maxDeliveryAttempts, String schemaVersion,
-                                   String routingKeyField) {
+                                   String routingKeyField,
+                                   boolean replayable) {
         var domainEvent = new DomainEvent();
         domainEvent.id = new DomainEventId(id);
         domainEvent.name = new DomainEventName(name);
@@ -79,6 +83,7 @@ public class DomainEvent {
         domainEvent.maxDeliveryAttempts = maxDeliveryAttempts;
         domainEvent.schemaVersion = schemaVersion;
         domainEvent.routingKeyField = routingKeyField;
+        domainEvent.replayable = replayable;
         return domainEvent;
     }
 
@@ -90,7 +95,8 @@ public class DomainEvent {
                        DomainEventCompressionType compressionType,
                        boolean deadLetterQueueEnabled, String deadLetterQueueName,
                        Integer maxDeliveryAttempts, String schemaVersion,
-                       String routingKeyField) {
+                       String routingKeyField,
+                       boolean replayable) {
         this.name = name;
         this.modelId = modelId;
         this.publishAsIntegrationEvent = publishAsIntegrationEvent;
@@ -105,5 +111,6 @@ public class DomainEvent {
         this.maxDeliveryAttempts = maxDeliveryAttempts;
         this.schemaVersion = schemaVersion;
         this.routingKeyField = routingKeyField;
+        this.replayable = replayable;
     }
 }

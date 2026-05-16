@@ -52,19 +52,20 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     Integer maxDeliveryAttempts;
     String schemaVersion;
     String routingKeyField;
+    boolean replayable;
 
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField, replayable));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts, schemaVersion, routingKeyField, replayable));
     }
 
     @Override
@@ -88,6 +89,7 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         maxDeliveryAttempts = model.maxDeliveryAttempts();
         schemaVersion = model.schemaVersion();
         routingKeyField = model.routingKeyField();
+        replayable = model.replayable();
         return this;
     }
 

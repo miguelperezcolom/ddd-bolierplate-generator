@@ -52,7 +52,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.idempotencyEnabled(),
                         entity.idempotencyKeyField(),
                         entity.rateLimitEnabled(),
-                        entity.rateLimitRequestsPerSecond()));
+                        entity.rateLimitRequestsPerSecond(),
+                        entity.grpcServiceName(), entity.grpcMethodName()));
     }
 
     @Override
@@ -86,7 +87,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.isIdempotencyEnabled(),
                 entity.getIdempotencyKeyField(),
                 entity.isRateLimitEnabled(),
-                entity.getRateLimitRequestsPerSecond()));
+                entity.getRateLimitRequestsPerSecond(),
+                entity.getGrpcServiceName(), entity.getGrpcMethodName()));
         return entity;
     }
 

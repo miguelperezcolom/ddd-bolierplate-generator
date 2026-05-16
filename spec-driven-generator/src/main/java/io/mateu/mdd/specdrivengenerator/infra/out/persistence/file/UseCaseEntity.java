@@ -33,6 +33,8 @@ public record UseCaseEntity(
         boolean idempotencyEnabled,
         String idempotencyKeyField,
         boolean rateLimitEnabled,
-        Integer rateLimitRequestsPerSecond
+        Integer rateLimitRequestsPerSecond,
+        String grpcServiceName,
+        String grpcMethodName
 ) implements Identifiable {
 }
