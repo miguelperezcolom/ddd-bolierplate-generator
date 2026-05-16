@@ -29,7 +29,8 @@ public class SaveSubscriptionUseCase {
                 command.retryCount(),
                 command.deadLetterTopic(),
                 toActions(command.actions()),
-                command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null);
+                command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null,
+                command.filterExpression());
         repository.save(subscription);
     }
 

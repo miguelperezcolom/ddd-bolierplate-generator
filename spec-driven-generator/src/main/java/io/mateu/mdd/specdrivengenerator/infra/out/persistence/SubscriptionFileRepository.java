@@ -33,7 +33,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                         entity.retryCount(),
                         entity.deadLetterTopic(),
                         toActions(entity.actions()),
-                        entity.scalingStrategy()));
+                        entity.scalingStrategy(),
+                        entity.filterExpression()));
     }
 
     @Override
@@ -49,7 +50,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                 entity.getRetryCount(),
                 entity.getDeadLetterTopic(),
                 toActionEntities(entity.getActions()),
-                entity.getScalingStrategy() != null ? entity.getScalingStrategy().name() : null));
+                entity.getScalingStrategy() != null ? entity.getScalingStrategy().name() : null,
+                entity.getFilterExpression()));
         return entity;
     }
 

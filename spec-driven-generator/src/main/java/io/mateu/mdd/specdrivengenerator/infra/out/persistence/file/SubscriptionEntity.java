@@ -15,6 +15,7 @@ public record SubscriptionEntity(
         Integer retryCount,
         String deadLetterTopic,
         List<SubscriptionActionEntity> actions,
-        String scalingStrategy
+        String scalingStrategy,
+        String filterExpression
 ) implements Identifiable {
 }

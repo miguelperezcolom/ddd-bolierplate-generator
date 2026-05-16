@@ -56,6 +56,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                                 .map(a -> new SubscriptionActionDto(a.id(), a.name(), a.type(),
                                         a.useCaseId(), a.sagaId(), a.projectionId(), a.modelMappingId()))
                                 .toList(),
-                        entity.scalingStrategy()));
+                        entity.scalingStrategy(),
+                        entity.filterExpression()));
     }
 }

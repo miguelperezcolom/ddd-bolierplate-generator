@@ -51,6 +51,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
     Integer retryCount;
     String deadLetterTopic;
     ScalingStrategy scalingStrategy;
+    String filterExpression;
 
     @Tab
     List<SubscriptionActionViewModel> actions = new ArrayList<>();
@@ -60,13 +61,13 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null));
+        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null));
+        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression));
     }
 
     @Override
@@ -85,6 +86,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
         retryCount = model.retryCount();
         deadLetterTopic = model.deadLetterTopic();
         scalingStrategy = model.scalingStrategy() != null ? ScalingStrategy.valueOf(model.scalingStrategy()) : null;
+        filterExpression = model.filterExpression();
         actions = model.actions() == null ? new ArrayList<>() : model.actions().stream().map(a -> {
             var vm = new SubscriptionActionViewModel();
             vm.id = a.id();
