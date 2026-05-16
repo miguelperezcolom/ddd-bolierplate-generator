@@ -32,7 +32,8 @@ public class CreateSubscriptionUseCase {
                 toActions(command.actions()),
                 command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null,
                 command.filterExpression(),
-                command.batchSize(), command.batchTimeout(), command.offsetResetStrategy());
+                command.batchSize(), command.batchTimeout(), command.offsetResetStrategy(),
+                command.consumerTimeout());
         repository.save(subscription);
     }
 

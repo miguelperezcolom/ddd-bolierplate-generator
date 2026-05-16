@@ -54,19 +54,21 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
     String failureNotificationEmail;
     MisfirePolicy misfirePolicy;
     boolean allowConcurrentExecution;
+    boolean retryOnFailure;
+    Integer retryCount;
 
     final CreateScheduledTriggerUseCase createUseCase;
     final SaveScheduledTriggerUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution, retryOnFailure, retryCount));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider, maxExecutionTimeMs, failureNotificationEmail, misfirePolicy != null ? misfirePolicy.name() : null, allowConcurrentExecution, retryOnFailure, retryCount));
     }
 
     @Override
@@ -88,6 +90,8 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         failureNotificationEmail = model.failureNotificationEmail();
         misfirePolicy = model.misfirePolicy() != null ? MisfirePolicy.valueOf(model.misfirePolicy()) : null;
         allowConcurrentExecution = model.allowConcurrentExecution();
+        retryOnFailure = model.retryOnFailure();
+        retryCount = model.retryCount();
         return this;
     }
 

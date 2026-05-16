@@ -55,6 +55,7 @@ public class GatewayFileQueryService implements GatewayQueryService {
                                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                                         .toList(),
                         entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize(),
-                        entity.corsEnabled(), entity.corsAllowedOrigins()));
+                        entity.corsEnabled(), entity.corsAllowedOrigins(),
+                        entity.globalTimeoutMs()));
     }
 }

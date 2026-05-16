@@ -55,6 +55,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
     Integer batchSize;
     Long batchTimeout;
     String offsetResetStrategy;
+    Long consumerTimeout;
 
     @Tab
     List<SubscriptionActionViewModel> actions = new ArrayList<>();
@@ -64,13 +65,13 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy));
+        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy));
+        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout));
     }
 
     @Override
@@ -93,6 +94,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
         batchSize = model.batchSize();
         batchTimeout = model.batchTimeout();
         offsetResetStrategy = model.offsetResetStrategy();
+        consumerTimeout = model.consumerTimeout();
         actions = model.actions() == null ? new ArrayList<>() : model.actions().stream().map(a -> {
             var vm = new SubscriptionActionViewModel();
             vm.id = a.id();

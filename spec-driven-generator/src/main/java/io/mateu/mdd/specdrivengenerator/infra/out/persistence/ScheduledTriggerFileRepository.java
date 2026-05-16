@@ -33,7 +33,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.maxExecutionTimeMs(),
                         entity.failureNotificationEmail(),
                         entity.misfirePolicy(),
-                        entity.allowConcurrentExecution()));
+                        entity.allowConcurrentExecution(),
+                        entity.retryOnFailure(), entity.retryCount()));
     }
 
     @Override
@@ -51,7 +52,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getMaxExecutionTimeMs(),
                 entity.getFailureNotificationEmail(),
                 entity.getMisfirePolicy() != null ? entity.getMisfirePolicy().name() : null,
-                entity.isAllowConcurrentExecution()));
+                entity.isAllowConcurrentExecution(),
+                entity.isRetryOnFailure(), entity.getRetryCount()));
         return entity;
     }
 

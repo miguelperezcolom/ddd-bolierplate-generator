@@ -28,7 +28,8 @@ public class SaveScheduledTriggerUseCase {
                 command.maxExecutionTimeMs(),
                 command.failureNotificationEmail(),
                 command.misfirePolicy() != null ? MisfirePolicy.valueOf(command.misfirePolicy()) : null,
-                command.allowConcurrentExecution());
+                command.allowConcurrentExecution(),
+                command.retryOnFailure(), command.retryCount());
         repository.save(trigger);
     }
 }

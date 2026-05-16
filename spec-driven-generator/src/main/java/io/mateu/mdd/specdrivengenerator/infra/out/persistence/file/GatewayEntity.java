@@ -24,6 +24,7 @@ public record GatewayEntity(
         Integer rateLimitRequestsPerSecond,
         Integer rateLimitBurstSize,
         boolean corsEnabled,
-        String corsAllowedOrigins
+        String corsAllowedOrigins,
+        Long globalTimeoutMs
 ) implements Identifiable {
 }

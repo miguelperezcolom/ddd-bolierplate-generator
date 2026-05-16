@@ -58,6 +58,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                                 .toList(),
                         entity.scalingStrategy(),
                         entity.filterExpression(),
-                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy()));
+                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy(),
+                        entity.consumerTimeout()));
     }
 }

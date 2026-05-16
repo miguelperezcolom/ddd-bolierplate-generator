@@ -23,6 +23,7 @@ public class Subscription {
     private Integer batchSize;
     private Long batchTimeout;
     private String offsetResetStrategy;
+    private Long consumerTimeout;
 
     public static Subscription of(SubscriptionId id, SubscriptionName name,
                                   String eventName, String sourceService, String inputModelId,
@@ -31,7 +32,8 @@ public class Subscription {
                                   List<SubscriptionAction> actions,
                                   ScalingStrategy scalingStrategy,
                                   String filterExpression,
-                                  Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
+                                  Integer batchSize, Long batchTimeout, String offsetResetStrategy,
+                                  Long consumerTimeout) {
         var subscription = new Subscription();
         subscription.id = id;
         subscription.name = name;
@@ -48,6 +50,7 @@ public class Subscription {
         subscription.batchSize = batchSize;
         subscription.batchTimeout = batchTimeout;
         subscription.offsetResetStrategy = offsetResetStrategy;
+        subscription.consumerTimeout = consumerTimeout;
         return subscription;
     }
 
@@ -58,7 +61,8 @@ public class Subscription {
                                     List<SubscriptionAction> actions,
                                     String scalingStrategy,
                                     String filterExpression,
-                                    Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
+                                    Integer batchSize, Long batchTimeout, String offsetResetStrategy,
+                                    Long consumerTimeout) {
         var subscription = new Subscription();
         subscription.id = new SubscriptionId(id);
         subscription.name = new SubscriptionName(name);
@@ -75,6 +79,7 @@ public class Subscription {
         subscription.batchSize = batchSize;
         subscription.batchTimeout = batchTimeout;
         subscription.offsetResetStrategy = offsetResetStrategy;
+        subscription.consumerTimeout = consumerTimeout;
         return subscription;
     }
 
@@ -85,7 +90,8 @@ public class Subscription {
                        List<SubscriptionAction> actions,
                        ScalingStrategy scalingStrategy,
                        String filterExpression,
-                       Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
+                       Integer batchSize, Long batchTimeout, String offsetResetStrategy,
+                       Long consumerTimeout) {
         this.name = name;
         this.eventName = eventName;
         this.sourceService = sourceService;
@@ -100,5 +106,6 @@ public class Subscription {
         this.batchSize = batchSize;
         this.batchTimeout = batchTimeout;
         this.offsetResetStrategy = offsetResetStrategy;
+        this.consumerTimeout = consumerTimeout;
     }
 }

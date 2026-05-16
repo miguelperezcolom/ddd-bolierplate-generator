@@ -13,6 +13,8 @@ public record SaveScheduledTriggerCommand(
         Long maxExecutionTimeMs,
         String failureNotificationEmail,
         String misfirePolicy,
-        boolean allowConcurrentExecution
+        boolean allowConcurrentExecution,
+        boolean retryOnFailure,
+        Integer retryCount
 ) {
 }

@@ -30,6 +30,7 @@ public class Gateway {
     private Integer rateLimitBurstSize;
     private boolean corsEnabled;
     private String corsAllowedOrigins;
+    private Long globalTimeoutMs;
 
     public static Gateway of(GatewayId id, GatewayName name, String serviceId, String baseUrl,
                               GatewayAuthType authType, String authUsername, String authPassword,
@@ -38,7 +39,8 @@ public class Gateway {
                               String authOAuth2TokenUrl, String authOAuth2Scopes,
                               List<GatewayOperation> operations,
                               boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
-                              boolean corsEnabled, String corsAllowedOrigins) {
+                              boolean corsEnabled, String corsAllowedOrigins,
+                              Long globalTimeoutMs) {
         var gateway = new Gateway();
         gateway.id = id;
         gateway.name = name;
@@ -59,6 +61,7 @@ public class Gateway {
         gateway.rateLimitBurstSize = rateLimitBurstSize;
         gateway.corsEnabled = corsEnabled;
         gateway.corsAllowedOrigins = corsAllowedOrigins;
+        gateway.globalTimeoutMs = globalTimeoutMs;
         return gateway;
     }
 
@@ -90,6 +93,7 @@ public class Gateway {
         gateway.rateLimitBurstSize = rateLimitBurstSize;
         gateway.corsEnabled = corsEnabled;
         gateway.corsAllowedOrigins = corsAllowedOrigins;
+        gateway.globalTimeoutMs = globalTimeoutMs;
         return gateway;
     }
 
@@ -100,7 +104,8 @@ public class Gateway {
                        String authOAuth2TokenUrl, String authOAuth2Scopes,
                        List<GatewayOperation> operations,
                        boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond, Integer rateLimitBurstSize,
-                       boolean corsEnabled, String corsAllowedOrigins) {
+                       boolean corsEnabled, String corsAllowedOrigins,
+                       Long globalTimeoutMs) {
         this.name = name;
         this.serviceId = serviceId;
         this.baseUrl = baseUrl;
@@ -119,5 +124,6 @@ public class Gateway {
         this.rateLimitBurstSize = rateLimitBurstSize;
         this.corsEnabled = corsEnabled;
         this.corsAllowedOrigins = corsAllowedOrigins;
+        this.globalTimeoutMs = globalTimeoutMs;
     }
 }

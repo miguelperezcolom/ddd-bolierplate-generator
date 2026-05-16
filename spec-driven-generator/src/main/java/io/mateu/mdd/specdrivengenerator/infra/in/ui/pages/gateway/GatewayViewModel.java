@@ -61,6 +61,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
     @Tab("CORS")
     boolean corsEnabled;
     String corsAllowedOrigins;
+    Long globalTimeoutMs;
 
     @Tab("Operations")
     List<GatewayOperationViewModel> operations = new ArrayList<>();
@@ -74,7 +75,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize,
-                corsEnabled, corsAllowedOrigins));
+                corsEnabled, corsAllowedOrigins, globalTimeoutMs));
         return id;
     }
 
@@ -84,7 +85,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
                 authType, authUsername, authPassword, authApiKeyHeaderName, authBearerToken,
                 authOAuth2ClientId, authOAuth2ClientSecret, authOAuth2TokenUrl, authOAuth2Scopes,
                 toOperationData(operations), rateLimitEnabled, rateLimitRequestsPerSecond, rateLimitBurstSize,
-                corsEnabled, corsAllowedOrigins));
+                corsEnabled, corsAllowedOrigins, globalTimeoutMs));
     }
 
     @Override
@@ -111,6 +112,7 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         rateLimitBurstSize = model.rateLimitBurstSize();
         corsEnabled = model.corsEnabled();
         corsAllowedOrigins = model.corsAllowedOrigins();
+        globalTimeoutMs = model.globalTimeoutMs();
         operations = model.operations() == null ? new ArrayList<>() :
                 model.operations().stream().map(o -> {
                     var vm = new GatewayOperationViewModel();

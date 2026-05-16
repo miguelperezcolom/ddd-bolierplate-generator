@@ -17,6 +17,7 @@ public record SubscriptionDto(
         String filterExpression,
         Integer batchSize,
         Long batchTimeout,
-        String offsetResetStrategy
+        String offsetResetStrategy,
+        Long consumerTimeout
 ) {
 }

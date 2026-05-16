@@ -15,6 +15,8 @@ public record ScheduledTriggerEntity(
         Long maxExecutionTimeMs,
         String failureNotificationEmail,
         String misfirePolicy,
-        boolean allowConcurrentExecution
+        boolean allowConcurrentExecution,
+        boolean retryOnFailure,
+        Integer retryCount
 ) implements Identifiable {
 }

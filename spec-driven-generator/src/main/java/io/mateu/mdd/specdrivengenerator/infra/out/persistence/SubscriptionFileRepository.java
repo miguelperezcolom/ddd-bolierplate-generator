@@ -35,7 +35,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                         toActions(entity.actions()),
                         entity.scalingStrategy(),
                         entity.filterExpression(),
-                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy()));
+                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy(),
+                        entity.consumerTimeout()));
     }
 
     @Override
@@ -53,7 +54,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                 toActionEntities(entity.getActions()),
                 entity.getScalingStrategy() != null ? entity.getScalingStrategy().name() : null,
                 entity.getFilterExpression(),
-                entity.getBatchSize(), entity.getBatchTimeout(), entity.getOffsetResetStrategy()));
+                entity.getBatchSize(), entity.getBatchTimeout(), entity.getOffsetResetStrategy(),
+                entity.getConsumerTimeout()));
         return entity;
     }
 

@@ -53,6 +53,7 @@ public class ScheduledTriggerFileQueryService implements ScheduledTriggerQuerySe
                         entity.maxExecutionTimeMs(),
                         entity.failureNotificationEmail(),
                         entity.misfirePolicy(),
-                        entity.allowConcurrentExecution()));
+                        entity.allowConcurrentExecution(),
+                        entity.retryOnFailure(), entity.retryCount()));
     }
 }

@@ -19,6 +19,7 @@ public record SaveSubscriptionCommand(
         String filterExpression,
         Integer batchSize,
         Long batchTimeout,
-        String offsetResetStrategy
+        String offsetResetStrategy,
+        Long consumerTimeout
 ) {
 }
