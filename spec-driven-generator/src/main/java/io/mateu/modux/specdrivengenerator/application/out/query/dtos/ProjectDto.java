@@ -1,0 +1,51 @@
+package io.mateu.modux.specdrivengenerator.application.out.query.dtos;
+
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
+
+import java.util.List;
+
+public record ProjectDto(String id, String name, String outputPath, String packageName,
+                         String gitRepository, String database,
+                         DbMigrationTool dbMigrationTool,
+                         String kubernetesClusterUrl, String kubernetesNamespace,
+                         String kubernetesContext, String kubernetesToken,
+                         String kubernetesCertificateAuthorityData,
+                         TerraformProvider terraformProvider, String terraformProviderVersion,
+                         TerraformBackendType terraformBackendType,
+                         String terraformBackendBucket, String terraformBackendRegion,
+                         String terraformBackendKey, String terraformWorkspace,
+                         IamProvider iamProvider, String iamServerUrl, String iamRealm,
+                         String iamClientId, String iamClientSecret, String iamAudience,
+                         MessageBrokerType messageBrokerType, String messageBrokerUrl,
+                         String messageBrokerUsername, String messageBrokerPassword,
+                         TracingProvider tracingProvider, String tracingEndpoint,
+                         MetricsProvider metricsProvider, String metricsEndpoint,
+                         LoggingProvider loggingProvider, String loggingEndpoint,
+                         LlmProvider llmProvider, String llmApiUrl,
+                         String llmApiKey, String llmModel,
+                         CacheProvider cacheProvider, String cacheUrl,
+                         String cacheUsername, String cachePassword,
+                         FileStorageProvider fileStorageProvider, String fileStorageBucket,
+                         String fileStorageRegion, String fileStorageAccessKey,
+                         String fileStorageSecretKey, String fileStorageEndpoint,
+                         EmailProvider emailProvider, String emailHost, Integer emailPort,
+                         String emailUsername, String emailPassword, String emailFrom,
+                         SecretsProvider secretsProvider, String secretsEndpoint, String secretsToken,
+                         String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
+                         String cicdProvider,
+                         String environment,
+                         List<String> serviceIds,
+                         List<ContextMapRelationDto> contextMap) {
+}

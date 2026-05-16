@@ -8,7 +8,7 @@
         <version>4.0.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>io.mateu.mdd</groupId>
+    <groupId>io.mateu.modux</groupId>
     <artifactId>spec-driven-generator</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>spec-driven-generator</name>
