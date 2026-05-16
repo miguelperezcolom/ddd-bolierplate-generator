@@ -19,5 +19,7 @@ public record CreateServiceCommand(String id, String name, String gitRepository,
                                    List<String> moduleIds,
                                    List<String> gatewayIds,
                                    List<EnvVar> envVars,
-                                   String javaVersion) {
+                                   String javaVersion,
+                                   boolean outboxEnabled,
+                                   String outboxTableName) {
 }

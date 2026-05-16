@@ -84,6 +84,10 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     @Tab("Environment")
     List<EnvVarViewModel> envVars = new java.util.ArrayList<>();
 
+    @Tab("Outbox")
+    boolean outboxEnabled;
+    String outboxTableName;
+
     final CreateServiceUseCase createUseCase;
     final SaveServiceUseCase saveUseCase;
 
@@ -99,7 +103,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                modules, gatewayIds, toEnvVars(envVars), javaVersion));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
         return id;
     }
 
@@ -115,7 +119,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                modules, gatewayIds, toEnvVars(envVars), javaVersion));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
     }
 
     @Override
@@ -156,6 +160,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         modules = model.moduleIds();
         gatewayIds = model.gatewayIds();
         javaVersion = model.javaVersion();
+        outboxEnabled = model.outboxEnabled();
+        outboxTableName = model.outboxTableName();
         envVars = model.envVars() != null ? model.envVars().stream().map(e -> {
             var vm = new EnvVarViewModel();
             vm.name = e.name();

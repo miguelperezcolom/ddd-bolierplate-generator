@@ -9,7 +9,7 @@ public record ModuleDto(String id, String name, String gitRepository,
                         List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                         List<BddScenarioDto> bddScenarios, String llmSystemPrompt,
                         String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                        List<BffDto> bffs, List<AclDto> acls) {
+                        List<BffDto> bffs, List<AclDto> acls, List<DomainPolicyDto> domainPolicies) {
 
     public ModuleDto {
         if (aggregateIds == null) aggregateIds = List.of();
@@ -25,6 +25,7 @@ public record ModuleDto(String id, String name, String gitRepository,
         if (bddScenarios == null) bddScenarios = List.of();
         if (bffs == null) bffs = List.of();
         if (acls == null) acls = List.of();
+        if (domainPolicies == null) domainPolicies = List.of();
     }
 
 }

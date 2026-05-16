@@ -6,11 +6,13 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.Module;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Bff;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.DomainPolicy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.BddScenarioEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.BffEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.DomainPolicyEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,9 @@ public class ModuleFileRepository implements ModuleRepository {
                                 .toList(),
                         entity.acls() == null ? List.<Acl>of() : entity.acls().stream()
                                 .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                                .toList(),
+                        entity.domainPolicies() == null ? List.<DomainPolicy>of() : entity.domainPolicies().stream()
+                                .map(p -> new DomainPolicy(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
                                 .toList()));
     }
 
@@ -77,6 +82,9 @@ public class ModuleFileRepository implements ModuleRepository {
                         .toList(),
                 entity.getAcls() == null ? List.<AclEntity>of() : entity.getAcls().stream()
                         .map(a -> new AclEntity(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                        .toList(),
+                entity.getDomainPolicies() == null ? List.<DomainPolicyEntity>of() : entity.getDomainPolicies().stream()
+                        .map(p -> new DomainPolicyEntity(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
                         .toList()));
         return entity;
     }

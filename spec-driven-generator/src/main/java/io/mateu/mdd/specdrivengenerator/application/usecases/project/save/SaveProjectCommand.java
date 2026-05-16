@@ -14,6 +14,8 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProv
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 
+import io.mateu.mdd.specdrivengenerator.application.usecases.project.ContextMapRelationData;
+
 import java.util.List;
 
 public record SaveProjectCommand(String id, String name, String outputPath, String packageName,
@@ -46,9 +48,11 @@ public record SaveProjectCommand(String id, String name, String outputPath, Stri
                                  String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                                  String cicdProvider,
                                  String environment,
-                                 List<String> serviceIds) {
+                                 List<String> serviceIds,
+                                 List<ContextMapRelationData> contextMap) {
 
     public SaveProjectCommand {
         if (serviceIds == null) serviceIds = List.of();
+        if (contextMap == null) contextMap = List.of();
     }
 }

@@ -51,7 +51,9 @@ public class CreateServiceUseCase {
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
                 command.envVars(),
-                command.javaVersion());
+                command.javaVersion(),
+                command.outboxEnabled(),
+                command.outboxTableName());
         repository.save(service);
     }
 

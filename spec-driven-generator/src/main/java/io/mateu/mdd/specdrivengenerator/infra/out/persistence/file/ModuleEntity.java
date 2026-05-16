@@ -24,6 +24,7 @@ public record ModuleEntity(
         boolean autoTableNamePrefix,
         String version,
         List<BffEntity> bffs,
-        List<AclEntity> acls
+        List<AclEntity> acls,
+        List<DomainPolicyEntity> domainPolicies
 ) implements Identifiable {
 }

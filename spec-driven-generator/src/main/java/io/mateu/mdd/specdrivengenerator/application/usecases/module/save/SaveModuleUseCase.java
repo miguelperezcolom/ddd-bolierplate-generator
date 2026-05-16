@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.Aggregate
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Bff;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.DomainPolicy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleName;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,9 @@ public class SaveModuleUseCase {
                         .toList(),
                 command.acls() == null ? List.<Acl>of() : command.acls().stream()
                         .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                        .toList(),
+                command.domainPolicies() == null ? List.<DomainPolicy>of() : command.domainPolicies().stream()
+                        .map(p -> new DomainPolicy(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
                         .toList());
         repository.save(role);
     }

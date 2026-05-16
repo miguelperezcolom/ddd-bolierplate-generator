@@ -4,6 +4,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AclDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.BddScenarioDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.BffDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.DomainPolicyDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
 
@@ -67,6 +68,9 @@ public class ModuleFileQueryService implements ModuleQueryService {
                                 .toList(),
                         entity.acls() == null ? List.of() : entity.acls().stream()
                                 .map(a -> new AclDto(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                                .toList(),
+                        entity.domainPolicies() == null ? List.<DomainPolicyDto>of() : entity.domainPolicies().stream()
+                                .map(p -> new DomainPolicyDto(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
                                 .toList()));
     }
 }

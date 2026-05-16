@@ -81,11 +81,13 @@ public record ProjectEntity(
         String ingressClassName,
         String cicdProvider,
         String environment,
-        List<String> serviceIds
+        List<String> serviceIds,
+        List<ContextMapRelationEntity> contextMap
 ) implements Identifiable {
 
     public ProjectEntity {
         if (serviceIds == null) serviceIds = List.of();
+        if (contextMap == null) contextMap = List.of();
     }
 
 }

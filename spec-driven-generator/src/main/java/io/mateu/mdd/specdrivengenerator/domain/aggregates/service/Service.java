@@ -46,6 +46,8 @@ public class Service {
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
     private String javaVersion;
+    private boolean outboxEnabled;
+    private String outboxTableName;
 
     public static Service of(ServiceId id, ServiceName name, String gitRepository,
                              String dockerImageRegistry, String dockerImageName,
@@ -60,7 +62,7 @@ public class Service {
                              Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                              DeploymentStrategy deploymentStrategy, String owner,
                              List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
-                             String javaVersion) {
+                             String javaVersion, boolean outboxEnabled, String outboxTableName) {
         var service = new Service();
         service.id = id;
         service.name = name;
@@ -95,6 +97,8 @@ public class Service {
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         service.javaVersion = javaVersion;
+        service.outboxEnabled = outboxEnabled;
+        service.outboxTableName = outboxTableName;
         return service;
     }
 
@@ -111,7 +115,7 @@ public class Service {
                                Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                String deploymentStrategy, String owner,
                                List<String> modules, List<String> gatewayIds, List<EnvVar> envVars,
-                               String javaVersion) {
+                               String javaVersion, boolean outboxEnabled, String outboxTableName) {
         var service = new Service();
         service.id = new ServiceId(id);
         service.name = new ServiceName(name);
@@ -146,6 +150,8 @@ public class Service {
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         service.javaVersion = javaVersion;
+        service.outboxEnabled = outboxEnabled;
+        service.outboxTableName = outboxTableName;
         return service;
     }
 
@@ -162,7 +168,7 @@ public class Service {
                        Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                        DeploymentStrategy deploymentStrategy, String owner,
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
-                       String javaVersion) {
+                       String javaVersion, boolean outboxEnabled, String outboxTableName) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.dockerImageRegistry = dockerImageRegistry;
@@ -195,5 +201,7 @@ public class Service {
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();
         this.javaVersion = javaVersion;
+        this.outboxEnabled = outboxEnabled;
+        this.outboxTableName = outboxTableName;
     }
 }

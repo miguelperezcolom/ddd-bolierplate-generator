@@ -5,6 +5,7 @@ import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.AclData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.BddScenarioData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.BffData;
+import io.mateu.mdd.specdrivengenerator.application.usecases.module.DomainPolicyData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveModuleCommand;
@@ -98,18 +99,21 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Tab("ACL")
     List<AclViewModel> acls = new ArrayList<>();
 
+    @Tab("Domain Policies")
+    List<DomainPolicyViewModel> domainPolicies = new ArrayList<>();
+
     final CreateModuleUseCase createUseCase;
     final SaveModuleUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls)));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls)));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies)));
     }
 
     @Override
@@ -171,6 +175,16 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
                     vm.translatedUseCaseIds = a.translatedUseCaseIds() != null ? new ArrayList<>(a.translatedUseCaseIds()) : new ArrayList<>();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        domainPolicies = model.domainPolicies() == null ? new ArrayList<>() :
+                model.domainPolicies().stream().map(p -> {
+                    var vm = new DomainPolicyViewModel();
+                    vm.id = p.id();
+                    vm.name = p.name();
+                    vm.triggeringEventId = p.triggeringEventId();
+                    vm.useCaseId = p.useCaseId();
+                    vm.description = p.description();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
     }
 
@@ -192,6 +206,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         if (list == null) return List.of();
         return list.stream()
                 .map(a -> new AclData(a.id, a.name, a.externalSystem, a.description, a.direction, a.gatewayId, a.translatedDomainEventIds, a.translatedUseCaseIds))
+                .toList();
+    }
+
+    private List<DomainPolicyData> toDomainPolicyData(List<DomainPolicyViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream()
+                .map(p -> new DomainPolicyData(p.id, p.name, p.triggeringEventId, p.useCaseId, p.description))
                 .toList();
     }
 

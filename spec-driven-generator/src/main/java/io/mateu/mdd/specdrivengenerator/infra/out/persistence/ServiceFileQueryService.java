@@ -57,6 +57,8 @@ public class ServiceFileQueryService implements ServiceQueryService {
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                                 .toList() : java.util.List.of(),
-                        entity.javaVersion()));
+                        entity.javaVersion(),
+                        entity.outboxEnabled(),
+                        entity.outboxTableName()));
     }
 }

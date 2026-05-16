@@ -19,7 +19,9 @@ public record SaveServiceCommand(String id, String name, String gitRepository, S
                                  List<String> moduleIds,
                                  List<String> gatewayIds,
                                  List<EnvVar> envVars,
-                                 String javaVersion) {
+                                 String javaVersion,
+                                 boolean outboxEnabled,
+                                 String outboxTableName) {
 
     public SaveServiceCommand {
         if (moduleIds == null) moduleIds = List.of();

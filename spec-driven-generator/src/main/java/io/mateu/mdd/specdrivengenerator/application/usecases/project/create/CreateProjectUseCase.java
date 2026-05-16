@@ -19,6 +19,8 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProv
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelation;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -68,7 +70,11 @@ public class CreateProjectUseCase {
                 command.ingressDomain(), command.ingressTlsEnabled(), command.ingressClassName(),
                 command.cicdProvider() != null ? CicdProvider.valueOf(command.cicdProvider()) : null,
                 command.environment() != null ? ProjectEnvironment.valueOf(command.environment()) : null,
-                command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of());
+                command.serviceIds() != null ? command.serviceIds().stream().map(ServiceId::new).toList() : List.of(),
+                command.contextMap() == null ? List.<ContextMapRelation>of() : command.contextMap().stream()
+                        .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                                r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
+                        .toList());
         repository.save(project);
     }
 

@@ -1,6 +1,7 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.ProjectQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ContextMapRelationDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
@@ -19,6 +20,7 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformPr
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
+import java.util.List;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
 import lombok.RequiredArgsConstructor;
@@ -90,6 +92,9 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.ingressDomain(), entity.ingressTlsEnabled(), entity.ingressClassName(),
                         entity.cicdProvider(),
                         entity.environment(),
-                        entity.serviceIds()));
+                        entity.serviceIds(),
+                        entity.contextMap() == null ? List.<ContextMapRelationDto>of() : entity.contextMap().stream()
+                                .map(r -> new ContextMapRelationDto(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(), r.type(), r.description()))
+                                .toList()));
     }
 }

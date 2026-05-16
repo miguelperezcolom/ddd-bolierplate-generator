@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.module.create;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.AclData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.BddScenarioData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.BffData;
+import io.mateu.mdd.specdrivengenerator.application.usecases.module.DomainPolicyData;
 
 import java.util.List;
 
@@ -13,7 +14,7 @@ public record CreateModuleCommand(String id, String name, String gitRepository,
                                   List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                                   List<BddScenarioData> bddScenarios, String llmSystemPrompt,
                                   String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                                  List<BffData> bffs, List<AclData> acls) {
+                                  List<BffData> bffs, List<AclData> acls, List<DomainPolicyData> domainPolicies) {
 
     public CreateModuleCommand {
         if (aggregates == null) aggregates = List.of();
@@ -29,6 +30,7 @@ public record CreateModuleCommand(String id, String name, String gitRepository,
         if (bddScenarios == null) bddScenarios = List.of();
         if (bffs == null) bffs = List.of();
         if (acls == null) acls = List.of();
+        if (domainPolicies == null) domainPolicies = List.of();
     }
 
 }

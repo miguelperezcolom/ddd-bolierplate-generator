@@ -46,5 +46,6 @@ public record ProjectDto(String id, String name, String outputPath, String packa
                          String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                          String cicdProvider,
                          String environment,
-                         List<String> serviceIds) {
+                         List<String> serviceIds,
+                         List<ContextMapRelationDto> contextMap) {
 }

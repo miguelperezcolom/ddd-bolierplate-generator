@@ -38,7 +38,9 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                                 .toList() : List.of(),
-                        entity.javaVersion()));
+                        entity.javaVersion(),
+                        entity.outboxEnabled(),
+                        entity.outboxTableName()));
     }
 
     @Override
@@ -78,7 +80,9 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getEnvVars() != null ? entity.getEnvVars().stream()
                         .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
                         .toList() : List.of(),
-                entity.getJavaVersion()));
+                entity.getJavaVersion(),
+                entity.isOutboxEnabled(),
+                entity.getOutboxTableName()));
         return entity;
     }
 

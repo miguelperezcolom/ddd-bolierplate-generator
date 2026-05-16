@@ -13,11 +13,14 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.LoggingProv
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelation;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -71,7 +74,11 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.ingressDomain(), entity.ingressTlsEnabled(), entity.ingressClassName(),
                         entity.cicdProvider(),
                         entity.environment(),
-                        entity.serviceIds()));
+                        entity.serviceIds(),
+                        entity.contextMap() == null ? List.<ContextMapRelation>of() : entity.contextMap().stream()
+                                .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                                        r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
+                                .toList()));
     }
 
     @Override
@@ -115,6 +122,10 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getEnvironment() != null ? entity.getEnvironment().name() : null,
                 entity.getServices().stream()
                         .map(ServiceId::id)
+                        .toList(),
+                entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
+                        .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                                r.type() != null ? r.type().name() : null, r.description()))
                         .toList()));
         return entity;
     }

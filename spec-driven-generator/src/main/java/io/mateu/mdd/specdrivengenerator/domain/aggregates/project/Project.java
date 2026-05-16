@@ -19,6 +19,8 @@ import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.MetricsProv
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelation;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import lombok.Getter;
 
@@ -91,6 +93,7 @@ public class Project {
     private CicdProvider cicdProvider;
     private ProjectEnvironment environment;
     private List<ServiceId> services;
+    private List<ContextMapRelation> contextMap;
 
     public static Project of(ProjectId id,
                              ProjectName name,
@@ -128,7 +131,8 @@ public class Project {
                              String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                              CicdProvider cicdProvider,
                              ProjectEnvironment environment,
-                             List<ServiceId> services) {
+                             List<ServiceId> services,
+                             List<ContextMapRelation> contextMap) {
         var project = new Project();
         project.id = id;
         project.name = name;
@@ -194,6 +198,7 @@ public class Project {
         project.cicdProvider = cicdProvider;
         project.environment = environment;
         project.services = services;
+        project.contextMap = contextMap != null ? contextMap : List.of();
         return project;
     }
 
@@ -227,7 +232,8 @@ public class Project {
                                 String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                                 String cicdProvider,
                                 String environment,
-                                List<String> services) {
+                                List<String> services,
+                                List<ContextMapRelation> contextMap) {
         var project = new Project();
         project.id = new ProjectId(id);
         project.name = new ProjectName(name);
@@ -293,6 +299,7 @@ public class Project {
         project.cicdProvider = cicdProvider != null ? CicdProvider.valueOf(cicdProvider) : null;
         project.environment = environment != null ? ProjectEnvironment.valueOf(environment) : null;
         project.services = services.stream().map(ServiceId::new).toList();
+        project.contextMap = contextMap != null ? contextMap : List.of();
         return project;
     }
 
@@ -326,7 +333,8 @@ public class Project {
                        String ingressDomain, boolean ingressTlsEnabled, String ingressClassName,
                        CicdProvider cicdProvider,
                        ProjectEnvironment environment,
-                       List<ServiceId> services) {
+                       List<ServiceId> services,
+                       List<ContextMapRelation> contextMap) {
         this.name = name;
         this.outputPath = outputPath;
         this.packageName = packageName;
@@ -390,5 +398,6 @@ public class Project {
         this.cicdProvider = cicdProvider;
         this.environment = environment;
         this.services = services;
+        this.contextMap = contextMap != null ? contextMap : List.of();
     }
 }

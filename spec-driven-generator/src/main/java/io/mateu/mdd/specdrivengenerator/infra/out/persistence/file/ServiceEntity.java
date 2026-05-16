@@ -38,7 +38,9 @@ public record ServiceEntity(
         List<String> moduleIds,
         List<String> gatewayIds,
         List<EnvVarEntity> envVars,
-        String javaVersion
+        String javaVersion,
+        boolean outboxEnabled,
+        String outboxTableName
 ) implements Identifiable {
 
     public ServiceEntity {

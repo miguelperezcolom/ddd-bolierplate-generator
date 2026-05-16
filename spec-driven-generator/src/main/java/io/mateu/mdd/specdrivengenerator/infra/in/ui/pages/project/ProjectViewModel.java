@@ -2,10 +2,12 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.project;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ProjectDto;
+import io.mateu.mdd.specdrivengenerator.application.usecases.project.ContextMapRelationData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.create.CreateProjectUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.project.save.SaveProjectUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.CicdProvider;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
@@ -33,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -135,6 +138,9 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
     List<String> services;
 
+    @Tab("Context Map")
+    List<ContextMapRelationViewModel> contextMap = new ArrayList<>();
+
     final CreateProjectUseCase createUseCase;
     final SaveProjectUseCase saveUseCase;
 
@@ -163,7 +169,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 ingressDomain, ingressTlsEnabled, ingressClassName,
                 cicdProvider != null ? cicdProvider.name() : null,
                 environment != null ? environment.name() : null,
-                services));
+                services,
+                toContextMapData(contextMap)));
         return id;
     }
 
@@ -192,7 +199,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 ingressDomain, ingressTlsEnabled, ingressClassName,
                 cicdProvider != null ? cicdProvider.name() : null,
                 environment != null ? environment.name() : null,
-                services));
+                services,
+                toContextMapData(contextMap)));
     }
 
     @Override
@@ -265,7 +273,26 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         cicdProvider = model.cicdProvider() != null ? CicdProvider.valueOf(model.cicdProvider()) : null;
         environment = model.environment() != null ? ProjectEnvironment.valueOf(model.environment()) : null;
         services = model.serviceIds();
+        contextMap = model.contextMap() == null ? new ArrayList<>() :
+                model.contextMap().stream().map(r -> {
+                    var vm = new ContextMapRelationViewModel();
+                    vm.id = r.id();
+                    vm.name = r.name();
+                    vm.sourceModuleId = r.sourceModuleId();
+                    vm.targetModuleId = r.targetModuleId();
+                    vm.type = r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null;
+                    vm.description = r.description();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
+    }
+
+    private List<ContextMapRelationData> toContextMapData(List<ContextMapRelationViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream()
+                .map(r -> new ContextMapRelationData(r.id, r.name, r.sourceModuleId, r.targetModuleId,
+                        r.type != null ? r.type.name() : null, r.description))
+                .toList();
     }
 
     @Override
