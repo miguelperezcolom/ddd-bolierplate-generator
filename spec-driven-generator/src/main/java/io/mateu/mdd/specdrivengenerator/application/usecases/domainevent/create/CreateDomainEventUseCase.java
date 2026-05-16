@@ -27,7 +27,8 @@ public class CreateDomainEventUseCase {
                 command.integrationModelId() != null ? new DomainEventIntegrationModelId(command.integrationModelId()) : null,
                 command.topicName(), command.partitions(), command.retentionMs(),
                 command.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(command.serializationFormat()) : null,
-                command.compressionType() != null ? DomainEventCompressionType.valueOf(command.compressionType()) : null);
+                command.compressionType() != null ? DomainEventCompressionType.valueOf(command.compressionType()) : null,
+                command.deadLetterQueueEnabled(), command.schemaVersion());
         repository.save(domainEvent);
     }
 

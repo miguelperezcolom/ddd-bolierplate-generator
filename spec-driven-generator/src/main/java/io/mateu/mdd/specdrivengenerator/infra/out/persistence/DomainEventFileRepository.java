@@ -23,7 +23,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 .map(entity -> DomainEvent.load(entity.id(), entity.name(), entity.modelId(),
                         entity.publishAsIntegrationEvent(), entity.integrationModelId(),
                         entity.topicName(), entity.partitions(), entity.retentionMs(),
-                        entity.serializationFormat(), entity.compressionType()));
+                        entity.serializationFormat(), entity.compressionType(),
+                        entity.deadLetterQueueEnabled(), entity.schemaVersion()));
     }
 
     @Override
@@ -36,7 +37,8 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 entity.getIntegrationModelId() != null ? entity.getIntegrationModelId().id() : null,
                 entity.getTopicName(), entity.getPartitions(), entity.getRetentionMs(),
                 entity.getSerializationFormat() != null ? entity.getSerializationFormat().name() : null,
-                entity.getCompressionType() != null ? entity.getCompressionType().name() : null));
+                entity.getCompressionType() != null ? entity.getCompressionType().name() : null,
+                entity.isDeadLetterQueueEnabled(), entity.getSchemaVersion()));
         return entity;
     }
 

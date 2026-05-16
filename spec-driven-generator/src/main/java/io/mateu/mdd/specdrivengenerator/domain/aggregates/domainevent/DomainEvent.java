@@ -22,13 +22,16 @@ public class DomainEvent {
     private Long retentionMs;
     private DomainEventSerializationFormat serializationFormat;
     private DomainEventCompressionType compressionType;
+    private boolean deadLetterQueueEnabled;
+    private String schemaVersion;
 
     public static DomainEvent of(DomainEventId id, DomainEventName name, DomainEventModelId modelId,
                                  DomainEventPublishAsIntegrationEvent publishAsIntegrationEvent,
                                  DomainEventIntegrationModelId integrationModelId,
                                  String topicName, Integer partitions, Long retentionMs,
                                  DomainEventSerializationFormat serializationFormat,
-                                 DomainEventCompressionType compressionType) {
+                                 DomainEventCompressionType compressionType,
+                                 boolean deadLetterQueueEnabled, String schemaVersion) {
         var domainEvent = new DomainEvent();
         domainEvent.id = id;
         domainEvent.name = name;
@@ -40,13 +43,16 @@ public class DomainEvent {
         domainEvent.retentionMs = retentionMs;
         domainEvent.serializationFormat = serializationFormat;
         domainEvent.compressionType = compressionType;
+        domainEvent.deadLetterQueueEnabled = deadLetterQueueEnabled;
+        domainEvent.schemaVersion = schemaVersion;
         return domainEvent;
     }
 
     public static DomainEvent load(String id, String name, String modelId,
                                    boolean publishAsIntegrationEvent, String integrationModelId,
                                    String topicName, Integer partitions, Long retentionMs,
-                                   String serializationFormat, String compressionType) {
+                                   String serializationFormat, String compressionType,
+                                   boolean deadLetterQueueEnabled, String schemaVersion) {
         var domainEvent = new DomainEvent();
         domainEvent.id = new DomainEventId(id);
         domainEvent.name = new DomainEventName(name);
@@ -58,6 +64,8 @@ public class DomainEvent {
         domainEvent.retentionMs = retentionMs;
         domainEvent.serializationFormat = serializationFormat != null ? DomainEventSerializationFormat.valueOf(serializationFormat) : null;
         domainEvent.compressionType = compressionType != null ? DomainEventCompressionType.valueOf(compressionType) : null;
+        domainEvent.deadLetterQueueEnabled = deadLetterQueueEnabled;
+        domainEvent.schemaVersion = schemaVersion;
         return domainEvent;
     }
 
@@ -66,7 +74,8 @@ public class DomainEvent {
                        DomainEventIntegrationModelId integrationModelId,
                        String topicName, Integer partitions, Long retentionMs,
                        DomainEventSerializationFormat serializationFormat,
-                       DomainEventCompressionType compressionType) {
+                       DomainEventCompressionType compressionType,
+                       boolean deadLetterQueueEnabled, String schemaVersion) {
         this.name = name;
         this.modelId = modelId;
         this.publishAsIntegrationEvent = publishAsIntegrationEvent;
@@ -76,5 +85,7 @@ public class DomainEvent {
         this.retentionMs = retentionMs;
         this.serializationFormat = serializationFormat;
         this.compressionType = compressionType;
+        this.deadLetterQueueEnabled = deadLetterQueueEnabled;
+        this.schemaVersion = schemaVersion;
     }
 }

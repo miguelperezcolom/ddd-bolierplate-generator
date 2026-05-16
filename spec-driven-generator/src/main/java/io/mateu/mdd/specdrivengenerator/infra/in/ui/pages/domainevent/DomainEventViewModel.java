@@ -47,19 +47,21 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
     Long retentionMs;
     DomainEventSerializationFormat serializationFormat;
     DomainEventCompressionType compressionType;
+    boolean deadLetterQueueEnabled;
+    String schemaVersion;
 
     final CreateDomainEventUseCase createUseCase;
     final SaveDomainEventUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null));
+        createUseCase.handle(new CreateDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null));
+        saveUseCase.handle(new SaveDomainEventCommand(id, name, modelId, publishAsIntegrationEvent, integrationModelId, topicName, partitions, retentionMs, serializationFormat != null ? serializationFormat.name() : null, compressionType != null ? compressionType.name() : null, deadLetterQueueEnabled, schemaVersion));
     }
 
     @Override
@@ -78,6 +80,8 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
         retentionMs = model.retentionMs();
         serializationFormat = model.serializationFormat() != null ? DomainEventSerializationFormat.valueOf(model.serializationFormat()) : null;
         compressionType = model.compressionType() != null ? DomainEventCompressionType.valueOf(model.compressionType()) : null;
+        deadLetterQueueEnabled = model.deadLetterQueueEnabled();
+        schemaVersion = model.schemaVersion();
         return this;
     }
 
