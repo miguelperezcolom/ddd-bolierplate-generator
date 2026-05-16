@@ -20,6 +20,9 @@ public class Subscription {
     private List<SubscriptionAction> actions;
     private ScalingStrategy scalingStrategy;
     private String filterExpression;
+    private Integer batchSize;
+    private Long batchTimeout;
+    private String offsetResetStrategy;
 
     public static Subscription of(SubscriptionId id, SubscriptionName name,
                                   String eventName, String sourceService, String inputModelId,
@@ -27,7 +30,8 @@ public class Subscription {
                                   Integer retryCount, String deadLetterTopic,
                                   List<SubscriptionAction> actions,
                                   ScalingStrategy scalingStrategy,
-                                  String filterExpression) {
+                                  String filterExpression,
+                                  Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
         var subscription = new Subscription();
         subscription.id = id;
         subscription.name = name;
@@ -41,6 +45,9 @@ public class Subscription {
         subscription.actions = actions != null ? actions : List.of();
         subscription.scalingStrategy = scalingStrategy;
         subscription.filterExpression = filterExpression;
+        subscription.batchSize = batchSize;
+        subscription.batchTimeout = batchTimeout;
+        subscription.offsetResetStrategy = offsetResetStrategy;
         return subscription;
     }
 
@@ -50,7 +57,8 @@ public class Subscription {
                                     Integer retryCount, String deadLetterTopic,
                                     List<SubscriptionAction> actions,
                                     String scalingStrategy,
-                                    String filterExpression) {
+                                    String filterExpression,
+                                    Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
         var subscription = new Subscription();
         subscription.id = new SubscriptionId(id);
         subscription.name = new SubscriptionName(name);
@@ -64,6 +72,9 @@ public class Subscription {
         subscription.actions = actions != null ? actions : List.of();
         subscription.scalingStrategy = scalingStrategy != null ? ScalingStrategy.valueOf(scalingStrategy) : null;
         subscription.filterExpression = filterExpression;
+        subscription.batchSize = batchSize;
+        subscription.batchTimeout = batchTimeout;
+        subscription.offsetResetStrategy = offsetResetStrategy;
         return subscription;
     }
 
@@ -73,7 +84,8 @@ public class Subscription {
                        Integer retryCount, String deadLetterTopic,
                        List<SubscriptionAction> actions,
                        ScalingStrategy scalingStrategy,
-                       String filterExpression) {
+                       String filterExpression,
+                       Integer batchSize, Long batchTimeout, String offsetResetStrategy) {
         this.name = name;
         this.eventName = eventName;
         this.sourceService = sourceService;
@@ -85,5 +97,8 @@ public class Subscription {
         this.actions = actions != null ? actions : List.of();
         this.scalingStrategy = scalingStrategy;
         this.filterExpression = filterExpression;
+        this.batchSize = batchSize;
+        this.batchTimeout = batchTimeout;
+        this.offsetResetStrategy = offsetResetStrategy;
     }
 }

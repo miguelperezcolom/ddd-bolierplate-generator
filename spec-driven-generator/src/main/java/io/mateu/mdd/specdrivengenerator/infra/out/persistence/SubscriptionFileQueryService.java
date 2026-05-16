@@ -57,6 +57,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                                         a.useCaseId(), a.sagaId(), a.projectionId(), a.modelMappingId()))
                                 .toList(),
                         entity.scalingStrategy(),
-                        entity.filterExpression()));
+                        entity.filterExpression(),
+                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy()));
     }
 }

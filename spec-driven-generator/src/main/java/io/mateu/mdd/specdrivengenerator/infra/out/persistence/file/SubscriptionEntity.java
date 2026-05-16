@@ -16,6 +16,9 @@ public record SubscriptionEntity(
         String deadLetterTopic,
         List<SubscriptionActionEntity> actions,
         String scalingStrategy,
-        String filterExpression
+        String filterExpression,
+        Integer batchSize,
+        Long batchTimeout,
+        String offsetResetStrategy
 ) implements Identifiable {
 }

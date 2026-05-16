@@ -16,6 +16,9 @@ public record SaveSubscriptionCommand(
         String deadLetterTopic,
         List<SubscriptionActionData> actions,
         String scalingStrategy,
-        String filterExpression
+        String filterExpression,
+        Integer batchSize,
+        Long batchTimeout,
+        String offsetResetStrategy
 ) {
 }

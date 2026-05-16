@@ -14,6 +14,9 @@ public record SubscriptionDto(
         String deadLetterTopic,
         List<SubscriptionActionDto> actions,
         String scalingStrategy,
-        String filterExpression
+        String filterExpression,
+        Integer batchSize,
+        Long batchTimeout,
+        String offsetResetStrategy
 ) {
 }

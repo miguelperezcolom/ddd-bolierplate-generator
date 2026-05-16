@@ -34,7 +34,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                         entity.deadLetterTopic(),
                         toActions(entity.actions()),
                         entity.scalingStrategy(),
-                        entity.filterExpression()));
+                        entity.filterExpression(),
+                        entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy()));
     }
 
     @Override
@@ -51,7 +52,8 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                 entity.getDeadLetterTopic(),
                 toActionEntities(entity.getActions()),
                 entity.getScalingStrategy() != null ? entity.getScalingStrategy().name() : null,
-                entity.getFilterExpression()));
+                entity.getFilterExpression(),
+                entity.getBatchSize(), entity.getBatchTimeout(), entity.getOffsetResetStrategy()));
         return entity;
     }
 

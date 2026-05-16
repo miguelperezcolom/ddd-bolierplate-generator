@@ -31,7 +31,8 @@ public class CreateSubscriptionUseCase {
                 command.deadLetterTopic(),
                 toActions(command.actions()),
                 command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null,
-                command.filterExpression());
+                command.filterExpression(),
+                command.batchSize(), command.batchTimeout(), command.offsetResetStrategy());
         repository.save(subscription);
     }
 
