@@ -10,5 +10,6 @@ public record CreateReadModelCommand(String id, String name,
                                      boolean cacheable,
                                      Integer cacheTtlSeconds,
                                      String consistencyLevel,
-                                     Long maxStalenessMs) {
+                                     Long maxStalenessMs,
+                                     List<String> indexFields) {
 }

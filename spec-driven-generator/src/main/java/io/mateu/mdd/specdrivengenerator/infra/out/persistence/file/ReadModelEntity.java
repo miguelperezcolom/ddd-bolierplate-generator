@@ -14,6 +14,7 @@ public record ReadModelEntity(
         boolean cacheable,
         Integer cacheTtlSeconds,
         String consistencyLevel,
-        Long maxStalenessMs
+        Long maxStalenessMs,
+        List<String> indexFields
 ) implements Identifiable {
 }

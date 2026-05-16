@@ -51,6 +51,7 @@ public class ReadModelFileQueryService implements ReadModelQueryService {
                         entity.cacheable(),
                         entity.cacheTtlSeconds(),
                         entity.consistencyLevel(),
-                        entity.maxStalenessMs()));
+                        entity.maxStalenessMs(),
+                        entity.indexFields() != null ? entity.indexFields() : List.of()));
     }
 }

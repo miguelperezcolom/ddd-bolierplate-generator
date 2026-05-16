@@ -21,6 +21,7 @@ public class ReadModel {
     private Integer cacheTtlSeconds;
     private ConsistencyLevel consistencyLevel;
     private Long maxStalenessMs;
+    private List<String> indexFields;
 
     public static ReadModel of(ReadModelId id, ReadModelName name,
                                String modelId,
@@ -30,7 +31,8 @@ public class ReadModel {
                                boolean cacheable,
                                Integer cacheTtlSeconds,
                                ConsistencyLevel consistencyLevel,
-                               Long maxStalenessMs) {
+                               Long maxStalenessMs,
+                               List<String> indexFields) {
         var readModel = new ReadModel();
         readModel.id = id;
         readModel.name = name;
@@ -42,6 +44,7 @@ public class ReadModel {
         readModel.cacheTtlSeconds = cacheTtlSeconds;
         readModel.consistencyLevel = consistencyLevel;
         readModel.maxStalenessMs = maxStalenessMs;
+        readModel.indexFields = indexFields != null ? indexFields : List.of();
         return readModel;
     }
 
@@ -53,7 +56,8 @@ public class ReadModel {
                                  boolean cacheable,
                                  Integer cacheTtlSeconds,
                                  String consistencyLevel,
-                                 Long maxStalenessMs) {
+                                 Long maxStalenessMs,
+                                 List<String> indexFields) {
         var readModel = new ReadModel();
         readModel.id = new ReadModelId(id);
         readModel.name = new ReadModelName(name);
@@ -65,6 +69,7 @@ public class ReadModel {
         readModel.cacheTtlSeconds = cacheTtlSeconds;
         readModel.consistencyLevel = consistencyLevel != null ? ConsistencyLevel.valueOf(consistencyLevel) : null;
         readModel.maxStalenessMs = maxStalenessMs;
+        readModel.indexFields = indexFields != null ? indexFields : List.of();
         return readModel;
     }
 
@@ -76,7 +81,8 @@ public class ReadModel {
                        boolean cacheable,
                        Integer cacheTtlSeconds,
                        ConsistencyLevel consistencyLevel,
-                       Long maxStalenessMs) {
+                       Long maxStalenessMs,
+                       List<String> indexFields) {
         this.name = name;
         this.modelId = modelId;
         this.storageType = storageType;
@@ -86,5 +92,6 @@ public class ReadModel {
         this.cacheTtlSeconds = cacheTtlSeconds;
         this.consistencyLevel = consistencyLevel;
         this.maxStalenessMs = maxStalenessMs;
+        this.indexFields = indexFields != null ? indexFields : List.of();
     }
 }

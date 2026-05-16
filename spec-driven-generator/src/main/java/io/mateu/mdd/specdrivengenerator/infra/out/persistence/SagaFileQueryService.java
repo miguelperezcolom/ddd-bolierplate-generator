@@ -56,6 +56,7 @@ public class SagaFileQueryService implements SagaQueryService {
                                 .toList(),
                         entity.maxRetries(),
                         entity.retryBackoffMs(),
-                        entity.deadLetterQueue()));
+                        entity.deadLetterQueue(),
+                        entity.persistenceEnabled()));
     }
 }

@@ -31,7 +31,8 @@ public class SagaFileRepository implements SagaRepository {
                         toSteps(entity.steps()),
                         entity.maxRetries(),
                         entity.retryBackoffMs(),
-                        entity.deadLetterQueue()));
+                        entity.deadLetterQueue(),
+                        entity.persistenceEnabled()));
     }
 
     @Override
@@ -45,7 +46,8 @@ public class SagaFileRepository implements SagaRepository {
                 toStepEntities(entity.getSteps()),
                 entity.getMaxRetries(),
                 entity.getRetryBackoffMs(),
-                entity.getDeadLetterQueue()));
+                entity.getDeadLetterQueue(),
+                entity.isPersistenceEnabled()));
         return entity;
     }
 

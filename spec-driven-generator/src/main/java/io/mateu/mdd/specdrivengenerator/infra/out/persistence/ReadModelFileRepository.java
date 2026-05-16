@@ -31,7 +31,8 @@ public class ReadModelFileRepository implements ReadModelRepository {
                         entity.cacheable(),
                         entity.cacheTtlSeconds(),
                         entity.consistencyLevel(),
-                        entity.maxStalenessMs()));
+                        entity.maxStalenessMs(),
+                        entity.indexFields()));
     }
 
     @Override
@@ -46,7 +47,8 @@ public class ReadModelFileRepository implements ReadModelRepository {
                 entity.isCacheable(),
                 entity.getCacheTtlSeconds(),
                 entity.getConsistencyLevel() != null ? entity.getConsistencyLevel().name() : null,
-                entity.getMaxStalenessMs()));
+                entity.getMaxStalenessMs(),
+                entity.getIndexFields()));
         return entity;
     }
 

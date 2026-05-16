@@ -44,6 +44,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
 
     List<String> filterFields = new ArrayList<>();
     List<String> sortFields = new ArrayList<>();
+    List<String> indexFields = new ArrayList<>();
     boolean cacheable;
     Integer cacheTtlSeconds;
     ConsistencyLevel consistencyLevel;
@@ -56,7 +57,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs, indexFields));
         return id;
     }
 
@@ -64,7 +65,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs, indexFields));
     }
 
     @Override
@@ -79,6 +80,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
         storageType = model.storageType() != null ? ReadModelStorageType.valueOf(model.storageType()) : null;
         filterFields = model.filterFields() != null ? new ArrayList<>(model.filterFields()) : new ArrayList<>();
         sortFields = model.sortFields() != null ? new ArrayList<>(model.sortFields()) : new ArrayList<>();
+        indexFields = model.indexFields() != null ? new ArrayList<>(model.indexFields()) : new ArrayList<>();
         cacheable = model.cacheable();
         cacheTtlSeconds = model.cacheTtlSeconds();
         consistencyLevel = model.consistencyLevel() != null ? ConsistencyLevel.valueOf(model.consistencyLevel()) : null;
