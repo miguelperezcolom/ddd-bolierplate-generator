@@ -12,6 +12,8 @@ public record CreateServiceCommand(String id, String name, String gitRepository,
                                    Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                                    String livenessProbe, String readinessProbe, String startupProbe,
                                    boolean openApiDocumentationEnabled,
+                                   boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
+                                   Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                    List<String> moduleIds,
                                    List<String> gatewayIds,
                                    List<EnvVar> envVars) {

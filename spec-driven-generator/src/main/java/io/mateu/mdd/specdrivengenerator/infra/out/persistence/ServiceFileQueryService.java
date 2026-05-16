@@ -49,6 +49,8 @@ public class ServiceFileQueryService implements ServiceQueryService {
                         entity.kubernetesHpaMaxReplicas(), entity.kubernetesHpaCpuThreshold(),
                         entity.livenessProbe(), entity.readinessProbe(), entity.startupProbe(),
                         entity.openApiDocumentationEnabled(),
+                        entity.circuitBreakerEnabled(), entity.circuitBreakerThreshold(),
+                        entity.connectionTimeoutMs(), entity.readTimeoutMs(), entity.writeTimeoutMs(),
                         entity.moduleIds(),
                         entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()

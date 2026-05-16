@@ -34,6 +34,11 @@ public class Service {
     private String readinessProbe;
     private String startupProbe;
     private boolean openApiDocumentationEnabled;
+    private boolean circuitBreakerEnabled;
+    private Integer circuitBreakerThreshold;
+    private Long connectionTimeoutMs;
+    private Long readTimeoutMs;
+    private Long writeTimeoutMs;
     private List<ModuleId> modules;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
@@ -47,6 +52,8 @@ public class Service {
                              Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                              String livenessProbe, String readinessProbe, String startupProbe,
                              boolean openApiDocumentationEnabled,
+                             boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
+                             Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                              List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = id;
@@ -71,6 +78,11 @@ public class Service {
         service.readinessProbe = readinessProbe;
         service.startupProbe = startupProbe;
         service.openApiDocumentationEnabled = openApiDocumentationEnabled;
+        service.circuitBreakerEnabled = circuitBreakerEnabled;
+        service.circuitBreakerThreshold = circuitBreakerThreshold;
+        service.connectionTimeoutMs = connectionTimeoutMs;
+        service.readTimeoutMs = readTimeoutMs;
+        service.writeTimeoutMs = writeTimeoutMs;
         service.modules = modules;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -86,6 +98,8 @@ public class Service {
                                Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                                String livenessProbe, String readinessProbe, String startupProbe,
                                boolean openApiDocumentationEnabled,
+                               boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
+                               Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                List<String> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         var service = new Service();
         service.id = new ServiceId(id);
@@ -110,6 +124,11 @@ public class Service {
         service.readinessProbe = readinessProbe;
         service.startupProbe = startupProbe;
         service.openApiDocumentationEnabled = openApiDocumentationEnabled;
+        service.circuitBreakerEnabled = circuitBreakerEnabled;
+        service.circuitBreakerThreshold = circuitBreakerThreshold;
+        service.connectionTimeoutMs = connectionTimeoutMs;
+        service.readTimeoutMs = readTimeoutMs;
+        service.writeTimeoutMs = writeTimeoutMs;
         service.modules = modules.stream().map(ModuleId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
@@ -125,6 +144,8 @@ public class Service {
                        Integer kubernetesHpaMaxReplicas, Integer kubernetesHpaCpuThreshold,
                        String livenessProbe, String readinessProbe, String startupProbe,
                        boolean openApiDocumentationEnabled,
+                       boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
+                       Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                        List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars) {
         this.name = name;
         this.gitRepository = gitRepository;
@@ -147,6 +168,11 @@ public class Service {
         this.readinessProbe = readinessProbe;
         this.startupProbe = startupProbe;
         this.openApiDocumentationEnabled = openApiDocumentationEnabled;
+        this.circuitBreakerEnabled = circuitBreakerEnabled;
+        this.circuitBreakerThreshold = circuitBreakerThreshold;
+        this.connectionTimeoutMs = connectionTimeoutMs;
+        this.readTimeoutMs = readTimeoutMs;
+        this.writeTimeoutMs = writeTimeoutMs;
         this.modules = modules;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();

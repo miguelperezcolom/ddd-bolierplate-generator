@@ -40,6 +40,11 @@ public class CreateServiceUseCase {
                 command.readinessProbe(),
                 command.startupProbe(),
                 command.openApiDocumentationEnabled(),
+                command.circuitBreakerEnabled(),
+                command.circuitBreakerThreshold(),
+                command.connectionTimeoutMs(),
+                command.readTimeoutMs(),
+                command.writeTimeoutMs(),
                 command.moduleIds() != null ? command.moduleIds().stream().map(ModuleId::new).toList() : List.of(),
                 command.gatewayIds(),
                 command.envVars());

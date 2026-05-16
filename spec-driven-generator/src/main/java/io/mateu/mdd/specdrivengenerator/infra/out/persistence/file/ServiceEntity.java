@@ -28,6 +28,11 @@ public record ServiceEntity(
         String readinessProbe,
         String startupProbe,
         boolean openApiDocumentationEnabled,
+        boolean circuitBreakerEnabled,
+        Integer circuitBreakerThreshold,
+        Long connectionTimeoutMs,
+        Long readTimeoutMs,
+        Long writeTimeoutMs,
         List<String> moduleIds,
         List<String> gatewayIds,
         List<EnvVarEntity> envVars

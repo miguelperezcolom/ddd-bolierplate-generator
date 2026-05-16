@@ -37,6 +37,11 @@ public class SaveServiceUseCase {
                 command.readinessProbe(),
                 command.startupProbe(),
                 command.openApiDocumentationEnabled(),
+                command.circuitBreakerEnabled(),
+                command.circuitBreakerThreshold(),
+                command.connectionTimeoutMs(),
+                command.readTimeoutMs(),
+                command.writeTimeoutMs(),
                 command.moduleIds().stream().map(ModuleId::new).toList(),
                 command.gatewayIds(),
                 command.envVars());

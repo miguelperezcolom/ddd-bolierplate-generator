@@ -44,6 +44,14 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     String dockerImageRegistry;
     String dockerImageName;
     boolean openApiDocumentationEnabled;
+
+    @Tab("Resilience")
+    boolean circuitBreakerEnabled;
+    Integer circuitBreakerThreshold;
+    Long connectionTimeoutMs;
+    Long readTimeoutMs;
+    Long writeTimeoutMs;
+
     Integer port;
     String contextPath;
     String database;
@@ -85,6 +93,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
                 livenessProbe, readinessProbe, startupProbe,
                 openApiDocumentationEnabled,
+                circuitBreakerEnabled, circuitBreakerThreshold,
+                connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 modules, gatewayIds, toEnvVars(envVars)));
         return id;
     }
@@ -98,6 +108,8 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 kubernetesHpaMaxReplicas, kubernetesHpaCpuThreshold,
                 livenessProbe, readinessProbe, startupProbe,
                 openApiDocumentationEnabled,
+                circuitBreakerEnabled, circuitBreakerThreshold,
+                connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 modules, gatewayIds, toEnvVars(envVars)));
     }
 
@@ -113,6 +125,11 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         dockerImageRegistry = model.dockerImageRegistry();
         dockerImageName = model.dockerImageName();
         openApiDocumentationEnabled = model.openApiDocumentationEnabled();
+        circuitBreakerEnabled = model.circuitBreakerEnabled();
+        circuitBreakerThreshold = model.circuitBreakerThreshold();
+        connectionTimeoutMs = model.connectionTimeoutMs();
+        readTimeoutMs = model.readTimeoutMs();
+        writeTimeoutMs = model.writeTimeoutMs();
         port = model.port();
         contextPath = model.contextPath();
         database = model.database();
