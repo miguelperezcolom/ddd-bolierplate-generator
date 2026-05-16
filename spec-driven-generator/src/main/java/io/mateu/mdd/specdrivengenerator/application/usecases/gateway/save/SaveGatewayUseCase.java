@@ -1,7 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.application.usecases.gateway.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.GatewayRepository;
-import io.mateu.mdd.specdrivengenerator.application.usecases.gateway.GatewayOperationData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.gateway.vo.GatewayId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.gateway.vo.GatewayName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.gateway.vo.GatewayOperation;
@@ -18,9 +17,9 @@ public class SaveGatewayUseCase {
 
     public void handle(SaveGatewayCommand command) {
         var gateway = repository.findById(new GatewayId(command.id())).orElseThrow();
-        var operations = command.operations() == null ? List.of() :
+        var operations = command.operations() == null ? List.<GatewayOperation>of() :
                 command.operations().stream()
-                        .map(o -> new GatewayOperation(o.id(), o.name(), o.inputModelId(), o.outputModelId(),
+                        .map(o -> new GatewayOperation(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
                         .toList();

@@ -18,7 +18,7 @@ public class SaveModuleUseCase {
 
     public void handle(SaveModuleCommand command) {
         var role = repository.findById(new ModuleId(command.id())).orElseThrow();
-        var bddScenarios = command.bddScenarios() == null ? List.of() :
+        var bddScenarios = command.bddScenarios() == null ? List.<BddScenario>of() :
                 command.bddScenarios().stream()
                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                         .toList();

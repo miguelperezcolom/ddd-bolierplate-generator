@@ -1,5 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.MisfirePolicy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerExecutionEnvironment;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerName;

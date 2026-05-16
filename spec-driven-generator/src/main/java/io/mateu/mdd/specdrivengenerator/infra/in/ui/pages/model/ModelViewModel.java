@@ -84,7 +84,7 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                     var vm = new ModelValidationViewModel();
                     vm.id = v.id();
                     vm.condition = v.condition();
-                    vm.fieldIds = v.fieldIdss();
+                    vm.fieldIds = v.fieldIds();
                     vm.message = v.message();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));

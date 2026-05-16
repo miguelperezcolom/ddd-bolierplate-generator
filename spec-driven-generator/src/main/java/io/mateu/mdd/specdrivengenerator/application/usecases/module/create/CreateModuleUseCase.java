@@ -18,7 +18,7 @@ public class CreateModuleUseCase {
     final ModuleRepository repository;
 
     public void handle(CreateModuleCommand command) {
-        var bddScenarios = command.bddScenarios() == null ? List.of() :
+        var bddScenarios = command.bddScenarios() == null ? List.<BddScenario>of() :
                 command.bddScenarios().stream()
                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                         .toList();

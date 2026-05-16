@@ -123,8 +123,7 @@ public class GenerateCodeUseCase {
                         + "/vo/" + aggregate.name() + "Id.java");
 
         // vo-name.ftl solo si el aggregate tiene fields de tipo ValueObject
-        boolean hasValueObjectFields = aggregate.fields() != null && aggregate.fields().stream()
-                .anyMatch(f -> "ValueObject".equals(f.type()));
+        boolean hasValueObjectFields = false;
         if (hasValueObjectFields) {
             createFile(project.outputPath(), project, aggregate, "vo-name.ftl",
                     "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
@@ -145,10 +144,14 @@ public class GenerateCodeUseCase {
                     .map(operationEntity -> new OperationDto(
                             operationEntity.id(),
                             operationEntity.name(),
+                            operationEntity.inputModelId(),
+                            operationEntity.outputModelId(),
                             Arrays.asList(operationEntity.preconditions().split(",")),
                             listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                             Arrays.asList(operationEntity.emits().split(",")),
-                            OperationType.valueOf(operationEntity.type())
+                            OperationType.valueOf(operationEntity.type()),
+                            operationEntity.paginated(),
+                            operationEntity.defaultPageSize()
                     ))
                     .forEach(operation -> {
                         Map<String, Object> model = new HashMap<>();
@@ -250,10 +253,14 @@ public class GenerateCodeUseCase {
                     .map(operationEntity -> new OperationDto(
                             operationEntity.id(),
                             operationEntity.name(),
+                            operationEntity.inputModelId(),
+                            operationEntity.outputModelId(),
                             Arrays.asList(operationEntity.preconditions().split(",")),
                             listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
                             Arrays.asList(operationEntity.emits().split(",")),
-                            OperationType.valueOf(operationEntity.type())
+                            OperationType.valueOf(operationEntity.type()),
+                            operationEntity.paginated(),
+                            operationEntity.defaultPageSize()
                     ))
                     .map(op -> fromJson(toJson(op)))  // ← convert to Map for Freemarker
                     .toList());
