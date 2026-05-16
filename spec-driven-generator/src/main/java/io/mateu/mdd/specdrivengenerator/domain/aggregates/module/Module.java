@@ -1,7 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.module;
 
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Bff;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleName;
 import lombok.Getter;
@@ -29,6 +31,8 @@ public class Module {
     private String tableNamePrefix;
     private boolean autoTableNamePrefix;
     private String version;
+    private List<Bff> bffs;
+    private List<Acl> acls;
 
     public static Module of(ModuleId id, ModuleName name, String gitRepository,
                             List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
@@ -36,7 +40,8 @@ public class Module {
                             List<String> projectionIds, List<String> readModelIds,
                             List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                             List<BddScenario> bddScenarios, String llmSystemPrompt,
-                            String tableNamePrefix, boolean autoTableNamePrefix, String version) {
+                            String tableNamePrefix, boolean autoTableNamePrefix, String version,
+                            List<Bff> bffs, List<Acl> acls) {
         var module = new Module();
         module.id = id;
         module.name = name;
@@ -56,6 +61,8 @@ public class Module {
         module.tableNamePrefix = tableNamePrefix;
         module.autoTableNamePrefix = autoTableNamePrefix;
         module.version = version;
+        module.bffs = bffs != null ? bffs : List.of();
+        module.acls = acls != null ? acls : List.of();
         return module;
     }
 
@@ -65,7 +72,8 @@ public class Module {
                               List<String> projectionIds, List<String> readModelIds,
                               List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                               List<BddScenario> bddScenarios, String llmSystemPrompt,
-                              String tableNamePrefix, boolean autoTableNamePrefix, String version) {
+                              String tableNamePrefix, boolean autoTableNamePrefix, String version,
+                              List<Bff> bffs, List<Acl> acls) {
         var module = new Module();
         module.id = new ModuleId(id);
         module.name = new ModuleName(name);
@@ -85,6 +93,8 @@ public class Module {
         module.tableNamePrefix = tableNamePrefix;
         module.autoTableNamePrefix = autoTableNamePrefix;
         module.version = version;
+        module.bffs = bffs != null ? bffs : List.of();
+        module.acls = acls != null ? acls : List.of();
         return module;
     }
 
@@ -94,7 +104,8 @@ public class Module {
                        List<String> projectionIds, List<String> readModelIds,
                        List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                        List<BddScenario> bddScenarios, String llmSystemPrompt,
-                       String tableNamePrefix, boolean autoTableNamePrefix, String version) {
+                       String tableNamePrefix, boolean autoTableNamePrefix, String version,
+                       List<Bff> bffs, List<Acl> acls) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds != null ? aggregateIds : List.of();
@@ -112,5 +123,7 @@ public class Module {
         this.tableNamePrefix = tableNamePrefix;
         this.autoTableNamePrefix = autoTableNamePrefix;
         this.version = version;
+        this.bffs = bffs != null ? bffs : List.of();
+        this.acls = acls != null ? acls : List.of();
     }
 }

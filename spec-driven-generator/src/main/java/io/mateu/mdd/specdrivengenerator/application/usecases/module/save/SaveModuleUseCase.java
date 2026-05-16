@@ -2,7 +2,9 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.module.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ModuleRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Bff;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleName;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,13 @@ public class SaveModuleUseCase {
                 command.useCaseIds(), command.domainEventIds(),
                 command.projectionIds(), command.readModelIds(),
                 command.subscriptionIds(), command.sagaIds(), command.scheduledTriggerIds(),
-                bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix(), command.version());
+                bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix(), command.version(),
+                command.bffs() == null ? List.<Bff>of() : command.bffs().stream()
+                        .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                        .toList(),
+                command.acls() == null ? List.<Acl>of() : command.acls().stream()
+                        .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                        .toList());
         repository.save(role);
     }
 

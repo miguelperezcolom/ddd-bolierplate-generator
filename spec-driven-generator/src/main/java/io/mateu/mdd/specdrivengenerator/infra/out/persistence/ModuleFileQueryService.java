@@ -1,7 +1,9 @@
 package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.query.ModuleQueryService;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.AclDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.BddScenarioDto;
+import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.BffDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleRow;
 
@@ -59,6 +61,12 @@ public class ModuleFileQueryService implements ModuleQueryService {
                                         .map(s -> new BddScenarioDto(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                                         .toList(),
                         entity.llmSystemPrompt(),
-                        entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version()));
+                        entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version(),
+                        entity.bffs() == null ? List.of() : entity.bffs().stream()
+                                .map(b -> new BffDto(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                                .toList(),
+                        entity.acls() == null ? List.of() : entity.acls().stream()
+                                .map(a -> new AclDto(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                                .toList()));
     }
 }

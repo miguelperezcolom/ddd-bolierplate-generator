@@ -2,7 +2,9 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.module;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.ModuleDto;
+import io.mateu.mdd.specdrivengenerator.application.usecases.module.AclData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.BddScenarioData;
+import io.mateu.mdd.specdrivengenerator.application.usecases.module.BffData;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.create.CreateModuleUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.module.save.SaveModuleCommand;
@@ -90,18 +92,24 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Tab("BDD Tests")
     List<BddScenarioViewModel> bddScenarios = new ArrayList<>();
 
+    @Tab("BFF")
+    List<BffViewModel> bffs = new ArrayList<>();
+
+    @Tab("ACL")
+    List<AclViewModel> acls = new ArrayList<>();
+
     final CreateModuleUseCase createUseCase;
     final SaveModuleUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls)));
     }
 
     @Override
@@ -137,6 +145,32 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
                     vm.steps = s.steps();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        bffs = model.bffs() == null ? new ArrayList<>() :
+                model.bffs().stream().map(b -> {
+                    var vm = new BffViewModel();
+                    vm.id = b.id();
+                    vm.name = b.name();
+                    vm.clientType = b.clientType();
+                    vm.description = b.description();
+                    vm.basePath = b.basePath();
+                    vm.authRequired = b.authRequired();
+                    vm.exposedUseCaseIds = b.exposedUseCaseIds() != null ? new ArrayList<>(b.exposedUseCaseIds()) : new ArrayList<>();
+                    vm.exposedReadModelIds = b.exposedReadModelIds() != null ? new ArrayList<>(b.exposedReadModelIds()) : new ArrayList<>();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        acls = model.acls() == null ? new ArrayList<>() :
+                model.acls().stream().map(a -> {
+                    var vm = new AclViewModel();
+                    vm.id = a.id();
+                    vm.name = a.name();
+                    vm.externalSystem = a.externalSystem();
+                    vm.description = a.description();
+                    vm.direction = a.direction();
+                    vm.gatewayId = a.gatewayId();
+                    vm.translatedDomainEventIds = a.translatedDomainEventIds() != null ? new ArrayList<>(a.translatedDomainEventIds()) : new ArrayList<>();
+                    vm.translatedUseCaseIds = a.translatedUseCaseIds() != null ? new ArrayList<>(a.translatedUseCaseIds()) : new ArrayList<>();
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
     }
 
@@ -144,6 +178,20 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         if (scenarios == null) return List.of();
         return scenarios.stream()
                 .map(s -> new BddScenarioData(s.id, s.feature, s.name, s.tags, s.steps))
+                .toList();
+    }
+
+    private List<BffData> toBffData(List<BffViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream()
+                .map(b -> new BffData(b.id, b.name, b.clientType, b.description, b.basePath, b.authRequired, b.exposedUseCaseIds, b.exposedReadModelIds))
+                .toList();
+    }
+
+    private List<AclData> toAclData(List<AclViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream()
+                .map(a -> new AclData(a.id, a.name, a.externalSystem, a.description, a.direction, a.gatewayId, a.translatedDomainEventIds, a.translatedUseCaseIds))
                 .toList();
     }
 

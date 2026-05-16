@@ -22,6 +22,8 @@ public record ModuleEntity(
         String llmSystemPrompt,
         String tableNamePrefix,
         boolean autoTableNamePrefix,
-        String version
+        String version,
+        List<BffEntity> bffs,
+        List<AclEntity> acls
 ) implements Identifiable {
 }

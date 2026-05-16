@@ -3,9 +3,13 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ModuleRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.Module;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.Bff;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.BddScenarioEntity;
+import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.BffEntity;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +43,13 @@ public class ModuleFileRepository implements ModuleRepository {
                                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                                         .toList(),
                         entity.llmSystemPrompt(),
-                        entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version()));
+                        entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version(),
+                        entity.bffs() == null ? List.<Bff>of() : entity.bffs().stream()
+                                .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                                .toList(),
+                        entity.acls() == null ? List.<Acl>of() : entity.acls().stream()
+                                .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                                .toList()));
     }
 
     @Override
@@ -61,7 +71,13 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getScheduledTriggerIds(),
                 bddScenarioEntities,
                 entity.getLlmSystemPrompt(),
-                entity.getTableNamePrefix(), entity.isAutoTableNamePrefix(), entity.getVersion()));
+                entity.getTableNamePrefix(), entity.isAutoTableNamePrefix(), entity.getVersion(),
+                entity.getBffs() == null ? List.<BffEntity>of() : entity.getBffs().stream()
+                        .map(b -> new BffEntity(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                        .toList(),
+                entity.getAcls() == null ? List.<AclEntity>of() : entity.getAcls().stream()
+                        .map(a -> new AclEntity(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
+                        .toList()));
         return entity;
     }
 
