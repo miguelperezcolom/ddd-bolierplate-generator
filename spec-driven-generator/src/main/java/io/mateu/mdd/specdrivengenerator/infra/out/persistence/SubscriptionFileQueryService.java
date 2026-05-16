@@ -55,6 +55,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                         entity.actions() == null ? List.of() : entity.actions().stream()
                                 .map(a -> new SubscriptionActionDto(a.id(), a.name(), a.type(),
                                         a.useCaseId(), a.sagaId(), a.projectionId(), a.modelMappingId()))
-                                .toList()));
+                                .toList(),
+                        entity.scalingStrategy()));
     }
 }

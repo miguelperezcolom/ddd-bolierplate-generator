@@ -12,6 +12,7 @@ public record SubscriptionDto(
         String consumerGroup,
         Integer retryCount,
         String deadLetterTopic,
-        List<SubscriptionActionDto> actions
+        List<SubscriptionActionDto> actions,
+        String scalingStrategy
 ) {
 }

@@ -14,6 +14,7 @@ public record SaveSubscriptionCommand(
         String consumerGroup,
         Integer retryCount,
         String deadLetterTopic,
-        List<SubscriptionActionData> actions
+        List<SubscriptionActionData> actions,
+        String scalingStrategy
 ) {
 }

@@ -18,12 +18,14 @@ public class Subscription {
     private Integer retryCount;
     private String deadLetterTopic;
     private List<SubscriptionAction> actions;
+    private ScalingStrategy scalingStrategy;
 
     public static Subscription of(SubscriptionId id, SubscriptionName name,
                                   String eventName, String sourceService, String inputModelId,
                                   String topicName, String consumerGroup,
                                   Integer retryCount, String deadLetterTopic,
-                                  List<SubscriptionAction> actions) {
+                                  List<SubscriptionAction> actions,
+                                  ScalingStrategy scalingStrategy) {
         var subscription = new Subscription();
         subscription.id = id;
         subscription.name = name;
@@ -35,6 +37,7 @@ public class Subscription {
         subscription.retryCount = retryCount;
         subscription.deadLetterTopic = deadLetterTopic;
         subscription.actions = actions != null ? actions : List.of();
+        subscription.scalingStrategy = scalingStrategy;
         return subscription;
     }
 
@@ -42,7 +45,8 @@ public class Subscription {
                                     String eventName, String sourceService, String inputModelId,
                                     String topicName, String consumerGroup,
                                     Integer retryCount, String deadLetterTopic,
-                                    List<SubscriptionAction> actions) {
+                                    List<SubscriptionAction> actions,
+                                    String scalingStrategy) {
         var subscription = new Subscription();
         subscription.id = new SubscriptionId(id);
         subscription.name = new SubscriptionName(name);
@@ -54,6 +58,7 @@ public class Subscription {
         subscription.retryCount = retryCount;
         subscription.deadLetterTopic = deadLetterTopic;
         subscription.actions = actions != null ? actions : List.of();
+        subscription.scalingStrategy = scalingStrategy != null ? ScalingStrategy.valueOf(scalingStrategy) : null;
         return subscription;
     }
 
@@ -61,7 +66,8 @@ public class Subscription {
                        String eventName, String sourceService, String inputModelId,
                        String topicName, String consumerGroup,
                        Integer retryCount, String deadLetterTopic,
-                       List<SubscriptionAction> actions) {
+                       List<SubscriptionAction> actions,
+                       ScalingStrategy scalingStrategy) {
         this.name = name;
         this.eventName = eventName;
         this.sourceService = sourceService;
@@ -71,5 +77,6 @@ public class Subscription {
         this.retryCount = retryCount;
         this.deadLetterTopic = deadLetterTopic;
         this.actions = actions != null ? actions : List.of();
+        this.scalingStrategy = scalingStrategy;
     }
 }

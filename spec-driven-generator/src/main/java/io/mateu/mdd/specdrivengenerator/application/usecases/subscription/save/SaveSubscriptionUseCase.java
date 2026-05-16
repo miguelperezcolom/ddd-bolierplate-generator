@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.subscription.save;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.SubscriptionRepository;
 import io.mateu.mdd.specdrivengenerator.application.usecases.subscription.SubscriptionActionData;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.subscription.vo.ScalingStrategy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.subscription.vo.SubscriptionAction;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.subscription.vo.SubscriptionId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.subscription.vo.SubscriptionName;
@@ -27,7 +28,8 @@ public class SaveSubscriptionUseCase {
                 command.consumerGroup(),
                 command.retryCount(),
                 command.deadLetterTopic(),
-                toActions(command.actions()));
+                toActions(command.actions()),
+                command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null);
         repository.save(subscription);
     }
 

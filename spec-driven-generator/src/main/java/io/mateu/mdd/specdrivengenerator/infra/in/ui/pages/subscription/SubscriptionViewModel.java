@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.infra.in.ui.pages.subscription;
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.mdd.specdrivengenerator.application.out.query.dtos.SubscriptionDto;
 import io.mateu.mdd.specdrivengenerator.application.usecases.subscription.SubscriptionActionData;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.subscription.vo.ScalingStrategy;
 import io.mateu.mdd.specdrivengenerator.application.usecases.subscription.create.CreateSubscriptionCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.subscription.create.CreateSubscriptionUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.subscription.save.SaveSubscriptionCommand;
@@ -49,6 +50,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
     String consumerGroup;
     Integer retryCount;
     String deadLetterTopic;
+    ScalingStrategy scalingStrategy;
 
     @Tab
     List<SubscriptionActionViewModel> actions = new ArrayList<>();
@@ -58,13 +60,13 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions)));
+        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions)));
+        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null));
     }
 
     @Override
@@ -82,6 +84,7 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
         consumerGroup = model.consumerGroup();
         retryCount = model.retryCount();
         deadLetterTopic = model.deadLetterTopic();
+        scalingStrategy = model.scalingStrategy() != null ? ScalingStrategy.valueOf(model.scalingStrategy()) : null;
         actions = model.actions() == null ? new ArrayList<>() : model.actions().stream().map(a -> {
             var vm = new SubscriptionActionViewModel();
             vm.id = a.id();
