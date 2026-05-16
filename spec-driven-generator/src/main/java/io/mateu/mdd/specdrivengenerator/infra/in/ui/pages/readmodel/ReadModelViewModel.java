@@ -6,6 +6,7 @@ import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.create.Cr
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.create.CreateReadModelUseCase;
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.save.SaveReadModelCommand;
 import io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.save.SaveReadModelUseCase;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ConsistencyLevel;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.mdd.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
@@ -45,6 +46,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     List<String> sortFields = new ArrayList<>();
     boolean cacheable;
     Integer cacheTtlSeconds;
+    ConsistencyLevel consistencyLevel;
 
     final CreateReadModelUseCase createUseCase;
     final SaveReadModelUseCase saveUseCase;
@@ -53,7 +55,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null));
         return id;
     }
 
@@ -61,7 +63,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null));
     }
 
     @Override
@@ -78,6 +80,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
         sortFields = model.sortFields() != null ? new ArrayList<>(model.sortFields()) : new ArrayList<>();
         cacheable = model.cacheable();
         cacheTtlSeconds = model.cacheTtlSeconds();
+        consistencyLevel = model.consistencyLevel() != null ? ConsistencyLevel.valueOf(model.consistencyLevel()) : null;
         return this;
     }
 

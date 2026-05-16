@@ -12,6 +12,7 @@ public record ReadModelEntity(
         List<String> filterFields,
         List<String> sortFields,
         boolean cacheable,
-        Integer cacheTtlSeconds
+        Integer cacheTtlSeconds,
+        String consistencyLevel
 ) implements Identifiable {
 }

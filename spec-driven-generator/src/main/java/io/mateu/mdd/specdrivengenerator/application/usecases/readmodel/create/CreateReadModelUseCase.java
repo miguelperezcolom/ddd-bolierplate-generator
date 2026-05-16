@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.readmodel.create;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ReadModelRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.ReadModel;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ConsistencyLevel;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
@@ -23,7 +24,8 @@ public class CreateReadModelUseCase {
                 command.filterFields(),
                 command.sortFields(),
                 command.cacheable(),
-                command.cacheTtlSeconds());
+                command.cacheTtlSeconds(),
+                command.consistencyLevel() != null ? ConsistencyLevel.valueOf(command.consistencyLevel()) : null);
         repository.save(readModel);
     }
 }

@@ -8,5 +8,6 @@ public record SaveReadModelCommand(String id, String name,
                                    List<String> filterFields,
                                    List<String> sortFields,
                                    boolean cacheable,
-                                   Integer cacheTtlSeconds) {
+                                   Integer cacheTtlSeconds,
+                                   String consistencyLevel) {
 }

@@ -2,6 +2,7 @@ package io.mateu.mdd.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ReadModelRepository;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.ReadModel;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ConsistencyLevel;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.mdd.specdrivengenerator.infra.out.persistence.file.ReadModelEntity;
@@ -28,7 +29,8 @@ public class ReadModelFileRepository implements ReadModelRepository {
                         entity.filterFields(),
                         entity.sortFields(),
                         entity.cacheable(),
-                        entity.cacheTtlSeconds()));
+                        entity.cacheTtlSeconds(),
+                        entity.consistencyLevel()));
     }
 
     @Override
@@ -41,7 +43,8 @@ public class ReadModelFileRepository implements ReadModelRepository {
                 entity.getFilterFields(),
                 entity.getSortFields(),
                 entity.isCacheable(),
-                entity.getCacheTtlSeconds()));
+                entity.getCacheTtlSeconds(),
+                entity.getConsistencyLevel() != null ? entity.getConsistencyLevel().name() : null));
         return entity;
     }
 

@@ -1,5 +1,6 @@
 package io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel;
 
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ConsistencyLevel;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelName;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
@@ -18,6 +19,7 @@ public class ReadModel {
     private List<String> sortFields;
     private boolean cacheable;
     private Integer cacheTtlSeconds;
+    private ConsistencyLevel consistencyLevel;
 
     public static ReadModel of(ReadModelId id, ReadModelName name,
                                String modelId,
@@ -25,7 +27,8 @@ public class ReadModel {
                                List<String> filterFields,
                                List<String> sortFields,
                                boolean cacheable,
-                               Integer cacheTtlSeconds) {
+                               Integer cacheTtlSeconds,
+                               ConsistencyLevel consistencyLevel) {
         var readModel = new ReadModel();
         readModel.id = id;
         readModel.name = name;
@@ -35,6 +38,7 @@ public class ReadModel {
         readModel.sortFields = sortFields != null ? sortFields : List.of();
         readModel.cacheable = cacheable;
         readModel.cacheTtlSeconds = cacheTtlSeconds;
+        readModel.consistencyLevel = consistencyLevel;
         return readModel;
     }
 
@@ -44,7 +48,8 @@ public class ReadModel {
                                  List<String> filterFields,
                                  List<String> sortFields,
                                  boolean cacheable,
-                                 Integer cacheTtlSeconds) {
+                                 Integer cacheTtlSeconds,
+                                 String consistencyLevel) {
         var readModel = new ReadModel();
         readModel.id = new ReadModelId(id);
         readModel.name = new ReadModelName(name);
@@ -54,6 +59,7 @@ public class ReadModel {
         readModel.sortFields = sortFields != null ? sortFields : List.of();
         readModel.cacheable = cacheable;
         readModel.cacheTtlSeconds = cacheTtlSeconds;
+        readModel.consistencyLevel = consistencyLevel != null ? ConsistencyLevel.valueOf(consistencyLevel) : null;
         return readModel;
     }
 
@@ -63,7 +69,8 @@ public class ReadModel {
                        List<String> filterFields,
                        List<String> sortFields,
                        boolean cacheable,
-                       Integer cacheTtlSeconds) {
+                       Integer cacheTtlSeconds,
+                       ConsistencyLevel consistencyLevel) {
         this.name = name;
         this.modelId = modelId;
         this.storageType = storageType;
@@ -71,5 +78,6 @@ public class ReadModel {
         this.sortFields = sortFields != null ? sortFields : List.of();
         this.cacheable = cacheable;
         this.cacheTtlSeconds = cacheTtlSeconds;
+        this.consistencyLevel = consistencyLevel;
     }
 }
