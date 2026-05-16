@@ -3,6 +3,7 @@ package io.mateu.mdd.specdrivengenerator.application.usecases.projection.save;
 import io.mateu.mdd.specdrivengenerator.application.out.repositories.ProjectionRepository;
 import io.mateu.mdd.specdrivengenerator.application.usecases.projection.ProjectionEventHandlerData;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.*;
+import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ErrorHandlingStrategy;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
 import io.mateu.mdd.specdrivengenerator.domain.aggregates.projection.vo.RebuildStrategy;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,9 @@ public class SaveProjectionUseCase {
                 command.modelId() != null ? new ProjectionModelId(command.modelId()) : null,
                 command.storageType() != null ? ProjectionStorageType.valueOf(command.storageType()) : null,
                 toHandlers(command.handlers()),
-                command.rebuildStrategy() != null ? RebuildStrategy.valueOf(command.rebuildStrategy()) : null);
+                command.rebuildStrategy() != null ? RebuildStrategy.valueOf(command.rebuildStrategy()) : null,
+                command.errorHandlingStrategy() != null ? ErrorHandlingStrategy.valueOf(command.errorHandlingStrategy()) : null,
+                command.maxRetries());
         repository.save(projection);
     }
 

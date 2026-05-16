@@ -8,6 +8,8 @@ public record ProjectionDto(
         String modelId,
         String storageType,
         List<ProjectionEventHandlerDto> handlers,
-        String rebuildStrategy
+        String rebuildStrategy,
+        String errorHandlingStrategy,
+        Integer maxRetries
 ) {
 }

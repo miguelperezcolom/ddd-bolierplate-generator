@@ -14,12 +14,16 @@ public class Projection {
     private ProjectionStorageType storageType;
     private List<ProjectionEventHandler> handlers;
     private RebuildStrategy rebuildStrategy;
+    private ErrorHandlingStrategy errorHandlingStrategy;
+    private Integer maxRetries;
 
     public static Projection of(ProjectionId id, ProjectionName name,
                                 ProjectionModelId modelId,
                                 ProjectionStorageType storageType,
                                 List<ProjectionEventHandler> handlers,
-                                RebuildStrategy rebuildStrategy) {
+                                RebuildStrategy rebuildStrategy,
+                                ErrorHandlingStrategy errorHandlingStrategy,
+                                Integer maxRetries) {
         var projection = new Projection();
         projection.id = id;
         projection.name = name;
@@ -27,6 +31,8 @@ public class Projection {
         projection.storageType = storageType;
         projection.handlers = handlers != null ? handlers : List.of();
         projection.rebuildStrategy = rebuildStrategy;
+        projection.errorHandlingStrategy = errorHandlingStrategy;
+        projection.maxRetries = maxRetries;
         return projection;
     }
 
@@ -34,7 +40,9 @@ public class Projection {
                                   String modelId,
                                   String storageType,
                                   List<ProjectionEventHandler> handlers,
-                                  String rebuildStrategy) {
+                                  String rebuildStrategy,
+                                  String errorHandlingStrategy,
+                                  Integer maxRetries) {
         var projection = new Projection();
         projection.id = new ProjectionId(id);
         projection.name = new ProjectionName(name);
@@ -42,6 +50,8 @@ public class Projection {
         projection.storageType = storageType != null ? ProjectionStorageType.valueOf(storageType) : null;
         projection.handlers = handlers != null ? handlers : List.of();
         projection.rebuildStrategy = rebuildStrategy != null ? RebuildStrategy.valueOf(rebuildStrategy) : null;
+        projection.errorHandlingStrategy = errorHandlingStrategy != null ? ErrorHandlingStrategy.valueOf(errorHandlingStrategy) : null;
+        projection.maxRetries = maxRetries;
         return projection;
     }
 
@@ -49,11 +59,15 @@ public class Projection {
                        ProjectionModelId modelId,
                        ProjectionStorageType storageType,
                        List<ProjectionEventHandler> handlers,
-                       RebuildStrategy rebuildStrategy) {
+                       RebuildStrategy rebuildStrategy,
+                       ErrorHandlingStrategy errorHandlingStrategy,
+                       Integer maxRetries) {
         this.name = name;
         this.modelId = modelId;
         this.storageType = storageType;
         this.handlers = handlers != null ? handlers : List.of();
         this.rebuildStrategy = rebuildStrategy;
+        this.errorHandlingStrategy = errorHandlingStrategy;
+        this.maxRetries = maxRetries;
     }
 }

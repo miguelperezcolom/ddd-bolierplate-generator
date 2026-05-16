@@ -28,7 +28,9 @@ public class ProjectionFileRepository implements ProjectionRepository {
                         entity.modelId(),
                         entity.storageType(),
                         toHandlers(entity.handlers()),
-                        entity.rebuildStrategy()));
+                        entity.rebuildStrategy(),
+                        entity.errorHandlingStrategy(),
+                        entity.maxRetries()));
     }
 
     @Override
@@ -39,7 +41,9 @@ public class ProjectionFileRepository implements ProjectionRepository {
                 entity.getModelId() != null ? entity.getModelId().id() : null,
                 entity.getStorageType() != null ? entity.getStorageType().name() : null,
                 toHandlerEntities(entity.getHandlers()),
-                entity.getRebuildStrategy() != null ? entity.getRebuildStrategy().name() : null));
+                entity.getRebuildStrategy() != null ? entity.getRebuildStrategy().name() : null,
+                entity.getErrorHandlingStrategy() != null ? entity.getErrorHandlingStrategy().name() : null,
+                entity.getMaxRetries()));
         return entity;
     }
 

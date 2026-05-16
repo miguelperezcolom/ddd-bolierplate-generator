@@ -10,6 +10,8 @@ public record ProjectionEntity(
         String modelId,
         String storageType,
         List<ProjectionEventHandlerEntity> handlers,
-        String rebuildStrategy
+        String rebuildStrategy,
+        String errorHandlingStrategy,
+        Integer maxRetries
 ) implements Identifiable {
 }

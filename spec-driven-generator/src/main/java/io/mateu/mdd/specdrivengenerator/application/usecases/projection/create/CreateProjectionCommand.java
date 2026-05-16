@@ -10,6 +10,8 @@ public record CreateProjectionCommand(
         String modelId,
         String storageType,
         List<ProjectionEventHandlerData> handlers,
-        String rebuildStrategy
+        String rebuildStrategy,
+        String errorHandlingStrategy,
+        Integer maxRetries
 ) {
 }

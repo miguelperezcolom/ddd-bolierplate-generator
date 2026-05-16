@@ -50,6 +50,8 @@ public class ProjectionFileQueryService implements ProjectionQueryService {
                         entity.handlers() == null ? List.of() : entity.handlers().stream()
                                 .map(h -> new ProjectionEventHandlerDto(h.id(), h.name(), h.domainEventId(), h.type(), h.modelMappingId()))
                                 .toList(),
-                        entity.rebuildStrategy()));
+                        entity.rebuildStrategy(),
+                        entity.errorHandlingStrategy(),
+                        entity.maxRetries()));
     }
 }
