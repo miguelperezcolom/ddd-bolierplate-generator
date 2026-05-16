@@ -16,11 +16,13 @@ public class ScheduledTrigger {
     private String modelMappingId;
     private String description;
     private ScheduledTriggerExecutionEnvironment executionEnvironment;
+    private String lockProvider;
 
     public static ScheduledTrigger of(ScheduledTriggerId id, ScheduledTriggerName name,
                                       String cronExpression, String timezone, String useCaseId,
                                       String modelMappingId, String description,
-                                      ScheduledTriggerExecutionEnvironment executionEnvironment) {
+                                      ScheduledTriggerExecutionEnvironment executionEnvironment,
+                                      String lockProvider) {
         var trigger = new ScheduledTrigger();
         trigger.id = id;
         trigger.name = name;
@@ -30,13 +32,15 @@ public class ScheduledTrigger {
         trigger.modelMappingId = modelMappingId;
         trigger.description = description;
         trigger.executionEnvironment = executionEnvironment;
+        trigger.lockProvider = lockProvider;
         return trigger;
     }
 
     public static ScheduledTrigger load(String id, String name,
                                         String cronExpression, String timezone, String useCaseId,
                                         String modelMappingId, String description,
-                                        String executionEnvironment) {
+                                        String executionEnvironment,
+                                        String lockProvider) {
         var trigger = new ScheduledTrigger();
         trigger.id = new ScheduledTriggerId(id);
         trigger.name = new ScheduledTriggerName(name);
@@ -46,13 +50,15 @@ public class ScheduledTrigger {
         trigger.modelMappingId = modelMappingId;
         trigger.description = description;
         trigger.executionEnvironment = executionEnvironment != null ? ScheduledTriggerExecutionEnvironment.valueOf(executionEnvironment) : null;
+        trigger.lockProvider = lockProvider;
         return trigger;
     }
 
     public void update(ScheduledTriggerName name,
                        String cronExpression, String timezone, String useCaseId,
                        String modelMappingId, String description,
-                       ScheduledTriggerExecutionEnvironment executionEnvironment) {
+                       ScheduledTriggerExecutionEnvironment executionEnvironment,
+                       String lockProvider) {
         this.name = name;
         this.cronExpression = cronExpression;
         this.timezone = timezone;
@@ -60,5 +66,6 @@ public class ScheduledTrigger {
         this.modelMappingId = modelMappingId;
         this.description = description;
         this.executionEnvironment = executionEnvironment;
+        this.lockProvider = lockProvider;
     }
 }

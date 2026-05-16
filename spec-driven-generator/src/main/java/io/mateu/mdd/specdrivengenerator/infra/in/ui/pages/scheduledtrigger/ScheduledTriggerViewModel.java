@@ -48,19 +48,20 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
 
     String description;
     ScheduledTriggerExecutionEnvironment executionEnvironment;
+    String lockProvider;
 
     final CreateScheduledTriggerUseCase createUseCase;
     final SaveScheduledTriggerUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null));
+        createUseCase.handle(new CreateScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null));
+        saveUseCase.handle(new SaveScheduledTriggerCommand(id, name, cronExpression, timezone, useCaseId, modelMappingId, description, executionEnvironment != null ? executionEnvironment.name() : null, lockProvider));
     }
 
     @Override
@@ -77,6 +78,7 @@ public class ScheduledTriggerViewModel implements Identifiable, CrudEditorForm<S
         modelMappingId = model.modelMappingId();
         description = model.description();
         executionEnvironment = model.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(model.executionEnvironment()) : null;
+        lockProvider = model.lockProvider();
         return this;
     }
 

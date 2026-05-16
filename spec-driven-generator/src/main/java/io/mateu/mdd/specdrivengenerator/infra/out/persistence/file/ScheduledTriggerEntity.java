@@ -10,6 +10,7 @@ public record ScheduledTriggerEntity(
         String useCaseId,
         String modelMappingId,
         String description,
-        String executionEnvironment
+        String executionEnvironment,
+        String lockProvider
 ) implements Identifiable {
 }

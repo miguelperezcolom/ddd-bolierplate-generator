@@ -8,6 +8,7 @@ public record CreateScheduledTriggerCommand(
         String useCaseId,
         String modelMappingId,
         String description,
-        String executionEnvironment
+        String executionEnvironment,
+        String lockProvider
 ) {
 }

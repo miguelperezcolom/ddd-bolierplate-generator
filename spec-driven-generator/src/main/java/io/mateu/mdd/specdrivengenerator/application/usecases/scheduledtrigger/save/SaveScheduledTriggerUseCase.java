@@ -22,7 +22,8 @@ public class SaveScheduledTriggerUseCase {
                 command.useCaseId(),
                 command.modelMappingId(),
                 command.description(),
-                command.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(command.executionEnvironment()) : null);
+                command.executionEnvironment() != null ? ScheduledTriggerExecutionEnvironment.valueOf(command.executionEnvironment()) : null,
+                command.lockProvider());
         repository.save(trigger);
     }
 }

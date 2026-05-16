@@ -28,7 +28,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                         entity.useCaseId(),
                         entity.modelMappingId(),
                         entity.description(),
-                        entity.executionEnvironment()));
+                        entity.executionEnvironment(),
+                        entity.lockProvider()));
     }
 
     @Override
@@ -41,7 +42,8 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getUseCaseId(),
                 entity.getModelMappingId(),
                 entity.getDescription(),
-                entity.getExecutionEnvironment() != null ? entity.getExecutionEnvironment().name() : null));
+                entity.getExecutionEnvironment() != null ? entity.getExecutionEnvironment().name() : null,
+                entity.getLockProvider()));
         return entity;
     }
 
