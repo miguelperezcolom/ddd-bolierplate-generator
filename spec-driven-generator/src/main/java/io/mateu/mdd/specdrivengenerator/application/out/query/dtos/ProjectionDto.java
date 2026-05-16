@@ -10,6 +10,8 @@ public record ProjectionDto(
         List<ProjectionEventHandlerDto> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,
-        Integer maxRetries
+        Integer maxRetries,
+        boolean snapshotEnabled,
+        Integer snapshotFrequency
 ) {
 }

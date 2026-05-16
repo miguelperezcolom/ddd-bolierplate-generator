@@ -10,7 +10,7 @@ public record SaveModuleCommand(String id, String name, String gitRepository,
                                 List<String> projectionIds, List<String> readModelIds,
                                 List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                                 List<BddScenarioData> bddScenarios, String llmSystemPrompt,
-                                String tableNamePrefix, boolean autoTableNamePrefix) {
+                                String tableNamePrefix, boolean autoTableNamePrefix, String version) {
 
     public SaveModuleCommand {
         if (aggregates == null) aggregates = List.of();

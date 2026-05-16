@@ -12,6 +12,8 @@ public record SaveProjectionCommand(
         List<ProjectionEventHandlerData> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,
-        Integer maxRetries
+        Integer maxRetries,
+        boolean snapshotEnabled,
+        Integer snapshotFrequency
 ) {
 }

@@ -28,7 +28,7 @@ public class CreateModuleUseCase {
                 command.useCaseIds(), command.domainEventIds(),
                 command.projectionIds(), command.readModelIds(),
                 command.subscriptionIds(), command.sagaIds(), command.scheduledTriggerIds(),
-                bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix());
+                bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix(), command.version());
         repository.save(module);
     }
 

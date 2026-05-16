@@ -28,6 +28,7 @@ public class Module {
     private String llmSystemPrompt;
     private String tableNamePrefix;
     private boolean autoTableNamePrefix;
+    private String version;
 
     public static Module of(ModuleId id, ModuleName name, String gitRepository,
                             List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
@@ -35,7 +36,7 @@ public class Module {
                             List<String> projectionIds, List<String> readModelIds,
                             List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                             List<BddScenario> bddScenarios, String llmSystemPrompt,
-                            String tableNamePrefix, boolean autoTableNamePrefix) {
+                            String tableNamePrefix, boolean autoTableNamePrefix, String version) {
         var module = new Module();
         module.id = id;
         module.name = name;
@@ -54,6 +55,7 @@ public class Module {
         module.llmSystemPrompt = llmSystemPrompt;
         module.tableNamePrefix = tableNamePrefix;
         module.autoTableNamePrefix = autoTableNamePrefix;
+        module.version = version;
         return module;
     }
 
@@ -63,7 +65,7 @@ public class Module {
                               List<String> projectionIds, List<String> readModelIds,
                               List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                               List<BddScenario> bddScenarios, String llmSystemPrompt,
-                              String tableNamePrefix, boolean autoTableNamePrefix) {
+                              String tableNamePrefix, boolean autoTableNamePrefix, String version) {
         var module = new Module();
         module.id = new ModuleId(id);
         module.name = new ModuleName(name);
@@ -82,6 +84,7 @@ public class Module {
         module.llmSystemPrompt = llmSystemPrompt;
         module.tableNamePrefix = tableNamePrefix;
         module.autoTableNamePrefix = autoTableNamePrefix;
+        module.version = version;
         return module;
     }
 
@@ -91,7 +94,7 @@ public class Module {
                        List<String> projectionIds, List<String> readModelIds,
                        List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                        List<BddScenario> bddScenarios, String llmSystemPrompt,
-                       String tableNamePrefix, boolean autoTableNamePrefix) {
+                       String tableNamePrefix, boolean autoTableNamePrefix, String version) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds != null ? aggregateIds : List.of();
@@ -108,5 +111,6 @@ public class Module {
         this.llmSystemPrompt = llmSystemPrompt;
         this.tableNamePrefix = tableNamePrefix;
         this.autoTableNamePrefix = autoTableNamePrefix;
+        this.version = version;
     }
 }

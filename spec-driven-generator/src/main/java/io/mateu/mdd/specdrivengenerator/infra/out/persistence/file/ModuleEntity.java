@@ -21,6 +21,7 @@ public record ModuleEntity(
         List<BddScenarioEntity> bddScenarios,
         String llmSystemPrompt,
         String tableNamePrefix,
-        boolean autoTableNamePrefix
+        boolean autoTableNamePrefix,
+        String version
 ) implements Identifiable {
 }

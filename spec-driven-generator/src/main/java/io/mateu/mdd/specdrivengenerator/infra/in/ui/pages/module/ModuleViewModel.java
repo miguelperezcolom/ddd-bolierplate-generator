@@ -85,6 +85,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     String llmSystemPrompt;
     String tableNamePrefix;
     boolean autoTableNamePrefix;
+    String version;
 
     @Tab("BDD Tests")
     List<BddScenarioViewModel> bddScenarios = new ArrayList<>();
@@ -94,13 +95,13 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version));
     }
 
     @Override
@@ -125,6 +126,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         llmSystemPrompt = model.llmSystemPrompt();
         tableNamePrefix = model.tableNamePrefix();
         autoTableNamePrefix = model.autoTableNamePrefix();
+        version = model.version();
         bddScenarios = model.bddScenarios() == null ? new ArrayList<>() :
                 model.bddScenarios().stream().map(s -> {
                     var vm = new BddScenarioViewModel();

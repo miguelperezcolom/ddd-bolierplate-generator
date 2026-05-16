@@ -27,7 +27,8 @@ public class CreateProjectionUseCase {
                 toHandlers(command.handlers()),
                 command.rebuildStrategy() != null ? RebuildStrategy.valueOf(command.rebuildStrategy()) : null,
                 command.errorHandlingStrategy() != null ? ErrorHandlingStrategy.valueOf(command.errorHandlingStrategy()) : null,
-                command.maxRetries());
+                command.maxRetries(),
+                command.snapshotEnabled(), command.snapshotFrequency());
         repository.save(projection);
     }
 

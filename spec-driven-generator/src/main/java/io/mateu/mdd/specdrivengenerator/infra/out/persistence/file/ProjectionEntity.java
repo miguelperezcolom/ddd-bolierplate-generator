@@ -12,6 +12,8 @@ public record ProjectionEntity(
         List<ProjectionEventHandlerEntity> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,
-        Integer maxRetries
+        Integer maxRetries,
+        boolean snapshotEnabled,
+        Integer snapshotFrequency
 ) implements Identifiable {
 }

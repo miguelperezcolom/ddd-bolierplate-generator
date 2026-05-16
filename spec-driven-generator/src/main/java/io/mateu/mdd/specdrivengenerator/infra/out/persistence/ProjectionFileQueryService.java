@@ -52,6 +52,7 @@ public class ProjectionFileQueryService implements ProjectionQueryService {
                                 .toList(),
                         entity.rebuildStrategy(),
                         entity.errorHandlingStrategy(),
-                        entity.maxRetries()));
+                        entity.maxRetries(),
+                        entity.snapshotEnabled(), entity.snapshotFrequency()));
     }
 }

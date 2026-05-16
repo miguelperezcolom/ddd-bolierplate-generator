@@ -39,7 +39,7 @@ public class ModuleFileRepository implements ModuleRepository {
                                         .map(s -> new BddScenario(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                                         .toList(),
                         entity.llmSystemPrompt(),
-                        entity.tableNamePrefix(), entity.autoTableNamePrefix()));
+                        entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version()));
     }
 
     @Override
@@ -61,7 +61,7 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getScheduledTriggerIds(),
                 bddScenarioEntities,
                 entity.getLlmSystemPrompt(),
-                entity.getTableNamePrefix(), entity.isAutoTableNamePrefix()));
+                entity.getTableNamePrefix(), entity.isAutoTableNamePrefix(), entity.getVersion()));
         return entity;
     }
 

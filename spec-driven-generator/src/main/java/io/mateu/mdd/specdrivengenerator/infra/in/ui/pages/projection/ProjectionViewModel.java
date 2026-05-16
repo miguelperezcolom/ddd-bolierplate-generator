@@ -47,6 +47,8 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
     RebuildStrategy rebuildStrategy;
     ErrorHandlingStrategy errorHandlingStrategy;
     Integer maxRetries;
+    boolean snapshotEnabled;
+    Integer snapshotFrequency;
 
     @Tab
     List<ProjectionEventHandlerViewModel> handlers = new ArrayList<>();
@@ -56,13 +58,13 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries));
+        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries));
+        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
     }
 
     @Override
@@ -78,6 +80,8 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
         rebuildStrategy = model.rebuildStrategy() != null ? RebuildStrategy.valueOf(model.rebuildStrategy()) : null;
         errorHandlingStrategy = model.errorHandlingStrategy() != null ? ErrorHandlingStrategy.valueOf(model.errorHandlingStrategy()) : null;
         maxRetries = model.maxRetries();
+        snapshotEnabled = model.snapshotEnabled();
+        snapshotFrequency = model.snapshotFrequency();
         handlers = model.handlers() == null ? new ArrayList<>() : model.handlers().stream().map(h -> {
             var vm = new ProjectionEventHandlerViewModel();
             vm.id = h.id();

@@ -8,7 +8,7 @@ public record ModuleDto(String id, String name, String gitRepository,
                         List<String> projectionIds, List<String> readModelIds,
                         List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                         List<BddScenarioDto> bddScenarios, String llmSystemPrompt,
-                        String tableNamePrefix, boolean autoTableNamePrefix) {
+                        String tableNamePrefix, boolean autoTableNamePrefix, String version) {
 
     public ModuleDto {
         if (aggregateIds == null) aggregateIds = List.of();

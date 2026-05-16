@@ -30,7 +30,8 @@ public class ProjectionFileRepository implements ProjectionRepository {
                         toHandlers(entity.handlers()),
                         entity.rebuildStrategy(),
                         entity.errorHandlingStrategy(),
-                        entity.maxRetries()));
+                        entity.maxRetries(),
+                        entity.snapshotEnabled(), entity.snapshotFrequency()));
     }
 
     @Override
@@ -43,7 +44,8 @@ public class ProjectionFileRepository implements ProjectionRepository {
                 toHandlerEntities(entity.getHandlers()),
                 entity.getRebuildStrategy() != null ? entity.getRebuildStrategy().name() : null,
                 entity.getErrorHandlingStrategy() != null ? entity.getErrorHandlingStrategy().name() : null,
-                entity.getMaxRetries()));
+                entity.getMaxRetries(),
+                entity.isSnapshotEnabled(), entity.getSnapshotFrequency()));
         return entity;
     }
 
