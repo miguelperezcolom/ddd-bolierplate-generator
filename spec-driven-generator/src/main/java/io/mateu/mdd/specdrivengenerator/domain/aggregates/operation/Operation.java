@@ -74,16 +74,22 @@ public class Operation {
 
     public void update(OperationName name,
                        String inputModelId,
+                       String outputModelId,
                        List<OperationPrecondition> preconditions,
                        List<FieldValueSetting> sets,
                        List<DomainEventName> emits,
-                       OperationType type) {
+                       OperationType type,
+                       boolean paginated,
+                       Integer defaultPageSize) {
         this.name = name;
         this.inputModelId = inputModelId;
+        this.outputModelId = outputModelId;
         this.preconditions = preconditions;
         this.sets = sets;
         this.emits = emits;
         this.type = type;
+        this.paginated = paginated;
+        this.defaultPageSize = defaultPageSize;
     }
 
 }
