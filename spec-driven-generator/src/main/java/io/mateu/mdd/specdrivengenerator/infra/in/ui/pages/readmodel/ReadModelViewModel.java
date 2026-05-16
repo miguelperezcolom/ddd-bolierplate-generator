@@ -47,6 +47,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     boolean cacheable;
     Integer cacheTtlSeconds;
     ConsistencyLevel consistencyLevel;
+    Long maxStalenessMs;
 
     final CreateReadModelUseCase createUseCase;
     final SaveReadModelUseCase saveUseCase;
@@ -55,7 +56,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs));
         return id;
     }
 
@@ -63,7 +64,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveReadModelCommand(id, name, modelId,
                 storageType != null ? storageType.name() : null,
-                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null));
+                filterFields, sortFields, cacheable, cacheTtlSeconds, consistencyLevel != null ? consistencyLevel.name() : null, maxStalenessMs));
     }
 
     @Override
@@ -81,6 +82,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
         cacheable = model.cacheable();
         cacheTtlSeconds = model.cacheTtlSeconds();
         consistencyLevel = model.consistencyLevel() != null ? ConsistencyLevel.valueOf(model.consistencyLevel()) : null;
+        maxStalenessMs = model.maxStalenessMs();
         return this;
     }
 

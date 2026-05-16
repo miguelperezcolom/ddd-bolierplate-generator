@@ -31,6 +31,8 @@ public record UseCaseEntity(
         Long timeoutMs,
         String transactionBoundary,
         boolean idempotencyEnabled,
-        String idempotencyKeyField
+        String idempotencyKeyField,
+        boolean rateLimitEnabled,
+        Integer rateLimitRequestsPerSecond
 ) implements Identifiable {
 }

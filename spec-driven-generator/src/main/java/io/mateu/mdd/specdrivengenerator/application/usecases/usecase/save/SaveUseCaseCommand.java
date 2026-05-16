@@ -29,5 +29,7 @@ public record SaveUseCaseCommand(String id, String name,
                                  Long timeoutMs,
                                  String transactionBoundary,
                                  boolean idempotencyEnabled,
-                                 String idempotencyKeyField) {
+                                 String idempotencyKeyField,
+                                 boolean rateLimitEnabled,
+                                 Integer rateLimitRequestsPerSecond) {
 }

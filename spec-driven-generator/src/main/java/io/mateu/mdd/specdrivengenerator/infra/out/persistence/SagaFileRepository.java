@@ -30,7 +30,8 @@ public class SagaFileRepository implements SagaRepository {
                         entity.triggeringEventIds(),
                         toSteps(entity.steps()),
                         entity.maxRetries(),
-                        entity.retryBackoffMs()));
+                        entity.retryBackoffMs(),
+                        entity.deadLetterQueue()));
     }
 
     @Override
@@ -43,7 +44,8 @@ public class SagaFileRepository implements SagaRepository {
                 entity.getTriggeringEventIds(),
                 toStepEntities(entity.getSteps()),
                 entity.getMaxRetries(),
-                entity.getRetryBackoffMs()));
+                entity.getRetryBackoffMs(),
+                entity.getDeadLetterQueue()));
         return entity;
     }
 

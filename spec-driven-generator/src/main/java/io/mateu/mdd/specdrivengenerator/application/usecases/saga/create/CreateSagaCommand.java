@@ -12,6 +12,7 @@ public record CreateSagaCommand(
         List<String> triggeringEventIds,
         List<SagaStepData> steps,
         Integer maxRetries,
-        Long retryBackoffMs
+        Long retryBackoffMs,
+        String deadLetterQueue
 ) {
 }

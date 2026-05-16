@@ -70,6 +70,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     TransactionBoundary transactionBoundary;
     boolean idempotencyEnabled;
     String idempotencyKeyField;
+    boolean rateLimitEnabled;
+    Integer rateLimitRequestsPerSecond;
 
     @Tab
     List<UseCaseStepViewModel> steps = new ArrayList<>();
@@ -85,7 +87,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
                 cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
-                idempotencyEnabled, idempotencyKeyField));
+                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond));
         return id;
     }
 
@@ -97,7 +99,7 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
                 restHttpMethod != null ? restHttpMethod.name() : null, restPath,
                 asyncRetryCount, asyncDeadLetterQueue, asyncOrderingKey, asyncTopicName, asyncConsumerGroup,
                 cacheable, cacheTtlSeconds, timeoutMs, transactionBoundary != null ? transactionBoundary.name() : null,
-                idempotencyEnabled, idempotencyKeyField));
+                idempotencyEnabled, idempotencyKeyField, rateLimitEnabled, rateLimitRequestsPerSecond));
     }
 
     @Override
@@ -132,6 +134,8 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
         transactionBoundary = model.transactionBoundary() != null ? TransactionBoundary.valueOf(model.transactionBoundary()) : null;
         idempotencyEnabled = model.idempotencyEnabled();
         idempotencyKeyField = model.idempotencyKeyField();
+        rateLimitEnabled = model.rateLimitEnabled();
+        rateLimitRequestsPerSecond = model.rateLimitRequestsPerSecond();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new UseCaseStepViewModel();
             vm.id = s.id();

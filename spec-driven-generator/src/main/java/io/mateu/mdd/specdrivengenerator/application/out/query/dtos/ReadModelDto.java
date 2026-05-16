@@ -9,5 +9,6 @@ public record ReadModelDto(String id, String name,
                            List<String> sortFields,
                            boolean cacheable,
                            Integer cacheTtlSeconds,
-                           String consistencyLevel) {
+                           String consistencyLevel,
+                           Long maxStalenessMs) {
 }

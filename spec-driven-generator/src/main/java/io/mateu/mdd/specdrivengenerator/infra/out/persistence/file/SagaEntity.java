@@ -12,6 +12,7 @@ public record SagaEntity(
         List<String> triggeringEventIds,
         List<SagaStepEntity> steps,
         Integer maxRetries,
-        Long retryBackoffMs
+        Long retryBackoffMs,
+        String deadLetterQueue
 ) implements Identifiable {
 }

@@ -24,7 +24,8 @@ public class SaveReadModelUseCase {
                 command.sortFields(),
                 command.cacheable(),
                 command.cacheTtlSeconds(),
-                command.consistencyLevel() != null ? ConsistencyLevel.valueOf(command.consistencyLevel()) : null);
+                command.consistencyLevel() != null ? ConsistencyLevel.valueOf(command.consistencyLevel()) : null,
+                command.maxStalenessMs());
         repository.save(readModel);
     }
 }

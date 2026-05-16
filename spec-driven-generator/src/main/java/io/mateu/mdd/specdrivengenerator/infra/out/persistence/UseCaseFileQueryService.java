@@ -74,6 +74,8 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
                         entity.timeoutMs(),
                         entity.transactionBoundary(),
                         entity.idempotencyEnabled(),
-                        entity.idempotencyKeyField()));
+                        entity.idempotencyKeyField(),
+                        entity.rateLimitEnabled(),
+                        entity.rateLimitRequestsPerSecond()));
     }
 }

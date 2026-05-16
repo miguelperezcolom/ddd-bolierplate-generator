@@ -50,7 +50,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                         entity.timeoutMs(),
                         entity.transactionBoundary(),
                         entity.idempotencyEnabled(),
-                        entity.idempotencyKeyField()));
+                        entity.idempotencyKeyField(),
+                        entity.rateLimitEnabled(),
+                        entity.rateLimitRequestsPerSecond()));
     }
 
     @Override
@@ -82,7 +84,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getTimeoutMs(),
                 entity.getTransactionBoundary() != null ? entity.getTransactionBoundary().name() : null,
                 entity.isIdempotencyEnabled(),
-                entity.getIdempotencyKeyField()));
+                entity.getIdempotencyKeyField(),
+                entity.isRateLimitEnabled(),
+                entity.getRateLimitRequestsPerSecond()));
         return entity;
     }
 

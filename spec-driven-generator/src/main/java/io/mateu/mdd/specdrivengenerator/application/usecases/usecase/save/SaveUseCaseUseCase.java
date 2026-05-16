@@ -43,7 +43,8 @@ public class SaveUseCaseUseCase {
                 command.cacheTtlSeconds(),
                 command.timeoutMs(),
                 command.transactionBoundary() != null ? TransactionBoundary.valueOf(command.transactionBoundary()) : null,
-                command.idempotencyEnabled(), command.idempotencyKeyField());
+                command.idempotencyEnabled(), command.idempotencyKeyField(),
+                command.rateLimitEnabled(), command.rateLimitRequestsPerSecond());
         repository.save(useCase);
     }
 

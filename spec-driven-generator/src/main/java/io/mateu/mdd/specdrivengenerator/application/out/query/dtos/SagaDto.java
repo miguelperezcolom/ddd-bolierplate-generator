@@ -10,6 +10,7 @@ public record SagaDto(
         List<String> triggeringEventIds,
         List<SagaStepDto> steps,
         Integer maxRetries,
-        Long retryBackoffMs
+        Long retryBackoffMs,
+        String deadLetterQueue
 ) {
 }

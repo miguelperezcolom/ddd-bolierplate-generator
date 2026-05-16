@@ -55,6 +55,7 @@ public class SagaFileQueryService implements SagaQueryService {
                                         s.domainEventId(), s.useCaseId(), s.modelMappingId()))
                                 .toList(),
                         entity.maxRetries(),
-                        entity.retryBackoffMs()));
+                        entity.retryBackoffMs(),
+                        entity.deadLetterQueue()));
     }
 }

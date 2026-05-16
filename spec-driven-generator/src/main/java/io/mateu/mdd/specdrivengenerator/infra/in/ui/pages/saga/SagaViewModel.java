@@ -41,6 +41,7 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
     Long compensationTimeoutMs;
     Integer maxRetries;
     Long retryBackoffMs;
+    String deadLetterQueue;
 
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> triggeringEventIds = new ArrayList<>();
@@ -53,13 +54,13 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs));
+        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs));
+        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue));
     }
 
     @Override
@@ -74,6 +75,7 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
         compensationTimeoutMs = model.compensationTimeoutMs();
         maxRetries = model.maxRetries();
         retryBackoffMs = model.retryBackoffMs();
+        deadLetterQueue = model.deadLetterQueue();
         triggeringEventIds = model.triggeringEventIds() != null ? new ArrayList<>(model.triggeringEventIds()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new SagaStepViewModel();
