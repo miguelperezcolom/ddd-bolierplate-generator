@@ -33,6 +33,7 @@ export default defineConfig({
 						{ label: 'Operations', slug: 'manual/operations' },
 						{ label: 'Use Cases', slug: 'manual/use-cases' },
 						{ label: 'Model Mappings', slug: 'manual/model-mappings' },
+						{ label: 'Business Rules', slug: 'manual/business-rules' },
 						{ label: 'Domain Events', slug: 'manual/domain-events' },
 						{ label: 'Sagas', slug: 'manual/sagas' },
 						{ label: 'Projections & Read Models', slug: 'manual/projections' },
