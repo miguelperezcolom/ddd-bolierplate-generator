@@ -10,18 +10,23 @@ Modux organises your system as a hierarchy of concepts:
 ```
 Project
 └── Service (microservice)
-    └── Module (bounded context)
-        ├── Aggregate
-        │   ├── Entity
-        │   ├── Value Object
-        │   ├── Operation
-        │   └── Domain Event
-        ├── Saga
-        ├── Projection / Read Model
-        ├── Gateway
-        ├── Subscription
-        ├── Scheduled Trigger
-        └── Role
+    ├── Module (bounded context)
+    │   ├── Aggregate
+    │   │   ├── Entity
+    │   │   ├── Value Object
+    │   │   ├── Operation
+    │   │   └── Domain Event
+    │   ├── Saga
+    │   ├── Projection / Read Model
+    │   ├── Gateway
+    │   ├── Subscription
+    │   ├── Scheduled Trigger
+    │   └── Role
+    └── UI
+        ├── Page (CRUD / FORM / DASHBOARD / WIZARD)
+        ├── Component (chart, list, card)
+        ├── UI Adapter (navigation structure)
+        └── UI Shell (deployment target)
 ```
 
 Each level has its own configuration and generates its own code artefacts.
@@ -37,6 +42,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 | **Behaviour** | Operations, Use Cases |
 | **Async** | Domain Events, Sagas, Projections, Subscriptions, Scheduled Triggers |
 | **Interfaces** | Gateways, Read Models |
+| **UI** | Pages, Components, UI Adapters, UI Shells |
 | **Security** | Roles |
 
 ## Typical workflow
@@ -65,4 +71,8 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 - [Subscriptions](/manual/subscriptions/) — message handlers
 - [Scheduled Triggers](/manual/scheduled-triggers/) — cron tasks
 - [Roles & Security](/manual/roles/) — RBAC definitions
+- [Pages](/manual/pages/) — UI screens (CRUD, form, dashboard, wizard)
+- [Components](/manual/components/) — visual data blocks for dashboards
+- [UI Adapters](/manual/ui-adapters/) — navigation structure per service
+- [UI Shells](/manual/ui-shells/) — frontend deployment targets
 - [Generating Code](/manual/generating-code/) — how to run the generator

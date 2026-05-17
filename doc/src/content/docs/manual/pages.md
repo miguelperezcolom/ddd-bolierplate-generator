@@ -1,0 +1,143 @@
+---
+title: Pages
+description: Defining UI screens in Modux
+---
+
+A **Page** is the fundamental unit of UI in Modux. Each page has a route and a type that determines what it renders and what extra configuration it accepts.
+
+## Page types
+
+| Type | Description |
+|---|---|
+| **CRUD** | List + create + edit screen backed by an aggregate |
+| **FORM** | A standalone form backed by a model |
+| **DASHBOARD** | A composition of visual components (charts, lists, cards) |
+| **WIZARD** | A multi-step flow with completion actions |
+
+## Creating a page
+
+1. Open the **Interfaces → Pages** section
+2. Click **New**
+3. Set a name, route and type
+4. Fill in the type-specific fields
+5. Configure optional tabs (toolbar, triggers, rules, validations, field configs)
+
+## Configuration
+
+### Basic fields
+
+| Field | Description |
+|---|---|
+| **Name** | Page name (PascalCase, e.g. `BookingWizard`) |
+| **Route** | URL path for this page (e.g. `/bookings`) |
+| **Type** | CRUD, FORM, DASHBOARD or WIZARD |
+
+### CRUD pages
+
+| Field | Description |
+|---|---|
+| **Aggregate** | The aggregate this CRUD manages |
+| **Listing data source** | `QUERY_SERVICE` (uses a Read Model) or `GATEWAY` (calls an external service) |
+| **Listing query service** | Read Model to use when data source is `QUERY_SERVICE` |
+| **Listing gateway** | Gateway to call when data source is `GATEWAY` |
+
+When no listing data source is set, Modux generates a default repository-backed query.
+
+### FORM pages
+
+| Field | Description |
+|---|---|
+| **Model** | The model (DTO / value object) that backs this form |
+
+### DASHBOARD pages
+
+| Field | Description |
+|---|---|
+| **Components** | One or more [Components](/manual/components/) to display on the dashboard |
+
+### WIZARD pages
+
+| Field | Description |
+|---|---|
+| **Wizard steps** | Ordered list of steps. Each step references another Page (expected to be a FORM) and has an optional label override shown in the progress bar |
+| **Completion actions** | Buttons rendered on the last step in place of the "Next" button (same structure as toolbar buttons) |
+
+## Toolbar and bottom bar
+
+Every page can define two lists of buttons:
+
+- **Toolbar** — displayed at the top of the page
+- **Bottom bar** — displayed at the bottom
+
+Each button has:
+
+| Field | Description |
+|---|---|
+| **Label** | Button text |
+| **Icon** | Optional icon name |
+| **Use case** | Use case to invoke on click |
+| **Action id** | Alternative: a Mateu action identifier |
+
+## Triggers
+
+Triggers execute an action automatically in response to a lifecycle event.
+
+| Field | Description |
+|---|---|
+| **Type** | `OnLoad`, `OnSuccess`, `OnError`, `OnValueChange`, `OnCustomEvent`, `OnEnter` |
+| **Action id** | Action to run when the trigger fires |
+| **Timeout (ms)** | Delay before the action runs (for timed triggers) |
+| **Times** | How many times the trigger fires (0 = unlimited) |
+| **Condition** | Expression that must be true for the trigger to fire |
+| **Called action id** | Secondary action reference |
+| **Property name** | Field to watch (for `OnValueChange`) |
+| **Event name** | Custom event name (for `OnCustomEvent`) |
+
+## Rules
+
+Rules change field attributes dynamically based on conditions evaluated on every state change.
+
+| Field | Description |
+|---|---|
+| **Filter** | Condition expression (e.g. `state['status'] == 'PENDING'`) |
+| **Action** | What to do: `SetAttributeValue`, `SetStateValue`, `SetCssClass`, `SetStyle`, `RunAction`, `RunJS`, `SetAppDataValue`, `SetAppStateValue`, `SetDataValue` |
+| **Field name** | Target field |
+| **Field attribute** | Attribute to modify: `required`, `disabled`, `hidden`, `pattern`, `minValue`, `maxValue`, `minLength`, `maxLength`, `css`, `style`, `theme`, `errorMessage`, `description` |
+| **Value** | Literal value to set |
+| **Expression** | Expression to evaluate as the value |
+| **Result** | `Continue` (keep evaluating other rules) or `Stop` |
+
+## Validations
+
+Field-level and form-level validations that run before save.
+
+| Field | Description |
+|---|---|
+| **Condition** | Expression that must be true for the validation to fail |
+| **Field id** | Field to highlight on failure (leave empty for form-level) |
+| **Message** | Error message shown to the user |
+
+## Field configuration overrides
+
+For each field in the assigned model you can override its default presentation.
+
+| Field | Description |
+|---|---|
+| **Field id** | Name of the field to configure |
+| **Stereotype** | Visual stereotype: `regular`, `textarea`, `toggle`, `richText`, `markdown`, `password`, `email`, `combobox`, `select`, `radio`, `checkbox`, `listBox`, `image`, `icon`, `link`, `money`, `color`, `slider`, `stars`, `html`, `grid`, `choice`, `popover`, `button` |
+| **Colspan** | Number of columns this field spans in the form grid |
+| **Style** | Inline CSS (e.g. `width: 100%;`) |
+| **CSS class** | One or more CSS class names |
+| **Label** | Override the default field label |
+| **Help** | Help text displayed below the field |
+
+## What gets generated
+
+Depending on the page type, Modux generates:
+
+- **CRUD** — list view, create form, edit form, delete action; optionally wired to a custom query service or gateway for the listing
+- **FORM** — standalone form component bound to the specified model
+- **DASHBOARD** — layout composing the selected components
+- **WIZARD** — `WizardOrchestrator` subclass with one `WizardStep` field per step and one `@WizardCompletionAction` method per completion action
+
+All pages respect the configured toolbar, bottom bar, triggers, rules, validations and field overrides.
