@@ -25,6 +25,7 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.Terraform
 import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
 import io.mateu.uidl.annotations.*;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -54,85 +55,43 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String database;
     DbMigrationTool dbMigrationTool;
 
-    @Tab("Kubernetes")
-    String kubernetesClusterUrl;
-    String kubernetesNamespace;
-    String kubernetesContext;
-    String kubernetesToken;
-    String kubernetesCertificateAuthorityData;
-
     @Tab("Terraform")
     TerraformProvider terraformProvider;
     String terraformProviderVersion;
     TerraformBackendType terraformBackendType;
-    String terraformBackendBucket;
-    String terraformBackendRegion;
-    String terraformBackendKey;
-    String terraformWorkspace;
 
     @Tab("IAM")
     IamProvider iamProvider;
-    String iamServerUrl;
-    String iamRealm;
-    String iamClientId;
-    String iamClientSecret;
-    String iamAudience;
 
     @Tab("Messaging")
     MessageBrokerType messageBrokerType;
-    String messageBrokerUrl;
-    String messageBrokerUsername;
-    String messageBrokerPassword;
 
     @Tab("Observability")
     TracingProvider tracingProvider;
-    String tracingEndpoint;
     MetricsProvider metricsProvider;
-    String metricsEndpoint;
     LoggingProvider loggingProvider;
-    String loggingEndpoint;
 
     @Tab("LLM")
     LlmProvider llmProvider;
-    String llmApiUrl;
-    String llmApiKey;
-    String llmModel;
 
     @Tab("Cache")
     CacheProvider cacheProvider;
-    String cacheUrl;
-    String cacheUsername;
-    String cachePassword;
 
     @Tab("File Storage")
     FileStorageProvider fileStorageProvider;
-    String fileStorageBucket;
-    String fileStorageRegion;
-    String fileStorageAccessKey;
-    String fileStorageSecretKey;
-    String fileStorageEndpoint;
 
     @Tab("Email")
     EmailProvider emailProvider;
-    String emailHost;
-    Integer emailPort;
-    String emailUsername;
-    String emailPassword;
-    String emailFrom;
 
     @Tab("Secrets")
     SecretsProvider secretsProvider;
-    String secretsEndpoint;
-    String secretsToken;
-
-    @Tab("Ingress")
-    String ingressDomain;
-    boolean ingressTlsEnabled;
-    String ingressClassName;
 
     @Tab("CI/CD")
     CicdProvider cicdProvider;
-    ProjectEnvironment environment;
+
+    @Tab("Environments")
+    @MasterDetail(minHeightWhenDetailVisible = "16rem")
+    List<ProjectEnvironmentConfigViewModel> environments = new ArrayList<>();
 
     @Tab("Services")
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
@@ -148,27 +107,20 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database, dbMigrationTool,
-                kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
                 terraformProvider, terraformProviderVersion,
                 terraformBackendType,
-                terraformBackendBucket, terraformBackendRegion,
-                terraformBackendKey, terraformWorkspace,
-                iamProvider, iamServerUrl, iamRealm,
-                iamClientId, iamClientSecret, iamAudience,
-                messageBrokerType, messageBrokerUrl,
-                messageBrokerUsername, messageBrokerPassword,
-                tracingProvider, tracingEndpoint,
-                metricsProvider, metricsEndpoint,
-                loggingProvider, loggingEndpoint,
-                llmProvider, llmApiUrl, llmApiKey, llmModel,
-                cacheProvider, cacheUrl, cacheUsername, cachePassword,
-                fileStorageProvider, fileStorageBucket, fileStorageRegion,
-                fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
-                emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
-                secretsProvider, secretsEndpoint, secretsToken,
-                ingressDomain, ingressTlsEnabled, ingressClassName,
+                iamProvider,
+                messageBrokerType,
+                tracingProvider,
+                metricsProvider,
+                loggingProvider,
+                llmProvider,
+                cacheProvider,
+                fileStorageProvider,
+                emailProvider,
+                secretsProvider,
                 cicdProvider != null ? cicdProvider.name() : null,
-                environment != null ? environment.name() : null,
+                toEnvironmentEntityList(environments),
                 services,
                 toContextMapData(contextMap)));
         return id;
@@ -178,27 +130,20 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database, dbMigrationTool,
-                kubernetesClusterUrl, kubernetesNamespace, kubernetesContext, kubernetesToken, kubernetesCertificateAuthorityData,
                 terraformProvider, terraformProviderVersion,
                 terraformBackendType,
-                terraformBackendBucket, terraformBackendRegion,
-                terraformBackendKey, terraformWorkspace,
-                iamProvider, iamServerUrl, iamRealm,
-                iamClientId, iamClientSecret, iamAudience,
-                messageBrokerType, messageBrokerUrl,
-                messageBrokerUsername, messageBrokerPassword,
-                tracingProvider, tracingEndpoint,
-                metricsProvider, metricsEndpoint,
-                loggingProvider, loggingEndpoint,
-                llmProvider, llmApiUrl, llmApiKey, llmModel,
-                cacheProvider, cacheUrl, cacheUsername, cachePassword,
-                fileStorageProvider, fileStorageBucket, fileStorageRegion,
-                fileStorageAccessKey, fileStorageSecretKey, fileStorageEndpoint,
-                emailProvider, emailHost, emailPort, emailUsername, emailPassword, emailFrom,
-                secretsProvider, secretsEndpoint, secretsToken,
-                ingressDomain, ingressTlsEnabled, ingressClassName,
+                iamProvider,
+                messageBrokerType,
+                tracingProvider,
+                metricsProvider,
+                loggingProvider,
+                llmProvider,
+                cacheProvider,
+                fileStorageProvider,
+                emailProvider,
+                secretsProvider,
                 cicdProvider != null ? cicdProvider.name() : null,
-                environment != null ? environment.name() : null,
+                toEnvironmentEntityList(environments),
                 services,
                 toContextMapData(contextMap)));
     }
@@ -216,62 +161,67 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         gitRepository = model.gitRepository();
         database = model.database();
         dbMigrationTool = model.dbMigrationTool();
-        kubernetesClusterUrl = model.kubernetesClusterUrl();
-        kubernetesNamespace = model.kubernetesNamespace();
-        kubernetesContext = model.kubernetesContext();
-        kubernetesToken = model.kubernetesToken();
-        kubernetesCertificateAuthorityData = model.kubernetesCertificateAuthorityData();
         terraformProvider = model.terraformProvider();
         terraformProviderVersion = model.terraformProviderVersion();
         terraformBackendType = model.terraformBackendType();
-        terraformBackendBucket = model.terraformBackendBucket();
-        terraformBackendRegion = model.terraformBackendRegion();
-        terraformBackendKey = model.terraformBackendKey();
-        terraformWorkspace = model.terraformWorkspace();
         iamProvider = model.iamProvider();
-        iamServerUrl = model.iamServerUrl();
-        iamRealm = model.iamRealm();
-        iamClientId = model.iamClientId();
-        iamClientSecret = model.iamClientSecret();
-        iamAudience = model.iamAudience();
         messageBrokerType = model.messageBrokerType();
-        messageBrokerUrl = model.messageBrokerUrl();
-        messageBrokerUsername = model.messageBrokerUsername();
-        messageBrokerPassword = model.messageBrokerPassword();
         tracingProvider = model.tracingProvider();
-        tracingEndpoint = model.tracingEndpoint();
         metricsProvider = model.metricsProvider();
-        metricsEndpoint = model.metricsEndpoint();
         loggingProvider = model.loggingProvider();
-        loggingEndpoint = model.loggingEndpoint();
         llmProvider = model.llmProvider();
-        llmApiUrl = model.llmApiUrl();
-        llmApiKey = model.llmApiKey();
-        llmModel = model.llmModel();
         cacheProvider = model.cacheProvider();
-        cacheUrl = model.cacheUrl();
-        cacheUsername = model.cacheUsername();
-        cachePassword = model.cachePassword();
         fileStorageProvider = model.fileStorageProvider();
-        fileStorageBucket = model.fileStorageBucket();
-        fileStorageRegion = model.fileStorageRegion();
-        fileStorageAccessKey = model.fileStorageAccessKey();
-        fileStorageSecretKey = model.fileStorageSecretKey();
-        fileStorageEndpoint = model.fileStorageEndpoint();
         emailProvider = model.emailProvider();
-        emailHost = model.emailHost();
-        emailPort = model.emailPort();
-        emailUsername = model.emailUsername();
-        emailPassword = model.emailPassword();
-        emailFrom = model.emailFrom();
         secretsProvider = model.secretsProvider();
-        secretsEndpoint = model.secretsEndpoint();
-        secretsToken = model.secretsToken();
-        ingressDomain = model.ingressDomain();
-        ingressTlsEnabled = model.ingressTlsEnabled();
-        ingressClassName = model.ingressClassName();
         cicdProvider = model.cicdProvider() != null ? CicdProvider.valueOf(model.cicdProvider()) : null;
-        environment = model.environment() != null ? ProjectEnvironment.valueOf(model.environment()) : null;
+        environments = model.environments() == null ? new ArrayList<>() :
+                model.environments().stream().map(e -> {
+                    var vm = new ProjectEnvironmentConfigViewModel();
+                    vm.setEnvironment(e.environment() != null ? ProjectEnvironment.valueOf(e.environment()) : null);
+                    vm.setKubernetesClusterUrl(e.kubernetesClusterUrl());
+                    vm.setKubernetesNamespace(e.kubernetesNamespace());
+                    vm.setKubernetesContext(e.kubernetesContext());
+                    vm.setKubernetesToken(e.kubernetesToken());
+                    vm.setKubernetesCertificateAuthorityData(e.kubernetesCertificateAuthorityData());
+                    vm.setTerraformBackendBucket(e.terraformBackendBucket());
+                    vm.setTerraformBackendRegion(e.terraformBackendRegion());
+                    vm.setTerraformBackendKey(e.terraformBackendKey());
+                    vm.setTerraformWorkspace(e.terraformWorkspace());
+                    vm.setIamServerUrl(e.iamServerUrl());
+                    vm.setIamRealm(e.iamRealm());
+                    vm.setIamClientId(e.iamClientId());
+                    vm.setIamClientSecret(e.iamClientSecret());
+                    vm.setIamAudience(e.iamAudience());
+                    vm.setMessageBrokerUrl(e.messageBrokerUrl());
+                    vm.setMessageBrokerUsername(e.messageBrokerUsername());
+                    vm.setMessageBrokerPassword(e.messageBrokerPassword());
+                    vm.setTracingEndpoint(e.tracingEndpoint());
+                    vm.setMetricsEndpoint(e.metricsEndpoint());
+                    vm.setLoggingEndpoint(e.loggingEndpoint());
+                    vm.setLlmApiUrl(e.llmApiUrl());
+                    vm.setLlmApiKey(e.llmApiKey());
+                    vm.setLlmModel(e.llmModel());
+                    vm.setCacheUrl(e.cacheUrl());
+                    vm.setCacheUsername(e.cacheUsername());
+                    vm.setCachePassword(e.cachePassword());
+                    vm.setFileStorageBucket(e.fileStorageBucket());
+                    vm.setFileStorageRegion(e.fileStorageRegion());
+                    vm.setFileStorageAccessKey(e.fileStorageAccessKey());
+                    vm.setFileStorageSecretKey(e.fileStorageSecretKey());
+                    vm.setFileStorageEndpoint(e.fileStorageEndpoint());
+                    vm.setEmailHost(e.emailHost());
+                    vm.setEmailPort(e.emailPort());
+                    vm.setEmailUsername(e.emailUsername());
+                    vm.setEmailPassword(e.emailPassword());
+                    vm.setEmailFrom(e.emailFrom());
+                    vm.setSecretsEndpoint(e.secretsEndpoint());
+                    vm.setSecretsToken(e.secretsToken());
+                    vm.setIngressDomain(e.ingressDomain());
+                    vm.setIngressTlsEnabled(e.ingressTlsEnabled());
+                    vm.setIngressClassName(e.ingressClassName());
+                    return vm;
+                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         services = model.serviceIds();
         contextMap = model.contextMap() == null ? new ArrayList<>() :
                 model.contextMap().stream().map(r -> {
@@ -285,6 +235,54 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
+    }
+
+    private List<ProjectEnvironmentConfigEntity> toEnvironmentEntityList(List<ProjectEnvironmentConfigViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream().map(e -> new ProjectEnvironmentConfigEntity(
+                e.getEnvironment() != null ? e.getEnvironment().name() : null,
+                e.getKubernetesClusterUrl(),
+                e.getKubernetesNamespace(),
+                e.getKubernetesContext(),
+                e.getKubernetesToken(),
+                e.getKubernetesCertificateAuthorityData(),
+                e.getTerraformBackendBucket(),
+                e.getTerraformBackendRegion(),
+                e.getTerraformBackendKey(),
+                e.getTerraformWorkspace(),
+                e.getIamServerUrl(),
+                e.getIamRealm(),
+                e.getIamClientId(),
+                e.getIamClientSecret(),
+                e.getIamAudience(),
+                e.getMessageBrokerUrl(),
+                e.getMessageBrokerUsername(),
+                e.getMessageBrokerPassword(),
+                e.getTracingEndpoint(),
+                e.getMetricsEndpoint(),
+                e.getLoggingEndpoint(),
+                e.getLlmApiUrl(),
+                e.getLlmApiKey(),
+                e.getLlmModel(),
+                e.getCacheUrl(),
+                e.getCacheUsername(),
+                e.getCachePassword(),
+                e.getFileStorageBucket(),
+                e.getFileStorageRegion(),
+                e.getFileStorageAccessKey(),
+                e.getFileStorageSecretKey(),
+                e.getFileStorageEndpoint(),
+                e.getEmailHost(),
+                e.getEmailPort(),
+                e.getEmailUsername(),
+                e.getEmailPassword(),
+                e.getEmailFrom(),
+                e.getSecretsEndpoint(),
+                e.getSecretsToken(),
+                e.getIngressDomain(),
+                e.getIngressTlsEnabled(),
+                e.getIngressClassName()
+        )).toList();
     }
 
     private List<ContextMapRelationData> toContextMapData(List<ContextMapRelationViewModel> list) {

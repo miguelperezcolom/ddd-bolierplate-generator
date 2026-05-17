@@ -2,26 +2,15 @@ package io.mateu.modux.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.modux.specdrivengenerator.application.out.repositories.ProjectRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.project.Project;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.CacheProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.EmailProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.SecretsProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.IamProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.LlmProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.LoggingProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.MessageBrokerType;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.MetricsProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TracingProvider;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.ProjectEnvironmentConfig;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelation;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.ProjectId;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.project.vo.TerraformProvider;
-import io.mateu.modux.specdrivengenerator.domain.aggregates.service.vo.ServiceId;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -45,35 +34,64 @@ public class ProjectFileRepository implements ProjectRepository {
                         entity.gitRepository(),
                         entity.database(),
                         entity.dbMigrationTool(),
-                        entity.kubernetesClusterUrl(),
-                        entity.kubernetesNamespace(),
-                        entity.kubernetesContext(),
-                        entity.kubernetesToken(),
-                        entity.kubernetesCertificateAuthorityData(),
                         entity.terraformProvider(), entity.terraformProviderVersion(),
                         entity.terraformBackendType(),
-                        entity.terraformBackendBucket(), entity.terraformBackendRegion(),
-                        entity.terraformBackendKey(), entity.terraformWorkspace(),
-                        entity.iamProvider(), entity.iamServerUrl(), entity.iamRealm(),
-                        entity.iamClientId(), entity.iamClientSecret(), entity.iamAudience(),
-                        entity.messageBrokerType(), entity.messageBrokerUrl(),
-                        entity.messageBrokerUsername(), entity.messageBrokerPassword(),
-                        entity.tracingProvider(), entity.tracingEndpoint(),
-                        entity.metricsProvider(), entity.metricsEndpoint(),
-                        entity.loggingProvider(), entity.loggingEndpoint(),
-                        entity.llmProvider(), entity.llmApiUrl(),
-                        entity.llmApiKey(), entity.llmModel(),
-                        entity.cacheProvider(), entity.cacheUrl(),
-                        entity.cacheUsername(), entity.cachePassword(),
-                        entity.fileStorageProvider(), entity.fileStorageBucket(),
-                        entity.fileStorageRegion(), entity.fileStorageAccessKey(),
-                        entity.fileStorageSecretKey(), entity.fileStorageEndpoint(),
-                        entity.emailProvider(), entity.emailHost(), entity.emailPort(),
-                        entity.emailUsername(), entity.emailPassword(), entity.emailFrom(),
-                        entity.secretsProvider(), entity.secretsEndpoint(), entity.secretsToken(),
-                        entity.ingressDomain(), entity.ingressTlsEnabled(), entity.ingressClassName(),
+                        entity.iamProvider(),
+                        entity.messageBrokerType(),
+                        entity.tracingProvider(),
+                        entity.metricsProvider(),
+                        entity.loggingProvider(),
+                        entity.llmProvider(),
+                        entity.cacheProvider(),
+                        entity.fileStorageProvider(),
+                        entity.emailProvider(),
+                        entity.secretsProvider(),
                         entity.cicdProvider(),
-                        entity.environment(),
+                        entity.environments() == null ? List.<ProjectEnvironmentConfig>of() :
+                                entity.environments().stream().map(e -> new ProjectEnvironmentConfig(
+                                        e.environment() != null ? ProjectEnvironment.valueOf(e.environment()) : null,
+                                        e.kubernetesClusterUrl(),
+                                        e.kubernetesNamespace(),
+                                        e.kubernetesContext(),
+                                        e.kubernetesToken(),
+                                        e.kubernetesCertificateAuthorityData(),
+                                        e.terraformBackendBucket(),
+                                        e.terraformBackendRegion(),
+                                        e.terraformBackendKey(),
+                                        e.terraformWorkspace(),
+                                        e.iamServerUrl(),
+                                        e.iamRealm(),
+                                        e.iamClientId(),
+                                        e.iamClientSecret(),
+                                        e.iamAudience(),
+                                        e.messageBrokerUrl(),
+                                        e.messageBrokerUsername(),
+                                        e.messageBrokerPassword(),
+                                        e.tracingEndpoint(),
+                                        e.metricsEndpoint(),
+                                        e.loggingEndpoint(),
+                                        e.llmApiUrl(),
+                                        e.llmApiKey(),
+                                        e.llmModel(),
+                                        e.cacheUrl(),
+                                        e.cacheUsername(),
+                                        e.cachePassword(),
+                                        e.fileStorageBucket(),
+                                        e.fileStorageRegion(),
+                                        e.fileStorageAccessKey(),
+                                        e.fileStorageSecretKey(),
+                                        e.fileStorageEndpoint(),
+                                        e.emailHost(),
+                                        e.emailPort(),
+                                        e.emailUsername(),
+                                        e.emailPassword(),
+                                        e.emailFrom(),
+                                        e.secretsEndpoint(),
+                                        e.secretsToken(),
+                                        e.ingressDomain(),
+                                        e.ingressTlsEnabled(),
+                                        e.ingressClassName()
+                                )).toList(),
                         entity.serviceIds(),
                         entity.contextMap() == null ? List.<ContextMapRelation>of() : entity.contextMap().stream()
                                 .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
@@ -91,37 +109,66 @@ public class ProjectFileRepository implements ProjectRepository {
                 entity.getGitRepository(),
                 entity.getDatabase(),
                 entity.getDbMigrationTool(),
-                entity.getKubernetesClusterUrl(),
-                entity.getKubernetesNamespace(),
-                entity.getKubernetesContext(),
-                entity.getKubernetesToken(),
-                entity.getKubernetesCertificateAuthorityData(),
                 entity.getTerraformProvider(), entity.getTerraformProviderVersion(),
                 entity.getTerraformBackendType(),
-                entity.getTerraformBackendBucket(), entity.getTerraformBackendRegion(),
-                entity.getTerraformBackendKey(), entity.getTerraformWorkspace(),
-                entity.getIamProvider(), entity.getIamServerUrl(), entity.getIamRealm(),
-                entity.getIamClientId(), entity.getIamClientSecret(), entity.getIamAudience(),
-                entity.getMessageBrokerType(), entity.getMessageBrokerUrl(),
-                entity.getMessageBrokerUsername(), entity.getMessageBrokerPassword(),
-                entity.getTracingProvider(), entity.getTracingEndpoint(),
-                entity.getMetricsProvider(), entity.getMetricsEndpoint(),
-                entity.getLoggingProvider(), entity.getLoggingEndpoint(),
-                entity.getLlmProvider(), entity.getLlmApiUrl(),
-                entity.getLlmApiKey(), entity.getLlmModel(),
-                entity.getCacheProvider(), entity.getCacheUrl(),
-                entity.getCacheUsername(), entity.getCachePassword(),
-                entity.getFileStorageProvider(), entity.getFileStorageBucket(),
-                entity.getFileStorageRegion(), entity.getFileStorageAccessKey(),
-                entity.getFileStorageSecretKey(), entity.getFileStorageEndpoint(),
-                entity.getEmailProvider(), entity.getEmailHost(), entity.getEmailPort(),
-                entity.getEmailUsername(), entity.getEmailPassword(), entity.getEmailFrom(),
-                entity.getSecretsProvider(), entity.getSecretsEndpoint(), entity.getSecretsToken(),
-                entity.getIngressDomain(), entity.isIngressTlsEnabled(), entity.getIngressClassName(),
+                entity.getIamProvider(),
+                entity.getMessageBrokerType(),
+                entity.getTracingProvider(),
+                entity.getMetricsProvider(),
+                entity.getLoggingProvider(),
+                entity.getLlmProvider(),
+                entity.getCacheProvider(),
+                entity.getFileStorageProvider(),
+                entity.getEmailProvider(),
+                entity.getSecretsProvider(),
                 entity.getCicdProvider() != null ? entity.getCicdProvider().name() : null,
-                entity.getEnvironment() != null ? entity.getEnvironment().name() : null,
+                entity.getEnvironments() == null ? List.<ProjectEnvironmentConfigEntity>of() :
+                        entity.getEnvironments().stream().map(e -> new ProjectEnvironmentConfigEntity(
+                                e.environment() != null ? e.environment().name() : null,
+                                e.kubernetesClusterUrl(),
+                                e.kubernetesNamespace(),
+                                e.kubernetesContext(),
+                                e.kubernetesToken(),
+                                e.kubernetesCertificateAuthorityData(),
+                                e.terraformBackendBucket(),
+                                e.terraformBackendRegion(),
+                                e.terraformBackendKey(),
+                                e.terraformWorkspace(),
+                                e.iamServerUrl(),
+                                e.iamRealm(),
+                                e.iamClientId(),
+                                e.iamClientSecret(),
+                                e.iamAudience(),
+                                e.messageBrokerUrl(),
+                                e.messageBrokerUsername(),
+                                e.messageBrokerPassword(),
+                                e.tracingEndpoint(),
+                                e.metricsEndpoint(),
+                                e.loggingEndpoint(),
+                                e.llmApiUrl(),
+                                e.llmApiKey(),
+                                e.llmModel(),
+                                e.cacheUrl(),
+                                e.cacheUsername(),
+                                e.cachePassword(),
+                                e.fileStorageBucket(),
+                                e.fileStorageRegion(),
+                                e.fileStorageAccessKey(),
+                                e.fileStorageSecretKey(),
+                                e.fileStorageEndpoint(),
+                                e.emailHost(),
+                                e.emailPort(),
+                                e.emailUsername(),
+                                e.emailPassword(),
+                                e.emailFrom(),
+                                e.secretsEndpoint(),
+                                e.secretsToken(),
+                                e.ingressDomain(),
+                                e.ingressTlsEnabled(),
+                                e.ingressClassName()
+                        )).toList(),
                 entity.getServices().stream()
-                        .map(ServiceId::id)
+                        .map(s -> s.id())
                         .toList(),
                 entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
                         .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
