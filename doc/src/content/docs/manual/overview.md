@@ -63,6 +63,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 - [Entities & Value Objects](/manual/entities-and-value-objects/) — domain building blocks
 - [Operations](/manual/operations/) — commands and queries on aggregates
 - [Use Cases](/manual/use-cases/) — application-layer orchestration
+- [Model Mappings](/manual/model-mappings/) — field-level transformations between models
 - [Domain Events](/manual/domain-events/) — events emitted by aggregates
 - [Sagas](/manual/sagas/) — multi-step workflows with compensation
 - [Projections & Read Models](/manual/projections/) — event-driven read models

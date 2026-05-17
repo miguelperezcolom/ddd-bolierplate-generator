@@ -32,6 +32,7 @@ export default defineConfig({
 						{ label: 'Entities & Value Objects', slug: 'manual/entities-and-value-objects' },
 						{ label: 'Operations', slug: 'manual/operations' },
 						{ label: 'Use Cases', slug: 'manual/use-cases' },
+						{ label: 'Model Mappings', slug: 'manual/model-mappings' },
 						{ label: 'Domain Events', slug: 'manual/domain-events' },
 						{ label: 'Sagas', slug: 'manual/sagas' },
 						{ label: 'Projections & Read Models', slug: 'manual/projections' },
