@@ -6,6 +6,7 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageFieldConfig
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageRule;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageTrigger;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageValidation;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageWizardStep;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageName;
@@ -63,6 +64,12 @@ public class SavePageUseCase {
                                 e.fieldId(),
                                 e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
                                 e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
+                        .toList(),
+                command.wizardSteps().stream()
+                        .map(e -> new PageWizardStep(e.pageId(), e.label()))
+                        .toList(),
+                command.completionActions().stream()
+                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
                         .toList());
         repository.save(page);
     }

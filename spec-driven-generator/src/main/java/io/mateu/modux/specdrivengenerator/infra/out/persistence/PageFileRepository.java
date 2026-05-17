@@ -7,6 +7,7 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageFieldConfig
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageRule;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageTrigger;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageValidation;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageWizardStep;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageRuleAction;
@@ -20,6 +21,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldCo
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -75,6 +77,12 @@ public class PageFileRepository implements PageRepository {
                                         e.fieldId(),
                                         e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
                                         e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
+                                .toList() : List.of(),
+                        entity.wizardSteps() != null ? entity.wizardSteps().stream()
+                                .map(e -> new PageWizardStep(e.pageId(), e.label()))
+                                .toList() : List.of(),
+                        entity.completionActions() != null ? entity.completionActions().stream()
+                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
                                 .toList() : List.of()));
     }
 
@@ -120,6 +128,12 @@ public class PageFileRepository implements PageRepository {
                                 f.fieldId(),
                                 f.stereotype() != null ? f.stereotype().name() : null,
                                 f.colspan(), f.style(), f.cssClass(), f.label(), f.help()))
+                        .toList(),
+                entity.getWizardSteps().stream()
+                        .map(s -> new PageWizardStepEntity(s.pageId(), s.label()))
+                        .toList(),
+                entity.getCompletionActions().stream()
+                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
                         .toList()));
         return entity;
     }

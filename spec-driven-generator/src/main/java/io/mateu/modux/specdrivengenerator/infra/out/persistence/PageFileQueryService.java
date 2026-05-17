@@ -61,6 +61,8 @@ public class PageFileQueryService implements PageQueryService {
                         entity.triggers(),
                         entity.rules(),
                         entity.validations(),
-                        entity.fieldConfigs()));
+                        entity.fieldConfigs(),
+                        entity.wizardSteps(),
+                        entity.completionActions()));
     }
 }

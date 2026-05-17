@@ -20,6 +20,8 @@ public record PageEntity(
         List<PageTriggerEntity> triggers,
         List<PageRuleEntity> rules,
         List<PageValidationEntity> validations,
-        List<PageFieldConfigEntity> fieldConfigs
+        List<PageFieldConfigEntity> fieldConfigs,
+        List<PageWizardStepEntity> wizardSteps,
+        List<PageButtonEntity> completionActions
 ) implements Identifiable {
 }

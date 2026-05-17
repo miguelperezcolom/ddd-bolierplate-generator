@@ -6,6 +6,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldCo
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 
 import java.util.List;
 
@@ -25,7 +26,9 @@ public record PageDto(
         List<PageTriggerEntity> triggers,
         List<PageRuleEntity> rules,
         List<PageValidationEntity> validations,
-        List<PageFieldConfigEntity> fieldConfigs
+        List<PageFieldConfigEntity> fieldConfigs,
+        List<PageWizardStepEntity> wizardSteps,
+        List<PageButtonEntity> completionActions
 ) {
     public PageDto {
         if (componentIds == null) componentIds = List.of();
@@ -35,5 +38,7 @@ public record PageDto(
         if (rules == null) rules = List.of();
         if (validations == null) validations = List.of();
         if (fieldConfigs == null) fieldConfigs = List.of();
+        if (wizardSteps == null) wizardSteps = List.of();
+        if (completionActions == null) completionActions = List.of();
     }
 }

@@ -28,6 +28,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldCo
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -108,6 +109,16 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<PageFieldConfigViewModel> fieldConfigs;
 
+    @Hidden("state['type'] != 'WIZARD'")
+    @Tab
+    @MasterDetail(minHeightWhenDetailVisible = "16rem")
+    List<PageWizardStepViewModel> wizardSteps;
+
+    @Hidden("state['type'] != 'WIZARD'")
+    @Tab
+    @MasterDetail(minHeightWhenDetailVisible = "16rem")
+    List<PageButtonViewModel> completionActions;
+
     final CreatePageUseCase createUseCase;
     final SavePageUseCase saveUseCase;
 
@@ -143,6 +154,12 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .map(v -> new PageFieldConfigEntity(v.fieldId(),
                                 v.stereotype() != null ? v.stereotype().name() : null,
                                 v.colspan(), v.style(), v.cssClass(), v.label(), v.help()))
+                        .toList() : List.of(),
+                wizardSteps != null ? wizardSteps.stream()
+                        .map(v -> new PageWizardStepEntity(v.pageId(), v.label()))
+                        .toList() : List.of(),
+                completionActions != null ? completionActions.stream()
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
                         .toList() : List.of()));
         return id;
     }
@@ -179,6 +196,12 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .map(v -> new PageFieldConfigEntity(v.fieldId(),
                                 v.stereotype() != null ? v.stereotype().name() : null,
                                 v.colspan(), v.style(), v.cssClass(), v.label(), v.help()))
+                        .toList() : List.of(),
+                wizardSteps != null ? wizardSteps.stream()
+                        .map(v -> new PageWizardStepEntity(v.pageId(), v.label()))
+                        .toList() : List.of(),
+                completionActions != null ? completionActions.stream()
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
                         .toList() : List.of()));
     }
 
@@ -227,6 +250,12 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 .map(e -> new PageFieldConfigViewModel(e.fieldId(),
                         e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
                         e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
+                .toList()) : new ArrayList<>();
+        wizardSteps = model.wizardSteps() != null ? new ArrayList<>(model.wizardSteps().stream()
+                .map(e -> new PageWizardStepViewModel(e.pageId(), e.label()))
+                .toList()) : new ArrayList<>();
+        completionActions = model.completionActions() != null ? new ArrayList<>(model.completionActions().stream()
+                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId()))
                 .toList()) : new ArrayList<>();
         return this;
     }

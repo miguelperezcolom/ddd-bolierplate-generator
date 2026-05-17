@@ -32,6 +32,8 @@ public class Page {
     private List<PageRule> rules;
     private List<PageValidation> validations;
     private List<PageFieldConfig> fieldConfigs;
+    private List<PageWizardStep> wizardSteps;
+    private List<PageButton> completionActions;
 
     public static Page of(PageId id, PageName name, String route, PageType type,
                           String aggregateId, String modelId, List<String> componentIds,
@@ -39,7 +41,8 @@ public class Page {
                           String listingQueryServiceId, String listingGatewayId,
                           List<PageButton> toolbar, List<PageButton> bottomBar,
                           List<PageTrigger> triggers, List<PageRule> rules,
-                          List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
+                          List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
+                          List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
         var page = new Page();
         page.id = id;
         page.name = name;
@@ -57,6 +60,8 @@ public class Page {
         page.rules = rules != null ? rules : List.of();
         page.validations = validations != null ? validations : List.of();
         page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
+        page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
+        page.completionActions = completionActions != null ? completionActions : List.of();
         return page;
     }
 
@@ -66,7 +71,8 @@ public class Page {
                             String listingQueryServiceId, String listingGatewayId,
                             List<PageButton> toolbar, List<PageButton> bottomBar,
                             List<PageTrigger> triggers, List<PageRule> rules,
-                            List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
+                            List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
+                            List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
         var page = new Page();
         page.id = new PageId(id);
         page.name = new PageName(name);
@@ -85,6 +91,8 @@ public class Page {
         page.rules = rules != null ? rules : List.of();
         page.validations = validations != null ? validations : List.of();
         page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
+        page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
+        page.completionActions = completionActions != null ? completionActions : List.of();
         return page;
     }
 
@@ -94,7 +102,8 @@ public class Page {
                        String listingQueryServiceId, String listingGatewayId,
                        List<PageButton> toolbar, List<PageButton> bottomBar,
                        List<PageTrigger> triggers, List<PageRule> rules,
-                       List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
+                       List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
+                       List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
         this.name = name;
         this.route = route;
         this.type = type;
@@ -110,5 +119,7 @@ public class Page {
         this.rules = rules != null ? rules : List.of();
         this.validations = validations != null ? validations : List.of();
         this.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
+        this.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
+        this.completionActions = completionActions != null ? completionActions : List.of();
     }
 }
