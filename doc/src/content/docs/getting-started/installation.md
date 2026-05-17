@@ -36,7 +36,7 @@ The Modux UI will be available at `http://localhost:8080`.
 ```
 modux/
 ├── spec-driven-generator/   # Main generator application (Spring Boot + Vaadin UI)
-├── plugin/                  # Maven plugin (experimental)
+├── plugin/                  # Maven plugin (modux-maven-plugin)
 ├── sample/poc-sagas/        # Example generated application
 ├── io/                      # Shared UIDL types
 └── doc/                     # This documentation site

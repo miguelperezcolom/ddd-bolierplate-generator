@@ -1,16 +1,53 @@
 ---
 title: Generating Code
-description: How to run the Modux code generator
+description: How to run the Modux code generator — from the UI or from a Maven build
 ---
 
-Once you have defined your domain model in the Modux UI, you can generate the full Spring Boot project at any time.
+Once you have defined your domain model in the Modux UI, you can generate the full Spring Boot project at any time. Generation can be triggered **interactively** from the Modux UI or **automatically** during a Maven build via the Modux Maven plugin.
 
-## Running the generator
+## From the UI
 
 1. Open your **Project** in the Modux UI
 2. Click the **Generate Code** button
 3. Modux processes all aggregates, events, and other concepts in your project
 4. The generated code is written to the **Output path** you configured on the project
+
+## From a Maven build (Maven plugin)
+
+Add the plugin to any Maven project that should trigger generation:
+
+```xml
+<plugin>
+    <groupId>io.mateu.modux</groupId>
+    <artifactId>modux-maven-plugin</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <configuration>
+        <projectId>my-project-id</projectId>
+        <specFile>${project.basedir}/.dev/data/spec-driven-store.yaml</specFile>
+        <outputPath>${project.basedir}/generated</outputPath>
+        <packageName>com.mycompany</packageName>
+    </configuration>
+    <executions>
+        <execution>
+            <goals><goal>generate</goal></goals>
+        </execution>
+    </executions>
+</plugin>
+```
+
+Run generation explicitly:
+
+```bash
+mvn modux:generate -Dmodux.projectId=my-project-id
+```
+
+Or let it run automatically during the `generate-sources` phase:
+
+```bash
+mvn generate-sources
+```
+
+See the [Maven Plugin Reference](/reference/maven-plugin/) for all configuration parameters.
 
 ## What happens during generation
 
