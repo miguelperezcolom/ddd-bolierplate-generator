@@ -1,6 +1,7 @@
 package io.mateu.modux.specdrivengenerator.application.usecases.uishell.save;
 
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDeploymentType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDesignSystem;
 
 import java.util.List;
 
@@ -17,7 +18,8 @@ public record SaveUiShellCommand(
         String bucketProvider,
         String bucketName,
         String bucketRegion,
-        String deploymentServiceId
+        String deploymentServiceId,
+        UiShellDesignSystem designSystem
 ) {
     public SaveUiShellCommand {
         if (serviceIds == null) serviceIds = List.of();

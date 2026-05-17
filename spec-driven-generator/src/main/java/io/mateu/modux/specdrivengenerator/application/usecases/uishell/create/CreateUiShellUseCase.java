@@ -27,7 +27,8 @@ public class CreateUiShellUseCase {
                 command.bucketProvider(),
                 command.bucketName(),
                 command.bucketRegion(),
-                command.deploymentServiceId());
+                command.deploymentServiceId(),
+                command.designSystem());
         repository.save(uiShell);
     }
 }

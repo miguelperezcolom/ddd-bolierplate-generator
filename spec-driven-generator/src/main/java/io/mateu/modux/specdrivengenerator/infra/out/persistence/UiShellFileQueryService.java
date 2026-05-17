@@ -53,6 +53,7 @@ public class UiShellFileQueryService implements UiShellQueryService {
                         entity.bucketProvider(),
                         entity.bucketName(),
                         entity.bucketRegion(),
-                        entity.deploymentServiceId()));
+                        entity.deploymentServiceId(),
+                        entity.designSystem()));
     }
 }

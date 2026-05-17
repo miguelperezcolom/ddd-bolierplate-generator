@@ -1,6 +1,7 @@
 package io.mateu.modux.specdrivengenerator.domain.aggregates.uishell;
 
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDeploymentType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDesignSystem;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellName;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class UiShell {
     private String bucketName;
     private String bucketRegion;
     private String deploymentServiceId;
+    private UiShellDesignSystem designSystem;
 
     public static UiShell of(UiShellId id, UiShellName name,
                              String title, String appVariant,
@@ -30,7 +32,8 @@ public class UiShell {
                              String url, UiShellDeploymentType deploymentType,
                              String cdnProvider, String cdnSiteId,
                              String bucketProvider, String bucketName, String bucketRegion,
-                             String deploymentServiceId) {
+                             String deploymentServiceId,
+                             UiShellDesignSystem designSystem) {
         var s = new UiShell();
         s.id = id;
         s.name = name;
@@ -45,6 +48,7 @@ public class UiShell {
         s.bucketName = bucketName;
         s.bucketRegion = bucketRegion;
         s.deploymentServiceId = deploymentServiceId;
+        s.designSystem = designSystem;
         return s;
     }
 
@@ -54,7 +58,8 @@ public class UiShell {
                                String url, String deploymentType,
                                String cdnProvider, String cdnSiteId,
                                String bucketProvider, String bucketName, String bucketRegion,
-                               String deploymentServiceId) {
+                               String deploymentServiceId,
+                               String designSystem) {
         var s = new UiShell();
         s.id = new UiShellId(id);
         s.name = new UiShellName(name);
@@ -69,6 +74,7 @@ public class UiShell {
         s.bucketName = bucketName;
         s.bucketRegion = bucketRegion;
         s.deploymentServiceId = deploymentServiceId;
+        s.designSystem = designSystem != null ? UiShellDesignSystem.valueOf(designSystem) : null;
         return s;
     }
 
@@ -77,7 +83,8 @@ public class UiShell {
                        String url, UiShellDeploymentType deploymentType,
                        String cdnProvider, String cdnSiteId,
                        String bucketProvider, String bucketName, String bucketRegion,
-                       String deploymentServiceId) {
+                       String deploymentServiceId,
+                       UiShellDesignSystem designSystem) {
         this.name = name;
         this.title = title;
         this.appVariant = appVariant;
@@ -90,5 +97,6 @@ public class UiShell {
         this.bucketName = bucketName;
         this.bucketRegion = bucketRegion;
         this.deploymentServiceId = deploymentServiceId;
+        this.designSystem = designSystem;
     }
 }

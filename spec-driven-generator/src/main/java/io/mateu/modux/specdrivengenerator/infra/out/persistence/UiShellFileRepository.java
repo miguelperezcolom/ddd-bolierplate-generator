@@ -3,6 +3,7 @@ package io.mateu.modux.specdrivengenerator.infra.out.persistence;
 import io.mateu.modux.specdrivengenerator.application.out.repositories.UiShellRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.UiShell;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellId;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDesignSystem;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiShellEntity;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,8 @@ public class UiShellFileRepository implements UiShellRepository {
                         entity.bucketProvider(),
                         entity.bucketName(),
                         entity.bucketRegion(),
-                        entity.deploymentServiceId()));
+                        entity.deploymentServiceId(),
+                        entity.designSystem()));
     }
 
     @Override
@@ -51,7 +53,8 @@ public class UiShellFileRepository implements UiShellRepository {
                 entity.getBucketProvider(),
                 entity.getBucketName(),
                 entity.getBucketRegion(),
-                entity.getDeploymentServiceId()));
+                entity.getDeploymentServiceId(),
+                entity.getDesignSystem() != null ? entity.getDesignSystem().name() : null));
         return entity;
     }
 

@@ -17,6 +17,7 @@ public record UiShellEntity(
         String bucketProvider,
         String bucketName,
         String bucketRegion,
-        String deploymentServiceId
+        String deploymentServiceId,
+        String designSystem
 ) implements Identifiable {
 }

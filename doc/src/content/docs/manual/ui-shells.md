@@ -20,8 +20,25 @@ A **UI Shell** represents a deployable frontend application. It bundles one or m
 | **Name** | Shell name (PascalCase, e.g. `AdminShell`) |
 | **Title** | Application title shown in the browser tab |
 | **App variant** | Default navigation variant for the shell (overridden per adapter) |
+| **Design system** | UI component library to use (see below) |
 | **Services** | Services whose UI adapters are bundled into this shell |
 | **URL** | Public URL where the shell will be served (e.g. `https://app.example.com`) |
+
+### Design systems
+
+Mateu supports multiple frontend design systems. Choosing one determines which component library is included as a Maven dependency in the generated project.
+
+| Value | Library | Notes |
+|---|---|---|
+| **VAADIN** | [Vaadin](https://vaadin.com) | Clean and simple; the original Mateu frontend |
+| **SAP_FIORI** | [SAP Fiori](https://experience.sap.com/fiori-design-web/) | Enterprise look; requires a valid SAP license for Fiori components |
+| **SAP_UI5** | [SAP UI5](https://openui5.org) | Open-source alternative to SAP Fiori; no license required |
+| **RED_HAT** | [Red Hat Design System](https://ux.redhat.com) | Good balance of clarity and aesthetics |
+| **ORACLE_REDWOOD** | [Oracle Redwood](https://www.oracle.com/webfolder/ux/middleware/alta/index.html) | Modern Oracle design language |
+| **SALESFORCE_SLDS** | [Salesforce Lightning (SLDS)](https://www.lightningdesignsystem.com) | Integrates with existing Salesforce UIs |
+| **CUSTOM** | Bring your own | Use a custom component library |
+
+All frontends are implemented as web components, so any shell can be embedded in an existing enterprise portal regardless of the design system chosen.
 
 ### Deployment type
 

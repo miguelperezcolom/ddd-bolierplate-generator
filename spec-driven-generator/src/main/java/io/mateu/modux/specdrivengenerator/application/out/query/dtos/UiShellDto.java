@@ -15,7 +15,8 @@ public record UiShellDto(
         String bucketProvider,
         String bucketName,
         String bucketRegion,
-        String deploymentServiceId
+        String deploymentServiceId,
+        String designSystem
 ) {
     public UiShellDto {
         if (serviceIds == null) serviceIds = List.of();

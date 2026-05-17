@@ -8,6 +8,7 @@ import io.mateu.modux.specdrivengenerator.application.usecases.uishell.create.Cr
 import io.mateu.modux.specdrivengenerator.application.usecases.uishell.save.SaveUiShellCommand;
 import io.mateu.modux.specdrivengenerator.application.usecases.uishell.save.SaveUiShellUseCase;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDeploymentType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.uishell.vo.UiShellDesignSystem;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -45,6 +46,8 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
 
     String url;
 
+    UiShellDesignSystem designSystem;
+
     UiShellDeploymentType deploymentType;
 
     @Hidden("state['deploymentType'] != 'CDN'")
@@ -76,7 +79,7 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
                 url, deploymentType,
                 cdnProvider, cdnSiteId,
                 bucketProvider, bucketName, bucketRegion,
-                deploymentServiceId));
+                deploymentServiceId, designSystem));
         return id;
     }
 
@@ -87,7 +90,7 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
                 url, deploymentType,
                 cdnProvider, cdnSiteId,
                 bucketProvider, bucketName, bucketRegion,
-                deploymentServiceId));
+                deploymentServiceId, designSystem));
     }
 
     @Override
@@ -102,6 +105,8 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
         appVariant = model.appVariant();
         serviceIds = model.serviceIds();
         url = model.url();
+        designSystem = model.designSystem() != null
+                ? UiShellDesignSystem.valueOf(model.designSystem()) : null;
         deploymentType = model.deploymentType() != null
                 ? UiShellDeploymentType.valueOf(model.deploymentType()) : null;
         cdnProvider = model.cdnProvider();
