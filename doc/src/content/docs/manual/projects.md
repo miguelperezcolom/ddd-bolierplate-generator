@@ -25,12 +25,52 @@ A **Project** is the top-level container for your entire system. It holds global
 
 ### Environments
 
-You can define multiple environments (e.g. `local`, `dev`, `prod`). Each environment can override:
+You can define one entry per environment (`DEV`, `STAGING`, `PROD`). Each entry holds all the environment-specific connection values while provider and type choices (IAM provider, cache type, etc.) remain global at the project level.
 
-- Database connection settings
-- Kafka broker addresses
-- External service URLs
-- Secrets and credentials
+| Field | Description |
+|---|---|
+| **Environment** | `DEV`, `STAGING`, or `PROD` |
+| **Kubernetes cluster URL** | API server URL for the target cluster |
+| **Kubernetes namespace** | Namespace where the service is deployed |
+| **Kubernetes context** | kubectl context name |
+| **Kubernetes token** | Service account token |
+| **Kubernetes certificate authority data** | Base64-encoded CA certificate |
+| **Terraform backend bucket** | S3/GCS bucket for remote state |
+| **Terraform backend region** | Region of the state bucket |
+| **Terraform backend key** | State file key/path |
+| **Terraform workspace** | Workspace name (e.g. `dev`, `prod`) |
+| **IAM server URL** | Identity provider base URL |
+| **IAM realm** | Realm / tenant identifier |
+| **IAM client ID** | OAuth2 client ID |
+| **IAM client secret** | OAuth2 client secret |
+| **IAM audience** | JWT audience claim |
+| **Message broker URL** | Kafka / RabbitMQ bootstrap address |
+| **Message broker username** | Broker username |
+| **Message broker password** | Broker password |
+| **Tracing endpoint** | OTLP / Jaeger / Zipkin endpoint |
+| **Metrics endpoint** | Prometheus / OTLP metrics endpoint |
+| **Logging endpoint** | Log aggregation endpoint (Loki, Splunk, etc.) |
+| **LLM API URL** | Base URL for the LLM provider |
+| **LLM API key** | API key for the LLM provider |
+| **LLM model** | Model identifier (e.g. `gpt-4o`) |
+| **Cache URL** | Redis / Hazelcast connection URL |
+| **Cache username** | Cache username |
+| **Cache password** | Cache password |
+| **File storage bucket** | S3/GCS/Azure blob bucket name |
+| **File storage region** | Region of the bucket |
+| **File storage access key** | Access key ID |
+| **File storage secret key** | Secret access key |
+| **File storage endpoint** | Custom endpoint (for MinIO, Cloudflare R2, etc.) |
+| **Email host** | SMTP host |
+| **Email port** | SMTP port |
+| **Email username** | SMTP username |
+| **Email password** | SMTP password |
+| **Email from** | Default sender address |
+| **Secrets endpoint** | Vault / AWS Secrets Manager endpoint |
+| **Secrets token** | Authentication token for the secrets backend |
+| **Ingress domain** | Public domain for ingress rules |
+| **Ingress TLS enabled** | Whether TLS termination is configured |
+| **Ingress class name** | Ingress controller class (e.g. `nginx`) |
 
 ### Infrastructure
 
