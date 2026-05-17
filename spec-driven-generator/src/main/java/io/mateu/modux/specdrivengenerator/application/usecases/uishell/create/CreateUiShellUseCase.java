@@ -19,7 +19,15 @@ public class CreateUiShellUseCase {
                 new UiShellName(command.name()),
                 command.title(),
                 command.appVariant(),
-                command.serviceIds());
+                command.serviceIds(),
+                command.url(),
+                command.deploymentType(),
+                command.cdnProvider(),
+                command.cdnSiteId(),
+                command.bucketProvider(),
+                command.bucketName(),
+                command.bucketRegion(),
+                command.deploymentServiceId());
         repository.save(uiShell);
     }
 }

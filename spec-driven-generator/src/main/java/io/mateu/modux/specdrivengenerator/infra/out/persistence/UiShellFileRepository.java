@@ -25,7 +25,15 @@ public class UiShellFileRepository implements UiShellRepository {
                         entity.name(),
                         entity.title(),
                         entity.appVariant(),
-                        entity.serviceIds()));
+                        entity.serviceIds(),
+                        entity.url(),
+                        entity.deploymentType(),
+                        entity.cdnProvider(),
+                        entity.cdnSiteId(),
+                        entity.bucketProvider(),
+                        entity.bucketName(),
+                        entity.bucketRegion(),
+                        entity.deploymentServiceId()));
     }
 
     @Override
@@ -35,7 +43,15 @@ public class UiShellFileRepository implements UiShellRepository {
                 entity.getName().name(),
                 entity.getTitle(),
                 entity.getAppVariant(),
-                entity.getServiceIds()));
+                entity.getServiceIds(),
+                entity.getUrl(),
+                entity.getDeploymentType() != null ? entity.getDeploymentType().name() : null,
+                entity.getCdnProvider(),
+                entity.getCdnSiteId(),
+                entity.getBucketProvider(),
+                entity.getBucketName(),
+                entity.getBucketRegion(),
+                entity.getDeploymentServiceId()));
         return entity;
     }
 

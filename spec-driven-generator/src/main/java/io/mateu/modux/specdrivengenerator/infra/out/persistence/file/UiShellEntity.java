@@ -9,6 +9,14 @@ public record UiShellEntity(
         String name,
         String title,
         String appVariant,
-        List<String> serviceIds
+        List<String> serviceIds,
+        String url,
+        String deploymentType,
+        String cdnProvider,
+        String cdnSiteId,
+        String bucketProvider,
+        String bucketName,
+        String bucketRegion,
+        String deploymentServiceId
 ) implements Identifiable {
 }

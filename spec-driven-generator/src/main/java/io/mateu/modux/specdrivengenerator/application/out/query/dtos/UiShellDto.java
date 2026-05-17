@@ -7,7 +7,15 @@ public record UiShellDto(
         String name,
         String title,
         String appVariant,
-        List<String> serviceIds
+        List<String> serviceIds,
+        String url,
+        String deploymentType,
+        String cdnProvider,
+        String cdnSiteId,
+        String bucketProvider,
+        String bucketName,
+        String bucketRegion,
+        String deploymentServiceId
 ) {
     public UiShellDto {
         if (serviceIds == null) serviceIds = List.of();
