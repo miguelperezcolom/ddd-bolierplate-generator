@@ -90,6 +90,7 @@ public class CommonFileRepository {
         data.pages().forEach(p -> store.put(p.id(), p));
         data.uiAdapters().forEach(p -> store.put(p.id(), p));
         data.uiShells().forEach(p -> store.put(p.id(), p));
+        data.components().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -115,6 +116,7 @@ public class CommonFileRepository {
         List<PageEntity> pages = store.values().stream().filter(v -> v instanceof PageEntity).map(v -> (PageEntity) v).toList();
         List<UiAdapterEntity> uiAdapters = store.values().stream().filter(v -> v instanceof UiAdapterEntity).map(v -> (UiAdapterEntity) v).toList();
         List<UiShellEntity> uiShells = store.values().stream().filter(v -> v instanceof UiShellEntity).map(v -> (UiShellEntity) v).toList();
+        List<ComponentEntity> components = store.values().stream().filter(v -> v instanceof ComponentEntity).map(v -> (ComponentEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -136,7 +138,8 @@ public class CommonFileRepository {
                 roles,
                 pages,
                 uiAdapters,
-                uiShells
+                uiShells,
+                components
         );
         YAMLMapper yamlMapper = new YAMLMapper();
         yamlMapper.writeValue(Path.of(".dev/data/spec-driven-store.yaml").toFile(), data);

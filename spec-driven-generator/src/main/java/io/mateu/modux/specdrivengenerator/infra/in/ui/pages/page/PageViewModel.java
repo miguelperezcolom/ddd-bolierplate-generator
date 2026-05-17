@@ -9,6 +9,8 @@ import io.mateu.modux.specdrivengenerator.application.usecases.page.save.SavePag
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ComponentIdLabelSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ComponentIdOptionsSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -22,6 +24,8 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Scope("prototype")
@@ -47,18 +51,22 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String modelId;
 
+    @Hidden("state['type'] != 'DASHBOARD'")
+    @Lookup(search = ComponentIdOptionsSupplier.class, label = ComponentIdLabelSupplier.class)
+    List<String> componentIds;
+
     final CreatePageUseCase createUseCase;
     final SavePageUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId));
+        createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId, componentIds));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId));
+        saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId, componentIds));
     }
 
     @Override
@@ -73,6 +81,7 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         type = model.type();
         aggregateId = model.aggregateId();
         modelId = model.modelId();
+        componentIds = model.componentIds();
         return this;
     }
 

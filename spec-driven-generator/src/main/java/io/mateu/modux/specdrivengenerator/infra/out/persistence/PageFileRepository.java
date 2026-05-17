@@ -26,7 +26,8 @@ public class PageFileRepository implements PageRepository {
                         entity.route(),
                         entity.type(),
                         entity.aggregateId(),
-                        entity.modelId()));
+                        entity.modelId(),
+                        entity.componentIds()));
     }
 
     @Override
@@ -37,7 +38,8 @@ public class PageFileRepository implements PageRepository {
                 entity.getRoute(),
                 entity.getType() != null ? entity.getType().name() : null,
                 entity.getAggregateId(),
-                entity.getModelId()));
+                entity.getModelId(),
+                entity.getComponentIds()));
         return entity;
     }
 

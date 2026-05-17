@@ -51,6 +51,7 @@ public class PageFileQueryService implements PageQueryService {
                         entity.route(),
                         entity.type() != null ? PageType.valueOf(entity.type()) : null,
                         entity.aggregateId(),
-                        entity.modelId()));
+                        entity.modelId(),
+                        entity.componentIds()));
     }
 }

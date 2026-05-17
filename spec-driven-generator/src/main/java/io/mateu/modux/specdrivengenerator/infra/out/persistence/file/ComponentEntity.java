@@ -2,15 +2,12 @@ package io.mateu.modux.specdrivengenerator.infra.out.persistence.file;
 
 import io.mateu.uidl.interfaces.Identifiable;
 
-import java.util.List;
-
-public record PageEntity(
+public record ComponentEntity(
         String id,
         String name,
-        String route,
-        String type,
-        String aggregateId,
-        String modelId,
-        List<String> componentIds
+        String dataSourceType,
+        String queryServiceId,
+        String gatewayId,
+        String presentationType
 ) implements Identifiable {
 }

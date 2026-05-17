@@ -19,7 +19,8 @@ public class SavePageUseCase {
                 command.route(),
                 command.type(),
                 command.aggregateId(),
-                command.modelId());
+                command.modelId(),
+                command.componentIds());
         repository.save(page);
     }
 }

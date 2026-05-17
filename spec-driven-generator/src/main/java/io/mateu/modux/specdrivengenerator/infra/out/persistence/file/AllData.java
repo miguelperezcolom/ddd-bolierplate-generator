@@ -23,7 +23,8 @@ public record AllData(
         List<RoleEntity> roles,
         List<PageEntity> pages,
         List<UiAdapterEntity> uiAdapters,
-        List<UiShellEntity> uiShells
+        List<UiShellEntity> uiShells,
+        List<ComponentEntity> components
         ) {
 
     public AllData {
@@ -48,5 +49,6 @@ public record AllData(
         pages = pages != null ? pages : List.of();
         uiAdapters = uiAdapters != null ? uiAdapters : List.of();
         uiShells = uiShells != null ? uiShells : List.of();
+        components = components != null ? components : List.of();
     }
 }
