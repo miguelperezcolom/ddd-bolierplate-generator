@@ -11,8 +11,7 @@ The generated code follows **Hexagonal Architecture** (also known as Ports & Ada
 
 - **Domain layer** — aggregate roots, entities, value objects, domain events
 - **Application layer** — use cases, query services, DTOs
-- **Infrastructure layer** — JPA persistence, Spring Data repositories, messaging
-- **UI layer** — auto-generated CRUD pages
+- **Infrastructure layer** — outbound adapters (JPA persistence, messaging, external gateways) and inbound adapters (auto-generated UI pages, REST controllers)
 
 ## Why Modux?
 
