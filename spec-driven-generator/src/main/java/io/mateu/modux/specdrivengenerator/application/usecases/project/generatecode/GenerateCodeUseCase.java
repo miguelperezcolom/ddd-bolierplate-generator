@@ -14,6 +14,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelMappin
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectionEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -55,6 +56,9 @@ public class GenerateCodeUseCase {
         project.serviceIds().stream()
                 .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
                 .forEach(service -> generateService(project, service));
+
+        // Docker Compose at project root (monorepo) or service root (single-service)
+        generateDockerCompose(project);
     }
 
     // ─── Root pom (monorepo) ──────────────────────────────────────────────────
@@ -170,6 +174,13 @@ public class GenerateCodeUseCase {
             module.projectionIds().stream()
                     .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
                     .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
+        }
+
+        // Read models
+        if (module.readModelIds() != null) {
+            module.readModelIds().stream()
+                    .map(id -> repository.findById(id, ReadModelEntity.class).orElseThrow())
+                    .forEach(readModel -> generateReadModel(project, service, module, moduleDir, modulePackageDir, readModel));
         }
     }
 
@@ -357,6 +368,13 @@ public class GenerateCodeUseCase {
                     "src/main/java/" + modulePackageDir + "/infra/in/rest/"
                             + capitalize(useCase.name()) + "Controller.java");
         }
+
+        if (useCase.exposedAsAsync()) {
+            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/async");
+            createFile(moduleDir, model, "usecase-async-consumer.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/in/async/"
+                            + capitalize(useCase.name()) + "Consumer.java");
+        }
     }
 
     private Map<String, Object> enrichUseCaseMap(UseCaseEntity useCase) {
@@ -443,6 +461,32 @@ public class GenerateCodeUseCase {
         }
         map.put("steps", enrichedSteps);
         return map;
+    }
+
+    // ─── Read Models ──────────────────────────────────────────────────────────
+
+    private void generateReadModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                   String moduleDir, String modulePackageDir, ReadModelEntity readModel) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/readmodels");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("readModel", fromJson(toJson(readModel)));
+        if (readModel.modelId() != null && !readModel.modelId().isBlank()) {
+            var modelEntity = repository.findById(readModel.modelId(), ModelEntity.class).orElse(null);
+            model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
+        }
+
+        createFile(moduleDir, model, "read-model.ftl",
+                "src/main/java/" + modulePackageDir + "/domain/readmodels/"
+                        + capitalize(readModel.name()) + "ReadModel.java");
+    }
+
+    // ─── Docker Compose ───────────────────────────────────────────────────────
+
+    private void generateDockerCompose(ProjectEntity project) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
     }
 
     // ─── Projections ──────────────────────────────────────────────────────────
