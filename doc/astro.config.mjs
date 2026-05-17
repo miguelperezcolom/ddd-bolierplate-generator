@@ -20,6 +20,7 @@ export default defineConfig({
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'Quick Start', slug: 'getting-started/quick-start' },
 						{ label: 'Editing the Spec File', slug: 'getting-started/yaml-editing' },
+						{ label: 'CI/CD Integration', slug: 'getting-started/cicd' },
 					],
 				},
 				{
