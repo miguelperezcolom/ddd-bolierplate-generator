@@ -3,7 +3,7 @@ title: UI Adapters
 description: Defining the navigation structure of a frontend application in Modux
 ---
 
-A **UI Adapter** defines the navigation structure of a frontend application for a specific service. It specifies the menu layout, the top-level title, and the set of menu items that link to [Pages](/manual/pages/).
+A **UI Adapter** defines the navigation structure of a frontend application for a specific service. Like [Pages](/manual/pages/), it is an **inbound infrastructure adapter** — it wires the user-facing shell to the application's use cases through its menu items and routes.
 
 One service can have multiple UI adapters, for example to provide different navigation trees for different user roles or devices.
 

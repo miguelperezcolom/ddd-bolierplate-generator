@@ -3,7 +3,7 @@ title: Pages
 description: Defining UI screens in Modux
 ---
 
-A **Page** is the fundamental unit of UI in Modux. Each page has a route and a type that determines what it renders and what extra configuration it accepts.
+A **Page** is the fundamental unit of UI in Modux. In hexagonal architecture terms it is an **inbound (driving) adapter**: it lives in the infrastructure layer and drives the application through use cases, exactly as an HTTP controller would. Each page has a route and a type that determines what it renders and what extra configuration it accepts.
 
 ## Page types
 

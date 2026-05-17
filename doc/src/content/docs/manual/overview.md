@@ -10,24 +10,23 @@ Modux organises your system as a hierarchy of concepts:
 ```
 Project
 └── Service (microservice)
-    ├── Module (bounded context)
-    │   ├── Aggregate
-    │   │   ├── Entity
-    │   │   ├── Value Object
-    │   │   ├── Operation
-    │   │   └── Domain Event
-    │   ├── Saga
-    │   ├── Projection / Read Model
-    │   ├── Gateway
-    │   ├── Subscription
-    │   ├── Scheduled Trigger
-    │   └── Role
-    └── UI
-        ├── Page (CRUD / FORM / DASHBOARD / WIZARD)
-        ├── Component (chart, list, card)
-        ├── UI Adapter (navigation structure)
-        └── UI Shell (deployment target)
+    └── Module (bounded context)
+        ├── Aggregate
+        │   ├── Entity
+        │   ├── Value Object
+        │   ├── Operation
+        │   └── Domain Event
+        ├── Saga
+        ├── Projection / Read Model
+        ├── Subscription
+        ├── Scheduled Trigger
+        ├── Role
+        └── Infrastructure adapters
+            ├── Outbound: Gateway
+            └── Inbound (UI): Page, Component, UI Adapter, UI Shell
 ```
+
+In hexagonal architecture the UI is an **inbound (driving) adapter** — it sits in the infrastructure layer alongside outbound adapters like Gateways. Pages, Components, UI Adapters and UI Shells are simply the inbound side of that same adapter layer.
 
 Each level has its own configuration and generates its own code artefacts.
 
@@ -41,8 +40,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 | **Domain Model** | Modules, Aggregates, Entities, Value Objects |
 | **Behaviour** | Operations, Use Cases |
 | **Async** | Domain Events, Sagas, Projections, Subscriptions, Scheduled Triggers |
-| **Interfaces** | Gateways, Read Models |
-| **UI** | Pages, Components, UI Adapters, UI Shells |
+| **Interfaces** | Gateways (outbound), Read Models, Pages, Components, UI Adapters, UI Shells (inbound) |
 | **Security** | Roles |
 
 ## Typical workflow
