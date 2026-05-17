@@ -25,7 +25,8 @@ public record AllData(
         List<PageEntity> pages,
         List<UiAdapterEntity> uiAdapters,
         List<UiShellEntity> uiShells,
-        List<ComponentEntity> components
+        List<ComponentEntity> components,
+        List<BddScenarioEntity> bddScenarios
         ) {
 
     public AllData {
@@ -52,5 +53,6 @@ public record AllData(
         uiAdapters = uiAdapters != null ? uiAdapters : List.of();
         uiShells = uiShells != null ? uiShells : List.of();
         components = components != null ? components : List.of();
+        bddScenarios = bddScenarios != null ? bddScenarios : List.of();
     }
 }
