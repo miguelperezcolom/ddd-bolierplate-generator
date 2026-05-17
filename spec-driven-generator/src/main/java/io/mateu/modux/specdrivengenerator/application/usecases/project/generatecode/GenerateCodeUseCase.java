@@ -154,6 +154,12 @@ public class GenerateCodeUseCase {
         createDir(moduleDir, "src/test/java");
         createDir(moduleDir, "src/test/resources");
 
+        // E2E base class (once per module)
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/e2e");
+        Map<String, Object> e2eBaseModel = buildBaseModel(project, service, module);
+        createFile(moduleDir, e2eBaseModel, "e2e-base.ftl",
+                "src/test/java/" + modulePackageDir + "/e2e/BaseE2ETest.java");
+
         module.aggregateIds().stream()
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
@@ -422,6 +428,10 @@ public class GenerateCodeUseCase {
         createDir(moduleDir, "src/test/resources/features/" + moduleSlug(module.name()));
         createFile(moduleDir, project, service, module, aggregate, "bdd-feature.ftl",
                 "src/test/resources/features/" + moduleSlug(module.name()) + "/" + aggregate.name() + ".feature");
+
+        // E2E test
+        createFile(moduleDir, project, service, module, aggregate, "e2e-aggregate.ftl",
+                "src/test/java/" + modulePackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
     }
 
     // ─── Use Cases ────────────────────────────────────────────────────────────

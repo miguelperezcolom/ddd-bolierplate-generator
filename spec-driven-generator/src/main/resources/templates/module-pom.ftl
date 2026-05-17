@@ -12,6 +12,7 @@
     <properties>
         <java.version>21</java.version>
         <cucumber.version>7.20.0</cucumber.version>
+        <playwright.version>1.49.0</playwright.version>
     </properties>
     <dependencies>
         <dependency>
@@ -62,6 +63,12 @@
             <version>${r"${cucumber.version}"}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${r"${playwright.version}"}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -80,6 +87,13 @@
                             <version>0.0.1-MATEU</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>e2e</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>
