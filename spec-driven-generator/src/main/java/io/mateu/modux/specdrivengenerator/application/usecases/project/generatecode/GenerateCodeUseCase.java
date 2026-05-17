@@ -6,9 +6,20 @@ import io.mateu.modux.specdrivengenerator.application.out.query.dtos.OperationDt
 import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.DomainEventEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.GatewayEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectionEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SubscriptionEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +85,13 @@ public class GenerateCodeUseCase {
                 .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
                 .forEach(module -> generateModule(project, service, serviceDir, module));
 
+        // generate gateways (outbound adapters at service level)
+        if (service.gatewayIds() != null) {
+            service.gatewayIds().stream()
+                    .map(id -> repository.findById(id, GatewayEntity.class).orElseThrow())
+                    .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
+        }
+
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
     }
@@ -111,6 +129,48 @@ public class GenerateCodeUseCase {
         module.aggregateIds().stream()
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
+
+        // Domain events
+        if (module.domainEventIds() != null) {
+            module.domainEventIds().stream()
+                    .map(id -> repository.findById(id, DomainEventEntity.class).orElseThrow())
+                    .forEach(event -> generateDomainEvent(project, service, module, moduleDir, modulePackageDir, event));
+        }
+
+        // Subscriptions
+        if (module.subscriptionIds() != null) {
+            module.subscriptionIds().stream()
+                    .map(id -> repository.findById(id, SubscriptionEntity.class).orElseThrow())
+                    .forEach(subscription -> generateSubscription(project, service, module, moduleDir, modulePackageDir, subscription));
+        }
+
+        // Scheduled triggers
+        if (module.scheduledTriggerIds() != null) {
+            module.scheduledTriggerIds().stream()
+                    .map(id -> repository.findById(id, ScheduledTriggerEntity.class).orElseThrow())
+                    .forEach(trigger -> generateScheduledTrigger(project, service, module, moduleDir, modulePackageDir, trigger));
+        }
+
+        // Use cases
+        if (module.useCaseIds() != null) {
+            module.useCaseIds().stream()
+                    .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                    .forEach(useCase -> generateUseCase(project, service, module, moduleDir, modulePackageDir, useCase));
+        }
+
+        // Sagas
+        if (module.sagaIds() != null) {
+            module.sagaIds().stream()
+                    .map(id -> repository.findById(id, SagaEntity.class).orElseThrow())
+                    .forEach(saga -> generateSaga(project, service, module, moduleDir, modulePackageDir, saga));
+        }
+
+        // Projections
+        if (module.projectionIds() != null) {
+            module.projectionIds().stream()
+                    .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
+                    .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
+        }
     }
 
     // ─── Service app ─────────────────────────────────────────────────────────
@@ -270,6 +330,244 @@ public class GenerateCodeUseCase {
                         + aggregate.name() + "IdLabelSupplier.java");
     }
 
+    // ─── Use Cases ────────────────────────────────────────────────────────────
+
+    private void generateUseCase(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                 String moduleDir, String modulePackageDir, UseCaseEntity useCase) {
+        var ucSlug = useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug);
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("usecase", enrichUseCaseMap(useCase));
+        if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
+            var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
+            model.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
+        }
+
+        createFile(moduleDir, model, "usecase-command.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+                        + "/" + capitalize(useCase.name()) + "Command.java");
+        createFile(moduleDir, model, "usecase.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+                        + "/" + capitalize(useCase.name()) + "UseCase.java");
+
+        if (useCase.exposedAsRest()) {
+            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/rest");
+            createFile(moduleDir, model, "usecase-rest-controller.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/in/rest/"
+                            + capitalize(useCase.name()) + "Controller.java");
+        }
+    }
+
+    private Map<String, Object> enrichUseCaseMap(UseCaseEntity useCase) {
+        var map = new HashMap<String, Object>();
+        map.putAll(fromJson(toJson(useCase)));
+
+        var enrichedSteps = new java.util.ArrayList<>();
+        var needsStreamBridge = false;
+
+        if (useCase.steps() != null) {
+            for (var step : useCase.steps()) {
+                var stepMap = enrichStep(step.id(), step.name(),
+                        step.type() != null ? step.type().name() : "Custom",
+                        step.aggregateId(), step.operationId(),
+                        step.gatewayId(), step.gatewayOperationId(),
+                        step.domainEventId(), step.useCaseId(), step.modelMappingId());
+                enrichedSteps.add(stepMap);
+                if ("PublishDomainEvent".equals(stepMap.get("type"))) {
+                    needsStreamBridge = true;
+                }
+            }
+        }
+
+        map.put("steps", enrichedSteps);
+        map.put("needsStreamBridge", needsStreamBridge);
+        return map;
+    }
+
+    // ─── Gateways ─────────────────────────────────────────────────────────────
+
+    private void generateGateway(ProjectEntity project, ServiceEntity service, String serviceDir, GatewayEntity gateway) {
+        // Gateways are module-agnostic at service level; we place them in the first module or a shared location.
+        // For now we generate them relative to serviceDir in a shared infra area.
+        // Find the first module to determine the package dir.
+        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
+        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
+        if (firstModule == null) return;
+        var moduleSlug = moduleSlug(firstModule.name());
+        var moduleDir = serviceDir + "/" + moduleSlug;
+        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
+
+        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        model.put("gateway", fromJson(toJson(gateway)));
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/gateway");
+
+        createFile(moduleDir, model, "gateway.ftl",
+                "src/main/java/" + modulePackageDir + "/application/out/"
+                        + capitalize(gateway.name()) + "Gateway.java");
+        createFile(moduleDir, model, "gateway-impl.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/gateway/"
+                        + capitalize(gateway.name()) + "GatewayImpl.java");
+    }
+
+    // ─── Sagas ────────────────────────────────────────────────────────────────
+
+    private void generateSaga(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                              String moduleDir, String modulePackageDir, SagaEntity saga) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/sagas");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("saga", enrichSagaMap(saga));
+
+        createFile(moduleDir, model, "saga.ftl",
+                "src/main/java/" + modulePackageDir + "/application/sagas/"
+                        + capitalize(saga.name()) + "Saga.java");
+    }
+
+    private Map<String, Object> enrichSagaMap(SagaEntity saga) {
+        var map = new HashMap<String, Object>();
+        map.putAll(fromJson(toJson(saga)));
+
+        var enrichedSteps = new java.util.ArrayList<>();
+        if (saga.steps() != null) {
+            for (var step : saga.steps()) {
+                var stepMap = enrichStep(step.id(), step.name(),
+                        step.type() != null ? step.type().name() : "Custom",
+                        step.aggregateId(), step.operationId(),
+                        step.gatewayId(), step.gatewayOperationId(),
+                        step.domainEventId(), step.useCaseId(), step.modelMappingId());
+                enrichedSteps.add(stepMap);
+            }
+        }
+        map.put("steps", enrichedSteps);
+        return map;
+    }
+
+    // ─── Projections ──────────────────────────────────────────────────────────
+
+    private void generateProjection(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                    String moduleDir, String modulePackageDir, ProjectionEntity projection) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/projection");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("projection", fromJson(toJson(projection)));
+
+        createFile(moduleDir, model, "projection.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/projection/"
+                        + capitalize(projection.name()) + "Projection.java");
+    }
+
+    // ─── Shared step enrichment ───────────────────────────────────────────────
+
+    private Map<String, Object> enrichStep(String id, String name, String type,
+                                           String aggregateId, String operationId,
+                                           String gatewayId, String gatewayOperationId,
+                                           String domainEventId, String useCaseId, String modelMappingId) {
+        var stepMap = new HashMap<String, Object>();
+        stepMap.put("id", id);
+        stepMap.put("name", name);
+        stepMap.put("type", type);
+
+        switch (type) {
+            case "ReadAggregate", "CallAggregateOperation", "SaveAggregate" -> {
+                if (aggregateId != null) {
+                    var agg = repository.findById(aggregateId, AggregateEntity.class).orElse(null);
+                    if (agg != null) {
+                        stepMap.put("aggregate", fromJson(toJson(agg)));
+                        if ("CallAggregateOperation".equals(type) && operationId != null && agg.operations() != null) {
+                            agg.operations().stream()
+                                    .filter(op -> op.id().equals(operationId))
+                                    .findFirst()
+                                    .ifPresent(op -> stepMap.put("operation", fromJson(toJson(op))));
+                        }
+                    }
+                }
+            }
+            case "CallGateway" -> {
+                if (gatewayId != null) {
+                    var gw = repository.findById(gatewayId, GatewayEntity.class).orElse(null);
+                    if (gw != null) {
+                        stepMap.put("gateway", fromJson(toJson(gw)));
+                        if (gatewayOperationId != null && gw.operations() != null) {
+                            gw.operations().stream()
+                                    .filter(op -> op.id().equals(gatewayOperationId))
+                                    .findFirst()
+                                    .ifPresent(op -> stepMap.put("gatewayOperation", fromJson(toJson(op))));
+                        }
+                    }
+                }
+            }
+            case "PublishDomainEvent" -> {
+                if (domainEventId != null) {
+                    var event = repository.findById(domainEventId, DomainEventEntity.class).orElse(null);
+                    if (event != null) stepMap.put("domainEvent", fromJson(toJson(event)));
+                }
+            }
+            case "CallUseCase" -> {
+                if (useCaseId != null) {
+                    var calledUC = repository.findById(useCaseId, UseCaseEntity.class).orElse(null);
+                    if (calledUC != null) stepMap.put("useCase", fromJson(toJson(calledUC)));
+                }
+            }
+            case "ApplyModelMapping" -> {
+                if (modelMappingId != null) {
+                    var mapping = repository.findById(modelMappingId, ModelMappingEntity.class).orElse(null);
+                    if (mapping != null) stepMap.put("modelMapping", fromJson(toJson(mapping)));
+                }
+            }
+        }
+        return stepMap;
+    }
+
+    // ─── Domain events / Subscriptions / Scheduled triggers ──────────────────
+
+    private Map<String, Object> buildBaseModel(ProjectEntity project, ServiceEntity service, ModuleEntity module) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("module", moduleToMap(module));
+        return model;
+    }
+
+    private void generateDomainEvent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                     String moduleDir, String modulePackageDir, DomainEventEntity event) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/events");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        if (event.modelId() != null && !event.modelId().isBlank()) {
+            var modelEntity = repository.findById(event.modelId(), ModelEntity.class).orElse(null);
+            model.put("eventModel", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
+        }
+        model.put("event", fromJson(toJson(event)));
+
+        createFile(moduleDir, model, "domain-event.ftl",
+                "src/main/java/" + modulePackageDir + "/domain/events/" + event.name() + "Event.java");
+    }
+
+    private void generateSubscription(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                      String moduleDir, String modulePackageDir, SubscriptionEntity subscription) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/async");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("subscription", fromJson(toJson(subscription)));
+
+        createFile(moduleDir, model, "subscription.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/async/" + capitalize(subscription.name()) + "Subscription.java");
+    }
+
+    private void generateScheduledTrigger(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                          String moduleDir, String modulePackageDir, ScheduledTriggerEntity trigger) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/scheduler");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("trigger", fromJson(toJson(trigger)));
+
+        createFile(moduleDir, model, "scheduled-trigger.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/scheduler/" + capitalize(trigger.name()) + "Scheduler.java");
+    }
+
     // ─── createFile overloads ─────────────────────────────────────────────────
 
     @SneakyThrows
@@ -317,6 +615,7 @@ public class GenerateCodeUseCase {
                 .toList();
 
         map.put("aggregates", aggregates);
+        map.put("slug", moduleSlug(module.name()));
         return map;
     }
 
