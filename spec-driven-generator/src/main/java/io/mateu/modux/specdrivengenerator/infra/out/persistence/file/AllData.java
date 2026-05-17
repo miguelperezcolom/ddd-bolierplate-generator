@@ -20,7 +20,10 @@ public record AllData(
         List<SubscriptionEntity> subscriptions,
         List<ScheduledTriggerEntity> scheduledTriggers,
         List<ReadModelEntity> readModels,
-        List<RoleEntity> roles
+        List<RoleEntity> roles,
+        List<PageEntity> pages,
+        List<UiAdapterEntity> uiAdapters,
+        List<UiShellEntity> uiShells
         ) {
 
     public AllData {
@@ -42,5 +45,8 @@ public record AllData(
         scheduledTriggers = scheduledTriggers != null ? scheduledTriggers : List.of();
         readModels = readModels != null ? readModels : List.of();
         roles = roles != null ? roles : List.of();
+        pages = pages != null ? pages : List.of();
+        uiAdapters = uiAdapters != null ? uiAdapters : List.of();
+        uiShells = uiShells != null ? uiShells : List.of();
     }
 }

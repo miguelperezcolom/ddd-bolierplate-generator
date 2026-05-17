@@ -87,6 +87,9 @@ public class CommonFileRepository {
         data.scheduledTriggers().forEach(p -> store.put(p.id(), p));
         data.readModels().forEach(p -> store.put(p.id(), p));
         data.roles().forEach(p -> store.put(p.id(), p));
+        data.pages().forEach(p -> store.put(p.id(), p));
+        data.uiAdapters().forEach(p -> store.put(p.id(), p));
+        data.uiShells().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -109,6 +112,9 @@ public class CommonFileRepository {
         List<ScheduledTriggerEntity> scheduledTriggers = store.values().stream().filter(v -> v instanceof ScheduledTriggerEntity).map(v -> (ScheduledTriggerEntity) v).toList();
         List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
         List<RoleEntity> roles = store.values().stream().filter(v -> v instanceof RoleEntity).map(v -> (RoleEntity) v).toList();
+        List<PageEntity> pages = store.values().stream().filter(v -> v instanceof PageEntity).map(v -> (PageEntity) v).toList();
+        List<UiAdapterEntity> uiAdapters = store.values().stream().filter(v -> v instanceof UiAdapterEntity).map(v -> (UiAdapterEntity) v).toList();
+        List<UiShellEntity> uiShells = store.values().stream().filter(v -> v instanceof UiShellEntity).map(v -> (UiShellEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -127,7 +133,10 @@ public class CommonFileRepository {
                 subscriptions,
                 scheduledTriggers,
                 readModels,
-                roles
+                roles,
+                pages,
+                uiAdapters,
+                uiShells
         );
         YAMLMapper yamlMapper = new YAMLMapper();
         yamlMapper.writeValue(Path.of(".dev/data/spec-driven-store.yaml").toFile(), data);
