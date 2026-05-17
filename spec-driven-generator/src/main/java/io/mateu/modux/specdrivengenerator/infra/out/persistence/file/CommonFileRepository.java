@@ -62,7 +62,8 @@ public class CommonFileRepository {
     @SneakyThrows
     @PostConstruct
     public void init() {
-        Path yamlPath = Path.of(".dev/data/spec-driven-store.yaml");
+        var specFile = System.getProperty("modux.spec-file", ".dev/data/spec-driven-store.yaml");
+        Path yamlPath = Path.of(specFile);
         Path jsonPath = Path.of(".dev/data/spec-driven-store.json");
         AllData data;
         if (Files.exists(yamlPath)) {
