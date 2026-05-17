@@ -1,5 +1,14 @@
 package io.mateu.modux.specdrivengenerator.infra.out.persistence.file;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.github.victools.jsonschema.generator.Option;
+import com.github.victools.jsonschema.generator.OptionPreset;
+import com.github.victools.jsonschema.generator.SchemaGenerator;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
+import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
@@ -47,9 +56,19 @@ public class CommonFileRepository {
     @SneakyThrows
     @PostConstruct
     public void init() {
-        log.info("spec store in {}", Path.of(".dev/data/spec-driven-store.json").toAbsolutePath());
-        String json = Files.readString(Path.of(".dev/data/spec-driven-store.json"));
-        AllData data = pojoFromJson(json, AllData.class);
+        Path yamlPath = Path.of(".dev/data/spec-driven-store.yaml");
+        Path jsonPath = Path.of(".dev/data/spec-driven-store.json");
+        AllData data;
+        if (Files.exists(yamlPath)) {
+            log.info("spec store in {}", yamlPath.toAbsolutePath());
+            YAMLMapper yamlMapper = new YAMLMapper();
+            data = yamlMapper.readValue(yamlPath.toFile(), AllData.class);
+        } else {
+            log.info("spec store in {}", jsonPath.toAbsolutePath());
+            String json = Files.readString(jsonPath);
+            data = pojoFromJson(json, AllData.class);
+        }
+        generateSchema();
         store.clear();
         data.projects().forEach(p -> store.put(p.id(), p));
         data.modules().forEach(p -> store.put(p.id(), p));
@@ -110,7 +129,24 @@ public class CommonFileRepository {
                 readModels,
                 roles
         );
-        Files.writeString(Path.of(".dev/data/spec-driven-store.json"), toJson(data));
+        YAMLMapper yamlMapper = new YAMLMapper();
+        yamlMapper.writeValue(Path.of(".dev/data/spec-driven-store.yaml").toFile(), data);
+    }
+
+    @SneakyThrows
+    private void generateSchema() {
+        SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
+                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
+                .with(new JacksonModule())
+                .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
+                .with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
+        SchemaGenerator generator = new SchemaGenerator(configBuilder.build());
+        JsonNode schema = generator.generateSchema(AllData.class);
+        String schemaJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
+        Path schemaPath = Path.of(".dev/data/spec-driven-store-schema.json");
+        Files.createDirectories(schemaPath.getParent());
+        Files.writeString(schemaPath, schemaJson);
+        log.info("JSON schema written to {}", schemaPath.toAbsolutePath());
     }
 
 }

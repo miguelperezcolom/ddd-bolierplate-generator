@@ -55,6 +55,56 @@ Aggregate operation
 
 If the **Outbox Pattern** is enabled on the service, events are written to an outbox table in the same transaction as the aggregate state change, and then published to Kafka by a background process. This guarantees at-least-once delivery without distributed transactions.
 
+## Integration events
+
+A domain event lives inside its bounded context. When you need to notify **other domains or external systems**, you can promote a domain event to an **integration event** — an event designed to cross domain boundaries.
+
+To mark a domain event as an integration event, enable the **Publish as integration event** toggle. This unlocks a set of additional fields that control how the event is published to the message broker.
+
+### Why separate domain events from integration events?
+
+Domain events are internal implementation details — they drive projections, sagas, and invariant checks within the same bounded context. Integration events are part of your public API: once published, other teams or services depend on their schema and semantics. Keeping them separate lets you:
+
+- Evolve the internal domain model without breaking external consumers.
+- Choose an explicit integration model (a dedicated DTO) that hides domain internals.
+- Apply different reliability settings (retries, DLQ) to cross-domain communication.
+
+### Integration event configuration
+
+| Field | Description |
+|---|---|
+| **Publish as integration event** | Enables publishing this event to the message broker for external consumers |
+| **Integration model** | DTO model used as the event payload. If different from the domain event's own model, a mapping is applied before publishing |
+| **Topic name** | Kafka topic where the event is published (e.g. `booking.confirmed`) |
+| **Partitions** | Number of Kafka partitions for the topic |
+| **Retention (ms)** | How long messages are kept in the topic |
+| **Serialization format** | Payload format: `JSON`, `AVRO`, or `PROTOBUF` |
+| **Compression type** | Message compression: `NONE`, `SNAPPY`, `LZ4`, or `ZSTD` |
+| **Dead letter queue** | Enable a DLQ to capture messages that fail to be processed |
+| **Dead letter queue name** | Name of the DLQ topic |
+| **Max delivery attempts** | Number of delivery retries before a message is sent to the DLQ |
+| **Schema version** | Explicit version tag for the integration event schema |
+| **Routing key field** | Event field used as the Kafka message key (controls partition routing) |
+| **Replayable** | Whether consumers can request a replay of past events from this topic |
+
+### Example
+
+```
+BookingConfirmed (domain event)
+    publishAsIntegrationEvent = true
+    integrationModel          = BookingConfirmedEvent   ← public DTO
+    topicName                 = booking.confirmed
+    partitions                = 3
+    serializationFormat       = JSON
+    deadLetterQueueEnabled    = true
+    deadLetterQueueName       = booking.confirmed.dlq
+    maxDeliveryAttempts       = 3
+    routingKeyField           = bookingId
+    replayable                = true
+```
+
+In this setup, when a `BookingConfirmed` domain event is raised, Modux maps it to the `BookingConfirmedEvent` DTO and publishes it to the `booking.confirmed` Kafka topic. Failed deliveries go to `booking.confirmed.dlq` after 3 attempts.
+
 ## Event versioning
 
 When you change an event's structure, increment the **version** field. Modux will generate separate classes for each version, allowing consumers to handle old and new event formats during migration.

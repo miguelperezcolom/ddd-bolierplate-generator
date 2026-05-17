@@ -39,19 +39,31 @@ public class DomainEventViewModel implements Identifiable, CrudEditorForm<String
 
     boolean publishAsIntegrationEvent;
 
+    @Hidden("!state['publishAsIntegrationEvent']")
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String integrationModelId;
 
+    @Hidden("!state['publishAsIntegrationEvent']")
     String topicName;
+    @Hidden("!state['publishAsIntegrationEvent']")
     Integer partitions;
+    @Hidden("!state['publishAsIntegrationEvent']")
     Long retentionMs;
+    @Hidden("!state['publishAsIntegrationEvent']")
     DomainEventSerializationFormat serializationFormat;
+    @Hidden("!state['publishAsIntegrationEvent']")
     DomainEventCompressionType compressionType;
+    @Hidden("!state['publishAsIntegrationEvent']")
     boolean deadLetterQueueEnabled;
+    @Hidden("!state['publishAsIntegrationEvent'] || !state['deadLetterQueueEnabled']")
     String deadLetterQueueName;
+    @Hidden("!state['publishAsIntegrationEvent'] || !state['deadLetterQueueEnabled']")
     Integer maxDeliveryAttempts;
+    @Hidden("!state['publishAsIntegrationEvent']")
     String schemaVersion;
+    @Hidden("!state['publishAsIntegrationEvent']")
     String routingKeyField;
+    @Hidden("!state['publishAsIntegrationEvent']")
     boolean replayable;
 
     final CreateDomainEventUseCase createUseCase;
