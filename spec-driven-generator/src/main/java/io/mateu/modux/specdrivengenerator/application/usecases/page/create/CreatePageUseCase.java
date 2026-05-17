@@ -21,7 +21,10 @@ public class CreatePageUseCase {
                 command.type(),
                 command.aggregateId(),
                 command.modelId(),
-                command.componentIds());
+                command.componentIds(),
+                command.listingDataSourceType(),
+                command.listingQueryServiceId(),
+                command.listingGatewayId());
         repository.save(page);
     }
 }

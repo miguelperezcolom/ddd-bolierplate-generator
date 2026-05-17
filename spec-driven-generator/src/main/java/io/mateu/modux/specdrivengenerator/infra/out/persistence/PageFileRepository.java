@@ -27,7 +27,10 @@ public class PageFileRepository implements PageRepository {
                         entity.type(),
                         entity.aggregateId(),
                         entity.modelId(),
-                        entity.componentIds()));
+                        entity.componentIds(),
+                        entity.listingDataSourceType(),
+                        entity.listingQueryServiceId(),
+                        entity.listingGatewayId()));
     }
 
     @Override
@@ -39,7 +42,10 @@ public class PageFileRepository implements PageRepository {
                 entity.getType() != null ? entity.getType().name() : null,
                 entity.getAggregateId(),
                 entity.getModelId(),
-                entity.getComponentIds()));
+                entity.getComponentIds(),
+                entity.getListingDataSourceType() != null ? entity.getListingDataSourceType().name() : null,
+                entity.getListingQueryServiceId(),
+                entity.getListingGatewayId()));
         return entity;
     }
 

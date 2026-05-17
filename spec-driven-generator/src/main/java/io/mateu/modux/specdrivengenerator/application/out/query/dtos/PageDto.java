@@ -11,7 +11,10 @@ public record PageDto(
         PageType type,
         String aggregateId,
         String modelId,
-        List<String> componentIds
+        List<String> componentIds,
+        String listingDataSourceType,
+        String listingQueryServiceId,
+        String listingGatewayId
 ) {
     public PageDto {
         if (componentIds == null) componentIds = List.of();

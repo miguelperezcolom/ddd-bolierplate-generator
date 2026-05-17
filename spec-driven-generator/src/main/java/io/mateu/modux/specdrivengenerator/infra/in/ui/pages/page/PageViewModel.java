@@ -7,12 +7,17 @@ import io.mateu.modux.specdrivengenerator.application.usecases.page.create.Creat
 import io.mateu.modux.specdrivengenerator.application.usecases.page.save.SavePageCommand;
 import io.mateu.modux.specdrivengenerator.application.usecases.page.save.SavePageUseCase;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageType;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ComponentIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ComponentIdOptionsSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.GatewayIdLabelSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -55,18 +60,31 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Lookup(search = ComponentIdOptionsSupplier.class, label = ComponentIdLabelSupplier.class)
     List<String> componentIds;
 
+    @Hidden("state['type'] != 'CRUD'")
+    PageListingDataSourceType listingDataSourceType;
+
+    @Hidden("state['type'] != 'CRUD' || state['listingDataSourceType'] != 'QUERY_SERVICE'")
+    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
+    String listingQueryServiceId;
+
+    @Hidden("state['type'] != 'CRUD' || state['listingDataSourceType'] != 'GATEWAY'")
+    @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
+    String listingGatewayId;
+
     final CreatePageUseCase createUseCase;
     final SavePageUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId, componentIds));
+        createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
+                listingDataSourceType, listingQueryServiceId, listingGatewayId));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId, componentIds));
+        saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
+                listingDataSourceType, listingQueryServiceId, listingGatewayId));
     }
 
     @Override
@@ -82,6 +100,10 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         aggregateId = model.aggregateId();
         modelId = model.modelId();
         componentIds = model.componentIds();
+        listingDataSourceType = model.listingDataSourceType() != null
+                ? PageListingDataSourceType.valueOf(model.listingDataSourceType()) : null;
+        listingQueryServiceId = model.listingQueryServiceId();
+        listingGatewayId = model.listingGatewayId();
         return this;
     }
 

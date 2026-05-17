@@ -11,6 +11,9 @@ public record PageEntity(
         String type,
         String aggregateId,
         String modelId,
-        List<String> componentIds
+        List<String> componentIds,
+        String listingDataSourceType,
+        String listingQueryServiceId,
+        String listingGatewayId
 ) implements Identifiable {
 }
