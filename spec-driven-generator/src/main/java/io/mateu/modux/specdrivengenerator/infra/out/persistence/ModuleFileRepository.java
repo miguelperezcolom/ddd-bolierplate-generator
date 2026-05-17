@@ -2,6 +2,10 @@ package io.mateu.modux.specdrivengenerator.infra.out.persistence;
 
 import io.mateu.modux.specdrivengenerator.application.out.repositories.ModuleRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.invariant.Invariant;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.invariant.vo.InvariantCondition;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.invariant.vo.InvariantId;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.invariant.vo.InvariantName;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.Module;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
@@ -13,6 +17,8 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.BddScenario
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.BffEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.DomainPolicyEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -54,6 +60,12 @@ public class ModuleFileRepository implements ModuleRepository {
                                 .toList(),
                         entity.domainPolicies() == null ? List.<DomainPolicy>of() : entity.domainPolicies().stream()
                                 .map(p -> new DomainPolicy(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
+                                .toList(),
+                        entity.invariants() == null ? List.<Invariant>of() : entity.invariants().stream()
+                                .map(inv -> Invariant.of(new InvariantId(inv.id()), new InvariantName(inv.name()),
+                                        inv.conditions() == null ? List.of() : inv.conditions().stream()
+                                                .map(c -> new InvariantCondition(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                                .toList()))
                                 .toList()));
     }
 
@@ -85,6 +97,12 @@ public class ModuleFileRepository implements ModuleRepository {
                         .toList(),
                 entity.getDomainPolicies() == null ? List.<DomainPolicyEntity>of() : entity.getDomainPolicies().stream()
                         .map(p -> new DomainPolicyEntity(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
+                        .toList(),
+                entity.getInvariants() == null ? List.<InvariantEntity>of() : entity.getInvariants().stream()
+                        .map(inv -> new InvariantEntity(inv.getId().id(), inv.getName().name(),
+                                inv.getConditions() == null ? List.of() : inv.getConditions().stream()
+                                        .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                        .toList()))
                         .toList()));
         return entity;
     }

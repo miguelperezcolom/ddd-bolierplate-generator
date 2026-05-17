@@ -5,6 +5,8 @@ import io.mateu.modux.specdrivengenerator.application.out.query.dtos.AclDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.BddScenarioDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.BffDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.DomainPolicyDto;
+import io.mateu.modux.specdrivengenerator.application.out.query.dtos.InvariantConditionDto;
+import io.mateu.modux.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.ModuleRow;
 
@@ -71,6 +73,12 @@ public class ModuleFileQueryService implements ModuleQueryService {
                                 .toList(),
                         entity.domainPolicies() == null ? List.<DomainPolicyDto>of() : entity.domainPolicies().stream()
                                 .map(p -> new DomainPolicyDto(p.id(), p.name(), p.triggeringEventId(), p.useCaseId(), p.description()))
+                                .toList(),
+                        entity.invariants() == null ? List.<InvariantDto>of() : entity.invariants().stream()
+                                .map(inv -> new InvariantDto(inv.id(), inv.name(),
+                                        inv.conditions() == null ? List.of() : inv.conditions().stream()
+                                                .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                                .toList()))
                                 .toList()));
     }
 }

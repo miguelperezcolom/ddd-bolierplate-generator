@@ -25,6 +25,7 @@ public record ModuleEntity(
         String version,
         List<BffEntity> bffs,
         List<AclEntity> acls,
-        List<DomainPolicyEntity> domainPolicies
+        List<DomainPolicyEntity> domainPolicies,
+        List<InvariantEntity> invariants
 ) implements Identifiable {
 }

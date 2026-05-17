@@ -1,5 +1,6 @@
 package io.mateu.modux.specdrivengenerator.application.usecases.module.save;
 
+import io.mateu.modux.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.modux.specdrivengenerator.application.usecases.module.AclData;
 import io.mateu.modux.specdrivengenerator.application.usecases.module.BddScenarioData;
 import io.mateu.modux.specdrivengenerator.application.usecases.module.BffData;
@@ -14,7 +15,8 @@ public record SaveModuleCommand(String id, String name, String gitRepository,
                                 List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                                 List<BddScenarioData> bddScenarios, String llmSystemPrompt,
                                 String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                                List<BffData> bffs, List<AclData> acls, List<DomainPolicyData> domainPolicies) {
+                                List<BffData> bffs, List<AclData> acls, List<DomainPolicyData> domainPolicies,
+                                List<InvariantDto> invariants) {
 
     public SaveModuleCommand {
         if (aggregates == null) aggregates = List.of();
@@ -31,6 +33,7 @@ public record SaveModuleCommand(String id, String name, String gitRepository,
         if (bffs == null) bffs = List.of();
         if (acls == null) acls = List.of();
         if (domainPolicies == null) domainPolicies = List.of();
+        if (invariants == null) invariants = List.of();
     }
 
 }

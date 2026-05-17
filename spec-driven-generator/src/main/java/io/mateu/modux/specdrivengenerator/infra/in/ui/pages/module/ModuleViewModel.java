@@ -1,6 +1,8 @@
 package io.mateu.modux.specdrivengenerator.infra.in.ui.pages.module;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
+import io.mateu.modux.specdrivengenerator.application.out.query.dtos.InvariantConditionDto;
+import io.mateu.modux.specdrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.modux.specdrivengenerator.application.out.query.dtos.ModuleDto;
 import io.mateu.modux.specdrivengenerator.application.usecases.module.AclData;
 import io.mateu.modux.specdrivengenerator.application.usecases.module.BddScenarioData;
@@ -34,6 +36,7 @@ import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.annotations.Tab;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.aggregate.InvariantViewModel;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -102,18 +105,21 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Tab("Domain Policies")
     List<DomainPolicyViewModel> domainPolicies = new ArrayList<>();
 
+    @Tab("Invariants")
+    List<InvariantViewModel> invariants = new ArrayList<>();
+
     final CreateModuleUseCase createUseCase;
     final SaveModuleUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies)));
+        createUseCase.handle(new CreateModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies), toInvariantDto(invariants)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies)));
+        saveUseCase.handle(new SaveModuleCommand(id, name, gitRepository, aggregates, entityIds, valueObjectIds, useCaseIds, domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds, scheduledTriggerIds, toBddScenarioData(bddScenarios), llmSystemPrompt, tableNamePrefix, autoTableNamePrefix, version, toBffData(bffs), toAclData(acls), toDomainPolicyData(domainPolicies), toInvariantDto(invariants)));
     }
 
     @Override
@@ -185,6 +191,10 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
                     vm.description = p.description();
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        invariants = model.invariants() == null ? new ArrayList<>() :
+                model.invariants().stream()
+                        .map(inv -> new InvariantViewModel(inv.id(), inv.name(), inv.conditions()))
+                        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
     }
 
@@ -213,6 +223,16 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
         if (list == null) return List.of();
         return list.stream()
                 .map(p -> new DomainPolicyData(p.id, p.name, p.triggeringEventId, p.useCaseId, p.description))
+                .toList();
+    }
+
+    private List<InvariantDto> toInvariantDto(List<InvariantViewModel> list) {
+        if (list == null) return List.of();
+        return list.stream()
+                .map(inv -> new InvariantDto(inv.id(), inv.name(),
+                        inv.conditions() == null ? List.of() : inv.conditions().stream()
+                                .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
+                                .toList()))
                 .toList();
     }
 

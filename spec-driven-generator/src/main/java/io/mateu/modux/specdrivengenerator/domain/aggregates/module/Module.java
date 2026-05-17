@@ -1,6 +1,7 @@
 package io.mateu.modux.specdrivengenerator.domain.aggregates.module;
 
 import io.mateu.modux.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateId;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.invariant.Invariant;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.vo.Acl;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.vo.BddScenario;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.module.vo.Bff;
@@ -35,6 +36,7 @@ public class Module {
     private List<Bff> bffs;
     private List<Acl> acls;
     private List<DomainPolicy> domainPolicies;
+    private List<Invariant> invariants;
 
     public static Module of(ModuleId id, ModuleName name, String gitRepository,
                             List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
@@ -43,7 +45,8 @@ public class Module {
                             List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                             List<BddScenario> bddScenarios, String llmSystemPrompt,
                             String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                            List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies) {
+                            List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies,
+                            List<Invariant> invariants) {
         var module = new Module();
         module.id = id;
         module.name = name;
@@ -66,6 +69,7 @@ public class Module {
         module.bffs = bffs != null ? bffs : List.of();
         module.acls = acls != null ? acls : List.of();
         module.domainPolicies = domainPolicies != null ? domainPolicies : List.of();
+        module.invariants = invariants != null ? invariants : List.of();
         return module;
     }
 
@@ -76,7 +80,8 @@ public class Module {
                               List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                               List<BddScenario> bddScenarios, String llmSystemPrompt,
                               String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                              List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies) {
+                              List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies,
+                              List<Invariant> invariants) {
         var module = new Module();
         module.id = new ModuleId(id);
         module.name = new ModuleName(name);
@@ -99,6 +104,7 @@ public class Module {
         module.bffs = bffs != null ? bffs : List.of();
         module.acls = acls != null ? acls : List.of();
         module.domainPolicies = domainPolicies != null ? domainPolicies : List.of();
+        module.invariants = invariants != null ? invariants : List.of();
         return module;
     }
 
@@ -109,7 +115,8 @@ public class Module {
                        List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                        List<BddScenario> bddScenarios, String llmSystemPrompt,
                        String tableNamePrefix, boolean autoTableNamePrefix, String version,
-                       List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies) {
+                       List<Bff> bffs, List<Acl> acls, List<DomainPolicy> domainPolicies,
+                       List<Invariant> invariants) {
         this.name = name;
         this.gitRepository = gitRepository;
         this.aggregateIds = aggregateIds != null ? aggregateIds : List.of();
@@ -130,5 +137,6 @@ public class Module {
         this.bffs = bffs != null ? bffs : List.of();
         this.acls = acls != null ? acls : List.of();
         this.domainPolicies = domainPolicies != null ? domainPolicies : List.of();
+        this.invariants = invariants != null ? invariants : List.of();
     }
 }
