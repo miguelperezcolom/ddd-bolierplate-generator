@@ -5,17 +5,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class ${mapping.name?cap_first?replace("[^a-zA-Z0-9]","",'r')}Mapper {
 
-<#if mapping.sourceModel?? && mapping.targetModel??>
-    public ${mapping.targetModel.name?cap_first} map(${mapping.sourceModel.name?cap_first} source) {
+<#if sourceModel?? && targetModel??>
+    public ${targetModel.name?cap_first} map(${sourceModel.name?cap_first} source) {
 <#if mapping.rules?has_content>
-        return new ${mapping.targetModel.name?cap_first}(
+        return new ${targetModel.name?cap_first}(
 <#list mapping.rules as rule>
             source.${rule.sourceFieldName!'?'}()<#sep>,</#sep>
 </#list>
         );
 <#else>
-        // TODO: implement mapping from ${mapping.sourceModel.name} to ${mapping.targetModel.name}
-        return new ${mapping.targetModel.name?cap_first}(/* TODO */);
+        // TODO: implement mapping from ${sourceModel.name} to ${targetModel.name}
+        return new ${targetModel.name?cap_first}(/* TODO */);
 </#if>
     }
 <#else>

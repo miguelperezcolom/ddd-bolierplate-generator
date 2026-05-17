@@ -48,6 +48,12 @@ public class CommonFileRepository {
                 data.stream().skip(pageable.page() * pageable.size()).limit(pageable.size()).toList()));
     }
 
+    public <T> List<T> findAllOfType(Class<T> type) {
+        return (List<T>) store.values().stream()
+                .filter(v -> v.getClass().equals(type))
+                .toList();
+    }
+
     public void deleteAllById(List<String> list) {
         list.forEach(store::remove);
         persist();

@@ -7,20 +7,28 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.Operati
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ComponentEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.DomainEventEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ReadModelEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SubscriptionEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiAdapterEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +38,13 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.mateu.core.infra.JsonSerializer.*;
 
@@ -98,6 +109,14 @@ public class GenerateCodeUseCase {
 
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
+
+        // Roles (all project roles, once per service in app module)
+        generateRolesConfig(project, service, serviceDir);
+
+        // UIAdapters (find by serviceId — generates custom Home.java)
+        repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> service.id().equals(a.serviceId()))
+                .forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
     }
 
     // ─── Module level ─────────────────────────────────────────────────────────
@@ -182,6 +201,29 @@ public class GenerateCodeUseCase {
                     .map(id -> repository.findById(id, ReadModelEntity.class).orElseThrow())
                     .forEach(readModel -> generateReadModel(project, service, module, moduleDir, modulePackageDir, readModel));
         }
+
+        // Entities (embedded/child entities within aggregates)
+        if (module.entityIds() != null) {
+            module.entityIds().stream()
+                    .map(id -> repository.findById(id, EntityEntity.class).orElseThrow())
+                    .forEach(entity -> generateEntity(project, service, module, moduleDir, modulePackageDir, entity));
+        }
+
+        // Value objects
+        if (module.valueObjectIds() != null) {
+            module.valueObjectIds().stream()
+                    .map(id -> repository.findById(id, ValueObjectEntity.class).orElseThrow())
+                    .forEach(vo -> generateValueObject(project, service, module, moduleDir, modulePackageDir, vo));
+        }
+
+        // Model mappings (discovered by scanning use case and saga steps)
+        generateModelMappingsForModule(project, service, module, moduleDir, modulePackageDir);
+
+        // Pages (find by matching aggregateId to module's aggregate IDs)
+        var moduleAggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.of();
+        repository.findAllOfType(PageEntity.class).stream()
+                .filter(p -> p.aggregateId() != null && moduleAggregateIds.contains(p.aggregateId()))
+                .forEach(page -> generatePage(project, service, module, moduleDir, modulePackageDir, page));
     }
 
     // ─── Service app ─────────────────────────────────────────────────────────
@@ -461,6 +503,238 @@ public class GenerateCodeUseCase {
         }
         map.put("steps", enrichedSteps);
         return map;
+    }
+
+    // ─── Entity (embedded/child) ──────────────────────────────────────────────
+
+    private void generateEntity(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                String moduleDir, String modulePackageDir, EntityEntity entity) {
+        var parentAggregate = entity.parentAggregateId() != null
+                ? repository.findById(entity.parentAggregateId(), AggregateEntity.class).orElse(null)
+                : null;
+
+        var aggregatePackageName = parentAggregate != null
+                ? parentAggregate.name().toLowerCase()
+                : "shared";
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("entity", fromJson(toJson(entity)));
+        model.put("aggregate", parentAggregate != null ? aggregateToMap(parentAggregate) : Map.of("name", aggregatePackageName));
+
+        if (entity.modelId() != null && !entity.modelId().isBlank()) {
+            var entityModel = repository.findById(entity.modelId(), ModelEntity.class).orElse(null);
+            model.put("entityModel", entityModel != null ? fromJson(toJson(entityModel)) : null);
+        }
+
+        createFile(moduleDir, model, "entity-embedded.ftl",
+                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+                        + "/" + capitalize(entity.name()) + ".java");
+    }
+
+    // ─── Value Objects ────────────────────────────────────────────────────────
+
+    private void generateValueObject(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                     String moduleDir, String modulePackageDir, ValueObjectEntity vo) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/vo");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("vo", fromJson(toJson(vo)));
+
+        var voType = vo.type() != null ? vo.type().toUpperCase() : "SIMPLE";
+
+        switch (voType) {
+            case "ENUM" -> createFile(moduleDir, model, "vo-enum.ftl",
+                    "src/main/java/" + modulePackageDir + "/domain/vo/"
+                            + capitalize(vo.name()) + ".java");
+            case "COMPOSITE" -> {
+                model.put("voFields", parseVoFields(vo.fieldsJson()));
+                createFile(moduleDir, model, "vo-composite.ftl",
+                        "src/main/java/" + modulePackageDir + "/domain/vo/"
+                                + capitalize(vo.name()) + ".java");
+            }
+            default -> createFile(moduleDir, model, "vo-simple.ftl",
+                    "src/main/java/" + modulePackageDir + "/domain/vo/"
+                            + capitalize(vo.name()) + ".java");
+        }
+    }
+
+    private List<Map<String, String>> parseVoFields(String fieldsJson) {
+        if (fieldsJson == null || fieldsJson.isBlank()) return List.of();
+        // Try comma-separated "name:type" format
+        var result = new ArrayList<Map<String, String>>();
+        for (var part : fieldsJson.split(",")) {
+            part = part.trim();
+            var colonIdx = part.indexOf(':');
+            if (colonIdx > 0) {
+                var fieldName = part.substring(0, colonIdx).trim();
+                var fieldType = part.substring(colonIdx + 1).trim().toLowerCase();
+                result.add(Map.of("name", fieldName, "type", fieldType));
+            } else if (!part.isBlank()) {
+                result.add(Map.of("name", part, "type", "string"));
+            }
+        }
+        return result;
+    }
+
+    // ─── Model Mappings (scanned from use-case and saga steps) ───────────────
+
+    private void generateModelMappingsForModule(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                                String moduleDir, String modulePackageDir) {
+        Set<String> mappingIds = new LinkedHashSet<>();
+
+        // Collect from use case steps
+        if (module.useCaseIds() != null) {
+            module.useCaseIds().stream()
+                    .map(id -> repository.findById(id, UseCaseEntity.class).orElse(null))
+                    .filter(uc -> uc != null && uc.steps() != null)
+                    .flatMap(uc -> uc.steps().stream())
+                    .filter(step -> step.modelMappingId() != null && !step.modelMappingId().isBlank())
+                    .map(UseCaseStepEntity::modelMappingId)
+                    .forEach(mappingIds::add);
+        }
+
+        // Collect from saga steps
+        if (module.sagaIds() != null) {
+            module.sagaIds().stream()
+                    .map(id -> repository.findById(id, SagaEntity.class).orElse(null))
+                    .filter(saga -> saga != null && saga.steps() != null)
+                    .flatMap(saga -> saga.steps().stream())
+                    .filter(step -> step.modelMappingId() != null && !step.modelMappingId().isBlank())
+                    .map(SagaStepEntity::modelMappingId)
+                    .forEach(mappingIds::add);
+        }
+
+        if (mappingIds.isEmpty()) return;
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers");
+
+        for (var mappingId : mappingIds) {
+            var mapping = repository.findById(mappingId, ModelMappingEntity.class).orElse(null);
+            if (mapping == null) continue;
+
+            Map<String, Object> model = buildBaseModel(project, service, module);
+            model.put("mapping", fromJson(toJson(mapping)));
+
+            if (mapping.sourceModelId() != null && !mapping.sourceModelId().isBlank()) {
+                var sourceModel = repository.findById(mapping.sourceModelId(), ModelEntity.class).orElse(null);
+                model.put("sourceModel", sourceModel != null ? fromJson(toJson(sourceModel)) : null);
+            }
+            if (mapping.targetModelId() != null && !mapping.targetModelId().isBlank()) {
+                var targetModel = repository.findById(mapping.targetModelId(), ModelEntity.class).orElse(null);
+                model.put("targetModel", targetModel != null ? fromJson(toJson(targetModel)) : null);
+            }
+
+            createFile(moduleDir, model, "model-mapper.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/mappers/"
+                            + capitalize(mapping.name()) + "Mapper.java");
+        }
+    }
+
+    // ─── Pages ────────────────────────────────────────────────────────────────
+
+    private void generatePage(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                              String moduleDir, String modulePackageDir, PageEntity page) {
+        var pageSlug = page.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + pageSlug);
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("page", fromJson(toJson(page)));
+
+        // Resolve aggregate
+        if (page.aggregateId() != null && !page.aggregateId().isBlank()) {
+            var aggregate = repository.findById(page.aggregateId(), AggregateEntity.class).orElse(null);
+            model.put("aggregate", aggregate != null ? aggregateToMap(aggregate) : null);
+        }
+
+        // Resolve model for FORM pages
+        if (page.modelId() != null && !page.modelId().isBlank()) {
+            var pageModel = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
+            model.put("pageModel", pageModel != null ? fromJson(toJson(pageModel)) : null);
+        }
+
+        // Resolve components for DASHBOARD pages
+        if (page.componentIds() != null && !page.componentIds().isEmpty()) {
+            var components = page.componentIds().stream()
+                    .map(cId -> repository.findById(cId, ComponentEntity.class).orElse(null))
+                    .filter(c -> c != null)
+                    .map(c -> fromJson(toJson(c)))
+                    .toList();
+            model.put("components", components);
+
+            // Also generate each component class
+            page.componentIds().stream()
+                    .map(cId -> repository.findById(cId, ComponentEntity.class).orElse(null))
+                    .filter(c -> c != null)
+                    .forEach(component -> generateComponent(project, service, module, moduleDir, modulePackageDir, component));
+        }
+
+        var pageType = page.type() != null ? page.type().toUpperCase() : "CRUD";
+        var template = switch (pageType) {
+            case "FORM" -> "page-form.ftl";
+            case "DASHBOARD" -> "page-dashboard.ftl";
+            case "WIZARD" -> "page-wizard.ftl";
+            default -> "page-crud.ftl";
+        };
+
+        createFile(moduleDir, model, template,
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + pageSlug
+                        + "/" + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + "Page.java");
+    }
+
+    // ─── Components ───────────────────────────────────────────────────────────
+
+    private void generateComponent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                   String moduleDir, String modulePackageDir, ComponentEntity component) {
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/components");
+
+        Map<String, Object> model = buildBaseModel(project, service, module);
+        model.put("component", fromJson(toJson(component)));
+
+        createFile(moduleDir, model, "component.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/components/"
+                        + capitalize(component.name().replaceAll("[^a-zA-Z0-9]", "")) + "Component.java");
+    }
+
+    // ─── Roles / Security ─────────────────────────────────────────────────────
+
+    private void generateRolesConfig(ProjectEntity project, ServiceEntity service, String serviceDir) {
+        var roles = repository.findAllOfType(RoleEntity.class);
+        if (roles.isEmpty()) return;
+
+        var serviceName = serviceName(service);
+        var appDir = serviceDir + "/" + serviceName + "-app";
+        var packageDir = project.packageName().replace(".", "/");
+
+        createDir(appDir, "src/main/java/" + packageDir + "/infra/in/security");
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("roles", roles.stream().map(r -> fromJson(toJson(r))).toList());
+
+        createFile(appDir, model, "role-security.ftl",
+                "src/main/java/" + packageDir + "/infra/in/security/SecurityConfig.java");
+    }
+
+    // ─── UIAdapter Home ───────────────────────────────────────────────────────
+
+    private void generateUiAdapter(ProjectEntity project, ServiceEntity service, String serviceDir, UiAdapterEntity adapter) {
+        var serviceName = serviceName(service);
+        var appDir = serviceDir + "/" + serviceName + "-app";
+        var packageDir = project.packageName().replace(".", "/");
+
+        createDir(appDir, "src/main/java/" + packageDir + "/infra/in/ui");
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("adapter", fromJson(toJson(adapter)));
+
+        // Overwrite Home.java with UIAdapter-driven version
+        createFile(appDir, model, "ui-adapter-home.ftl",
+                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
     }
 
     // ─── Read Models ──────────────────────────────────────────────────────────
