@@ -50,6 +50,7 @@ export default defineConfig({
 						{ label: 'Generating Code', slug: 'manual/generating-code' },
 						{ label: 'E2E Tests (Playwright)', slug: 'manual/e2e-tests' },
 						{ label: 'AI-Assisted Completion', slug: 'manual/ai-completion' },
+						{ label: 'Importing Existing Specs', slug: 'manual/importers' },
 					],
 				},
 				{

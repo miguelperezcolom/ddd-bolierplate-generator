@@ -109,6 +109,54 @@ mvn modux:ai-complete \
 
 See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.
 
+## Goal: `import-openapi`
+
+**Default phase:** none (run explicitly)
+
+Reads an OpenAPI 3.x YAML or JSON file and upserts `GatewayEntity` + `GatewayOperationEntity` entries into the spec store.
+
+### Parameters
+
+| Parameter | Property | Default | Required | Description |
+|---|---|---|---|---|
+| `filePath` | `modux.filePath` | — | **Yes** | Path to the OpenAPI YAML or JSON file |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec store |
+| `serviceId` | `modux.serviceId` | — | No | Service ID to link the imported gateway to |
+
+### Usage
+
+```bash
+mvn modux:import-openapi \
+  -Dmodux.filePath=apis/payments.yaml \
+  -Dmodux.serviceId=my-service-id
+```
+
+See [Importing Existing Specs](/manual/importers/) for the full guide.
+
+## Goal: `import-asyncapi`
+
+**Default phase:** none (run explicitly)
+
+Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channels) and `SubscriptionEntity` (subscribe channels) into the spec store.
+
+### Parameters
+
+| Parameter | Property | Default | Required | Description |
+|---|---|---|---|---|
+| `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec store |
+| `moduleId` | `modux.moduleId` | — | No | Module ID that owns these events/subscriptions |
+
+### Usage
+
+```bash
+mvn modux:import-asyncapi \
+  -Dmodux.filePath=events/orders-events.yaml \
+  -Dmodux.moduleId=my-module-id
+```
+
+See [Importing Existing Specs](/manual/importers/) for the full guide.
+
 ## Running from the command line
 
 ```bash
