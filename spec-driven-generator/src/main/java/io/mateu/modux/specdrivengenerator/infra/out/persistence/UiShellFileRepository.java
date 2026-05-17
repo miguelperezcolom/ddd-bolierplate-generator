@@ -24,7 +24,8 @@ public class UiShellFileRepository implements UiShellRepository {
                         entity.id(),
                         entity.name(),
                         entity.title(),
-                        entity.appVariant()));
+                        entity.appVariant(),
+                        entity.serviceIds()));
     }
 
     @Override
@@ -33,7 +34,8 @@ public class UiShellFileRepository implements UiShellRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getTitle(),
-                entity.getAppVariant()));
+                entity.getAppVariant(),
+                entity.getServiceIds()));
         return entity;
     }
 

@@ -18,7 +18,8 @@ public class CreateUiShellUseCase {
                 new UiShellId(command.id()),
                 new UiShellName(command.name()),
                 command.title(),
-                command.appVariant());
+                command.appVariant(),
+                command.serviceIds());
         repository.save(uiShell);
     }
 }

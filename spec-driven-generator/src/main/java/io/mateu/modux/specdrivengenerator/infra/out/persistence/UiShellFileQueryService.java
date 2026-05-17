@@ -44,6 +44,7 @@ public class UiShellFileQueryService implements UiShellQueryService {
                         entity.id(),
                         entity.name(),
                         entity.title(),
-                        entity.appVariant()));
+                        entity.appVariant(),
+                        entity.serviceIds()));
     }
 }

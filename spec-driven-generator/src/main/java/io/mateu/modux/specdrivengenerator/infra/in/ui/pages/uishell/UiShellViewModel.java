@@ -6,8 +6,11 @@ import io.mateu.modux.specdrivengenerator.application.usecases.uishell.create.Cr
 import io.mateu.modux.specdrivengenerator.application.usecases.uishell.create.CreateUiShellUseCase;
 import io.mateu.modux.specdrivengenerator.application.usecases.uishell.save.SaveUiShellCommand;
 import io.mateu.modux.specdrivengenerator.application.usecases.uishell.save.SaveUiShellUseCase;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -16,6 +19,8 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Scope("prototype")
@@ -33,18 +38,21 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
 
     String appVariant;
 
+    @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
+    List<String> serviceIds;
+
     final CreateUiShellUseCase createUseCase;
     final SaveUiShellUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateUiShellCommand(id, name, title, appVariant));
+        createUseCase.handle(new CreateUiShellCommand(id, name, title, appVariant, serviceIds));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveUiShellCommand(id, name, title, appVariant));
+        saveUseCase.handle(new SaveUiShellCommand(id, name, title, appVariant, serviceIds));
     }
 
     @Override
@@ -57,6 +65,7 @@ public class UiShellViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         title = model.title();
         appVariant = model.appVariant();
+        serviceIds = model.serviceIds();
         return this;
     }
 

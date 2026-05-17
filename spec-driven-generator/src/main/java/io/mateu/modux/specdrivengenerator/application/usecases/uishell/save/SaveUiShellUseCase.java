@@ -17,7 +17,8 @@ public class SaveUiShellUseCase {
         uiShell.update(
                 new UiShellName(command.name()),
                 command.title(),
-                command.appVariant());
+                command.appVariant(),
+                command.serviceIds());
         repository.save(uiShell);
     }
 }
