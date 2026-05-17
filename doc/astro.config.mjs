@@ -48,6 +48,7 @@ export default defineConfig({
 						{ label: 'UI Adapters', slug: 'manual/ui-adapters' },
 						{ label: 'UI Shells', slug: 'manual/ui-shells' },
 						{ label: 'Generating Code', slug: 'manual/generating-code' },
+						{ label: 'AI-Assisted Completion', slug: 'manual/ai-completion' },
 					],
 				},
 				{

@@ -69,6 +69,46 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 </plugin>
 ```
 
+## Goal: `ai-complete`
+
+**Default phase:** none (run explicitly)
+
+Reads the spec, calls the Claude AI API for each module, and writes `AI-PROPOSALS.md` files with ready-to-paste Java implementations for the parts the generator cannot derive automatically.
+
+### Parameters
+
+| Parameter | Property | Default | Required | Description |
+|---|---|---|---|---|
+| `projectId` | `modux.projectId` | — | **Yes** | ID of the project in the spec store |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec file |
+| `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Root directory; proposals go to `{outputPath}/proposals/` |
+| `packageName` | `modux.packageName` | `com.example` | No | Root Java package (used in generated prompts) |
+| `apiKey` | `modux.apiKey` | — | No* | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var |
+| `model` | `modux.model` | `claude-haiku-4-5-20251001` | No | Claude model to use for completions |
+
+*Required via `modux.apiKey` or `ANTHROPIC_API_KEY` environment variable.
+
+### Usage
+
+```bash
+# API key from environment (recommended)
+export ANTHROPIC_API_KEY=sk-ant-...
+mvn modux:ai-complete -Dmodux.projectId=my-project-id
+
+# Override model for complex domains
+mvn modux:ai-complete \
+  -Dmodux.projectId=my-project-id \
+  -Dmodux.model=claude-sonnet-4-6
+```
+
+### What it proposes
+
+- `checkInvariants()` body — derived from `InvariantConditionEntity.expression` and `errorMessage`
+- `check{Op}Preconditions()` body — derived from `OperationEntity.preconditions` text
+- Cucumber step bodies — derived from `BddScenarioEntity.steps` and aggregate field context
+
+See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.
+
 ## Running from the command line
 
 ```bash

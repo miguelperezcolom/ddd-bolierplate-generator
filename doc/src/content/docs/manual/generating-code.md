@@ -127,6 +127,21 @@ Recommended workflow:
 3. Implement business logic in custom files (use cases, domain services)
 4. If the spec changes, re-generate — only the structural files are updated
 
+## AI-assisted completion
+
+The generator produces skeletons with `// TODO` comments in places where domain logic cannot be derived from the spec alone: invariant bodies, operation preconditions, and BDD step implementations.
+
+Run `mvn modux:ai-complete` after generation to get AI-generated proposals for those gaps:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+mvn modux:generate -Dmodux.projectId=my-project-id
+mvn modux:ai-complete -Dmodux.projectId=my-project-id
+# → generated/proposals/{module}/AI-PROPOSALS.md
+```
+
+See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.
+
 ## Troubleshooting
 
 **Generated files have compilation errors**
