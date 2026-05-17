@@ -84,6 +84,21 @@ For each aggregate, Modux:
         │   └── resources/
         │       └── application.yaml
         └── test/
+            ├── java/{package}/{module}/
+            │   ├── domain/aggregates/{Aggregate}/
+            │   │   └── {Aggregate}Test.java          # unit test
+            │   ├── application/usecases/{aggregate}/
+            │   │   ├── create/Create{Aggregate}UseCaseTest.java
+            │   │   ├── update/Update{Aggregate}UseCaseTest.java
+            │   │   └── delete/Delete{Aggregate}UseCaseTest.java
+            │   ├── bdd/
+            │   │   ├── CucumberRunner.java
+            │   │   └── {Aggregate}Steps.java         # Cucumber step definitions
+            │   └── e2e/
+            │       ├── BaseE2ETest.java               # Playwright base class
+            │       └── {Aggregate}E2ETest.java        # Playwright tests
+            └── resources/features/{module}/
+                └── {Aggregate}.feature               # Gherkin scenarios
 ```
 
 ## Overwrite behaviour
@@ -126,6 +141,20 @@ Recommended workflow:
 2. Generate code
 3. Implement business logic in custom files (use cases, domain services)
 4. If the spec changes, re-generate — only the structural files are updated
+
+## E2E tests with Playwright
+
+Every aggregate gets a `BaseE2ETest` (per module) and a concrete `{Aggregate}E2ETest` with canned CRUD scenarios. E2E tests are tagged `e2e` and excluded from the normal build — run them explicitly against a live app:
+
+```bash
+# Start the app, then in another terminal:
+mvn test -Dgroups=e2e -De2e.base-url=http://localhost:8080
+
+# Open browser for visual debugging
+mvn test -Dgroups=e2e -De2e.headed=true
+```
+
+See [E2E Tests with Playwright](/manual/e2e-tests/) for the full guide.
 
 ## AI-assisted completion
 
