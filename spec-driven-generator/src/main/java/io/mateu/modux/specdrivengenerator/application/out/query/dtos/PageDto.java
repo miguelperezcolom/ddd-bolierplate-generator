@@ -2,6 +2,7 @@ package io.mateu.modux.specdrivengenerator.application.out.query.dtos;
 
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageButtonEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
@@ -23,7 +24,8 @@ public record PageDto(
         List<PageButtonEntity> bottomBar,
         List<PageTriggerEntity> triggers,
         List<PageRuleEntity> rules,
-        List<PageValidationEntity> validations
+        List<PageValidationEntity> validations,
+        List<PageFieldConfigEntity> fieldConfigs
 ) {
     public PageDto {
         if (componentIds == null) componentIds = List.of();
@@ -32,5 +34,6 @@ public record PageDto(
         if (triggers == null) triggers = List.of();
         if (rules == null) rules = List.of();
         if (validations == null) validations = List.of();
+        if (fieldConfigs == null) fieldConfigs = List.of();
     }
 }

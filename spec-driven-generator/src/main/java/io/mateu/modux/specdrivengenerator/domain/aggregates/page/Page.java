@@ -1,5 +1,6 @@
 package io.mateu.modux.specdrivengenerator.domain.aggregates.page;
 
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageName;
@@ -30,6 +31,7 @@ public class Page {
     private List<PageTrigger> triggers;
     private List<PageRule> rules;
     private List<PageValidation> validations;
+    private List<PageFieldConfig> fieldConfigs;
 
     public static Page of(PageId id, PageName name, String route, PageType type,
                           String aggregateId, String modelId, List<String> componentIds,
@@ -37,7 +39,7 @@ public class Page {
                           String listingQueryServiceId, String listingGatewayId,
                           List<PageButton> toolbar, List<PageButton> bottomBar,
                           List<PageTrigger> triggers, List<PageRule> rules,
-                          List<PageValidation> validations) {
+                          List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
         var page = new Page();
         page.id = id;
         page.name = name;
@@ -54,6 +56,7 @@ public class Page {
         page.triggers = triggers != null ? triggers : List.of();
         page.rules = rules != null ? rules : List.of();
         page.validations = validations != null ? validations : List.of();
+        page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
         return page;
     }
 
@@ -63,7 +66,7 @@ public class Page {
                             String listingQueryServiceId, String listingGatewayId,
                             List<PageButton> toolbar, List<PageButton> bottomBar,
                             List<PageTrigger> triggers, List<PageRule> rules,
-                            List<PageValidation> validations) {
+                            List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
         var page = new Page();
         page.id = new PageId(id);
         page.name = new PageName(name);
@@ -81,6 +84,7 @@ public class Page {
         page.triggers = triggers != null ? triggers : List.of();
         page.rules = rules != null ? rules : List.of();
         page.validations = validations != null ? validations : List.of();
+        page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
         return page;
     }
 
@@ -90,7 +94,7 @@ public class Page {
                        String listingQueryServiceId, String listingGatewayId,
                        List<PageButton> toolbar, List<PageButton> bottomBar,
                        List<PageTrigger> triggers, List<PageRule> rules,
-                       List<PageValidation> validations) {
+                       List<PageValidation> validations, List<PageFieldConfig> fieldConfigs) {
         this.name = name;
         this.route = route;
         this.type = type;
@@ -105,5 +109,6 @@ public class Page {
         this.triggers = triggers != null ? triggers : List.of();
         this.rules = rules != null ? rules : List.of();
         this.validations = validations != null ? validations : List.of();
+        this.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
     }
 }

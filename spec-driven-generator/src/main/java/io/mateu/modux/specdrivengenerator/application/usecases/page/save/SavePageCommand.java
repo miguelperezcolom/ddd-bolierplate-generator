@@ -3,6 +3,7 @@ package io.mateu.modux.specdrivengenerator.application.usecases.page.save;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageButtonEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
@@ -24,7 +25,8 @@ public record SavePageCommand(
         List<PageButtonEntity> bottomBar,
         List<PageTriggerEntity> triggers,
         List<PageRuleEntity> rules,
-        List<PageValidationEntity> validations
+        List<PageValidationEntity> validations,
+        List<PageFieldConfigEntity> fieldConfigs
 ) {
     public SavePageCommand {
         if (componentIds == null) componentIds = List.of();
@@ -33,5 +35,6 @@ public record SavePageCommand(
         if (triggers == null) triggers = List.of();
         if (rules == null) rules = List.of();
         if (validations == null) validations = List.of();
+        if (fieldConfigs == null) fieldConfigs = List.of();
     }
 }

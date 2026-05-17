@@ -60,6 +60,7 @@ public class PageFileQueryService implements PageQueryService {
                         entity.bottomBar(),
                         entity.triggers(),
                         entity.rules(),
-                        entity.validations()));
+                        entity.validations(),
+                        entity.fieldConfigs()));
     }
 }

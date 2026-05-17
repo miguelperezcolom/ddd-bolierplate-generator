@@ -3,9 +3,11 @@ package io.mateu.modux.specdrivengenerator.infra.out.persistence;
 import io.mateu.modux.specdrivengenerator.application.out.repositories.PageRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.Page;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageButton;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageFieldConfig;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageRule;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageTrigger;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageValidation;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageRuleAction;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageRuleFieldAttribute;
@@ -14,6 +16,7 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageTriggerT
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
@@ -66,6 +69,12 @@ public class PageFileRepository implements PageRepository {
                                 .toList() : List.of(),
                         entity.validations() != null ? entity.validations().stream()
                                 .map(e -> new PageValidation(e.condition(), e.fieldId(), e.message()))
+                                .toList() : List.of(),
+                        entity.fieldConfigs() != null ? entity.fieldConfigs().stream()
+                                .map(e -> new PageFieldConfig(
+                                        e.fieldId(),
+                                        e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
+                                        e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
                                 .toList() : List.of()));
     }
 
@@ -105,6 +114,12 @@ public class PageFileRepository implements PageRepository {
                         .toList(),
                 entity.getValidations().stream()
                         .map(v -> new PageValidationEntity(v.condition(), v.fieldId(), v.message()))
+                        .toList(),
+                entity.getFieldConfigs().stream()
+                        .map(f -> new PageFieldConfigEntity(
+                                f.fieldId(),
+                                f.stereotype() != null ? f.stereotype().name() : null,
+                                f.colspan(), f.style(), f.cssClass(), f.label(), f.help()))
                         .toList()));
         return entity;
     }

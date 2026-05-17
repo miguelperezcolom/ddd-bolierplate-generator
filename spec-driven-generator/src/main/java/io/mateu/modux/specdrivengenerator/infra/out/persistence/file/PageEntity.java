@@ -19,6 +19,7 @@ public record PageEntity(
         List<PageButtonEntity> bottomBar,
         List<PageTriggerEntity> triggers,
         List<PageRuleEntity> rules,
-        List<PageValidationEntity> validations
+        List<PageValidationEntity> validations,
+        List<PageFieldConfigEntity> fieldConfigs
 ) implements Identifiable {
 }

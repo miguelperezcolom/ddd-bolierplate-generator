@@ -6,6 +6,7 @@ import io.mateu.modux.specdrivengenerator.application.usecases.page.create.Creat
 import io.mateu.modux.specdrivengenerator.application.usecases.page.create.CreatePageUseCase;
 import io.mateu.modux.specdrivengenerator.application.usecases.page.save.SavePageCommand;
 import io.mateu.modux.specdrivengenerator.application.usecases.page.save.SavePageUseCase;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageRuleAction;
@@ -23,6 +24,7 @@ import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSu
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageButtonEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageRuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageTriggerEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageValidationEntity;
@@ -102,6 +104,10 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
     List<PageValidationViewModel> validations;
 
+    @Tab
+    @MasterDetail(minHeightWhenDetailVisible = "16rem")
+    List<PageFieldConfigViewModel> fieldConfigs;
+
     final CreatePageUseCase createUseCase;
     final SavePageUseCase saveUseCase;
 
@@ -132,6 +138,11 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .toList() : List.of(),
                 validations != null ? validations.stream()
                         .map(v -> new PageValidationEntity(v.condition(), v.fieldId(), v.message()))
+                        .toList() : List.of(),
+                fieldConfigs != null ? fieldConfigs.stream()
+                        .map(v -> new PageFieldConfigEntity(v.fieldId(),
+                                v.stereotype() != null ? v.stereotype().name() : null,
+                                v.colspan(), v.style(), v.cssClass(), v.label(), v.help()))
                         .toList() : List.of()));
         return id;
     }
@@ -163,6 +174,11 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .toList() : List.of(),
                 validations != null ? validations.stream()
                         .map(v -> new PageValidationEntity(v.condition(), v.fieldId(), v.message()))
+                        .toList() : List.of(),
+                fieldConfigs != null ? fieldConfigs.stream()
+                        .map(v -> new PageFieldConfigEntity(v.fieldId(),
+                                v.stereotype() != null ? v.stereotype().name() : null,
+                                v.colspan(), v.style(), v.cssClass(), v.label(), v.help()))
                         .toList() : List.of()));
     }
 
@@ -206,6 +222,11 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 .toList()) : new ArrayList<>();
         validations = model.validations() != null ? new ArrayList<>(model.validations().stream()
                 .map(e -> new PageValidationViewModel(e.condition(), e.fieldId(), e.message()))
+                .toList()) : new ArrayList<>();
+        fieldConfigs = model.fieldConfigs() != null ? new ArrayList<>(model.fieldConfigs().stream()
+                .map(e -> new PageFieldConfigViewModel(e.fieldId(),
+                        e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
+                        e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
                 .toList()) : new ArrayList<>();
         return this;
     }

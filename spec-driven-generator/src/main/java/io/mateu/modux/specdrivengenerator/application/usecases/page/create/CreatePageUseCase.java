@@ -3,9 +3,11 @@ package io.mateu.modux.specdrivengenerator.application.usecases.page.create;
 import io.mateu.modux.specdrivengenerator.application.out.repositories.PageRepository;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.Page;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageButton;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageFieldConfig;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageRule;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageTrigger;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.PageValidation;
+import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageFieldStereotype;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageId;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageName;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.page.vo.PageRuleAction;
@@ -56,6 +58,12 @@ public class CreatePageUseCase {
                         .toList(),
                 command.validations().stream()
                         .map(e -> new PageValidation(e.condition(), e.fieldId(), e.message()))
+                        .toList(),
+                command.fieldConfigs().stream()
+                        .map(e -> new PageFieldConfig(
+                                e.fieldId(),
+                                e.stereotype() != null ? PageFieldStereotype.valueOf(e.stereotype()) : null,
+                                e.colspan(), e.style(), e.cssClass(), e.label(), e.help()))
                         .toList());
         repository.save(page);
     }
