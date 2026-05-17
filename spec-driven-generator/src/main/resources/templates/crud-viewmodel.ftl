@@ -1,4 +1,4 @@
-package ${project.packageName}.infra.in.ui.pages.${aggregate.name?lower_case};
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.in.ui.pages.${aggregate.name?lower_case};
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import io.mateu.uidl.annotations.HiddenInCreate;
@@ -7,11 +7,11 @@ import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
 import io.mateu.uidl.interfaces.Identifiable;
-import ${project.packageName}.application.query.dto.${aggregate.name}Dto;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.create.Create${aggregate.name}Command;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.create.Create${aggregate.name}UseCase;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.update.Update${aggregate.name}Command;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.update.Update${aggregate.name}UseCase;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Dto;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.create.Create${aggregate.name}Command;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.create.Create${aggregate.name}UseCase;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.update.Update${aggregate.name}Command;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.update.Update${aggregate.name}UseCase;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;

@@ -8,6 +8,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.AggregateEn
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ServiceEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -35,106 +36,175 @@ public class GenerateCodeUseCase {
     public void handle(GenerateCodeCommand command) {
 
         var project = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
-        var packageDir = project.packageName().replace(".", "/");
 
-        createDir(project.outputPath(), "");
-        createDir(project.outputPath(), "src/main/java/" + packageDir);
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/usecases");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/out");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/application/query/dto");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/domain/aggregates/shared/vo");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/in/ui");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/in/ui/pages");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/in/ui/suppliers");
-        createDir(project.outputPath(), "src/main/java/" + packageDir + "/infra/out/persistence");
-        createDir(project.outputPath(), "src/main/resources");
-        createDir(project.outputPath(), "src/test/java");
-        createDir(project.outputPath(), "src/test/resources");
-
-        createFile(project.outputPath(), project, "pom.ftl", "pom.xml");
-        createFile(project.outputPath(), project, "application-yaml.ftl", "src/main/resources/application.yaml");
-        createFile(project.outputPath(), project, "application.ftl",
-                "src/main/java/" + packageDir + "/" + toClassName(project.name()) + "Application.java");
-
-        createFile(project.outputPath(), project, "repository.ftl",
-                "src/main/java/" + packageDir + "/application/out/Repository.java");
-        createFile(project.outputPath(), project, "queryservice.ftl",
-                "src/main/java/" + packageDir + "/application/query/QueryService.java");
-        createFile(project.outputPath(), project, "home.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+        if (project.gitRepository() != null && !project.gitRepository().isBlank()) {
+            generateRootPom(project);
+        }
 
         project.serviceIds().stream()
-                .map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow())
-                .forEach(module -> module.aggregateIds().stream()
-                        .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
-                        .forEach(aggregate -> generateAggregate(project, packageDir, aggregate)));
+                .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
+                .forEach(service -> generateService(project, service));
     }
 
-    private void generateAggregate(ProjectEntity project, String packageDir, AggregateEntity aggregate) {
+    // ─── Root pom (monorepo) ──────────────────────────────────────────────────
+
+    private void generateRootPom(ProjectEntity project) {
+        createDir(project.outputPath(), "");
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        createFile(project.outputPath(), model, "root-pom.ftl", "pom.xml");
+    }
+
+    // ─── Service level ────────────────────────────────────────────────────────
+
+    private void generateService(ProjectEntity project, ServiceEntity service) {
+        var serviceName = serviceName(service);
+        var serviceDir = project.outputPath() + "/" + serviceName;
+
+        createDir(serviceDir, "");
+
+        // service parent pom
+        Map<String, Object> serviceModel = new HashMap<>();
+        serviceModel.put("project", projectToMap(project));
+        serviceModel.put("service", serviceToMap(service));
+        createFile(serviceDir, serviceModel, "service-parent-pom.ftl", "pom.xml");
+
+        // generate each DDD module
+        service.moduleIds().stream()
+                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
+                .forEach(module -> generateModule(project, service, serviceDir, module));
+
+        // generate the Spring Boot app module
+        generateServiceApp(project, service, serviceDir);
+    }
+
+    // ─── Module level ─────────────────────────────────────────────────────────
+
+    private void generateModule(ProjectEntity project, ServiceEntity service,
+                                String serviceDir, ModuleEntity module) {
+        var moduleSlug = moduleSlug(module.name());
+        var moduleDir = serviceDir + "/" + moduleSlug;
+        var packageDir = project.packageName().replace(".", "/");
+        var modulePackageDir = packageDir + "/" + moduleSlug;
+
+        createDir(moduleDir, "");
+
+        // module pom
+        Map<String, Object> moduleModel = new HashMap<>();
+        moduleModel.put("project", projectToMap(project));
+        moduleModel.put("service", serviceToMap(service));
+        moduleModel.put("module", moduleToMap(module));
+        createFile(moduleDir, moduleModel, "module-pom.ftl", "pom.xml");
+
+        // source directories
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/usecases");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/aggregates/shared/vo");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/pages");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/persistence");
+        createDir(moduleDir, "src/main/resources");
+        createDir(moduleDir, "src/test/java");
+        createDir(moduleDir, "src/test/resources");
+
+        module.aggregateIds().stream()
+                .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
+                .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
+    }
+
+    // ─── Service app ─────────────────────────────────────────────────────────
+
+    private void generateServiceApp(ProjectEntity project, ServiceEntity service, String serviceDir) {
+        var serviceName = serviceName(service);
+        var appDir = serviceDir + "/" + serviceName + "-app";
+        var packageDir = project.packageName().replace(".", "/");
+
+        createDir(appDir, "");
+        createDir(appDir, "src/main/java/" + packageDir);
+        createDir(appDir, "src/main/java/" + packageDir + "/infra/in/ui");
+        createDir(appDir, "src/main/resources");
+        createDir(appDir, "src/test/java");
+        createDir(appDir, "src/test/resources");
+
+        Map<String, Object> appModel = new HashMap<>();
+        appModel.put("project", projectToMap(project));
+        appModel.put("service", serviceToMap(service));
+
+        createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
+        createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
+        createFile(appDir, appModel, "application.ftl",
+                "src/main/java/" + packageDir + "/" + toClassName(service.name()) + "Application.java");
+        createFile(appDir, appModel, "home.ftl",
+                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+    }
+
+    // ─── Aggregate level ─────────────────────────────────────────────────────
+
+    private void generateAggregate(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                   String moduleDir, String modulePackageDir, AggregateEntity aggregate) {
 
         var aggregatePackageName = aggregate.name().toLowerCase();
 
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/create");
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/create");
 
-        createFile(project.outputPath(), project, aggregate, "aggregate-repository.ftl",
-                "src/main/java/" + packageDir + "/application/out/" + aggregate.name() + "Repository.java");
-        createFile(project.outputPath(), project, aggregate, "aggregate-queryservice.ftl",
-                "src/main/java/" + packageDir + "/application/query/" + aggregate.name() + "QueryService.java");
-        createFile(project.outputPath(), project, aggregate, "row.ftl",
-                "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
-        createFile(project.outputPath(), project, aggregate, "dto.ftl",
-                "src/main/java/" + packageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
+        createFile(moduleDir, project, service, module, aggregate, "aggregate-repository.ftl",
+                "src/main/java/" + modulePackageDir + "/application/out/" + aggregate.name() + "Repository.java");
+        createFile(moduleDir, project, service, module, aggregate, "aggregate-queryservice.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/" + aggregate.name() + "QueryService.java");
+        createFile(moduleDir, project, service, module, aggregate, "row.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
+        createFile(moduleDir, project, service, module, aggregate, "dto.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
 
-        createFile(project.outputPath(), project, aggregate, "create-command.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "create-command.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "Command.java");
-        createFile(project.outputPath(), project, aggregate, "create-usecase.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "create-usecase.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "UseCase.java");
 
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/update");
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/update");
 
-        createFile(project.outputPath(), project, aggregate, "update-command.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "update-command.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/update/Update" + aggregate.name() + "Command.java");
-        createFile(project.outputPath(), project, aggregate, "update-usecase.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "update-usecase.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/update/Update" + aggregate.name() + "UseCase.java");
 
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName + "/delete");
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
 
-        createFile(project.outputPath(), project, aggregate, "delete-command.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "delete-command.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/delete/Delete" + aggregate.name() + "Command.java");
-        createFile(project.outputPath(), project, aggregate, "delete-usecase.ftl",
-                "src/main/java/" + packageDir + "/application/usecases/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "delete-usecase.ftl",
+                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/delete/Delete" + aggregate.name() + "UseCase.java");
 
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName);
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
 
-        createFile(project.outputPath(), project, aggregate, "vo-id.ftl",
-                "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "vo-id.ftl",
+                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/vo/" + aggregate.name() + "Id.java");
 
-        // vo-name.ftl solo si el aggregate tiene fields de tipo ValueObject
         boolean hasValueObjectFields = false;
         if (hasValueObjectFields) {
-            createFile(project.outputPath(), project, aggregate, "vo-name.ftl",
-                    "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
+            createFile(moduleDir, project, service, module, aggregate, "vo-name.ftl",
+                    "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                             + "/vo/" + aggregate.name() + "Name.java");
         }
 
-        // operation-context.ftl solo si el aggregate tiene operaciones
         boolean hasOperations = aggregate.operations() != null && !aggregate.operations().isEmpty();
         if (hasOperations) {
-            createFile(project.outputPath(), project, aggregate, "operation-context.ftl",
-                    "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
+            createFile(moduleDir, project, service, module, aggregate, "operation-context.ftl",
+                    "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                             + "/" + aggregate.name() + "OperationContext.java");
         }
 
@@ -156,72 +226,83 @@ public class GenerateCodeUseCase {
                     .forEach(operation -> {
                         Map<String, Object> model = new HashMap<>();
                         model.put("project", projectToMap(project));
+                        model.put("service", serviceToMap(service));
+                        model.put("module", moduleToMap(module));
                         model.put("aggregate", aggregateToMap(aggregate));
                         model.put("operation", fromJson(toJson(operation)));
 
-                        createFile(project.outputPath(), model, "custom-operation.ftl",
-                                "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
+                        createFile(moduleDir, model, "custom-operation.ftl",
+                                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                                         + "/" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
                     });
         }
 
-        createFile(project.outputPath(), project, aggregate, "aggregate.ftl",
-                "src/main/java/" + packageDir + "/domain/aggregates/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "aggregate.ftl",
+                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/" + aggregate.name() + ".java");
 
-        createFile(project.outputPath(), project, aggregate, "dbentity.ftl",
-                "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
-        createFile(project.outputPath(), project, aggregate, "dbrepository.ftl",
-                "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
-        createFile(project.outputPath(), project, aggregate, "dbqueryservice.ftl",
-                "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
-        createFile(project.outputPath(), project, aggregate, "entityrepository.ftl",
-                "src/main/java/" + packageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
+        createFile(moduleDir, project, service, module, aggregate, "dbentity.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
+        createFile(moduleDir, project, service, module, aggregate, "dbrepository.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
+        createFile(moduleDir, project, service, module, aggregate, "dbqueryservice.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
+        createFile(moduleDir, project, service, module, aggregate, "entityrepository.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
 
-        createDir(project.outputPath(),
-                "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName);
+        createDir(moduleDir,
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
 
-        createFile(project.outputPath(), project, aggregate, "crud-adapter.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "crud-adapter.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "CrudAdapter.java");
-        createFile(project.outputPath(), project, aggregate, "crud-orchestrator.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "crud-orchestrator.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "CrudOrchestrator.java");
-        createFile(project.outputPath(), project, aggregate, "crud-viewmodel.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(moduleDir, project, service, module, aggregate, "crud-viewmodel.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
-        createFile(project.outputPath(), project, aggregate, "options-supplier.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/suppliers/"
+        createFile(moduleDir, project, service, module, aggregate, "options-supplier.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdOptionsSupplier.java");
-        createFile(project.outputPath(), project, aggregate, "label-supplier.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/suppliers/"
+        createFile(moduleDir, project, service, module, aggregate, "label-supplier.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdLabelSupplier.java");
     }
 
+    // ─── createFile overloads ─────────────────────────────────────────────────
+
     @SneakyThrows
-    private void createFile(String baseDir, ProjectEntity project, AggregateEntity aggregate, String template, String destFile) {
+    private void createFile(String baseDir, ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                            AggregateEntity aggregate, String template, String destFile) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("module", moduleToMap(module));
         model.put("aggregate", aggregateToMap(aggregate));
         createFile(baseDir, model, template, destFile);
     }
 
-    @SneakyThrows
-    private void createFile(String baseDir, ProjectEntity project, String template, String destFile) {
-        Map<String, Object> model = new HashMap<>();
-        model.put("project", projectToMap(project));
-        createFile(baseDir, model, template, destFile);
-    }
+    // ─── Model mappers ────────────────────────────────────────────────────────
 
     private Map<String, Object> projectToMap(ProjectEntity project) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(project)));
+        var services = project.serviceIds().stream()
+                .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
+                .map(this::serviceToMap)
+                .toList();
+        map.put("services", services);
+        return map;
+    }
 
-        var modules = project.serviceIds().stream()
-                .map(moduleId -> repository.findById(moduleId, ModuleEntity.class).orElseThrow())
+    private Map<String, Object> serviceToMap(ServiceEntity service) {
+        var map = new HashMap<String, Object>();
+        map.putAll(fromJson(toJson(service)));
+        var modules = service.moduleIds().stream()
+                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
                 .map(this::moduleToMap)
                 .toList();
-
         map.put("modules", modules);
         return map;
     }
@@ -246,8 +327,6 @@ public class GenerateCodeUseCase {
         if (!map.containsKey("operations") || map.get("operations") == null) {
             map.put("operations", List.of());
         } else {
-            // Serialize each OperationDto to Map so Freemarker accesses fields
-            // as properties (operation.name) instead of Java methods (operation.name())
             map.put("operations", aggregate.operations().stream()
                     .filter(operation -> operation.type() != null && "CUSTOM".equals(operation.type()))
                     .map(operationEntity -> new OperationDto(
@@ -262,7 +341,7 @@ public class GenerateCodeUseCase {
                             operationEntity.paginated(),
                             operationEntity.defaultPageSize()
                     ))
-                    .map(op -> fromJson(toJson(op)))  // ← convert to Map for Freemarker
+                    .map(op -> fromJson(toJson(op)))
                     .toList());
         }
 
@@ -276,6 +355,8 @@ public class GenerateCodeUseCase {
 
         return map;
     }
+
+    // ─── File I/O ─────────────────────────────────────────────────────────────
 
     @SneakyThrows
     private void createFile(String baseDir, Map<String, Object> model, String template, String destFile) {
@@ -321,7 +402,17 @@ public class GenerateCodeUseCase {
         return value.substring(0, 1).toUpperCase() + value.substring(1);
     }
 
-    /** Converts "poc sagas" or "poc-sagas" to "PocSagas" */
+    /** Converts "booking service" or "booking-service" to "booking-service" (kebab-case slug) */
+    private String serviceName(ServiceEntity service) {
+        return service.name().toLowerCase().replaceAll("[\\s_]+", "-");
+    }
+
+    /** Converts "My Module" or "my-module" to "mymodule" (no separator, lower) */
+    private String moduleSlug(String name) {
+        return name.toLowerCase().replaceAll("[^a-z0-9]", "");
+    }
+
+    /** Converts "booking service" or "booking-service" to "BookingService" (PascalCase) */
     private String toClassName(String name) {
         if (name == null || name.isBlank()) return "App";
         return Arrays.stream(name.replace("-", " ").split("\\s+"))

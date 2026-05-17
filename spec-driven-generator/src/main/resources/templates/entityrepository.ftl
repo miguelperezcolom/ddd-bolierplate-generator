@@ -1,4 +1,4 @@
-package ${project.packageName}.infra.out.persistence;
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

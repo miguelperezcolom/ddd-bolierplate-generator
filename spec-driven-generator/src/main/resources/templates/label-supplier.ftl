@@ -1,8 +1,8 @@
-package ${project.packageName}.infra.in.ui.suppliers;
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.in.ui.suppliers;
 
 import io.mateu.uidl.interfaces.HttpRequest;
 import io.mateu.uidl.interfaces.LabelSupplier;
-import ${project.packageName}.application.query.${aggregate.name}QueryService;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.${aggregate.name}QueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

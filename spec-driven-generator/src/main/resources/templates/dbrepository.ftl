@@ -1,12 +1,12 @@
-package ${project.packageName}.infra.out.persistence;
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
-import ${project.packageName}.application.out.${aggregate.name}Repository;
-import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
-import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.out.${aggregate.name}Repository;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
 <#list safeFields as field>
     <#if field.type == "ValueObject">
-import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
     </#if>
 </#list>
 import lombok.RequiredArgsConstructor;

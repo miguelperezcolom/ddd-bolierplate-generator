@@ -71,6 +71,7 @@ public class CommonFileRepository {
         generateSchema();
         store.clear();
         data.projects().forEach(p -> store.put(p.id(), p));
+        data.services().forEach(p -> store.put(p.id(), p));
         data.modules().forEach(p -> store.put(p.id(), p));
         data.aggregates().forEach(p -> store.put(p.id(), p));
         data.entities().forEach(p -> store.put(p.id(), p));

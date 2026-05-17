@@ -1,4 +1,4 @@
-package ${project.packageName}.infra.out.persistence;
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign visibleFields = safeFields?filter(f -> f.searchable || f.visible)>
 <#assign firstStringField = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))?first!"">
@@ -6,9 +6,9 @@ package ${project.packageName}.infra.out.persistence;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
-import ${project.packageName}.application.query.${aggregate.name}QueryService;
-import ${project.packageName}.application.query.dto.${aggregate.name}Dto;
-import ${project.packageName}.application.query.dto.${aggregate.name}Row;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.${aggregate.name}QueryService;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Dto;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package ${project.packageName}.application.query.dto;
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto;
 
 <#assign visibleFields = aggregate.fields?filter(f -> (f.searchable || f.visible) && f.name != "id")>
 public record ${aggregate.name}Row(

@@ -1,14 +1,14 @@
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false>
 <#list safeFields as field><#if field.type == "Wrapper"><#if field.primitiveType == "date"><#assign hasDate = true></#if><#if field.primitiveType == "time"><#assign hasTime = true></#if><#if field.primitiveType == "datetime"><#assign hasDateTime = true></#if><#if field.primitiveType == "decimal"><#assign hasBigDecimal = true></#if></#if></#list>
-package ${project.packageName}.domain.aggregates.${aggregate.name?lower_case};
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case};
 
 <#if hasDate>import java.time.LocalDate;
 </#if><#if hasTime>import java.time.LocalTime;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
-</#if>import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
-<#list safeFields as field><#if field.type == "ValueObject">import ${project.packageName}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
+</#if>import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
+<#list safeFields as field><#if field.type == "ValueObject">import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
 </#if></#list>
 public interface ${aggregate.name}OperationContext {
 

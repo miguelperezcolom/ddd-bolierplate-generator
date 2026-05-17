@@ -1,4 +1,4 @@
-<#assign className = project.name?replace(" ", "_")?replace("-", "_")?split("_")?map(w -> w?cap_first)?join("") + "Application">
+<#assign className = service.name?replace(" ", "_")?replace("-", "_")?split("_")?map(w -> w?cap_first)?join("") + "Application">
 package ${project.packageName};
 
 import org.springframework.boot.SpringApplication;

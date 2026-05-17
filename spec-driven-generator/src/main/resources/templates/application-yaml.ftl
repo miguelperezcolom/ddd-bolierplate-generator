@@ -1,12 +1,12 @@
 server:
-    port: 8080
+    port: ${service.port!8080}
 
 spring:
     application:
-        name: ${project.name}
+        name: ${service.name?lower_case?replace(" ","-")}
 
     datasource:
-        url: jdbc:postgresql://127.0.0.1:5432/${project.name}
+        url: jdbc:postgresql://127.0.0.1:5432/${service.name?lower_case?replace(" ","_")}
         username: user_app
         password: user_password
         driver-class-name: org.postgresql.Driver
@@ -34,7 +34,7 @@ spring:
     kafka:
         bootstrap-servers: localhost:9092
         consumer:
-            group-id: ${project.name}-group
+            group-id: ${service.name?lower_case?replace(" ","-")}-group
             auto-offset-reset: earliest
             key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
             value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -54,7 +54,7 @@ spring:
         activate:
             on-profile: local
     datasource:
-        url: jdbc:h2:mem:${project.name?replace(" ", "_")};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+        url: jdbc:h2:mem:${service.name?lower_case?replace(" ","_")?replace("-","_")};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
         username: sa
         password:
         driver-class-name: org.h2.Driver

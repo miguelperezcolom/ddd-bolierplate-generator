@@ -1,14 +1,14 @@
-package ${project.packageName}.infra.in.ui.pages.${aggregate.name?lower_case};
+package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.in.ui.pages.${aggregate.name?lower_case};
 
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
 import io.mateu.uidl.interfaces.CrudAdapter;
 import io.mateu.uidl.interfaces.HttpRequest;
-import ${project.packageName}.application.query.${aggregate.name}QueryService;
-import ${project.packageName}.application.query.dto.${aggregate.name}Row;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.delete.Delete${aggregate.name}Command;
-import ${project.packageName}.application.usecases.${aggregate.name?lower_case}.delete.Delete${aggregate.name}UseCase;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.${aggregate.name}QueryService;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.delete.Delete${aggregate.name}Command;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.delete.Delete${aggregate.name}UseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
