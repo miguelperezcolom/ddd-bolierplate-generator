@@ -26,6 +26,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ServiceEnti
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
+import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UiShellEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ValueObjectEntity;
@@ -68,8 +69,12 @@ public class GenerateCodeUseCase {
                 .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
                 .forEach(service -> generateService(project, service));
 
-        // Docker Compose at project root (monorepo) or service root (single-service)
+        // Docker Compose at project root
         generateDockerCompose(project);
+
+        // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
+        repository.findAllOfType(UiShellEntity.class)
+                .forEach(shell -> generateUiShell(project, shell));
     }
 
     // ─── Root pom (monorepo) ──────────────────────────────────────────────────
@@ -761,6 +766,46 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
+    }
+
+    // ─── UI Shells ────────────────────────────────────────────────────────────
+
+    private void generateUiShell(ProjectEntity project, UiShellEntity shell) {
+        var shellSlug = shell.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+        var shellDir = project.outputPath() + "/" + shellSlug;
+        var shellPackage = project.packageName() + "." + shell.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        var shellClassName = toClassName(shell.name());
+        var packageDir = shellPackage.replace(".", "/");
+
+        createDir(shellDir, "");
+        createDir(shellDir, "src/main/java/" + packageDir + "/infra/in/ui");
+        createDir(shellDir, "src/main/java/" + packageDir + "/infra/config");
+        createDir(shellDir, "src/main/resources/static/images");
+        createDir(shellDir, "src/test/java");
+
+        // resolve serviceIds → ServiceEntity maps
+        var resolvedServices = (shell.serviceIds() != null ? shell.serviceIds() : List.<String>of()).stream()
+                .map(id -> repository.findById(id, ServiceEntity.class).orElse(null))
+                .filter(s -> s != null)
+                .map(s -> fromJson(toJson(s)))
+                .toList();
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("shell", fromJson(toJson(shell)));
+        model.put("shellPackage", shellPackage);
+        model.put("shellClassName", shellClassName);
+        model.put("resolvedServices", resolvedServices);
+
+        createFile(shellDir, model, "uishell-pom.ftl", "pom.xml");
+        createFile(shellDir, model, "uishell-application.ftl",
+                "src/main/java/" + packageDir + "/" + shellClassName + "Application.java");
+        createFile(shellDir, model, "uishell-home.ftl",
+                "src/main/java/" + packageDir + "/infra/in/ui/" + shellClassName + "Home.java");
+        createFile(shellDir, model, "uishell-security.ftl",
+                "src/main/java/" + packageDir + "/infra/config/SecurityConfig.java");
+        createFile(shellDir, model, "uishell-yaml.ftl",
+                "src/main/resources/application.yaml");
     }
 
     // ─── Projections ──────────────────────────────────────────────────────────
