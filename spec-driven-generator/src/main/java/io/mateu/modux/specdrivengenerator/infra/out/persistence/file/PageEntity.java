@@ -14,6 +14,11 @@ public record PageEntity(
         List<String> componentIds,
         String listingDataSourceType,
         String listingQueryServiceId,
-        String listingGatewayId
+        String listingGatewayId,
+        List<PageButtonEntity> toolbar,
+        List<PageButtonEntity> bottomBar,
+        List<PageTriggerEntity> triggers,
+        List<PageRuleEntity> rules,
+        List<PageValidationEntity> validations
 ) implements Identifiable {
 }
