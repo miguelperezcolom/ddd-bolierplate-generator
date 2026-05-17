@@ -11,6 +11,7 @@
     <name>${module.name}</name>
     <properties>
         <java.version>21</java.version>
+        <cucumber.version>7.20.0</cucumber.version>
     </properties>
     <dependencies>
         <dependency>
@@ -36,6 +37,30 @@
             <groupId>io.mateu</groupId>
             <artifactId>vaadin-lit</artifactId>
             <version>0.0.1-MATEU</version>
+        </dependency>
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${r"${cucumber.version}"}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${r"${cucumber.version}"}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${r"${cucumber.version}"}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>

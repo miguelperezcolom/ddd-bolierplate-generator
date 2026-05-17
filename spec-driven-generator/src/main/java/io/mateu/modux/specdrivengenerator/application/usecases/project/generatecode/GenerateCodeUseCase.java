@@ -158,6 +158,12 @@ public class GenerateCodeUseCase {
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
 
+        // BDD runner (once per module)
+        Map<String, Object> bddModel = buildBaseModel(project, service, module);
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/bdd");
+        createFile(moduleDir, bddModel, "bdd-runner.ftl",
+                "src/test/java/" + modulePackageDir + "/bdd/CucumberRunner.java");
+
         // Domain events
         if (module.domainEventIds() != null) {
             module.domainEventIds().stream()
@@ -386,6 +392,36 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, project, service, module, aggregate, "label-supplier.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdLabelSupplier.java");
+
+        // ─── Tests ────────────────────────────────────────────────────────────────
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
+        createFile(moduleDir, project, service, module, aggregate, "aggregate-test.ftl",
+                "src/test/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+                        + "/" + aggregate.name() + "Test.java");
+
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/create");
+        createFile(moduleDir, project, service, module, aggregate, "create-usecase-test.ftl",
+                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+                        + "/create/Create" + aggregate.name() + "UseCaseTest.java");
+
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/update");
+        createFile(moduleDir, project, service, module, aggregate, "update-usecase-test.ftl",
+                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+                        + "/update/Update" + aggregate.name() + "UseCaseTest.java");
+
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
+        createFile(moduleDir, project, service, module, aggregate, "delete-usecase-test.ftl",
+                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+                        + "/delete/Delete" + aggregate.name() + "UseCaseTest.java");
+
+        // ─── BDD ─────────────────────────────────────────────────────────────────
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/bdd");
+        createFile(moduleDir, project, service, module, aggregate, "bdd-steps.ftl",
+                "src/test/java/" + modulePackageDir + "/bdd/" + aggregate.name() + "Steps.java");
+
+        createDir(moduleDir, "src/test/resources/features/" + moduleSlug(module.name()));
+        createFile(moduleDir, project, service, module, aggregate, "bdd-feature.ftl",
+                "src/test/resources/features/" + moduleSlug(module.name()) + "/" + aggregate.name() + ".feature");
     }
 
     // ─── Use Cases ────────────────────────────────────────────────────────────
@@ -422,6 +458,14 @@ public class GenerateCodeUseCase {
                     "src/main/java/" + modulePackageDir + "/infra/in/async/"
                             + capitalize(useCase.name()) + "Consumer.java");
         }
+
+        // Unit test for custom use case
+        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug);
+        Map<String, Object> testModel = buildBaseModel(project, service, module);
+        testModel.put("usecase", enrichUseCaseMap(useCase));
+        createFile(moduleDir, testModel, "usecase-test.ftl",
+                "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+                        + "/" + capitalize(useCase.name()) + "UseCaseTest.java");
     }
 
     private Map<String, Object> enrichUseCaseMap(UseCaseEntity useCase) {

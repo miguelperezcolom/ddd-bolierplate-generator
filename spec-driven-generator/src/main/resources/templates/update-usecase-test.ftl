@@ -1,0 +1,32 @@
+package ${project.packageName}.${module.slug}.application.usecases.${aggregate.name?lower_case}.update;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import ${project.packageName}.${module.slug}.application.out.${aggregate.name}Repository;
+import ${project.packageName}.${module.slug}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
+import ${project.packageName}.${module.slug}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
+import java.util.Optional;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class Update${aggregate.name}UseCaseTest {
+
+    @Mock
+    ${aggregate.name}Repository repository;
+
+    @InjectMocks
+    Update${aggregate.name}UseCase useCase;
+
+    @Test
+    void should_update_and_persist() {
+        var existing = new ${aggregate.name}();
+        when(repository.findById(any(${aggregate.name}Id.class))).thenReturn(Optional.of(existing));
+        var command = new Update${aggregate.name}Command(/* TODO: fill constructor args */);
+        useCase.handle(command);
+        verify(repository).save(existing);
+    }
+}
