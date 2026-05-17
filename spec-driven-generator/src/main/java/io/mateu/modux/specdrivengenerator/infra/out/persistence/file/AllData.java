@@ -19,6 +19,7 @@ public record AllData(
         List<ProjectionEntity> projections,
         List<SubscriptionEntity> subscriptions,
         List<ScheduledTriggerEntity> scheduledTriggers,
+        List<BusinessRuleEntity> businessRules,
         List<ReadModelEntity> readModels,
         List<RoleEntity> roles,
         List<PageEntity> pages,
@@ -44,6 +45,7 @@ public record AllData(
         projections = projections != null ? projections : List.of();
         subscriptions = subscriptions != null ? subscriptions : List.of();
         scheduledTriggers = scheduledTriggers != null ? scheduledTriggers : List.of();
+        businessRules = businessRules != null ? businessRules : List.of();
         readModels = readModels != null ? readModels : List.of();
         roles = roles != null ? roles : List.of();
         pages = pages != null ? pages : List.of();
