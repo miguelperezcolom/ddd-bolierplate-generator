@@ -1,0 +1,130 @@
+---
+title: Use Cases
+description: Defining application-layer use cases in Modux
+---
+
+A **Use Case** is the primary unit of application behaviour in Modux. It sits in the application layer and orchestrates domain objects to fulfil a single business intent — create a booking, approve an order, send a notification. In hexagonal architecture terms it is the entry point driven by any inbound adapter (REST controller, UI page, message consumer, scheduler).
+
+## Creating a use case
+
+1. Open **Behaviour → Use Cases**
+2. Click **New**
+3. Set the name, input/output models and exposure options
+4. Add steps to describe the orchestration logic
+
+## Configuration
+
+### Basic fields
+
+| Field | Description |
+|---|---|
+| **Name** | Use case name (PascalCase, e.g. `CreateBooking`, `ApproveOrder`) |
+| **Input model** | The model (DTO / value object) received as input |
+| **Output model** | The model returned as output (optional) |
+| **API version** | Version string for this use case's API contract |
+| **Timeout (ms)** | Maximum execution time before the use case is aborted |
+| **Transaction boundary** | `LOCAL` (single DB), `DISTRIBUTED` (2PC / XA), `SAGA` (compensating transactions) |
+
+### Exposure
+
+A use case can be exposed through one or more inbound adapters simultaneously:
+
+| Flag | Description |
+|---|---|
+| **Exposed as REST** | Generates a Spring MVC `@RestController` endpoint |
+| **Exposed as gRPC** | Generates a gRPC service stub |
+| **Exposed as MCP** | Exposes as an MCP tool for LLM agents |
+| **Exposed as async** | Consumed from a message broker topic |
+| **Exposed as UI** | Available for invocation from UI pages (toolbar buttons, wizard actions) |
+
+#### REST options
+
+| Field | Description |
+|---|---|
+| **HTTP method** | `GET`, `POST`, `PUT`, `DELETE`, or `PATCH` |
+| **REST path** | URL path (e.g. `/bookings/{id}/approve`) |
+
+#### gRPC options
+
+| Field | Description |
+|---|---|
+| **gRPC service name** | Proto service name |
+| **gRPC method name** | Proto method name |
+
+#### MCP options
+
+| Field | Description |
+|---|---|
+| **MCP description** | Human-readable description of the tool shown to LLM agents |
+
+#### Async options
+
+| Field | Description |
+|---|---|
+| **Topic name** | Message broker topic to consume from |
+| **Consumer group** | Consumer group identifier |
+| **Retry count** | Number of retries on processing failure |
+| **Dead letter queue** | Topic for messages that exceed the retry limit |
+| **Ordering key** | Field used to preserve message ordering |
+
+### Performance
+
+| Field | Description |
+|---|---|
+| **Cacheable** | Whether the result can be cached |
+| **Cache TTL (seconds)** | How long the cached result is valid |
+
+### Reliability
+
+| Field | Description |
+|---|---|
+| **Idempotency enabled** | Deduplicate repeated calls with the same key |
+| **Idempotency key field** | Input field used as the idempotency key |
+| **Rate limit enabled** | Throttle incoming calls |
+| **Rate limit (req/s)** | Maximum allowed requests per second |
+
+### Security
+
+| Field | Description |
+|---|---|
+| **Allowed roles** | RBAC roles permitted to invoke this use case |
+| **Allowed scopes** | OAuth2 scopes required to invoke this use case |
+
+## Steps
+
+Steps describe the orchestration logic of the use case. They are executed in order and can be mixed freely:
+
+| Type | Description |
+|---|---|
+| **Custom** | Hand-written logic (generates an abstract method to implement) |
+| **ReadAggregate** | Load an aggregate root by ID from its repository |
+| **CallAggregateOperation** | Invoke a named operation on an aggregate |
+| **SaveAggregate** | Persist an aggregate root via its repository |
+| **CallGateway** | Call an outbound gateway operation |
+| **PublishDomainEvent** | Publish a domain event to the message broker |
+| **CallUseCase** | Delegate to another use case |
+| **ApplyModelMapping** | Transform data between two models via a mapping definition |
+
+Each step has:
+
+| Field | Description |
+|---|---|
+| **Name** | Step label (used in generated code and tracing) |
+| **Type** | One of the types above |
+| **Aggregate** | Target aggregate (for `ReadAggregate`, `CallAggregateOperation`, `SaveAggregate`) |
+| **Operation** | Aggregate operation to invoke (for `CallAggregateOperation`) |
+| **Gateway** | Target gateway (for `CallGateway`) |
+| **Gateway operation** | Gateway method to call (for `CallGateway`) |
+| **Domain event** | Event to publish (for `PublishDomainEvent`) |
+| **Use case** | Nested use case to invoke (for `CallUseCase`) |
+| **Model mapping** | Mapping definition to apply (for `ApplyModelMapping`) |
+
+## What gets generated
+
+For each use case Modux generates:
+
+- `{Name}UseCase.java` — abstract Spring `@Service` class with one method per `Custom` step left for you to implement; all other steps are fully generated
+- `{Name}Command.java` — the command/request record
+- REST controller, gRPC stub, MCP tool registration, or async consumer — depending on exposure flags
+- Security annotations (`@PreAuthorize`) based on allowed roles and scopes
+- Caching annotations (`@Cacheable`) if cacheable is enabled
