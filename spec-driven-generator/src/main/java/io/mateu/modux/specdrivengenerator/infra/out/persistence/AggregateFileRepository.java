@@ -90,7 +90,7 @@ public class AggregateFileRepository implements AggregateRepository {
                                 operation.getOutputModelId(),
                                 String.join(",", operation.getPreconditions().stream()
                                         .map(OperationPrecondition::precondition).toList()),
-                                toJson(operation.getSets()),
+                                (operation.getSets() != null && !operation.getSets().isEmpty()) ? toJson(operation.getSets()) : null,
                                 String.join(",", operation.getEmits().stream()
                                         .map(DomainEventName::eventName).toList()),
                                 operation.getType().name(),

@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=./spec-driven-store-schema.json
+---
+projects:
+- id: "32954999-722f-4e0e-a32d-6b8a6e9a83d2"
+  name: "poc sagas"
+  outputPath: "sample/poc-sagas"
+  packageName: "com.riu.sagas"
+  serviceIds:
+  - "0ac22ca4-3534-48a3-ad62-6b174abde702"
+- id: "abb19cfc-94ee-41fd-bb7a-28976e552dfd"
+  name: "test 2"
+  outputPath: "sss"
+  packageName: "uuuu"
+services:
+- id: "0ac22ca4-3534-48a3-ad62-6b174abde702"
+  name: "Servicio 1"
+  moduleIds:
+  - "ec54a203-2f56-4d50-bb18-92afff6451a8"
+modules:
+- id: "ec54a203-2f56-4d50-bb18-92afff6451a8"
+  name: "payments"
+  aggregateIds:
+  - "51907e72-9210-4173-9017-c69333fc58b9"
+  - "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
+- id: "4066c768-809c-4b2d-8628-a1879fdc5d2d"
+  name: "booking"
+  aggregateIds:
+  - "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
+aggregates:
+- id: "51907e72-9210-4173-9017-c69333fc58b9"
+  name: "Payment"
+  modelId: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
+  invariants:
+  - id: "ygyedg"
+    name: "ygyug"
+- id: "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
+  name: "Booking"
+  modelId: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
+  operations:
+  - id: "confirm"
+    name: "Confirm"
+    sets: "[ ]"
+    type: "CUSTOM"
+  invariants:
+  - id: "hotel_obligatorio"
+    name: "Servicio hotel obligatorio para transfer"
+entities:
+- id: "28354082-6daf-436a-819f-63075c842706"
+  name: "BookingLine"
+valueObjects:
+- id: "3db08bce-174c-4d17-b6d4-8eea84557f26"
+  name: "PersonNamed"
+  type: "Record"
+  valuesJson: "[ {\n  \"value\" : \"dcd\",\n  \"label\" : \"sdcds\"\n} ]"
+  dataType: "string"
+invariants:
+- id: "356374e7-ac7f-47a6-8efa-a27187a9fdc2"
+  name: "Solo una reserva activa por cliente"
+useCases:
+- id: "22d8b5aa-83cb-4e5f-ab52-3e8d8e0ecf15"
+  name: "caso de uso"
+models:
+- id: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
+  name: "wewef"
+  fields:
+  - name: "name"
+    basicType: true
+    type: "string"

@@ -39,6 +39,11 @@
             <artifactId>vaadin-lit</artifactId>
             <version>0.0.1-MATEU</version>
         </dependency>
+        <dependency>
+            <groupId>io.mateu.workflow</groupId>
+            <artifactId>shared</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

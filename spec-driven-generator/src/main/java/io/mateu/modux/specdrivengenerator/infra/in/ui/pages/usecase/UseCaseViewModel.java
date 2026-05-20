@@ -11,10 +11,8 @@ import io.mateu.modux.specdrivengenerator.application.usecases.usecase.save.Save
 import io.mateu.modux.specdrivengenerator.application.usecases.usecase.save.SaveUseCaseUseCase;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
-import io.mateu.uidl.annotations.GeneratedValue;
-import io.mateu.uidl.annotations.Hidden;
-import io.mateu.uidl.annotations.Lookup;
-import io.mateu.uidl.annotations.Tab;
+import io.mateu.uidl.StyleConstants;
+import io.mateu.uidl.annotations.*;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -30,6 +28,7 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
+@Style(StyleConstants.FULL_WIDTH_WITH_PADDING)
 public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
 
     @GeneratedValue(UUIDValueGenerator.class)
@@ -39,39 +38,51 @@ public class UseCaseViewModel implements Identifiable, CrudEditorForm<String>, C
     @NotEmpty
     String name;
 
+    @Tab("Exposition")
     boolean exposedAsRest;
     boolean exposedAsGrpc;
     boolean exposedAsMcp;
     boolean exposedAsAsync;
     boolean exposedAsUi;
 
+    @Tab("In/Out")
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String inputModelId;
 
     @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
     String outputModelId;
 
+    @Tab("Security")
     List<String> allowedRoles = new ArrayList<>();
 
     List<String> allowedScopes = new ArrayList<>();
 
+    @Tab("Metadata")
     String apiVersion;
     String mcpDescription;
+    @Tab("Rest")
     HttpMethod restHttpMethod;
     String restPath;
+    @Tab("Resilience")
     Integer asyncRetryCount;
     String asyncDeadLetterQueue;
+    Long timeoutMs;
+    @Tab("Async")
     String asyncOrderingKey;
     String asyncTopicName;
     String asyncConsumerGroup;
+    @Tab("Cache")
     boolean cacheable;
     Integer cacheTtlSeconds;
-    Long timeoutMs;
+    @Tab("Transactional")
     TransactionBoundary transactionBoundary;
+    @Tab("Idempotency")
     boolean idempotencyEnabled;
     String idempotencyKeyField;
+    @Tab("Rate Limiting")
     boolean rateLimitEnabled;
     Integer rateLimitRequestsPerSecond;
+    @Tab("gRPC")
     String grpcServiceName;
     String grpcMethodName;
 

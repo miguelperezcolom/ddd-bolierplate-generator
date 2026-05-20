@@ -9,16 +9,19 @@ import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.uishell.UiShellCrudO
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 
-@Title("Interfaces")
-public class InterfacesMenu {
+@Title("UI")
+public class UIMenu {
 
     @Menu
-    GatewayCrudOrchestrator gateways;
+    PageCrudOrchestrator pages;
 
     @Menu
-    ReadModelCrudOrchestrator readModels;
+    ComponentCrudOrchestrator components;
 
     @Menu
-    UIMenu ui;
+    UiAdapterCrudOrchestrator uiAdapters;
+
+    @Menu
+    UiShellCrudOrchestrator uiShells;
 
 }

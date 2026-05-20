@@ -38,8 +38,8 @@ public class ValueObjectFileRepository implements ValueObjectRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getType().name(),
-                toJson(entity.getValues()),
-                toJson(entity.getFields()),
+                (entity.getValues() != null && !entity.getValues().isEmpty()) ? toJson(entity.getValues()) : null,
+                (entity.getFields() != null && !entity.getFields().isEmpty()) ? toJson(entity.getFields()) : null,
                 entity.getDataType() != null?entity.getDataType().name():null
                 ));
         return entity;

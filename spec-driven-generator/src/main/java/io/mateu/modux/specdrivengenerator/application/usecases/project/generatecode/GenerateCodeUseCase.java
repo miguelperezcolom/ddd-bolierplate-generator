@@ -12,6 +12,7 @@ import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.DomainEvent
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.uidl.data.FieldDataType;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.PageEntity;
@@ -143,6 +144,7 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, moduleModel, "module-pom.ftl", "pom.xml");
 
         // source directories
+        createDir(moduleDir, "src/main/java/" + packageDir + "/application/out");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/usecases");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
@@ -153,6 +155,13 @@ public class GenerateCodeUseCase {
         createDir(moduleDir, "src/main/resources");
         createDir(moduleDir, "src/test/java");
         createDir(moduleDir, "src/test/resources");
+
+        // Base interfaces at project package level, shared by all aggregate repositories and query services
+        createFile(moduleDir, moduleModel, "repository.ftl",
+                "src/main/java/" + packageDir + "/application/out/Repository.java");
+        createDir(moduleDir, "src/main/java/" + packageDir + "/application/query");
+        createFile(moduleDir, moduleModel, "queryservice.ftl",
+                "src/main/java/" + packageDir + "/application/query/QueryService.java");
 
         // E2E base class (once per module)
         createDir(moduleDir, "src/test/java/" + modulePackageDir + "/e2e");
@@ -1065,11 +1074,51 @@ public class GenerateCodeUseCase {
             map.put("invariants", List.of());
         }
 
-        if (!map.containsKey("fields") || map.get("fields") == null) {
+        if (aggregate.modelId() != null && !aggregate.modelId().isBlank()) {
+            var modelEntity = repository.findById(aggregate.modelId(), ModelEntity.class).orElse(null);
+            if (modelEntity != null && modelEntity.fields() != null) {
+                var fields = modelEntity.fields().stream()
+                        .map(f -> {
+                            var fieldMap = new HashMap<String, Object>();
+                            fieldMap.put("name", f.name());
+                            fieldMap.put("basicType", f.basicType());
+                            fieldMap.put("searchable", true);
+                            fieldMap.put("visible", true);
+                            fieldMap.put("mandatory", false);
+                            fieldMap.put("readonly", false);
+                            if (f.basicType()) {
+                                fieldMap.put("type", "Wrapper");
+                                fieldMap.put("primitiveType", mapFieldDataType(f.type()));
+                            } else {
+                                fieldMap.put("type", "ValueObject");
+                                fieldMap.put("primitiveType", null);
+                            }
+                            return (Object) fieldMap;
+                        })
+                        .toList();
+                map.put("fields", fields);
+            } else {
+                map.put("fields", List.of());
+            }
+        } else {
             map.put("fields", List.of());
         }
 
         return map;
+    }
+
+    private String mapFieldDataType(FieldDataType type) {
+        if (type == null) return "string";
+        return switch (type) {
+            case integer -> "integer";
+            case number, money -> "decimal";
+            case date -> "date";
+            case time -> "time";
+            case dateTime -> "datetime";
+            case bool -> "bool";
+            case file -> "file";
+            default -> "string";
+        };
     }
 
     // ─── File I/O ─────────────────────────────────────────────────────────────

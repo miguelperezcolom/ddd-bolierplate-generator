@@ -1,5 +1,6 @@
 package io.mateu.modux.specdrivengenerator.infra.out.persistence.file;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
@@ -156,7 +157,15 @@ public class CommonFileRepository {
                 bddScenarios
         );
         YAMLMapper yamlMapper = new YAMLMapper();
-        yamlMapper.writeValue(Path.of(".dev/data/spec-driven-store.yaml").toFile(), data);
+        yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+        yamlMapper.configOverride(boolean.class).setInclude(
+                JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
+        yamlMapper.configOverride(Boolean.class).setInclude(
+                JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
+        var yamlPath = Path.of(".dev/data/spec-driven-store.yaml");
+        String yamlContent = "# yaml-language-server: $schema=./spec-driven-store-schema.json\n"
+                + yamlMapper.writeValueAsString(data);
+        Files.writeString(yamlPath, yamlContent);
     }
 
     @SneakyThrows

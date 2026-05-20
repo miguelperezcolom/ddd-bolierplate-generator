@@ -1,5 +1,6 @@
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query;
 
+import ${project.packageName}.application.query.QueryService;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Dto;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
 
