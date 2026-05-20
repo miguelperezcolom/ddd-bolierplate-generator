@@ -34,7 +34,7 @@ public class GenerateBoilerplateCodeForm {
     URI generateCode() {
         log.info("Generating code for project " + projectId);
         useCase.handle(new GenerateCodeCommand(projectId, outputPath, packageName, sourceOnly));
-        return URI.create("/projects/" + projectId);
+        return URI.create("/organizacion/projects/" + projectId);
     };
 
 }

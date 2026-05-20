@@ -9,11 +9,15 @@ import io.mateu.modux.specdrivengenerator.application.usecases.model.create.Crea
 import io.mateu.modux.specdrivengenerator.application.usecases.model.create.CreateModelUseCase;
 import io.mateu.modux.specdrivengenerator.application.usecases.model.save.SaveModelCommand;
 import io.mateu.modux.specdrivengenerator.application.usecases.model.save.SaveModelUseCase;
+import io.mateu.uidl.annotations.DetailFormCustomisation;
+import io.mateu.uidl.annotations.FormLayout;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import io.mateu.uidl.data.FormPosition;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -26,6 +30,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
+@FormLayout(columns = 1)
 public class ModelViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
 
     @GeneratedValue(UUIDValueGenerator.class)
@@ -35,8 +40,10 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     @NotEmpty
     String name;
 
+    @DetailFormCustomisation(position = FormPosition.modal)
     List<ModelFieldViewModel> fields = new ArrayList<>();
 
+    @DetailFormCustomisation(position = FormPosition.modal)
     List<ModelValidationViewModel> validations = new ArrayList<>();
 
     final CreateModelUseCase createUseCase;

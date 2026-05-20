@@ -32,10 +32,7 @@ import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.SagaIdLabelSuppl
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.SagaIdOptionsSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ScheduledTriggerIdLabelSupplier;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.suppliers.ScheduledTriggerIdOptionsSupplier;
-import io.mateu.uidl.annotations.GeneratedValue;
-import io.mateu.uidl.annotations.Hidden;
-import io.mateu.uidl.annotations.Lookup;
-import io.mateu.uidl.annotations.Tab;
+import io.mateu.uidl.annotations.*;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.aggregate.InvariantViewModel;
 import io.mateu.uidl.interfaces.CrudCreationForm;
 import io.mateu.uidl.interfaces.CrudEditorForm;
@@ -52,12 +49,14 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
+@FormLayout(columns = 4)
 public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
     @GeneratedValue(UUIDValueGenerator.class)
     @Hidden
     String id;
     @NotEmpty String name;
     String gitRepository;
+    @Tab("DDD")
     @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
     List<String> aggregates;
 
@@ -73,21 +72,25 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> domainEventIds;
 
-    @Lookup(search = ProjectionIdOptionsSupplier.class, label = ProjectionIdLabelSupplier.class)
-    List<String> projectionIds;
-
+    @Tab("CQRS")
     @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
     List<String> readModelIds;
+
+    @Tab("Async")
+    @Lookup(search = ProjectionIdOptionsSupplier.class, label = ProjectionIdLabelSupplier.class)
+    List<String> projectionIds;
 
     @Lookup(search = SubscriptionIdOptionsSupplier.class, label = SubscriptionIdLabelSupplier.class)
     List<String> subscriptionIds;
 
+    @Tab("Orchestration")
     @Lookup(search = SagaIdOptionsSupplier.class, label = SagaIdLabelSupplier.class)
     List<String> sagaIds;
 
     @Lookup(search = ScheduledTriggerIdOptionsSupplier.class, label = ScheduledTriggerIdLabelSupplier.class)
     List<String> scheduledTriggerIds;
 
+    @Tab("Infra")
     String llmSystemPrompt;
     String tableNamePrefix;
     boolean autoTableNamePrefix;
