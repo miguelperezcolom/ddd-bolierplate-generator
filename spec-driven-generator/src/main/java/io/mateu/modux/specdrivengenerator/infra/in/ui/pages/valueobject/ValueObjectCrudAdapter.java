@@ -46,14 +46,14 @@ public class ValueObjectCrudAdapter implements CrudAdapter<
     public ValueObjectViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
     public ValueObjectViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override

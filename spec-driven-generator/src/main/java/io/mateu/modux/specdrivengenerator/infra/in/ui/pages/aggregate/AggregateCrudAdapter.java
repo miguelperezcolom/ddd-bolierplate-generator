@@ -48,14 +48,14 @@ public class AggregateCrudAdapter implements CrudAdapter<
     public AggregateViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
     public AggregateViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override

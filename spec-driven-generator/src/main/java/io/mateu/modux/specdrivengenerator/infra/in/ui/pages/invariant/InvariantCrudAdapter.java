@@ -48,14 +48,14 @@ public class InvariantCrudAdapter implements CrudAdapter<
     public InvariantViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
     public InvariantViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override

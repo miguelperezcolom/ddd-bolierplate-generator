@@ -48,14 +48,14 @@ public class ModuleCrudAdapter implements CrudAdapter<
     public ModuleViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
     public ModuleViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override

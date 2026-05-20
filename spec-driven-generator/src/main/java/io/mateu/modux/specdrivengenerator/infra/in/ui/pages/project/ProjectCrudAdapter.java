@@ -48,14 +48,14 @@ public class ProjectCrudAdapter implements CrudAdapter<
     public ProjectViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
     public ProjectViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService
                 .getById(id)
-                .orElseThrow());
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
     }
 
     @Override
