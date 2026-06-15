@@ -56,9 +56,6 @@ aggregates:
 - id: "reserva"
   name: "Reserva"
   modelId: "reserva"
-- id: "lineaReserva"
-  name: "LineaReserva"
-  modelId: "lineaReserva"
 - id: "pax"
   name: "Pax"
   modelId: "pax"
@@ -84,6 +81,11 @@ aggregates:
 entities:
 - id: "28354082-6daf-436a-819f-63075c842706"
   name: "BookingLine"
+- id: "lineaReserva"
+  name: "LineaReserva"
+  modelId: "lineaReserva"
+  parentAggregateId: "reserva"
+  isCollection: true
 valueObjects:
 - id: "3db08bce-174c-4d17-b6d4-8eea84557f26"
   name: "PersonNamed"
