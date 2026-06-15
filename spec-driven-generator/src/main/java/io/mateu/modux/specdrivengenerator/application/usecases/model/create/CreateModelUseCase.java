@@ -24,7 +24,7 @@ public class CreateModelUseCase {
         var fields = command.fields() == null ? List.<ModelField>of() :
                 command.fields().stream()
                         .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                toFieldValidations(f.validations())))
+                                f.isEnum(), f.enumId(), toFieldValidations(f.validations())))
                         .toList();
         var validations = toValidations(command.validations());
         var model = Model.of(

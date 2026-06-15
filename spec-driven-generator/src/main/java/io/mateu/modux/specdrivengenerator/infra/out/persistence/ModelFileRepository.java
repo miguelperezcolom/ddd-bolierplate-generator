@@ -30,7 +30,7 @@ public class ModelFileRepository implements ModelRepository {
                         entity.fields() == null ? List.of() :
                                 entity.fields().stream()
                                         .map(f -> new ModelField(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                                toFieldValidations(f.validations())))
+                                                f.isEnum(), f.enumId(), toFieldValidations(f.validations())))
                                         .toList(),
                         toValidations(entity.validations())));
     }
@@ -40,7 +40,7 @@ public class ModelFileRepository implements ModelRepository {
         var fieldEntities = entity.getFields() == null ? List.<ModelFieldEntity>of() :
                 entity.getFields().stream()
                         .map(f -> new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                toFieldValidationEntities(f.validations())))
+                                f.isEnum(), f.enumId(), toFieldValidationEntities(f.validations())))
                         .toList();
         var validationEntities = toValidationEntities(entity.getValidations());
         repository.save(new ModelEntity(

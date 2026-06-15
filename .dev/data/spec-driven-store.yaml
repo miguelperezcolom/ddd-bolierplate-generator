@@ -44,6 +44,11 @@ aggregates:
   invariants:
   - id: "hotel_obligatorio"
     name: "Servicio hotel obligatorio para transfer"
+- id: "reserva"
+  name: "Reserva"
+  modelId: "reserva"
+  idType: "localizador"
+  persistenceType:
 entities:
 - id: "28354082-6daf-436a-819f-63075c842706"
   name: "BookingLine"
@@ -59,10 +64,353 @@ invariants:
 useCases:
 - id: "22d8b5aa-83cb-4e5f-ab52-3e8d8e0ecf15"
   name: "caso de uso"
+enums:
+  - id: tipoCliente
+    values:
+      - id: "GEN"
+        name: "General"
+      - id: "VIP"
+        name: "VIP"
+  - id: tipoPrecio
+    values:
+      - id: "P"
+        name: "Pax"
+      - id: "H"
+        name: "Habitación"
+  - id: "tipoPax"
+    values:
+      - id: "AD"
+        name: "Adulto"
+      - id: "NI"
+        name: "Niño"
+      - id: "BB"
+        name: "Bebé"
+  - id: "regimenAlimenticio"
+    values:
+      - id: "SA"
+        name: "Solo Alojamiento"
+      - id: "MP"
+        name: "Media Pensión"
+      - id: "PC"
+        name: "Pensión Completa"
+  - id: "tipoCobro"
+    values:
+      - id: "PFRONT"
+        name: "Pago en Front"
+      - id: "CRED"
+        name: "Crédito"
+  - id: "estadoReserva"
+    values:
+      - id: "PTE"
+        name: "Pendiente"
+      - id: "CNF"
+        name: "Confirmada"
+  - id: "estadoHabitacion"
+    values:
+      - id: "PTE"
+        name: "Pendiente"
+      - id: "CLN"
+        name: "Limpia"
+  - id: "tipoTarifa"
+    values:
+      - id: "B2C"
+      - id: "B2C2"
 models:
-- id: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
-  name: "wewef"
-  fields:
-  - name: "name"
-    basicType: true
-    type: "string"
+  - id: "tipoTarjeta"
+    name: "Tipo Tarjeta"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "hotel"
+    name: "Hotel"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "agencia"
+    name: "Agencia"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "reserva"
+    name: "Reserva"
+    fields:
+    - name: "localizador"
+      basicType: true
+      type: "string"
+    - name: "agencia"
+      basicType: true
+      type: string
+    - name: fechaLlegada
+      basicType: true
+      type: "date"
+    - name: noches
+      basicType: true
+      type: "integer"
+    - name: fechaSalida
+      basicType: true
+      type: "date"
+    - name: regimenAlimenticio
+      basicType: false
+      enum: true
+      enumId: regimenAlimenticio
+    - name: adultos
+      basicType: true
+      type: "integer"
+    - name: ninos
+      basicType: true
+      type: "integer"
+    - name: bebes
+      basicType: true
+      type: "integer"
+    - name: hotel
+      basicType: false
+      modelId: hotel
+    - name: tipoCobro
+      basicType: false
+      enum: true
+      enumId: "tipoCobro"
+    - name: terceros
+      basicType: true
+      type: "bool"
+    - name: pendienteIntegrar
+      basicType: true
+      type: "bool"
+    - name: requiere
+      basicType: true
+      type: "string"
+    - name: estado
+      basicType: false
+      enumId: "estadoReserva"
+    - name: exp
+      basicType: true
+      type: "bool"
+    - name: multiple
+      basicType: true
+      type: "bool"
+    - name: grupoRes
+      basicType: true
+      type: "bool"
+    - name: grupoOp
+      basicType: true
+      type: "bool"
+    - name: grantizada
+      basicType: true
+      type: "bool"
+    - name: refTarifa
+      basicType: true
+      type: "string"
+    - name: tipoTarifa
+      basicType: false
+      enum: true
+      enumId: "tipoTarifa"
+  - id: "lineaReserva"
+    name: "Linea Reserva"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "numeroHabitacion"
+        basicType: true
+        type: "string"
+      - name: espera
+        basicType: true
+        type: "bool"
+      - name: tipoHabitacionFisica
+        basicType: true
+        type: "string"
+      - name: tipoHabitacionContratada
+        basicType: true
+        type: "string"
+      - name: upgrade
+        basicType: true
+        type: "bool"
+      - name: deseos
+        basicType: true
+        type: "string"
+      - name: observacionesInternas
+        basicType: true
+        type: "string"
+      - name: avisos
+        basicType: true
+        type: "string"
+  - id: "pax"
+    name: "Pax"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "nombre"
+        basicType: true
+        type: "string"
+      - name: "apellidos"
+        basicType: true
+        type: "string"
+      - name: "tipoPax"
+        basicType: false
+        enum: true
+        enumId: "tipoPax"
+      - name: "regimen"
+        basicType: false
+        enum: true
+        enumId: "regimenAlimenticio"
+      - name: nacionalidad
+        basicType: true
+        type: "string"
+      - name: estadoHabitacion
+        basicType: false
+        enum: true
+        enumId: "estadoHabitacion"
+      - name: tieneCardex
+        basicType: true
+        type: "bool"
+      - name: interHotel
+        basicType: true
+        type: "bool"
+      - name: aviso
+        basicType: true
+        type: "bool"
+      - name: observacionesHotel
+        basicType: true
+        type: "string"
+  - id: "cardex"
+    name: "Cardex"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "nombre"
+        basicType: true
+        type: "string"
+  - id: cargo
+    name: "Cargo"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "tipoHabitacion"
+        basicType: true
+        type: "string"
+      - name: "precio"
+        basicType: true
+        type: "number"
+      - name: "moneda"
+        basicType: true
+        type: "string"
+      - name: "tipoPrecio"
+        basicType: false
+        enum: true
+        enumId: "tipoPrecio"
+  - id: habitacion
+    name: "Habitacion"
+    fields:
+      - name: numero
+        basicType: true
+        type: "string"
+      - name: dobles
+        basicType: true
+        type: number
+      - name: individuales
+        basicType: true
+        type: number
+      - name: estado
+        basicType: false
+        enum: true
+        enumId: "estadoHabitacion"
+      - name: checkout
+        basicType: true
+        type: "bool"
+      - name: observaciones
+        basicType: true
+        type: "string"
+      - name: averias
+        basicType: true
+        type: "string"
+  - id: tipoRiuClass
+    name: "Tipo Riu Class"
+    fields:
+      - name: id
+        basicType: true
+        type: "string"
+      - name: nombre
+        basicType: true
+        type: "string"
+  - id: historialCliente
+    name: "Historial Cliente"
+    fields:
+      - name: id
+        basicType: true
+        type: "string"
+      - name: tipoRiuClass
+        basicType: true
+        type: string
+      - name: ultimoHotel
+        basicType: true
+        type: string
+      - name: preferencias
+        basicType: true
+        type: string
+      - name: riuPartnerClub
+        basicType: true
+        type: string
+      - name: repetidor
+        basicType: true
+        type: bool
+      - name: tipoCliente
+        basicType: false
+        enum: true
+        enumId: "tipoCliente"
+      - name: numeroAtencionesHabitacion
+        basicType: true
+        type: "integer"
+      - name: ultimaHabitacion
+        basicType: true
+        type: "string"
+  - id: foliosAnticipos
+    name: "Folios/Anticipos"
+    fields:
+      - name: creditoCancelado
+        basicType: true
+        type: "bool"
+      - name: imprimirRecibo
+        basicType: true
+        type: "bool"
+      - name: limiteCredito
+        basicType: true
+        type: "number"
+      - name: tipoTarjeta
+        basicType: true
+        type: "string"
+      - name: ultimosDigitosTarjeta
+        basicType: true
+        type: "string"
+      - name: entregaACuenta
+        basicType: true
+        type: "number"
+      - name: saldoPendiente
+        basicType: true
+        type: "number"
+      - name: saldoPendienteMoneda
+        basicType: true
+        type: "string"
+

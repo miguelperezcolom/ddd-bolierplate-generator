@@ -10,6 +10,8 @@ public record ModelFieldData(
         boolean basicType,
         FieldDataType type,
         String modelId,
+        boolean isEnum,
+        String enumId,
         List<ModelFieldValidationData> validations
 ) {
 }

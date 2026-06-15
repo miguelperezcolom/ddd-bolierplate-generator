@@ -76,6 +76,8 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
                     vm.basicType = f.basicType();
                     vm.type = f.type();
                     vm.modelId = f.modelId();
+                    vm.isEnum = f.isEnum();
+                    vm.enumId = f.enumId();
                     vm.validations = f.validations() == null ? new ArrayList<>() :
                             f.validations().stream().map(v -> {
                                 var vvm = new ModelFieldValidationViewModel();
@@ -101,7 +103,7 @@ public class ModelViewModel implements Identifiable, CrudEditorForm<String>, Cru
     private List<ModelFieldData> toFieldData(List<ModelFieldViewModel> fields) {
         if (fields == null) return List.of();
         return fields.stream()
-                .map(f -> new ModelFieldData(f.id, f.name, f.basicType, f.type, f.modelId,
+                .map(f -> new ModelFieldData(f.id, f.name, f.basicType, f.type, f.modelId, f.isEnum, f.enumId,
                         f.validations == null ? List.of() :
                                 f.validations.stream()
                                         .map(v -> new ModelFieldValidationData(v.id, v.type, v.params))

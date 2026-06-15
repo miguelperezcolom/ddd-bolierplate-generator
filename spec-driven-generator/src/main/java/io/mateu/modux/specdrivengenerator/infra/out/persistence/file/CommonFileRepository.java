@@ -102,6 +102,7 @@ public class CommonFileRepository {
         data.uiShells().forEach(p -> store.put(p.id(), p));
         data.components().forEach(p -> store.put(p.id(), p));
         data.bddScenarios().forEach(p -> store.put(p.id(), p));
+        data.enums().forEach(p -> store.put(p.id(), p));
     }
 
     @SneakyThrows
@@ -130,6 +131,7 @@ public class CommonFileRepository {
         List<UiShellEntity> uiShells = store.values().stream().filter(v -> v instanceof UiShellEntity).map(v -> (UiShellEntity) v).toList();
         List<ComponentEntity> components = store.values().stream().filter(v -> v instanceof ComponentEntity).map(v -> (ComponentEntity) v).toList();
         List<BddScenarioEntity> bddScenarios = store.values().stream().filter(v -> v instanceof BddScenarioEntity).map(v -> (BddScenarioEntity) v).toList();
+        List<EnumEntity> enums = store.values().stream().filter(v -> v instanceof EnumEntity).map(v -> (EnumEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -154,7 +156,8 @@ public class CommonFileRepository {
                 uiAdapters,
                 uiShells,
                 components,
-                bddScenarios
+                bddScenarios,
+                enums
         );
         YAMLMapper yamlMapper = new YAMLMapper();
         yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);

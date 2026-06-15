@@ -379,6 +379,33 @@
       },
       "additionalProperties" : false
     },
+    "EnumEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "values" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/EnumValueEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "EnumValueEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
     "EnvVarEntity" : {
       "type" : "object",
       "properties" : {
@@ -611,6 +638,12 @@
       "properties" : {
         "basicType" : {
           "type" : "boolean"
+        },
+        "enum" : {
+          "type" : "boolean"
+        },
+        "enumId" : {
+          "type" : "string"
         },
         "id" : {
           "type" : "string"
@@ -2132,6 +2165,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EntityEntity"
+      }
+    },
+    "enums" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/EnumEntity"
       }
     },
     "gateways" : {

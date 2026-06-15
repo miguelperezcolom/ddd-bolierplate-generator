@@ -2,6 +2,7 @@ package io.mateu.modux.specdrivengenerator.infra.in.ui.menu;
 
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudOrchestrator;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.entity.EntityCrudOrchestrator;
+import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.enumdefinition.EnumDefinitionCrudOrchestrator;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.model.ModelCrudOrchestrator;
 import io.mateu.modux.specdrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
@@ -19,6 +20,9 @@ public class DomainModelMenu {
 
     @Menu
     ValueObjectCrudOrchestrator valueObjects;
+
+    @Menu
+    EnumDefinitionCrudOrchestrator enums;
 
     @Menu
     InvariantCrudOrchestrator invariants;

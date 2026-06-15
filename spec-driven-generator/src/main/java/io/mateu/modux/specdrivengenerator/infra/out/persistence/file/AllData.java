@@ -26,7 +26,8 @@ public record AllData(
         List<UiAdapterEntity> uiAdapters,
         List<UiShellEntity> uiShells,
         List<ComponentEntity> components,
-        List<BddScenarioEntity> bddScenarios
+        List<BddScenarioEntity> bddScenarios,
+        List<EnumEntity> enums
         ) {
 
     public AllData {
@@ -54,5 +55,6 @@ public record AllData(
         uiShells = uiShells != null ? uiShells : List.of();
         components = components != null ? components : List.of();
         bddScenarios = bddScenarios != null ? bddScenarios : List.of();
+        enums = enums != null ? enums : List.of();
     }
 }
