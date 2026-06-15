@@ -18,6 +18,8 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.Operati
 import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.OperationName;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -57,7 +59,8 @@ public class CreateAggregateUseCase {
                                 invariant.conditions() != null ? invariant.conditions().stream()
                                         .map(c -> new InvariantCondition(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList() : java.util.List.of()))
-                        .toList()
+                        .toList(),
+                List.of()
         );
         repository.save(aggregate);
     }
