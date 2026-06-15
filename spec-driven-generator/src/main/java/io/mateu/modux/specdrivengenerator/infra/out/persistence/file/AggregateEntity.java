@@ -18,7 +18,8 @@ public record AggregateEntity(
         boolean eventSourcingEnabled,
         Integer snapshotFrequency,
         List<OperationEntity> operations,
-        List<InvariantEntity> invariants
+        List<InvariantEntity> invariants,
+        List<String> valueObjectIds
         ) implements Identifiable {
 
     @Override
@@ -29,5 +30,10 @@ public record AggregateEntity(
     @Override
     public List<InvariantEntity> invariants() {
         return invariants != null ? invariants : List.of();
+    }
+
+    @Override
+    public List<String> valueObjectIds() {
+        return valueObjectIds != null ? valueObjectIds : List.of();
     }
 }

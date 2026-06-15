@@ -78,6 +78,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                         invariant.conditions() != null ? invariant.conditions().stream()
                                                 .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                                 .toList() : java.util.List.of()))
-                                .toList()));
+                                .toList(),
+                        entity.valueObjectIds()));
     }
 }

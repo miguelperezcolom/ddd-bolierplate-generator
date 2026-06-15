@@ -37,8 +37,9 @@ public class Aggregate {
     private Integer snapshotFrequency;
     private List<Operation> operations = new ArrayList<>();
     private List<Invariant> invariants = new ArrayList<>();
+    private List<String> valueObjectIds;
 
-    public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, boolean eventSourcingEnabled, Integer snapshotFrequency, List<OperationDto> operations, List<InvariantDto> invariants) {
+    public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, boolean eventSourcingEnabled, Integer snapshotFrequency, List<OperationDto> operations, List<InvariantDto> invariants, List<String> valueObjectIds) {
         var aggregate = new Aggregate();
         aggregate.id = new AggregateId(id);
         aggregate.name = new AggregateName(name);
@@ -69,10 +70,11 @@ public class Aggregate {
                                 .map(c -> new InvariantCondition(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                 .toList() : List.of()))
                 .toList();
+        aggregate.valueObjectIds = valueObjectIds;
         return aggregate;
     }
 
-    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, boolean eventSourcingEnabled, Integer snapshotFrequency, List<Operation> operations, List<Invariant> invariants) {
+    public static Aggregate of(AggregateId id, AggregateName name, AggregateModelId modelId, AggregatePersistenceType persistenceType, AggregateIdType idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, boolean eventSourcingEnabled, Integer snapshotFrequency, List<Operation> operations, List<Invariant> invariants, List<String> valueObjectIds) {
         var aggregate = new Aggregate();
         aggregate.id = id;
         aggregate.name = name;
@@ -86,6 +88,7 @@ public class Aggregate {
         aggregate.snapshotFrequency = snapshotFrequency;
         aggregate.operations = operations;
         aggregate.invariants = invariants;
+        aggregate.valueObjectIds = valueObjectIds;
         return aggregate;
     }
 

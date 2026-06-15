@@ -65,7 +65,8 @@ public class AggregateFileRepository implements AggregateRepository {
                                 invariantEntity.conditions() != null ? invariantEntity.conditions().stream()
                                         .map(c -> new InvariantConditionDto(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList() : List.of()
-                        )).toList()
+                        )).toList(),
+                        entity.valueObjectIds()
                 ));
     }
 
@@ -104,7 +105,8 @@ public class AggregateFileRepository implements AggregateRepository {
                                 invariant.getConditions() != null ? invariant.getConditions().stream()
                                         .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList() : List.of()
-                        )).toList()));
+                        )).toList(),
+                entity.getValueObjectIds()));
         return entity;
     }
 
