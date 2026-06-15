@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class BusinessRuleCrudAdapter implements CrudAdapter<
-        BusinessRuleViewModel,
+
         BusinessRuleViewModel,
         BusinessRuleViewModel,
         NoFilters,

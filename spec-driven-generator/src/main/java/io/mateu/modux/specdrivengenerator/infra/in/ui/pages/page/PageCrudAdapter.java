@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class PageCrudAdapter implements CrudAdapter<
-        PageViewModel,
+
         PageViewModel,
         PageViewModel,
         NoFilters,

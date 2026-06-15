@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class SagaCrudAdapter implements CrudAdapter<
-        SagaViewModel,
+
         SagaViewModel,
         SagaViewModel,
         NoFilters,

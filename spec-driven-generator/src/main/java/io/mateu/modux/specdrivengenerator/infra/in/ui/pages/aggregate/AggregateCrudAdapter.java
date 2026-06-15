@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class AggregateCrudAdapter implements CrudAdapter<
-        AggregateViewModel,
+
         AggregateViewModel,
         AggregateViewModel,
         NoFilters,

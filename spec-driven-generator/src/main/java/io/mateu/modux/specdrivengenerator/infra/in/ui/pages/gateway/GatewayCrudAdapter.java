@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class GatewayCrudAdapter implements CrudAdapter<
-        GatewayViewModel,
+
         GatewayViewModel,
         GatewayViewModel,
         NoFilters,

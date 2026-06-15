@@ -21,7 +21,6 @@ import java.util.List;
 public class UseCaseCrudAdapter implements CrudAdapter<
         UseCaseViewModel,
         UseCaseViewModel,
-        UseCaseViewModel,
         NoFilters,
         UseCaseRow,
         String

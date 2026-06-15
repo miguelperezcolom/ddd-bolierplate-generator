@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class ScheduledTriggerCrudAdapter implements CrudAdapter<
-        ScheduledTriggerViewModel,
+
         ScheduledTriggerViewModel,
         ScheduledTriggerViewModel,
         NoFilters,

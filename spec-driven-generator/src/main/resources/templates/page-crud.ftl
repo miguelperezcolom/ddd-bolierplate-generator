@@ -3,7 +3,7 @@
 <#assign moduleSlugVal = module.name?lower_case?replace("[^a-z0-9]","",'r')>
 package ${project.packageName}.${moduleSlugVal}.infra.in.ui.pages.${pageSlug};
 
-import io.mateu.core.infra.declarative.CrudOrchestrator;
+import io.mateu.core.infra.declarative.orchestrators.crud.CrudOrchestrator;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.NoFilters;

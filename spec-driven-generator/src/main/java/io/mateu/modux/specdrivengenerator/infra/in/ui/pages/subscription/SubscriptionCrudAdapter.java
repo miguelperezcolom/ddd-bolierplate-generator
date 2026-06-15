@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class SubscriptionCrudAdapter implements CrudAdapter<
-        SubscriptionViewModel,
+
         SubscriptionViewModel,
         SubscriptionViewModel,
         NoFilters,

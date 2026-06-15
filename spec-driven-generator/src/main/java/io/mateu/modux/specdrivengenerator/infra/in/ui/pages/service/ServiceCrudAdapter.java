@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class ServiceCrudAdapter implements CrudAdapter<
-        ServiceViewModel,
+
         ServiceViewModel,
         ServiceViewModel,
         NoFilters,

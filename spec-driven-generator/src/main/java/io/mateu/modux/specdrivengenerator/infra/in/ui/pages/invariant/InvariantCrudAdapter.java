@@ -19,7 +19,7 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class InvariantCrudAdapter implements CrudAdapter<
-        InvariantViewModel,
+
         InvariantViewModel,
         InvariantViewModel,
         NoFilters,
