@@ -5,6 +5,16 @@ projects:
   name: "poc checkin"
   outputPath: "sample/poc-checkin"
   packageName: "com.riu.pocs.checkin"
+  serviceIds:
+  - "front-office"
+  - "reservas"
+  - "rack"
+  - "produccion"
+  - "pagos"
+  - "servicio-tecnico"
+  - "housekeeping"
+  - "master-data"
+  - "cardex"
 services:
 - id: "front-office"
   name: "FrontOffice"
@@ -45,22 +55,39 @@ services:
 modules:
 - id: "mod-front-office"
   name: "FrontOffice"
+  aggregateIds:
+  - "historialCliente"
 - id: "mod-reservas"
   name: "Reservas"
+  aggregateIds:
+  - "reserva"
 - id: "mod-rack"
   name: "Rack"
+  aggregateIds:
+  - "habitacion"
 - id: "mod-produccion"
   name: "Produccion"
+  aggregateIds:
+  - "cargo"
 - id: "mod-pagos"
   name: "Pagos"
+  aggregateIds:
+  - "foliosAnticipos"
 - id: "mod-servicio-tecnico"
   name: "ServicioTecnico"
 - id: "mod-housekeeping"
   name: "Housekeeping"
 - id: "mod-master-data"
   name: "MasterData"
+  aggregateIds:
+  - "tipoTarjeta"
+  - "hotel"
+  - "agencia"
+  - "tipoRiuClass"
 - id: "mod-cardex"
   name: "Cardex"
+  aggregateIds:
+  - "cardex"
 aggregates:
 - id: "51907e72-9210-4173-9017-c69333fc58b9"
   name: "Payment"
