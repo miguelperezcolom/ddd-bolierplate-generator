@@ -56,9 +56,6 @@ aggregates:
 - id: "reserva"
   name: "Reserva"
   modelId: "reserva"
-- id: "pax"
-  name: "Pax"
-  modelId: "pax"
 - id: "cardex"
   name: "Cardex"
   modelId: "cardex"
@@ -84,6 +81,11 @@ entities:
 - id: "lineaReserva"
   name: "LineaReserva"
   modelId: "lineaReserva"
+  parentAggregateId: "reserva"
+  isCollection: true
+- id: "pax"
+  name: "Pax"
+  modelId: "pax"
   parentAggregateId: "reserva"
   isCollection: true
 valueObjects:
