@@ -81,6 +81,12 @@
         },
         "tableSchema" : {
           "type" : "string"
+        },
+        "valueObjectIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
         }
       },
       "additionalProperties" : false
