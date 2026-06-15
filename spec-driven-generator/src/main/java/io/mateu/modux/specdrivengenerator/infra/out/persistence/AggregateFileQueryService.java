@@ -51,7 +51,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
                 .map(entity -> new AggregateDto(entity.id(), entity.name(),
                         entity.modelId(),
                         entity.persistenceType() != null ? entity.persistenceType().name() : null,
-                        entity.idType(),
+                        entity.idType() != null ? entity.idType().name() : null,
                         entity.tableName(),
                         entity.tableSchema(),
                         entity.optimisticLockingEnabled(),

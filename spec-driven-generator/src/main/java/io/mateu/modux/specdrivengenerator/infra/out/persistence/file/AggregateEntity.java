@@ -1,5 +1,6 @@
 package io.mateu.modux.specdrivengenerator.infra.out.persistence.file;
 
+import io.mateu.modux.specdrivengenerator.domain.aggregates.aggregate.vo.AggregateIdType;
 import io.mateu.modux.specdrivengenerator.domain.aggregates.aggregate.vo.AggregatePersistenceType;
 import io.mateu.uidl.interfaces.Identifiable;
 
@@ -10,7 +11,7 @@ public record AggregateEntity(
         String name,
         String modelId,
         AggregatePersistenceType persistenceType,
-        String idType,
+        AggregateIdType idType,
         String tableName,
         String tableSchema,
         boolean optimisticLockingEnabled,
