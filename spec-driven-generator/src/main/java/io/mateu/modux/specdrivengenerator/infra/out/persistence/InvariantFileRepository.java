@@ -36,7 +36,7 @@ public class InvariantFileRepository implements InvariantRepository {
 
     @Override
     public void deleteAllById(List<InvariantId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(InvariantId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(InvariantId::id).toList(), InvariantEntity.class);
     }
 
     private List<InvariantCondition> toConditions(List<InvariantConditionEntity> conditions) {

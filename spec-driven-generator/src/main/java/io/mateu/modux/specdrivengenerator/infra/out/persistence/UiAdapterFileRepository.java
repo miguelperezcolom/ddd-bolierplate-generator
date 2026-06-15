@@ -54,6 +54,6 @@ public class UiAdapterFileRepository implements UiAdapterRepository {
 
     @Override
     public void deleteAllById(List<UiAdapterId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(UiAdapterId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(UiAdapterId::id).toList(), UiAdapterEntity.class);
     }
 }

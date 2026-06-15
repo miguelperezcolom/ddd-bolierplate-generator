@@ -37,7 +37,7 @@ public class EnumDefinitionFileRepository implements EnumDefinitionRepository {
 
     @Override
     public void deleteAllById(List<EnumDefinitionId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(EnumDefinitionId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(EnumDefinitionId::id).toList(), EnumEntity.class);
     }
 
     private List<EnumDefinitionValue> toValues(List<EnumValueEntity> values) {

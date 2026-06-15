@@ -2,30 +2,65 @@
 ---
 projects:
 - id: "32954999-722f-4e0e-a32d-6b8a6e9a83d2"
-  name: "poc sagas"
-  outputPath: "sample/poc-sagas"
-  packageName: "com.riu.sagas"
-  serviceIds:
-  - "0ac22ca4-3534-48a3-ad62-6b174abde702"
-- id: "abb19cfc-94ee-41fd-bb7a-28976e552dfd"
-  name: "test 2"
-  outputPath: "sss"
-  packageName: "uuuu"
+  name: "poc checkin"
+  outputPath: "sample/poc-checkin"
+  packageName: "com.riu.pocs.checkin"
 services:
-- id: "0ac22ca4-3534-48a3-ad62-6b174abde702"
-  name: "Servicio 1"
+- id: "front-office"
+  name: "FrontOffice"
   moduleIds:
-  - "ec54a203-2f56-4d50-bb18-92afff6451a8"
+  - "mod-front-office"
+- id: "reservas"
+  name: "Reservas"
+  moduleIds:
+  - "mod-reservas"
+- id: "rack"
+  name: "Rack"
+  moduleIds:
+  - "mod-rack"
+- id: "produccion"
+  name: "Produccion"
+  moduleIds:
+  - "mod-produccion"
+- id: "pagos"
+  name: "Pagos"
+  moduleIds:
+  - "mod-pagos"
+- id: "servicio-tecnico"
+  name: "ServicioTecnico"
+  moduleIds:
+  - "mod-servicio-tecnico"
+- id: "housekeeping"
+  name: "Housekeeping"
+  moduleIds:
+  - "mod-housekeeping"
+- id: "master-data"
+  name: "MasterData"
+  moduleIds:
+  - "mod-master-data"
+- id: "cardex"
+  name: "Cardex"
+  moduleIds:
+  - "mod-cardex"
 modules:
-- id: "ec54a203-2f56-4d50-bb18-92afff6451a8"
-  name: "payments"
-  aggregateIds:
-  - "51907e72-9210-4173-9017-c69333fc58b9"
-  - "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
-- id: "4066c768-809c-4b2d-8628-a1879fdc5d2d"
-  name: "booking"
-  aggregateIds:
-  - "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
+- id: "mod-front-office"
+  name: "FrontOffice"
+- id: "mod-reservas"
+  name: "Reservas"
+- id: "mod-rack"
+  name: "Rack"
+- id: "mod-produccion"
+  name: "Produccion"
+- id: "mod-pagos"
+  name: "Pagos"
+- id: "mod-servicio-tecnico"
+  name: "ServicioTecnico"
+- id: "mod-housekeeping"
+  name: "Housekeeping"
+- id: "mod-master-data"
+  name: "MasterData"
+- id: "mod-cardex"
+  name: "Cardex"
 aggregates:
 - id: "51907e72-9210-4173-9017-c69333fc58b9"
   name: "Payment"
@@ -211,8 +246,8 @@ models:
       basicType: true
       type: "integer"
     - name: hotel
-      basicType: false
-      modelId: hotel
+      basicType: true
+      type: string
     - name: tipoCobro
       basicType: false
       enum: true

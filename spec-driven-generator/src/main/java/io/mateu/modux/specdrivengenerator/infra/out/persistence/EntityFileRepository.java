@@ -33,6 +33,6 @@ public class EntityFileRepository implements EntityRepository {
 
     @Override
     public void deleteAllById(List<EntityId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(EntityId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(EntityId::id).toList(), EntityEntity.class);
     }
 }

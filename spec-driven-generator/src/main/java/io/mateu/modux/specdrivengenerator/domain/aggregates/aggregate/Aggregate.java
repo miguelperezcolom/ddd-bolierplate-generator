@@ -19,6 +19,7 @@ import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.Operati
 import io.mateu.modux.specdrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
 import lombok.Getter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -34,8 +35,8 @@ public class Aggregate {
     private boolean optimisticLockingEnabled;
     private boolean eventSourcingEnabled;
     private Integer snapshotFrequency;
-    private List<Operation> operations;
-    private List<Invariant> invariants;
+    private List<Operation> operations = new ArrayList<>();
+    private List<Invariant> invariants = new ArrayList<>();
 
     public static Aggregate load(String id, String name, String modelId, String persistenceType, String idType, String tableName, String tableSchema, boolean optimisticLockingEnabled, boolean eventSourcingEnabled, Integer snapshotFrequency, List<OperationDto> operations, List<InvariantDto> invariants) {
         var aggregate = new Aggregate();
@@ -118,4 +119,6 @@ public class Aggregate {
                                 .toList() : List.of()))
                 .toList();
     }
+
+
 }

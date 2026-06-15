@@ -47,7 +47,7 @@
           "type" : "string"
         },
         "idType" : {
-          "type" : "string"
+          "$ref" : "#/$defs/AggregateIdType"
         },
         "invariants" : {
           "type" : "array",
@@ -71,7 +71,7 @@
           "type" : "boolean"
         },
         "persistenceType" : {
-          "type" : "string"
+          "$ref" : "#/$defs/AggregatePersistenceType"
         },
         "snapshotFrequency" : {
           "type" : "integer"
@@ -84,6 +84,14 @@
         }
       },
       "additionalProperties" : false
+    },
+    "AggregateIdType" : {
+      "type" : "string",
+      "enum" : [ "UUID", "LONG", "STRING", "LOCATOR" ]
+    },
+    "AggregatePersistenceType" : {
+      "type" : "string",
+      "enum" : [ "JPA", "MONGODB", "EVENT_SOURCED", "IN_MEMORY" ]
     },
     "BddScenarioEntity" : {
       "type" : "object",

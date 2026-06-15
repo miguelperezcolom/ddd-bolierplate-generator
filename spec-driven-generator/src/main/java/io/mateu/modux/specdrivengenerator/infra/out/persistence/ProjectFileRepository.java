@@ -179,6 +179,6 @@ public class ProjectFileRepository implements ProjectRepository {
 
     @Override
     public void deleteAllById(List<ProjectId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ProjectId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ProjectId::id).toList(), ProjectEntity.class);
     }
 }

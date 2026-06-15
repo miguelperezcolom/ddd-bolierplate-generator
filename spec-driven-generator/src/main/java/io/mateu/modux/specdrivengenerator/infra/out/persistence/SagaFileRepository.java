@@ -53,7 +53,7 @@ public class SagaFileRepository implements SagaRepository {
 
     @Override
     public void deleteAllById(List<SagaId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(SagaId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(SagaId::id).toList(), SagaEntity.class);
     }
 
     private List<SagaStep> toSteps(List<SagaStepEntity> steps) {

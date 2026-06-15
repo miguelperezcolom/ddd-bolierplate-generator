@@ -59,6 +59,6 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
 
     @Override
     public void deleteAllById(List<ScheduledTriggerId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ScheduledTriggerId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ScheduledTriggerId::id).toList(), ScheduledTriggerEntity.class);
     }
 }

@@ -52,7 +52,7 @@ public class ModelFileRepository implements ModelRepository {
 
     @Override
     public void deleteAllById(List<ModelId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ModelId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ModelId::id).toList(), ModelEntity.class);
     }
 
     private List<ModelFieldValidation> toFieldValidations(List<ModelFieldValidationEntity> validations) {

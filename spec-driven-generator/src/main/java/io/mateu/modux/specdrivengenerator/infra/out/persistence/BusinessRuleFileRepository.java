@@ -54,7 +54,7 @@ public class BusinessRuleFileRepository implements BusinessRuleRepository {
 
     @Override
     public void deleteAllById(List<BusinessRuleId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(BusinessRuleId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(BusinessRuleId::id).toList(), BusinessRuleEntity.class);
     }
 
     private List<BusinessRuleCondition> toConditions(List<BusinessRuleConditionEntity> conditions) {

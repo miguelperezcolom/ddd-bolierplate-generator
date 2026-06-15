@@ -43,6 +43,6 @@ public class ComponentFileRepository implements ComponentRepository {
 
     @Override
     public void deleteAllById(List<ComponentId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ComponentId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ComponentId::id).toList(), ComponentEntity.class);
     }
 }

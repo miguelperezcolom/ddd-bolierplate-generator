@@ -61,7 +61,7 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
 
     @Override
     public void deleteAllById(List<SubscriptionId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(SubscriptionId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(SubscriptionId::id).toList(), SubscriptionEntity.class);
     }
 
     private List<SubscriptionAction> toActions(List<SubscriptionActionEntity> actions) {

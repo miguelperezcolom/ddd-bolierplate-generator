@@ -35,11 +35,15 @@ public class CommonFileRepository {
 
     private final Map<String, Object> store = new HashMap<>();
 
+    private String storeKey(String id, Class<?> type) {
+        return type.getSimpleName() + ":" + id;
+    }
+
     public <T> Optional<T> findById(String id, Class<T> type) {
-        return Optional.ofNullable((T) store.get(id));
+        return Optional.ofNullable((T) store.get(storeKey(id, type)));
     }
     public void save(Identifiable o) {
-        store.put(o.id(), o);
+        store.put(storeKey(o.id(), o.getClass()), o);
         persist();
     }
 
@@ -55,8 +59,8 @@ public class CommonFileRepository {
                 .toList();
     }
 
-    public void deleteAllById(List<String> list) {
-        list.forEach(store::remove);
+    public <T> void deleteAllById(List<String> list, Class<T> type) {
+        list.forEach(id -> store.remove(storeKey(id, type)));
         persist();
     }
 
@@ -78,31 +82,31 @@ public class CommonFileRepository {
         }
         generateSchema();
         store.clear();
-        data.projects().forEach(p -> store.put(p.id(), p));
-        data.services().forEach(p -> store.put(p.id(), p));
-        data.modules().forEach(p -> store.put(p.id(), p));
-        data.aggregates().forEach(p -> store.put(p.id(), p));
-        data.entities().forEach(p -> store.put(p.id(), p));
-        data.valueObjects().forEach(p -> store.put(p.id(), p));
-        data.invariants().forEach(p -> store.put(p.id(), p));
-        data.domainEvents().forEach(p -> store.put(p.id(), p));
-        data.useCases().forEach(p -> store.put(p.id(), p));
-        data.models().forEach(p -> store.put(p.id(), p));
-        data.gateways().forEach(p -> store.put(p.id(), p));
-        data.modelMappings().forEach(p -> store.put(p.id(), p));
-        data.sagas().forEach(p -> store.put(p.id(), p));
-        data.projections().forEach(p -> store.put(p.id(), p));
-        data.subscriptions().forEach(p -> store.put(p.id(), p));
-        data.scheduledTriggers().forEach(p -> store.put(p.id(), p));
-        data.businessRules().forEach(p -> store.put(p.id(), p));
-        data.readModels().forEach(p -> store.put(p.id(), p));
-        data.roles().forEach(p -> store.put(p.id(), p));
-        data.pages().forEach(p -> store.put(p.id(), p));
-        data.uiAdapters().forEach(p -> store.put(p.id(), p));
-        data.uiShells().forEach(p -> store.put(p.id(), p));
-        data.components().forEach(p -> store.put(p.id(), p));
-        data.bddScenarios().forEach(p -> store.put(p.id(), p));
-        data.enums().forEach(p -> store.put(p.id(), p));
+        data.projects().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.services().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.modules().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.aggregates().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.entities().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.valueObjects().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.invariants().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.domainEvents().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.useCases().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.models().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.gateways().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.modelMappings().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.sagas().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.projections().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.subscriptions().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.scheduledTriggers().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.businessRules().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.readModels().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.roles().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.pages().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.uiAdapters().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.uiShells().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.components().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.bddScenarios().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.enums().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
     }
 
     @SneakyThrows

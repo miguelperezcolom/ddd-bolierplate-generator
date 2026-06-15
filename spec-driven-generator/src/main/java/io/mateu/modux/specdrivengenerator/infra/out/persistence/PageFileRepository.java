@@ -140,6 +140,6 @@ public class PageFileRepository implements PageRepository {
 
     @Override
     public void deleteAllById(List<PageId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(PageId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(PageId::id).toList(), PageEntity.class);
     }
 }

@@ -20,4 +20,14 @@ public record AggregateEntity(
         List<OperationEntity> operations,
         List<InvariantEntity> invariants
         ) implements Identifiable {
+
+    @Override
+    public List<OperationEntity> operations() {
+        return operations != null ? operations : List.of();
+    }
+
+    @Override
+    public List<InvariantEntity> invariants() {
+        return invariants != null ? invariants : List.of();
+    }
 }

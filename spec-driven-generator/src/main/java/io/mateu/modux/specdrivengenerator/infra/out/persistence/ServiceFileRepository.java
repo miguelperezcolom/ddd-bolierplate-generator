@@ -88,6 +88,6 @@ public class ServiceFileRepository implements ServiceRepository {
 
     @Override
     public void deleteAllById(List<ServiceId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ServiceId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ServiceId::id).toList(), ServiceEntity.class);
     }
 }

@@ -43,7 +43,7 @@ public class ModelMappingFileRepository implements ModelMappingRepository {
 
     @Override
     public void deleteAllById(List<ModelMappingId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ModelMappingId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ModelMappingId::id).toList(), ModelMappingEntity.class);
     }
 
     private List<ModelMappingRule> toRules(List<ModelMappingRuleEntity> rules) {

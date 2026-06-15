@@ -51,7 +51,7 @@ public class ProjectionFileRepository implements ProjectionRepository {
 
     @Override
     public void deleteAllById(List<ProjectionId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ProjectionId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ProjectionId::id).toList(), ProjectionEntity.class);
     }
 
     private List<ProjectionEventHandler> toHandlers(List<ProjectionEventHandlerEntity> handlers) {

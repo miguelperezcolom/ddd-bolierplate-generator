@@ -54,6 +54,6 @@ public class ReadModelFileRepository implements ReadModelRepository {
 
     @Override
     public void deleteAllById(List<ReadModelId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ReadModelId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ReadModelId::id).toList(), ReadModelEntity.class);
     }
 }

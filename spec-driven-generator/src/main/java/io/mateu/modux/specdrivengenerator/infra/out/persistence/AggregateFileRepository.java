@@ -110,6 +110,6 @@ public class AggregateFileRepository implements AggregateRepository {
 
     @Override
     public void deleteAllById(List<AggregateId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(AggregateId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(AggregateId::id).toList(), AggregateEntity.class);
     }
 }

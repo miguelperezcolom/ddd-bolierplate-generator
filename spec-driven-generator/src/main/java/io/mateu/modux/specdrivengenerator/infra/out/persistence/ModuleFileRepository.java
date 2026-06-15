@@ -109,6 +109,6 @@ public class ModuleFileRepository implements ModuleRepository {
 
     @Override
     public void deleteAllById(List<ModuleId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ModuleId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ModuleId::id).toList(), ModuleEntity.class);
     }
 }

@@ -47,6 +47,6 @@ public class ValueObjectFileRepository implements ValueObjectRepository {
 
     @Override
     public void deleteAllById(List<ValueObjectId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(ValueObjectId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(ValueObjectId::id).toList(), ValueObjectEntity.class);
     }
 }

@@ -48,6 +48,6 @@ public class DomainEventFileRepository implements DomainEventRepository {
 
     @Override
     public void deleteAllById(List<DomainEventId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(DomainEventId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(DomainEventId::id).toList(), DomainEventEntity.class);
     }
 }

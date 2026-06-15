@@ -65,6 +65,6 @@ public class GatewayFileRepository implements GatewayRepository {
 
     @Override
     public void deleteAllById(List<GatewayId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(GatewayId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(GatewayId::id).toList(), GatewayEntity.class);
     }
 }

@@ -60,6 +60,6 @@ public class UiShellFileRepository implements UiShellRepository {
 
     @Override
     public void deleteAllById(List<UiShellId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(UiShellId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(UiShellId::id).toList(), UiShellEntity.class);
     }
 }

@@ -39,6 +39,6 @@ public class RoleFileRepository implements RoleRepository {
 
     @Override
     public void deleteAllById(List<RoleId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(RoleId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(RoleId::id).toList(), RoleEntity.class);
     }
 }

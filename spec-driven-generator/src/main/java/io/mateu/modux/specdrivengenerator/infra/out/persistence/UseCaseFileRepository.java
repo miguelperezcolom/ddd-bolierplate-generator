@@ -94,7 +94,7 @@ public class UseCaseFileRepository implements UseCaseRepository {
 
     @Override
     public void deleteAllById(List<UseCaseId> selectedIds) {
-        repository.deleteAllById(selectedIds.stream().map(UseCaseId::id).toList());
+        repository.deleteAllById(selectedIds.stream().map(UseCaseId::id).toList(), UseCaseEntity.class);
     }
 
     private List<UseCaseStep> toSteps(List<UseCaseStepEntity> steps) {
