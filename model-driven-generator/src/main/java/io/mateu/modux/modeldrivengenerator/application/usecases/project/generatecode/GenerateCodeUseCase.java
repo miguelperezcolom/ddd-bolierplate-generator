@@ -505,6 +505,10 @@ public class GenerateCodeUseCase {
         createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug);
         Map<String, Object> testModel = buildBaseModel(project, service, module);
         testModel.put("usecase", enrichUseCaseMap(useCase));
+        if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
+            var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
+            testModel.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
+        }
         createFile(moduleDir, testModel, "usecase-test.ftl",
                 "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "UseCaseTest.java");

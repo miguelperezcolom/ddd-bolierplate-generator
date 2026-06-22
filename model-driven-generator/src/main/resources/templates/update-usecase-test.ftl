@@ -1,4 +1,5 @@
 package ${project.packageName}.${module.slug}.application.usecases.${aggregate.name?lower_case}.update;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +26,7 @@ class Update${aggregate.name}UseCaseTest {
     void should_update_and_persist() {
         var existing = new ${aggregate.name}();
         when(repository.findById(any(${aggregate.name}Id.class))).thenReturn(Optional.of(existing));
-        var command = new Update${aggregate.name}Command(/* TODO: fill constructor args */);
+        var command = new Update${aggregate.name}Command(null<#list safeFields as field>, null</#list>);
         useCase.handle(command);
         verify(repository).save(existing);
     }

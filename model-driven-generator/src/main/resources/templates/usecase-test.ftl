@@ -67,7 +67,7 @@ class ${usecase.name?cap_first}UseCaseTest {
 
     @Test
     void should_execute_successfully() {
-        var command = new ${usecase.name?cap_first}Command(/* TODO: fill constructor args */);
+        var command = new ${usecase.name?cap_first}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field>null<#sep>, </#sep></#list><#else>null</#if>);
         assertDoesNotThrow(() -> useCase.handle(command));
     }
 }

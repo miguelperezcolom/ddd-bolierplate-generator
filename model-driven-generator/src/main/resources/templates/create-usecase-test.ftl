@@ -1,4 +1,5 @@
 package ${project.packageName}.${module.slug}.application.usecases.${aggregate.name?lower_case}.create;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +22,7 @@ class Create${aggregate.name}UseCaseTest {
 
     @Test
     void should_create_and_persist() {
-        var command = new Create${aggregate.name}Command(/* TODO: fill constructor args */);
+        var command = new Create${aggregate.name}Command(<#list safeFields as field>null<#sep>, </#sep></#list>);
         useCase.handle(command);
         verify(repository).save(any(${aggregate.name}.class));
     }

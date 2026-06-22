@@ -21,8 +21,8 @@ class Delete${aggregate.name}UseCaseTest {
 
     @Test
     void should_delete_by_id() {
-        var command = new Delete${aggregate.name}Command(/* TODO: fill id param */);
+        var command = new Delete${aggregate.name}Command(java.util.List.of());
         useCase.handle(command);
-        verify(repository).deleteById(any(${aggregate.name}Id.class));
+        verify(repository).deleteAllById(any());
     }
 }

@@ -1,4 +1,5 @@
 package ${project.packageName}.${module.slug}.bdd;
+<#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -49,7 +50,7 @@ public class ${aggregate.name}Steps {
     @When("I create a new ${aggregate.name}")
     public void createNew${aggregate.name}() {
         try {
-            createUseCase.handle(new Create${aggregate.name}Command(/* TODO: fill params */));
+            createUseCase.handle(new Create${aggregate.name}Command(<#list safeFields as field>null<#sep>, </#sep></#list>));
         } catch (Exception e) {
             lastException = e;
         }
@@ -58,7 +59,7 @@ public class ${aggregate.name}Steps {
     @When("I update the ${aggregate.name} with id {string}")
     public void update${aggregate.name}(String id) {
         try {
-            updateUseCase.handle(new Update${aggregate.name}Command(/* TODO: fill params */));
+            updateUseCase.handle(new Update${aggregate.name}Command(id<#list safeFields as field>, null</#list>));
         } catch (Exception e) {
             lastException = e;
         }
@@ -67,7 +68,7 @@ public class ${aggregate.name}Steps {
     @When("I delete the ${aggregate.name} with id {string}")
     public void delete${aggregate.name}(String id) {
         try {
-            deleteUseCase.handle(new Delete${aggregate.name}Command(/* TODO: fill id param */));
+            deleteUseCase.handle(new Delete${aggregate.name}Command(java.util.List.of(id)));
         } catch (Exception e) {
             lastException = e;
         }
