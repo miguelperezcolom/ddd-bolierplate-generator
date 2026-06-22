@@ -26,13 +26,13 @@ public class ${shellClassName}Home {
 
 <#if resolvedServices?has_content>
 <#list resolvedServices as svc>
-    @Menu("${svc.name}")
-    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("/_${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}");
+    @Menu
+    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("/_${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}").withLabel("${svc.name}");
 
 </#list>
 <#else>
     // TODO: add RemoteMenu fields for each service
-    // @Menu("My Service")
-    // RemoteMenu myService = new RemoteMenu("/_my-service");
+    // @Menu
+    // RemoteMenu myService = new RemoteMenu("/_my-service").withLabel("My Service");
 </#if>
 }
