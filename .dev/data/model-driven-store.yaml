@@ -6,61 +6,21 @@ projects:
   outputPath: "sample/hotel-checkin"
   packageName: "com.hotel.checkin"
   serviceIds:
-  - "frontoffice"
-  - "reservas"
-  - "produccion"
-  - "folios"
-  - "facturacion"
-  - "pagos"
-  - "housekeeping"
-  - "servicio-tecnico"
-  - "rack"
-  - "master-data"
-  - "cardex"
+  - "hotel"
 services:
-- id: "frontoffice"
-  name: "FrontOffice"
+- id: "hotel"
+  name: "Hotel"
   moduleIds:
   - "mod-frontoffice"
-- id: "reservas"
-  name: "Reservas"
-  moduleIds:
   - "mod-reservas"
-- id: "produccion"
-  name: "Produccion"
-  moduleIds:
   - "mod-produccion"
-- id: "folios"
-  name: "Folios"
-  moduleIds:
   - "mod-folios"
-- id: "facturacion"
-  name: "Facturacion"
-  moduleIds:
   - "mod-facturacion"
-- id: "pagos"
-  name: "Pagos"
-  moduleIds:
   - "mod-pagos"
-- id: "housekeeping"
-  name: "Housekeeping"
-  moduleIds:
   - "mod-housekeeping"
-- id: "servicio-tecnico"
-  name: "ServicioTecnico"
-  moduleIds:
   - "mod-servicio-tecnico"
-- id: "rack"
-  name: "Rack"
-  moduleIds:
   - "mod-rack"
-- id: "master-data"
-  name: "MasterData"
-  moduleIds:
   - "mod-master-data"
-- id: "cardex"
-  name: "Cardex"
-  moduleIds:
   - "mod-cardex"
 modules:
 - id: "mod-frontoffice"
@@ -1306,17 +1266,7 @@ uiShells:
   name: "HotelShell"
   title: "Hotel Checkin"
   serviceIds:
-  - "frontoffice"
-  - "reservas"
-  - "produccion"
-  - "folios"
-  - "facturacion"
-  - "pagos"
-  - "housekeeping"
-  - "servicio-tecnico"
-  - "rack"
-  - "master-data"
-  - "cardex"
+  - "hotel"
 enums:
 - id: "sexo"
   values:
