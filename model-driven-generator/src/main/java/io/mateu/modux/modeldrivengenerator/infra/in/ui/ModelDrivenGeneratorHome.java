@@ -22,6 +22,9 @@ public class ModelDrivenGeneratorHome {
     TransversalMenu transversal;
 
     @Menu
+    PatronesMenu patrones;
+
+    @Menu
     InboundMenu inbound;
 
     @Menu
