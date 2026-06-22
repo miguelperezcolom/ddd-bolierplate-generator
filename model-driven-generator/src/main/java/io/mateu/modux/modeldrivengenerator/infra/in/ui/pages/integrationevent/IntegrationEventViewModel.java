@@ -12,8 +12,8 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.DomainEventIdLa
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.DomainEventIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -39,8 +39,8 @@ public class IntegrationEventViewModel implements Identifiable, CrudEditorForm<S
     @NotEmpty
     String name;
 
-    @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
-    String serviceId;
+    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    String moduleId;
 
     String description;
 
@@ -72,7 +72,7 @@ public class IntegrationEventViewModel implements Identifiable, CrudEditorForm<S
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateIntegrationEventCommand(id, name, serviceId, description,
+        createUseCase.handle(new CreateIntegrationEventCommand(id, name, moduleId, description,
                 sourceDomainEventId, payloadModelId, topicName, partitions, retentionMs,
                 serializationFormat, compressionType,
                 deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts,
@@ -82,7 +82,7 @@ public class IntegrationEventViewModel implements Identifiable, CrudEditorForm<S
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveIntegrationEventCommand(id, name, serviceId, description,
+        saveUseCase.handle(new SaveIntegrationEventCommand(id, name, moduleId, description,
                 sourceDomainEventId, payloadModelId, topicName, partitions, retentionMs,
                 serializationFormat, compressionType,
                 deadLetterQueueEnabled, deadLetterQueueName, maxDeliveryAttempts,
@@ -97,7 +97,7 @@ public class IntegrationEventViewModel implements Identifiable, CrudEditorForm<S
     public IntegrationEventViewModel load(IntegrationEventDto model) {
         id = model.id();
         name = model.name();
-        serviceId = model.serviceId();
+        moduleId = model.moduleId();
         description = model.description();
         sourceDomainEventId = model.sourceDomainEventId();
         payloadModelId = model.payloadModelId();

@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadMo
 public record ReadModelDto(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         String modelId,
         ReadModelStorageType storageType,

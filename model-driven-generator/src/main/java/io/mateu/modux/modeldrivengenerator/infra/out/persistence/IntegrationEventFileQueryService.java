@@ -41,7 +41,7 @@ public class IntegrationEventFileQueryService implements IntegrationEventQuerySe
     @Override
     public Optional<IntegrationEventDto> getById(String id) {
         return repository.findById(id, IntegrationEventEntity.class)
-                .map(entity -> new IntegrationEventDto(entity.id(), entity.name(), entity.serviceId(), entity.description(),
+                .map(entity -> new IntegrationEventDto(entity.id(), entity.name(), entity.moduleId(), entity.description(),
                         entity.sourceDomainEventId(), entity.payloadModelId(), entity.topicName(),
                         entity.partitions(), entity.retentionMs(),
                         entity.serializationFormat(), entity.compressionType(),

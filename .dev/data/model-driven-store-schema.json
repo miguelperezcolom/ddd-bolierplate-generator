@@ -587,6 +587,9 @@
         "maxDeliveryAttempts" : {
           "type" : "integer"
         },
+        "moduleId" : {
+          "type" : "string"
+        },
         "name" : {
           "type" : "string"
         },
@@ -610,9 +613,6 @@
         },
         "serializationFormat" : {
           "$ref" : "#/$defs/IntegrationEventSerializationFormat"
-        },
-        "serviceId" : {
-          "type" : "string"
         },
         "sourceDomainEventId" : {
           "type" : "string"
@@ -1525,6 +1525,9 @@
         "id" : {
           "type" : "string"
         },
+        "moduleId" : {
+          "type" : "string"
+        },
         "name" : {
           "type" : "string"
         },
@@ -1533,9 +1536,6 @@
           "items" : {
             "$ref" : "#/$defs/QueryOperationEntity"
           }
-        },
-        "serviceId" : {
-          "type" : "string"
         }
       },
       "additionalProperties" : false
@@ -1559,10 +1559,10 @@
         "modelId" : {
           "type" : "string"
         },
-        "name" : {
+        "moduleId" : {
           "type" : "string"
         },
-        "serviceId" : {
+        "name" : {
           "type" : "string"
         },
         "storageType" : {

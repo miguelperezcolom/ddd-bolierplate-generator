@@ -1389,7 +1389,7 @@ enums:
 queryServices:
 - id: "qs-consultas-recepcion"
   name: "ConsultasRecepcion"
-  serviceId: "frontoffice"
+  moduleId: "mod-frontoffice"
   description: "Consultas de recepción para el proceso de check-in"
   operations:
   - id: "qop-buscarReserva"
@@ -1413,7 +1413,7 @@ queryServices:
 integrationEvents:
 - id: "ie-habitacionCreada"
   name: "HabitacionCreada"
-  serviceId: "master-data"
+  moduleId: "mod-master-data"
   description: "Alta de una habitación en master data"
   sourceDomainEventId: "ev-habitacionCreada"
   payloadModelId: "payload-habitacionCreada"
@@ -1423,7 +1423,7 @@ integrationEvents:
   replayable: true
 - id: "ie-reservaCreada"
   name: "ReservaCreada"
-  serviceId: "reservas"
+  moduleId: "mod-reservas"
   description: "Alta de una reserva"
   sourceDomainEventId: "ev-reservaCreada"
   payloadModelId: "payload-reservaCreada"
@@ -1433,7 +1433,7 @@ integrationEvents:
   replayable: true
 - id: "ie-reservaModificada"
   name: "ReservaModificada"
-  serviceId: "reservas"
+  moduleId: "mod-reservas"
   description: "Modificación de una reserva"
   sourceDomainEventId: "ev-reservaModificada"
   payloadModelId: "payload-reservaModificada"
@@ -1443,7 +1443,7 @@ integrationEvents:
   replayable: true
 - id: "ie-habitacionPreasignada"
   name: "HabitacionPreasignada"
-  serviceId: "frontoffice"
+  moduleId: "mod-frontoffice"
   description: "Pre-asignación de habitación a una estancia"
   sourceDomainEventId: "ev-habitacionPreasignada"
   payloadModelId: "payload-habitacionPreasignada"
@@ -1453,7 +1453,7 @@ integrationEvents:
   replayable: true
 - id: "ie-pagoRegistrado"
   name: "PagoRegistrado"
-  serviceId: "pagos"
+  moduleId: "mod-pagos"
   description: "Registro de un pago contra un folio"
   sourceDomainEventId: "ev-pagoRegistrado"
   payloadModelId: "payload-pagoRegistrado"
@@ -1464,7 +1464,7 @@ integrationEvents:
 readModels:
 - id: "rm-llegadas"
   name: "LlegadasReadModel"
-  serviceId: "frontoffice"
+  moduleId: "mod-frontoffice"
   description: "Vista materializada de llegadas del día para recepción"
   modelId: "LlegadaResumen"
   storageType: "Document"

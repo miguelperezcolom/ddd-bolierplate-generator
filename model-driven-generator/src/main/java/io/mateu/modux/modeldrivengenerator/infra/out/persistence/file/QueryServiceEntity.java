@@ -7,7 +7,7 @@ import java.util.List;
 public record QueryServiceEntity(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         List<QueryOperationEntity> operations
 ) implements Identifiable {

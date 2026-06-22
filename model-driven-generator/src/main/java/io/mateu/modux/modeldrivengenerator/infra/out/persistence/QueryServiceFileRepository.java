@@ -23,7 +23,7 @@ public class QueryServiceFileRepository implements QueryServiceRepository {
     @Override
     public Optional<QueryService> findById(QueryServiceId id) {
         return repository.findById(id.id(), QueryServiceEntity.class)
-                .map(entity -> QueryService.load(entity.id(), entity.name(), entity.serviceId(), entity.description(),
+                .map(entity -> QueryService.load(entity.id(), entity.name(), entity.moduleId(), entity.description(),
                         entity.operations() == null ? List.of() :
                                 entity.operations().stream()
                                         .map(o -> new QueryOperation(o.id(), o.name(), o.description(),
@@ -41,7 +41,7 @@ public class QueryServiceFileRepository implements QueryServiceRepository {
         repository.save(new QueryServiceEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getServiceId(),
+                entity.getModuleId(),
                 entity.getDescription(),
                 operationEntities));
         return entity;

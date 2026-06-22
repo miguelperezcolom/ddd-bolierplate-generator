@@ -7,7 +7,7 @@ import java.util.List;
 public record CreateQueryServiceCommand(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         List<QueryOperationData> operations
 ) {

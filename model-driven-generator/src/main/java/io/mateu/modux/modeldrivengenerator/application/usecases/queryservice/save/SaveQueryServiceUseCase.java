@@ -24,7 +24,7 @@ public class SaveQueryServiceUseCase {
                         .toList();
         queryService.update(
                 new QueryServiceName(command.name()),
-                command.serviceId(),
+                command.moduleId(),
                 command.description(),
                 operations);
         repository.save(queryService);

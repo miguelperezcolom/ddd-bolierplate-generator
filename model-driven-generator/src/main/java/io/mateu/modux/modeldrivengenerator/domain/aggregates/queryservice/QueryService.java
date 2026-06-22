@@ -12,36 +12,36 @@ public class QueryService {
 
     private QueryServiceId id;
     private QueryServiceName name;
-    private String serviceId;
+    private String moduleId;
     private String description;
     private List<QueryOperation> operations;
 
-    public static QueryService of(QueryServiceId id, QueryServiceName name, String serviceId, String description,
+    public static QueryService of(QueryServiceId id, QueryServiceName name, String moduleId, String description,
                                   List<QueryOperation> operations) {
         var queryService = new QueryService();
         queryService.id = id;
         queryService.name = name;
-        queryService.serviceId = serviceId;
+        queryService.moduleId = moduleId;
         queryService.description = description;
         queryService.operations = operations != null ? operations : List.of();
         return queryService;
     }
 
-    public static QueryService load(String id, String name, String serviceId, String description,
+    public static QueryService load(String id, String name, String moduleId, String description,
                                     List<QueryOperation> operations) {
         var queryService = new QueryService();
         queryService.id = new QueryServiceId(id);
         queryService.name = new QueryServiceName(name);
-        queryService.serviceId = serviceId;
+        queryService.moduleId = moduleId;
         queryService.description = description;
         queryService.operations = operations != null ? operations : List.of();
         return queryService;
     }
 
-    public void update(QueryServiceName name, String serviceId, String description,
+    public void update(QueryServiceName name, String moduleId, String description,
                        List<QueryOperation> operations) {
         this.name = name;
-        this.serviceId = serviceId;
+        this.moduleId = moduleId;
         this.description = description;
         this.operations = operations != null ? operations : List.of();
     }

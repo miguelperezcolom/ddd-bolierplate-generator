@@ -21,7 +21,7 @@ public class ReadModelFileRepository implements ReadModelRepository {
     @Override
     public Optional<ReadModel> findById(ReadModelId id) {
         return repository.findById(id.id(), ReadModelEntity.class)
-                .map(entity -> ReadModel.load(entity.id(), entity.name(), entity.serviceId(), entity.description(),
+                .map(entity -> ReadModel.load(entity.id(), entity.name(), entity.moduleId(), entity.description(),
                         entity.modelId(), entity.storageType(), entity.consistency()));
     }
 
@@ -30,7 +30,7 @@ public class ReadModelFileRepository implements ReadModelRepository {
         repository.save(new ReadModelEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getServiceId(),
+                entity.getModuleId(),
                 entity.getDescription(),
                 entity.getModelId(),
                 entity.getStorageType(),

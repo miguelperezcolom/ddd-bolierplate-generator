@@ -16,7 +16,7 @@ public class SaveIntegrationEventUseCase {
         var event = repository.findById(new IntegrationEventId(command.id())).orElseThrow();
         event.update(
                 new IntegrationEventName(command.name()),
-                command.serviceId(),
+                command.moduleId(),
                 command.description(),
                 command.sourceDomainEventId(),
                 command.payloadModelId(),

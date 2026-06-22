@@ -11,18 +11,18 @@ public class ReadModel {
 
     private ReadModelId id;
     private ReadModelName name;
-    private String serviceId;
+    private String moduleId;
     private String description;
     private String modelId;
     private ReadModelStorageType storageType;
     private ReadModelConsistency consistency;
 
-    public static ReadModel of(ReadModelId id, ReadModelName name, String serviceId, String description,
+    public static ReadModel of(ReadModelId id, ReadModelName name, String moduleId, String description,
                                String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         var readModel = new ReadModel();
         readModel.id = id;
         readModel.name = name;
-        readModel.serviceId = serviceId;
+        readModel.moduleId = moduleId;
         readModel.description = description;
         readModel.modelId = modelId;
         readModel.storageType = storageType;
@@ -30,12 +30,12 @@ public class ReadModel {
         return readModel;
     }
 
-    public static ReadModel load(String id, String name, String serviceId, String description,
+    public static ReadModel load(String id, String name, String moduleId, String description,
                                  String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         var readModel = new ReadModel();
         readModel.id = new ReadModelId(id);
         readModel.name = new ReadModelName(name);
-        readModel.serviceId = serviceId;
+        readModel.moduleId = moduleId;
         readModel.description = description;
         readModel.modelId = modelId;
         readModel.storageType = storageType;
@@ -43,10 +43,10 @@ public class ReadModel {
         return readModel;
     }
 
-    public void update(ReadModelName name, String serviceId, String description,
+    public void update(ReadModelName name, String moduleId, String description,
                        String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         this.name = name;
-        this.serviceId = serviceId;
+        this.moduleId = moduleId;
         this.description = description;
         this.modelId = modelId;
         this.storageType = storageType;

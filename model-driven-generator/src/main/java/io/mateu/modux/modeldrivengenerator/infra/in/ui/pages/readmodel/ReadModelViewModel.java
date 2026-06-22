@@ -10,8 +10,8 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadMo
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ServiceIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -36,8 +36,8 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     @NotEmpty
     String name;
 
-    @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
-    String serviceId;
+    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    String moduleId;
 
     String description;
 
@@ -53,14 +53,14 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateReadModelCommand(id, name, serviceId, description,
+        createUseCase.handle(new CreateReadModelCommand(id, name, moduleId, description,
                 modelId, storageType, consistency));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveReadModelCommand(id, name, serviceId, description,
+        saveUseCase.handle(new SaveReadModelCommand(id, name, moduleId, description,
                 modelId, storageType, consistency));
     }
 
@@ -72,7 +72,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public ReadModelViewModel load(ReadModelDto model) {
         id = model.id();
         name = model.name();
-        serviceId = model.serviceId();
+        moduleId = model.moduleId();
         description = model.description();
         modelId = model.modelId();
         storageType = model.storageType();

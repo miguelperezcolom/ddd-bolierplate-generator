@@ -17,7 +17,7 @@ public class CreateIntegrationEventUseCase {
         var event = IntegrationEvent.of(
                 new IntegrationEventId(command.id()),
                 new IntegrationEventName(command.name()),
-                command.serviceId(),
+                command.moduleId(),
                 command.description(),
                 command.sourceDomainEventId(),
                 command.payloadModelId(),

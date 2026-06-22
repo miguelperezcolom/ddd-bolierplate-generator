@@ -21,7 +21,7 @@ public class IntegrationEventFileRepository implements IntegrationEventRepositor
     @Override
     public Optional<IntegrationEvent> findById(IntegrationEventId id) {
         return repository.findById(id.id(), IntegrationEventEntity.class)
-                .map(entity -> IntegrationEvent.load(entity.id(), entity.name(), entity.serviceId(), entity.description(),
+                .map(entity -> IntegrationEvent.load(entity.id(), entity.name(), entity.moduleId(), entity.description(),
                         entity.sourceDomainEventId(), entity.payloadModelId(), entity.topicName(),
                         entity.partitions(), entity.retentionMs(),
                         entity.serializationFormat(), entity.compressionType(),
@@ -34,7 +34,7 @@ public class IntegrationEventFileRepository implements IntegrationEventRepositor
         repository.save(new IntegrationEventEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getServiceId(),
+                entity.getModuleId(),
                 entity.getDescription(),
                 entity.getSourceDomainEventId(),
                 entity.getPayloadModelId(),

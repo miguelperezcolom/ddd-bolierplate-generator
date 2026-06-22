@@ -117,21 +117,6 @@ public class GenerateCodeUseCase {
                     .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
         }
 
-        // ReadModels (find by serviceId)
-        repository.findAllOfType(ReadModelEntity.class).stream()
-                .filter(rm -> service.id().equals(rm.serviceId()))
-                .forEach(readModel -> generateReadModel(project, service, serviceDir, readModel));
-
-        // IntegrationEvents (find by serviceId)
-        repository.findAllOfType(IntegrationEventEntity.class).stream()
-                .filter(ie -> service.id().equals(ie.serviceId()))
-                .forEach(integrationEvent -> generateIntegrationEvent(project, service, serviceDir, integrationEvent));
-
-        // QueryServices (find by serviceId)
-        repository.findAllOfType(QueryServiceEntity.class).stream()
-                .filter(qs -> service.id().equals(qs.serviceId()))
-                .forEach(queryService -> generateQueryService(project, service, serviceDir, queryService));
-
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
 
@@ -239,6 +224,21 @@ public class GenerateCodeUseCase {
                     .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
                     .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
         }
+
+        // Read models (module-level, by moduleId)
+        repository.findAllOfType(ReadModelEntity.class).stream()
+                .filter(rm -> module.id().equals(rm.moduleId()))
+                .forEach(rm -> generateReadModel(project, service, module, moduleDir, modulePackageDir, rm));
+
+        // Integration events (module-level, by moduleId)
+        repository.findAllOfType(IntegrationEventEntity.class).stream()
+                .filter(ie -> module.id().equals(ie.moduleId()))
+                .forEach(ie -> generateIntegrationEvent(project, service, module, moduleDir, modulePackageDir, ie));
+
+        // Query services (module-level, by moduleId)
+        repository.findAllOfType(QueryServiceEntity.class).stream()
+                .filter(qs -> module.id().equals(qs.moduleId()))
+                .forEach(qs -> generateQueryService(project, service, module, moduleDir, modulePackageDir, qs));
 
         // Entities (embedded/child entities within aggregates)
         if (module.entityIds() != null) {
@@ -565,15 +565,9 @@ public class GenerateCodeUseCase {
 
     // ─── ReadModels ───────────────────────────────────────────────────────────
 
-    private void generateReadModel(ProjectEntity project, ServiceEntity service, String serviceDir, ReadModelEntity readModel) {
-        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
-        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
-        if (firstModule == null) return;
-        var moduleSlug = moduleSlug(firstModule.name());
-        var moduleDir = serviceDir + "/" + moduleSlug;
-        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
-
-        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+    private void generateReadModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                   String moduleDir, String modulePackageDir, ReadModelEntity readModel) {
+        Map<String, Object> model = buildBaseModel(project, service, module);
         var typeName = toTypeName(readModel.name());
         var className = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
         model.put("className", className);
@@ -589,15 +583,9 @@ public class GenerateCodeUseCase {
 
     // ─── IntegrationEvents ────────────────────────────────────────────────────
 
-    private void generateIntegrationEvent(ProjectEntity project, ServiceEntity service, String serviceDir, IntegrationEventEntity integrationEvent) {
-        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
-        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
-        if (firstModule == null) return;
-        var moduleSlug = moduleSlug(firstModule.name());
-        var moduleDir = serviceDir + "/" + moduleSlug;
-        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
-
-        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+    private void generateIntegrationEvent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                          String moduleDir, String modulePackageDir, IntegrationEventEntity integrationEvent) {
+        Map<String, Object> model = buildBaseModel(project, service, module);
         var className = toTypeName(integrationEvent.name());
         model.put("className", className);
         model.put("integrationEvent", fromJson(toJson(integrationEvent)));
@@ -615,14 +603,8 @@ public class GenerateCodeUseCase {
 
     // ─── QueryServices ────────────────────────────────────────────────────────
 
-    private void generateQueryService(ProjectEntity project, ServiceEntity service, String serviceDir, QueryServiceEntity queryService) {
-        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
-        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
-        if (firstModule == null) return;
-        var moduleSlug = moduleSlug(firstModule.name());
-        var moduleDir = serviceDir + "/" + moduleSlug;
-        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
-
+    private void generateQueryService(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                      String moduleDir, String modulePackageDir, QueryServiceEntity queryService) {
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
 
@@ -640,7 +622,7 @@ public class GenerateCodeUseCase {
         for (var modelId : dtosToGenerate) {
             var modelEntity = repository.findById(modelId, ModelEntity.class).orElse(null);
             if (modelEntity == null) continue;
-            Map<String, Object> dtoModel = buildBaseModel(project, service, firstModule);
+            Map<String, Object> dtoModel = buildBaseModel(project, service, module);
             var dtoClassName = typeNameByModelId.get(modelId);
             dtoModel.put("className", dtoClassName);
             dtoModel.put("model", fromJson(toJson(modelEntity)));
@@ -659,7 +641,7 @@ public class GenerateCodeUseCase {
             enrichedOps.add(opMap);
         }
 
-        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        Map<String, Object> model = buildBaseModel(project, service, module);
         var className = toTypeName(queryService.name());
         model.put("className", className);
         model.put("operations", enrichedOps);

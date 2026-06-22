@@ -43,7 +43,7 @@ public class QueryServiceFileQueryService implements QueryServiceQueryService {
     @Override
     public Optional<QueryServiceDto> getById(String id) {
         return repository.findById(id, QueryServiceEntity.class)
-                .map(entity -> new QueryServiceDto(entity.id(), entity.name(), entity.serviceId(), entity.description(),
+                .map(entity -> new QueryServiceDto(entity.id(), entity.name(), entity.moduleId(), entity.description(),
                         entity.operations() == null ? List.of() :
                                 entity.operations().stream()
                                         .map(o -> new QueryOperationDto(o.id(), o.name(), o.description(),

@@ -11,7 +11,7 @@ public class IntegrationEvent {
 
     private IntegrationEventId id;
     private IntegrationEventName name;
-    private String serviceId;
+    private String moduleId;
     private String description;
     private String sourceDomainEventId;
     private String payloadModelId;
@@ -27,7 +27,7 @@ public class IntegrationEvent {
     private String routingKeyField;
     private boolean replayable;
 
-    public static IntegrationEvent of(IntegrationEventId id, IntegrationEventName name, String serviceId, String description,
+    public static IntegrationEvent of(IntegrationEventId id, IntegrationEventName name, String moduleId, String description,
                                       String sourceDomainEventId, String payloadModelId, String topicName,
                                       Integer partitions, Long retentionMs,
                                       IntegrationEventSerializationFormat serializationFormat,
@@ -37,7 +37,7 @@ public class IntegrationEvent {
         var event = new IntegrationEvent();
         event.id = id;
         event.name = name;
-        event.serviceId = serviceId;
+        event.moduleId = moduleId;
         event.description = description;
         event.sourceDomainEventId = sourceDomainEventId;
         event.payloadModelId = payloadModelId;
@@ -55,7 +55,7 @@ public class IntegrationEvent {
         return event;
     }
 
-    public static IntegrationEvent load(String id, String name, String serviceId, String description,
+    public static IntegrationEvent load(String id, String name, String moduleId, String description,
                                         String sourceDomainEventId, String payloadModelId, String topicName,
                                         Integer partitions, Long retentionMs,
                                         IntegrationEventSerializationFormat serializationFormat,
@@ -65,7 +65,7 @@ public class IntegrationEvent {
         var event = new IntegrationEvent();
         event.id = new IntegrationEventId(id);
         event.name = new IntegrationEventName(name);
-        event.serviceId = serviceId;
+        event.moduleId = moduleId;
         event.description = description;
         event.sourceDomainEventId = sourceDomainEventId;
         event.payloadModelId = payloadModelId;
@@ -83,7 +83,7 @@ public class IntegrationEvent {
         return event;
     }
 
-    public void update(IntegrationEventName name, String serviceId, String description,
+    public void update(IntegrationEventName name, String moduleId, String description,
                        String sourceDomainEventId, String payloadModelId, String topicName,
                        Integer partitions, Long retentionMs,
                        IntegrationEventSerializationFormat serializationFormat,
@@ -91,7 +91,7 @@ public class IntegrationEvent {
                        boolean deadLetterQueueEnabled, String deadLetterQueueName, Integer maxDeliveryAttempts,
                        String schemaVersion, String routingKeyField, boolean replayable) {
         this.name = name;
-        this.serviceId = serviceId;
+        this.moduleId = moduleId;
         this.description = description;
         this.sourceDomainEventId = sourceDomainEventId;
         this.payloadModelId = payloadModelId;

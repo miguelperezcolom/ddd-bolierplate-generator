@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo
 public record CreateIntegrationEventCommand(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         String sourceDomainEventId,
         String payloadModelId,

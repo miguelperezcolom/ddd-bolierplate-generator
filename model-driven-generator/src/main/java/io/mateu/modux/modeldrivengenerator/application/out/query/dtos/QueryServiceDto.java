@@ -5,7 +5,7 @@ import java.util.List;
 public record QueryServiceDto(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         List<QueryOperationDto> operations
 ) {

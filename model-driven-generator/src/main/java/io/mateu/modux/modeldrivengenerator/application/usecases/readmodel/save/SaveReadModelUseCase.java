@@ -16,7 +16,7 @@ public class SaveReadModelUseCase {
         var readModel = repository.findById(new ReadModelId(command.id())).orElseThrow();
         readModel.update(
                 new ReadModelName(command.name()),
-                command.serviceId(),
+                command.moduleId(),
                 command.description(),
                 command.modelId(),
                 command.storageType(),

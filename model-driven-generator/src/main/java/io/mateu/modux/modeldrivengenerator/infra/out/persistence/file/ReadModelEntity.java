@@ -7,7 +7,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 public record ReadModelEntity(
         String id,
         String name,
-        String serviceId,
+        String moduleId,
         String description,
         String modelId,
         ReadModelStorageType storageType,
