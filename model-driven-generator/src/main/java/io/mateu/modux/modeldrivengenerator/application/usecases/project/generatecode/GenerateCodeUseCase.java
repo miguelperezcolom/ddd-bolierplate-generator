@@ -11,6 +11,10 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ComponentE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.uidl.data.FieldDataType;
@@ -112,6 +116,21 @@ public class GenerateCodeUseCase {
                     .map(id -> repository.findById(id, GatewayEntity.class).orElseThrow())
                     .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
         }
+
+        // ReadModels (find by serviceId)
+        repository.findAllOfType(ReadModelEntity.class).stream()
+                .filter(rm -> service.id().equals(rm.serviceId()))
+                .forEach(readModel -> generateReadModel(project, service, serviceDir, readModel));
+
+        // IntegrationEvents (find by serviceId)
+        repository.findAllOfType(IntegrationEventEntity.class).stream()
+                .filter(ie -> service.id().equals(ie.serviceId()))
+                .forEach(integrationEvent -> generateIntegrationEvent(project, service, serviceDir, integrationEvent));
+
+        // QueryServices (find by serviceId)
+        repository.findAllOfType(QueryServiceEntity.class).stream()
+                .filter(qs -> service.id().equals(qs.serviceId()))
+                .forEach(queryService -> generateQueryService(project, service, serviceDir, queryService));
 
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
@@ -542,6 +561,123 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, model, "gateway-impl.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/out/gateway/"
                         + capitalize(gateway.name()) + "GatewayImpl.java");
+    }
+
+    // ─── ReadModels ───────────────────────────────────────────────────────────
+
+    private void generateReadModel(ProjectEntity project, ServiceEntity service, String serviceDir, ReadModelEntity readModel) {
+        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
+        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
+        if (firstModule == null) return;
+        var moduleSlug = moduleSlug(firstModule.name());
+        var moduleDir = serviceDir + "/" + moduleSlug;
+        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
+
+        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        var typeName = toTypeName(readModel.name());
+        var className = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
+        model.put("className", className);
+        if (readModel.modelId() != null && !readModel.modelId().isBlank()) {
+            var modelEntity = repository.findById(readModel.modelId(), ModelEntity.class).orElse(null);
+            model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
+        }
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/readmodel");
+        createFile(moduleDir, model, "read-model.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/readmodel/" + className + ".java");
+    }
+
+    // ─── IntegrationEvents ────────────────────────────────────────────────────
+
+    private void generateIntegrationEvent(ProjectEntity project, ServiceEntity service, String serviceDir, IntegrationEventEntity integrationEvent) {
+        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
+        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
+        if (firstModule == null) return;
+        var moduleSlug = moduleSlug(firstModule.name());
+        var moduleDir = serviceDir + "/" + moduleSlug;
+        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
+
+        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        var className = toTypeName(integrationEvent.name());
+        model.put("className", className);
+        model.put("integrationEvent", fromJson(toJson(integrationEvent)));
+        if (integrationEvent.payloadModelId() != null && !integrationEvent.payloadModelId().isBlank()) {
+            var payloadModel = repository.findById(integrationEvent.payloadModelId(), ModelEntity.class).orElse(null);
+            model.put("payloadModel", payloadModel != null ? fromJson(toJson(payloadModel)) : null);
+        }
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out/integration");
+        createFile(moduleDir, model, "integration-event.ftl",
+                "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + ".java");
+        createFile(moduleDir, model, "integration-event-publisher.ftl",
+                "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + "Publisher.java");
+    }
+
+    // ─── QueryServices ────────────────────────────────────────────────────────
+
+    private void generateQueryService(ProjectEntity project, ServiceEntity service, String serviceDir, QueryServiceEntity queryService) {
+        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
+        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
+        if (firstModule == null) return;
+        var moduleSlug = moduleSlug(firstModule.name());
+        var moduleDir = serviceDir + "/" + moduleSlug;
+        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
+
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
+
+        // Resolve distinct referenced models → DTOs, mapping modelId -> TypeName
+        var typeNameByModelId = new HashMap<String, String>();
+        var dtosToGenerate = new LinkedHashSet<String>();
+        var operations = queryService.operations() != null ? queryService.operations() : List.<QueryOperationEntity>of();
+
+        for (var op : operations) {
+            resolveQueryModelType(op.inputModelId(), typeNameByModelId, dtosToGenerate);
+            resolveQueryModelType(op.outputModelId(), typeNameByModelId, dtosToGenerate);
+        }
+
+        // Generate each DTO once
+        for (var modelId : dtosToGenerate) {
+            var modelEntity = repository.findById(modelId, ModelEntity.class).orElse(null);
+            if (modelEntity == null) continue;
+            Map<String, Object> dtoModel = buildBaseModel(project, service, firstModule);
+            var dtoClassName = typeNameByModelId.get(modelId);
+            dtoModel.put("className", dtoClassName);
+            dtoModel.put("model", fromJson(toJson(modelEntity)));
+            createFile(moduleDir, dtoModel, "query-dto.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/query/dto/" + dtoClassName + ".java");
+        }
+
+        // Build enriched operation list
+        var enrichedOps = new ArrayList<Map<String, Object>>();
+        for (var op : operations) {
+            var opMap = new HashMap<String, Object>();
+            opMap.put("opName", uncapitalize(op.name()));
+            opMap.put("inType", queryTypeRef(op.inputModelId(), typeNameByModelId));
+            opMap.put("outType", queryTypeRef(op.outputModelId(), typeNameByModelId));
+            opMap.put("cardinality", op.cardinality() != null ? op.cardinality().name() : "Single");
+            enrichedOps.add(opMap);
+        }
+
+        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        var className = toTypeName(queryService.name());
+        model.put("className", className);
+        model.put("operations", enrichedOps);
+        createFile(moduleDir, model, "query-service.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/" + className + ".java");
+    }
+
+    private void resolveQueryModelType(String modelId, Map<String, String> typeNameByModelId, Set<String> dtosToGenerate) {
+        if (modelId == null || modelId.isBlank() || typeNameByModelId.containsKey(modelId)) return;
+        var modelEntity = repository.findById(modelId, ModelEntity.class).orElse(null);
+        if (modelEntity == null) return;
+        typeNameByModelId.put(modelId, toTypeName(modelEntity.name()));
+        dtosToGenerate.add(modelId);
+    }
+
+    private String queryTypeRef(String modelId, Map<String, String> typeNameByModelId) {
+        if (modelId == null || modelId.isBlank()) return "Object";
+        return typeNameByModelId.getOrDefault(modelId, "Object");
     }
 
     // ─── Sagas ────────────────────────────────────────────────────────────────
@@ -1183,6 +1319,32 @@ public class GenerateCodeUseCase {
             return value;
         }
         return value.substring(0, 1).toUpperCase() + value.substring(1);
+    }
+
+    private String uncapitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        return value.substring(0, 1).toLowerCase() + value.substring(1);
+    }
+
+    /** Converts an arbitrary name to a PascalCase Java type name (alphanumerics only). */
+    private String toTypeName(String name) {
+        if (name == null || name.isBlank()) return "Type";
+        var sb = new StringBuilder();
+        boolean upperNext = true;
+        for (var c : name.toCharArray()) {
+            if (Character.isLetterOrDigit(c)) {
+                sb.append(upperNext ? Character.toUpperCase(c) : c);
+                upperNext = false;
+            } else {
+                upperNext = true;
+            }
+        }
+        var result = sb.toString();
+        if (result.isEmpty()) return "Type";
+        if (Character.isDigit(result.charAt(0))) result = "_" + result;
+        return result;
     }
 
     /** Converts "booking service" or "booking-service" to "booking-service" (kebab-case slug) */
