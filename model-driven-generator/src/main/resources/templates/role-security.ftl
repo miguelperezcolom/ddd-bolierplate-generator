@@ -27,11 +27,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(auth -> auth
-                .anyRequest().authenticated()
-            )
-            .formLogin(form -> form.permitAll())
-            .logout(logout -> logout.permitAll());
+            // Generated scaffold: permit all requests so the Mateu UI works out of the box.
+            // CSRF is disabled because the Mateu sync API is called via JSON (no CSRF token).
+            // Tighten this (authentication + role rules using the ROLE_* constants above)
+            // when wiring real authentication.
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }
 
