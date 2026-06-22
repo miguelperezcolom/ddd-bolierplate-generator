@@ -116,8 +116,8 @@ checkInvariants();
 }
 
 <#list aggregate.operations as operation>
-    <#assign operationName = operation.name?lower_case>
-    <#assign operationNameCap = operationName?cap_first>
+    <#assign operationName = operation.name?uncap_first>
+    <#assign operationNameCap = operation.name?cap_first>
 
     <#if operation.type == "CUSTOM">
         public void ${operationName}(${operationNameCap}${aggregate.name}Operation operation) {

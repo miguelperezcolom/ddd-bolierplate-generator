@@ -44,6 +44,11 @@
             <artifactId>shared</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <!-- Messaging (event subscriptions: org.springframework.messaging.Message + functional bindings) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream</artifactId>
+        </dependency>
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -562,6 +562,71 @@
       "type" : "string",
       "enum" : [ "Keycloak", "Auth0", "Okta", "Cognito", "AzureAD", "Custom" ]
     },
+    "IntegrationEventCompressionType" : {
+      "type" : "string",
+      "enum" : [ "NONE", "SNAPPY", "LZ4", "ZSTD" ]
+    },
+    "IntegrationEventEntity" : {
+      "type" : "object",
+      "properties" : {
+        "compressionType" : {
+          "$ref" : "#/$defs/IntegrationEventCompressionType"
+        },
+        "deadLetterQueueEnabled" : {
+          "type" : "boolean"
+        },
+        "deadLetterQueueName" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "maxDeliveryAttempts" : {
+          "type" : "integer"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "partitions" : {
+          "type" : "integer"
+        },
+        "payloadModelId" : {
+          "type" : "string"
+        },
+        "replayable" : {
+          "type" : "boolean"
+        },
+        "retentionMs" : {
+          "type" : "integer"
+        },
+        "routingKeyField" : {
+          "type" : "string"
+        },
+        "schemaVersion" : {
+          "type" : "string"
+        },
+        "serializationFormat" : {
+          "$ref" : "#/$defs/IntegrationEventSerializationFormat"
+        },
+        "serviceId" : {
+          "type" : "string"
+        },
+        "sourceDomainEventId" : {
+          "type" : "string"
+        },
+        "topicName" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "IntegrationEventSerializationFormat" : {
+      "type" : "string",
+      "enum" : [ "JSON", "AVRO", "PROTOBUF" ]
+    },
     "InvariantConditionEntity" : {
       "type" : "object",
       "properties" : {
@@ -1423,6 +1488,93 @@
       "type" : "string",
       "enum" : [ "Create", "Update", "Delete", "Upsert", "Custom" ]
     },
+    "QueryCardinality" : {
+      "type" : "string",
+      "enum" : [ "Single", "List", "Page" ]
+    },
+    "QueryOperationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cardinality" : {
+          "$ref" : "#/$defs/QueryCardinality"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "QueryServiceEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/QueryOperationEntity"
+          }
+        },
+        "serviceId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ReadModelConsistency" : {
+      "type" : "string",
+      "enum" : [ "Eventual", "Strong" ]
+    },
+    "ReadModelEntity" : {
+      "type" : "object",
+      "properties" : {
+        "consistency" : {
+          "$ref" : "#/$defs/ReadModelConsistency"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "serviceId" : {
+          "type" : "string"
+        },
+        "storageType" : {
+          "$ref" : "#/$defs/ReadModelStorageType"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ReadModelStorageType" : {
+      "type" : "string",
+      "enum" : [ "Document", "Relational", "KeyValue", "InMemory" ]
+    },
     "RoleEntity" : {
       "type" : "object",
       "properties" : {
@@ -2127,6 +2279,12 @@
         "$ref" : "#/$defs/GatewayEntity"
       }
     },
+    "integrationEvents" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/IntegrationEventEntity"
+      }
+    },
     "invariants" : {
       "type" : "array",
       "items" : {
@@ -2167,6 +2325,18 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProjectEntity"
+      }
+    },
+    "queryServices" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/QueryServiceEntity"
+      }
+    },
+    "readModels" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ReadModelEntity"
       }
     },
     "roles" : {

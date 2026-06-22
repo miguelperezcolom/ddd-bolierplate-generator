@@ -359,9 +359,9 @@ public class GenerateCodeUseCase {
                             operationEntity.name(),
                             operationEntity.inputModelId(),
                             operationEntity.outputModelId(),
-                            Arrays.asList(operationEntity.preconditions().split(",")),
+                            splitCsv(operationEntity.preconditions()),
                             listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
-                            Arrays.asList(operationEntity.emits().split(",")),
+                            splitCsv(operationEntity.emits()),
                             OperationType.valueOf(operationEntity.type()),
                             operationEntity.paginated(),
                             operationEntity.defaultPageSize()
@@ -1069,9 +1069,9 @@ public class GenerateCodeUseCase {
                             operationEntity.name(),
                             operationEntity.inputModelId(),
                             operationEntity.outputModelId(),
-                            Arrays.asList(operationEntity.preconditions().split(",")),
+                            splitCsv(operationEntity.preconditions()),
                             listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
-                            Arrays.asList(operationEntity.emits().split(",")),
+                            splitCsv(operationEntity.emits()),
                             OperationType.valueOf(operationEntity.type()),
                             operationEntity.paginated(),
                             operationEntity.defaultPageSize()
@@ -1170,6 +1170,12 @@ public class GenerateCodeUseCase {
 
     private void createDir(String baseDir, String dir) {
         new File(baseDir + "/" + dir).mkdirs();
+    }
+
+    /** Null/blank-safe CSV split: returns an empty list instead of NPE-ing on null. */
+    private List<String> splitCsv(String value) {
+        if (value == null || value.isBlank()) return List.of();
+        return Arrays.asList(value.split(","));
     }
 
     private String capitalize(String value) {
