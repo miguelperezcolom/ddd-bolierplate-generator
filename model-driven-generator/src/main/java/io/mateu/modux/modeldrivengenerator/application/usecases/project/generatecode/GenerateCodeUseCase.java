@@ -177,6 +177,15 @@ public class GenerateCodeUseCase {
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
 
+        // Per-module menu: groups this module's CRUDs under a single entry in the app Home
+        if (module.aggregateIds() != null && !module.aggregateIds().isEmpty()) {
+            moduleModel.put("moduleMenuClassName", toTypeName(module.name()) + "Menu");
+            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/menu");
+            createFile(moduleDir, moduleModel, "module-menu.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/in/ui/menu/"
+                            + toTypeName(module.name()) + "Menu.java");
+        }
+
         // BDD runner (once per module)
         Map<String, Object> bddModel = buildBaseModel(project, service, module);
         createDir(moduleDir, "src/test/java/" + modulePackageDir + "/bdd");
@@ -281,6 +290,21 @@ public class GenerateCodeUseCase {
         Map<String, Object> appModel = new HashMap<>();
         appModel.put("project", projectToMap(project));
         appModel.put("service", serviceToMap(service));
+
+        // One Home menu entry per module (each pointing to that module's menu class).
+        // Only modules that own aggregates produce a menu.
+        var menuModules = new java.util.ArrayList<Map<String, Object>>();
+        service.moduleIds().stream()
+                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
+                .filter(m -> m.aggregateIds() != null && !m.aggregateIds().isEmpty())
+                .forEach(m -> {
+                    var entry = new HashMap<String, Object>();
+                    entry.put("className", toTypeName(m.name()) + "Menu");
+                    entry.put("slug", moduleSlug(m.name()));
+                    entry.put("field", moduleSlug(m.name()) + "Menu");
+                    menuModules.add(entry);
+                });
+        appModel.put("menuModules", menuModules);
 
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
