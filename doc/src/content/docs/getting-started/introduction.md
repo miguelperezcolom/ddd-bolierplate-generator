@@ -5,7 +5,7 @@ description: What is Modux and why use it
 
 ## What is Modux?
 
-Modux is a **spec-driven code generation framework** for building Domain-Driven Design (DDD) systems in Java. Instead of writing the same structural boilerplate over and over, you describe your domain in a simple YAML specification and let Modux generate the code for you.
+Modux is a **model-driven code generation framework** for building Domain-Driven Design (DDD) systems in Java. Instead of writing the same structural boilerplate over and over, you describe your domain in a simple YAML specification and let Modux generate the code for you.
 
 The generated code follows **Hexagonal Architecture** (also known as Ports & Adapters), with a clear separation between:
 

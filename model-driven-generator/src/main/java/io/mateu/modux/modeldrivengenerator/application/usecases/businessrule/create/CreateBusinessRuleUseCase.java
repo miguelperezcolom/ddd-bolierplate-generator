@@ -1,0 +1,50 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.businessrule.create;
+
+import io.mateu.modux.modeldrivengenerator.application.out.repositories.BusinessRuleRepository;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.BusinessRule;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.BusinessRuleAction;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.BusinessRuleActionType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.BusinessRuleCondition;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.BusinessRuleId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.BusinessRuleName;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CreateBusinessRuleUseCase {
+
+    final BusinessRuleRepository repository;
+
+    public void handle(CreateBusinessRuleCommand command) {
+        var rule = BusinessRule.of(
+                new BusinessRuleId(command.id()),
+                new BusinessRuleName(command.name()),
+                command.description(),
+                command.modelId(),
+                command.priority(),
+                command.enabled(),
+                command.ruleGroup(),
+                toConditions(command.conditions()),
+                toActions(command.actions()));
+        repository.save(rule);
+    }
+
+    private List<BusinessRuleCondition> toConditions(List<io.mateu.modux.modeldrivengenerator.application.usecases.businessrule.BusinessRuleConditionData> conditions) {
+        if (conditions == null) return List.of();
+        return conditions.stream()
+                .map(c -> new BusinessRuleCondition(c.id(), c.expression(), c.description()))
+                .toList();
+    }
+
+    private List<BusinessRuleAction> toActions(List<io.mateu.modux.modeldrivengenerator.application.usecases.businessrule.BusinessRuleActionData> actions) {
+        if (actions == null) return List.of();
+        return actions.stream()
+                .map(a -> new BusinessRuleAction(a.id(),
+                        a.type() != null ? BusinessRuleActionType.valueOf(a.type()) : null,
+                        a.fieldId(), a.expression(), a.useCaseId(), a.domainEventId(), a.description()))
+                .toList();
+    }
+}

@@ -1,0 +1,52 @@
+package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project;
+
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class ProjectEnvironmentConfigViewModel {
+    @NotNull
+    ProjectEnvironment environment;
+    String kubernetesClusterUrl;
+    String kubernetesNamespace;
+    String kubernetesContext;
+    String kubernetesToken;
+    String kubernetesCertificateAuthorityData;
+    String terraformBackendBucket;
+    String terraformBackendRegion;
+    String terraformBackendKey;
+    String terraformWorkspace;
+    String iamServerUrl;
+    String iamRealm;
+    String iamClientId;
+    String iamClientSecret;
+    String iamAudience;
+    String messageBrokerUrl;
+    String messageBrokerUsername;
+    String messageBrokerPassword;
+    String tracingEndpoint;
+    String metricsEndpoint;
+    String loggingEndpoint;
+    String llmApiUrl;
+    String llmApiKey;
+    String llmModel;
+    String cacheUrl;
+    String cacheUsername;
+    String cachePassword;
+    String fileStorageBucket;
+    String fileStorageRegion;
+    String fileStorageAccessKey;
+    String fileStorageSecretKey;
+    String fileStorageEndpoint;
+    String emailHost;
+    Integer emailPort;
+    String emailUsername;
+    String emailPassword;
+    String emailFrom;
+    String secretsEndpoint;
+    String secretsToken;
+    String ingressDomain;
+    Boolean ingressTlsEnabled;
+    String ingressClassName;
+}

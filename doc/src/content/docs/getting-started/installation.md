@@ -25,7 +25,7 @@ mvn clean install -DskipTests
 ## Run the generator
 
 ```bash
-cd spec-driven-generator
+cd model-driven-generator
 mvn spring-boot:run
 ```
 
@@ -35,7 +35,7 @@ The Modux UI will be available at `http://localhost:8080`.
 
 ```
 modux/
-├── spec-driven-generator/   # Main generator application (Spring Boot + Vaadin UI)
+├── model-driven-generator/   # Main generator application (Spring Boot + Vaadin UI)
 ├── plugin/                  # Maven plugin (modux-maven-plugin)
 ├── sample/poc-sagas/        # Example generated application
 ├── io/                      # Shared UIDL types

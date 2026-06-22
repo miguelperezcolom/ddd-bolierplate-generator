@@ -1,0 +1,17 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.projection.delete;
+
+import io.mateu.modux.modeldrivengenerator.application.out.repositories.ProjectionRepository;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ProjectionId;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class DeleteProjectionUseCase {
+
+    final ProjectionRepository repository;
+
+    public void handle(DeleteProjectionCommand command) {
+        repository.deleteAllById(command.ids().stream().map(ProjectionId::new).toList());
+    }
+}

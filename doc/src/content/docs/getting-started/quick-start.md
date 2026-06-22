@@ -8,7 +8,7 @@ This guide walks you through creating a simple booking domain from scratch.
 ## 1. Start the generator
 
 ```bash
-cd spec-driven-generator
+cd model-driven-generator
 mvn spring-boot:run
 ```
 

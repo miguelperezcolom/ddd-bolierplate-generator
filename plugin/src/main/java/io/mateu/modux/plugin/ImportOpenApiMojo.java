@@ -1,8 +1,8 @@
 package io.mateu.modux.plugin;
 
-import io.mateu.modux.specdrivengenerator.application.usecases.project.importopenapi.ImportOpenApiCommand;
-import io.mateu.modux.specdrivengenerator.application.usecases.project.importopenapi.ImportOpenApiUseCase;
-import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiUseCase;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -13,7 +13,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 public class ImportOpenApiMojo extends AbstractMojo {
 
     @Parameter(property = "modux.specFile",
-               defaultValue = "${project.basedir}/.dev/data/spec-driven-store.yaml")
+               defaultValue = "${project.basedir}/.dev/data/model-driven-store.yaml")
     private String specFile;
 
     @Parameter(property = "modux.serviceId")
@@ -25,7 +25,7 @@ public class ImportOpenApiMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         getLog().info("Modux import-openapi: " + filePath);
-        System.setProperty("modux.spec-file", specFile);
+        System.setProperty("modux.model-file", specFile);
 
         try (var ctx = new AnnotationConfigApplicationContext()) {
             ctx.register(CommonFileRepository.class, ImportOpenApiUseCase.class);

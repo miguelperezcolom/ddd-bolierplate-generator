@@ -170,7 +170,7 @@ In a CI/CD pipeline, run `ai-complete` after `generate` and commit the proposals
 
 Add `ANTHROPIC_API_KEY` as a repository secret in your CI/CD settings.
 
-## Gradual migration to spec-driven logic
+## Gradual migration to model-driven logic
 
 As your spec matures, some proposals become unnecessary because the information is already in the spec:
 

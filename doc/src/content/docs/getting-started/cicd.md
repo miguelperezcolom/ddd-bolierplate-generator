@@ -13,7 +13,7 @@ The recommended way to use Modux in a team is to treat the spec file as source c
 │   my-system-spec/           │
 │   ├── pom.xml               │
 │   └── .dev/data/            │
-│       └── spec-driven-      │
+│       └── model-driven-      │
 │           store.yaml        │
 └────────────┬────────────────┘
              │ PR merged → CI runs mvn modux:generate
@@ -41,8 +41,8 @@ my-system-spec/
 ├── pom.xml
 ├── .dev/
 │   └── data/
-│       ├── spec-driven-store.yaml
-│       └── spec-driven-store-schema.json
+│       ├── model-driven-store.yaml
+│       └── model-driven-store-schema.json
 └── .github/
     └── workflows/
         └── generate.yml
@@ -71,7 +71,7 @@ my-system-spec/
                 <version>0.0.1-SNAPSHOT</version>
                 <configuration>
                     <projectId>YOUR_PROJECT_ID</projectId>
-                    <specFile>${project.basedir}/.dev/data/spec-driven-store.yaml</specFile>
+                    <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
                     <outputPath>${project.basedir}/generated</outputPath>
                     <packageName>com.myorg</packageName>
                 </configuration>
@@ -105,7 +105,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.dev/data/spec-driven-store.yaml'
+      - '.dev/data/model-driven-store.yaml'
 
 jobs:
   generate:
@@ -210,7 +210,7 @@ generate:
     expire_in: 1 hour
   only:
     changes:
-      - .dev/data/spec-driven-store.yaml
+      - .dev/data/model-driven-store.yaml
     refs:
       - main
 
@@ -254,7 +254,7 @@ pipeline {
     stages {
         stage('Generate') {
             when {
-                changeset '.dev/data/spec-driven-store.yaml'
+                changeset '.dev/data/model-driven-store.yaml'
             }
             steps {
                 sh 'mvn modux:generate --no-transfer-progress'
@@ -263,7 +263,7 @@ pipeline {
 
         stage('Push services') {
             when {
-                changeset '.dev/data/spec-driven-store.yaml'
+                changeset '.dev/data/model-driven-store.yaml'
             }
             parallel {
                 stage('booking-service') {

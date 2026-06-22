@@ -1,0 +1,47 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.subscription.create;
+
+import io.mateu.modux.modeldrivengenerator.application.out.repositories.SubscriptionRepository;
+import io.mateu.modux.modeldrivengenerator.application.usecases.subscription.SubscriptionActionData;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.Subscription;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.ScalingStrategy;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionAction;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionName;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CreateSubscriptionUseCase {
+
+    final SubscriptionRepository repository;
+
+    public void handle(CreateSubscriptionCommand command) {
+        var subscription = Subscription.of(
+                new SubscriptionId(command.id()),
+                new SubscriptionName(command.name()),
+                command.eventName(),
+                command.sourceService(),
+                command.inputModelId(),
+                command.topicName(),
+                command.consumerGroup(),
+                command.retryCount(),
+                command.deadLetterTopic(),
+                toActions(command.actions()),
+                command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null,
+                command.filterExpression(),
+                command.batchSize(), command.batchTimeout(), command.offsetResetStrategy(),
+                command.consumerTimeout());
+        repository.save(subscription);
+    }
+
+    private List<SubscriptionAction> toActions(List<SubscriptionActionData> actions) {
+        if (actions == null) return List.of();
+        return actions.stream()
+                .map(a -> new SubscriptionAction(a.id(), a.name(), a.type(),
+                        a.useCaseId(), a.sagaId(), a.projectionId(), a.modelMappingId()))
+                .toList();
+    }
+}

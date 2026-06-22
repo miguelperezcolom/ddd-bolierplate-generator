@@ -1,9 +1,9 @@
 package io.mateu.modux.plugin;
 
-import io.mateu.modux.specdrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
-import io.mateu.modux.specdrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
-import io.mateu.modux.specdrivengenerator.infra.out.ai.ClaudeApiClient;
-import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.infra.out.ai.ClaudeApiClient;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -17,7 +17,7 @@ public class AiCompleteMojo extends AbstractMojo {
     private String projectId;
 
     @Parameter(property = "modux.specFile",
-               defaultValue = "${project.basedir}/.dev/data/spec-driven-store.yaml")
+               defaultValue = "${project.basedir}/.dev/data/model-driven-store.yaml")
     private String specFile;
 
     @Parameter(property = "modux.outputPath",
@@ -45,7 +45,7 @@ public class AiCompleteMojo extends AbstractMojo {
         }
 
         getLog().info("Modux AI complete: project '" + projectId + "' using model " + model);
-        System.setProperty("modux.spec-file", specFile);
+        System.setProperty("modux.model-file", specFile);
 
         try (var ctx = new AnnotationConfigApplicationContext()) {
             ctx.register(CommonFileRepository.class, ClaudeApiClient.class, AiCompleteCodeUseCase.class);

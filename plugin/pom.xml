@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
     <name>Modux Maven Plugin</name>
-    <description>Maven plugin for Modux spec-driven code generation</description>
+    <description>Maven plugin for Modux model-driven code generation</description>
 
     <properties>
         <java.version>21</java.version>
@@ -34,7 +34,7 @@
 
         <dependency>
             <groupId>io.mateu.modux</groupId>
-            <artifactId>spec-driven-generator</artifactId>
+            <artifactId>model-driven-generator</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
     </dependencies>

@@ -1,0 +1,28 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.valueobject.create;
+
+import io.mateu.modux.modeldrivengenerator.application.out.repositories.ValueObjectRepository;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObject;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.vo.ValueObjectId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.vo.ValueObjectName;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class CreateValueObjectUseCase {
+
+    final ValueObjectRepository repository;
+
+    public void handle(CreateValueObjectCommand command) {
+        var valueobject = ValueObject.of(
+                new ValueObjectId(command.id()),
+                new ValueObjectName(command.name()),
+                command.type(),
+                command.values(),
+                command.fields(),
+                command.dataType()
+        );
+        repository.save(valueobject);
+    }
+
+}

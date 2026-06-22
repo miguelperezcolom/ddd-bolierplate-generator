@@ -3,7 +3,7 @@ title: Maven Plugin Reference
 description: Configuration reference for the modux-maven-plugin
 ---
 
-The `modux-maven-plugin` lets you trigger Modux code generation from any Maven build — without running the Modux UI. It shares the same generation logic as the UI-driven generator, so any templates added to `spec-driven-generator` take effect automatically without any plugin changes.
+The `modux-maven-plugin` lets you trigger Modux code generation from any Maven build — without running the Modux UI. It shares the same generation logic as the UI-driven generator, so any templates added to `model-driven-generator` take effect automatically without any plugin changes.
 
 ## Coordinates
 
@@ -24,7 +24,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `projectId` | `modux.projectId` | — | **Yes** | ID of the project to generate, as defined in the spec store |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Absolute path to the YAML spec file |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Absolute path to the YAML spec file |
 | `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Directory where generated code is written |
 | `packageName` | `modux.packageName` | `com.example` | No | Root Java package for generated classes |
 | `sourceOnly` | `modux.sourceOnly` | `false` | No | When `true`, skips POMs and DevOps artifacts; generates Java sources only |
@@ -56,7 +56,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
     <version>0.0.1-SNAPSHOT</version>
     <configuration>
         <projectId>acme-platform</projectId>
-        <specFile>${project.basedir}/.dev/data/spec-driven-store.yaml</specFile>
+        <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
         <outputPath>${project.basedir}/generated</outputPath>
         <packageName>com.acme.platform</packageName>
         <sourceOnly>false</sourceOnly>
@@ -80,7 +80,7 @@ Reads the spec, calls the Claude AI API for each module, and writes `AI-PROPOSAL
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `projectId` | `modux.projectId` | — | **Yes** | ID of the project in the spec store |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec file |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec file |
 | `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Root directory; proposals go to `{outputPath}/proposals/` |
 | `packageName` | `modux.packageName` | `com.example` | No | Root Java package (used in generated prompts) |
 | `apiKey` | `modux.apiKey` | — | No* | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var |
@@ -120,7 +120,7 @@ Reads an OpenAPI 3.x YAML or JSON file and upserts `GatewayEntity` + `GatewayOpe
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the OpenAPI YAML or JSON file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec store |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
 | `serviceId` | `modux.serviceId` | — | No | Service ID to link the imported gateway to |
 
 ### Usage
@@ -144,7 +144,7 @@ Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channel
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/spec-driven-store.yaml` | No | Path to the YAML spec store |
+| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
 | `moduleId` | `modux.moduleId` | — | No | Module ID that owns these events/subscriptions |
 
 ### Usage
@@ -179,15 +179,15 @@ The plugin boots a minimal Spring `AnnotationConfigApplicationContext` containin
 
 No Spring Boot auto-configuration or embedded server is started. The plugin then calls `GenerateCodeUseCase.handle()` and shuts the context down.
 
-Because all generation logic lives in `spec-driven-generator`, **adding new templates or domain concepts never requires changes to the plugin itself**.
+Because all generation logic lives in `model-driven-generator`, **adding new templates or domain concepts never requires changes to the plugin itself**.
 
 ## Building the plugin locally
 
 The plugin is part of the Modux monorepo. After cloning:
 
 ```bash
-# Install spec-driven-generator thin JAR to local Maven repo
-cd spec-driven-generator
+# Install model-driven-generator thin JAR to local Maven repo
+cd model-driven-generator
 mvn install -DskipTests
 
 # Build and install the plugin

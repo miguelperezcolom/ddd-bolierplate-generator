@@ -1,0 +1,877 @@
+# yaml-language-server: $schema=./model-driven-store-schema.json
+---
+projects:
+- id: "32954999-722f-4e0e-a32d-6b8a6e9a83d2"
+  name: "poc checkin"
+  outputPath: "sample/poc-checkin"
+  packageName: "com.riu.pocs.checkin"
+  serviceIds:
+  - "front-office"
+  - "reservas"
+  - "rack"
+  - "produccion"
+  - "pagos"
+  - "servicio-tecnico"
+  - "housekeeping"
+  - "master-data"
+  - "cardex"
+services:
+- id: "front-office"
+  name: "FrontOffice"
+  moduleIds:
+  - "mod-front-office"
+- id: "reservas"
+  name: "Reservas"
+  moduleIds:
+  - "mod-reservas"
+- id: "rack"
+  name: "Rack"
+  moduleIds:
+  - "mod-rack"
+- id: "produccion"
+  name: "Produccion"
+  moduleIds:
+  - "mod-produccion"
+- id: "pagos"
+  name: "Pagos"
+  moduleIds:
+  - "mod-pagos"
+- id: "servicio-tecnico"
+  name: "ServicioTecnico"
+  moduleIds:
+  - "mod-servicio-tecnico"
+- id: "housekeeping"
+  name: "Housekeeping"
+  moduleIds:
+  - "mod-housekeeping"
+- id: "master-data"
+  name: "MasterData"
+  moduleIds:
+  - "mod-master-data"
+- id: "cardex"
+  name: "Cardex"
+  moduleIds:
+  - "mod-cardex"
+modules:
+- id: "mod-front-office"
+  name: "FrontOffice"
+  aggregateIds:
+  - "historialCliente"
+- id: "mod-reservas"
+  name: "Reservas"
+  aggregateIds:
+  - "reserva"
+- id: "mod-rack"
+  name: "Rack"
+  aggregateIds:
+  - "habitacion"
+- id: "mod-produccion"
+  name: "Produccion"
+  aggregateIds:
+  - "cargo"
+- id: "mod-pagos"
+  name: "Pagos"
+  aggregateIds:
+  - "foliosAnticipos"
+- id: "mod-servicio-tecnico"
+  name: "ServicioTecnico"
+- id: "mod-housekeeping"
+  name: "Housekeeping"
+- id: "mod-master-data"
+  name: "MasterData"
+  aggregateIds:
+  - "tipoTarjeta"
+  - "hotel"
+  - "agencia"
+  - "tipoRiuClass"
+- id: "mod-cardex"
+  name: "Cardex"
+  aggregateIds:
+  - "cardex"
+aggregates:
+- id: "51907e72-9210-4173-9017-c69333fc58b9"
+  name: "Payment"
+  modelId: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
+  invariants:
+  - id: "ygyedg"
+    name: "ygyug"
+- id: "33489d8b-fd4a-4161-82ca-45e02e4b89cf"
+  name: "Booking"
+  modelId: "d47ba6d4-acdd-4580-bcb4-8e0165687034"
+  operations:
+  - id: "confirm"
+    name: "Confirm"
+    sets: "[ ]"
+    type: "CUSTOM"
+  invariants:
+  - id: "hotel_obligatorio"
+    name: "Servicio hotel obligatorio para transfer"
+- id: "tipoTarjeta"
+  name: "TipoTarjeta"
+  modelId: "tipoTarjeta"
+  valueObjectIds:
+  - "tipoTarjeta-id"
+  - "tipoTarjeta-name"
+- id: "hotel"
+  name: "Hotel"
+  modelId: "hotel"
+  valueObjectIds:
+  - "hotel-id"
+  - "hotel-name"
+- id: "agencia"
+  name: "Agencia"
+  modelId: "agencia"
+  valueObjectIds:
+  - "agencia-id"
+  - "agencia-name"
+- id: "reserva"
+  name: "Reserva"
+  modelId: "reserva"
+  valueObjectIds:
+  - "reserva-localizador"
+  - "reserva-agencia"
+  - "reserva-fechaLlegada"
+  - "reserva-noches"
+  - "reserva-fechaSalida"
+  - "reserva-regimenAlimenticio"
+  - "reserva-adultos"
+  - "reserva-ninos"
+  - "reserva-bebes"
+  - "reserva-hotel"
+  - "reserva-tipoCobro"
+  - "reserva-terceros"
+  - "reserva-pendienteIntegrar"
+  - "reserva-requiere"
+  - "reserva-estado"
+  - "reserva-exp"
+  - "reserva-multiple"
+  - "reserva-grupoRes"
+  - "reserva-grupoOp"
+  - "reserva-garantizada"
+  - "reserva-refTarifa"
+  - "reserva-tipoTarifa"
+- id: "cardex"
+  name: "Cardex"
+  modelId: "cardex"
+  valueObjectIds:
+  - "cardex-id"
+  - "cardex-nombre"
+- id: "cargo"
+  name: "Cargo"
+  modelId: "cargo"
+  valueObjectIds:
+  - "cargo-id"
+  - "cargo-idReserva"
+  - "cargo-tipoHabitacion"
+  - "cargo-precio"
+  - "cargo-moneda"
+  - "cargo-tipoPrecio"
+- id: "habitacion"
+  name: "Habitacion"
+  modelId: "habitacion"
+  valueObjectIds:
+  - "habitacion-numero"
+  - "habitacion-dobles"
+  - "habitacion-individuales"
+  - "habitacion-estado"
+  - "habitacion-checkout"
+  - "habitacion-observaciones"
+  - "habitacion-averias"
+- id: "tipoRiuClass"
+  name: "TipoRiuClass"
+  modelId: "tipoRiuClass"
+  valueObjectIds:
+  - "tipoRiuClass-id"
+  - "tipoRiuClass-nombre"
+- id: "historialCliente"
+  name: "HistorialCliente"
+  modelId: "historialCliente"
+  valueObjectIds:
+  - "historialCliente-id"
+  - "historialCliente-tipoRiuClass"
+  - "historialCliente-ultimoHotel"
+  - "historialCliente-preferencias"
+  - "historialCliente-riuPartnerClub"
+  - "historialCliente-repetidor"
+  - "historialCliente-tipoCliente"
+  - "historialCliente-numeroAtencionesHabitacion"
+  - "historialCliente-ultimaHabitacion"
+- id: "foliosAnticipos"
+  name: "FoliosAnticipos"
+  modelId: "foliosAnticipos"
+  valueObjectIds:
+  - "foliosAnticipos-creditoCancelado"
+  - "foliosAnticipos-imprimirRecibo"
+  - "foliosAnticipos-limiteCredito"
+  - "foliosAnticipos-tipoTarjeta"
+  - "foliosAnticipos-ultimosDigitosTarjeta"
+  - "foliosAnticipos-entregaACuenta"
+  - "foliosAnticipos-saldoPendiente"
+  - "foliosAnticipos-saldoPendienteMoneda"
+
+entities:
+- id: "28354082-6daf-436a-819f-63075c842706"
+  name: "BookingLine"
+- id: "lineaReserva"
+  name: "LineaReserva"
+  modelId: "lineaReserva"
+  parentAggregateId: "reserva"
+  isCollection: true
+- id: "pax"
+  name: "Pax"
+  modelId: "pax"
+  parentAggregateId: "reserva"
+  isCollection: true
+valueObjects:
+- id: "tipoTarjeta-id"
+  name: "TipoTarjetaId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "tipoTarjeta-name"
+  name: "TipoTarjetaName"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "hotel-id"
+  name: "HotelId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "hotel-name"
+  name: "HotelName"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "agencia-id"
+  name: "AgenciaId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "agencia-name"
+  name: "AgenciaName"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-localizador"
+  name: "Localizador"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-agencia"
+  name: "AgenciaReserva"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-fechaLlegada"
+  name: "FechaLlegada"
+  type: "Wrapper"
+  dataType: "date"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"date\"}]"
+- id: "reserva-noches"
+  name: "Noches"
+  type: "Wrapper"
+  dataType: "integer"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"integer\"}]"
+- id: "reserva-fechaSalida"
+  name: "FechaSalida"
+  type: "Wrapper"
+  dataType: "date"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"date\"}]"
+- id: "reserva-regimenAlimenticio"
+  name: "RegimenAlimenticio"
+  type: "Enum"
+- id: "reserva-adultos"
+  name: "Adultos"
+  type: "Wrapper"
+  dataType: "integer"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"integer\"}]"
+- id: "reserva-ninos"
+  name: "Ninos"
+  type: "Wrapper"
+  dataType: "integer"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"integer\"}]"
+- id: "reserva-bebes"
+  name: "Bebes"
+  type: "Wrapper"
+  dataType: "integer"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"integer\"}]"
+- id: "reserva-hotel"
+  name: "HotelReserva"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-tipoCobro"
+  name: "TipoCobro"
+  type: "Enum"
+- id: "reserva-terceros"
+  name: "Terceros"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-pendienteIntegrar"
+  name: "PendienteIntegrar"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-requiere"
+  name: "Requiere"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-estado"
+  name: "EstadoReserva"
+  type: "Enum"
+- id: "reserva-exp"
+  name: "Exp"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-multiple"
+  name: "Multiple"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-grupoRes"
+  name: "GrupoRes"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-grupoOp"
+  name: "GrupoOp"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-garantizada"
+  name: "Garantizada"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "reserva-refTarifa"
+  name: "RefTarifa"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "reserva-tipoTarifa"
+  name: "TipoTarifa"
+  type: "Enum"
+- id: "cardex-id"
+  name: "CardexId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cardex-nombre"
+  name: "NombreCardex"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cargo-id"
+  name: "CargoId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cargo-idReserva"
+  name: "IdReservaCargo"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cargo-tipoHabitacion"
+  name: "TipoHabitacion"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cargo-precio"
+  name: "Precio"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "cargo-moneda"
+  name: "Moneda"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "cargo-tipoPrecio"
+  name: "TipoPrecio"
+  type: "Enum"
+- id: "habitacion-numero"
+  name: "NumeroHabitacion"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "habitacion-dobles"
+  name: "Dobles"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "habitacion-individuales"
+  name: "Individuales"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "habitacion-estado"
+  name: "EstadoHabitacion"
+  type: "Enum"
+- id: "habitacion-checkout"
+  name: "Checkout"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "habitacion-observaciones"
+  name: "ObservacionesHabitacion"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "habitacion-averias"
+  name: "Averias"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "tipoRiuClass-id"
+  name: "TipoRiuClassId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "tipoRiuClass-nombre"
+  name: "NombreTipoRiuClass"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-id"
+  name: "HistorialClienteId"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-tipoRiuClass"
+  name: "TipoRiuClassRef"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-ultimoHotel"
+  name: "UltimoHotel"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-preferencias"
+  name: "Preferencias"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-riuPartnerClub"
+  name: "RiuPartnerClub"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "historialCliente-repetidor"
+  name: "Repetidor"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "historialCliente-tipoCliente"
+  name: "TipoCliente"
+  type: "Enum"
+- id: "historialCliente-numeroAtencionesHabitacion"
+  name: "NumeroAtencionesHabitacion"
+  type: "Wrapper"
+  dataType: "integer"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"integer\"}]"
+- id: "historialCliente-ultimaHabitacion"
+  name: "UltimaHabitacion"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "foliosAnticipos-creditoCancelado"
+  name: "CreditoCancelado"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "foliosAnticipos-imprimirRecibo"
+  name: "ImprimirRecibo"
+  type: "Wrapper"
+  dataType: "bool"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"bool\"}]"
+- id: "foliosAnticipos-limiteCredito"
+  name: "LimiteCredito"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "foliosAnticipos-tipoTarjeta"
+  name: "TipoTarjetaRef"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "foliosAnticipos-ultimosDigitosTarjeta"
+  name: "UltimosDigitosTarjeta"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+- id: "foliosAnticipos-entregaACuenta"
+  name: "EntregaACuenta"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "foliosAnticipos-saldoPendiente"
+  name: "SaldoPendiente"
+  type: "Wrapper"
+  dataType: "number"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"number\"}]"
+- id: "foliosAnticipos-saldoPendienteMoneda"
+  name: "SaldoPendienteMoneda"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+invariants:
+- id: "356374e7-ac7f-47a6-8efa-a27187a9fdc2"
+  name: "Solo una reserva activa por cliente"
+useCases:
+- id: "22d8b5aa-83cb-4e5f-ab52-3e8d8e0ecf15"
+  name: "caso de uso"
+enums:
+  - id: tipoCliente
+    values:
+      - id: "GEN"
+        name: "General"
+      - id: "VIP"
+        name: "VIP"
+  - id: tipoPrecio
+    values:
+      - id: "P"
+        name: "Pax"
+      - id: "H"
+        name: "Habitación"
+  - id: "tipoPax"
+    values:
+      - id: "AD"
+        name: "Adulto"
+      - id: "NI"
+        name: "Niño"
+      - id: "BB"
+        name: "Bebé"
+  - id: "regimenAlimenticio"
+    values:
+      - id: "SA"
+        name: "Solo Alojamiento"
+      - id: "MP"
+        name: "Media Pensión"
+      - id: "PC"
+        name: "Pensión Completa"
+  - id: "tipoCobro"
+    values:
+      - id: "PFRONT"
+        name: "Pago en Front"
+      - id: "CRED"
+        name: "Crédito"
+  - id: "estadoReserva"
+    values:
+      - id: "PTE"
+        name: "Pendiente"
+      - id: "CNF"
+        name: "Confirmada"
+  - id: "estadoHabitacion"
+    values:
+      - id: "PTE"
+        name: "Pendiente"
+      - id: "CLN"
+        name: "Limpia"
+  - id: "tipoTarifa"
+    values:
+      - id: "B2C"
+      - id: "B2C2"
+models:
+  - id: "tipoTarjeta"
+    name: "Tipo Tarjeta"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "hotel"
+    name: "Hotel"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "agencia"
+    name: "Agencia"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "name"
+        basicType: true
+        type: "string"
+  - id: "reserva"
+    name: "Reserva"
+    fields:
+    - name: "localizador"
+      basicType: true
+      type: "string"
+    - name: "agencia"
+      basicType: true
+      type: string
+    - name: fechaLlegada
+      basicType: true
+      type: "date"
+    - name: noches
+      basicType: true
+      type: "integer"
+    - name: fechaSalida
+      basicType: true
+      type: "date"
+    - name: regimenAlimenticio
+      basicType: false
+      enum: true
+      enumId: regimenAlimenticio
+    - name: adultos
+      basicType: true
+      type: "integer"
+    - name: ninos
+      basicType: true
+      type: "integer"
+    - name: bebes
+      basicType: true
+      type: "integer"
+    - name: hotel
+      basicType: true
+      type: string
+    - name: tipoCobro
+      basicType: false
+      enum: true
+      enumId: "tipoCobro"
+    - name: terceros
+      basicType: true
+      type: "bool"
+    - name: pendienteIntegrar
+      basicType: true
+      type: "bool"
+    - name: requiere
+      basicType: true
+      type: "string"
+    - name: estado
+      basicType: false
+      enumId: "estadoReserva"
+    - name: exp
+      basicType: true
+      type: "bool"
+    - name: multiple
+      basicType: true
+      type: "bool"
+    - name: grupoRes
+      basicType: true
+      type: "bool"
+    - name: grupoOp
+      basicType: true
+      type: "bool"
+    - name: grantizada
+      basicType: true
+      type: "bool"
+    - name: refTarifa
+      basicType: true
+      type: "string"
+    - name: tipoTarifa
+      basicType: false
+      enum: true
+      enumId: "tipoTarifa"
+  - id: "lineaReserva"
+    name: "Linea Reserva"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "numeroHabitacion"
+        basicType: true
+        type: "string"
+      - name: espera
+        basicType: true
+        type: "bool"
+      - name: tipoHabitacionFisica
+        basicType: true
+        type: "string"
+      - name: tipoHabitacionContratada
+        basicType: true
+        type: "string"
+      - name: upgrade
+        basicType: true
+        type: "bool"
+      - name: deseos
+        basicType: true
+        type: "string"
+      - name: observacionesInternas
+        basicType: true
+        type: "string"
+      - name: avisos
+        basicType: true
+        type: "string"
+  - id: "pax"
+    name: "Pax"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "nombre"
+        basicType: true
+        type: "string"
+      - name: "apellidos"
+        basicType: true
+        type: "string"
+      - name: "tipoPax"
+        basicType: false
+        enum: true
+        enumId: "tipoPax"
+      - name: "regimen"
+        basicType: false
+        enum: true
+        enumId: "regimenAlimenticio"
+      - name: nacionalidad
+        basicType: true
+        type: "string"
+      - name: estadoHabitacion
+        basicType: false
+        enum: true
+        enumId: "estadoHabitacion"
+      - name: tieneCardex
+        basicType: true
+        type: "bool"
+      - name: interHotel
+        basicType: true
+        type: "bool"
+      - name: aviso
+        basicType: true
+        type: "bool"
+      - name: observacionesHotel
+        basicType: true
+        type: "string"
+  - id: "cardex"
+    name: "Cardex"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "nombre"
+        basicType: true
+        type: "string"
+  - id: cargo
+    name: "Cargo"
+    fields:
+      - name: "id"
+        basicType: true
+        type: "string"
+      - name: "idReserva"
+        basicType: true
+        type: "string"
+      - name: "tipoHabitacion"
+        basicType: true
+        type: "string"
+      - name: "precio"
+        basicType: true
+        type: "number"
+      - name: "moneda"
+        basicType: true
+        type: "string"
+      - name: "tipoPrecio"
+        basicType: false
+        enum: true
+        enumId: "tipoPrecio"
+  - id: habitacion
+    name: "Habitacion"
+    fields:
+      - name: numero
+        basicType: true
+        type: "string"
+      - name: dobles
+        basicType: true
+        type: number
+      - name: individuales
+        basicType: true
+        type: number
+      - name: estado
+        basicType: false
+        enum: true
+        enumId: "estadoHabitacion"
+      - name: checkout
+        basicType: true
+        type: "bool"
+      - name: observaciones
+        basicType: true
+        type: "string"
+      - name: averias
+        basicType: true
+        type: "string"
+  - id: tipoRiuClass
+    name: "Tipo Riu Class"
+    fields:
+      - name: id
+        basicType: true
+        type: "string"
+      - name: nombre
+        basicType: true
+        type: "string"
+  - id: historialCliente
+    name: "Historial Cliente"
+    fields:
+      - name: id
+        basicType: true
+        type: "string"
+      - name: tipoRiuClass
+        basicType: true
+        type: string
+      - name: ultimoHotel
+        basicType: true
+        type: string
+      - name: preferencias
+        basicType: true
+        type: string
+      - name: riuPartnerClub
+        basicType: true
+        type: string
+      - name: repetidor
+        basicType: true
+        type: bool
+      - name: tipoCliente
+        basicType: false
+        enum: true
+        enumId: "tipoCliente"
+      - name: numeroAtencionesHabitacion
+        basicType: true
+        type: "integer"
+      - name: ultimaHabitacion
+        basicType: true
+        type: "string"
+  - id: foliosAnticipos
+    name: "Folios/Anticipos"
+    fields:
+      - name: creditoCancelado
+        basicType: true
+        type: "bool"
+      - name: imprimirRecibo
+        basicType: true
+        type: "bool"
+      - name: limiteCredito
+        basicType: true
+        type: "number"
+      - name: tipoTarjeta
+        basicType: true
+        type: "string"
+      - name: ultimosDigitosTarjeta
+        basicType: true
+        type: "string"
+      - name: entregaACuenta
+        basicType: true
+        type: "number"
+      - name: saldoPendiente
+        basicType: true
+        type: "number"
+      - name: saldoPendienteMoneda
+        basicType: true
+        type: "string"
+

@@ -1,8 +1,8 @@
 package io.mateu.modux.plugin;
 
-import io.mateu.modux.specdrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
-import io.mateu.modux.specdrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
-import io.mateu.modux.specdrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -17,7 +17,7 @@ public class GenerateMojo extends AbstractMojo {
     private String projectId;
 
     @Parameter(property = "modux.specFile",
-               defaultValue = "${project.basedir}/.dev/data/spec-driven-store.yaml")
+               defaultValue = "${project.basedir}/.dev/data/model-driven-store.yaml")
     private String specFile;
 
     @Parameter(property = "modux.outputPath",
@@ -33,7 +33,7 @@ public class GenerateMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         getLog().info("Modux: generating code for project '" + projectId + "' from " + specFile);
-        System.setProperty("modux.spec-file", specFile);
+        System.setProperty("modux.model-file", specFile);
         try (var ctx = new AnnotationConfigApplicationContext()) {
             ctx.register(CommonFileRepository.class, GenerateCodeUseCase.class);
             ctx.refresh();

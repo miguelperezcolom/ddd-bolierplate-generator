@@ -1,6 +1,6 @@
 # Modux
 
-**Modux** is a spec-driven code generation framework for Domain-Driven Design (DDD) systems. Define your domain model using YAML files and let Modux generate the full Java boilerplate — aggregates, use cases, repositories, UI, and database migrations — so you can focus on business logic.
+**Modux** is a model-driven code generation framework for Domain-Driven Design (DDD) systems. Define your domain model using YAML files and let Modux generate the full Java boilerplate — aggregates, use cases, repositories, UI, and database migrations — so you can focus on business logic.
 
 **Documentation:** [modux.mateu.io](https://modux.mateu.io)
 
@@ -54,7 +54,7 @@ The generated code follows **Hexagonal Architecture** (ports & adapters) with cl
 
 | Module | Description |
 |---|---|
-| `spec-driven-generator` | Main Spring Boot application with UI for defining specs and generating code |
+| `model-driven-generator` | Main Spring Boot application with UI for defining specs and generating code |
 | `plugin` | Maven plugin skeleton (experimental) |
 | `sample/poc-sagas` | Example application demonstrating sagas and Kafka integration |
 | `io` | Shared UIDL field type definitions |
@@ -110,7 +110,7 @@ pom.xml
 ### 1. Run the generator
 
 ```bash
-cd spec-driven-generator
+cd model-driven-generator
 mvn spring-boot:run
 ```
 

@@ -1,0 +1,65 @@
+package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.invariant;
+
+import io.mateu.modux.modeldrivengenerator.application.out.query.InvariantQueryService;
+import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.InvariantRow;
+import io.mateu.modux.modeldrivengenerator.application.usecases.invariant.delete.DeleteInvariantCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.invariant.delete.DeleteInvariantUseCase;
+import io.mateu.uidl.data.ListingData;
+import io.mateu.uidl.data.NoFilters;
+import io.mateu.uidl.data.Pageable;
+import io.mateu.uidl.interfaces.CrudAdapter;
+import io.mateu.uidl.interfaces.HttpRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@Scope("prototype")
+@RequiredArgsConstructor
+public class InvariantCrudAdapter implements CrudAdapter<
+
+        InvariantViewModel,
+        InvariantViewModel,
+        NoFilters,
+        InvariantRow,
+        String
+        > {
+
+    final InvariantViewModel viewModel;
+    final DeleteInvariantUseCase deleteUseCase;
+    final InvariantQueryService queryService;
+
+    @Override
+    public ListingData<InvariantRow> search(String searchText,
+                                       NoFilters filters,
+                                       Pageable pageable,
+                                            HttpRequest httpRequest) {
+        return queryService.findAll(searchText, filters, pageable);
+    }
+
+    @Override
+    public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
+        deleteUseCase.handle(new DeleteInvariantCommand(selectedIds));
+    }
+
+    @Override
+    public InvariantViewModel getView(String id, HttpRequest httpRequest) {
+        return viewModel.load(queryService
+                .getById(id)
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
+    }
+
+    @Override
+    public InvariantViewModel getEditor(String id, HttpRequest httpRequest) {
+        return viewModel.load(queryService
+                .getById(id)
+                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
+    }
+
+    @Override
+    public InvariantViewModel getCreationForm(HttpRequest httpRequest) {
+        return viewModel;
+    }
+}

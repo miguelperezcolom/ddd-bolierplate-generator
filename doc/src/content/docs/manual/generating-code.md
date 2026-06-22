@@ -23,7 +23,7 @@ Add the plugin to any Maven project that should trigger generation:
     <version>0.0.1-SNAPSHOT</version>
     <configuration>
         <projectId>my-project-id</projectId>
-        <specFile>${project.basedir}/.dev/data/spec-driven-store.yaml</specFile>
+        <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
         <outputPath>${project.basedir}/generated</outputPath>
         <packageName>com.mycompany</packageName>
     </configuration>
