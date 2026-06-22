@@ -26,7 +26,10 @@ public record AllData(
         List<UiShellEntity> uiShells,
         List<ComponentEntity> components,
         List<BddScenarioEntity> bddScenarios,
-        List<EnumEntity> enums
+        List<EnumEntity> enums,
+        List<QueryServiceEntity> queryServices,
+        List<IntegrationEventEntity> integrationEvents,
+        List<ReadModelEntity> readModels
         ) {
 
     public AllData {
@@ -54,5 +57,8 @@ public record AllData(
         components = components != null ? components : List.of();
         bddScenarios = bddScenarios != null ? bddScenarios : List.of();
         enums = enums != null ? enums : List.of();
+        queryServices = queryServices != null ? queryServices : List.of();
+        integrationEvents = integrationEvents != null ? integrationEvents : List.of();
+        readModels = readModels != null ? readModels : List.of();
     }
 }

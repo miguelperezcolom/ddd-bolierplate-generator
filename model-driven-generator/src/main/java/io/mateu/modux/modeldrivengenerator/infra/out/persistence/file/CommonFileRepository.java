@@ -106,6 +106,9 @@ public class CommonFileRepository {
         data.components().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.bddScenarios().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.enums().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.queryServices().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.integrationEvents().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.readModels().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
     }
 
     @SneakyThrows
@@ -134,6 +137,9 @@ public class CommonFileRepository {
         List<ComponentEntity> components = store.values().stream().filter(v -> v instanceof ComponentEntity).map(v -> (ComponentEntity) v).toList();
         List<BddScenarioEntity> bddScenarios = store.values().stream().filter(v -> v instanceof BddScenarioEntity).map(v -> (BddScenarioEntity) v).toList();
         List<EnumEntity> enums = store.values().stream().filter(v -> v instanceof EnumEntity).map(v -> (EnumEntity) v).toList();
+        List<QueryServiceEntity> queryServices = store.values().stream().filter(v -> v instanceof QueryServiceEntity).map(v -> (QueryServiceEntity) v).toList();
+        List<IntegrationEventEntity> integrationEvents = store.values().stream().filter(v -> v instanceof IntegrationEventEntity).map(v -> (IntegrationEventEntity) v).toList();
+        List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -158,7 +164,10 @@ public class CommonFileRepository {
                 uiShells,
                 components,
                 bddScenarios,
-                enums
+                enums,
+                queryServices,
+                integrationEvents,
+                readModels
         );
         YAMLMapper yamlMapper = new YAMLMapper();
         yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
