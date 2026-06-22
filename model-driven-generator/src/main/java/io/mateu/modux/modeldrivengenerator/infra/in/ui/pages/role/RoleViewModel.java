@@ -6,8 +6,6 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.role.create.Crea
 import io.mateu.modux.modeldrivengenerator.application.usecases.role.create.CreateRoleUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.role.save.SaveRoleCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.role.save.SaveRoleUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -39,21 +37,18 @@ public class RoleViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
     List<String> allowedUseCaseIds;
 
-    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
-    List<String> allowedReadModelIds;
-
     final CreateRoleUseCase createUseCase;
     final SaveRoleUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateRoleCommand(id, name, allowedUseCaseIds, allowedReadModelIds));
+        createUseCase.handle(new CreateRoleCommand(id, name, allowedUseCaseIds));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveRoleCommand(id, name, allowedUseCaseIds, allowedReadModelIds));
+        saveUseCase.handle(new SaveRoleCommand(id, name, allowedUseCaseIds));
     }
 
     @Override
@@ -65,7 +60,6 @@ public class RoleViewModel implements Identifiable, CrudEditorForm<String>, Crud
         id = model.id();
         name = model.name();
         allowedUseCaseIds = model.allowedUseCaseIds();
-        allowedReadModelIds = model.allowedReadModelIds();
         return this;
     }
 

@@ -34,7 +34,6 @@ public class CreatePageUseCase {
                 command.modelId(),
                 command.componentIds(),
                 command.listingDataSourceType(),
-                command.listingQueryServiceId(),
                 command.listingGatewayId(),
                 command.toolbar().stream()
                         .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
@@ -71,7 +70,8 @@ public class CreatePageUseCase {
                         .toList(),
                 command.completionActions().stream()
                         .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
-                        .toList());
+                        .toList(),
+                command.listingQueryServiceId());
         repository.save(page);
     }
 }

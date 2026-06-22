@@ -135,12 +135,6 @@
         "description" : {
           "type" : "string"
         },
-        "exposedReadModelIds" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
         "exposedUseCaseIds" : {
           "type" : "array",
           "items" : {
@@ -852,12 +846,6 @@
             "type" : "string"
           }
         },
-        "readModelIds" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
         "sagaIds" : {
           "type" : "array",
           "items" : {
@@ -1435,63 +1423,9 @@
       "type" : "string",
       "enum" : [ "Create", "Update", "Delete", "Upsert", "Custom" ]
     },
-    "ReadModelEntity" : {
-      "type" : "object",
-      "properties" : {
-        "cacheTtlSeconds" : {
-          "type" : "integer"
-        },
-        "cacheable" : {
-          "type" : "boolean"
-        },
-        "consistencyLevel" : {
-          "type" : "string"
-        },
-        "filterFields" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
-        "id" : {
-          "type" : "string"
-        },
-        "indexFields" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
-        "maxStalenessMs" : {
-          "type" : "integer"
-        },
-        "modelId" : {
-          "type" : "string"
-        },
-        "name" : {
-          "type" : "string"
-        },
-        "sortFields" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
-        "storageType" : {
-          "type" : "string"
-        }
-      },
-      "additionalProperties" : false
-    },
     "RoleEntity" : {
       "type" : "object",
       "properties" : {
-        "allowedReadModelIds" : {
-          "type" : "array",
-          "items" : {
-            "type" : "string"
-          }
-        },
         "allowedUseCaseIds" : {
           "type" : "array",
           "items" : {
@@ -2233,12 +2167,6 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProjectEntity"
-      }
-    },
-    "readModels" : {
-      "type" : "array",
-      "items" : {
-        "$ref" : "#/$defs/ReadModelEntity"
       }
     },
     "roles" : {

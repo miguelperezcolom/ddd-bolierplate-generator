@@ -24,9 +24,9 @@ public class ComponentFileRepository implements ComponentRepository {
                         entity.id(),
                         entity.name(),
                         entity.dataSourceType(),
-                        entity.queryServiceId(),
                         entity.gatewayId(),
-                        entity.presentationType()));
+                        entity.presentationType(),
+                        entity.queryServiceId()));
     }
 
     @Override
@@ -35,9 +35,9 @@ public class ComponentFileRepository implements ComponentRepository {
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getDataSourceType() != null ? entity.getDataSourceType().name() : null,
-                entity.getQueryServiceId(),
                 entity.getGatewayId(),
-                entity.getPresentationType() != null ? entity.getPresentationType().name() : null));
+                entity.getPresentationType() != null ? entity.getPresentationType().name() : null,
+                entity.getQueryServiceId()));
         return entity;
     }
 

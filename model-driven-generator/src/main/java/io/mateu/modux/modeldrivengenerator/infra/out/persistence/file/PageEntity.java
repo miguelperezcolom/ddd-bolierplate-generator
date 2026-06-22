@@ -13,7 +13,6 @@ public record PageEntity(
         String modelId,
         List<String> componentIds,
         String listingDataSourceType,
-        String listingQueryServiceId,
         String listingGatewayId,
         List<PageButtonEntity> toolbar,
         List<PageButtonEntity> bottomBar,
@@ -22,6 +21,7 @@ public record PageEntity(
         List<PageValidationEntity> validations,
         List<PageFieldConfigEntity> fieldConfigs,
         List<PageWizardStepEntity> wizardSteps,
-        List<PageButtonEntity> completionActions
+        List<PageButtonEntity> completionActions,
+        String listingQueryServiceId
 ) implements Identifiable {
 }

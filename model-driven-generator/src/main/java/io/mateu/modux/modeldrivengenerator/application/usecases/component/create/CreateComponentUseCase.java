@@ -18,9 +18,9 @@ public class CreateComponentUseCase {
                 new ComponentId(command.id()),
                 new ComponentName(command.name()),
                 command.dataSourceType(),
-                command.queryServiceId(),
                 command.gatewayId(),
-                command.presentationType());
+                command.presentationType(),
+                command.queryServiceId());
         repository.save(component);
     }
 }

@@ -99,7 +99,6 @@ public class CommonFileRepository {
         data.subscriptions().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.scheduledTriggers().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.businessRules().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.readModels().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.roles().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.pages().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.uiAdapters().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
@@ -128,7 +127,6 @@ public class CommonFileRepository {
         List<SubscriptionEntity> subscriptions = store.values().stream().filter(v -> v instanceof SubscriptionEntity).map(v -> (SubscriptionEntity) v).toList();
         List<ScheduledTriggerEntity> scheduledTriggers = store.values().stream().filter(v -> v instanceof ScheduledTriggerEntity).map(v -> (ScheduledTriggerEntity) v).toList();
         List<BusinessRuleEntity> businessRules = store.values().stream().filter(v -> v instanceof BusinessRuleEntity).map(v -> (BusinessRuleEntity) v).toList();
-        List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
         List<RoleEntity> roles = store.values().stream().filter(v -> v instanceof RoleEntity).map(v -> (RoleEntity) v).toList();
         List<PageEntity> pages = store.values().stream().filter(v -> v instanceof PageEntity).map(v -> (PageEntity) v).toList();
         List<UiAdapterEntity> uiAdapters = store.values().stream().filter(v -> v instanceof UiAdapterEntity).map(v -> (UiAdapterEntity) v).toList();
@@ -154,7 +152,6 @@ public class CommonFileRepository {
                 subscriptions,
                 scheduledTriggers,
                 businessRules,
-                readModels,
                 roles,
                 pages,
                 uiAdapters,

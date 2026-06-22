@@ -55,7 +55,6 @@ public class ModuleFileQueryService implements ModuleQueryService {
                         entity.useCaseIds(),
                         entity.domainEventIds(),
                         entity.projectionIds(),
-                        entity.readModelIds(),
                         entity.subscriptionIds(),
                         entity.sagaIds(),
                         entity.scheduledTriggerIds(),
@@ -66,7 +65,7 @@ public class ModuleFileQueryService implements ModuleQueryService {
                         entity.llmSystemPrompt(),
                         entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version(),
                         entity.bffs() == null ? List.of() : entity.bffs().stream()
-                                .map(b -> new BffDto(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                                .map(b -> new BffDto(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds()))
                                 .toList(),
                         entity.acls() == null ? List.of() : entity.acls().stream()
                                 .map(a -> new AclDto(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))

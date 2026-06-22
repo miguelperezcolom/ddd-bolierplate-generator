@@ -49,8 +49,8 @@ public class ComponentFileQueryService implements ComponentQueryService {
                         entity.id(),
                         entity.name(),
                         entity.dataSourceType() != null ? ComponentDataSourceType.valueOf(entity.dataSourceType()) : null,
-                        entity.queryServiceId(),
                         entity.gatewayId(),
-                        entity.presentationType() != null ? ComponentPresentationType.valueOf(entity.presentationType()) : null));
+                        entity.presentationType() != null ? ComponentPresentationType.valueOf(entity.presentationType()) : null,
+                        entity.queryServiceId()));
     }
 }

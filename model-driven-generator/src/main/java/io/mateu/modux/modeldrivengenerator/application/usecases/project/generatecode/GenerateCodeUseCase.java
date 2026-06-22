@@ -19,7 +19,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
@@ -220,13 +219,6 @@ public class GenerateCodeUseCase {
             module.projectionIds().stream()
                     .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
                     .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
-        }
-
-        // Read models
-        if (module.readModelIds() != null) {
-            module.readModelIds().stream()
-                    .map(id -> repository.findById(id, ReadModelEntity.class).orElseThrow())
-                    .forEach(readModel -> generateReadModel(project, service, module, moduleDir, modulePackageDir, readModel));
         }
 
         // Entities (embedded/child entities within aggregates)
@@ -839,24 +831,6 @@ public class GenerateCodeUseCase {
         // Overwrite Home.java with UIAdapter-driven version
         createFile(appDir, model, "ui-adapter-home.ftl",
                 "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
-    }
-
-    // ─── Read Models ──────────────────────────────────────────────────────────
-
-    private void generateReadModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                   String moduleDir, String modulePackageDir, ReadModelEntity readModel) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/readmodels");
-
-        Map<String, Object> model = buildBaseModel(project, service, module);
-        model.put("readModel", fromJson(toJson(readModel)));
-        if (readModel.modelId() != null && !readModel.modelId().isBlank()) {
-            var modelEntity = repository.findById(readModel.modelId(), ModelEntity.class).orElse(null);
-            model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
-        }
-
-        createFile(moduleDir, model, "read-model.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/readmodels/"
-                        + capitalize(readModel.name()) + "ReadModel.java");
     }
 
     // ─── Docker Compose ───────────────────────────────────────────────────────

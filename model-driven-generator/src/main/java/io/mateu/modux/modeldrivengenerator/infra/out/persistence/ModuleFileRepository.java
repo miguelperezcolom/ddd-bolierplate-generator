@@ -42,7 +42,6 @@ public class ModuleFileRepository implements ModuleRepository {
                         entity.useCaseIds(),
                         entity.domainEventIds(),
                         entity.projectionIds(),
-                        entity.readModelIds(),
                         entity.subscriptionIds(),
                         entity.sagaIds(),
                         entity.scheduledTriggerIds(),
@@ -53,7 +52,7 @@ public class ModuleFileRepository implements ModuleRepository {
                         entity.llmSystemPrompt(),
                         entity.tableNamePrefix(), entity.autoTableNamePrefix(), entity.version(),
                         entity.bffs() == null ? List.<Bff>of() : entity.bffs().stream()
-                                .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                                .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds()))
                                 .toList(),
                         entity.acls() == null ? List.<Acl>of() : entity.acls().stream()
                                 .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))
@@ -82,7 +81,6 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getUseCaseIds(),
                 entity.getDomainEventIds(),
                 entity.getProjectionIds(),
-                entity.getReadModelIds(),
                 entity.getSubscriptionIds(),
                 entity.getSagaIds(),
                 entity.getScheduledTriggerIds(),
@@ -90,7 +88,7 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getLlmSystemPrompt(),
                 entity.getTableNamePrefix(), entity.isAutoTableNamePrefix(), entity.getVersion(),
                 entity.getBffs() == null ? List.<BffEntity>of() : entity.getBffs().stream()
-                        .map(b -> new BffEntity(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                        .map(b -> new BffEntity(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds()))
                         .toList(),
                 entity.getAcls() == null ? List.<AclEntity>of() : entity.getAcls().stream()
                         .map(a -> new AclEntity(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))

@@ -54,7 +54,6 @@ public class PageFileQueryService implements PageQueryService {
                         entity.modelId(),
                         entity.componentIds(),
                         entity.listingDataSourceType(),
-                        entity.listingQueryServiceId(),
                         entity.listingGatewayId(),
                         entity.toolbar(),
                         entity.bottomBar(),
@@ -63,6 +62,7 @@ public class PageFileQueryService implements PageQueryService {
                         entity.validations(),
                         entity.fieldConfigs(),
                         entity.wizardSteps(),
-                        entity.completionActions()));
+                        entity.completionActions(),
+                        entity.listingQueryServiceId()));
     }
 }

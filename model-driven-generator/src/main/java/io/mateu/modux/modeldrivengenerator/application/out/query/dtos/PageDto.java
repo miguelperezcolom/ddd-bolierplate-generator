@@ -19,7 +19,6 @@ public record PageDto(
         String modelId,
         List<String> componentIds,
         String listingDataSourceType,
-        String listingQueryServiceId,
         String listingGatewayId,
         List<PageButtonEntity> toolbar,
         List<PageButtonEntity> bottomBar,
@@ -28,7 +27,8 @@ public record PageDto(
         List<PageValidationEntity> validations,
         List<PageFieldConfigEntity> fieldConfigs,
         List<PageWizardStepEntity> wizardSteps,
-        List<PageButtonEntity> completionActions
+        List<PageButtonEntity> completionActions,
+        String listingQueryServiceId
 ) {
     public PageDto {
         if (componentIds == null) componentIds = List.of();

@@ -43,7 +43,6 @@ public class RoleFileQueryService implements RoleQueryService {
                 .map(entity -> new RoleDto(
                         entity.id(),
                         entity.name(),
-                        entity.allowedUseCaseIds(),
-                        entity.allowedReadModelIds()));
+                        entity.allowedUseCaseIds()));
     }
 }

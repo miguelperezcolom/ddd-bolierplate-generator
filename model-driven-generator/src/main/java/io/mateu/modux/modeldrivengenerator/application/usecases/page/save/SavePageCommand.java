@@ -20,7 +20,6 @@ public record SavePageCommand(
         String modelId,
         List<String> componentIds,
         PageListingDataSourceType listingDataSourceType,
-        String listingQueryServiceId,
         String listingGatewayId,
         List<PageButtonEntity> toolbar,
         List<PageButtonEntity> bottomBar,
@@ -29,7 +28,8 @@ public record SavePageCommand(
         List<PageValidationEntity> validations,
         List<PageFieldConfigEntity> fieldConfigs,
         List<PageWizardStepEntity> wizardSteps,
-        List<PageButtonEntity> completionActions
+        List<PageButtonEntity> completionActions,
+        String listingQueryServiceId
 ) {
     public SavePageCommand {
         if (componentIds == null) componentIds = List.of();

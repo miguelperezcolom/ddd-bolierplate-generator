@@ -9,7 +9,6 @@ public record BffDto(
         String description,
         String basePath,
         boolean authRequired,
-        List<String> exposedUseCaseIds,
-        List<String> exposedReadModelIds
+        List<String> exposedUseCaseIds
 ) {
 }

@@ -7,8 +7,8 @@ public record CreateComponentCommand(
         String id,
         String name,
         ComponentDataSourceType dataSourceType,
-        String queryServiceId,
         String gatewayId,
-        ComponentPresentationType presentationType
+        ComponentPresentationType presentationType,
+        String queryServiceId
 ) {
 }

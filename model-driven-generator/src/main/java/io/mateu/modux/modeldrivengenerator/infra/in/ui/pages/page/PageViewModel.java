@@ -21,8 +21,8 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdLabelS
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.QueryServiceIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.QueryServiceIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageRuleEntity;
@@ -77,13 +77,12 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Hidden("state['type'] != 'CRUD'")
     PageListingDataSourceType listingDataSourceType;
 
-    @Hidden("state['type'] != 'CRUD' || state['listingDataSourceType'] != 'QUERY_SERVICE'")
-    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
-    String listingQueryServiceId;
-
     @Hidden("state['type'] != 'CRUD' || state['listingDataSourceType'] != 'GATEWAY'")
     @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
     String listingGatewayId;
+
+    @Lookup(search = QueryServiceIdOptionsSupplier.class, label = QueryServiceIdLabelSupplier.class)
+    String listingQueryServiceId;
 
     @Tab
     @MasterDetail(minHeightWhenDetailVisible = "16rem")
@@ -125,7 +124,7 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
-                listingDataSourceType, listingQueryServiceId, listingGatewayId,
+                listingDataSourceType, listingGatewayId,
                 toolbar != null ? toolbar.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
                         .toList() : List.of(),
@@ -160,14 +159,15 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .toList() : List.of(),
                 completionActions != null ? completionActions.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
-                        .toList() : List.of()));
+                        .toList() : List.of(),
+                listingQueryServiceId));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
-                listingDataSourceType, listingQueryServiceId, listingGatewayId,
+                listingDataSourceType, listingGatewayId,
                 toolbar != null ? toolbar.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
                         .toList() : List.of(),
@@ -202,7 +202,8 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .toList() : List.of(),
                 completionActions != null ? completionActions.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
-                        .toList() : List.of()));
+                        .toList() : List.of(),
+                listingQueryServiceId));
     }
 
     @Override
@@ -220,8 +221,8 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         componentIds = model.componentIds();
         listingDataSourceType = model.listingDataSourceType() != null
                 ? PageListingDataSourceType.valueOf(model.listingDataSourceType()) : null;
-        listingQueryServiceId = model.listingQueryServiceId();
         listingGatewayId = model.listingGatewayId();
+        listingQueryServiceId = model.listingQueryServiceId();
         toolbar = model.toolbar() != null ? new ArrayList<>(model.toolbar().stream()
                 .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId()))
                 .toList()) : new ArrayList<>();

@@ -16,8 +16,7 @@ public class SaveRoleUseCase {
         var role = repository.findById(new RoleId(command.id())).orElseThrow();
         role.update(
                 new RoleName(command.name()),
-                command.allowedUseCaseIds(),
-                command.allowedReadModelIds());
+                command.allowedUseCaseIds());
         repository.save(role);
     }
 }

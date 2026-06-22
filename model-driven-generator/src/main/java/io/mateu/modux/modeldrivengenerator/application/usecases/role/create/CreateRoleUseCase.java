@@ -17,8 +17,7 @@ public class CreateRoleUseCase {
         var role = Role.of(
                 new RoleId(command.id()),
                 new RoleName(command.name()),
-                command.allowedUseCaseIds(),
-                command.allowedReadModelIds());
+                command.allowedUseCaseIds());
         repository.save(role);
     }
 }

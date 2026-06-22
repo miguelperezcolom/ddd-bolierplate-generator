@@ -6,8 +6,8 @@ public record ComponentEntity(
         String id,
         String name,
         String dataSourceType,
-        String queryServiceId,
         String gatewayId,
-        String presentationType
+        String presentationType,
+        String queryServiceId
 ) implements Identifiable {
 }

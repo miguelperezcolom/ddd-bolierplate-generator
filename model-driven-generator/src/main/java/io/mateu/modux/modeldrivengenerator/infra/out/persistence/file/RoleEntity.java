@@ -7,7 +7,6 @@ import java.util.List;
 public record RoleEntity(
         String id,
         String name,
-        List<String> allowedUseCaseIds,
-        List<String> allowedReadModelIds
+        List<String> allowedUseCaseIds
 ) implements Identifiable {
 }

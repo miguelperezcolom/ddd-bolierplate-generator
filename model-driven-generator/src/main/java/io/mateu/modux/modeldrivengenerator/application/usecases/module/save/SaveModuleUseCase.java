@@ -33,11 +33,11 @@ public class SaveModuleUseCase {
                 command.aggregates().stream().map(AggregateId::new).toList(),
                 command.entityIds(), command.valueObjectIds(),
                 command.useCaseIds(), command.domainEventIds(),
-                command.projectionIds(), command.readModelIds(),
+                command.projectionIds(),
                 command.subscriptionIds(), command.sagaIds(), command.scheduledTriggerIds(),
                 bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix(), command.version(),
                 command.bffs() == null ? List.<Bff>of() : command.bffs().stream()
-                        .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds(), b.exposedReadModelIds()))
+                        .map(b -> new Bff(b.id(), b.name(), b.clientType(), b.description(), b.basePath(), b.authRequired(), b.exposedUseCaseIds()))
                         .toList(),
                 command.acls() == null ? List.<Acl>of() : command.acls().stream()
                         .map(a -> new Acl(a.id(), a.name(), a.externalSystem(), a.description(), a.direction(), a.gatewayId(), a.translatedDomainEventIds(), a.translatedUseCaseIds()))

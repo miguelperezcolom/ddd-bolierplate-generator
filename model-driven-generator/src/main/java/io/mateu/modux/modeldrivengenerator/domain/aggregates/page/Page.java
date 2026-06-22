@@ -24,7 +24,6 @@ public class Page {
     private String modelId;
     private List<String> componentIds;
     private PageListingDataSourceType listingDataSourceType;
-    private String listingQueryServiceId;
     private String listingGatewayId;
     private List<PageButton> toolbar;
     private List<PageButton> bottomBar;
@@ -34,15 +33,17 @@ public class Page {
     private List<PageFieldConfig> fieldConfigs;
     private List<PageWizardStep> wizardSteps;
     private List<PageButton> completionActions;
+    private String listingQueryServiceId;
 
     public static Page of(PageId id, PageName name, String route, PageType type,
                           String aggregateId, String modelId, List<String> componentIds,
                           PageListingDataSourceType listingDataSourceType,
-                          String listingQueryServiceId, String listingGatewayId,
+                          String listingGatewayId,
                           List<PageButton> toolbar, List<PageButton> bottomBar,
                           List<PageTrigger> triggers, List<PageRule> rules,
                           List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
-                          List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
+                          List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
+                          String listingQueryServiceId) {
         var page = new Page();
         page.id = id;
         page.name = name;
@@ -52,7 +53,6 @@ public class Page {
         page.modelId = modelId;
         page.componentIds = componentIds != null ? componentIds : List.of();
         page.listingDataSourceType = listingDataSourceType;
-        page.listingQueryServiceId = listingQueryServiceId;
         page.listingGatewayId = listingGatewayId;
         page.toolbar = toolbar != null ? toolbar : List.of();
         page.bottomBar = bottomBar != null ? bottomBar : List.of();
@@ -62,17 +62,19 @@ public class Page {
         page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
         page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         page.completionActions = completionActions != null ? completionActions : List.of();
+        page.listingQueryServiceId = listingQueryServiceId;
         return page;
     }
 
     public static Page load(String id, String name, String route, String type,
                             String aggregateId, String modelId, List<String> componentIds,
                             String listingDataSourceType,
-                            String listingQueryServiceId, String listingGatewayId,
+                            String listingGatewayId,
                             List<PageButton> toolbar, List<PageButton> bottomBar,
                             List<PageTrigger> triggers, List<PageRule> rules,
                             List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
-                            List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
+                            List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
+                            String listingQueryServiceId) {
         var page = new Page();
         page.id = new PageId(id);
         page.name = new PageName(name);
@@ -83,7 +85,6 @@ public class Page {
         page.componentIds = componentIds != null ? componentIds : List.of();
         page.listingDataSourceType = listingDataSourceType != null
                 ? PageListingDataSourceType.valueOf(listingDataSourceType) : null;
-        page.listingQueryServiceId = listingQueryServiceId;
         page.listingGatewayId = listingGatewayId;
         page.toolbar = toolbar != null ? toolbar : List.of();
         page.bottomBar = bottomBar != null ? bottomBar : List.of();
@@ -93,17 +94,19 @@ public class Page {
         page.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
         page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         page.completionActions = completionActions != null ? completionActions : List.of();
+        page.listingQueryServiceId = listingQueryServiceId;
         return page;
     }
 
     public void update(PageName name, String route, PageType type,
                        String aggregateId, String modelId, List<String> componentIds,
                        PageListingDataSourceType listingDataSourceType,
-                       String listingQueryServiceId, String listingGatewayId,
+                       String listingGatewayId,
                        List<PageButton> toolbar, List<PageButton> bottomBar,
                        List<PageTrigger> triggers, List<PageRule> rules,
                        List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
-                       List<PageWizardStep> wizardSteps, List<PageButton> completionActions) {
+                       List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
+                       String listingQueryServiceId) {
         this.name = name;
         this.route = route;
         this.type = type;
@@ -111,7 +114,6 @@ public class Page {
         this.modelId = modelId;
         this.componentIds = componentIds != null ? componentIds : List.of();
         this.listingDataSourceType = listingDataSourceType;
-        this.listingQueryServiceId = listingQueryServiceId;
         this.listingGatewayId = listingGatewayId;
         this.toolbar = toolbar != null ? toolbar : List.of();
         this.bottomBar = bottomBar != null ? bottomBar : List.of();
@@ -121,5 +123,6 @@ public class Page {
         this.fieldConfigs = fieldConfigs != null ? fieldConfigs : List.of();
         this.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         this.completionActions = completionActions != null ? completionActions : List.of();
+        this.listingQueryServiceId = listingQueryServiceId;
     }
 }

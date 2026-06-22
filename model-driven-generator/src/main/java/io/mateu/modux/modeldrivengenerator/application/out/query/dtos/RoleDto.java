@@ -5,11 +5,9 @@ import java.util.List;
 public record RoleDto(
         String id,
         String name,
-        List<String> allowedUseCaseIds,
-        List<String> allowedReadModelIds
+        List<String> allowedUseCaseIds
 ) {
     public RoleDto {
         if (allowedUseCaseIds == null) allowedUseCaseIds = List.of();
-        if (allowedReadModelIds == null) allowedReadModelIds = List.of();
     }
 }

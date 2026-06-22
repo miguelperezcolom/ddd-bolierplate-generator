@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.menu;
 
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.domainevent.DomainEventCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.enumdefinition.EnumDefinitionCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
@@ -23,6 +24,10 @@ public class DomainModelMenu {
 
     @Menu
     EnumDefinitionCrudOrchestrator enums;
+
+    @Menu
+    DomainEventCrudOrchestrator domainEvents;
+
 
     @Menu
     InvariantCrudOrchestrator invariants;

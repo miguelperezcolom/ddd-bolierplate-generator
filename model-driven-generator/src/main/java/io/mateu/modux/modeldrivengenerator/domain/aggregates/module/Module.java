@@ -24,7 +24,6 @@ public class Module {
     private List<String> useCaseIds;
     private List<String> domainEventIds;
     private List<String> projectionIds;
-    private List<String> readModelIds;
     private List<String> subscriptionIds;
     private List<String> sagaIds;
     private List<String> scheduledTriggerIds;
@@ -41,7 +40,7 @@ public class Module {
     public static Module of(ModuleId id, ModuleName name, String gitRepository,
                             List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
                             List<String> useCaseIds, List<String> domainEventIds,
-                            List<String> projectionIds, List<String> readModelIds,
+                            List<String> projectionIds,
                             List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                             List<BddScenario> bddScenarios, String llmSystemPrompt,
                             String tableNamePrefix, boolean autoTableNamePrefix, String version,
@@ -57,7 +56,6 @@ public class Module {
         module.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         module.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         module.projectionIds = projectionIds != null ? projectionIds : List.of();
-        module.readModelIds = readModelIds != null ? readModelIds : List.of();
         module.subscriptionIds = subscriptionIds != null ? subscriptionIds : List.of();
         module.sagaIds = sagaIds != null ? sagaIds : List.of();
         module.scheduledTriggerIds = scheduledTriggerIds != null ? scheduledTriggerIds : List.of();
@@ -76,7 +74,7 @@ public class Module {
     public static Module load(String id, String name, String gitRepository,
                               List<String> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
                               List<String> useCaseIds, List<String> domainEventIds,
-                              List<String> projectionIds, List<String> readModelIds,
+                              List<String> projectionIds,
                               List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                               List<BddScenario> bddScenarios, String llmSystemPrompt,
                               String tableNamePrefix, boolean autoTableNamePrefix, String version,
@@ -92,7 +90,6 @@ public class Module {
         module.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         module.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         module.projectionIds = projectionIds != null ? projectionIds : List.of();
-        module.readModelIds = readModelIds != null ? readModelIds : List.of();
         module.subscriptionIds = subscriptionIds != null ? subscriptionIds : List.of();
         module.sagaIds = sagaIds != null ? sagaIds : List.of();
         module.scheduledTriggerIds = scheduledTriggerIds != null ? scheduledTriggerIds : List.of();
@@ -111,7 +108,7 @@ public class Module {
     public void update(ModuleName name, String gitRepository,
                        List<AggregateId> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
                        List<String> useCaseIds, List<String> domainEventIds,
-                       List<String> projectionIds, List<String> readModelIds,
+                       List<String> projectionIds,
                        List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                        List<BddScenario> bddScenarios, String llmSystemPrompt,
                        String tableNamePrefix, boolean autoTableNamePrefix, String version,
@@ -125,7 +122,6 @@ public class Module {
         this.useCaseIds = useCaseIds != null ? useCaseIds : List.of();
         this.domainEventIds = domainEventIds != null ? domainEventIds : List.of();
         this.projectionIds = projectionIds != null ? projectionIds : List.of();
-        this.readModelIds = readModelIds != null ? readModelIds : List.of();
         this.subscriptionIds = subscriptionIds != null ? subscriptionIds : List.of();
         this.sagaIds = sagaIds != null ? sagaIds : List.of();
         this.scheduledTriggerIds = scheduledTriggerIds != null ? scheduledTriggerIds : List.of();

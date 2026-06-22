@@ -11,7 +11,7 @@ import java.util.List;
 public record CreateModuleCommand(String id, String name, String gitRepository,
                                   List<String> aggregates, List<String> entityIds, List<String> valueObjectIds,
                                   List<String> useCaseIds, List<String> domainEventIds,
-                                  List<String> projectionIds, List<String> readModelIds,
+                                  List<String> projectionIds,
                                   List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
                                   List<BddScenarioData> bddScenarios, String llmSystemPrompt,
                                   String tableNamePrefix, boolean autoTableNamePrefix, String version,
@@ -25,7 +25,6 @@ public record CreateModuleCommand(String id, String name, String gitRepository,
         if (useCaseIds == null) useCaseIds = List.of();
         if (domainEventIds == null) domainEventIds = List.of();
         if (projectionIds == null) projectionIds = List.of();
-        if (readModelIds == null) readModelIds = List.of();
         if (subscriptionIds == null) subscriptionIds = List.of();
         if (sagaIds == null) sagaIds = List.of();
         if (scheduledTriggerIds == null) scheduledTriggerIds = List.of();

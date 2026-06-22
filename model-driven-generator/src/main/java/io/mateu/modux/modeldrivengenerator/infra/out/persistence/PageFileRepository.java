@@ -46,7 +46,6 @@ public class PageFileRepository implements PageRepository {
                         entity.modelId(),
                         entity.componentIds(),
                         entity.listingDataSourceType(),
-                        entity.listingQueryServiceId(),
                         entity.listingGatewayId(),
                         entity.toolbar() != null ? entity.toolbar().stream()
                                 .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
@@ -83,7 +82,8 @@ public class PageFileRepository implements PageRepository {
                                 .toList() : List.of(),
                         entity.completionActions() != null ? entity.completionActions().stream()
                                 .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
-                                .toList() : List.of()));
+                                .toList() : List.of(),
+                        entity.listingQueryServiceId()));
     }
 
     @Override
@@ -97,7 +97,6 @@ public class PageFileRepository implements PageRepository {
                 entity.getModelId(),
                 entity.getComponentIds(),
                 entity.getListingDataSourceType() != null ? entity.getListingDataSourceType().name() : null,
-                entity.getListingQueryServiceId(),
                 entity.getListingGatewayId(),
                 entity.getToolbar().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
@@ -134,7 +133,8 @@ public class PageFileRepository implements PageRepository {
                         .toList(),
                 entity.getCompletionActions().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
-                        .toList()));
+                        .toList(),
+                entity.getListingQueryServiceId()));
         return entity;
     }
 

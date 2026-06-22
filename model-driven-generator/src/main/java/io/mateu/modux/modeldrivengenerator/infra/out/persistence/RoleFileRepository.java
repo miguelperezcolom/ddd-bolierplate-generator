@@ -23,8 +23,7 @@ public class RoleFileRepository implements RoleRepository {
                 .map(entity -> Role.load(
                         entity.id(),
                         entity.name(),
-                        entity.allowedUseCaseIds(),
-                        entity.allowedReadModelIds()));
+                        entity.allowedUseCaseIds()));
     }
 
     @Override
@@ -32,8 +31,7 @@ public class RoleFileRepository implements RoleRepository {
         repository.save(new RoleEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getAllowedUseCaseIds(),
-                entity.getAllowedReadModelIds()));
+                entity.getAllowedUseCaseIds()));
         return entity;
     }
 

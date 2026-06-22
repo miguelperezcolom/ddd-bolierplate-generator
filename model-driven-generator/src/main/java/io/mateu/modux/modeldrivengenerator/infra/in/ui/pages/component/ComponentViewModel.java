@@ -10,8 +10,8 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.component.vo.Compon
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.component.vo.ComponentPresentationType;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.QueryServiceIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.QueryServiceIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -38,28 +38,27 @@ public class ComponentViewModel implements Identifiable, CrudEditorForm<String>,
 
     ComponentDataSourceType dataSourceType;
 
-    @Hidden("state['dataSourceType'] != 'QUERY_SERVICE'")
-    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
-    String queryServiceId;
-
     @Hidden("state['dataSourceType'] != 'GATEWAY'")
     @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
     String gatewayId;
 
     ComponentPresentationType presentationType;
 
+    @Lookup(search = QueryServiceIdOptionsSupplier.class, label = QueryServiceIdLabelSupplier.class)
+    String queryServiceId;
+
     final CreateComponentUseCase createUseCase;
     final SaveComponentUseCase saveUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateComponentCommand(id, name, dataSourceType, queryServiceId, gatewayId, presentationType));
+        createUseCase.handle(new CreateComponentCommand(id, name, dataSourceType, gatewayId, presentationType, queryServiceId));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveComponentCommand(id, name, dataSourceType, queryServiceId, gatewayId, presentationType));
+        saveUseCase.handle(new SaveComponentCommand(id, name, dataSourceType, gatewayId, presentationType, queryServiceId));
     }
 
     @Override
@@ -71,9 +70,9 @@ public class ComponentViewModel implements Identifiable, CrudEditorForm<String>,
         id = model.id();
         name = model.name();
         dataSourceType = model.dataSourceType();
-        queryServiceId = model.queryServiceId();
         gatewayId = model.gatewayId();
         presentationType = model.presentationType();
+        queryServiceId = model.queryServiceId();
         return this;
     }
 

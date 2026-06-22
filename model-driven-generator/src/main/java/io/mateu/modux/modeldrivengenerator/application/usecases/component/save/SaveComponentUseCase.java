@@ -17,9 +17,9 @@ public class SaveComponentUseCase {
         component.update(
                 new ComponentName(command.name()),
                 command.dataSourceType(),
-                command.queryServiceId(),
                 command.gatewayId(),
-                command.presentationType());
+                command.presentationType(),
+                command.queryServiceId());
         repository.save(component);
     }
 }
