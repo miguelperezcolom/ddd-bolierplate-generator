@@ -20,6 +20,12 @@
             <version>${project.version!'0.0.1-SNAPSHOT'}</version>
         </dependency>
 </#list>
+        <!-- developer-owned implementations of generated hooks (never overwritten) -->
+        <dependency>
+            <groupId>${project.packageName}</groupId>
+            <artifactId>${service.name?replace(" ","-")?lower_case}-custom</artifactId>
+            <version>${project.version!'0.0.1-SNAPSHOT'}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>

@@ -17,6 +17,7 @@
 <#list service.modules as module>
         <module>${module.name?replace(" ","-")?lower_case?replace("[^a-z0-9]","",'r')}</module>
 </#list>
+        <module>${service.name?replace(" ","-")?lower_case}-custom</module>
         <module>${service.name?replace(" ","-")?lower_case}-app</module>
     </modules>
     <dependencyManagement>

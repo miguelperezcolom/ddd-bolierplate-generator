@@ -147,6 +147,10 @@ public class GenerateCodeUseCase {
                     .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
         }
 
+        // developer-owned custom module (hook implementations); the module structure is generated,
+        // but files inside are scaffolded once and never overwritten on regeneration
+        generateCustomModule(project, service, serviceDir, serviceName);
+
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
 
@@ -1664,6 +1668,29 @@ public class GenerateCodeUseCase {
     }
 
     // ─── File I/O ─────────────────────────────────────────────────────────────
+
+    /** Generates the developer-owned custom module: structure is generated, contents scaffolded once. */
+    private void generateCustomModule(ProjectEntity project, ServiceEntity service, String serviceDir, String serviceName) {
+        var customDir = serviceDir + "/" + serviceName + "-custom";
+        var packageDir = project.packageName().replace(".", "/");
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+
+        createDir(customDir, "");
+        createFile(customDir, model, "custom-pom.ftl", "pom.xml");
+        createDir(customDir, "src/main/java/" + packageDir + "/custom");
+        createFile(customDir, model, "custom-package-info.ftl",
+                "src/main/java/" + packageDir + "/custom/package-info.java");
+    }
+
+    /** Writes a developer-owned file only if it does not already exist (scaffold once, never overwrite). */
+    private void createCustomFile(String baseDir, Map<String, Object> model, String template, String destFile) {
+        if (new File(baseDir + "/" + destFile).exists()) {
+            return;
+        }
+        createFile(baseDir, model, template, destFile);
+    }
 
     @SneakyThrows
     private void createFile(String baseDir, Map<String, Object> model, String template, String destFile) {
