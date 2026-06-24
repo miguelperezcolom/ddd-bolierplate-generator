@@ -96,6 +96,10 @@ public class GenerateCodeUseCase {
         // Docker Compose at project root
         generateDockerCompose(project);
 
+        // CI/CD pipeline and infrastructure-as-code at project root
+        generateCiWorkflow(project);
+        generateTerraform(project);
+
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
         repository.findAllOfType(UiShellEntity.class)
                 .forEach(shell -> generateUiShell(project, shell));
@@ -123,6 +127,12 @@ public class GenerateCodeUseCase {
         serviceModel.put("project", projectToMap(project));
         serviceModel.put("service", serviceToMap(service));
         createFile(serviceDir, serviceModel, "service-parent-pom.ftl", "pom.xml");
+
+        // containerization: a multi-stage Dockerfile that builds the service reactor
+        createFile(serviceDir, serviceModel, "dockerfile.ftl", "Dockerfile");
+
+        // Kubernetes manifests (Deployment + Service + optional HPA)
+        createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
 
         // generate each DDD module
         service.moduleIds().stream()
@@ -1089,6 +1099,18 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
+    }
+
+    private void generateCiWorkflow(ProjectEntity project) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        createFile(project.outputPath(), model, "ci-workflow.ftl", ".github/workflows/ci.yml");
+    }
+
+    private void generateTerraform(ProjectEntity project) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        createFile(project.outputPath(), model, "terraform-main.ftl", "terraform/main.tf");
     }
 
     // ─── UI Shells ────────────────────────────────────────────────────────────

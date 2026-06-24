@@ -4,9 +4,9 @@ services:
 <#list project.services as svc>
   ${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}:
     build:
-      context: ./${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}/${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}-app
+      context: ./${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}
     ports:
-      - "${svc.port!8080}:${svc.port!8080}"
+      - "${(svc.port!8080)?c}:${(svc.port!8080)?c}"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${svc.name?lower_case?replace("[^a-z0-9]","_",'r')}
