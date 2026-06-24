@@ -49,14 +49,18 @@ Actions are executed in order when all conditions pass.
 | **SET_FIELD_VALUE** | Write a computed value to a field on the fact | **Field id** — target field name; **Expression** — value expression (e.g. `booking.basePrice * 0.8`) |
 | **CALL_USE_CASE** | Invoke a use case as a side effect | **Use case** — the use case to invoke |
 | **PUBLISH_EVENT** | Publish a domain event | **Domain event** — the event to publish |
-| **CUSTOM** | Hand-written action (generates an abstract method to implement) | — |
+| **CUSTOM** | Hand-written action (planned: a custom hook you implement) | — |
 
 ## What gets generated
 
-For each business rule Modux generates:
+:::caution[Not yet implemented]
+Business rules can be **defined** in the model today (conditions, actions, fact bindings) and are stored in your spec, but Modux does **not yet emit code** for them — there are no rules-engine artifacts in a generated project yet. The shape below is the intended target.
+:::
+
+The planned output, per business rule:
 
 - A rule definition file in the format expected by the configured rules engine (e.g. a `.drl` file for Drools, a `Rule` bean for Easy Rules)
-- For `CUSTOM` actions: an abstract Java class with one method per custom action, left for you to implement
+- For `CUSTOM` actions: a hook in the `{service}-custom` module (matching the [two-zone model](/manual/generating-code/#generated-code-vs-your-code-two-zones)), left for you to implement
 - A Spring `@Configuration` class that registers all rules into the rules engine session/registry
 
 ## Usage in the domain

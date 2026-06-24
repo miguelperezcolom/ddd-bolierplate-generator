@@ -96,7 +96,7 @@ Steps describe the orchestration logic of the use case. They are executed in ord
 
 | Type | Description |
 |---|---|
-| **Custom** | Hand-written logic (generates an abstract method to implement) |
+| **Custom** | Hand-written logic (generates a `{Name}Steps` hook you implement in the `{service}-custom` module) |
 | **ReadAggregate** | Load an aggregate root by ID from its repository |
 | **CallAggregateOperation** | Invoke a named operation on an aggregate |
 | **SaveAggregate** | Persist an aggregate root via its repository |
@@ -123,7 +123,8 @@ Each step has:
 
 For each use case Modux generates:
 
-- `{Name}UseCase.java` — abstract Spring `@Service` class with one method per `Custom` step left for you to implement; all other steps are fully generated
+- `{Name}UseCase.java` — concrete Spring `@Service` (locked, regenerated) that runs every step; non-`Custom` steps are fully generated
+- For each `Custom` step: a `{Name}Steps` interface (the hook, in the generated module) plus a write-once `Default{Name}Steps` `@Component` scaffolded in the `{service}-custom` module. The use case calls the hook via Spring; you fill in the body. See [Generating code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones)
 - `{Name}Command.java` — the command/request record
 - REST controller, gRPC stub, MCP tool registration, or async consumer — depending on exposure flags
 - Security annotations (`@PreAuthorize`) based on allowed roles and scopes

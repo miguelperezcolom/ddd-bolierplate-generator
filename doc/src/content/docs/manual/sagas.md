@@ -33,11 +33,14 @@ Modux supports both saga styles:
 
 ### Steps
 
+Saga steps use the same step types as use cases (`ReadAggregate`, `CallAggregateOperation`, `SaveAggregate`, `CallGateway`, `PublishDomainEvent`, `CallUseCase`, `ApplyModelMapping`, `Custom`). A `Custom` step generates a `{Saga}Steps` hook you implement in the `{service}-custom` module — see [Generating code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones).
+
 Each step in a saga has:
 
 | Field | Description |
 |---|---|
 | **Name** | Step name |
+| **Type** | One of the step types above |
 | **Command** | The operation/use case to execute |
 | **On success** | Event or transition to the next step |
 | **On failure** | Compensation action to execute |
@@ -89,6 +92,7 @@ For a `BookingConfirmationSaga`:
 - State machine transitions and compensation handlers
 - Kafka message handlers for each step
 - Retry and dead-letter configuration
+- For each `Custom` step: a `BookingConfirmationSteps` hook (locked) plus a write-once `DefaultBookingConfirmationSteps` in the `{service}-custom` module
 - `src/main/resources/workflows/BookingConfirmationSaga.workflow.json` — an [EventConductor](https://eventconductor.mateu.io/) workflow definition (see below)
 
 ## Orchestration with EventConductor

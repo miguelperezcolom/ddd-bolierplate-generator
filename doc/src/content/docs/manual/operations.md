@@ -76,9 +76,9 @@ What happens after the operation executes:
 
 For a `CUSTOM` operation named `confirmBooking` on a `Booking` aggregate:
 
-- `ConfirmBookingCommand.java` — command DTO with input fields
-- `ConfirmBookingUseCase.java` — use case interface (port)
-- `ConfirmBookingUseCaseImpl.java` — default implementation stub
+- `ConfirmBookingBookingOperation.java` — the operation strategy in the aggregate's domain package (locked, regenerated)
+- `BookingOperationContext.java` — context object giving the operation access to the aggregate's state (locked)
+- `DefaultConfirmBookingBookingOperation.java` — write-once default implementation scaffolded in the `{service}-custom` module, for you to fill in (see [two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones))
 
 For `QUERY` operations:
 

@@ -20,7 +20,7 @@ A **Model Mapping** defines how to transform data from one model to another. It 
 | **Name** | Mapping name (e.g. `BookingRequestToCreateBookingCommand`) |
 | **Source model** | The model to transform from |
 | **Target model** | The model to transform into |
-| **Has custom part** | Whether part of the mapping requires hand-written logic (generates an abstract method to implement) |
+| **Has custom part** | Whether part of the mapping requires hand-written logic (adds a `customMap()` stub to the generated `{Mapping}Mapper`) |
 
 ### Rules
 

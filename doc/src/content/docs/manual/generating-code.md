@@ -140,7 +140,14 @@ A generated project has two zones, so you can regenerate as often as you like wi
 | **Generated** | Every structural module (domain, application, infra, app) | Always overwritten — **do not edit** |
 | **Custom** | The `{service}-custom` module | **Never overwritten** — it's yours |
 
-Modux never puts business logic you must write inside the generated zone. Instead, where a decision can't be derived from the model, it generates a **hook** (a port interface, e.g. `{Aggregate}Invariants`, with a context that exposes the aggregate's state) and scaffolds a **default implementation once** in the `{service}-custom` module. You fill that implementation in; the generated use cases call it via Spring.
+Modux never puts business logic you must write inside the generated zone. Instead, where a decision can't be derived from the model, it generates a **hook** (a port interface, with a context that exposes the relevant aggregate state) and scaffolds a **default implementation once** in the `{service}-custom` module. You fill that implementation in; the generated code calls it via Spring. The four business-logic hooks are:
+
+| Hook | Generated when | Interface (locked) | Default impl (yours, write-once) |
+|---|---|---|---|
+| Aggregate invariants | an aggregate has invariants | `{Aggregate}Invariants` | `Default{Aggregate}Invariants` |
+| Custom aggregate operation | an operation is marked `CUSTOM` | `{Operation}{Aggregate}Operation` | `Default{Operation}{Aggregate}Operation` |
+| Custom saga step | a saga has a `Custom` step | `{Saga}Steps` | `Default{Saga}Steps` |
+| Custom use-case step | a use case has a `Custom` step | `{UseCase}Steps` | `Default{UseCase}Steps` |
 
 To keep the generated zone honest, every generated file's hash is recorded in `.modux/generated-manifest.json`. On the next run, a file that was edited by hand is detected, reported and overwritten — a reminder to move that logic into the custom module. Files in the custom module are not tracked and are left untouched.
 
@@ -166,14 +173,14 @@ The application starts at `http://localhost:{port}` with a fully working CRUD UI
 
 ## Re-generating after changes
 
-You can run the generator at any time after modifying your spec. Files configured as `NEVER` will not be overwritten, so your custom business logic is safe.
+You can run the generator at any time after modifying your spec. Everything in the `{service}-custom` module is left untouched (see [two zones](#generated-code-vs-your-code-two-zones) above), so your custom business logic is safe; only the generated zone is refreshed from the model.
 
 Recommended workflow:
 
 1. Define aggregates and operations in Modux
 2. Generate code
-3. Implement business logic in custom files (use cases, domain services)
-4. If the spec changes, re-generate — only the structural files are updated
+3. Implement business logic by filling in the hook defaults in the `{service}-custom` module
+4. If the spec changes, re-generate — only the generated zone is updated; your custom module is untouched
 
 ## E2E tests with Playwright
 

@@ -35,8 +35,8 @@ This page lists every file Modux generates and what it contains.
 | `application/usecases/Update{Aggregate}UseCase.java` | Update use case interface |
 | `application/usecases/Update{Aggregate}Command.java` | Update command DTO |
 | `application/usecases/Delete{Aggregate}UseCase.java` | Delete use case interface |
-| `application/usecases/{Operation}UseCase.java` | One per custom operation |
-| `application/usecases/{Operation}Command.java` | Command DTO per custom operation |
+| `domain/aggregates/{aggregate}/{Operation}{Aggregate}Operation.java` | Operation strategy, one per `CUSTOM` operation |
+| `domain/aggregates/{aggregate}/{Aggregate}OperationContext.java` | Context exposing aggregate state to operations (when the aggregate has operations) |
 | `application/out/{Aggregate}Repository.java` | Repository port interface |
 
 ### Application layer — read side
@@ -111,6 +111,24 @@ This page lists every file Modux generates and what it contains.
 | File | Description |
 |---|---|
 | `infra/in/scheduler/{Trigger}Trigger.java` | Spring `@Scheduled` component |
+
+---
+
+## Custom module (your business logic)
+
+Everything above lives in the **generated zone** (overwritten on every run). Business logic that can't be derived from the model goes into a separate `{service}-custom` module that Modux scaffolds **once** and never overwrites. See [Generating code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones).
+
+| File | Generated when | Description |
+|---|---|---|
+| `{service}-custom/pom.xml` | always | The custom module; the service app depends on it |
+| `custom/Default{Aggregate}Invariants.java` | aggregate has invariants | Default impl of the `{Aggregate}Invariants` hook |
+| `custom/Default{Operation}{Aggregate}Operation.java` | operation marked `CUSTOM` | Default impl of the `{Operation}{Aggregate}Operation` strategy |
+| `custom/Default{Saga}Steps.java` | saga has a `Custom` step | Default impl of the `{Saga}Steps` hook |
+| `custom/Default{UseCase}Steps.java` | use case has a `Custom` step | Default impl of the `{UseCase}Steps` hook |
+
+The matching hook **interfaces** (`{Aggregate}Invariants`, `{Saga}Steps`, `{UseCase}Steps`, and the operation strategy) plus their `{Aggregate}Context` live in the generated zone and are regenerated from the model.
+
+To keep the generated zone honest, every generated file's SHA-256 is recorded in `.modux/generated-manifest.json`; a hand-edited generated file is detected, reported and overwritten on the next run. The custom module is not tracked.
 
 ---
 
