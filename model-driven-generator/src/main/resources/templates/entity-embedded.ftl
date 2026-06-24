@@ -15,8 +15,8 @@ import jakarta.persistence.Embeddable;
 <#if field.basicType>
 <#if field.type == "date"><#assign hasDate = true></#if>
 <#if field.type == "time"><#assign hasTime = true></#if>
-<#if field.type == "datetime"><#assign hasDateTime = true></#if>
-<#if field.type == "decimal"><#assign hasBigDecimal = true></#if>
+<#if field.type == "dateTime"><#assign hasDateTime = true></#if>
+<#if field.type == "number" || field.type == "money"><#assign hasBigDecimal = true></#if>
 </#if>
 </#list>
 <#if hasDate>import java.time.LocalDate;
@@ -41,7 +41,7 @@ public class ${entity.name?cap_first} {
     String ${field.name};
     <#elseif field.type == "integer">
     Integer ${field.name};
-    <#elseif field.type == "decimal">
+    <#elseif field.type == "number" || field.type == "money">
     BigDecimal ${field.name};
     <#elseif field.type == "bool">
     Boolean ${field.name};
@@ -49,7 +49,7 @@ public class ${entity.name?cap_first} {
     LocalDate ${field.name};
     <#elseif field.type == "time">
     LocalTime ${field.name};
-    <#elseif field.type == "datetime">
+    <#elseif field.type == "dateTime">
     LocalDateTime ${field.name};
     <#else>
     String ${field.name};
@@ -71,7 +71,7 @@ public record ${entity.name?cap_first}(
     String ${field.name}<#sep>,</#sep>
     <#elseif field.type == "integer">
     Integer ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "decimal">
+    <#elseif field.type == "number" || field.type == "money">
     BigDecimal ${field.name}<#sep>,</#sep>
     <#elseif field.type == "bool">
     Boolean ${field.name}<#sep>,</#sep>
@@ -79,7 +79,7 @@ public record ${entity.name?cap_first}(
     LocalDate ${field.name}<#sep>,</#sep>
     <#elseif field.type == "time">
     LocalTime ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "datetime">
+    <#elseif field.type == "dateTime">
     LocalDateTime ${field.name}<#sep>,</#sep>
     <#else>
     String ${field.name}<#sep>,</#sep>

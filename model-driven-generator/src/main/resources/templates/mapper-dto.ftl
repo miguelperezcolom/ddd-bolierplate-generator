@@ -4,8 +4,8 @@
 <#if field.basicType>
 <#if field.type == "date"><#assign hasDate = true></#if>
 <#if field.type == "time"><#assign hasTime = true></#if>
-<#if field.type == "datetime"><#assign hasDateTime = true></#if>
-<#if field.type == "decimal"><#assign hasBigDecimal = true></#if>
+<#if field.type == "dateTime"><#assign hasDateTime = true></#if>
+<#if field.type == "number" || field.type == "money"><#assign hasBigDecimal = true></#if>
 </#if>
 </#list>
 </#if>
@@ -24,7 +24,7 @@ public record ${className}(<#if model?? && model.fields?has_content>
         String ${field.name}<#sep>,</#sep>
     <#elseif field.type == "integer">
         Integer ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "decimal">
+    <#elseif field.type == "number" || field.type == "money">
         BigDecimal ${field.name}<#sep>,</#sep>
     <#elseif field.type == "bool">
         Boolean ${field.name}<#sep>,</#sep>
@@ -32,7 +32,7 @@ public record ${className}(<#if model?? && model.fields?has_content>
         LocalDate ${field.name}<#sep>,</#sep>
     <#elseif field.type == "time">
         LocalTime ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "datetime">
+    <#elseif field.type == "dateTime">
         LocalDateTime ${field.name}<#sep>,</#sep>
     <#else>
         String ${field.name}<#sep>,</#sep>

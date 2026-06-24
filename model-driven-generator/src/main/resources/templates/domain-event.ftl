@@ -4,12 +4,12 @@
 <#if field.basicType>
 <#if field.type == "date"><#assign hasDate = true></#if>
 <#if field.type == "time"><#assign hasTime = true></#if>
-<#if field.type == "datetime"><#assign hasDateTime = true></#if>
-<#if field.type == "decimal"><#assign hasBigDecimal = true></#if>
+<#if field.type == "dateTime"><#assign hasDateTime = true></#if>
+<#if field.type == "number" || field.type == "money"><#assign hasBigDecimal = true></#if>
 </#if>
 </#list>
 </#if>
-<#macro javaType field><#if field.basicType><#if field.type == "integer">Integer<#elseif field.type == "decimal">BigDecimal<#elseif field.type == "bool">Boolean<#elseif field.type == "date">LocalDate<#elseif field.type == "time">LocalTime<#elseif field.type == "datetime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
+<#macro javaType field><#if field.basicType><#if field.type == "integer">Integer<#elseif field.type == "number" || field.type == "money">BigDecimal<#elseif field.type == "bool">Boolean<#elseif field.type == "date">LocalDate<#elseif field.type == "time">LocalTime<#elseif field.type == "dateTime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
 <#function fieldName field><#if field.basicType><#return field.name><#else><#return field.name + "Id"></#if></#function>
 package ${project.packageName}.${module.slug}.domain.events;
 

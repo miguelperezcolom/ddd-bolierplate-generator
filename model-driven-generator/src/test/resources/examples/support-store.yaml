@@ -1,0 +1,295 @@
+# A third example domain (helpdesk/ticketing) to harden the generator on the read side and on paths
+# the hotel and ecommerce stores barely touch: projections with several handlers, paginated query
+# services, a read model with a dateTime field, value objects, a subscription WITH actions (the hotel's
+# are empty), a scheduled trigger (the hotel has none), and a domain event published as an integration
+# event. One service, one dense module.
+projects:
+- id: "support"
+  name: "Support"
+  outputPath: "sample/support"
+  packageName: "com.helpdesk.support"
+  serviceIds:
+  - "helpdesk"
+
+services:
+- id: "helpdesk"
+  name: "Helpdesk"
+  moduleIds:
+  - "mod-tickets"
+
+modules:
+- id: "mod-tickets"
+  name: "Tickets"
+  aggregateIds:
+  - "ticket"
+  valueObjectIds:
+  - "vo-ticketRef"
+  useCaseIds:
+  - "uc-openTicket"
+  - "uc-escalateStale"
+  domainEventIds:
+  - "ev-ticketOpened"
+  - "ev-ticketAssigned"
+  - "ev-ticketResolved"
+  - "ev-ticketClosed"
+  projectionIds:
+  - "proj-tickets"
+  subscriptionIds:
+  - "sub-customerUpdated"
+  scheduledTriggerIds:
+  - "trig-escalate"
+
+aggregates:
+- id: "ticket"
+  name: "Ticket"
+  modelId: "ticket-model"
+  persistenceType: "JPA"
+  idType: "LONG"
+  operations:
+  - id: "op-assign"
+    name: "assign"
+    type: "CUSTOM"
+  - id: "op-resolve"
+    name: "resolve"
+    type: "CUSTOM"
+  - id: "op-close"
+    name: "close"
+    type: "CUSTOM"
+  invariants:
+  - id: "inv-ticket-subject"
+    name: "SubjectRequired"
+    conditions: []
+
+valueObjects:
+- id: "vo-ticketRef"
+  name: "TicketRef"
+  type: "Wrapper"
+  dataType: "string"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+
+models:
+- id: "ticket-model"
+  name: "Ticket"
+  fields:
+  - id: "f-ticket-subject"
+    name: "subject"
+    basicType: true
+    type: "string"
+  - id: "f-ticket-description"
+    name: "description"
+    basicType: true
+    type: "string"
+  - id: "f-ticket-reporter"
+    name: "reporter"
+    basicType: true
+    type: "string"
+  - id: "f-ticket-priority"
+    name: "priority"
+    basicType: false
+    enumId: "ticket-priority"
+  - id: "f-ticket-status"
+    name: "status"
+    basicType: false
+    enumId: "ticket-status"
+- id: "ticket-event-model"
+  name: "TicketEvent"
+  fields:
+  - id: "f-te-ticketId"
+    name: "ticketId"
+    basicType: true
+    type: "string"
+  - id: "f-te-subject"
+    name: "subject"
+    basicType: true
+    type: "string"
+  - id: "f-te-priority"
+    name: "priority"
+    basicType: true
+    type: "string"
+- id: "ticket-summary-model"
+  name: "TicketSummary"
+  fields:
+  - id: "f-ts-ticketId"
+    name: "ticketId"
+    basicType: true
+    type: "string"
+  - id: "f-ts-subject"
+    name: "subject"
+    basicType: true
+    type: "string"
+  - id: "f-ts-status"
+    name: "status"
+    basicType: true
+    type: "string"
+  - id: "f-ts-priority"
+    name: "priority"
+    basicType: true
+    type: "string"
+  - id: "f-ts-openedAt"
+    name: "openedAt"
+    basicType: true
+    type: "dateTime"
+- id: "ticket-query-model"
+  name: "TicketQuery"
+  fields:
+  - id: "f-tq-ticketId"
+    name: "ticketId"
+    basicType: true
+    type: "string"
+- id: "ticket-filter-model"
+  name: "TicketFilter"
+  fields:
+  - id: "f-tf-priority"
+    name: "priority"
+    basicType: true
+    type: "string"
+- id: "customer-update-model"
+  name: "CustomerUpdate"
+  fields:
+  - id: "f-cu-customerId"
+    name: "customerId"
+    basicType: true
+    type: "string"
+  - id: "f-cu-name"
+    name: "name"
+    basicType: true
+    type: "string"
+
+enums:
+- id: "ticket-priority"
+  values:
+  - id: "tp-low"
+    name: "LOW"
+  - id: "tp-medium"
+    name: "MEDIUM"
+  - id: "tp-high"
+    name: "HIGH"
+  - id: "tp-urgent"
+    name: "URGENT"
+- id: "ticket-status"
+  values:
+  - id: "tst-open"
+    name: "OPEN"
+  - id: "tst-assigned"
+    name: "ASSIGNED"
+  - id: "tst-resolved"
+    name: "RESOLVED"
+  - id: "tst-closed"
+    name: "CLOSED"
+
+useCases:
+- id: "uc-openTicket"
+  name: "OpenTicket"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "ticket-event-model"
+  steps:
+  - id: "step-ot-save"
+    name: "saveTicket"
+    type: "SaveAggregate"
+    aggregateId: "ticket"
+  - id: "step-ot-publish"
+    name: "publishTicketOpened"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-ticketOpened"
+- id: "uc-escalateStale"
+  name: "EscalateStale"
+  inputModelId: "ticket-filter-model"
+  steps:
+  - id: "step-es-custom"
+    name: "escalateStaleTickets"
+    type: "Custom"
+
+domainEvents:
+- id: "ev-ticketOpened"
+  name: "TicketOpened"
+  modelId: "ticket-event-model"
+  publishAsIntegrationEvent: true
+  integrationModelId: "ticket-event-model"
+  topicName: "support.ticket-opened.v1"
+  schemaVersion: "1"
+- id: "ev-ticketAssigned"
+  name: "TicketAssigned"
+  modelId: "ticket-event-model"
+- id: "ev-ticketResolved"
+  name: "TicketResolved"
+  modelId: "ticket-event-model"
+- id: "ev-ticketClosed"
+  name: "TicketClosed"
+  modelId: "ticket-event-model"
+
+readModels:
+- id: "rm-ticketSummary"
+  name: "TicketSummaryReadModel"
+  moduleId: "mod-tickets"
+  description: "Materialised ticket summaries for reporting"
+  modelId: "ticket-summary-model"
+  storageType: "Document"
+  consistency: "Eventual"
+
+projections:
+- id: "proj-tickets"
+  name: "Tickets"
+  readModelId: "rm-ticketSummary"
+  handlers:
+  - id: "h-tickets-opened"
+    name: "onTicketOpened"
+    domainEventId: "ev-ticketOpened"
+    type: "Create"
+  - id: "h-tickets-resolved"
+    name: "onTicketResolved"
+    domainEventId: "ev-ticketResolved"
+    type: "Update"
+  - id: "h-tickets-closed"
+    name: "onTicketClosed"
+    domainEventId: "ev-ticketClosed"
+    type: "Update"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+
+queryServices:
+- id: "qs-tickets"
+  name: "TicketQueries"
+  moduleId: "mod-tickets"
+  description: "Read-side queries over ticket summaries"
+  operations:
+  - id: "qop-getTicket"
+    name: "getTicket"
+    description: "Fetch a single ticket summary"
+    inputModelId: "ticket-query-model"
+    outputModelId: "ticket-summary-model"
+    cardinality: "Single"
+  - id: "qop-openTickets"
+    name: "openTickets"
+    description: "Paged list of open tickets"
+    inputModelId: "ticket-filter-model"
+    outputModelId: "ticket-summary-model"
+    cardinality: "Page"
+  - id: "qop-recentTickets"
+    name: "recentTickets"
+    description: "Recent tickets list"
+    inputModelId: "ticket-filter-model"
+    outputModelId: "ticket-summary-model"
+    cardinality: "List"
+
+subscriptions:
+- id: "sub-customerUpdated"
+  name: "CustomerUpdated"
+  eventName: "CustomerUpdated"
+  sourceService: "crm"
+  inputModelId: "customer-update-model"
+  topicName: "crm.customer-updated.v1"
+  consumerGroup: "support"
+  actions:
+  - id: "sub-act-open"
+    name: "onCustomerUpdated"
+    type: "CallUseCase"
+    useCaseId: "uc-openTicket"
+
+scheduledTriggers:
+- id: "trig-escalate"
+  name: "EscalateStaleTickets"
+  cronExpression: "0 0 9 * * *"
+  timezone: "UTC"
+  useCaseId: "uc-escalateStale"
+  description: "Every morning, escalate tickets left unattended"
