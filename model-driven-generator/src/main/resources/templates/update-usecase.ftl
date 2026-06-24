@@ -8,6 +8,10 @@ import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.vo.${field.name?cap_first};
     </#if>
 </#list>
+<#if aggregate.invariants?has_content>
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name}Invariants;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name}Context;
+</#if>
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class Update${aggregate.name}UseCase {
 
     final ${aggregate.name}Repository repository;
+<#if aggregate.invariants?has_content>
+    final ${aggregate.name}Invariants invariants;
+</#if>
 
     @Transactional
     public void handle(Update${aggregate.name}Command command) {
@@ -36,6 +43,9 @@ public class Update${aggregate.name}UseCase {
     </#if>
 </#list>
         );
+<#if aggregate.invariants?has_content>
+        invariants.check(new ${aggregate.name}Context(entity));
+</#if>
         repository.save(entity);
     }
 

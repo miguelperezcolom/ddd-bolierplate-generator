@@ -148,9 +148,9 @@ checkInvariants();
 
 </#list>
 private void checkInvariants() {
-<#list aggregate.invariants as invariant>
-    // TODO invariant: ${invariant.name}
-</#list>
+<#if aggregate.invariants?has_content>
+    // Business invariants are enforced via the ${aggregate.name}Invariants hook (custom module).
+</#if>
 }
 
 <#if aggregate.operations?has_content>
