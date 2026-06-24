@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntit
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 
 /**
@@ -19,6 +20,7 @@ public record FlowExpansion(
         ReadModelEntity readModel,
         ProjectionEntity projection,
         SubscriptionEntity subscription,
-        ModelMappingEntity modelMapping
+        ModelMappingEntity modelMapping,
+        SagaEntity saga
 ) {
 }

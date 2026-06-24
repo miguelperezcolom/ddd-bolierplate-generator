@@ -16,6 +16,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEventHandlerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import org.springframework.stereotype.Service;
@@ -36,8 +37,8 @@ public class FlowExpander {
         return switch (flow.getArchetype()) {
             case MATERIALIZES -> expandMaterializes(flow, ctx);
             case TRIGGERS -> expandTriggers(flow, ctx);
-            default -> throw new UnsupportedOperationException(
-                    "Flow expansion not implemented yet for archetype " + flow.getArchetype());
+            case NOTIFIES -> expandNotifies(flow, ctx);
+            case ORCHESTRATES -> expandOrchestrates(flow, ctx);
         };
     }
 
@@ -75,7 +76,7 @@ public class FlowExpander {
                 null, null, null, null, null, null,
                 true, "id");
 
-        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, readModel, projection, subscription, null);
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, readModel, projection, subscription, null, null);
     }
 
     private FlowExpansion expandTriggers(Flow flow, FlowExpansionContext ctx) {
@@ -107,7 +108,56 @@ public class FlowExpander {
                 null, null, null, null, null, null,
                 true, "id");
 
-        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, modelMapping);
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, modelMapping, null);
+    }
+
+    private FlowExpansion expandNotifies(Flow flow, FlowExpansionContext ctx) {
+        var base = flow.getId().id();
+        var eventName = flow.getTriggerEvent();
+        var topic = topicOf(flow, ctx);
+        var dlq = topic + ".dlq";
+        var modelId = "model-" + base;
+        var eventId = "evt-" + base;
+
+        // an outbound notification: the event leaves the context as an integration event that an
+        // external system consumes. No internal target (read model / use case / saga).
+        var payloadModel = payloadModel(flow, ctx, modelId, eventName);
+        var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, null, null, null);
+    }
+
+    private FlowExpansion expandOrchestrates(Flow flow, FlowExpansionContext ctx) {
+        var base = flow.getId().id();
+        var eventName = flow.getTriggerEvent();
+        var topic = topicOf(flow, ctx);
+        var dlq = topic + ".dlq";
+        var modelId = "model-" + base;
+        var eventId = "evt-" + base;
+        var sagaId = "saga-" + base;
+
+        var payloadModel = payloadModel(flow, ctx, modelId, eventName);
+        var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+
+        // skeleton saga triggered by the event; steps and compensations are filled in by the author
+        var saga = new SagaEntity(
+                sagaId, flow.getName().name() + "Saga",
+                null, null, List.of(eventId), List.of(),
+                3, null, dlq, true);
+
+        var subscription = new SubscriptionEntity(
+                "sub-" + base, ctx.targetModuleName() + eventName,
+                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
+                3, dlq,
+                List.of(new SubscriptionActionEntity(
+                        "act-" + base, "start" + flow.getName().name(), SubscriptionActionType.StartSaga,
+                        null, sagaId, null, null)),
+                null, null, null, null, null, null,
+                true, "id");
+
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, null, saga);
     }
 
     // --- shared building blocks ---

@@ -131,6 +131,45 @@ class FlowExpanderTest {
     }
 
     @Test
+    void notifies_only_publishes_the_event_outbound() {
+        var flow = Flow.of(
+                new FlowId("avisaPasarela"), new FlowName("AvisaPasarela"), null,
+                FlowArchetype.NOTIFIES,
+                "agg-reserva", "ReservaCreada", "external",
+                null, List.of("localizador"), null, List.of());
+        var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "external",
+                Map.of("localizador", FieldDataType.string), null, null);
+
+        var x = expander.expand(flow, ctx);
+
+        assertNotNull(x.integrationEvent());
+        assertTrue(x.integrationEvent().replayable());
+        assertEquals(null, x.readModel());
+        assertEquals(null, x.projection());
+        assertEquals(null, x.subscription());
+        assertEquals(null, x.saga());
+    }
+
+    @Test
+    void orchestrates_starts_a_saga_from_the_event() {
+        var flow = Flow.of(
+                new FlowId("procesoCheckin"), new FlowName("ProcesoCheckin"), null,
+                FlowArchetype.ORCHESTRATES,
+                "agg-reserva", "ReservaCreada", "frontoffice",
+                null, List.of("localizador"), null, List.of());
+        var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "frontoffice",
+                Map.of("localizador", FieldDataType.string), null, null);
+
+        var x = expander.expand(flow, ctx);
+
+        assertNotNull(x.saga());
+        assertEquals(List.of(x.domainEvent().id()), x.saga().triggeringEventIds());
+        var action = x.subscription().actions().get(0);
+        assertEquals(SubscriptionActionType.StartSaga, action.type());
+        assertEquals(x.saga().id(), action.sagaId());
+    }
+
+    @Test
     void kebab_handles_pascal_and_plain_words() {
         assertEquals("reserva-creada", FlowExpander.kebab("ReservaCreada"));
         assertEquals("reservas", FlowExpander.kebab("reservas"));
