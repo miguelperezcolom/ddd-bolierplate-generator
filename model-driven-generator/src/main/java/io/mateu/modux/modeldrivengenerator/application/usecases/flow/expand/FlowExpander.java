@@ -42,7 +42,7 @@ public class FlowExpander {
     private FlowExpansion expandMaterializes(Flow flow, FlowExpansionContext ctx) {
         var base = flow.getId().id();
         var eventName = flow.getTriggerEvent();
-        var topic = ctx.projectName() + "." + kebab(ctx.sourceServiceName()) + "." + kebab(eventName);
+        var topic = kebab(ctx.projectName()) + "." + kebab(ctx.sourceServiceName()) + "." + kebab(eventName);
         var dlq = topic + ".dlq";
 
         var eventId = "evt-" + base;
