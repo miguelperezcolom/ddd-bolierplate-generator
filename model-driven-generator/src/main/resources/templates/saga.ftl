@@ -65,6 +65,9 @@ public class ${saga.name?cap_first}Saga {
 <#if saga.steps?has_content && saga.steps?filter(s -> s.type == "PublishDomainEvent")?has_content>
     final StreamBridge streamBridge;
 </#if>
+<#if saga.steps?has_content && saga.steps?filter(s -> s.type == "Custom")?has_content>
+    final ${saga.name?cap_first}Steps steps;
+</#if>
 
     @Transactional
     public void execute(/* TODO: define saga trigger payload */) {
@@ -92,6 +95,8 @@ public class ${saga.name?cap_first}Saga {
         streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.name?cap_first}Event(/* TODO: fill event */));
 <#elseif step.type == "CallUseCase" && step.useCase??>
         ${step.useCase.name?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.name?cap_first}Command */);
+<#elseif step.type == "Custom">
+        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
 <#else>
         // TODO: step "${step.name}" (${step.type})
 </#if>

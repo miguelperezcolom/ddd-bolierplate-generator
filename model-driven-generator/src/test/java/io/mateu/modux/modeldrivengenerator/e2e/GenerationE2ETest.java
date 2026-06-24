@@ -160,6 +160,10 @@ class GenerationE2ETest {
                 "invariant hook port was not generated");
         assertTrue(anyFileMatches(output, "DefaultReservaInvariants.java"),
                 "invariant hook default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "DefaultCrearReservaOperation.java"),
+                "custom operation default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "DefaultProcesoCheckinE2ESagaSteps.java"),
+                "saga custom-steps default implementation was not scaffolded in the custom module");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

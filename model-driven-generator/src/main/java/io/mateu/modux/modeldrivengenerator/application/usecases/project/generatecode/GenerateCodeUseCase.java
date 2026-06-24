@@ -481,6 +481,12 @@ public class GenerateCodeUseCase {
                         createFile(moduleDir, model, "custom-operation.ftl",
                                 "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
                                         + "/" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
+
+                        // developer-owned default implementation of the operation (custom module, write-once)
+                        var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+                        createCustomFile(customDir, model, "aggregate-operation-default.ftl",
+                                "src/main/java/" + project.packageName().replace(".", "/")
+                                        + "/custom/Default" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
                     });
         }
 
@@ -934,6 +940,19 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, model, "saga.ftl",
                 "src/main/java/" + modulePackageDir + "/application/sagas/"
                         + capitalize(saga.name()) + "Saga.java");
+
+        // custom-steps hook: a port in the generated module, default implementation in the custom module
+        var hasCustomStep = saga.steps() != null
+                && saga.steps().stream().anyMatch(s -> s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType.Custom);
+        if (hasCustomStep) {
+            createFile(moduleDir, model, "saga-steps.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/sagas/"
+                            + capitalize(saga.name()) + "Steps.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, model, "saga-steps-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + capitalize(saga.name()) + "Steps.java");
+        }
 
         // EventConductor workflow definition (the workflow engine owns the orchestration)
         createFile(moduleDir, model, "workflow-definition.ftl",
