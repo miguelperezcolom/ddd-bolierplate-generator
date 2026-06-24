@@ -52,7 +52,7 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
 
         var rmId = "rm-" + base;
         var projId = "proj-" + base;
@@ -89,7 +89,7 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
 
         var useCaseName = ctx.targetUseCaseName() != null ? ctx.targetUseCaseName() : flow.getTargetUseCaseId();
         var mappingId = "mm-" + base;
@@ -123,7 +123,7 @@ public class FlowExpander {
         // external system consumes. No internal target (read model / use case / saga).
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
 
         return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, null, null, null);
     }
@@ -139,7 +139,7 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
 
         // skeleton saga triggered by the event; steps and compensations are filled in by the author
         var saga = new SagaEntity(
@@ -188,9 +188,9 @@ public class FlowExpander {
     }
 
     private IntegrationEventEntity integrationEvent(String ieId, String eventName, String modelId, String eventId,
-                                                    String topic, String dlq) {
+                                                    String topic, String dlq, String moduleId) {
         return new IntegrationEventEntity(
-                ieId, eventName, null, null,
+                ieId, eventName, moduleId, null,
                 eventId, modelId, topic, null, null,
                 IntegrationEventSerializationFormat.JSON,
                 IntegrationEventCompressionType.NONE,

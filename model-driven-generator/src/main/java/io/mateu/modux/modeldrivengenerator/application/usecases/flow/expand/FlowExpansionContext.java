@@ -16,7 +16,8 @@ public record FlowExpansionContext(
         String targetModuleName,
         Map<String, FieldDataType> fieldTypes,
         String targetUseCaseName,
-        String targetUseCaseInputModelId
+        String targetUseCaseInputModelId,
+        String sourceModuleId
 ) {
     public FieldDataType typeOf(String fieldName) {
         return fieldTypes != null ? fieldTypes.getOrDefault(fieldName, FieldDataType.string) : FieldDataType.string;

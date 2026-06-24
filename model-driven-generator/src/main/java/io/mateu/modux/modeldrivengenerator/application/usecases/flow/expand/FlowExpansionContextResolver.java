@@ -93,7 +93,9 @@ public class FlowExpansionContextResolver {
         var targetUseCaseName = targetUseCase != null ? targetUseCase.name() : flow.getTargetUseCaseId();
         var targetUseCaseInputModelId = targetUseCase != null ? targetUseCase.inputModelId() : null;
 
+        var sourceModuleId = sourceModule != null ? sourceModule.id() : null;
+
         return new FlowExpansionContext(projectName, sourceServiceName, aggregateName, targetModuleName, fieldTypes,
-                targetUseCaseName, targetUseCaseInputModelId);
+                targetUseCaseName, targetUseCaseInputModelId, sourceModuleId);
     }
 }

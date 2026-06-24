@@ -45,7 +45,7 @@ class FlowExpanderTest {
         return new FlowExpansionContext(
                 "hotel", "reservas", "Reserva", "frontoffice",
                 Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string),
-                null, null);
+                null, null, "mod-reservas");
     }
 
     @Test
@@ -108,7 +108,7 @@ class FlowExpanderTest {
         var ctx = new FlowExpansionContext(
                 "hotel", "reservas", "Reserva", "frontoffice",
                 Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string),
-                "CrearEstancia", "model-crearEstancia-input");
+                "CrearEstancia", "model-crearEstancia-input", "mod-reservas");
 
         var x = expander.expand(flow, ctx);
 
@@ -138,7 +138,7 @@ class FlowExpanderTest {
                 "agg-reserva", "ReservaCreada", "external",
                 null, List.of("localizador"), null, List.of());
         var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "external",
-                Map.of("localizador", FieldDataType.string), null, null);
+                Map.of("localizador", FieldDataType.string), null, null, "mod-reservas");
 
         var x = expander.expand(flow, ctx);
 
@@ -158,7 +158,7 @@ class FlowExpanderTest {
                 "agg-reserva", "ReservaCreada", "frontoffice",
                 null, List.of("localizador"), null, List.of());
         var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "frontoffice",
-                Map.of("localizador", FieldDataType.string), null, null);
+                Map.of("localizador", FieldDataType.string), null, null, "mod-reservas");
 
         var x = expander.expand(flow, ctx);
 

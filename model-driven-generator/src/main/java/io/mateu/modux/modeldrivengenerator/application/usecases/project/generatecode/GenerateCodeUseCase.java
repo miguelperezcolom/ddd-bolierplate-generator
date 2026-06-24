@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.generat
 import com.google.googlejavaformat.java.Formatter;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationDto;
+import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -62,8 +63,21 @@ import static io.mateu.core.infra.JsonSerializer.*;
 public class GenerateCodeUseCase {
 
     final CommonFileRepository repository;
+    final FlowStoreMaterializer flowStoreMaterializer;
 
     public void handle(GenerateCodeCommand command) {
+        // Desugar high-level flow intents into structural pieces in the store so the rest of the
+        // generator picks them up like hand-declared ones; rolled back afterwards (flows stay the
+        // single source of truth on disk).
+        flowStoreMaterializer.materialize();
+        try {
+            generate(command);
+        } finally {
+            flowStoreMaterializer.restore();
+        }
+    }
+
+    private void generate(GenerateCodeCommand command) {
 
         var project = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
 
