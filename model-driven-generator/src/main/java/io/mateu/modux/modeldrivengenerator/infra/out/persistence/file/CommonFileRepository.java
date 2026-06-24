@@ -50,6 +50,11 @@ public class CommonFileRepository {
         persist();
     }
 
+    /** Puts an entity into the in-memory store without persisting to disk (transient/derived data). */
+    public void putTransient(Identifiable o) {
+        store.put(storeKey(o.id(), o.getClass()), o);
+    }
+
     public <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> entityClass) {
         var data = (List<T>) store.values().stream().filter(v -> v.getClass().equals(entityClass)).toList();
         return new ListingData<T>(new Page<T>(searchText, pageable.size(), pageable.page(), data.size(),
@@ -67,10 +72,19 @@ public class CommonFileRepository {
         persist();
     }
 
+    private String overrideModelFile;
+
+    /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
+    public void loadFrom(String modelFilePath) {
+        this.overrideModelFile = modelFilePath;
+        init();
+    }
+
     @SneakyThrows
     @PostConstruct
     public void init() {
-        var specFile = System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
+        var specFile = overrideModelFile != null ? overrideModelFile
+                : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
         Path yamlPath = Path.of(specFile);
         Path jsonPath = Path.of(".dev/data/model-driven-store.json");
         var parent = yamlPath.toAbsolutePath().normalize().getParent();

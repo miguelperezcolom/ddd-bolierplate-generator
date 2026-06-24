@@ -97,7 +97,7 @@ public class FlowStoreMaterializer {
 
         additions.forEach((moduleId, add) ->
                 repository.findById(moduleId, ModuleEntity.class).ifPresent(module ->
-                        repository.save(withAppended(module, add))));
+                        repository.putTransient(withAppended(module, add))));
     }
 
     /** Restores the store from disk, discarding the transient flow-derived pieces. */
@@ -116,7 +116,7 @@ public class FlowStoreMaterializer {
             return false;
         }
         seen.add(k);
-        repository.save(entity);
+        repository.putTransient(entity);
         return true;
     }
 
