@@ -1,9 +1,9 @@
 # Dos zonas: código generado (bloqueado) vs. implementación del desarrollador
 
-> Estado: **implementado** (Fases 1-3 + doc). El módulo `{service}-custom`, la protección por
-> manifest y los hooks de **invariantes** (create+update), **operaciones de agregado** y **pasos
-> custom de saga** están en producción y verificados por el e2e. Pendiente menor: pasos "Custom"
-> de use case (mismo patrón). Ver §8.
+> Estado: **implementado y cerrado** (Fases 1-3 + doc). El módulo `{service}-custom`, la protección
+> por manifest y los cuatro hooks de lógica de negocio —**invariantes** (create+update),
+> **operaciones de agregado**, **pasos custom de saga** y **pasos custom de use case**— están en
+> producción y verificados por el e2e. Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md).
 
 ## 1. El problema

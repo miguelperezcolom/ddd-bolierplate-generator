@@ -578,6 +578,19 @@ public class GenerateCodeUseCase {
                 "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "UseCase.java");
 
+        // custom-steps hook: port in the generated module, default implementation in the custom module
+        var hasCustomStep = useCase.steps() != null
+                && useCase.steps().stream().anyMatch(s -> s.type() == UseCaseStepType.Custom);
+        if (hasCustomStep) {
+            createFile(moduleDir, model, "usecase-steps.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+                            + "/" + capitalize(useCase.name()) + "Steps.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, model, "usecase-steps-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + capitalize(useCase.name()) + "Steps.java");
+        }
+
         if (useCase.exposedAsRest()) {
             createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/rest");
             createFile(moduleDir, model, "usecase-rest-controller.ftl",

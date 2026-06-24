@@ -124,6 +124,11 @@ class GenerationE2ETest {
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n  invariants:\n"
                         + "  - id: \"inv-reserva-e2e\"\n    name: \"ReservaValidaE2E\"\n    conditions: []\n");
+        // give the CrearEstancia use case a custom step so the use-case steps hook is exercised
+        hotelStore = hotelStore.replace(
+                "  steps:\n  - id: \"step-crear-callGateway\"\n",
+                "  steps:\n  - id: \"step-crear-custom-e2e\"\n    name: \"validarReservaE2E\"\n    type: \"Custom\"\n"
+                        + "  - id: \"step-crear-callGateway\"\n");
         var fixture = Files.createTempFile("modux-e2e-store", ".yaml");
         Files.writeString(fixture, hotelStore + FIXTURE_EXTRA);
         repository.loadFrom(fixture.toAbsolutePath().toString());
@@ -164,6 +169,10 @@ class GenerationE2ETest {
                 "custom operation default implementation was not scaffolded in the custom module");
         assertTrue(anyFileMatches(output, "DefaultProcesoCheckinE2ESagaSteps.java"),
                 "saga custom-steps default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "CrearEstanciaSteps.java"),
+                "use-case custom-steps interface was not generated in the module");
+        assertTrue(anyFileMatches(output, "DefaultCrearEstanciaSteps.java"),
+                "use-case custom-steps default implementation was not scaffolded in the custom module");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

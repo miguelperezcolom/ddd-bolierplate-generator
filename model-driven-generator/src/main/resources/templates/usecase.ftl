@@ -86,6 +86,9 @@ public class ${usecase.name?cap_first}UseCase {
 <#if usecase.needsStreamBridge>
     final StreamBridge streamBridge;
 </#if>
+<#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
+    final ${usecase.name?cap_first}Steps steps;
+</#if>
 
 <#if usecase.allowedRoles?has_content>
     @PreAuthorize("hasAnyRole(${usecase.allowedRoles?map(r -> "'" + r + "'")?join(", ")})")
@@ -130,6 +133,8 @@ public class ${usecase.name?cap_first}UseCase {
 <#else>
         // TODO: apply model mapping (not resolved)
 </#if>
+<#elseif step.type == "Custom">
+        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
 <#else>
         // TODO: implement step "${step.name}" (${step.type})
 </#if>
