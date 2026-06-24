@@ -49,6 +49,19 @@ mvn generate-sources
 
 See the [Maven Plugin Reference](/reference/maven-plugin/) for all configuration parameters.
 
+## From the command line (headless)
+
+The generator can also run headlessly — useful for scripts and CI. Pass the project id (and
+optionally an output directory) and it generates and exits:
+
+```bash
+mvn spring-boot:run \
+  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.output=<dir>"
+```
+
+Without `--modux.generate`, the application starts normally in UI server mode. When
+`--modux.output` is omitted, the project's configured output path is used.
+
 ## What happens during generation
 
 For each aggregate, Modux:
@@ -100,6 +113,23 @@ For each aggregate, Modux:
             └── resources/features/{module}/
                 └── {Aggregate}.feature               # Gherkin scenarios
 ```
+
+## DevOps & operability artifacts
+
+Beyond application code, Modux emits the operability scaffolding a service needs to run — derived
+from the project's and services' configuration:
+
+| Artifact | Location | Driven by |
+|---|---|---|
+| **Dockerfile** | `{service}/Dockerfile` | multi-stage build; `service.javaVersion`, `service.port` |
+| **docker-compose** | `docker-compose.yml` | one entry per service + Postgres + Kafka |
+| **Kubernetes manifests** | `{service}/k8s/{service}.yaml` | Deployment + Service + optional HPA; replicas, CPU/memory requests & limits, probes, HPA thresholds |
+| **CI workflow** | `.github/workflows/ci.yml` | builds and tests every service |
+| **Terraform skeleton** | `terraform/main.tf` | `project.terraformProvider`, `terraformBackendType` |
+| **Code coverage** | inherited in every module pom | JaCoCo (prepare-agent + report) |
+
+These follow the same conventions as the rest of the model: configure the fields on your project
+and services, and the artifacts reflect them on the next generation.
 
 ## Overwrite behaviour
 
