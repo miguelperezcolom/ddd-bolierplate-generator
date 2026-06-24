@@ -44,7 +44,8 @@ class FlowExpanderTest {
     private FlowExpansionContext hotelContext() {
         return new FlowExpansionContext(
                 "hotel", "reservas", "Reserva", "frontoffice",
-                Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string));
+                Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string),
+                null, null);
     }
 
     @Test
@@ -92,6 +93,41 @@ class FlowExpanderTest {
         var action = x.subscription().actions().get(0);
         assertEquals(SubscriptionActionType.UpdateProjection, action.type());
         assertEquals(x.projection().id(), action.projectionId());
+    }
+
+    @Test
+    void triggers_derives_event_integration_mapping_and_callusecase_subscription() {
+        var flow = Flow.of(
+                new FlowId("reservaCreaEstancia"),
+                new FlowName("ReservaCreaEstancia"),
+                null,
+                FlowArchetype.TRIGGERS,
+                "agg-reserva", "ReservaCreada", "frontoffice",
+                null, List.of("localizador", "titular"),
+                "uc-crearEstancia", List.of());
+        var ctx = new FlowExpansionContext(
+                "hotel", "reservas", "Reserva", "frontoffice",
+                Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string),
+                "CrearEstancia", "model-crearEstancia-input");
+
+        var x = expander.expand(flow, ctx);
+
+        // event + integration event still produced; no read model / projection
+        assertEquals("hotel.reservas.reserva-creada", x.integrationEvent().topicName());
+        assertTrue(x.domainEvent().publishAsIntegrationEvent());
+        assertEquals(null, x.readModel());
+        assertEquals(null, x.projection());
+
+        // model mapping payload → use case input
+        assertNotNull(x.modelMapping());
+        assertEquals(x.payloadModel().id(), x.modelMapping().sourceModelId());
+        assertEquals("model-crearEstancia-input", x.modelMapping().targetModelId());
+
+        // subscription calls the use case with that mapping
+        var action = x.subscription().actions().get(0);
+        assertEquals(SubscriptionActionType.CallUseCase, action.type());
+        assertEquals("uc-crearEstancia", action.useCaseId());
+        assertEquals(x.modelMapping().id(), action.modelMappingId());
     }
 
     @Test

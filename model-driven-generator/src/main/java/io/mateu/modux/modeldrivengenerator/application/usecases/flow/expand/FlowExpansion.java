@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
@@ -17,6 +18,7 @@ public record FlowExpansion(
         IntegrationEventEntity integrationEvent,
         ReadModelEntity readModel,
         ProjectionEntity projection,
-        SubscriptionEntity subscription
+        SubscriptionEntity subscription,
+        ModelMappingEntity modelMapping
 ) {
 }

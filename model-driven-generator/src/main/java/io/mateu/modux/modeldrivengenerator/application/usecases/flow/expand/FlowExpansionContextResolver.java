@@ -8,6 +8,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelField
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.uidl.data.FieldDataType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,8 @@ public class FlowExpansionContextResolver {
                 repository.findAllOfType(ModuleEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
                 repository.findAllOfType(ProjectEntity.class),
-                repository.findAllOfType(ModelEntity.class));
+                repository.findAllOfType(ModelEntity.class),
+                repository.findAllOfType(UseCaseEntity.class));
     }
 
     /** Pure resolution over the given model slices — unit-testable without Spring or files. */
@@ -43,7 +45,8 @@ public class FlowExpansionContextResolver {
                                         List<ModuleEntity> modules,
                                         List<ServiceEntity> services,
                                         List<ProjectEntity> projects,
-                                        List<ModelEntity> models) {
+                                        List<ModelEntity> models,
+                                        List<UseCaseEntity> useCases) {
         var aggregateId = flow.getTriggerAggregateId();
 
         var aggregate = aggregates.stream().filter(a -> a.id().equals(aggregateId)).findFirst().orElse(null);
@@ -84,6 +87,13 @@ public class FlowExpansionContextResolver {
                     });
         }
 
-        return new FlowExpansionContext(projectName, sourceServiceName, aggregateName, targetModuleName, fieldTypes);
+        var targetUseCase = flow.getTargetUseCaseId() == null ? null : useCases.stream()
+                .filter(u -> u.id().equals(flow.getTargetUseCaseId()))
+                .findFirst().orElse(null);
+        var targetUseCaseName = targetUseCase != null ? targetUseCase.name() : flow.getTargetUseCaseId();
+        var targetUseCaseInputModelId = targetUseCase != null ? targetUseCase.inputModelId() : null;
+
+        return new FlowExpansionContext(projectName, sourceServiceName, aggregateName, targetModuleName, fieldTypes,
+                targetUseCaseName, targetUseCaseInputModelId);
     }
 }

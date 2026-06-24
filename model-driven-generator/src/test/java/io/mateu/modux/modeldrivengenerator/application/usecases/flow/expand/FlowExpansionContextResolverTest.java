@@ -37,7 +37,8 @@ class FlowExpansionContextResolverTest {
                 List.of(model("model-reserva",
                         field("localizador", FieldDataType.string),
                         field("titular", FieldDataType.string),
-                        field("importe", FieldDataType.money))));
+                        field("importe", FieldDataType.money))),
+                List.of());
 
         assertEquals("hotel", ctx.projectName());
         assertEquals("reservas", ctx.sourceServiceName());
@@ -57,7 +58,7 @@ class FlowExpansionContextResolverTest {
                 "X", List.of("a"), null, List.of());
 
         var ctx = FlowExpansionContextResolver.resolve(flow,
-                List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
 
         assertEquals("app", ctx.projectName());
         assertEquals("missing-agg", ctx.aggregateName());

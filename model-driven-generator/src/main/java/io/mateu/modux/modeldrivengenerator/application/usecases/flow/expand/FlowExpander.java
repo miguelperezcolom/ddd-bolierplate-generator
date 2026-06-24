@@ -12,6 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEven
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEventHandlerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
@@ -32,60 +33,28 @@ import java.util.List;
 public class FlowExpander {
 
     public FlowExpansion expand(Flow flow, FlowExpansionContext ctx) {
-        if (flow.getArchetype() == FlowArchetype.MATERIALIZES) {
-            return expandMaterializes(flow, ctx);
-        }
-        throw new UnsupportedOperationException(
-                "Flow expansion not implemented yet for archetype " + flow.getArchetype());
+        return switch (flow.getArchetype()) {
+            case MATERIALIZES -> expandMaterializes(flow, ctx);
+            case TRIGGERS -> expandTriggers(flow, ctx);
+            default -> throw new UnsupportedOperationException(
+                    "Flow expansion not implemented yet for archetype " + flow.getArchetype());
+        };
     }
 
     private FlowExpansion expandMaterializes(Flow flow, FlowExpansionContext ctx) {
         var base = flow.getId().id();
         var eventName = flow.getTriggerEvent();
-        var topic = kebab(ctx.projectName()) + "." + kebab(ctx.sourceServiceName()) + "." + kebab(eventName);
+        var topic = topicOf(flow, ctx);
         var dlq = topic + ".dlq";
-
-        var eventId = "evt-" + base;
         var modelId = "model-" + base;
-        var ieId = "ie-" + base;
+        var eventId = "evt-" + base;
+
+        var payloadModel = payloadModel(flow, ctx, modelId, eventName);
+        var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+
         var rmId = "rm-" + base;
         var projId = "proj-" + base;
-        var subId = "sub-" + base;
-
-        var payloadModel = new ModelEntity(
-                modelId,
-                eventName + "Payload",
-                (flow.getMaterializedFields() == null ? List.<String>of() : flow.getMaterializedFields()).stream()
-                        .map(fieldName -> new ModelFieldEntity(
-                                modelId + "-" + fieldName,
-                                fieldName,
-                                true,
-                                ctx.typeOf(fieldName),
-                                null,
-                                false,
-                                null,
-                                List.of()))
-                        .toList(),
-                List.of());
-
-        var domainEvent = new DomainEventEntity(
-                eventId, eventName, modelId,
-                true, modelId, topic,
-                null, null,
-                IntegrationEventSerializationFormat.JSON.name(),
-                IntegrationEventCompressionType.NONE.name(),
-                true, dlq, 5,
-                "v1", null, true);
-
-        var integrationEvent = new IntegrationEventEntity(
-                ieId, eventName, null, null,
-                eventId, modelId, topic,
-                null, null,
-                IntegrationEventSerializationFormat.JSON,
-                IntegrationEventCompressionType.NONE,
-                true, dlq, 5,
-                "v1", null, true);
-
         var readModel = new ReadModelEntity(
                 rmId, flow.getReadModelName(), flow.getTargetModuleId(), null,
                 modelId, ReadModelStorageType.Relational, ReadModelConsistency.Eventual);
@@ -97,7 +66,7 @@ public class FlowExpander {
                 "FROM_SCRATCH", "RETRY", 3, false, null);
 
         var subscription = new SubscriptionEntity(
-                subId, ctx.targetModuleName() + eventName,
+                "sub-" + base, ctx.targetModuleName() + eventName,
                 eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
                 3, dlq,
                 List.of(new SubscriptionActionEntity(
@@ -106,7 +75,84 @@ public class FlowExpander {
                 null, null, null, null, null, null,
                 true, "id");
 
-        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, readModel, projection, subscription);
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, readModel, projection, subscription, null);
+    }
+
+    private FlowExpansion expandTriggers(Flow flow, FlowExpansionContext ctx) {
+        var base = flow.getId().id();
+        var eventName = flow.getTriggerEvent();
+        var topic = topicOf(flow, ctx);
+        var dlq = topic + ".dlq";
+        var modelId = "model-" + base;
+        var eventId = "evt-" + base;
+
+        var payloadModel = payloadModel(flow, ctx, modelId, eventName);
+        var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq);
+
+        var useCaseName = ctx.targetUseCaseName() != null ? ctx.targetUseCaseName() : flow.getTargetUseCaseId();
+        var mappingId = "mm-" + base;
+        // identity mapping (payload field → use case input field by same name); renames are an override
+        var modelMapping = new ModelMappingEntity(
+                mappingId, eventName + "To" + capitalize(useCaseName),
+                modelId, ctx.targetUseCaseInputModelId(), true, List.of());
+
+        var subscription = new SubscriptionEntity(
+                "sub-" + base, ctx.targetModuleName() + eventName,
+                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
+                3, dlq,
+                List.of(new SubscriptionActionEntity(
+                        "act-" + base, lowerFirst(useCaseName), SubscriptionActionType.CallUseCase,
+                        flow.getTargetUseCaseId(), null, null, mappingId)),
+                null, null, null, null, null, null,
+                true, "id");
+
+        return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, modelMapping);
+    }
+
+    // --- shared building blocks ---
+
+    private String topicOf(Flow flow, FlowExpansionContext ctx) {
+        return kebab(ctx.projectName()) + "." + kebab(ctx.sourceServiceName()) + "." + kebab(flow.getTriggerEvent());
+    }
+
+    private ModelEntity payloadModel(Flow flow, FlowExpansionContext ctx, String modelId, String eventName) {
+        return new ModelEntity(
+                modelId,
+                eventName + "Payload",
+                (flow.getMaterializedFields() == null ? List.<String>of() : flow.getMaterializedFields()).stream()
+                        .map(fieldName -> new ModelFieldEntity(
+                                modelId + "-" + fieldName, fieldName, true, ctx.typeOf(fieldName),
+                                null, false, null, List.of()))
+                        .toList(),
+                List.of());
+    }
+
+    private DomainEventEntity domainEvent(String eventId, String eventName, String modelId, String topic, String dlq) {
+        return new DomainEventEntity(
+                eventId, eventName, modelId,
+                true, modelId, topic, null, null,
+                IntegrationEventSerializationFormat.JSON.name(),
+                IntegrationEventCompressionType.NONE.name(),
+                true, dlq, 5, "v1", null, true);
+    }
+
+    private IntegrationEventEntity integrationEvent(String ieId, String eventName, String modelId, String eventId,
+                                                    String topic, String dlq) {
+        return new IntegrationEventEntity(
+                ieId, eventName, null, null,
+                eventId, modelId, topic, null, null,
+                IntegrationEventSerializationFormat.JSON,
+                IntegrationEventCompressionType.NONE,
+                true, dlq, 5, "v1", null, true);
+    }
+
+    private static String capitalize(String s) {
+        return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private static String lowerFirst(String s) {
+        return s == null || s.isEmpty() ? s : Character.toLowerCase(s.charAt(0)) + s.substring(1);
     }
 
     /** PascalCase/camelCase → kebab-case (e.g. "ReservaCreada" → "reserva-creada"). */
