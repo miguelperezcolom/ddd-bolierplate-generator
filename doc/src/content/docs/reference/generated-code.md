@@ -127,6 +127,31 @@ Generated when a mapping is referenced by a use-case or saga `ApplyModelMapping`
 
 ---
 
+## Per service — schema migrations
+
+Generated when `dbMigrationTool` is `Flyway` (the default). See [System Evolution](/manual/system-evolution/).
+
+| File | Description |
+|---|---|
+| `{service}-app/src/main/resources/db/migration/V1__baseline.sql` | Flyway baseline: all persisted tables, sequences and columns derived from the entities (write-once) |
+
+The app runs Flyway and validates entities against the migrated schema (`ddl-auto: validate`).
+
+---
+
+## Per evolved event
+
+Generated when an event's `schemaVersion` is greater than 1.
+
+| File | Description |
+|---|---|
+| `{Event}Upcaster.java` / `{IntegrationEvent}Upcaster.java` | Upcaster hook interface (generated zone) |
+| `custom/Default{Event}Upcaster.java` | Write-once upcaster implementation in the custom module |
+
+Every domain/integration event also carries a `schemaVersion` component and a `CURRENT_SCHEMA_VERSION` constant.
+
+---
+
 ## Per business rule
 
 Generated when a business rule's fact model matches an aggregate owned by the module.
