@@ -128,6 +128,15 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
                     vm.circuitBreakerEnabled = o.circuitBreakerEnabled();
                     vm.circuitBreakerFailureRateThreshold = o.circuitBreakerFailureRateThreshold();
                     vm.circuitBreakerSlidingWindowSize = o.circuitBreakerSlidingWindowSize();
+                    vm.parameters = o.parameters() == null ? new ArrayList<>() :
+                            o.parameters().stream().map(p -> {
+                                var pvm = new GatewayParameterViewModel();
+                                pvm.name = p.name();
+                                pvm.location = p.location();
+                                pvm.type = p.type();
+                                pvm.required = p.required();
+                                return pvm;
+                            }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
                     return vm;
                 }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
@@ -138,7 +147,12 @@ public class GatewayViewModel implements Identifiable, CrudEditorForm<String>, C
         return ops.stream()
                 .map(o -> new GatewayOperationData(o.id, o.name, o.httpMethod, o.path, o.inputModelId, o.outputModelId,
                         o.timeoutMs, o.retryMaxAttempts, o.retryWaitDurationMs,
-                        o.circuitBreakerEnabled, o.circuitBreakerFailureRateThreshold, o.circuitBreakerSlidingWindowSize))
+                        o.circuitBreakerEnabled, o.circuitBreakerFailureRateThreshold, o.circuitBreakerSlidingWindowSize,
+                        o.parameters == null ? java.util.List.of() :
+                                o.parameters.stream()
+                                        .map(p -> new io.mateu.modux.modeldrivengenerator.application.usecases.gateway.GatewayParameterData(
+                                                p.name, p.location, p.type, p.required))
+                                        .toList()))
                 .toList();
     }
 

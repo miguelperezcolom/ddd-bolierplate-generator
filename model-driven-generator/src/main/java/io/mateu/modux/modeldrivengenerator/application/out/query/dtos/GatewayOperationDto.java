@@ -1,5 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.out.query.dtos;
 
+import java.util.List;
+
 public record GatewayOperationDto(
         String id,
         String name,
@@ -12,6 +14,7 @@ public record GatewayOperationDto(
         Integer retryWaitDurationMs,
         boolean circuitBreakerEnabled,
         Integer circuitBreakerFailureRateThreshold,
-        Integer circuitBreakerSlidingWindowSize
+        Integer circuitBreakerSlidingWindowSize,
+        List<GatewayParameterDto> parameters
 ) {
 }

@@ -49,6 +49,11 @@ paths:
           required: false
           schema:
             type: string
+        - name: session
+          in: cookie
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           content:

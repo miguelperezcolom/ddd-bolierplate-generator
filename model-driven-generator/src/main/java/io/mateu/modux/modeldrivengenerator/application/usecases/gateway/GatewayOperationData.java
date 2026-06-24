@@ -1,5 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.gateway;
 
+import java.util.List;
+
 public record GatewayOperationData(
         String id,
         String name,
@@ -12,6 +14,7 @@ public record GatewayOperationData(
         Integer retryWaitDurationMs,
         boolean circuitBreakerEnabled,
         Integer circuitBreakerFailureRateThreshold,
-        Integer circuitBreakerSlidingWindowSize
+        Integer circuitBreakerSlidingWindowSize,
+        List<GatewayParameterData> parameters
 ) {
 }

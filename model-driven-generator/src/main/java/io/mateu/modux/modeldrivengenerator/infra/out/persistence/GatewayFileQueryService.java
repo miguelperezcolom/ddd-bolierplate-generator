@@ -52,7 +52,12 @@ public class GatewayFileQueryService implements GatewayQueryService {
                                 entity.operations().stream()
                                         .map(o -> new GatewayOperationDto(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
-                                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
+                                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
+                                                o.parameters() == null ? List.of() :
+                                                        o.parameters().stream()
+                                                                .map(p -> new io.mateu.modux.modeldrivengenerator.application.out.query.dtos.GatewayParameterDto(
+                                                                        p.name(), p.location(), p.type(), p.required()))
+                                                                .toList()))
                                         .toList(),
                         entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize(),
                         entity.corsEnabled(), entity.corsAllowedOrigins(),

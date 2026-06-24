@@ -8,6 +8,9 @@ import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
 import jakarta.validation.constraints.NotEmpty;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class GatewayOperationViewModel {
 
     @GeneratedValue(UUIDValueGenerator.class)
@@ -32,5 +35,7 @@ public class GatewayOperationViewModel {
     boolean circuitBreakerEnabled;
     Integer circuitBreakerFailureRateThreshold;
     Integer circuitBreakerSlidingWindowSize;
+
+    List<GatewayParameterViewModel> parameters = new ArrayList<>();
 
 }

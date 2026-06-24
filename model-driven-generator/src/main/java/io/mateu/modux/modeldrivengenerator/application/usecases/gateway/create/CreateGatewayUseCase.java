@@ -22,7 +22,12 @@ public class CreateGatewayUseCase {
                 command.operations().stream()
                         .map(o -> new GatewayOperation(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
-                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
+                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
+                                o.parameters() == null ? java.util.List.of() :
+                                        o.parameters().stream()
+                                                .map(p -> new io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayParameter(
+                                                        p.name(), p.location(), p.type(), p.required()))
+                                                .toList()))
                         .toList();
         var gateway = Gateway.of(
                 new GatewayId(command.id()),

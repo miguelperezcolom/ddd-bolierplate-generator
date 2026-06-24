@@ -68,6 +68,11 @@ class OpenApiGatewayMapperTest {
                       required: false
                       schema:
                         type: string
+                    - name: session
+                      in: cookie
+                      required: false
+                      schema:
+                        type: string
                   responses:
                     '200':
                       content:
@@ -139,9 +144,9 @@ class OpenApiGatewayMapperTest {
     }
 
     @Test
-    void captures_path_query_and_header_parameters() {
+    void captures_path_query_header_and_cookie_parameters() {
         var getPet = op(map().operations(), "getPet");
-        assertEquals(3, getPet.parameters().size());
+        assertEquals(4, getPet.parameters().size());
         var petId = getPet.parameters().stream().filter(p -> p.name().equals("petId")).findFirst().orElseThrow();
         assertEquals("path", petId.location());
         assertEquals("integer", petId.type());
@@ -150,6 +155,8 @@ class OpenApiGatewayMapperTest {
         assertEquals("query", expand.location());
         var trace = getPet.parameters().stream().filter(p -> p.name().equals("X-Trace-Id")).findFirst().orElseThrow();
         assertEquals("header", trace.location());
+        var session = getPet.parameters().stream().filter(p -> p.name().equals("session")).findFirst().orElseThrow();
+        assertEquals("cookie", session.location());
     }
 
     @Test

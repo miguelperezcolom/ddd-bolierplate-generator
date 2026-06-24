@@ -33,7 +33,12 @@ public class GatewayFileRepository implements GatewayRepository {
                                 entity.operations().stream()
                                         .map(o -> new GatewayOperation(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
-                                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
+                                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
+                                                o.parameters() == null ? List.of() :
+                                                        o.parameters().stream()
+                                                                .map(p -> new io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayParameter(
+                                                                        p.name(), p.location(), p.type(), p.required()))
+                                                                .toList()))
                                         .toList(),
                         entity.rateLimitEnabled(), entity.rateLimitRequestsPerSecond(), entity.rateLimitBurstSize(),
                         entity.corsEnabled(), entity.corsAllowedOrigins(),
@@ -42,19 +47,15 @@ public class GatewayFileRepository implements GatewayRepository {
 
     @Override
     public Gateway save(Gateway entity) {
-        // the domain model does not carry OpenAPI parameters; preserve any already stored, by op id,
-        // so editing a gateway in the UI does not drop them
-        var existingParameters = repository.findById(entity.getId().id(), GatewayEntity.class)
-                .map(g -> g.operations() == null ? java.util.Map.<String, List<GatewayParameterEntity>>of()
-                        : g.operations().stream().collect(java.util.stream.Collectors.toMap(
-                                GatewayOperationEntity::id, GatewayOperationEntity::parameters, (a, b) -> a)))
-                .orElse(java.util.Map.of());
         var operationEntities = entity.getOperations() == null ? List.<GatewayOperationEntity>of() :
                 entity.getOperations().stream()
                         .map(o -> new GatewayOperationEntity(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
-                                existingParameters.getOrDefault(o.id(), List.of())))
+                                o.parameters() == null ? List.of() :
+                                        o.parameters().stream()
+                                                .map(p -> new GatewayParameterEntity(p.name(), p.location(), p.type(), p.required()))
+                                                .toList()))
                         .toList();
         repository.save(new GatewayEntity(
                 entity.getId().id(),

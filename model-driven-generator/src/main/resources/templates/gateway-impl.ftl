@@ -66,13 +66,15 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 <#list op.parameters as p>
 <#if p.location == "header">
         requestHeaders.set("${p.name}", String.valueOf(${p.argName}));
+<#elseif p.location == "cookie">
+        requestHeaders.add("Cookie", "${p.name}=" + String.valueOf(${p.argName}));
 </#if>
 </#list>
 </#if>
         var uriVariables = new java.util.HashMap<String, Object>();
 <#if op.parameters?has_content>
 <#list op.parameters as p>
-<#if p.location != "header">
+<#if p.location != "header" && p.location != "cookie">
         uriVariables.put("${p.name}", ${p.argName});
 </#if>
 </#list>

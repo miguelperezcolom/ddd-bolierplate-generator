@@ -1,5 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo;
 
+import java.util.List;
+
 public record GatewayOperation(
         String id,
         String name,
@@ -12,6 +14,12 @@ public record GatewayOperation(
         Integer retryWaitDurationMs,
         boolean circuitBreakerEnabled,
         Integer circuitBreakerFailureRateThreshold,
-        Integer circuitBreakerSlidingWindowSize
+        Integer circuitBreakerSlidingWindowSize,
+        List<GatewayParameter> parameters
 ) {
+    public GatewayOperation {
+        if (parameters == null) {
+            parameters = List.of();
+        }
+    }
 }
