@@ -374,6 +374,19 @@ public class GenerateCodeUseCase {
                 "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "UseCase.java");
 
+        // invariants hook: port + context generated here, default implementation scaffolded once in the custom module
+        if (aggregate.invariants() != null && !aggregate.invariants().isEmpty()) {
+            var aggDir = "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregate.name().toLowerCase();
+            createFile(moduleDir, project, service, module, aggregate, "aggregate-invariants.ftl",
+                    aggDir + "/" + aggregate.name() + "Invariants.java");
+            createFile(moduleDir, project, service, module, aggregate, "aggregate-context.ftl",
+                    aggDir + "/" + aggregate.name() + "Context.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, project, service, module, aggregate, "aggregate-invariants-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + aggregate.name() + "Invariants.java");
+        }
+
         createDir(moduleDir,
                 "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/update");
 
@@ -1534,12 +1547,23 @@ public class GenerateCodeUseCase {
     @SneakyThrows
     private void createFile(String baseDir, ProjectEntity project, ServiceEntity service, ModuleEntity module,
                             AggregateEntity aggregate, String template, String destFile) {
+        createFile(baseDir, aggregateModel(project, service, module, aggregate), template, destFile);
+    }
+
+    /** Custom (write-once) variant of the aggregate-model file generation. */
+    private void createCustomFile(String baseDir, ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                  AggregateEntity aggregate, String template, String destFile) {
+        createCustomFile(baseDir, aggregateModel(project, service, module, aggregate), template, destFile);
+    }
+
+    private Map<String, Object> aggregateModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                               AggregateEntity aggregate) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
         model.put("module", moduleToMap(module));
         model.put("aggregate", aggregateToMap(aggregate));
-        createFile(baseDir, model, template, destFile);
+        return model;
     }
 
     // ─── Model mappers ────────────────────────────────────────────────────────

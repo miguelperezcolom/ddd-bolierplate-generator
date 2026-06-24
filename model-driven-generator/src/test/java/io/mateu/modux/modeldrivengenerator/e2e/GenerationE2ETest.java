@@ -119,6 +119,11 @@ class GenerationE2ETest {
     void generates_packages_validates_and_boots_the_project() throws Exception {
         // 1. build a fixture store = hotel + flows + a FORM page, and load it
         var hotelStore = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        // give the Reserva aggregate an invariant so the invariants hook (port + custom default impl) is exercised
+        hotelStore = hotelStore.replace(
+                "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
+                "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n  invariants:\n"
+                        + "  - id: \"inv-reserva-e2e\"\n    name: \"ReservaValidaE2E\"\n    conditions: []\n");
         var fixture = Files.createTempFile("modux-e2e-store", ".yaml");
         Files.writeString(fixture, hotelStore + FIXTURE_EXTRA);
         repository.loadFrom(fixture.toAbsolutePath().toString());
@@ -150,6 +155,11 @@ class GenerationE2ETest {
                 "notifies flow did not produce its domain event");
         assertTrue(anyFileMatches(output, "SwaggerPetstoreGatewayImpl.java"),
                 "imported OpenAPI gateway was not generated");
+        // two-zone: invariant hook port is generated, its default implementation lives in the custom module
+        assertTrue(anyFileMatches(output, "ReservaInvariants.java"),
+                "invariant hook port was not generated");
+        assertTrue(anyFileMatches(output, "DefaultReservaInvariants.java"),
+                "invariant hook default implementation was not scaffolded in the custom module");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");
