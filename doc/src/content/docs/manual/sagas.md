@@ -88,7 +88,10 @@ If payment fails, the saga automatically releases the inventory reservation and 
 
 For a `BookingConfirmationSaga`:
 
-- `BookingConfirmationSaga.java` — saga orchestrator/state machine
+- `BookingConfirmationSaga.java` — an orchestration **scaffold**: it injects the saga's collaborators
+  (gateways, repositories, the `Custom`-step hook) and lists each step. The **runnable** orchestration is
+  the EventConductor workflow below; wire steps in `execute()` in-process only if you are not delegating
+  to EventConductor. (A `Custom` step calls its `{Saga}Steps` hook directly.)
 - State machine transitions and compensation handlers
 - Kafka message handlers for each step
 - Retry and dead-letter configuration

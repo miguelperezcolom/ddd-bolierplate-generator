@@ -70,35 +70,16 @@ public class ${saga.name?cap_first}Saga {
 </#if>
 
     @Transactional
-    public void execute(/* TODO: define saga trigger payload */) {
+    public void execute(/* TODO: define the saga trigger payload */) {
+        // Orchestration scaffold. The runnable orchestration is the generated EventConductor workflow
+        // (resources/workflows/${saga.name?cap_first}.workflow.json). The injected collaborators below are
+        // available if you instead drive the saga in-process; wire each step then.
 <#if saga.steps?has_content>
 <#list saga.steps as step>
-<#if step.type == "ReadAggregate" && step.aggregate??>
-        var ${step.aggregate.name?uncap_first} = ${step.aggregate.name?uncap_first}Repository
-                .findById(new ${step.aggregate.name}Id(/* TODO: id */))
-                .orElseThrow();
-<#elseif step.type == "CallAggregateOperation" && step.aggregate??>
-<#if step.operation??>
-        ${step.aggregate.name?uncap_first}.${step.operation.name?uncap_first}(/* TODO: args */);
-<#else>
-        // TODO: call operation on ${step.aggregate.name?uncap_first}
-</#if>
-<#elseif step.type == "SaveAggregate" && step.aggregate??>
-        ${step.aggregate.name?uncap_first}Repository.save(${step.aggregate.name?uncap_first});
-<#elseif step.type == "CallGateway" && step.gateway??>
-<#if step.gatewayOperation??>
-        ${step.gateway.name?uncap_first}Gateway.${step.gatewayOperation.name?uncap_first}(/* TODO: args */);
-<#else>
-        // TODO: call gateway ${step.gateway.name?uncap_first}Gateway
-</#if>
-<#elseif step.type == "PublishDomainEvent" && step.domainEvent??>
-        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.name?cap_first}Event(/* TODO: fill event */));
-<#elseif step.type == "CallUseCase" && step.useCase??>
-        ${step.useCase.name?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.name?cap_first}Command */);
-<#elseif step.type == "Custom">
+<#if step.type == "Custom">
         steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
 <#else>
-        // TODO: step "${step.name}" (${step.type})
+        // step ${step?index + 1}: ${step.name} (${step.type})<#if step.gateway??> — ${step.gateway.name?uncap_first}Gateway.${(step.gatewayOperation.name)!'?'}(…)</#if><#if step.aggregate??> — ${step.aggregate.name} ${(step.operation.name)!'operation'}(…)</#if><#if step.useCase??> — ${step.useCase.name?uncap_first}UseCase.handle(…)</#if><#if step.domainEvent??> — publish ${step.domainEvent.name}Event</#if>
 </#if>
 </#list>
 <#else>

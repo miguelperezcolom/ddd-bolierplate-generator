@@ -1,0 +1,2519 @@
+{
+  "$schema" : "https://json-schema.org/draft/2020-12/schema",
+  "$defs" : {
+    "AclEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "direction" : {
+          "type" : "string"
+        },
+        "externalSystem" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "translatedDomainEventIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "translatedUseCaseIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "AggregateEntity" : {
+      "type" : "object",
+      "properties" : {
+        "eventSourcingEnabled" : {
+          "type" : "boolean"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "idType" : {
+          "$ref" : "#/$defs/AggregateIdType"
+        },
+        "invariants" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InvariantEntity"
+          }
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationEntity"
+          }
+        },
+        "optimisticLockingEnabled" : {
+          "type" : "boolean"
+        },
+        "persistenceType" : {
+          "$ref" : "#/$defs/AggregatePersistenceType"
+        },
+        "snapshotFrequency" : {
+          "type" : "integer"
+        },
+        "tableName" : {
+          "type" : "string"
+        },
+        "tableSchema" : {
+          "type" : "string"
+        },
+        "valueObjectIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "AggregateIdType" : {
+      "type" : "string",
+      "enum" : [ "UUID", "LONG", "STRING", "LOCATOR" ]
+    },
+    "AggregatePersistenceType" : {
+      "type" : "string",
+      "enum" : [ "JPA", "MONGODB", "EVENT_SOURCED", "IN_MEMORY" ]
+    },
+    "BddScenarioEntity" : {
+      "type" : "object",
+      "properties" : {
+        "feature" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "steps" : {
+          "type" : "string"
+        },
+        "tags" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "BffEntity" : {
+      "type" : "object",
+      "properties" : {
+        "authRequired" : {
+          "type" : "boolean"
+        },
+        "basePath" : {
+          "type" : "string"
+        },
+        "clientType" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "exposedUseCaseIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "BusinessRuleActionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "domainEventId" : {
+          "type" : "string"
+        },
+        "expression" : {
+          "type" : "string"
+        },
+        "fieldId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "type" : {
+          "type" : "string"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "BusinessRuleConditionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expression" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "BusinessRuleEntity" : {
+      "type" : "object",
+      "properties" : {
+        "actions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/BusinessRuleActionEntity"
+          }
+        },
+        "conditions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/BusinessRuleConditionEntity"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "enabled" : {
+          "type" : "boolean"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "priority" : {
+          "type" : "integer"
+        },
+        "ruleGroup" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "CacheProvider" : {
+      "type" : "string",
+      "enum" : [ "Redis", "Hazelcast", "Caffeine", "Custom" ]
+    },
+    "ComponentEntity" : {
+      "type" : "object",
+      "properties" : {
+        "dataSourceType" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "presentationType" : {
+          "type" : "string"
+        },
+        "queryServiceId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ContextMapRelationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "sourceModuleId" : {
+          "type" : "string"
+        },
+        "targetModuleId" : {
+          "type" : "string"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "DbMigrationTool" : {
+      "type" : "string",
+      "enum" : [ "Flyway", "Liquibase", "None" ]
+    },
+    "DomainEventEntity" : {
+      "type" : "object",
+      "properties" : {
+        "compressionType" : {
+          "type" : "string"
+        },
+        "deadLetterQueueEnabled" : {
+          "type" : "boolean"
+        },
+        "deadLetterQueueName" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "integrationModelId" : {
+          "type" : "string"
+        },
+        "maxDeliveryAttempts" : {
+          "type" : "integer"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "partitions" : {
+          "type" : "integer"
+        },
+        "publishAsIntegrationEvent" : {
+          "type" : "boolean"
+        },
+        "replayable" : {
+          "type" : "boolean"
+        },
+        "retentionMs" : {
+          "type" : "integer"
+        },
+        "routingKeyField" : {
+          "type" : "string"
+        },
+        "schemaVersion" : {
+          "type" : "string"
+        },
+        "serializationFormat" : {
+          "type" : "string"
+        },
+        "topicName" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "DomainPolicyEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "triggeringEventId" : {
+          "type" : "string"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "EmailProvider" : {
+      "type" : "string",
+      "enum" : [ "SMTP", "SendGrid", "Mailgun", "AWSSes", "Custom" ]
+    },
+    "EntityEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "isCollection" : {
+          "type" : "boolean"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "parentAggregateId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "EnumEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "values" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/EnumValueEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "EnumValueEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "EnvVarEntity" : {
+      "type" : "object",
+      "properties" : {
+        "defaultValue" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "required" : {
+          "type" : "boolean"
+        },
+        "secret" : {
+          "type" : "boolean"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "FieldDataType" : {
+      "type" : "string",
+      "enum" : [ "integer", "string", "number", "date", "time", "dateTime", "bool", "array", "file", "status", "money", "component", "menu", "range", "action", "actionGroup", "dateRange" ]
+    },
+    "FileStorageProvider" : {
+      "type" : "string",
+      "enum" : [ "S3", "AzureBlob", "GCS", "Local", "Custom" ]
+    },
+    "FlowArchetype" : {
+      "type" : "string",
+      "enum" : [ "MATERIALIZES", "TRIGGERS", "NOTIFIES", "ORCHESTRATES" ]
+    },
+    "FlowEntity" : {
+      "type" : "object",
+      "properties" : {
+        "archetype" : {
+          "$ref" : "#/$defs/FlowArchetype"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "materializedFields" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "overrides" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "readModelName" : {
+          "type" : "string"
+        },
+        "targetModuleId" : {
+          "type" : "string"
+        },
+        "targetUseCaseId" : {
+          "type" : "string"
+        },
+        "triggerAggregateId" : {
+          "type" : "string"
+        },
+        "triggerEvent" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "GatewayAuthType" : {
+      "type" : "string",
+      "enum" : [ "None", "Basic", "ApiKey", "BearerToken", "OAuth2ClientCredentials" ]
+    },
+    "GatewayEntity" : {
+      "type" : "object",
+      "properties" : {
+        "authApiKeyHeaderName" : {
+          "type" : "string"
+        },
+        "authBearerToken" : {
+          "type" : "string"
+        },
+        "authOAuth2ClientId" : {
+          "type" : "string"
+        },
+        "authOAuth2ClientSecret" : {
+          "type" : "string"
+        },
+        "authOAuth2Scopes" : {
+          "type" : "string"
+        },
+        "authOAuth2TokenUrl" : {
+          "type" : "string"
+        },
+        "authPassword" : {
+          "type" : "string"
+        },
+        "authType" : {
+          "$ref" : "#/$defs/GatewayAuthType"
+        },
+        "authUsername" : {
+          "type" : "string"
+        },
+        "baseUrl" : {
+          "type" : "string"
+        },
+        "corsAllowedOrigins" : {
+          "type" : "string"
+        },
+        "corsEnabled" : {
+          "type" : "boolean"
+        },
+        "globalTimeoutMs" : {
+          "type" : "integer"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/GatewayOperationEntity"
+          }
+        },
+        "rateLimitBurstSize" : {
+          "type" : "integer"
+        },
+        "rateLimitEnabled" : {
+          "type" : "boolean"
+        },
+        "rateLimitRequestsPerSecond" : {
+          "type" : "integer"
+        },
+        "serviceId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "GatewayOperationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "circuitBreakerEnabled" : {
+          "type" : "boolean"
+        },
+        "circuitBreakerFailureRateThreshold" : {
+          "type" : "integer"
+        },
+        "circuitBreakerSlidingWindowSize" : {
+          "type" : "integer"
+        },
+        "httpMethod" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string"
+        },
+        "parameters" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/GatewayParameterEntity"
+          }
+        },
+        "path" : {
+          "type" : "string"
+        },
+        "retryMaxAttempts" : {
+          "type" : "integer"
+        },
+        "retryWaitDurationMs" : {
+          "type" : "integer"
+        },
+        "timeoutMs" : {
+          "type" : "integer"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "GatewayParameterEntity" : {
+      "type" : "object",
+      "properties" : {
+        "location" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "required" : {
+          "type" : "boolean"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "IamProvider" : {
+      "type" : "string",
+      "enum" : [ "Keycloak", "Auth0", "Okta", "Cognito", "AzureAD", "Custom" ]
+    },
+    "IntegrationEventCompressionType" : {
+      "type" : "string",
+      "enum" : [ "NONE", "SNAPPY", "LZ4", "ZSTD" ]
+    },
+    "IntegrationEventEntity" : {
+      "type" : "object",
+      "properties" : {
+        "compressionType" : {
+          "$ref" : "#/$defs/IntegrationEventCompressionType"
+        },
+        "deadLetterQueueEnabled" : {
+          "type" : "boolean"
+        },
+        "deadLetterQueueName" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "maxDeliveryAttempts" : {
+          "type" : "integer"
+        },
+        "moduleId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "partitions" : {
+          "type" : "integer"
+        },
+        "payloadModelId" : {
+          "type" : "string"
+        },
+        "replayable" : {
+          "type" : "boolean"
+        },
+        "retentionMs" : {
+          "type" : "integer"
+        },
+        "routingKeyField" : {
+          "type" : "string"
+        },
+        "schemaVersion" : {
+          "type" : "string"
+        },
+        "serializationFormat" : {
+          "$ref" : "#/$defs/IntegrationEventSerializationFormat"
+        },
+        "sourceDomainEventId" : {
+          "type" : "string"
+        },
+        "topicName" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "IntegrationEventSerializationFormat" : {
+      "type" : "string",
+      "enum" : [ "JSON", "AVRO", "PROTOBUF" ]
+    },
+    "InvariantConditionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "custom" : {
+          "type" : "boolean"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "errorMessage" : {
+          "type" : "string"
+        },
+        "expression" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "InvariantEntity" : {
+      "type" : "object",
+      "properties" : {
+        "conditions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InvariantConditionEntity"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "LlmProvider" : {
+      "type" : "string",
+      "enum" : [ "OpenAI", "Anthropic", "Google", "Azure", "Ollama", "Custom" ]
+    },
+    "LoggingProvider" : {
+      "type" : "string",
+      "enum" : [ "ELK", "Loki", "Splunk", "Datadog", "CloudWatch", "Custom" ]
+    },
+    "MessageBrokerType" : {
+      "type" : "string",
+      "enum" : [ "Kafka", "RabbitMQ", "ActiveMQ", "AWSSQS", "AzureServiceBus", "GooglePubSub", "Custom" ]
+    },
+    "MetricsProvider" : {
+      "type" : "string",
+      "enum" : [ "Prometheus", "Datadog", "NewRelic", "CloudWatch", "Custom" ]
+    },
+    "ModelEntity" : {
+      "type" : "object",
+      "properties" : {
+        "fields" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ModelFieldEntity"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "validations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ModelValidationEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelFieldEntity" : {
+      "type" : "object",
+      "properties" : {
+        "basicType" : {
+          "type" : "boolean"
+        },
+        "enum" : {
+          "type" : "boolean"
+        },
+        "enumId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/FieldDataType"
+        },
+        "validations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ModelFieldValidationEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelFieldValidationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "params" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/ModelFieldValidationType"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelFieldValidationType" : {
+      "type" : "string",
+      "enum" : [ "NotNull", "NotEmpty", "NotBlank", "Size", "Min", "Max", "DecimalMin", "DecimalMax", "Pattern", "Email", "Positive", "PositiveOrZero", "Negative", "NegativeOrZero", "Future", "Past", "FutureOrPresent", "PastOrPresent", "Digits" ]
+    },
+    "ModelMappingEntity" : {
+      "type" : "object",
+      "properties" : {
+        "hasCustomPart" : {
+          "type" : "boolean"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "rules" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ModelMappingRuleEntity"
+          }
+        },
+        "sourceModelId" : {
+          "type" : "string"
+        },
+        "targetModelId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelMappingExpressionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "inputExpression" : {
+          "type" : "string"
+        },
+        "outputExpression" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelMappingRuleEntity" : {
+      "type" : "object",
+      "properties" : {
+        "expressions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ModelMappingExpressionEntity"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "sourceFieldId" : {
+          "type" : "string"
+        },
+        "targetFieldId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModelValidationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "condition" : {
+          "type" : "string"
+        },
+        "fieldIds" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "message" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ModuleEntity" : {
+      "type" : "object",
+      "properties" : {
+        "acls" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/AclEntity"
+          }
+        },
+        "aggregateIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "autoTableNamePrefix" : {
+          "type" : "boolean"
+        },
+        "bddScenarios" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/BddScenarioEntity"
+          }
+        },
+        "bffs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/BffEntity"
+          }
+        },
+        "domainEventIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "domainPolicies" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/DomainPolicyEntity"
+          }
+        },
+        "entityIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "gitRepository" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "invariants" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InvariantEntity"
+          }
+        },
+        "llmSystemPrompt" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "projectionIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "readModelIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "sagaIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "scheduledTriggerIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "subscriptionIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "tableNamePrefix" : {
+          "type" : "string"
+        },
+        "useCaseIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "valueObjectIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "version" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "OperationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "defaultPageSize" : {
+          "type" : "integer"
+        },
+        "emits" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string"
+        },
+        "paginated" : {
+          "type" : "boolean"
+        },
+        "preconditions" : {
+          "type" : "string"
+        },
+        "sets" : {
+          "type" : "string"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageButtonEntity" : {
+      "type" : "object",
+      "properties" : {
+        "actionId" : {
+          "type" : "string"
+        },
+        "icon" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageEntity" : {
+      "type" : "object",
+      "properties" : {
+        "aggregateId" : {
+          "type" : "string"
+        },
+        "bottomBar" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageButtonEntity"
+          }
+        },
+        "completionActions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageButtonEntity"
+          }
+        },
+        "componentIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "fieldConfigs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageFieldConfigEntity"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "listingDataSourceType" : {
+          "type" : "string"
+        },
+        "listingGatewayId" : {
+          "type" : "string"
+        },
+        "listingQueryServiceId" : {
+          "type" : "string"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "route" : {
+          "type" : "string"
+        },
+        "rules" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageRuleEntity"
+          }
+        },
+        "toolbar" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageButtonEntity"
+          }
+        },
+        "triggers" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageTriggerEntity"
+          }
+        },
+        "type" : {
+          "type" : "string"
+        },
+        "validations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageValidationEntity"
+          }
+        },
+        "wizardSteps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/PageWizardStepEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageFieldConfigEntity" : {
+      "type" : "object",
+      "properties" : {
+        "colspan" : {
+          "type" : "integer"
+        },
+        "cssClass" : {
+          "type" : "string"
+        },
+        "fieldId" : {
+          "type" : "string"
+        },
+        "help" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "stereotype" : {
+          "type" : "string"
+        },
+        "style" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageRuleEntity" : {
+      "type" : "object",
+      "properties" : {
+        "action" : {
+          "type" : "string"
+        },
+        "actionId" : {
+          "type" : "string"
+        },
+        "expression" : {
+          "type" : "string"
+        },
+        "fieldAttribute" : {
+          "type" : "string"
+        },
+        "fieldName" : {
+          "type" : "string"
+        },
+        "filter" : {
+          "type" : "string"
+        },
+        "result" : {
+          "type" : "string"
+        },
+        "value" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageTriggerEntity" : {
+      "type" : "object",
+      "properties" : {
+        "actionId" : {
+          "type" : "string"
+        },
+        "calledActionId" : {
+          "type" : "string"
+        },
+        "condition" : {
+          "type" : "string"
+        },
+        "eventName" : {
+          "type" : "string"
+        },
+        "propertyName" : {
+          "type" : "string"
+        },
+        "timeoutMillis" : {
+          "type" : "integer"
+        },
+        "times" : {
+          "type" : "integer"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageValidationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "condition" : {
+          "type" : "string"
+        },
+        "fieldId" : {
+          "type" : "string"
+        },
+        "message" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "PageWizardStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "label" : {
+          "type" : "string"
+        },
+        "pageId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ProjectEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cacheProvider" : {
+          "$ref" : "#/$defs/CacheProvider"
+        },
+        "cicdProvider" : {
+          "type" : "string"
+        },
+        "contextMap" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ContextMapRelationEntity"
+          }
+        },
+        "database" : {
+          "type" : "string"
+        },
+        "dbMigrationTool" : {
+          "$ref" : "#/$defs/DbMigrationTool"
+        },
+        "emailProvider" : {
+          "$ref" : "#/$defs/EmailProvider"
+        },
+        "environments" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ProjectEnvironmentConfigEntity"
+          }
+        },
+        "fileStorageProvider" : {
+          "$ref" : "#/$defs/FileStorageProvider"
+        },
+        "gitRepository" : {
+          "type" : "string"
+        },
+        "iamProvider" : {
+          "$ref" : "#/$defs/IamProvider"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "llmProvider" : {
+          "$ref" : "#/$defs/LlmProvider"
+        },
+        "loggingProvider" : {
+          "$ref" : "#/$defs/LoggingProvider"
+        },
+        "messageBrokerType" : {
+          "$ref" : "#/$defs/MessageBrokerType"
+        },
+        "metricsProvider" : {
+          "$ref" : "#/$defs/MetricsProvider"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputPath" : {
+          "type" : "string"
+        },
+        "packageName" : {
+          "type" : "string"
+        },
+        "secretsProvider" : {
+          "$ref" : "#/$defs/SecretsProvider"
+        },
+        "serviceIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "terraformBackendType" : {
+          "$ref" : "#/$defs/TerraformBackendType"
+        },
+        "terraformProvider" : {
+          "$ref" : "#/$defs/TerraformProvider"
+        },
+        "terraformProviderVersion" : {
+          "type" : "string"
+        },
+        "tracingProvider" : {
+          "$ref" : "#/$defs/TracingProvider"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ProjectEnvironmentConfigEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cachePassword" : {
+          "type" : "string"
+        },
+        "cacheUrl" : {
+          "type" : "string"
+        },
+        "cacheUsername" : {
+          "type" : "string"
+        },
+        "emailFrom" : {
+          "type" : "string"
+        },
+        "emailHost" : {
+          "type" : "string"
+        },
+        "emailPassword" : {
+          "type" : "string"
+        },
+        "emailPort" : {
+          "type" : "integer"
+        },
+        "emailUsername" : {
+          "type" : "string"
+        },
+        "environment" : {
+          "type" : "string"
+        },
+        "fileStorageAccessKey" : {
+          "type" : "string"
+        },
+        "fileStorageBucket" : {
+          "type" : "string"
+        },
+        "fileStorageEndpoint" : {
+          "type" : "string"
+        },
+        "fileStorageRegion" : {
+          "type" : "string"
+        },
+        "fileStorageSecretKey" : {
+          "type" : "string"
+        },
+        "iamAudience" : {
+          "type" : "string"
+        },
+        "iamClientId" : {
+          "type" : "string"
+        },
+        "iamClientSecret" : {
+          "type" : "string"
+        },
+        "iamRealm" : {
+          "type" : "string"
+        },
+        "iamServerUrl" : {
+          "type" : "string"
+        },
+        "ingressClassName" : {
+          "type" : "string"
+        },
+        "ingressDomain" : {
+          "type" : "string"
+        },
+        "ingressTlsEnabled" : {
+          "type" : "boolean"
+        },
+        "kubernetesCertificateAuthorityData" : {
+          "type" : "string"
+        },
+        "kubernetesClusterUrl" : {
+          "type" : "string"
+        },
+        "kubernetesContext" : {
+          "type" : "string"
+        },
+        "kubernetesNamespace" : {
+          "type" : "string"
+        },
+        "kubernetesToken" : {
+          "type" : "string"
+        },
+        "llmApiKey" : {
+          "type" : "string"
+        },
+        "llmApiUrl" : {
+          "type" : "string"
+        },
+        "llmModel" : {
+          "type" : "string"
+        },
+        "loggingEndpoint" : {
+          "type" : "string"
+        },
+        "messageBrokerPassword" : {
+          "type" : "string"
+        },
+        "messageBrokerUrl" : {
+          "type" : "string"
+        },
+        "messageBrokerUsername" : {
+          "type" : "string"
+        },
+        "metricsEndpoint" : {
+          "type" : "string"
+        },
+        "secretsEndpoint" : {
+          "type" : "string"
+        },
+        "secretsToken" : {
+          "type" : "string"
+        },
+        "terraformBackendBucket" : {
+          "type" : "string"
+        },
+        "terraformBackendKey" : {
+          "type" : "string"
+        },
+        "terraformBackendRegion" : {
+          "type" : "string"
+        },
+        "terraformWorkspace" : {
+          "type" : "string"
+        },
+        "tracingEndpoint" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ProjectionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "errorHandlingStrategy" : {
+          "type" : "string"
+        },
+        "handlers" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ProjectionEventHandlerEntity"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "maxRetries" : {
+          "type" : "integer"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "readModelId" : {
+          "type" : "string"
+        },
+        "rebuildStrategy" : {
+          "type" : "string"
+        },
+        "snapshotEnabled" : {
+          "type" : "boolean"
+        },
+        "snapshotFrequency" : {
+          "type" : "integer"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ProjectionEventHandlerEntity" : {
+      "type" : "object",
+      "properties" : {
+        "domainEventId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/ProjectionEventHandlerType"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ProjectionEventHandlerType" : {
+      "type" : "string",
+      "enum" : [ "Create", "Update", "Delete", "Upsert", "Custom" ]
+    },
+    "QueryCardinality" : {
+      "type" : "string",
+      "enum" : [ "Single", "List", "Page" ]
+    },
+    "QueryOperationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cardinality" : {
+          "$ref" : "#/$defs/QueryCardinality"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "QueryServiceEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "moduleId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/QueryOperationEntity"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ReadModelConsistency" : {
+      "type" : "string",
+      "enum" : [ "Eventual", "Strong" ]
+    },
+    "ReadModelEntity" : {
+      "type" : "object",
+      "properties" : {
+        "consistency" : {
+          "$ref" : "#/$defs/ReadModelConsistency"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelId" : {
+          "type" : "string"
+        },
+        "moduleId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "storageType" : {
+          "$ref" : "#/$defs/ReadModelStorageType"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ReadModelStorageType" : {
+      "type" : "string",
+      "enum" : [ "Document", "Relational", "KeyValue", "InMemory" ]
+    },
+    "RoleEntity" : {
+      "type" : "object",
+      "properties" : {
+        "allowedUseCaseIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SagaEntity" : {
+      "type" : "object",
+      "properties" : {
+        "compensationTimeoutMs" : {
+          "type" : "integer"
+        },
+        "deadLetterQueue" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "maxRetries" : {
+          "type" : "integer"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "persistenceEnabled" : {
+          "type" : "boolean"
+        },
+        "retryBackoffMs" : {
+          "type" : "integer"
+        },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/SagaStepEntity"
+          }
+        },
+        "timeoutMs" : {
+          "type" : "integer"
+        },
+        "triggeringEventIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SagaStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "aggregateId" : {
+          "type" : "string"
+        },
+        "compensatingStepId" : {
+          "type" : "string"
+        },
+        "domainEventId" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string"
+        },
+        "gatewayOperationId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operationId" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/SagaStepType"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SagaStepType" : {
+      "type" : "string",
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "PublishDomainEvent", "CallUseCase", "ApplyModelMapping" ]
+    },
+    "ScheduledTriggerEntity" : {
+      "type" : "object",
+      "properties" : {
+        "allowConcurrentExecution" : {
+          "type" : "boolean"
+        },
+        "cronExpression" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "executionEnvironment" : {
+          "type" : "string"
+        },
+        "failureNotificationEmail" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "lockProvider" : {
+          "type" : "string"
+        },
+        "maxExecutionTimeMs" : {
+          "type" : "integer"
+        },
+        "misfirePolicy" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "retryCount" : {
+          "type" : "integer"
+        },
+        "retryOnFailure" : {
+          "type" : "boolean"
+        },
+        "timezone" : {
+          "type" : "string"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SecretsProvider" : {
+      "type" : "string",
+      "enum" : [ "Vault", "AWSSecretsManager", "AzureKeyVault", "GCPSecretManager", "Custom" ]
+    },
+    "ServiceEntity" : {
+      "type" : "object",
+      "properties" : {
+        "circuitBreakerEnabled" : {
+          "type" : "boolean"
+        },
+        "circuitBreakerThreshold" : {
+          "type" : "integer"
+        },
+        "connectionTimeoutMs" : {
+          "type" : "integer"
+        },
+        "contextPath" : {
+          "type" : "string"
+        },
+        "database" : {
+          "type" : "string"
+        },
+        "dbMigrationTool" : {
+          "$ref" : "#/$defs/DbMigrationTool"
+        },
+        "deploymentStrategy" : {
+          "type" : "string"
+        },
+        "dockerImageName" : {
+          "type" : "string"
+        },
+        "dockerImageRegistry" : {
+          "type" : "string"
+        },
+        "envVars" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/EnvVarEntity"
+          }
+        },
+        "gatewayIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "gitRepository" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "javaVersion" : {
+          "type" : "string"
+        },
+        "kubernetesCpuLimit" : {
+          "type" : "string"
+        },
+        "kubernetesCpuRequest" : {
+          "type" : "string"
+        },
+        "kubernetesHpaCpuThreshold" : {
+          "type" : "integer"
+        },
+        "kubernetesHpaEnabled" : {
+          "type" : "boolean"
+        },
+        "kubernetesHpaMaxReplicas" : {
+          "type" : "integer"
+        },
+        "kubernetesHpaMinReplicas" : {
+          "type" : "integer"
+        },
+        "kubernetesMemoryLimit" : {
+          "type" : "string"
+        },
+        "kubernetesMemoryRequest" : {
+          "type" : "string"
+        },
+        "kubernetesReplicas" : {
+          "type" : "integer"
+        },
+        "livenessProbe" : {
+          "type" : "string"
+        },
+        "moduleIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "openApiDocumentationEnabled" : {
+          "type" : "boolean"
+        },
+        "outboxEnabled" : {
+          "type" : "boolean"
+        },
+        "outboxTableName" : {
+          "type" : "string"
+        },
+        "owner" : {
+          "type" : "string"
+        },
+        "port" : {
+          "type" : "integer"
+        },
+        "readTimeoutMs" : {
+          "type" : "integer"
+        },
+        "readinessProbe" : {
+          "type" : "string"
+        },
+        "startupProbe" : {
+          "type" : "string"
+        },
+        "writeTimeoutMs" : {
+          "type" : "integer"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SubscriptionActionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "projectionId" : {
+          "type" : "string"
+        },
+        "sagaId" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/SubscriptionActionType"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "SubscriptionActionType" : {
+      "type" : "string",
+      "enum" : [ "CallUseCase", "StartSaga", "UpdateProjection", "Custom" ]
+    },
+    "SubscriptionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "actions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/SubscriptionActionEntity"
+          }
+        },
+        "batchSize" : {
+          "type" : "integer"
+        },
+        "batchTimeout" : {
+          "type" : "integer"
+        },
+        "consumerGroup" : {
+          "type" : "string"
+        },
+        "consumerTimeout" : {
+          "type" : "integer"
+        },
+        "deadLetterTopic" : {
+          "type" : "string"
+        },
+        "eventName" : {
+          "type" : "string"
+        },
+        "filterExpression" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "idempotencyEnabled" : {
+          "type" : "boolean"
+        },
+        "idempotencyKeyField" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "offsetResetStrategy" : {
+          "type" : "string"
+        },
+        "retryCount" : {
+          "type" : "integer"
+        },
+        "scalingStrategy" : {
+          "type" : "string"
+        },
+        "sourceService" : {
+          "type" : "string"
+        },
+        "topicName" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "TerraformBackendType" : {
+      "type" : "string",
+      "enum" : [ "Local", "S3", "AzureRM", "GCS", "Consul", "HTTP" ]
+    },
+    "TerraformProvider" : {
+      "type" : "string",
+      "enum" : [ "AWS", "Azure", "GCP", "DigitalOcean", "Custom" ]
+    },
+    "TracingProvider" : {
+      "type" : "string",
+      "enum" : [ "Jaeger", "Zipkin", "OpenTelemetry", "Datadog", "AWSXRay", "Custom" ]
+    },
+    "UiAdapterEntity" : {
+      "type" : "object",
+      "properties" : {
+        "appVariant" : {
+          "$ref" : "#/$defs/UiAppVariant"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "menuItems" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/UiMenuItemEntity"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "path" : {
+          "type" : "string"
+        },
+        "serviceId" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "UiAppVariant" : {
+      "type" : "string",
+      "enum" : [ "HAMBURGUER_MENU", "MENU_ON_LEFT", "MENU_ON_TOP", "TABS", "AUTO" ]
+    },
+    "UiMenuItemEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "icon" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "route" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "UiShellEntity" : {
+      "type" : "object",
+      "properties" : {
+        "appVariant" : {
+          "type" : "string"
+        },
+        "bucketName" : {
+          "type" : "string"
+        },
+        "bucketProvider" : {
+          "type" : "string"
+        },
+        "bucketRegion" : {
+          "type" : "string"
+        },
+        "cdnProvider" : {
+          "type" : "string"
+        },
+        "cdnSiteId" : {
+          "type" : "string"
+        },
+        "deploymentServiceId" : {
+          "type" : "string"
+        },
+        "deploymentType" : {
+          "type" : "string"
+        },
+        "designSystem" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "serviceIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "url" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "UseCaseEntity" : {
+      "type" : "object",
+      "properties" : {
+        "allowedRoles" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "allowedScopes" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "apiVersion" : {
+          "type" : "string"
+        },
+        "asyncConsumerGroup" : {
+          "type" : "string"
+        },
+        "asyncDeadLetterQueue" : {
+          "type" : "string"
+        },
+        "asyncOrderingKey" : {
+          "type" : "string"
+        },
+        "asyncRetryCount" : {
+          "type" : "integer"
+        },
+        "asyncTopicName" : {
+          "type" : "string"
+        },
+        "cacheTtlSeconds" : {
+          "type" : "integer"
+        },
+        "cacheable" : {
+          "type" : "boolean"
+        },
+        "exposedAsAsync" : {
+          "type" : "boolean"
+        },
+        "exposedAsGrpc" : {
+          "type" : "boolean"
+        },
+        "exposedAsMcp" : {
+          "type" : "boolean"
+        },
+        "exposedAsRest" : {
+          "type" : "boolean"
+        },
+        "exposedAsUi" : {
+          "type" : "boolean"
+        },
+        "grpcMethodName" : {
+          "type" : "string"
+        },
+        "grpcServiceName" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "idempotencyEnabled" : {
+          "type" : "boolean"
+        },
+        "idempotencyKeyField" : {
+          "type" : "string"
+        },
+        "inputModelId" : {
+          "type" : "string"
+        },
+        "mcpDescription" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string"
+        },
+        "rateLimitEnabled" : {
+          "type" : "boolean"
+        },
+        "rateLimitRequestsPerSecond" : {
+          "type" : "integer"
+        },
+        "restHttpMethod" : {
+          "type" : "string"
+        },
+        "restPath" : {
+          "type" : "string"
+        },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/UseCaseStepEntity"
+          }
+        },
+        "timeoutMs" : {
+          "type" : "integer"
+        },
+        "transactionBoundary" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "UseCaseStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "aggregateId" : {
+          "type" : "string"
+        },
+        "domainEventId" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string"
+        },
+        "gatewayOperationId" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operationId" : {
+          "type" : "string"
+        },
+        "type" : {
+          "$ref" : "#/$defs/UseCaseStepType"
+        },
+        "useCaseId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "UseCaseStepType" : {
+      "type" : "string",
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "PublishDomainEvent", "CallUseCase", "ApplyModelMapping" ]
+    },
+    "ValueObjectEntity" : {
+      "type" : "object",
+      "properties" : {
+        "dataType" : {
+          "type" : "string"
+        },
+        "fieldsJson" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "type" : {
+          "type" : "string"
+        },
+        "valuesJson" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ViewEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "memberIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "seedId" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    }
+  },
+  "type" : "object",
+  "properties" : {
+    "aggregates" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/AggregateEntity"
+      }
+    },
+    "bddScenarios" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/BddScenarioEntity"
+      }
+    },
+    "businessRules" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/BusinessRuleEntity"
+      }
+    },
+    "components" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ComponentEntity"
+      }
+    },
+    "domainEvents" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DomainEventEntity"
+      }
+    },
+    "entities" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/EntityEntity"
+      }
+    },
+    "enums" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/EnumEntity"
+      }
+    },
+    "flows" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/FlowEntity"
+      }
+    },
+    "gateways" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/GatewayEntity"
+      }
+    },
+    "integrationEvents" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/IntegrationEventEntity"
+      }
+    },
+    "invariants" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/InvariantEntity"
+      }
+    },
+    "modelMappings" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ModelMappingEntity"
+      }
+    },
+    "models" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ModelEntity"
+      }
+    },
+    "modules" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ModuleEntity"
+      }
+    },
+    "pages" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/PageEntity"
+      }
+    },
+    "projections" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ProjectionEntity"
+      }
+    },
+    "projects" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ProjectEntity"
+      }
+    },
+    "queryServices" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/QueryServiceEntity"
+      }
+    },
+    "readModels" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ReadModelEntity"
+      }
+    },
+    "roles" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/RoleEntity"
+      }
+    },
+    "sagas" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/SagaEntity"
+      }
+    },
+    "scheduledTriggers" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ScheduledTriggerEntity"
+      }
+    },
+    "services" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ServiceEntity"
+      }
+    },
+    "subscriptions" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/SubscriptionEntity"
+      }
+    },
+    "uiAdapters" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/UiAdapterEntity"
+      }
+    },
+    "uiShells" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/UiShellEntity"
+      }
+    },
+    "useCases" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/UseCaseEntity"
+      }
+    },
+    "valueObjects" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ValueObjectEntity"
+      }
+    },
+    "views" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ViewEntity"
+      }
+    }
+  },
+  "additionalProperties" : false
+}

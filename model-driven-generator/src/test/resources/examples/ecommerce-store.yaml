@@ -1,0 +1,318 @@
+# A second example domain (order fulfillment) to harden the generator: one service with two modules,
+# a saga with compensation that orchestrates external services through gateways, a payment gateway and
+# a warehouse gateway, an enum, money fields, an invariant, a business rule and an integration event.
+# Different shapes from the hotel store on purpose. Cross-context coordination is modelled the way the
+# generated architecture supports it — gateways and events, not direct cross-module use-case calls.
+projects:
+- id: "ecommerce"
+  name: "Ecommerce"
+  outputPath: "sample/ecommerce"
+  packageName: "com.shop.ecommerce"
+  serviceIds:
+  - "orders"
+
+services:
+- id: "orders"
+  name: "Orders"
+  gatewayIds:
+  - "gw-payments"
+  - "gw-warehouse"
+  moduleIds:
+  - "mod-ordering"
+  - "mod-inventory"
+
+modules:
+- id: "mod-ordering"
+  name: "Ordering"
+  aggregateIds:
+  - "order"
+  useCaseIds:
+  - "uc-placeOrder"
+  domainEventIds:
+  - "ev-orderPlaced"
+  - "ev-orderConfirmed"
+  - "ev-orderCancelled"
+  sagaIds:
+  - "saga-fulfillment"
+- id: "mod-inventory"
+  name: "Inventory"
+  aggregateIds:
+  - "stock"
+  useCaseIds:
+  - "uc-reserveStock"
+  domainEventIds:
+  - "ev-stockReserved"
+
+aggregates:
+- id: "order"
+  name: "Order"
+  modelId: "order-model"
+  persistenceType: "JPA"
+  idType: "LONG"
+  operations:
+  - id: "op-confirm"
+    name: "confirm"
+    type: "CUSTOM"
+  - id: "op-cancel"
+    name: "cancel"
+    type: "CUSTOM"
+  invariants:
+  - id: "inv-order-positive-total"
+    name: "TotalMustBePositive"
+    conditions: []
+- id: "stock"
+  name: "Stock"
+  modelId: "stock-model"
+  persistenceType: "JPA"
+  idType: "LONG"
+
+models:
+- id: "order-model"
+  name: "Order"
+  fields:
+  - id: "f-order-reference"
+    name: "reference"
+    basicType: true
+    type: "string"
+  - id: "f-order-customer"
+    name: "customer"
+    basicType: true
+    type: "string"
+  - id: "f-order-total"
+    name: "total"
+    basicType: true
+    type: "money"
+  - id: "f-order-status"
+    name: "status"
+    basicType: false
+    enumId: "order-status"
+- id: "stock-model"
+  name: "Stock"
+  fields:
+  - id: "f-stock-sku"
+    name: "sku"
+    basicType: true
+    type: "string"
+  - id: "f-stock-available"
+    name: "available"
+    basicType: true
+    type: "integer"
+- id: "order-event-model"
+  name: "OrderEvent"
+  fields:
+  - id: "f-oe-orderRef"
+    name: "orderRef"
+    basicType: true
+    type: "string"
+  - id: "f-oe-customer"
+    name: "customer"
+    basicType: true
+    type: "string"
+  - id: "f-oe-total"
+    name: "total"
+    basicType: true
+    type: "money"
+- id: "stock-event-model"
+  name: "StockEvent"
+  fields:
+  - id: "f-se-sku"
+    name: "sku"
+    basicType: true
+    type: "string"
+  - id: "f-se-quantity"
+    name: "quantity"
+    basicType: true
+    type: "integer"
+- id: "payment-request-model"
+  name: "PaymentRequest"
+  fields:
+  - id: "f-pr-orderRef"
+    name: "orderRef"
+    basicType: true
+    type: "string"
+  - id: "f-pr-amount"
+    name: "amount"
+    basicType: true
+    type: "money"
+- id: "payment-result-model"
+  name: "PaymentResult"
+  fields:
+  - id: "f-pres-transactionId"
+    name: "transactionId"
+    basicType: true
+    type: "string"
+  - id: "f-pres-status"
+    name: "status"
+    basicType: true
+    type: "string"
+- id: "reservation-request-model"
+  name: "ReservationRequest"
+  fields:
+  - id: "f-rr-sku"
+    name: "sku"
+    basicType: true
+    type: "string"
+  - id: "f-rr-quantity"
+    name: "quantity"
+    basicType: true
+    type: "integer"
+- id: "reservation-result-model"
+  name: "ReservationResult"
+  fields:
+  - id: "f-rres-reservationId"
+    name: "reservationId"
+    basicType: true
+    type: "string"
+
+enums:
+- id: "order-status"
+  values:
+  - id: "os-pending"
+    name: "PENDING"
+  - id: "os-confirmed"
+    name: "CONFIRMED"
+  - id: "os-cancelled"
+    name: "CANCELLED"
+  - id: "os-shipped"
+    name: "SHIPPED"
+
+useCases:
+- id: "uc-placeOrder"
+  name: "PlaceOrder"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "order-event-model"
+  steps:
+  - id: "step-po-save"
+    name: "saveOrder"
+    type: "SaveAggregate"
+    aggregateId: "order"
+  - id: "step-po-publish"
+    name: "publishOrderPlaced"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-orderPlaced"
+- id: "uc-reserveStock"
+  name: "ReserveStock"
+  inputModelId: "stock-event-model"
+  steps:
+  - id: "step-rs-save"
+    name: "saveStock"
+    type: "SaveAggregate"
+    aggregateId: "stock"
+  - id: "step-rs-publish"
+    name: "publishStockReserved"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-stockReserved"
+
+domainEvents:
+- id: "ev-orderPlaced"
+  name: "OrderPlaced"
+  modelId: "order-event-model"
+  schemaVersion: "1"
+- id: "ev-orderConfirmed"
+  name: "OrderConfirmed"
+  modelId: "order-event-model"
+- id: "ev-orderCancelled"
+  name: "OrderCancelled"
+  modelId: "order-event-model"
+- id: "ev-stockReserved"
+  name: "StockReserved"
+  modelId: "stock-event-model"
+
+integrationEvents:
+- id: "ie-orderPlaced"
+  name: "OrderPlacedIntegration"
+  moduleId: "mod-ordering"
+  sourceDomainEventId: "ev-orderPlaced"
+  payloadModelId: "order-event-model"
+  topicName: "orders.order-placed.v1"
+
+gateways:
+- id: "gw-payments"
+  name: "Payments"
+  serviceId: "orders"
+  baseUrl: "https://payments.example.com"
+  authType: "ApiKey"
+  authApiKeyHeaderName: "X-Api-Key"
+  operations:
+  - id: "op-charge"
+    name: "charge"
+    httpMethod: "POST"
+    path: "/charge"
+    inputModelId: "payment-request-model"
+    outputModelId: "payment-result-model"
+  - id: "op-refund"
+    name: "refund"
+    httpMethod: "POST"
+    path: "/refund"
+    inputModelId: "payment-request-model"
+    outputModelId: "payment-result-model"
+- id: "gw-warehouse"
+  name: "Warehouse"
+  serviceId: "orders"
+  baseUrl: "https://warehouse.example.com"
+  authType: "None"
+  operations:
+  - id: "op-reserve"
+    name: "reserve"
+    httpMethod: "POST"
+    path: "/reserve"
+    inputModelId: "reservation-request-model"
+    outputModelId: "reservation-result-model"
+  - id: "op-release"
+    name: "release"
+    httpMethod: "POST"
+    path: "/release"
+    inputModelId: "reservation-request-model"
+    outputModelId: "reservation-result-model"
+
+sagas:
+- id: "saga-fulfillment"
+  name: "OrderFulfillment"
+  triggeringEventIds:
+  - "ev-orderPlaced"
+  persistenceEnabled: true
+  steps:
+  - id: "step-reserve"
+    name: "reserveStock"
+    type: "CallGateway"
+    gatewayId: "gw-warehouse"
+    gatewayOperationId: "op-reserve"
+    compensatingStepId: "step-release"
+  - id: "step-charge"
+    name: "chargePayment"
+    type: "CallGateway"
+    gatewayId: "gw-payments"
+    gatewayOperationId: "op-charge"
+    compensatingStepId: "step-refund"
+  - id: "step-confirm"
+    name: "confirmOrder"
+    type: "CallAggregateOperation"
+    aggregateId: "order"
+    operationId: "op-confirm"
+  - id: "step-release"
+    name: "releaseStock"
+    type: "CallGateway"
+    gatewayId: "gw-warehouse"
+    gatewayOperationId: "op-release"
+  - id: "step-refund"
+    name: "refundPayment"
+    type: "CallGateway"
+    gatewayId: "gw-payments"
+    gatewayOperationId: "op-refund"
+
+businessRules:
+- id: "br-priority-order"
+  name: "PriorityOrder"
+  description: "Flag large orders as priority"
+  modelId: "order-model"
+  priority: 10
+  enabled: true
+  conditions:
+  - id: "cond-large"
+    expression: "fact.getTotal().compareTo(java.math.BigDecimal.valueOf(1000)) > 0"
+    description: "order total over 1000"
+  actions:
+  - id: "act-flag"
+    type: "CUSTOM"
+    description: "flag as priority"
