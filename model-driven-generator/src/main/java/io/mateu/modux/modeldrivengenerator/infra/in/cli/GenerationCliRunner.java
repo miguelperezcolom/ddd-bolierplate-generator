@@ -51,20 +51,22 @@ public class GenerationCliRunner implements ApplicationRunner {
                     repository.mergeTo(java.nio.file.Path.of(firstOrNull(args.getOptionValues("modux.merge")))));
             return;
         }
-        if (args.containsOption("modux.view")) {
-            runViewClosure(firstOrNull(args.getOptionValues("modux.view")));
-            return;
-        }
+        var viewId = firstOrNull(args.getOptionValues("modux.view"));
         var projectIds = args.getOptionValues("modux.generate");
         if (projectIds == null || projectIds.isEmpty()) {
-            return; // normal server mode
+            // `--modux.view` alone inspects the view's closure; otherwise start the UI server
+            if (viewId != null) {
+                runViewClosure(viewId);
+            }
+            return;
         }
         var projectId = projectIds.get(0);
         var output = firstOrNull(args.getOptionValues("modux.output"));
 
-        log.info("CLI code generation starting: project='{}' output='{}'", projectId, output != null ? output : "(stored path)");
+        log.info("CLI code generation starting: project='{}' output='{}'{}", projectId,
+                output != null ? output : "(stored path)", viewId != null ? " view='" + viewId + "'" : "");
         try {
-            generateCodeUseCase.handle(new GenerateCodeCommand(projectId, output, null, false));
+            generateCodeUseCase.handle(new GenerateCodeCommand(projectId, output, null, false, viewId));
             log.info("CLI code generation finished for project '{}'", projectId);
             System.exit(SpringApplication.exit(context, () -> 0));
         } catch (Exception e) {

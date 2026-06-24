@@ -67,6 +67,10 @@ public class GenerateCodeUseCase {
 
     final CommonFileRepository repository;
     final FlowStoreMaterializer flowStoreMaterializer;
+    final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
+
+    // when generating a view slice, only element ids in this set are emitted (null = full project)
+    private java.util.Set<String> generationScope;
 
     // generated-zone integrity: hashes of files generated this run vs. the previous run's manifest
     private Path generationRoot;
@@ -85,6 +89,11 @@ public class GenerateCodeUseCase {
         }
     }
 
+    /** Whether an element should be generated: always when not scoped, else only if in the view closure. */
+    private boolean inScope(String id) {
+        return generationScope == null || generationScope.contains(id);
+    }
+
     private void generate(GenerateCodeCommand command) {
 
         var stored = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
@@ -92,6 +101,14 @@ public class GenerateCodeUseCase {
         var project = (command.outputPath() != null && !command.outputPath().isBlank())
                 ? withOutputPath(stored, command.outputPath())
                 : stored;
+
+        // view scope: when a view id is given, restrict generation to its dependency closure
+        generationScope = (command.viewId() != null && !command.viewId().isBlank())
+                ? new java.util.HashSet<>(resolveViewClosureUseCase.resolve(command.viewId()).closureIds())
+                : null;
+        if (generationScope != null) {
+            log.info("Generating view '{}' — scoped to {} element(s)", command.viewId(), generationScope.size());
+        }
 
         // integrity: load the previous run's manifest, start a fresh one for this run
         generationRoot = Path.of(project.outputPath()).toAbsolutePath().normalize();
@@ -117,8 +134,12 @@ public class GenerateCodeUseCase {
         repository.findAllOfType(UiShellEntity.class)
                 .forEach(shell -> generateUiShell(project, shell));
 
-        reportOrphanedGeneratedFiles();
-        saveManifest();
+        // The manifest tracks the full project; a partial (view-scoped) run must not overwrite it or
+        // it would report every non-slice file as orphaned.
+        if (generationScope == null) {
+            reportOrphanedGeneratedFiles();
+            saveManifest();
+        }
     }
 
     // ─── Root pom (monorepo) ──────────────────────────────────────────────────
@@ -160,6 +181,7 @@ public class GenerateCodeUseCase {
         if (service.gatewayIds() != null) {
             service.gatewayIds().stream()
                     .map(id -> repository.findById(id, GatewayEntity.class).orElseThrow())
+                    .filter(gateway -> inScope(gateway.id()))
                     .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
         }
 
@@ -228,6 +250,7 @@ public class GenerateCodeUseCase {
 
         (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of()).stream()
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
+                .filter(aggregate -> inScope(aggregate.id()))
                 .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
 
         // Per-module menu: groups this module's CRUDs under a single entry in the app Home
@@ -249,6 +272,7 @@ public class GenerateCodeUseCase {
         if (module.domainEventIds() != null) {
             module.domainEventIds().stream()
                     .map(id -> repository.findById(id, DomainEventEntity.class).orElseThrow())
+                    .filter(event -> inScope(event.id()))
                     .forEach(event -> generateDomainEvent(project, service, module, moduleDir, modulePackageDir, event));
         }
 
@@ -256,6 +280,7 @@ public class GenerateCodeUseCase {
         if (module.subscriptionIds() != null) {
             module.subscriptionIds().stream()
                     .map(id -> repository.findById(id, SubscriptionEntity.class).orElseThrow())
+                    .filter(subscription -> inScope(subscription.id()))
                     .forEach(subscription -> generateSubscription(project, service, module, moduleDir, modulePackageDir, subscription));
         }
 
@@ -263,6 +288,7 @@ public class GenerateCodeUseCase {
         if (module.scheduledTriggerIds() != null) {
             module.scheduledTriggerIds().stream()
                     .map(id -> repository.findById(id, ScheduledTriggerEntity.class).orElseThrow())
+                    .filter(trigger -> inScope(trigger.id()))
                     .forEach(trigger -> generateScheduledTrigger(project, service, module, moduleDir, modulePackageDir, trigger));
         }
 
@@ -270,6 +296,7 @@ public class GenerateCodeUseCase {
         if (module.useCaseIds() != null) {
             module.useCaseIds().stream()
                     .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                    .filter(useCase -> inScope(useCase.id()))
                     .forEach(useCase -> generateUseCase(project, service, module, moduleDir, modulePackageDir, useCase));
         }
 
@@ -277,6 +304,7 @@ public class GenerateCodeUseCase {
         if (module.sagaIds() != null) {
             module.sagaIds().stream()
                     .map(id -> repository.findById(id, SagaEntity.class).orElseThrow())
+                    .filter(saga -> inScope(saga.id()))
                     .forEach(saga -> generateSaga(project, service, module, moduleDir, modulePackageDir, saga));
         }
 
@@ -284,28 +312,33 @@ public class GenerateCodeUseCase {
         if (module.projectionIds() != null) {
             module.projectionIds().stream()
                     .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
+                    .filter(projection -> inScope(projection.id()))
                     .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
         }
 
         // Read models (module-level, by moduleId)
         repository.findAllOfType(ReadModelEntity.class).stream()
                 .filter(rm -> module.id().equals(rm.moduleId()))
+                .filter(rm -> inScope(rm.id()))
                 .forEach(rm -> generateReadModel(project, service, module, moduleDir, modulePackageDir, rm));
 
         // Integration events (module-level, by moduleId)
         repository.findAllOfType(IntegrationEventEntity.class).stream()
                 .filter(ie -> module.id().equals(ie.moduleId()))
+                .filter(ie -> inScope(ie.id()))
                 .forEach(ie -> generateIntegrationEvent(project, service, module, moduleDir, modulePackageDir, ie));
 
         // Query services (module-level, by moduleId)
         repository.findAllOfType(QueryServiceEntity.class).stream()
                 .filter(qs -> module.id().equals(qs.moduleId()))
+                .filter(qs -> inScope(qs.id()))
                 .forEach(qs -> generateQueryService(project, service, module, moduleDir, modulePackageDir, qs));
 
         // Entities (embedded/child entities within aggregates)
         if (module.entityIds() != null) {
             module.entityIds().stream()
                     .map(id -> repository.findById(id, EntityEntity.class).orElseThrow())
+                    .filter(entity -> inScope(entity.id()))
                     .forEach(entity -> generateEntity(project, service, module, moduleDir, modulePackageDir, entity));
         }
 
@@ -313,6 +346,7 @@ public class GenerateCodeUseCase {
         if (module.valueObjectIds() != null) {
             module.valueObjectIds().stream()
                     .map(id -> repository.findById(id, ValueObjectEntity.class).orElseThrow())
+                    .filter(vo -> inScope(vo.id()))
                     .forEach(vo -> generateValueObject(project, service, module, moduleDir, modulePackageDir, vo));
         }
 
@@ -326,6 +360,7 @@ public class GenerateCodeUseCase {
         var moduleAggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.of();
         repository.findAllOfType(PageEntity.class).stream()
                 .filter(p -> p.aggregateId() != null && moduleAggregateIds.contains(p.aggregateId()))
+                .filter(p -> inScope(p.aggregateId()))
                 .forEach(page -> generatePage(project, service, module, moduleDir, modulePackageDir, page));
     }
 
@@ -1124,7 +1159,7 @@ public class GenerateCodeUseCase {
         if (module.useCaseIds() != null) {
             module.useCaseIds().stream()
                     .map(id -> repository.findById(id, UseCaseEntity.class).orElse(null))
-                    .filter(uc -> uc != null && uc.steps() != null)
+                    .filter(uc -> uc != null && inScope(uc.id()) && uc.steps() != null)
                     .flatMap(uc -> uc.steps().stream())
                     .filter(step -> step.modelMappingId() != null && !step.modelMappingId().isBlank())
                     .map(UseCaseStepEntity::modelMappingId)
@@ -1135,7 +1170,7 @@ public class GenerateCodeUseCase {
         if (module.sagaIds() != null) {
             module.sagaIds().stream()
                     .map(id -> repository.findById(id, SagaEntity.class).orElse(null))
-                    .filter(saga -> saga != null && saga.steps() != null)
+                    .filter(saga -> saga != null && inScope(saga.id()) && saga.steps() != null)
                     .flatMap(saga -> saga.steps().stream())
                     .filter(step -> step.modelMappingId() != null && !step.modelMappingId().isBlank())
                     .map(SagaStepEntity::modelMappingId)
@@ -1218,6 +1253,7 @@ public class GenerateCodeUseCase {
         var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
 
         for (var aggregateId : aggregateIds) {
+            if (!inScope(aggregateId)) continue;
             var aggregate = repository.findById(aggregateId, AggregateEntity.class).orElse(null);
             if (aggregate == null || aggregate.modelId() == null) continue;
 
@@ -1276,10 +1312,12 @@ public class GenerateCodeUseCase {
             if (module == null) continue;
 
             for (var aggId : (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of())) {
+                if (!inScope(aggId)) continue;
                 var agg = repository.findById(aggId, AggregateEntity.class).orElse(null);
                 if (agg != null) tables.add(aggregateTable(agg));
             }
             for (var entId : (module.entityIds() != null ? module.entityIds() : List.<String>of())) {
+                if (!inScope(entId)) continue;
                 var ent = repository.findById(entId, EntityEntity.class).orElse(null);
                 if (ent != null && ent.isCollection()) tables.add(collectionEntityTable(ent));
             }
@@ -1287,6 +1325,7 @@ public class GenerateCodeUseCase {
             // flow-materialized read models are included too
             repository.findAllOfType(ReadModelEntity.class).stream()
                     .filter(rm -> module.id().equals(rm.moduleId()))
+                    .filter(rm -> inScope(rm.id()))
                     .forEach(rm -> tables.add(readModelTable(rm)));
         }
         if (tables.isEmpty()) return;

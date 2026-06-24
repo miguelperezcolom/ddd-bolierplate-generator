@@ -2,8 +2,8 @@
 
 > Estado: **propuesta** (RFC). Implementado: **A1** (integridad + `--modux.check`), **A2**
 > (almacenamiento granular + `--modux.split`/`--modux.merge` + `ModelStorageFormat`), **B1** (elemento
-> `View` + cierre de dependencias `--modux.view`). Pendiente: la generación por slice de **B2**
-> (`generate --view`), **B3** (vistas computadas) y **C** (lazy loading). Ver §8.
+> `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`).
+> Pendiente: **B3** (vistas computadas) y **C** (lazy loading). Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -205,9 +205,16 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
    modelo de entrada). Expuesto como `--modux.view=<id>` (imprime miembros + cierre + miembros
    colgantes). Tests: la vista de `uc-crearEstancia` cierra sobre sus dependencias; los miembros
    inexistentes se reportan. *Pendiente menor de B1: edición en la UI (el tipo ya existe).*
-4. **B2 — `generate --view`.** *Pendiente.* El cierre (`ResolveViewClosureUseCase`) ya está; falta la
-   **generación por slice**: filtrar `GenerateCodeUseCase` para emitir solo los elementos del cierre (y
-   sus contenedores). Es invasivo (el generador recorre todo) → merece su propia pasada con cuidado.
+4. **B2 — `generate --view`.** ✅ *Implementado.* `GenerateCodeCommand` gana `viewId`; al generar con
+   vista, un campo de scope (el cierre) filtra la emisión vía `inScope(id)` en cada punto de generación
+   de elementos de dominio. **Decisión:** el **esqueleto** (poms de project/service/module, app)
+   se genera **siempre** —así el slice compila aunque haya módulos vacíos— y solo se filtra el **código
+   de dominio** (agregados, use cases, eventos, sagas, proyecciones, read models, gateways…) y los
+   generadores derivados (business rules, mappings, **migraciones**, que quedan consistentes con las
+   entidades emitidas). El manifest no se reescribe en runs parciales. CLI:
+   `--modux.generate=<proj> --modux.view=<id>`. Test: la vista de `uc-crearEstancia` emite
+   `EstanciaEntity`/`CrearEstanciaUseCase` + esqueleto, pero **no** `HotelEntity`/`HabitacionEntity`. El
+   e2e completo (sin scope) sigue verde.
 5. **B3 — Vistas computadas.** Queries guardadas (semilla + expansión), p. ej. bounded-context view.
 6. **C — Lazy loading.** Cargar solo el cierre de la vista activa en UI/edición/gen parcial.
 

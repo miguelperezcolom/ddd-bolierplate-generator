@@ -241,6 +241,17 @@ reference (a use case pulls in its aggregate, gateway, event and input model):
 mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
 ```
 
+You can also **generate just a slice** — only the view's closure is emitted, inside the normal project
+skeleton (so it still builds; out-of-scope modules are simply empty):
+
+```bash
+mvn spring-boot:run \
+  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.view=view-checkin-journey"
+```
+
+This is the payoff of catalog-and-views: with a huge model you regenerate one bounded context at a time
+instead of the whole thing.
+
 ## Keeping the schema up to date
 
 The schema is regenerated on every startup of the Modux generator. If you add custom entity types or the data model evolves, restart the generator and the new schema will be written to `.dev/data/model-driven-store-schema.json` automatically.
