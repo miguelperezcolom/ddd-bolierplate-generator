@@ -109,6 +109,7 @@ public class CommonFileRepository {
         data.queryServices().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.integrationEvents().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
         data.readModels().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        data.flows().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
     }
 
     @SneakyThrows
@@ -140,6 +141,7 @@ public class CommonFileRepository {
         List<QueryServiceEntity> queryServices = store.values().stream().filter(v -> v instanceof QueryServiceEntity).map(v -> (QueryServiceEntity) v).toList();
         List<IntegrationEventEntity> integrationEvents = store.values().stream().filter(v -> v instanceof IntegrationEventEntity).map(v -> (IntegrationEventEntity) v).toList();
         List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
+        List<FlowEntity> flows = store.values().stream().filter(v -> v instanceof FlowEntity).map(v -> (FlowEntity) v).toList();
         AllData data = new AllData(
                 projects,
                 services,
@@ -167,7 +169,8 @@ public class CommonFileRepository {
                 enums,
                 queryServices,
                 integrationEvents,
-                readModels
+                readModels,
+                flows
         );
         YAMLMapper yamlMapper = new YAMLMapper();
         yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);

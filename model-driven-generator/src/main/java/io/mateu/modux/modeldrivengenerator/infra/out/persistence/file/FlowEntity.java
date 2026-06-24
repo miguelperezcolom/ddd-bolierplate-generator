@@ -1,0 +1,21 @@
+package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
+
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
+import io.mateu.uidl.interfaces.Identifiable;
+
+import java.util.List;
+
+public record FlowEntity(
+        String id,
+        String name,
+        String description,
+        FlowArchetype archetype,
+        String triggerAggregateId,
+        String triggerEvent,
+        String targetModuleId,
+        String readModelName,
+        List<String> materializedFields,
+        String targetUseCaseId,
+        List<String> overrides
+) implements Identifiable {
+}

@@ -443,6 +443,55 @@
       "type" : "string",
       "enum" : [ "S3", "AzureBlob", "GCS", "Local", "Custom" ]
     },
+    "FlowArchetype" : {
+      "type" : "string",
+      "enum" : [ "MATERIALIZES", "TRIGGERS", "NOTIFIES", "ORCHESTRATES" ]
+    },
+    "FlowEntity" : {
+      "type" : "object",
+      "properties" : {
+        "archetype" : {
+          "$ref" : "#/$defs/FlowArchetype"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "materializedFields" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "overrides" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "readModelName" : {
+          "type" : "string"
+        },
+        "targetModuleId" : {
+          "type" : "string"
+        },
+        "targetUseCaseId" : {
+          "type" : "string"
+        },
+        "triggerAggregateId" : {
+          "type" : "string"
+        },
+        "triggerEvent" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
     "GatewayAuthType" : {
       "type" : "string",
       "enum" : [ "None", "Basic", "ApiKey", "BearerToken", "OAuth2ClientCredentials" ]
@@ -2280,6 +2329,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EnumEntity"
+      }
+    },
+    "flows" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/FlowEntity"
       }
     },
     "gateways" : {
