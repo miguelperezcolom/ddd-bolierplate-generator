@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -64,6 +65,11 @@ public class GenerateCodeUseCase {
 
     final CommonFileRepository repository;
     final FlowStoreMaterializer flowStoreMaterializer;
+
+    // generated-zone integrity: hashes of files generated this run vs. the previous run's manifest
+    private Path generationRoot;
+    private Map<String, String> previousManifest = Map.of();
+    private final Map<String, String> currentManifest = new HashMap<>();
 
     public void handle(GenerateCodeCommand command) {
         // Desugar high-level flow intents into structural pieces in the store so the rest of the
@@ -85,6 +91,11 @@ public class GenerateCodeUseCase {
                 ? withOutputPath(stored, command.outputPath())
                 : stored;
 
+        // integrity: load the previous run's manifest, start a fresh one for this run
+        generationRoot = Path.of(project.outputPath()).toAbsolutePath().normalize();
+        previousManifest = loadManifest();
+        currentManifest.clear();
+
         if (project.gitRepository() != null && !project.gitRepository().isBlank()) {
             generateRootPom(project);
         }
@@ -103,6 +114,9 @@ public class GenerateCodeUseCase {
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
         repository.findAllOfType(UiShellEntity.class)
                 .forEach(shell -> generateUiShell(project, shell));
+
+        reportOrphanedGeneratedFiles();
+        saveManifest();
     }
 
     // ─── Root pom (monorepo) ──────────────────────────────────────────────────
@@ -1710,22 +1724,28 @@ public class GenerateCodeUseCase {
 
     /** Writes a developer-owned file only if it does not already exist (scaffold once, never overwrite). */
     private void createCustomFile(String baseDir, Map<String, Object> model, String template, String destFile) {
-        if (new File(baseDir + "/" + destFile).exists()) {
-            return;
+        var file = new File(baseDir + "/" + destFile);
+        if (file.exists()) {
+            return; // developer-owned: never overwritten, not tracked in the manifest
         }
-        createFile(baseDir, model, template, destFile);
+        renderFile(file, model, template);
+    }
+
+    private void createFile(String baseDir, Map<String, Object> model, String template, String destFile) {
+        var file = new File(baseDir + "/" + destFile);
+        warnIfTampered(file);
+        renderFile(file, model, template);
+        recordGenerated(file);
     }
 
     @SneakyThrows
-    private void createFile(String baseDir, Map<String, Object> model, String template, String destFile) {
+    private void renderFile(File file, Map<String, Object> model, String template) {
         var cfg = new freemarker.template.Configuration(freemarker.template.Configuration.VERSION_2_3_32);
         cfg.setClassForTemplateLoading(this.getClass(), "/templates");
         cfg.setDefaultEncoding("UTF-8");
 
         var t = cfg.getTemplate(template);
-        var file = new File(baseDir + "/" + destFile);
         var parent = file.getParentFile();
-
         if (parent != null) {
             parent.mkdirs();
         }
@@ -1735,6 +1755,64 @@ public class GenerateCodeUseCase {
         }
 
         formatIfJava(file);
+    }
+
+    // ─── Generated-zone integrity (manifest) ───────────────────────────────────
+
+    private String relPath(File file) {
+        return generationRoot.relativize(file.toPath().toAbsolutePath().normalize()).toString();
+    }
+
+    private void warnIfTampered(File file) {
+        if (generationRoot == null || !file.exists()) {
+            return;
+        }
+        var prev = previousManifest.get(relPath(file));
+        if (prev != null && !prev.equals(hashFile(file))) {
+            log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom module instead.",
+                    relPath(file));
+        }
+    }
+
+    private void recordGenerated(File file) {
+        if (generationRoot != null) {
+            currentManifest.put(relPath(file), hashFile(file));
+        }
+    }
+
+    @SneakyThrows
+    private String hashFile(File file) {
+        var digest = java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file.toPath()));
+        var sb = new StringBuilder();
+        for (var b : digest) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    @SneakyThrows
+    private Map<String, String> loadManifest() {
+        var path = generationRoot.resolve(".modux/generated-manifest.json");
+        if (!Files.exists(path)) {
+            return Map.of();
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, String> m = new com.fasterxml.jackson.databind.ObjectMapper().readValue(path.toFile(), Map.class);
+        return m;
+    }
+
+    @SneakyThrows
+    private void saveManifest() {
+        var path = generationRoot.resolve(".modux/generated-manifest.json");
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, new com.fasterxml.jackson.databind.ObjectMapper()
+                .writerWithDefaultPrettyPrinter().writeValueAsString(new java.util.TreeMap<>(currentManifest)));
+    }
+
+    private void reportOrphanedGeneratedFiles() {
+        previousManifest.keySet().stream()
+                .filter(rel -> !currentManifest.containsKey(rel))
+                .forEach(rel -> log.info("Previously generated file is no longer produced by the model: {}", rel));
     }
 
     private void formatIfJava(File file) {
