@@ -82,6 +82,7 @@ These belong to the same model-driven definition as the domain itself: the aim i
 
 ## Next steps
 
+- [Spec-Driven Development](/getting-started/spec-driven-development/) — how the model is authored (AI) and turned into code (deterministically)
 - [Quick Start](/getting-started/quick-start/) — generate your first project
 - [End-to-End Flows](/reference/flows/) — see the patterns working together
 - [User Manual](/manual/overview/) — every building block in detail

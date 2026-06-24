@@ -5,6 +5,8 @@ description: Use Claude AI to generate proposals for the custom code that Modux 
 
 The Modux generator produces complete structural skeletons, but some logic genuinely cannot be inferred from a spec: invariant conditions, operation preconditions, and BDD step bodies all require domain knowledge that lives outside the model. The `ai-complete` command closes that gap by calling Claude AI with context from your spec and generating ready-to-paste proposals.
 
+This is the **second** place Modux uses AI, and it stays strictly inside the boundary described in [Spec-Driven Development](/getting-started/spec-driven-development/): the AI never emits the locked, regenerated production code — it only proposes implementations for the human-owned [two-zone hooks](/manual/generating-code/#generated-code-vs-your-code-two-zones), which you review and paste into code you control.
+
 ## The two-step workflow
 
 ```

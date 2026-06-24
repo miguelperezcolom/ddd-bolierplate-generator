@@ -25,10 +25,45 @@ Both are "spec-driven". Modux is firmly in the **second** column for anything th
 
 Concretely, the pipeline is:
 
-```
-Natural-language specs ──(AI)──▶ Modux model (YAML, schema-validated) ──(Modux)──▶ Production code
-        fuzzy                          the source of truth                deterministic
-```
+<svg viewBox="0 0 880 200" role="img" aria-label="Pipeline: natural-language specs, translated by AI into the Modux model, which the Modux generator deterministically turns into production code." xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:880px;margin:1rem auto;display:block;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;">
+  <defs>
+    <marker id="sdd-arrow-ai" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--sl-color-text)" fill-opacity="0.55"/>
+    </marker>
+    <marker id="sdd-arrow-modux" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--sl-color-text-accent)"/>
+    </marker>
+  </defs>
+
+  <!-- Box A: natural-language specs -->
+  <rect x="10" y="78" width="190" height="74" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" stroke-width="1.5"/>
+  <text x="105" y="108" text-anchor="middle" font-size="14" font-weight="600" fill="var(--sl-color-text)">Natural-language</text>
+  <text x="105" y="126" text-anchor="middle" font-size="14" font-weight="600" fill="var(--sl-color-text)">specs</text>
+  <text x="105" y="144" text-anchor="middle" font-size="11" fill="var(--sl-color-text)" fill-opacity="0.7">ambiguous, human</text>
+
+  <!-- Arrow 1: AI (dashed = non-deterministic) -->
+  <line x1="208" y1="115" x2="312" y2="115" stroke="var(--sl-color-text)" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#sdd-arrow-ai)"/>
+  <text x="260" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sl-color-text)">AI</text>
+  <text x="260" y="138" text-anchor="middle" font-size="11" fill="var(--sl-color-text)" fill-opacity="0.7">non-deterministic</text>
+
+  <!-- Box B: Modux model (the source of truth, accent-stroked) -->
+  <rect x="320" y="74" width="240" height="82" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-text-accent)" stroke-width="2.5"/>
+  <text x="440" y="100" text-anchor="middle" font-size="11" font-weight="700" fill="var(--sl-color-text-accent)" letter-spacing="0.5">THE SOURCE OF TRUTH</text>
+  <text x="440" y="123" text-anchor="middle" font-size="15" font-weight="600" fill="var(--sl-color-text)">Modux model</text>
+  <text x="440" y="142" text-anchor="middle" font-size="11" fill="var(--sl-color-text)" fill-opacity="0.7">schema-validated YAML</text>
+
+  <!-- Arrow 2: Modux (solid accent = deterministic) -->
+  <line x1="568" y1="115" x2="672" y2="115" stroke="var(--sl-color-text-accent)" stroke-width="2.5" marker-end="url(#sdd-arrow-modux)"/>
+  <text x="620" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sl-color-text-accent)">Modux</text>
+  <text x="620" y="138" text-anchor="middle" font-size="11" fill="var(--sl-color-text-accent)" fill-opacity="0.85">deterministic</text>
+
+  <!-- Box C: production code -->
+  <rect x="680" y="78" width="190" height="74" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" stroke-width="1.5"/>
+  <text x="775" y="113" text-anchor="middle" font-size="14" font-weight="600" fill="var(--sl-color-text)">Production code</text>
+  <text x="775" y="133" text-anchor="middle" font-size="11" fill="var(--sl-color-text)" fill-opacity="0.7">hexagonal Java monorepo</text>
+</svg>
+
+<p style="text-align:center;font-size:0.85em;opacity:0.75;margin-top:-0.25rem;">AI handles the fuzzy translation; Modux deterministically compiles the model into code.</p>
 
 - **AI does the translation.** Going from "a booking can't be confirmed unless it's paid and the room is available" to the right aggregate, operation, precondition and event is exactly the kind of fuzzy, context-heavy mapping LLMs excel at. The output is a **Modux model** — small, structured, human-readable, schema-validated, diffable in version control.
 - **Modux does the generation.** From that model, the [generator](/manual/generating-code/) deterministically produces the hexagonal Java monorepo: aggregates, use cases, persistence, messaging, UI, DevOps. Same model in, same code out — no surprises, no drift between runs.
