@@ -91,14 +91,14 @@ public class GenerateCodeUseCase {
 
         project.serviceIds().stream()
                 .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
-                .forEach(service -> generateService(project, service));
+                .forEach(service -> generateService(project, service, command.sourceOnly()));
 
-        // Docker Compose at project root
-        generateDockerCompose(project);
-
-        // CI/CD pipeline and infrastructure-as-code at project root
-        generateCiWorkflow(project);
-        generateTerraform(project);
+        // DevOps / infrastructure-as-code at project root (skipped when generating sources only)
+        if (!command.sourceOnly()) {
+            generateDockerCompose(project);
+            generateCiWorkflow(project);
+            generateTerraform(project);
+        }
 
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
         repository.findAllOfType(UiShellEntity.class)
@@ -116,7 +116,7 @@ public class GenerateCodeUseCase {
 
     // ─── Service level ────────────────────────────────────────────────────────
 
-    private void generateService(ProjectEntity project, ServiceEntity service) {
+    private void generateService(ProjectEntity project, ServiceEntity service, boolean sourceOnly) {
         var serviceName = serviceName(service);
         var serviceDir = project.outputPath() + "/" + serviceName;
 
@@ -128,11 +128,12 @@ public class GenerateCodeUseCase {
         serviceModel.put("service", serviceToMap(service));
         createFile(serviceDir, serviceModel, "service-parent-pom.ftl", "pom.xml");
 
-        // containerization: a multi-stage Dockerfile that builds the service reactor
-        createFile(serviceDir, serviceModel, "dockerfile.ftl", "Dockerfile");
-
-        // Kubernetes manifests (Deployment + Service + optional HPA)
-        createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
+        if (!sourceOnly) {
+            // containerization: a multi-stage Dockerfile that builds the service reactor
+            createFile(serviceDir, serviceModel, "dockerfile.ftl", "Dockerfile");
+            // Kubernetes manifests (Deployment + Service + optional HPA)
+            createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
+        }
 
         // generate each DDD module
         service.moduleIds().stream()

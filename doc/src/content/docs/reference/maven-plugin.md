@@ -27,7 +27,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 | `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Absolute path to the YAML spec file |
 | `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Directory where generated code is written |
 | `packageName` | `modux.packageName` | `com.example` | No | Root Java package for generated classes |
-| `sourceOnly` | `modux.sourceOnly` | `false` | No | When `true`, skips POMs and DevOps artifacts; generates Java sources only |
+| `sourceOnly` | `modux.sourceOnly` | `false` | No | When `true`, skips the DevOps/IaC artifacts (Dockerfile, Kubernetes manifests, docker-compose, CI workflow, Terraform); generates the Maven project and Java sources only |
 
 ### Minimal configuration
 

@@ -73,24 +73,32 @@ This page lists every file Modux generates and what it contains.
 | File | Description |
 |---|---|
 | `application/sagas/{Saga}Saga.java` | Saga orchestrator / state machine |
-| `infra/in/messaging/{Saga}SagaHandler.java` | Kafka message handler for saga events |
+| `src/main/resources/workflows/{Saga}.workflow.json` | [EventConductor](https://eventconductor.mateu.io/) workflow definition |
 
-## Per projection
+## Per page
 
 | File | Description |
 |---|---|
-| `application/projections/{Projection}Projection.java` | Event handler interface |
-| `infra/out/persistence/{Projection}ProjectionImpl.java` | Projection implementation |
-| `infra/out/persistence/{Projection}Entity.java` | Projected view JPA entity |
+| `infra/in/ui/pages/{page}/{Page}Page.java` | CRUD / form / dashboard / wizard page |
+| `src/main/resources/forms/{Page}.form.json` | EventConductor form definition (FORM and WIZARD pages) |
+
+## Per projection & read model
+
+| File | Description |
+|---|---|
+| `infra/in/projection/{Projection}Projection.java` | Event handler that maintains the read model |
+| `application/query/readmodel/{ReadModel}ReadModel.java` | Read-side DTO |
+| `infra/out/persistence/{ReadModel}ReadModelEntity.java` | Read model JPA entity |
+| `infra/out/persistence/{ReadModel}ReadModelEntityRepository.java` | Spring Data repository |
+| `application/query/{ReadModel}ReadModelQueryService.java` | Read model query service (+ DB implementation) |
 
 ## Per gateway
 
 | File | Description |
 |---|---|
-| `application/out/{Gateway}.java` | Gateway port interface |
-| `infra/out/http/{Gateway}Impl.java` | HTTP client implementation |
-| `application/out/{Operation}Request.java` | Request DTO per gateway operation |
-| `application/out/{Operation}Response.java` | Response DTO per gateway operation |
+| `application/out/{Gateway}Gateway.java` | Gateway port interface; typed method per operation |
+| `infra/out/gateway/{Gateway}GatewayImpl.java` | `RestTemplate` adapter (body, auth, parameter binding, typed response) |
+| `application/out/gateway/dto/{Model}.java` | Typed record per request/response model |
 
 ## Per subscription
 
@@ -106,6 +114,20 @@ This page lists every file Modux generates and what it contains.
 
 ---
 
+## DevOps & infrastructure
+
+| File | Description |
+|---|---|
+| `docker-compose.yml` | Project root; one entry per service plus Postgres and Kafka |
+| `.github/workflows/ci.yml` | Project root; builds and tests each service |
+| `terraform/main.tf` | Project root; Terraform skeleton |
+| `{service}/Dockerfile` | Multi-stage image per service |
+| `{service}/k8s/{service}.yaml` | Kubernetes Deployment + Service + optional HPA |
+
+These are skipped when generating with `sourceOnly` (see the [Maven Plugin Reference](/reference/maven-plugin/)). The generated service POMs also include JaCoCo, Spotless and the Maven Enforcer plugin.
+
+---
+
 ## Code formatting
 
-All generated Java files are formatted using **Google Java Format 1.19.2** before being written to disk. This ensures consistent style regardless of field order or template output.
+All generated Java files are formatted using **Google Java Format** before being written to disk. This ensures consistent style regardless of field order or template output.
