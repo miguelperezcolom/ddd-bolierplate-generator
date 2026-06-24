@@ -2,3 +2,4 @@
 *.iml
 target
 sample/
+model-driven-generator/src/test/resources/examples/model-driven-store-schema.json
