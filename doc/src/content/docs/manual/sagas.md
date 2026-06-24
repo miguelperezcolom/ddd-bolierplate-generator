@@ -89,6 +89,36 @@ For a `BookingConfirmationSaga`:
 - State machine transitions and compensation handlers
 - Kafka message handlers for each step
 - Retry and dead-letter configuration
+- `src/main/resources/workflows/BookingConfirmationSaga.workflow.json` — an [EventConductor](https://eventconductor.mateu.io/) workflow definition (see below)
+
+## Orchestration with EventConductor
+
+Modux generates each saga as an [**EventConductor**](https://eventconductor.mateu.io/) workflow
+definition — a version-controlled JSON file that the EventConductor engine executes. Rather than
+hand-roll a bespoke state machine, the generated system delegates orchestration to a
+production-grade, distributed workflow engine.
+
+The mapping is direct:
+
+| Modux saga | EventConductor workflow |
+|---|---|
+| Saga | A workflow definition (`<Saga>.workflow.json`) |
+| Step | An `ACTION` step dispatched to a Kafka topic |
+| Step ordering | `preconditionStepId` chaining |
+| Retry policy | `retries` per step |
+| Timeout | `timeout` (ISO-8601 or ms) |
+| Compensation | `rollbackable` + `compensationStepId` |
+| Human task | a `USER_TASK` step bound to a form |
+
+The generated JSON validates against EventConductor's `workflow-definition-schema.json`. Deploy the
+EventConductor orchestrator and workers alongside your services (it runs from a single JVM to a
+multi-pod Kubernetes cluster), import the workflow definitions, and the engine drives the process —
+events in, state transitions and compensations out. See the
+[EventConductor documentation](https://eventconductor.mateu.io/) for deployment modes and the
+workflow DSL.
+
+The [`orchestrates` flow archetype](/manual/flows/) is the quickest way to create one: declare the
+triggering event and target context, and Modux derives the saga and its EventConductor workflow.
 
 ## Next steps
 

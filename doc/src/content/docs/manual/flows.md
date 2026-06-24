@@ -30,7 +30,7 @@ Every flow has an **archetype** that determines which pieces it derives:
 | **`materializes`** | An event in one context materializes a read model in another | Domain event · integration event · payload model · read model · projection · subscription |
 | **`triggers`** | An event in one context invokes a use case in another (choreography) | Domain event · integration event · payload model · model mapping · subscription (CallUseCase) |
 | **`notifies`** | An event is published outbound for an external system to consume | Domain event · integration event |
-| **`orchestrates`** | An event starts a multi-step process with compensation | Domain event · integration event · saga · subscription (StartSaga) |
+| **`orchestrates`** | An event starts a multi-step process with compensation | Domain event · integration event · saga (as an [EventConductor](https://eventconductor.mateu.io/) workflow) · subscription (StartSaga) |
 
 ## Defining a flow
 
