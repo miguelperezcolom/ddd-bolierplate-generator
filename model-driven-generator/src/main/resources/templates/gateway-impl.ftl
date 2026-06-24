@@ -40,10 +40,21 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
     @Override
     public void ${op.name?uncap_first}(<#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if f.basicType><#if f.type == "string" || f.type == "json">String ${f.name}<#elseif f.type == "integer">Integer ${f.name}<#elseif f.type == "number" || f.type == "money">BigDecimal ${f.name}<#elseif f.type == "bool">Boolean ${f.name}<#elseif f.type == "date">LocalDate ${f.name}<#elseif f.type == "time">LocalTime ${f.name}<#elseif f.type == "dateTime">LocalDateTime ${f.name}<#else>String ${f.name}</#if><#else>String ${f.name}Id</#if><#sep>, </#sep></#list></#if>) {
         // TODO: call ${op.httpMethod!'GET'} ${gateway.baseUrl!''}${op.path!'/' + op.name?lower_case}
-        restTemplate.${(op.httpMethod?lower_case!'get')}ForObject(
-                BASE_URL + "${op.path!'/' + op.name?lower_case?replace("[^a-z0-9]","-",'r')}",
-                Void.class
-        );
+<#assign __url = 'BASE_URL + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + '"'>
+<#assign __m = (op.httpMethod!'GET')?upper_case>
+<#if __m == "POST">
+        restTemplate.postForObject(${__url}, null, Void.class);
+<#elseif __m == "PUT">
+        restTemplate.put(${__url}, null);
+<#elseif __m == "PATCH">
+        restTemplate.patchForObject(${__url}, null, Void.class);
+<#elseif __m == "DELETE">
+        restTemplate.delete(${__url});
+<#elseif __m == "GET">
+        restTemplate.getForObject(${__url}, Void.class);
+<#else>
+        // TODO: ${__m} request to ${__url}
+</#if>
     }
 
 </#list>

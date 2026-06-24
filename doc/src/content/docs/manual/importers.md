@@ -56,18 +56,30 @@ paths:
 
 Modux creates:
 
-- One `Gateway` named **Payment API** with `baseUrl = https://api.payments.example.com`
+- One `Gateway` named **PaymentApi** (the title turned into a valid identifier) with `baseUrl = https://api.payments.example.com`
 - Three `GatewayOperation` entries: `createPayment`, `getPayment`, `deletePayment`
+- One **typed `Model`** per schema in `components.schemas`, with a field per property (primitives mapped to Modux field types; `$ref` properties become references to the corresponding model)
 
-The `inputModelId` and `outputModelId` fields are left blank — fill them in the UI or YAML once you have the corresponding models defined.
+### Typed request/response models
+
+Each operation's `inputModelId` and `outputModelId` are wired to the models derived from its request body and `2xx` response schema (a `$ref`, or an array of `$ref` for list responses). The generated gateway adapter then exposes **typed methods** instead of untyped stubs.
 
 ### Auth detection
 
-The gateway is created with `authType = None`. After import, open the gateway in the UI and set the auth type (Basic, ApiKey, BearerToken, OAuth2ClientCredentials) and credentials to match the real API.
+The gateway's `authType` is inferred from the OpenAPI `securitySchemes`:
+
+| OpenAPI security scheme | Modux `authType` |
+|---|---|
+| `apiKey` | `ApiKey` (header name captured) |
+| `http` + `bearer` | `BearerToken` |
+| `http` + `basic` | `Basic` |
+| `oauth2` (client credentials) | `OAuth2ClientCredentials` (token URL + scopes captured) |
+
+Fill in the actual credentials (keys, tokens, client secret) in the UI after import.
 
 ### Re-importing
 
-Running the importer again with the same file updates the gateway's operations list. The gateway ID, auth settings, and rate-limit configuration are preserved — only the base URL and operations list are refreshed.
+Running the importer again with the same file updates the gateway's operations and the derived models in place. The gateway ID, any credentials you configured, and rate-limit configuration are preserved — the base URL, operations and models are refreshed.
 
 ---
 

@@ -38,6 +38,9 @@ public class CommonFileRepository {
     /** Directory that holds the resolved model store; generated schema is written next to it. */
     private Path dataDir = Path.of(".dev/data");
 
+    /** The resolved model store file; persist writes back here (consistent with where it was read). */
+    private Path storePath = Path.of(".dev/data/model-driven-store.yaml");
+
     private String storeKey(String id, Class<?> type) {
         return type.getSimpleName() + ":" + id;
     }
@@ -87,7 +90,8 @@ public class CommonFileRepository {
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
         Path yamlPath = Path.of(specFile);
         Path jsonPath = Path.of(".dev/data/model-driven-store.json");
-        var parent = yamlPath.toAbsolutePath().normalize().getParent();
+        storePath = yamlPath.toAbsolutePath().normalize();
+        var parent = storePath.getParent();
         if (parent != null) {
             dataDir = parent;
         }
@@ -199,10 +203,9 @@ public class CommonFileRepository {
                 JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
         yamlMapper.configOverride(Boolean.class).setInclude(
                 JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
-        var yamlPath = Path.of(".dev/data/model-driven-store.yaml");
         String yamlContent = "# yaml-language-server: $schema=./model-driven-store-schema.json\n"
                 + yamlMapper.writeValueAsString(data);
-        Files.writeString(yamlPath, yamlContent);
+        Files.writeString(storePath, yamlContent);
     }
 
     @SneakyThrows

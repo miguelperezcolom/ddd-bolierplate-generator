@@ -1,20 +1,15 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi;
 
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayAuthType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.swagger.parser.OpenAPIParser;
-import io.swagger.v3.oas.models.PathItem;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,41 +25,48 @@ public class ImportOpenApiUseCase {
                 .readLocation(command.filePath(), null, null)
                 .getOpenAPI();
 
-        String name = openApi.getInfo().getTitle();
+        // a valid identifier for the gateway name (real OpenAPI titles often contain spaces)
+        String name = OpenApiGatewayMapper.pascalCase(openApi.getInfo().getTitle());
 
-        var existing = repository.findAllOfType(GatewayEntity.class).stream()
-                .filter(g -> name.equals(g.name()))
-                .findFirst();
+        var result = OpenApiGatewayMapper.map(openApi);
+
+        // upsert the typed models derived from the OpenAPI schemas (deterministic ids → re-import updates)
+        result.models().forEach(repository::save);
 
         String baseUrl = "";
         if (openApi.getServers() != null && !openApi.getServers().isEmpty()) {
             baseUrl = openApi.getServers().get(0).getUrl();
         }
 
-        List<GatewayOperationEntity> operations = buildOperations(openApi.getPaths());
+        var existing = repository.findAllOfType(GatewayEntity.class).stream()
+                .filter(g -> name.equals(g.name()))
+                .findFirst();
 
         GatewayEntity gatewayEntity;
         if (existing.isPresent()) {
             GatewayEntity g = existing.get();
+            // preserve any auth/credentials the user configured; refresh baseUrl and operations
             gatewayEntity = new GatewayEntity(
                     g.id(), g.name(), g.serviceId(), baseUrl,
                     g.authType(), g.authUsername(), g.authPassword(), g.authApiKeyHeaderName(),
                     g.authBearerToken(), g.authOAuth2ClientId(), g.authOAuth2ClientSecret(),
-                    g.authOAuth2TokenUrl(), g.authOAuth2Scopes(), operations,
+                    g.authOAuth2TokenUrl(), g.authOAuth2Scopes(), result.operations(),
                     g.rateLimitEnabled(), g.rateLimitRequestsPerSecond(), g.rateLimitBurstSize(),
                     g.corsEnabled(), g.corsAllowedOrigins(), g.globalTimeoutMs());
         } else {
             String serviceId = command.serviceId() != null && !command.serviceId().isBlank()
                     ? command.serviceId() : null;
+            var auth = result.auth();
             gatewayEntity = new GatewayEntity(
                     UUID.randomUUID().toString(), name, serviceId, baseUrl,
-                    GatewayAuthType.None, null, null, null,
-                    null, null, null, null, null, operations,
+                    auth.type(), null, null, auth.apiKeyHeaderName(),
+                    null, null, null, auth.oauthTokenUrl(), auth.oauthScopes(), result.operations(),
                     false, null, null, false, null, null);
         }
 
         repository.save(gatewayEntity);
-        log.info("Saved gateway '{}' with {} operations", name, operations.size());
+        log.info("Saved gateway '{}' with {} operations and {} models (auth: {})",
+                name, result.operations().size(), result.models().size(), result.auth().type());
 
         if (command.serviceId() != null && !command.serviceId().isBlank()) {
             repository.findById(command.serviceId(), ServiceEntity.class).ifPresent(service -> {
@@ -91,32 +93,5 @@ public class ImportOpenApiUseCase {
                 }
             });
         }
-    }
-
-    private List<GatewayOperationEntity> buildOperations(Map<String, PathItem> paths) {
-        if (paths == null) return List.of();
-        List<GatewayOperationEntity> ops = new ArrayList<>();
-        for (var pathEntry : paths.entrySet()) {
-            String path = pathEntry.getKey();
-            PathItem item = pathEntry.getValue();
-            if (item.getGet() != null) ops.add(operation("GET", path, item.getGet().getOperationId()));
-            if (item.getPost() != null) ops.add(operation("POST", path, item.getPost().getOperationId()));
-            if (item.getPut() != null) ops.add(operation("PUT", path, item.getPut().getOperationId()));
-            if (item.getPatch() != null) ops.add(operation("PATCH", path, item.getPatch().getOperationId()));
-            if (item.getDelete() != null) ops.add(operation("DELETE", path, item.getDelete().getOperationId()));
-            if (item.getHead() != null) ops.add(operation("HEAD", path, item.getHead().getOperationId()));
-            if (item.getOptions() != null) ops.add(operation("OPTIONS", path, item.getOptions().getOperationId()));
-            if (item.getTrace() != null) ops.add(operation("TRACE", path, item.getTrace().getOperationId()));
-        }
-        return ops;
-    }
-
-    private GatewayOperationEntity operation(String method, String path, String operationId) {
-        String name = (operationId != null && !operationId.isBlank())
-                ? operationId
-                : method + " " + path;
-        return new GatewayOperationEntity(
-                UUID.randomUUID().toString(), name, method, path,
-                null, null, null, null, null, false, null, null);
     }
 }

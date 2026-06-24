@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -108,6 +110,9 @@ class GenerationE2ETest {
     @Autowired
     CommonFileRepository repository;
 
+    @Autowired
+    ImportOpenApiUseCase importOpenApiUseCase;
+
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
@@ -117,6 +122,10 @@ class GenerationE2ETest {
         var fixture = Files.createTempFile("modux-e2e-store", ".yaml");
         Files.writeString(fixture, hotelStore + FIXTURE_EXTRA);
         repository.loadFrom(fixture.toAbsolutePath().toString());
+
+        // 1b. import a third-party OpenAPI spec as a typed gateway on the hotel service
+        importOpenApiUseCase.handle(new ImportOpenApiCommand("hotel",
+                Path.of("src", "test", "resources", "e2e", "petstore-openapi.yaml").toAbsolutePath().toString()));
 
         // 2. generate the project
         var output = Files.createTempDirectory("modux-e2e");
@@ -139,6 +148,8 @@ class GenerationE2ETest {
                 "materializes flow did not produce its read model");
         assertTrue(anyFileMatches(output, "ReservaNotificadaE2EEvent.java"),
                 "notifies flow did not produce its domain event");
+        assertTrue(anyFileMatches(output, "SwaggerPetstoreGatewayImpl.java"),
+                "imported OpenAPI gateway was not generated");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

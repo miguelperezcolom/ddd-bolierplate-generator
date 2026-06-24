@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: Swagger Petstore
+  version: 1.0.0
+servers:
+  - url: https://petstore.example/v1
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+    post:
+      operationId: createPet
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Owner'
+    Owner:
+      type: object
+      properties:
+        email:
+          type: string
