@@ -592,6 +592,12 @@
         "outputModelId" : {
           "type" : "string"
         },
+        "parameters" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/GatewayParameterEntity"
+          }
+        },
         "path" : {
           "type" : "string"
         },
@@ -603,6 +609,24 @@
         },
         "timeoutMs" : {
           "type" : "integer"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "GatewayParameterEntity" : {
+      "type" : "object",
+      "properties" : {
+        "location" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "required" : {
+          "type" : "boolean"
+        },
+        "type" : {
+          "type" : "string"
         }
       },
       "additionalProperties" : false
