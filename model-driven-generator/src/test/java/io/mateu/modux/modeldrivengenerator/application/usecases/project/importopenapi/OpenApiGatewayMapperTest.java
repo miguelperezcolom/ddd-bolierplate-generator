@@ -49,6 +49,26 @@ class OpenApiGatewayMapperTest {
                         application/json:
                           schema:
                             $ref: '#/components/schemas/Pet'
+              /pets/{petId}:
+                get:
+                  operationId: getPet
+                  parameters:
+                    - name: petId
+                      in: path
+                      required: true
+                      schema:
+                        type: integer
+                    - name: expand
+                      in: query
+                      required: false
+                      schema:
+                        type: string
+                  responses:
+                    '200':
+                      content:
+                        application/json:
+                          schema:
+                            $ref: '#/components/schemas/Pet'
             components:
               securitySchemes:
                 apiKey:
@@ -111,6 +131,18 @@ class OpenApiGatewayMapperTest {
         // array-of-$ref response resolves to the element model
         var listPets = op(result.operations(), "listPets");
         assertEquals(pet.id(), listPets.outputModelId());
+    }
+
+    @Test
+    void captures_path_and_query_parameters() {
+        var getPet = op(map().operations(), "getPet");
+        assertEquals(2, getPet.parameters().size());
+        var petId = getPet.parameters().stream().filter(p -> p.name().equals("petId")).findFirst().orElseThrow();
+        assertEquals("path", petId.location());
+        assertEquals("integer", petId.type());
+        assertTrue(petId.required());
+        var expand = getPet.parameters().stream().filter(p -> p.name().equals("expand")).findFirst().orElseThrow();
+        assertEquals("query", expand.location());
     }
 
     @Test

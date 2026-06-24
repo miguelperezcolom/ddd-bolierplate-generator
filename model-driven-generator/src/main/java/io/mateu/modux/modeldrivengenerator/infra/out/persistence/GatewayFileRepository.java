@@ -45,7 +45,8 @@ public class GatewayFileRepository implements GatewayRepository {
                 entity.getOperations().stream()
                         .map(o -> new GatewayOperationEntity(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
-                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize()))
+                                o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
+                                java.util.List.of()))
                         .toList();
         repository.save(new GatewayEntity(
                 entity.getId().id(),

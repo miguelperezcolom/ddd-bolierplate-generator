@@ -64,6 +64,10 @@ Modux creates:
 
 Each operation's `inputModelId` and `outputModelId` are wired to the models derived from its request body and `2xx` response schema (a `$ref`, or an array of `$ref` for list responses). The generated gateway adapter then exposes **typed methods** instead of untyped stubs.
 
+### Path and query parameters
+
+OpenAPI `path` and `query` parameters are captured per operation and become typed method arguments. The generated adapter binds them automatically: path placeholders (e.g. `/pets/{petId}`) and query parameters are expanded from the call's arguments. (Header parameters are skipped for now.)
+
 ### Auth detection
 
 The gateway's `authType` is inferred from the OpenAPI `securitySchemes`:

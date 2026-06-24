@@ -1,5 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
+import java.util.List;
+
 public record GatewayOperationEntity(
         String id,
         String name,
@@ -12,6 +14,12 @@ public record GatewayOperationEntity(
         Integer retryWaitDurationMs,
         boolean circuitBreakerEnabled,
         Integer circuitBreakerFailureRateThreshold,
-        Integer circuitBreakerSlidingWindowSize
+        Integer circuitBreakerSlidingWindowSize,
+        List<GatewayParameterEntity> parameters
 ) {
+    public GatewayOperationEntity {
+        if (parameters == null) {
+            parameters = List.of();
+        }
+    }
 }

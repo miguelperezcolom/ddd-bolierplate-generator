@@ -8,6 +8,12 @@ paths:
   /pets:
     get:
       operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
           content:
@@ -25,6 +31,21 @@ paths:
               $ref: '#/components/schemas/Pet'
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
           content:
             application/json:
               schema:

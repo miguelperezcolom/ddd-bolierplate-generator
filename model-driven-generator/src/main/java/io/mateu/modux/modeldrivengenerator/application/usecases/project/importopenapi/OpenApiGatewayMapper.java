@@ -2,6 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.importo
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayAuthType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayParameterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.uidl.data.FieldDataType;
@@ -135,7 +136,25 @@ public final class OpenApiGatewayMapper {
         var outputModelId = responseModelId(operation, nameToModelId);
         ops.add(new GatewayOperationEntity(
                 UUID.randomUUID().toString(), name, method, path,
-                inputModelId, outputModelId, null, null, null, false, null, null));
+                inputModelId, outputModelId, null, null, null, false, null, null,
+                buildParameters(operation)));
+    }
+
+    private static List<GatewayParameterEntity> buildParameters(Operation operation) {
+        if (operation.getParameters() == null) {
+            return List.of();
+        }
+        List<GatewayParameterEntity> params = new ArrayList<>();
+        for (var p : operation.getParameters()) {
+            var in = p.getIn();
+            if (!"path".equals(in) && !"query".equals(in)) {
+                continue; // header/cookie params are not bound into the URL
+            }
+            var type = p.getSchema() != null ? dataType(p.getSchema()).name() : "string";
+            params.add(new GatewayParameterEntity(
+                    p.getName(), in, type, Boolean.TRUE.equals(p.getRequired())));
+        }
+        return params;
     }
 
     private static String requestModelId(Operation operation, Map<String, String> nameToModelId) {
