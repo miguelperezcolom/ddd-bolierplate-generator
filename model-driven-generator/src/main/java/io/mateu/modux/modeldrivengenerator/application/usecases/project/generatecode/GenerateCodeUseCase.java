@@ -1292,13 +1292,159 @@ public class GenerateCodeUseCase {
         if (tables.isEmpty()) return;
 
         var appDir = serviceDir + "/" + serviceName(service) + "-app";
+        var migrationDir = appDir + "/src/main/resources/db/migration";
+        var snapshotPath = Path.of(project.outputPath(), ".modux", "schema-" + serviceName(service) + ".json");
+        var previous = readSchemaSnapshot(snapshotPath);
+
+        if (previous == null) {
+            // first generation → immutable baseline
+            Map<String, Object> model = new HashMap<>();
+            model.put("project", projectToMap(project));
+            model.put("service", serviceToMap(service));
+            model.put("tables", tables);
+            createCustomFile(appDir, model, "flyway-baseline.ftl",
+                    "src/main/resources/db/migration/V1__baseline.sql");
+            writeSchemaSnapshot(snapshotPath, 1, tables);
+            return;
+        }
+
+        // subsequent generation → diff the desired schema against the last snapshot
+        var diff = diffSchema(asList(previous.get("tables")), tables);
+        var newTables = asList(diff.get("newTables"));
+        var addedColumns = asList(diff.get("addedColumns"));
+        var review = asList(diff.get("review"));
+        if (newTables.isEmpty() && addedColumns.isEmpty() && review.isEmpty()) {
+            return;   // no schema change → no new migration
+        }
+
+        var nextVersion = Math.max(intValue(previous.get("version")), maxMigrationVersion(migrationDir)) + 1;
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
-        model.put("tables", tables);
-        // The baseline is applied once and is immutable; never overwrite it on regeneration.
-        createCustomFile(appDir, model, "flyway-baseline.ftl",
-                "src/main/resources/db/migration/V1__baseline.sql");
+        model.put("version", nextVersion);
+        model.put("newTables", newTables);
+        model.put("addedColumns", addedColumns);
+        model.put("review", review);
+        // each incremental migration is immutable once applied
+        createCustomFile(appDir, model, "flyway-migration.ftl",
+                "src/main/resources/db/migration/V" + nextVersion + "__model_changes.sql");
+        writeSchemaSnapshot(snapshotPath, nextVersion, tables);
+        if (!review.isEmpty()) {
+            System.out.println("[modux] Schema migration V" + nextVersion + " for service " + service.name()
+                    + " contains " + review.size() + " destructive/ambiguous change(s) left as comments for manual review.");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> asList(Object value) {
+        return value instanceof List<?> list ? (List<Object>) list : List.of();
+    }
+
+    private int intValue(Object value) {
+        return value instanceof Number n ? n.intValue() : 0;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> readSchemaSnapshot(Path path) {
+        try {
+            if (!Files.exists(path)) return null;
+            return fromJson(Files.readString(path));
+        } catch (Exception e) {
+            return null;   // unreadable snapshot → treat as first generation
+        }
+    }
+
+    @SneakyThrows
+    private void writeSchemaSnapshot(Path path, int version, List<Map<String, Object>> tables) {
+        Files.createDirectories(path.getParent());
+        Map<String, Object> snapshot = new HashMap<>();
+        snapshot.put("version", version);
+        snapshot.put("tables", tables);
+        Files.writeString(path, toJson(snapshot));
+    }
+
+    /** Highest existing V{n} migration number in the directory, or 0 if none. */
+    private int maxMigrationVersion(String migrationDir) {
+        var dir = Path.of(migrationDir);
+        if (!Files.isDirectory(dir)) return 0;
+        var max = 0;
+        try (var stream = Files.list(dir)) {
+            for (var p : (Iterable<Path>) stream::iterator) {
+                var m = java.util.regex.Pattern.compile("^V(\\d+)__").matcher(p.getFileName().toString());
+                if (m.find()) max = Math.max(max, Integer.parseInt(m.group(1)));
+            }
+        } catch (Exception ignored) {
+            // best effort
+        }
+        return max;
+    }
+
+    /** Diff two table lists; additive changes are returned as DDL, destructive ones as review notes. */
+    private Map<String, Object> diffSchema(List<Object> previous, List<Map<String, Object>> current) {
+        var prevByName = new HashMap<String, Map<String, Object>>();
+        for (var t : previous) {
+            if (t instanceof Map<?, ?> m) prevByName.put(String.valueOf(m.get("name")), castMap(m));
+        }
+        var curByName = new HashMap<String, Map<String, Object>>();
+        for (var t : current) curByName.put(String.valueOf(t.get("name")), t);
+
+        var newTables = new ArrayList<Object>();
+        var addedColumns = new ArrayList<Object>();
+        var review = new ArrayList<Object>();
+
+        for (var curTable : current) {
+            var name = String.valueOf(curTable.get("name"));
+            var prevTable = prevByName.get(name);
+            if (prevTable == null) {
+                newTables.add(curTable);
+                continue;
+            }
+            var prevCols = columnTypes(prevTable);
+            var curCols = columnTypes(curTable);
+            for (var entry : curCols.entrySet()) {
+                if (!prevCols.containsKey(entry.getKey())) {
+                    var col = new HashMap<String, Object>();
+                    col.put("table", name);
+                    col.put("name", entry.getKey());
+                    col.put("type", entry.getValue());
+                    addedColumns.add(col);
+                } else if (!prevCols.get(entry.getKey()).equals(entry.getValue())) {
+                    review.add("ALTER TABLE " + name + " ALTER COLUMN " + entry.getKey()
+                            + " TYPE " + entry.getValue() + ";  -- was " + prevCols.get(entry.getKey()));
+                }
+            }
+            for (var prevColName : prevCols.keySet()) {
+                if (!curCols.containsKey(prevColName)) {
+                    review.add("ALTER TABLE " + name + " DROP COLUMN " + prevColName + ";");
+                }
+            }
+        }
+        for (var prevName : prevByName.keySet()) {
+            if (!curByName.containsKey(prevName)) {
+                review.add("DROP TABLE " + prevName + ";");
+            }
+        }
+
+        var diff = new HashMap<String, Object>();
+        diff.put("newTables", newTables);
+        diff.put("addedColumns", addedColumns);
+        diff.put("review", review);
+        return diff;
+    }
+
+    private Map<String, String> columnTypes(Map<String, Object> table) {
+        var result = new java.util.LinkedHashMap<String, String>();
+        for (var c : asList(table.get("columns"))) {
+            if (c instanceof Map<?, ?> col) {
+                result.put(String.valueOf(col.get("name")), String.valueOf(col.get("type")));
+            }
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Map<?, ?> m) {
+        return (Map<String, Object>) m;
     }
 
     private Map<String, Object> aggregateTable(AggregateEntity aggregate) {

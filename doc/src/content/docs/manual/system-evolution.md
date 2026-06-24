@@ -15,8 +15,16 @@ Generated services own their schema with [Flyway](https://flywaydb.org/) instead
 
 To keep the migration and the entities in agreement by construction, generated entities carry an explicit `@Table` name and `snake_case` columns matching Spring's physical naming strategy.
 
+### Incremental migrations
+
+After the baseline, Modux **diffs the desired schema against the previous generation** and emits only the delta. It keeps a small schema snapshot under `.modux/schema-{service}.json` and, on each regeneration:
+
+- **New tables and columns** are emitted automatically as `CREATE TABLE` / `ALTER TABLE … ADD COLUMN` in a new `V{n}__model_changes.sql`.
+- **Destructive or ambiguous changes** — dropped tables/columns, type changes (a rename is indistinguishable from a drop-plus-add) — are written as commented-out statements at the bottom of the migration for you to review and apply by hand. Modux never drops your data automatically.
+- If nothing changed, no migration is produced.
+
 :::note[Migrations are immutable]
-A migration that has been applied is never rewritten — Flyway tracks its checksum. The baseline is therefore write-once. Schema changes after the baseline are emitted as new `V{n}` migrations (incremental diffing is on the roadmap); additive changes can be applied automatically, while destructive ones (drops, renames, type changes) should always be reviewed by hand.
+A migration that has been applied is never rewritten — Flyway tracks its checksum. Both the baseline and each `V{n}` are therefore write-once; the next change always becomes the next `V{n}`.
 :::
 
 Choose the tool with the project's `dbMigrationTool` field: `Flyway` (default), `Liquibase` (not generated yet) or `None` (keep Hibernate `ddl-auto`).

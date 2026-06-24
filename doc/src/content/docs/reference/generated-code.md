@@ -134,6 +134,8 @@ Generated when `dbMigrationTool` is `Flyway` (the default). See [System Evolutio
 | File | Description |
 |---|---|
 | `{service}-app/src/main/resources/db/migration/V1__baseline.sql` | Flyway baseline: all persisted tables, sequences and columns derived from the entities (write-once) |
+| `{service}-app/src/main/resources/db/migration/V{n}__model_changes.sql` | Incremental migration with the delta since the previous generation (additive DDL applied; destructive changes left as review comments) |
+| `.modux/schema-{service}.json` | Schema snapshot used to diff successive generations (not part of the generated app) |
 
 The app runs Flyway and validates entities against the migrated schema (`ddl-auto: validate`).
 
