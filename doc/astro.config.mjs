@@ -8,7 +8,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Modux',
-			description: 'Spec-driven code generation framework for Domain-Driven Design systems',
+			description: 'Model-driven code generation framework for enterprise information systems built with DDD',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/miguelperezcolom/modux' },
 			],
@@ -31,6 +31,7 @@ export default defineConfig({
 						{ label: 'Projects', slug: 'manual/projects' },
 						{ label: 'Services', slug: 'manual/services' },
 						{ label: 'Modules', slug: 'manual/modules' },
+						{ label: 'Flows', slug: 'manual/flows' },
 						{ label: 'Aggregates', slug: 'manual/aggregates' },
 						{ label: 'Entities & Value Objects', slug: 'manual/entities-and-value-objects' },
 						{ label: 'Operations', slug: 'manual/operations' },

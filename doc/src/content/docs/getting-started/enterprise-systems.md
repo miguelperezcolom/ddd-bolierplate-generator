@@ -60,6 +60,14 @@ A few patterns are **opt-in** rather than always-on: **Event Sourcing** is enabl
 
 See [End-to-End Flows](/reference/flows/) for how these blocks cooperate at runtime, and [Architecture Patterns](/reference/patterns/) for each pattern in depth.
 
+### Declaring interactions by intent
+
+You rarely need to wire these blocks together by hand. A [**Flow**](/manual/flows/) lets you state a
+cross-context interaction by intent — *"this event materializes a read model there"*, *"this event
+triggers that use case"* — and Modux derives the underlying events, projections, subscriptions and
+sagas, applying the conventions above. The flow is the single source of truth; the structural pieces
+are produced at generation time.
+
 ## Operability is part of the system, too
 
 A system that runs an organization's operations is only complete if it can be **operated**. Operability is therefore part of what an enterprise information system *is*, and part of what Modux covers — not a separate concern bolted on afterwards:

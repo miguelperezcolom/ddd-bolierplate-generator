@@ -30,6 +30,8 @@ In hexagonal architecture the UI is an **inbound (driving) adapter** — it sits
 
 Each level has its own configuration and generates its own code artefacts.
 
+Above these building blocks, a [**Flow**](/manual/flows/) lets you declare a cross-context interaction by intent (e.g. "this event materializes a read model over there") and have Modux derive the events, projections, subscriptions and sagas it implies — so you rarely wire them by hand.
+
 ## Navigating the UI
 
 The Modux UI is organised into six sections, accessible from the left sidebar:
@@ -59,6 +61,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 - [Projects](/manual/projects/) — top-level project settings
 - [Services](/manual/services/) — microservice configuration
 - [Modules](/manual/modules/) — bounded context settings
+- [Flows](/manual/flows/) — declare cross-context interactions by intent
 - [Aggregates](/manual/aggregates/) — the core DDD building block
 - [Entities & Value Objects](/manual/entities-and-value-objects/) — domain building blocks
 - [Operations](/manual/operations/) — commands and queries on aggregates

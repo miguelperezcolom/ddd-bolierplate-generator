@@ -1,6 +1,7 @@
 # Capa de intención: `flows`
 
-> Estado: **borrador / RFC** — para discutir antes de implementar.
+> Estado: **implementado** (primera versión). Diseño original conservado abajo; ver
+> §12 para el estado de implementación.
 
 ## 1. El problema
 
@@ -195,3 +196,30 @@ generado coincide, la inferencia es correcta.
 3. **Fase 2 — `triggers`.** Cubrir la coreografía `evento → use case`.
 4. **Fase 3 — `notifies` y `orchestrates`.**
 5. **Fase 4 — UI** de edición de flows + vista expandida (solo lectura) de las piezas derivadas.
+
+## 12. Estado de implementación
+
+Implementado en el módulo `model-driven-generator`:
+
+- ✅ **Concepto `Flow`** cableado en todas las capas (dominio, persistencia, query, repositorio,
+  casos de uso, CRUD UI en *Patrones › Flows*) y expuesto en el JSON schema del modelo.
+- ✅ **Expansor** (`FlowExpander`) para los **cuatro arquetipos** `materializes` / `triggers` /
+  `notifies` / `orchestrates`, con defaults por convención (§6) y cubierto por tests unitarios.
+- ✅ **Resolver de contexto** (`FlowExpansionContextResolver`): deriva proyecto/servicio/agregado,
+  módulo destino y tipos de campo desde el modelo.
+- ✅ **Dedup** contra piezas declaradas a mano (`FlowExpansionService` / `FlowStoreMaterializer`,
+  decisión §10.3): reutiliza por match y avisa.
+- ✅ **Integración en generación** (`GenerateCodeUseCase`, decisión B §3): materializa las piezas
+  derivadas en el store en memoria, genera, y restaura — los flows siguen siendo la única fuente de
+  verdad en disco.
+- ✅ **Documentación** publicada en el manual (`/manual/flows/`).
+
+Refinamientos pendientes (no bloqueantes):
+
+- Gramática compacta de `when` (§10.1): hoy el `when` se modela con campos
+  (`triggerAggregateId` + `triggerEvent`); el azúcar de una línea aún no se parsea.
+- `triggers`: el mapping del `with` (renombrados origen→destino) es hoy una identidad; los
+  renombrados quedan como override.
+- `notifies`: versión mínima (publica el evento de integración saliente); un adaptador de salida
+  externo explícito queda para más adelante.
+- Vista expandida de solo lectura de las piezas derivadas en la UI (Fase 4).
