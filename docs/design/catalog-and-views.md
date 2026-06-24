@@ -1,6 +1,7 @@
 # Catálogo y vistas: trabajar con modelos gigantescos
 
-> Estado: **propuesta** (RFC, sin implementar). Diseño para discusión.
+> Estado: **propuesta** (RFC). Fase **A1 implementada** (integridad referencial + `--modux.check`); el
+> resto, sin implementar. Diseño para discusión. Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -177,8 +178,14 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
 
 ## 8. Plan por fases
 
-1. **A1 — Interfaz `ModelStore` + integridad.** Extraer la persistencia tras una interfaz; añadir
-   `validateReferences()` + `modux model check`. Sin cambiar el formato todavía. (Refactor de bajo riesgo.)
+1. **A1 — Integridad referencial.** ✅ *Implementado.* `CheckModelUseCase.check()` recorre el catálogo
+   por reflexión recursiva (incluye refs en records anidados: steps, operations…), construye el set de
+   ids —top-level y anidados— y reporta toda referencia `*Id`/`*Ids` colgante. Expuesto como
+   `--modux.check` (sale con código 1 si hay refs rotas, apto para CI). Tests: el store de ejemplo está
+   limpio y una ref inyectada se detecta.
+   *Nota:* la "interfaz `ModelStore`" del plan original se **pospone a A2**: extraer una interfaz con una
+   sola implementación es indirección sin retorno (YAGNI); se hará cuando exista la implementación
+   granular que la justifique.
 2. **A2 — Almacenamiento granular + migración.** Implementación granular de `ModelStore`, `index.yaml`,
    y comandos `model split` / `model merge`. El monolítico sigue soportado.
 3. **B1 — `View` curada.** El tipo `View` en el catálogo, edición en la UI, navegación con scope.

@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.cli;
 
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.check.CheckModelUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +18,10 @@ import java.util.List;
  *
  * <pre>
  *   --modux.generate=&lt;projectId&gt; [--modux.output=&lt;dir&gt;]
+ *   --modux.check                              # referential-integrity check, exits 1 if broken
  * </pre>
  *
- * Generates the project and exits. Without {@code --modux.generate} the application starts
+ * Generates the project (or checks the model) and exits. Without either flag the application starts
  * normally (UI server mode).
  */
 @Component
@@ -28,10 +30,15 @@ import java.util.List;
 public class GenerationCliRunner implements ApplicationRunner {
 
     private final GenerateCodeUseCase generateCodeUseCase;
+    private final CheckModelUseCase checkModelUseCase;
     private final ConfigurableApplicationContext context;
 
     @Override
     public void run(ApplicationArguments args) {
+        if (args.containsOption("modux.check")) {
+            runCheck();
+            return;
+        }
         var projectIds = args.getOptionValues("modux.generate");
         if (projectIds == null || projectIds.isEmpty()) {
             return; // normal server mode
@@ -48,6 +55,18 @@ public class GenerationCliRunner implements ApplicationRunner {
             log.error("CLI code generation failed for project '{}'", projectId, e);
             System.exit(SpringApplication.exit(context, () -> 1));
         }
+    }
+
+    private void runCheck() {
+        var violations = checkModelUseCase.check();
+        if (violations.isEmpty()) {
+            log.info("Model check passed: no dangling references found.");
+            System.exit(SpringApplication.exit(context, () -> 0));
+            return;
+        }
+        log.error("Model check failed: {} dangling reference(s) found:", violations.size());
+        violations.forEach(v -> log.error("  - {}", v));
+        System.exit(SpringApplication.exit(context, () -> 1));
     }
 
     private static String firstOrNull(List<String> values) {

@@ -70,6 +70,11 @@ public class CommonFileRepository {
                 .toList();
     }
 
+    /** Every catalog element currently loaded (all types), for whole-model passes like integrity checks. */
+    public java.util.Collection<Object> allElements() {
+        return new java.util.ArrayList<>(store.values());
+    }
+
     public <T> void deleteAllById(List<String> list, Class<T> type) {
         list.forEach(id -> store.remove(storeKey(id, type)));
         persist();
