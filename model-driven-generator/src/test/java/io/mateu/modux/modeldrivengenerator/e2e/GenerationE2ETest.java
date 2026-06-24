@@ -140,6 +140,10 @@ class GenerationE2ETest {
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n  invariants:\n"
                         + "  - id: \"inv-reserva-e2e\"\n    name: \"ReservaValidaE2E\"\n    conditions: []\n");
+        // expose CrearEstancia over REST at API version v2 (exercises URI API versioning)
+        hotelStore = hotelStore.replace(
+                "- id: \"uc-crearEstancia\"\n  name: \"CrearEstancia\"\n  inputModelId: \"payload-reservaCreada\"\n",
+                "- id: \"uc-crearEstancia\"\n  name: \"CrearEstancia\"\n  exposedAsRest: true\n  apiVersion: \"v2\"\n  inputModelId: \"payload-reservaCreada\"\n");
         // give the CrearEstancia use case a custom step (use-case steps hook) and an ApplyModelMapping
         // step (exercises the model-mapping custom-part hook + colocated mapping DTOs)
         hotelStore = hotelStore.replace(
@@ -207,6 +211,10 @@ class GenerationE2ETest {
                 "model-mapping custom-part default implementation was not scaffolded in the custom module");
         assertTrue(anyFileMatches(output, "V1__baseline.sql"),
                 "Flyway baseline migration was not generated for the service");
+        var restController = findFiles(output, "CrearEstanciaController.java").stream().findFirst()
+                .orElseThrow(() -> new AssertionError("REST controller for the exposed use case was not generated"));
+        assertTrue(Files.readString(restController).contains("\"/v2/"),
+                "use-case REST controller was not versioned under /v2");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");
