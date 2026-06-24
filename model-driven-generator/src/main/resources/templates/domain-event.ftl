@@ -9,6 +9,8 @@
 </#if>
 </#list>
 </#if>
+<#macro javaType field><#if field.basicType><#if field.type == "integer">Integer<#elseif field.type == "decimal">BigDecimal<#elseif field.type == "bool">Boolean<#elseif field.type == "date">LocalDate<#elseif field.type == "time">LocalTime<#elseif field.type == "datetime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
+<#function fieldName field><#if field.basicType><#return field.name><#else><#return field.name + "Id"></#if></#function>
 package ${project.packageName}.${module.slug}.domain.events;
 
 <#if hasDate>import java.time.LocalDate;
@@ -16,31 +18,24 @@ package ${project.packageName}.${module.slug}.domain.events;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
 </#if>
+/**
+ * Domain event ${event.name}. Carries its schema version so consumers can detect and upcast
+ * older payloads (see ${event.name}EventUpcaster when the version is greater than 1).
+ */
 public record ${event.name}Event(
-        String aggregateId<#if eventModel?? && eventModel.fields?has_content>,</#if>
-<#if eventModel?? && eventModel.fields?has_content>
+        int schemaVersion,
+        String aggregateId<#if eventModel?? && eventModel.fields?has_content>,
 <#list eventModel.fields as field>
-<#if field.basicType>
-    <#if field.type == "string" || field.type == "email" || field.type == "password" || field.type == "url" || field.type == "color" || field.type == "image" || field.type == "file" || field.type == "json">
-        String ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "integer">
-        Integer ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "decimal">
-        BigDecimal ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "bool">
-        Boolean ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "date">
-        LocalDate ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "time">
-        LocalTime ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "datetime">
-        LocalDateTime ${field.name}<#sep>,</#sep>
-    <#else>
-        String ${field.name}<#sep>,</#sep>
-    </#if>
-<#else>
-        String ${field.name}Id<#sep>,</#sep>
-</#if>
+        <@javaType field/> ${fieldName(field)}<#sep>,</#sep>
 </#list>
 </#if>
-) {}
+) {
+
+    /** The schema version this service currently emits for ${event.name}. */
+    public static final int CURRENT_SCHEMA_VERSION = ${schemaVersion};
+
+    /** Convenience constructor that stamps the current schema version. */
+    public ${event.name}Event(String aggregateId<#if eventModel?? && eventModel.fields?has_content>, <#list eventModel.fields as field><@javaType field/> ${fieldName(field)}<#sep>, </#sep></#list></#if>) {
+        this(CURRENT_SCHEMA_VERSION, aggregateId<#if eventModel?? && eventModel.fields?has_content>, <#list eventModel.fields as field>${fieldName(field)}<#sep>, </#sep></#list></#if>);
+    }
+}

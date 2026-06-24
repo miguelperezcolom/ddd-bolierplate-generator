@@ -9,6 +9,8 @@
 </#if>
 </#list>
 </#if>
+<#macro javaType field><#if field.basicType><#if field.type == "integer">Integer<#elseif field.type == "decimal">BigDecimal<#elseif field.type == "bool">Boolean<#elseif field.type == "date">LocalDate<#elseif field.type == "time">LocalTime<#elseif field.type == "datetime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
+<#function fieldName field><#if field.basicType><#return field.name><#else><#return field.name + "Id"></#if></#function>
 package ${project.packageName}.${module.slug}.application.out.integration;
 
 <#if hasDate>import java.time.LocalDate;
@@ -17,28 +19,19 @@ package ${project.packageName}.${module.slug}.application.out.integration;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
 </#if>
 // topic: ${integrationEvent.topicName!""}
-public record ${className}(<#if payloadModel?? && payloadModel.fields?has_content>
+public record ${className}(
+        int schemaVersion<#if payloadModel?? && payloadModel.fields?has_content>,
 <#list payloadModel.fields as field>
-<#if field.basicType>
-    <#if field.type == "string" || field.type == "email" || field.type == "password" || field.type == "url" || field.type == "color" || field.type == "image" || field.type == "file" || field.type == "json">
-        String ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "integer">
-        Integer ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "decimal">
-        BigDecimal ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "bool">
-        Boolean ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "date">
-        LocalDate ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "time">
-        LocalTime ${field.name}<#sep>,</#sep>
-    <#elseif field.type == "datetime">
-        LocalDateTime ${field.name}<#sep>,</#sep>
-    <#else>
-        String ${field.name}<#sep>,</#sep>
-    </#if>
-<#else>
-        String ${field.name}Id<#sep>,</#sep>
-</#if>
+        <@javaType field/> ${fieldName(field)}<#sep>,</#sep>
 </#list>
-</#if>) {}
+</#if>
+) {
+
+    /** The schema version this service currently emits for ${className}. */
+    public static final int CURRENT_SCHEMA_VERSION = ${schemaVersion};
+
+    /** Convenience constructor that stamps the current schema version. */
+    public ${className}(<#if payloadModel?? && payloadModel.fields?has_content><#list payloadModel.fields as field><@javaType field/> ${fieldName(field)}<#sep>, </#sep></#list></#if>) {
+        this(CURRENT_SCHEMA_VERSION<#if payloadModel?? && payloadModel.fields?has_content>, <#list payloadModel.fields as field>${fieldName(field)}<#sep>, </#sep></#list></#if>);
+    }
+}

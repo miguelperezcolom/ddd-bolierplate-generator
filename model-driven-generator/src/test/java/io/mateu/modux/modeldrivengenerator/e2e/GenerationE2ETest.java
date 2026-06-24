@@ -140,6 +140,10 @@ class GenerationE2ETest {
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n  invariants:\n"
                         + "  - id: \"inv-reserva-e2e\"\n    name: \"ReservaValidaE2E\"\n    conditions: []\n");
+        // bump the EstanciaCreada domain event to schema version 2 (exercises the event envelope + upcaster hook)
+        hotelStore = hotelStore.replace(
+                "- id: \"ev-estanciaCreada\"\n  name: \"EstanciaCreada\"\n  modelId: \"payload-estanciaCreada\"\n",
+                "- id: \"ev-estanciaCreada\"\n  name: \"EstanciaCreada\"\n  modelId: \"payload-estanciaCreada\"\n  schemaVersion: \"2\"\n");
         // expose CrearEstancia over REST at API version v2 (exercises URI API versioning)
         hotelStore = hotelStore.replace(
                 "- id: \"uc-crearEstancia\"\n  name: \"CrearEstancia\"\n  inputModelId: \"payload-reservaCreada\"\n",
@@ -215,6 +219,14 @@ class GenerationE2ETest {
                 .orElseThrow(() -> new AssertionError("REST controller for the exposed use case was not generated"));
         assertTrue(Files.readString(restController).contains("\"/v2/"),
                 "use-case REST controller was not versioned under /v2");
+        assertTrue(anyFileMatches(output, "EstanciaCreadaEventUpcaster.java"),
+                "event upcaster hook interface was not generated for the v2 event");
+        assertTrue(anyFileMatches(output, "DefaultEstanciaCreadaEventUpcaster.java"),
+                "event upcaster default implementation was not scaffolded in the custom module");
+        var event = findFiles(output, "EstanciaCreadaEvent.java").stream().findFirst()
+                .orElseThrow(() -> new AssertionError("EstanciaCreada domain event was not generated"));
+        assertTrue(Files.readString(event).contains("CURRENT_SCHEMA_VERSION = 2"),
+                "domain event envelope did not carry schema version 2");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

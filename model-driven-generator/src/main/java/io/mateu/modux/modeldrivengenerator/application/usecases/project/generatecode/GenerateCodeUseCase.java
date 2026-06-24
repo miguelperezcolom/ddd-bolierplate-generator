@@ -882,9 +882,23 @@ public class GenerateCodeUseCase {
             model.put("payloadModel", payloadModel != null ? fromJson(toJson(payloadModel)) : null);
         }
 
+        var schemaVersion = schemaVersionOf(integrationEvent.schemaVersion());
+        model.put("schemaVersion", schemaVersion);
+
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out/integration");
         createFile(moduleDir, model, "integration-event.ftl",
                 "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + ".java");
+        if (schemaVersion > 1) {
+            model.put("upcasterClass", className + "Upcaster");
+            model.put("upcasterPackage", project.packageName() + "." + moduleSlug(module.name()) + ".application.out.integration");
+            model.put("eventLabel", className);
+            createFile(moduleDir, model, "event-upcaster.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + "Upcaster.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, model, "event-upcaster-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + className + "Upcaster.java");
+        }
         createFile(moduleDir, model, "integration-event-publisher.ftl",
                 "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + "Publisher.java");
     }
@@ -1397,6 +1411,19 @@ public class GenerateCodeUseCase {
         };
     }
 
+    /** Resolve a model schema-version string ("2", "v2", null...) to an int, defaulting to 1. */
+    private int schemaVersionOf(String raw) {
+        if (raw == null) return 1;
+        var digits = raw.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) return 1;
+        try {
+            var v = Integer.parseInt(digits);
+            return v < 1 ? 1 : v;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
     /** Lowercase snake_case of a Java identifier, matching how table names are emitted in @Table. */
     private String snakeCase(String value) {
         if (value == null || value.isEmpty()) return value;
@@ -1768,9 +1795,24 @@ public class GenerateCodeUseCase {
             model.put("eventModel", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
         }
         model.put("event", fromJson(toJson(event)));
+        var schemaVersion = schemaVersionOf(event.schemaVersion());
+        model.put("schemaVersion", schemaVersion);
 
         createFile(moduleDir, model, "domain-event.ftl",
                 "src/main/java/" + modulePackageDir + "/domain/events/" + event.name() + "Event.java");
+
+        // when the event has evolved past v1, scaffold a two-zone upcaster hook to migrate older payloads
+        if (schemaVersion > 1) {
+            model.put("upcasterClass", event.name() + "EventUpcaster");
+            model.put("upcasterPackage", project.packageName() + "." + moduleSlug(module.name()) + ".domain.events");
+            model.put("eventLabel", event.name() + "Event");
+            createFile(moduleDir, model, "event-upcaster.ftl",
+                    "src/main/java/" + modulePackageDir + "/domain/events/" + event.name() + "EventUpcaster.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, model, "event-upcaster-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + event.name() + "EventUpcaster.java");
+        }
     }
 
     private void generateSubscription(ProjectEntity project, ServiceEntity service, ModuleEntity module,
