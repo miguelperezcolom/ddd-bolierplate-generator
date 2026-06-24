@@ -131,17 +131,20 @@ from the project's and services' configuration:
 These follow the same conventions as the rest of the model: configure the fields on your project
 and services, and the artifacts reflect them on the next generation.
 
-## Overwrite behaviour
+## Generated code vs. your code (two zones)
 
-Modux distinguishes between **generated files** (which are always overwritten) and **custom files** (which are never overwritten). You can configure per-file overwrite behaviour:
+A generated project has two zones, so you can regenerate as often as you like without losing work:
 
-| Mode | Description |
-|---|---|
-| `ALWAYS` | File is regenerated on every run (safe for pure boilerplate) |
-| `NEVER` | File is only created once; your customisations are preserved |
-| `IF_CHANGED` | File is regenerated only if the spec has changed |
+| Zone | What it is | On regeneration |
+|---|---|---|
+| **Generated** | Every structural module (domain, application, infra, app) | Always overwritten — **do not edit** |
+| **Custom** | The `{service}-custom` module | **Never overwritten** — it's yours |
 
-Use `NEVER` for files where you will add business logic. Use `ALWAYS` for pure structural code.
+Modux never puts business logic you must write inside the generated zone. Instead, where a decision can't be derived from the model, it generates a **hook** (a port interface, e.g. `{Aggregate}Invariants`, with a context that exposes the aggregate's state) and scaffolds a **default implementation once** in the `{service}-custom` module. You fill that implementation in; the generated use cases call it via Spring.
+
+To keep the generated zone honest, every generated file's hash is recorded in `.modux/generated-manifest.json`. On the next run, a file that was edited by hand is detected, reported and overwritten — a reminder to move that logic into the custom module. Files in the custom module are not tracked and are left untouched.
+
+So: regenerate freely. The structural code stays in sync with the model, and your business logic in the custom module is never touched.
 
 ## Building the generated project
 

@@ -1,6 +1,9 @@
 # Dos zonas: código generado (bloqueado) vs. implementación del desarrollador
 
-> Estado: **borrador / RFC** — para discutir antes de implementar.
+> Estado: **implementado** (Fases 1-3 + doc). El módulo `{service}-custom`, el hook de
+> invariantes (create+update) y la protección por manifest están en producción y verificados por
+> el e2e. Pendiente: extender el patrón de hook al resto de huecos de negocio (operaciones de
+> agregado, pasos custom de use case/saga). Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md).
 
 ## 1. El problema
