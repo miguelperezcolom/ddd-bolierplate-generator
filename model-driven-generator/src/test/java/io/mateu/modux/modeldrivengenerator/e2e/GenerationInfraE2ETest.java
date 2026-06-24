@@ -29,8 +29,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Runtime e2e against real infrastructure: spins up Postgres and Kafka with Testcontainers,
  * generates and packages the project, then boots a generated service application against those
- * containers (its default Postgres + Kafka profile) and asserts the Spring context starts — proving
- * the generated event-driven wiring works against real infra, not just H2.
+ * containers (its default Postgres + Kafka profile). It asserts both that the Spring context starts
+ * and that the generated subscription consumers register a consumer group on Kafka — proving the
+ * event-driven consumption path is wired end to end against real infra, not just H2.
  *
  * <p>Requires Docker; it self-skips when Docker is unavailable. Tagged {@code e2e} and run with
  * {@code mvn test -Pe2e}.
@@ -81,15 +82,20 @@ class GenerationInfraE2ETest {
             }
             assertFalse(appJars.isEmpty(), "no runnable service application jar was produced");
             for (Path appJar : appJars) {
-                bootAgainstInfra(appJar, postgres, kafka);
+                bootAndVerifyEventConsumers(appJar, postgres, kafka);
             }
         }
     }
 
-    private void bootAgainstInfra(Path appJar, PostgreSQLContainer<?> postgres, KafkaContainer kafka) throws Exception {
+    /**
+     * Boots the app against the real containers, waits until the Spring context is up, then asserts
+     * the generated subscription consumers actually registered with Kafka (a consumer group appears)
+     * — proving the event-driven consumption path is wired end to end against real infrastructure.
+     */
+    private void bootAndVerifyEventConsumers(Path appJar, PostgreSQLContainer<?> postgres, KafkaContainer kafka) throws Exception {
         var started = new AtomicBoolean(false);
         var failed = new AtomicBoolean(false);
-        var done = new CountDownLatch(1);
+        var started_latch = new CountDownLatch(1);
 
         var process = new ProcessBuilder("java", "-jar", appJar.toString(),
                 "--server.port=0",
@@ -107,29 +113,48 @@ class GenerationInfraE2ETest {
                 while ((line = r.readLine()) != null) {
                     if (line.contains("Started ") && line.contains("Application")) {
                         started.set(true);
-                        done.countDown();
-                        return;
-                    }
-                    if (line.contains("APPLICATION FAILED TO START") || line.contains("Error starting ApplicationContext")) {
+                        started_latch.countDown();
+                    } else if (line.contains("APPLICATION FAILED TO START") || line.contains("Error starting ApplicationContext")) {
                         failed.set(true);
-                        done.countDown();
-                        return;
+                        started_latch.countDown();
                     }
                 }
             } catch (Exception ignored) {
                 // process output closed
             }
-            done.countDown();
+            started_latch.countDown();
         });
         reader.setDaemon(true);
         reader.start();
 
-        boolean signalled = done.await(180, TimeUnit.SECONDS);
-        process.destroyForcibly();
-        process.waitFor(20, TimeUnit.SECONDS);
+        try {
+            boolean signalled = started_latch.await(180, TimeUnit.SECONDS);
+            assertTrue(started.get(), "generated app did not start against Postgres + Kafka: " + appJar.getFileName()
+                    + (failed.get() ? " (context failed to start)" : signalled ? "" : " (timed out)"));
 
-        assertTrue(started.get(), "generated app did not start against Postgres + Kafka: " + appJar.getFileName()
-                + (failed.get() ? " (context failed to start)" : signalled ? "" : " (timed out)"));
+            // event-driven path: the generated subscription consumers register a consumer group on Kafka
+            assertTrue(waitForConsumerGroups(kafka.getBootstrapServers(), 60),
+                    "generated app started but registered no Kafka consumer group: " + appJar.getFileName());
+        } finally {
+            process.destroyForcibly();
+            process.waitFor(20, TimeUnit.SECONDS);
+        }
+    }
+
+    /** Polls Kafka until the app has registered at least one consumer group, or the timeout elapses. */
+    private boolean waitForConsumerGroups(String bootstrapServers, int timeoutSeconds) throws Exception {
+        var props = new java.util.Properties();
+        props.put(org.apache.kafka.clients.admin.AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        try (var admin = org.apache.kafka.clients.admin.AdminClient.create(props)) {
+            for (int i = 0; i < timeoutSeconds; i++) {
+                var groups = admin.listConsumerGroups().all().get(10, TimeUnit.SECONDS);
+                if (!groups.isEmpty()) {
+                    return true;
+                }
+                Thread.sleep(1000);
+            }
+        }
+        return false;
     }
 
     private int mavenPackage(Path projectDir) throws Exception {
