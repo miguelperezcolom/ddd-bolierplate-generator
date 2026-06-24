@@ -112,6 +112,25 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- e2e tests generate a project and compile it via Maven; they are slow and
+                         excluded from the normal build. Run them with: mvn test -Dgroups=e2e -->
+                    <excludedGroups>e2e</excludedGroups>
+                    <!-- google-java-format needs access to jdk.compiler internals -->
+                    <argLine>
+                        --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+                        --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <annotationProcessorPaths>
@@ -243,5 +262,33 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Run the slow end-to-end generation tests: mvn test -Pe2e -->
+        <profile>
+            <id>e2e</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <excludedGroups>none</excludedGroups>
+                            <groups>e2e</groups>
+                            <argLine>
+                                --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+                                --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+                            </argLine>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

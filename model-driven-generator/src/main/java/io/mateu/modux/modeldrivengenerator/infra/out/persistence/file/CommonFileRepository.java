@@ -35,6 +35,9 @@ public class CommonFileRepository {
 
     private final Map<String, Object> store = new HashMap<>();
 
+    /** Directory that holds the resolved model store; generated schema is written next to it. */
+    private Path dataDir = Path.of(".dev/data");
+
     private String storeKey(String id, Class<?> type) {
         return type.getSimpleName() + ":" + id;
     }
@@ -70,6 +73,10 @@ public class CommonFileRepository {
         var specFile = System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
         Path yamlPath = Path.of(specFile);
         Path jsonPath = Path.of(".dev/data/model-driven-store.json");
+        var parent = yamlPath.toAbsolutePath().normalize().getParent();
+        if (parent != null) {
+            dataDir = parent;
+        }
         AllData data;
         if (Files.exists(yamlPath)) {
             log.info("spec store in {}", yamlPath.toAbsolutePath());
@@ -194,7 +201,7 @@ public class CommonFileRepository {
         SchemaGenerator generator = new SchemaGenerator(configBuilder.build());
         JsonNode schema = generator.generateSchema(AllData.class);
         String schemaJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
-        Path schemaPath = Path.of(".dev/data/model-driven-store-schema.json");
+        Path schemaPath = dataDir.resolve("model-driven-store-schema.json");
         Files.createDirectories(schemaPath.getParent());
         Files.writeString(schemaPath, schemaJson);
         log.info("JSON schema written to {}", schemaPath.toAbsolutePath());
