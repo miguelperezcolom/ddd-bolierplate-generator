@@ -19,8 +19,9 @@ public interface ${aggregate.name}EventSourcing {
     List<Object> eventsOf(${aggregate.name} aggregate);
 
     /**
-     * Rebuild ${aggregate.name} by folding its ordered event stream. Return {@code null} while
-     * unimplemented — the repository then falls back to the current-state snapshot.
+     * Rebuild ${aggregate.name} by folding its ordered event stream — the events are already decoded to
+     * their domain types (via {@code ${aggregate.name}EventCodec}). Return {@code null} while
+     * unimplemented; the repository then falls back to the current-state snapshot.
      */
-    ${aggregate.name} replay(${aggregate.name}Id id, List<${aggregate.name}EventEntity> events);
+    ${aggregate.name} replay(${aggregate.name}Id id, List<Object> events);
 }

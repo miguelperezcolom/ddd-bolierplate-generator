@@ -64,7 +64,12 @@ Lo no-derivable es un **hook de dos zonas** `{Aggregate}EventSourcing` (puerto g
 | Método | Qué decide |
 |---|---|
 | `List<Object> eventsOf({Aggregate} aggregate)` | qué eventos de dominio produce el cambio actual |
-| `{Aggregate} replay({Aggregate}Id id, List<{Aggregate}EventEntity> events)` | cómo se pliega el stream para reconstruir el estado |
+| `{Aggregate} replay({Aggregate}Id id, List<Object> events)` | cómo se pliega el stream para reconstruir el estado |
+
+El `replay` recibe los eventos **ya decodificados a su tipo de dominio**: un `{Aggregate}EventCodec`
+generado mantiene un registro `eventType → clase` de los eventos del módulo y deserializa cada `payload`
+antes de pasarlo al hook, así el desarrollador hace un fold con `instanceof` sobre eventos tipados en vez
+de parsear JSON a mano. Tipos desconocidos caen a `Map`.
 
 Verificado por `LedgerGenerationTest`: se genera `{Aggregate}EventSourcedRepository` + el hook + su
 default, **no** se genera el `DBRepository` JPA, y el proyecto arranca.
@@ -79,8 +84,8 @@ model embebido) y deja el sistema funcionando out-of-the-box.
 1. **Snapshots periódicos** cada `snapshotFrequency` eventos (el campo ya existe) para acelerar el replay.
 2. **Read-side puro por proyección**: materializar el estado consultable con proyecciones (que ya
    existen) y retirar el snapshot embebido — CQRS de verdad.
-3. **Serialización polimórfica**: el `replay` recibe `eventType` + `payload`; falta un helper estándar
-   para deserializar al tipo correcto (hoy lo hace el hook a mano).
+3. **Serialización polimórfica**: ✅ *implementado* — `{Aggregate}EventCodec` decodifica el stream a
+   eventos de dominio tipados antes del `replay` (registro `eventType → clase` de los eventos del módulo).
 4. **Migrar un agregado JPA existente a event-sourced**: fuera de alcance inicial.
 
 ## 6. Resumen

@@ -560,14 +560,26 @@ public class GenerateCodeUseCase {
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventStore.java");
             createFile(moduleDir, project, service, module, aggregate, "es-event-appender.ftl",
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventAppender.java");
+
+            // decode stored payloads to typed domain events, so the fold hook works with real events
+            var esModel = aggregateModel(project, service, module, aggregate);
+            var moduleEventNames = (module.domainEventIds() != null ? module.domainEventIds() : List.<String>of()).stream()
+                    .map(eid -> repository.findById(eid, DomainEventEntity.class).orElse(null))
+                    .filter(java.util.Objects::nonNull)
+                    .map(DomainEventEntity::name)
+                    .toList();
+            esModel.put("domainEvents", moduleEventNames);
+
+            createFile(moduleDir, esModel, "es-codec.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventCodec.java");
             // event-sourced port implementation (appends events + keeps a state snapshot; folds on read)
-            createFile(moduleDir, project, service, module, aggregate, "es-repository.ftl",
+            createFile(moduleDir, esModel, "es-repository.ftl",
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcedRepository.java");
-            // two-zone hook: how operations produce events and how events fold back into state
-            createFile(moduleDir, project, service, module, aggregate, "es-handler.ftl",
+            // two-zone hook: how operations produce events and how the typed event stream folds into state
+            createFile(moduleDir, esModel, "es-handler.ftl",
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcing.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
-            createCustomFile(customDir, project, service, module, aggregate, "es-handler-default.ftl",
+            createCustomFile(customDir, esModel, "es-handler-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
                             + "/custom/Default" + aggregate.name() + "EventSourcing.java");
         }

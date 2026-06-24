@@ -27,13 +27,17 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
 
     final ${aggregate.name}EntityRepository repository;
     final ${aggregate.name}EventAppender eventAppender;
+    final ${aggregate.name}EventCodec eventCodec;
     final ${aggregate.name}EventSourcing eventSourcing;
 
     @Override
     public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
         var events = eventAppender.history(String.valueOf(id.value()));
         if (!events.isEmpty()) {
-            var rebuilt = eventSourcing.replay(id, events);
+            var decoded = events.stream()
+                    .map(e -> eventCodec.decode(e.getEventType(), e.getPayload()))
+                    .toList();
+            var rebuilt = eventSourcing.replay(id, decoded);
             if (rebuilt != null) {
                 return Optional.of(rebuilt);
             }
