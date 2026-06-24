@@ -7,7 +7,7 @@ description: What is Modux and why use it
 
 Modux is a **model-driven code generation framework** for building **enterprise information systems** in Java, using Domain-Driven Design (DDD). It targets the long-lived, business-critical systems made of several bounded contexts that must hold invariants, run business processes, and integrate with each other — not just forms over tables. Instead of writing the same structural boilerplate over and over, you describe your domain in a simple YAML specification and let Modux generate the code for you.
 
-For *why* Modux ships the patterns it does — derived from what an enterprise system actually requires — see [Enterprise Information Systems](/getting-started/enterprise-systems/).
+For *why* Modux ships the patterns it does — derived from what an enterprise system actually requires — see [Enterprise Information Systems](/getting-started/enterprise-systems/). For *where AI fits* — and why Modux uses it to author the model but not to generate production code — see [Spec-Driven Development](/getting-started/spec-driven-development/).
 
 The generated code follows **Hexagonal Architecture** (also known as Ports & Adapters), with a clear separation between:
 
