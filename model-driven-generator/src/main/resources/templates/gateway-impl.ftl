@@ -31,29 +31,53 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 
     final RestTemplate restTemplate;
 
-<#if gateway.baseUrl?? && gateway.baseUrl?has_content>
-    private static final String BASE_URL = "${gateway.baseUrl}";
+    private static final String BASE_URL = "${gateway.baseUrl!''}";
+<#if ((gateway.authType)!'') =="ApiKey">
 
+    // TODO: configure the API key (e.g. inject it from configuration)
+    private String apiKey = "";
+<#elseif ((gateway.authType)!'') =="BearerToken">
+
+    // TODO: configure the bearer token
+    private String bearerToken = "";
+<#elseif ((gateway.authType)!'') =="Basic">
+
+    // TODO: configure the credentials
+    private String username = "";
+    private String password = "";
 </#if>
+
+    private org.springframework.http.HttpHeaders authHeaders() {
+        var headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+<#if ((gateway.authType)!'') =="ApiKey" && gateway.authApiKeyHeaderName?? && gateway.authApiKeyHeaderName?has_content>
+        headers.set("${gateway.authApiKeyHeaderName}", apiKey);
+<#elseif ((gateway.authType)!'') =="BearerToken">
+        headers.setBearerAuth(bearerToken);
+<#elseif ((gateway.authType)!'') =="Basic">
+        headers.setBasicAuth(username, password);
+</#if>
+        return headers;
+    }
+
 <#if gateway.operations?has_content>
 <#list gateway.operations as op>
-    @Override
-    public void ${op.name?uncap_first}(<#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if f.basicType><#if f.type == "string" || f.type == "json">String ${f.name}<#elseif f.type == "integer">Integer ${f.name}<#elseif f.type == "number" || f.type == "money">BigDecimal ${f.name}<#elseif f.type == "bool">Boolean ${f.name}<#elseif f.type == "date">LocalDate ${f.name}<#elseif f.type == "time">LocalTime ${f.name}<#elseif f.type == "dateTime">LocalDateTime ${f.name}<#else>String ${f.name}</#if><#else>String ${f.name}Id</#if><#sep>, </#sep></#list></#if>) {
-        // TODO: call ${op.httpMethod!'GET'} ${gateway.baseUrl!''}${op.path!'/' + op.name?lower_case}
 <#assign __url = 'BASE_URL + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + '"'>
 <#assign __m = (op.httpMethod!'GET')?upper_case>
-<#if __m == "POST">
-        restTemplate.postForObject(${__url}, null, Void.class);
-<#elseif __m == "PUT">
-        restTemplate.put(${__url}, null);
-<#elseif __m == "PATCH">
-        restTemplate.patchForObject(${__url}, null, Void.class);
-<#elseif __m == "DELETE">
-        restTemplate.delete(${__url});
-<#elseif __m == "GET">
-        restTemplate.getForObject(${__url}, Void.class);
+    @Override
+    public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if f.basicType><#if f.type == "string" || f.type == "json">String ${f.name}<#elseif f.type == "integer">Integer ${f.name}<#elseif f.type == "number" || f.type == "money">BigDecimal ${f.name}<#elseif f.type == "bool">Boolean ${f.name}<#elseif f.type == "date">LocalDate ${f.name}<#elseif f.type == "time">LocalTime ${f.name}<#elseif f.type == "dateTime">LocalDateTime ${f.name}<#else>String ${f.name}</#if><#else>String ${f.name}Id</#if><#sep>, </#sep></#list></#if>) {
+        var requestHeaders = authHeaders();
+        var requestBody = new java.util.HashMap<String, Object>();
+<#if op.inputModel?? && op.inputModel.fields?has_content>
+<#list op.inputModel.fields as f>
+        requestBody.put("${f.name}", ${f.name}<#if !f.basicType>Id</#if>);
+</#list>
+</#if>
+        var requestEntity = new org.springframework.http.HttpEntity<Object>(requestBody, requestHeaders);
+<#if op.outputClass??>
+        return restTemplate.exchange(${__url}, org.springframework.http.HttpMethod.${__m}, requestEntity, ${dtoPackage}.${op.outputClass}.class).getBody();
 <#else>
-        // TODO: ${__m} request to ${__url}
+        restTemplate.exchange(${__url}, org.springframework.http.HttpMethod.${__m}, requestEntity, Void.class);
 </#if>
     }
 

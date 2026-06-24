@@ -659,18 +659,53 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = buildBaseModel(project, service, firstModule);
         var gwMap = new HashMap<String, Object>();
         gwMap.putAll(fromJson(toJson(gateway)));
+
+        var allModels = new HashMap<String, ModelEntity>();
+        repository.findAllOfType(ModelEntity.class).forEach(m -> allModels.put(m.id(), m));
+
+        // collect models reachable from the operations (input/output + transitive $ref fields)
+        var reachable = new java.util.LinkedHashMap<String, ModelEntity>();
+        if (gateway.operations() != null) {
+            for (var op : gateway.operations()) {
+                collectGatewayModel(op.inputModelId(), allModels, reachable);
+                collectGatewayModel(op.outputModelId(), allModels, reachable);
+            }
+        }
+
+        var dtoPackage = project.packageName() + "." + moduleSlug + ".application.out.gateway.dto";
+        model.put("dtoPackage", dtoPackage);
+
+        // typed DTO descriptors (one record per reachable model)
+        var dtos = new java.util.ArrayList<Map<String, Object>>();
+        for (var m : reachable.values()) {
+            var dto = new HashMap<String, Object>();
+            dto.put("className", toTypeName(m.name()));
+            var fields = new java.util.ArrayList<Map<String, Object>>();
+            if (m.fields() != null) {
+                for (var f : m.fields()) {
+                    var fm = new HashMap<String, Object>();
+                    fm.put("name", f.name());
+                    fm.put("javaType", gatewayJavaType(f, allModels));
+                    fields.add(fm);
+                }
+            }
+            dto.put("fields", fields);
+            dtos.add(dto);
+        }
+        model.put("dtos", dtos);
+
         if (gateway.operations() != null) {
             var enrichedOps = new java.util.ArrayList<Map<String, Object>>();
             for (var op : gateway.operations()) {
                 var opMap = new HashMap<String, Object>();
                 opMap.putAll(fromJson(toJson(op)));
                 if (op.inputModelId() != null && !op.inputModelId().isBlank()) {
-                    var im = repository.findById(op.inputModelId(), ModelEntity.class).orElse(null);
+                    var im = allModels.get(op.inputModelId());
                     if (im != null) opMap.put("inputModel", fromJson(toJson(im)));
                 }
                 if (op.outputModelId() != null && !op.outputModelId().isBlank()) {
-                    var om = repository.findById(op.outputModelId(), ModelEntity.class).orElse(null);
-                    if (om != null) opMap.put("outputModel", fromJson(toJson(om)));
+                    var om = allModels.get(op.outputModelId());
+                    if (om != null) opMap.put("outputClass", toTypeName(om.name()));
                 }
                 enrichedOps.add(opMap);
             }
@@ -680,6 +715,15 @@ public class GenerateCodeUseCase {
 
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/gateway");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out/gateway/dto");
+
+        for (var dto : dtos) {
+            var dtoModel = new HashMap<>(model);
+            dtoModel.put("dto", dto);
+            createFile(moduleDir, dtoModel, "gateway-dto.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/out/gateway/dto/"
+                            + dto.get("className") + ".java");
+        }
 
         createFile(moduleDir, model, "gateway.ftl",
                 "src/main/java/" + modulePackageDir + "/application/out/"
@@ -687,6 +731,40 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, model, "gateway-impl.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/out/gateway/"
                         + capitalize(gateway.name()) + "GatewayImpl.java");
+    }
+
+    private void collectGatewayModel(String modelId, Map<String, ModelEntity> all,
+                                     Map<String, ModelEntity> out) {
+        if (modelId == null || modelId.isBlank() || out.containsKey(modelId)) return;
+        var m = all.get(modelId);
+        if (m == null) return;
+        out.put(modelId, m);
+        if (m.fields() != null) {
+            for (var f : m.fields()) {
+                if (!f.basicType() && f.modelId() != null) {
+                    collectGatewayModel(f.modelId(), all, out);
+                }
+            }
+        }
+    }
+
+    private String gatewayJavaType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity f,
+                                   Map<String, ModelEntity> all) {
+        if (!f.basicType() && f.modelId() != null) {
+            var ref = all.get(f.modelId());
+            return ref != null ? toTypeName(ref.name()) : "String";
+        }
+        if (f.type() == null) return "String";
+        return switch (f.type()) {
+            case integer -> "Integer";
+            case number, money -> "java.math.BigDecimal";
+            case bool -> "Boolean";
+            case date -> "java.time.LocalDate";
+            case time -> "java.time.LocalTime";
+            case dateTime -> "java.time.LocalDateTime";
+            case array -> "java.util.List<Object>";
+            default -> "String";
+        };
     }
 
     // ─── ReadModels ───────────────────────────────────────────────────────────
