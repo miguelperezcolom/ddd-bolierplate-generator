@@ -1044,6 +1044,16 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, model, template,
                 "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + pageSlug
                         + "/" + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + "Page.java");
+
+        // FORM and WIZARD pages also emit an EventConductor form definition (for USER_TASK steps)
+        if ((pageType.equals("FORM") || pageType.equals("WIZARD")) && page.modelId() != null) {
+            var pageModelEntity = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
+            if (pageModelEntity != null && pageModelEntity.fields() != null && !pageModelEntity.fields().isEmpty()) {
+                createFile(moduleDir, model, "form-definition.ftl",
+                        "src/main/resources/forms/"
+                                + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
+            }
+        }
     }
 
     // ─── Components ───────────────────────────────────────────────────────────
