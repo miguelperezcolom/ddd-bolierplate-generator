@@ -31,6 +31,7 @@ public class GenerationCliRunner implements ApplicationRunner {
 
     private final GenerateCodeUseCase generateCodeUseCase;
     private final CheckModelUseCase checkModelUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository repository;
     private final ConfigurableApplicationContext context;
 
@@ -50,6 +51,10 @@ public class GenerationCliRunner implements ApplicationRunner {
                     repository.mergeTo(java.nio.file.Path.of(firstOrNull(args.getOptionValues("modux.merge")))));
             return;
         }
+        if (args.containsOption("modux.view")) {
+            runViewClosure(firstOrNull(args.getOptionValues("modux.view")));
+            return;
+        }
         var projectIds = args.getOptionValues("modux.generate");
         if (projectIds == null || projectIds.isEmpty()) {
             return; // normal server mode
@@ -64,6 +69,22 @@ public class GenerationCliRunner implements ApplicationRunner {
             System.exit(SpringApplication.exit(context, () -> 0));
         } catch (Exception e) {
             log.error("CLI code generation failed for project '{}'", projectId, e);
+            System.exit(SpringApplication.exit(context, () -> 1));
+        }
+    }
+
+    private void runViewClosure(String viewId) {
+        try {
+            var closure = resolveViewClosureUseCase.resolve(viewId);
+            log.info("View '{}': {} member(s) → {} element(s) in the dependency closure",
+                    viewId, closure.memberIds().size(), closure.closureIds().size());
+            closure.closureIds().forEach(id -> log.info("  - {}", id));
+            if (!closure.missingMembers().isEmpty()) {
+                log.error("Missing members (no such element): {}", closure.missingMembers());
+            }
+            System.exit(SpringApplication.exit(context, () -> closure.missingMembers().isEmpty() ? 0 : 1));
+        } catch (Exception e) {
+            log.error("View closure failed for '{}'", viewId, e);
             System.exit(SpringApplication.exit(context, () -> 1));
         }
     }

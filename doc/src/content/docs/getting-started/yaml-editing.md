@@ -217,6 +217,30 @@ easy to introduce. Validate the whole model — handy as a CI gate:
 mvn spring-boot:run -Dspring-boot.run.arguments=--modux.check   # exits non-zero if broken
 ```
 
+### Views: curated slices of a large model
+
+A **view** is a named, cross-cutting slice of the catalog — "the check-in journey", "the reservations
+context". It only *references* elements by id (it never copies them), so there is a single source of
+truth. Add one to the `views:` list:
+
+```yaml
+views:
+  - id: view-checkin-journey
+    name: Check-in journey
+    kind: CURATED
+    memberIds:
+      - uc-crearEstancia
+      - reserva
+```
+
+Because members are plain references, [`--modux.check`](#checking-referential-integrity) validates them
+too. Expand a view to its **dependency closure** — what it actually touches once you follow every
+reference (a use case pulls in its aggregate, gateway, event and input model):
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
+```
+
 ## Keeping the schema up to date
 
 The schema is regenerated on every startup of the Modux generator. If you add custom entity types or the data model evolves, restart the generator and the new schema will be written to `.dev/data/model-driven-store-schema.json` automatically.

@@ -1,8 +1,9 @@
 # Catálogo y vistas: trabajar con modelos gigantescos
 
-> Estado: **propuesta** (RFC). Fases **A1 y A2 implementadas** (integridad + `--modux.check`;
-> almacenamiento granular + `--modux.split`/`--modux.merge` + estrategia `ModelStorageFormat`); el
-> Track B (vistas) y C (lazy loading), sin implementar. Diseño para discusión. Ver §8.
+> Estado: **propuesta** (RFC). Implementado: **A1** (integridad + `--modux.check`), **A2**
+> (almacenamiento granular + `--modux.split`/`--modux.merge` + `ModelStorageFormat`), **B1** (elemento
+> `View` + cierre de dependencias `--modux.view`). Pendiente: la generación por slice de **B2**
+> (`generate --view`), **B3** (vistas computadas) y **C** (lazy loading). Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -197,8 +198,16 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
    → merge → mismo nº. El e2e completo (generación) pasa sin cambios.
    *Esto es también la "interfaz `ModelStore`" que se había pospuesto en A1: ahora la justifican dos
    implementaciones reales.*
-3. **B1 — `View` curada.** El tipo `View` en el catálogo, edición en la UI, navegación con scope.
-4. **B2 — `ViewClosure` + `generate --view`.** Cierre reutilizando el expander; generación por slice.
+3. **B1 — `View` curada + cierre.** ✅ *Implementado.* `ViewEntity` en el catálogo (`memberIds` → la
+   integridad referencial valida los miembros colgantes gratis, vía la reflexión compartida
+   `CatalogReflection`). `ResolveViewClosureUseCase` expande una vista a su **cierre de dependencias**
+   siguiendo las referencias forward transitivas (un use case arrastra su agregado, gateway, evento y
+   modelo de entrada). Expuesto como `--modux.view=<id>` (imprime miembros + cierre + miembros
+   colgantes). Tests: la vista de `uc-crearEstancia` cierra sobre sus dependencias; los miembros
+   inexistentes se reportan. *Pendiente menor de B1: edición en la UI (el tipo ya existe).*
+4. **B2 — `generate --view`.** *Pendiente.* El cierre (`ResolveViewClosureUseCase`) ya está; falta la
+   **generación por slice**: filtrar `GenerateCodeUseCase` para emitir solo los elementos del cierre (y
+   sus contenedores). Es invasivo (el generador recorre todo) → merece su propia pasada con cuidado.
 5. **B3 — Vistas computadas.** Queries guardadas (semilla + expansión), p. ej. bounded-context view.
 6. **C — Lazy loading.** Cargar solo el cierre de la vista activa en UI/edición/gen parcial.
 

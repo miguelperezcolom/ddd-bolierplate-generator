@@ -2309,6 +2309,30 @@
         }
       },
       "additionalProperties" : false
+    },
+    "ViewEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "memberIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
     }
   },
   "type" : "object",
@@ -2479,6 +2503,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ValueObjectEntity"
+      }
+    },
+    "views" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ViewEntity"
       }
     }
   },

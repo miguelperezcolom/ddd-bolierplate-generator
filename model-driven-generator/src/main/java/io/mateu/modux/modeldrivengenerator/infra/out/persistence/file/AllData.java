@@ -30,7 +30,8 @@ public record AllData(
         List<QueryServiceEntity> queryServices,
         List<IntegrationEventEntity> integrationEvents,
         List<ReadModelEntity> readModels,
-        List<FlowEntity> flows
+        List<FlowEntity> flows,
+        List<ViewEntity> views
         ) {
 
     public AllData {
@@ -62,5 +63,6 @@ public record AllData(
         integrationEvents = integrationEvents != null ? integrationEvents : List.of();
         readModels = readModels != null ? readModels : List.of();
         flows = flows != null ? flows : List.of();
+        views = views != null ? views : List.of();
     }
 }
