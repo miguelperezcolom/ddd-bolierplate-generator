@@ -1,0 +1,87 @@
+# A fourth example domain (ledger) whose Account aggregate is EVENT_SOURCED — a persistence type no
+# other example uses. It exercises the event-store generation (event log entity + Spring Data store +
+# appender + Flyway table) for event-sourced aggregates.
+projects:
+- id: "ledger"
+  name: "Ledger"
+  outputPath: "sample/ledger"
+  packageName: "com.bank.ledger"
+  serviceIds:
+  - "ledger"
+
+services:
+- id: "ledger"
+  name: "Ledger"
+  moduleIds:
+  - "mod-accounts"
+
+modules:
+- id: "mod-accounts"
+  name: "Accounts"
+  aggregateIds:
+  - "account"
+  useCaseIds:
+  - "uc-openAccount"
+  domainEventIds:
+  - "ev-accountOpened"
+
+aggregates:
+- id: "account"
+  name: "Account"
+  modelId: "account-model"
+  persistenceType: "EVENT_SOURCED"
+  eventSourcingEnabled: true
+  idType: "LONG"
+  operations:
+  - id: "op-deposit"
+    name: "deposit"
+    type: "CUSTOM"
+  - id: "op-withdraw"
+    name: "withdraw"
+    type: "CUSTOM"
+
+models:
+- id: "account-model"
+  name: "Account"
+  fields:
+  - id: "f-account-owner"
+    name: "owner"
+    basicType: true
+    type: "string"
+  - id: "f-account-balance"
+    name: "balance"
+    basicType: true
+    type: "money"
+- id: "account-event-model"
+  name: "AccountEvent"
+  fields:
+  - id: "f-ae-accountId"
+    name: "accountId"
+    basicType: true
+    type: "string"
+  - id: "f-ae-owner"
+    name: "owner"
+    basicType: true
+    type: "string"
+
+useCases:
+- id: "uc-openAccount"
+  name: "OpenAccount"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "account-event-model"
+  steps:
+  - id: "step-oa-save"
+    name: "saveAccount"
+    type: "SaveAggregate"
+    aggregateId: "account"
+  - id: "step-oa-publish"
+    name: "publishAccountOpened"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-accountOpened"
+
+domainEvents:
+- id: "ev-accountOpened"
+  name: "AccountOpened"
+  modelId: "account-event-model"
+  schemaVersion: "1"

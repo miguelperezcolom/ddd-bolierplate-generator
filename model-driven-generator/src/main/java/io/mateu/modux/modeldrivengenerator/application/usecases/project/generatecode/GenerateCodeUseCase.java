@@ -546,6 +546,18 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, project, service, module, aggregate, "entityrepository.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
 
+        // Event-sourced aggregates also get an append-only event store (entity + repository + appender).
+        // The aggregate's current-state JPA persistence above stays for now; making the event store the
+        // source of truth (reconstitution) is the next step — see docs/design/event-sourcing.md.
+        if (isEventSourced(aggregate)) {
+            createFile(moduleDir, project, service, module, aggregate, "es-event-entity.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventEntity.java");
+            createFile(moduleDir, project, service, module, aggregate, "es-event-store.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventStore.java");
+            createFile(moduleDir, project, service, module, aggregate, "es-event-appender.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventAppender.java");
+        }
+
         createDir(moduleDir,
                 "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
 
@@ -1314,7 +1326,11 @@ public class GenerateCodeUseCase {
             for (var aggId : (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of())) {
                 if (!inScope(aggId)) continue;
                 var agg = repository.findById(aggId, AggregateEntity.class).orElse(null);
-                if (agg != null) tables.add(aggregateTable(agg));
+                if (agg == null) continue;
+                tables.add(aggregateTable(agg));
+                if (isEventSourced(agg)) {
+                    tables.add(eventStoreTable(agg));
+                }
             }
             for (var entId : (module.entityIds() != null ? module.entityIds() : List.<String>of())) {
                 if (!inScope(entId)) continue;
@@ -1505,6 +1521,22 @@ public class GenerateCodeUseCase {
         return table;
     }
 
+    /** The append-only event-store table for an event-sourced aggregate. */
+    private Map<String, Object> eventStoreTable(AggregateEntity aggregate) {
+        var columns = new ArrayList<Map<String, Object>>();
+        columns.add(column("id", "bigint", true));
+        columns.add(column("aggregate_id", "varchar(255)", false));
+        columns.add(column("sequence_number", "bigint", false));
+        columns.add(column("event_type", "varchar(255)", false));
+        columns.add(column("payload", "varchar(4000)", false));
+        columns.add(column("occurred_at", "timestamp", false));
+        var table = new HashMap<String, Object>();
+        table.put("name", aggregate.name().toLowerCase() + "_event");
+        table.put("columns", columns);
+        table.put("sequence", aggregate.name().toLowerCase() + "_event_sequence");
+        return table;
+    }
+
     private Map<String, Object> readModelTable(ReadModelEntity readModel) {
         var columns = new ArrayList<Map<String, Object>>();
         columns.add(column("id", "varchar(255)", true));
@@ -1594,6 +1626,12 @@ public class GenerateCodeUseCase {
             case dateTime -> "timestamp";
             default -> "varchar(255)";
         };
+    }
+
+    /** Whether an aggregate is event-sourced (by persistence type or the explicit flag). */
+    private boolean isEventSourced(AggregateEntity aggregate) {
+        return aggregate.eventSourcingEnabled()
+                || (aggregate.persistenceType() != null && "EVENT_SOURCED".equals(aggregate.persistenceType().name()));
     }
 
     /** Resolve a model schema-version string ("2", "v2", null...) to an int, defaulting to 1. */

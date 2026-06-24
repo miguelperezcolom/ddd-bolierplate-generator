@@ -83,6 +83,13 @@ For each aggregate, Modux generates:
 - `infra/out/persistence/{Aggregate}DBRepository.java` — port implementation
 - `infra/out/persistence/{Aggregate}DBQueryService.java`
 
+For an **event-sourced** aggregate (`persistenceType: EVENT_SOURCED`), Modux additionally generates an
+append-only event store — `{Aggregate}EventEntity` (the event log table), `{Aggregate}EventStore`
+(Spring Data) and `{Aggregate}EventAppender` (append/read plumbing). Call the appender from the
+aggregate's operations to record domain events. The current-state JPA persistence above is still
+generated for now; making the event store the source of truth (reconstitution from events) is on the
+roadmap — see the [event sourcing design](https://github.com/miguelperezcolom/modux/blob/main/docs/design/event-sourcing.md).
+
 ### UI layer
 - `infra/in/ui/{Aggregate}CrudAdapter.java`
 - `infra/in/ui/{Aggregate}CrudOrchestrator.java`
