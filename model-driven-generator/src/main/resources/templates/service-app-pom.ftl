@@ -53,6 +53,21 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+<#if (project.dbMigrationTool!'Flyway') != 'None'>
+        <!-- Database schema evolution: Flyway owns the schema; Hibernate only validates it -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+</#if>
     </dependencies>
     <build>
         <plugins>

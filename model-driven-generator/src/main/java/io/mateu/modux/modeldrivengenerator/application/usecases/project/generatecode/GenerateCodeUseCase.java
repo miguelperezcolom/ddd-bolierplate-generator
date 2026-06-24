@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.FieldValue
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -168,6 +169,9 @@ public class GenerateCodeUseCase {
 
         // generate the Spring Boot app module
         generateServiceApp(project, service, serviceDir);
+
+        // database schema migrations (Flyway baseline) for the service datasource
+        generateDatabaseMigrations(project, service, serviceDir);
 
         // Roles (all project roles, once per service in app module)
         generateRolesConfig(project, service, serviceDir);
@@ -838,6 +842,7 @@ public class GenerateCodeUseCase {
         var typeName = toTypeName(readModel.name());
         var className = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
         model.put("className", className);
+        model.put("tableName", snakeCase(className + "Entity"));
         if (readModel.modelId() != null && !readModel.modelId().isBlank()) {
             var modelEntity = repository.findById(readModel.modelId(), ModelEntity.class).orElse(null);
             model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
@@ -1237,6 +1242,174 @@ public class GenerateCodeUseCase {
                                 + "/custom/Default" + capitalize(rule.name()) + "Logic.java");
             }
         }
+    }
+
+    // ─── Database schema migrations (Flyway) ───────────────────────────────────
+
+    private void generateDatabaseMigrations(ProjectEntity project, ServiceEntity service, String serviceDir) {
+        var tool = project.dbMigrationTool();
+        if (tool == DbMigrationTool.None) return;            // explicit opt-out → keep ddl-auto
+        if (tool == DbMigrationTool.Liquibase) {
+            System.out.println("[modux] Liquibase migrations are not generated yet; skipping for service "
+                    + service.name() + ". Set dbMigrationTool=Flyway to generate migrations.");
+            return;
+        }
+        // Flyway (also the default when unset)
+
+        var tables = new ArrayList<Map<String, Object>>();
+        for (var moduleId : (service.moduleIds() != null ? service.moduleIds() : List.<String>of())) {
+            var module = repository.findById(moduleId, ModuleEntity.class).orElse(null);
+            if (module == null) continue;
+
+            for (var aggId : (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of())) {
+                var agg = repository.findById(aggId, AggregateEntity.class).orElse(null);
+                if (agg != null) tables.add(aggregateTable(agg));
+            }
+            for (var entId : (module.entityIds() != null ? module.entityIds() : List.<String>of())) {
+                var ent = repository.findById(entId, EntityEntity.class).orElse(null);
+                if (ent != null && ent.isCollection()) tables.add(collectionEntityTable(ent));
+            }
+            // read models are discovered by moduleId (the same way generateModule does), so
+            // flow-materialized read models are included too
+            repository.findAllOfType(ReadModelEntity.class).stream()
+                    .filter(rm -> module.id().equals(rm.moduleId()))
+                    .forEach(rm -> tables.add(readModelTable(rm)));
+        }
+        if (tables.isEmpty()) return;
+
+        var appDir = serviceDir + "/" + serviceName(service) + "-app";
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("tables", tables);
+        // The baseline is applied once and is immutable; never overwrite it on regeneration.
+        createCustomFile(appDir, model, "flyway-baseline.ftl",
+                "src/main/resources/db/migration/V1__baseline.sql");
+    }
+
+    private Map<String, Object> aggregateTable(AggregateEntity aggregate) {
+        var columns = new ArrayList<Map<String, Object>>();
+        columns.add(column("id", "bigint", true));
+        var modelEntity = (aggregate.modelId() != null && !aggregate.modelId().isBlank())
+                ? repository.findById(aggregate.modelId(), ModelEntity.class).orElse(null) : null;
+        if (modelEntity != null && modelEntity.fields() != null) {
+            for (var f : modelEntity.fields()) {
+                if ("id".equals(f.name())) continue;
+                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type())) : "varchar(255)";
+                columns.add(column(snakeCase("col_" + f.name()), type, false));
+            }
+        }
+        var table = new HashMap<String, Object>();
+        table.put("name", aggregateTableName(aggregate));
+        table.put("columns", columns);
+        table.put("sequence", aggregate.name().toLowerCase() + "_sequence");
+        return table;
+    }
+
+    private Map<String, Object> readModelTable(ReadModelEntity readModel) {
+        var columns = new ArrayList<Map<String, Object>>();
+        columns.add(column("id", "varchar(255)", true));
+        var modelEntity = (readModel.modelId() != null && !readModel.modelId().isBlank())
+                ? repository.findById(readModel.modelId(), ModelEntity.class).orElse(null) : null;
+        if (modelEntity != null && modelEntity.fields() != null) {
+            for (var f : modelEntity.fields()) {
+                if ("id".equals(f.name())) continue;
+                if (f.basicType()) {
+                    columns.add(column(snakeCase("col_" + f.name()), sqlTypeForRawType(f.type()), false));
+                } else {
+                    columns.add(column(snakeCase("col_" + f.name() + "_id"), "varchar(255)", false));
+                }
+            }
+        }
+        var typeName = toTypeName(readModel.name());
+        var className = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
+        var table = new HashMap<String, Object>();
+        table.put("name", snakeCase(className + "Entity"));
+        table.put("columns", columns);
+        table.put("sequence", null);
+        return table;
+    }
+
+    private Map<String, Object> collectionEntityTable(EntityEntity entity) {
+        var columns = new ArrayList<Map<String, Object>>();
+        columns.add(column("id", "varchar(255)", true));
+        var modelEntity = (entity.modelId() != null && !entity.modelId().isBlank())
+                ? repository.findById(entity.modelId(), ModelEntity.class).orElse(null) : null;
+        if (modelEntity != null && modelEntity.fields() != null) {
+            for (var f : modelEntity.fields()) {
+                if ("id".equals(f.name())) continue;
+                // collection entities use no @Column → the physical naming strategy snake-cases the field name
+                if (f.basicType()) {
+                    columns.add(column(snakeCase(f.name()), sqlTypeForRawType(f.type()), false));
+                } else {
+                    columns.add(column(snakeCase(f.name() + "Id"), "varchar(255)", false));
+                }
+            }
+        }
+        var table = new HashMap<String, Object>();
+        table.put("name", entity.name().toLowerCase().replaceAll("[^a-z0-9]", "_"));
+        table.put("columns", columns);
+        table.put("sequence", null);
+        return table;
+    }
+
+    private Map<String, Object> column(String name, String type, boolean pk) {
+        var c = new HashMap<String, Object>();
+        c.put("name", name);
+        c.put("type", type);
+        c.put("pk", pk);
+        return c;
+    }
+
+    /** Table name for an aggregate: the model's explicit tableName if set, else snake_case of {Aggregate}Entity. */
+    private String aggregateTableName(AggregateEntity aggregate) {
+        if (aggregate.tableName() != null && !aggregate.tableName().isBlank()) {
+            return aggregate.tableName();
+        }
+        return snakeCase(aggregate.name() + "Entity");
+    }
+
+    /** SQL type for an aggregate field's resolved primitive type (output of mapFieldDataType). */
+    private String sqlTypeForPrimitive(String primitiveType) {
+        if (primitiveType == null) return "varchar(255)";
+        return switch (primitiveType) {
+            case "integer" -> "integer";
+            case "decimal" -> "numeric(19, 4)";
+            case "bool" -> "boolean";
+            case "date" -> "date";
+            case "time" -> "time";
+            case "datetime" -> "timestamp";
+            default -> "varchar(255)";
+        };
+    }
+
+    /** SQL type for a raw model field data type (read-model / collection-entity fields). */
+    private String sqlTypeForRawType(FieldDataType type) {
+        if (type == null) return "varchar(255)";
+        return switch (type) {
+            case integer -> "integer";
+            case number, money -> "numeric(19, 4)";
+            case bool -> "boolean";
+            case date -> "date";
+            case time -> "time";
+            case dateTime -> "timestamp";
+            default -> "varchar(255)";
+        };
+    }
+
+    /** Lowercase snake_case of a Java identifier, matching how table names are emitted in @Table. */
+    private String snakeCase(String value) {
+        if (value == null || value.isEmpty()) return value;
+        var sb = new StringBuilder();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (i > 0 && Character.isUpperCase(c)) {
+                char prev = value.charAt(i - 1);
+                if (Character.isLowerCase(prev) || Character.isDigit(prev)) sb.append('_');
+            }
+            sb.append(Character.toLowerCase(c));
+        }
+        return sb.toString();
     }
 
     // ─── Pages ────────────────────────────────────────────────────────────────
@@ -1813,6 +1986,8 @@ public class GenerateCodeUseCase {
         } else {
             map.put("fields", List.of());
         }
+
+        map.put("tableName", aggregateTableName(aggregate));
 
         return map;
     }

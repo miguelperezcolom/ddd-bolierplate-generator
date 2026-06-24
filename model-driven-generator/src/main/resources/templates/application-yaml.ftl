@@ -1,3 +1,4 @@
+<#assign useFlyway = (project.dbMigrationTool!'Flyway') != 'None'>
 server:
     port: ${(service.port!8080)?c}
 
@@ -15,10 +16,19 @@ spring:
         connection-timeout: 20000
         maximum-pool-size: 10
 
+<#if useFlyway>
+    # Schema is owned by Flyway migrations (src/main/resources/db/migration). Hibernate only
+    # validates that the entities match the migrated schema — it never mutates it.
+    flyway:
+        enabled: true
+        baseline-on-migrate: true
+        locations: classpath:db/migration
+
+</#if>
     jpa:
         database-platform: org.hibernate.dialect.PostgreSQLDialect
         hibernate:
-            ddl-auto: update
+            ddl-auto: ${useFlyway?then('validate', 'update')}
         show-sql: true
         properties:
             hibernate:
@@ -56,14 +66,21 @@ spring:
         activate:
             on-profile: local
     datasource:
-        url: jdbc:h2:mem:${service.name?lower_case?replace(" ","_")?replace("-","_")};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+        url: jdbc:h2:mem:${service.name?lower_case?replace(" ","_")?replace("-","_")};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE<#if useFlyway>;MODE=PostgreSQL</#if>
         username: sa
         password:
         driver-class-name: org.h2.Driver
+<#if useFlyway>
+    # Run the same Flyway migrations against the in-memory H2 (PostgreSQL compatibility mode), so a
+    # local boot exercises the real schema. Hibernate does not touch DDL here.
+    flyway:
+        enabled: true
+        locations: classpath:db/migration
+</#if>
     jpa:
         database-platform: org.hibernate.dialect.H2Dialect
         hibernate:
-            ddl-auto: create-drop
+            ddl-auto: ${useFlyway?then('validate', 'create-drop')}
         open-in-view: false
     h2:
         console:

@@ -205,6 +205,8 @@ class GenerationE2ETest {
                 "model-mapping custom-part hook interface was not generated in the module");
         assertTrue(anyFileMatches(output, "DefaultReservaCreadaToCrearEstanciaCustomMapping.java"),
                 "model-mapping custom-part default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "V1__baseline.sql"),
+                "Flyway baseline migration was not generated for the service");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

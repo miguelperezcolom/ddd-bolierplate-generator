@@ -14,6 +14,7 @@ package ${project.packageName}.${module.slug}.infra.out.persistence;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 <#if hasDate>import java.time.LocalDate;
 </#if><#if hasTime>import java.time.LocalTime;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "${tableName}")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
