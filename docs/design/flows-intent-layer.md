@@ -1,7 +1,6 @@
 # Capa de intención: `flows`
 
 > Estado: **borrador / RFC** — para discutir antes de implementar.
-> Relacionado: [`docs/specs/general.md`](../specs/general.md) (flujos que el sistema debe soportar).
 
 ## 1. El problema
 
