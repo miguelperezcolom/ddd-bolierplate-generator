@@ -10,11 +10,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,13 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * End-to-end test of the generator. It builds a fixture model (the hotel store plus a couple of
  * flows and a FORM page), generates the whole project, then:
  * <ul>
- *   <li>compiles every generated Maven project (proving spec → code → compiles, including the
- *       flow-derived code);</li>
+ *   <li><b>packages</b> every generated Maven project (compile + jar + Spring Boot repackage),
+ *       proving spec → code → buildable artifacts, including the flow-derived code;</li>
  *   <li>validates every generated EventConductor workflow and form JSON against the structural
- *       requirements of EventConductor's schemas.</li>
+ *       requirements of EventConductor's schemas;</li>
+ *   <li><b>boots</b> each generated service application jar with the {@code local} profile (H2,
+ *       no broker) and asserts the Spring context starts — a runtime smoke test.</li>
  * </ul>
- * Slow and requiring a Maven toolchain, so it is tagged {@code e2e} and excluded from the normal
- * build. Run with: {@code mvn test -Pe2e}.
+ * Slow and requiring a Maven + Java toolchain, so it is tagged {@code e2e} and excluded from the
+ * normal build. Run with: {@code mvn test -Pe2e}.
  */
 @SpringBootTest
 @Tag("e2e")
@@ -86,7 +93,7 @@ class GenerationE2ETest {
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
-    void generates_compiles_and_validates_flows_and_eventconductor() throws Exception {
+    void generates_packages_validates_and_boots_the_project() throws Exception {
         // 1. build a fixture store = hotel + flows + a FORM page, and load it
         var hotelStore = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
         var fixture = Files.createTempFile("modux-e2e-store", ".yaml");
@@ -97,7 +104,7 @@ class GenerationE2ETest {
         var output = Files.createTempDirectory("modux-e2e");
         generateCodeUseCase.handle(new GenerateCodeCommand("hotel-checkin", output.toString(), null, false));
 
-        // 3. compile every generated Maven project (includes the flow-derived code)
+        // 3. package every generated Maven project (includes the flow-derived code)
         List<Path> mavenProjects;
         try (Stream<Path> top = Files.list(output)) {
             mavenProjects = top.filter(Files::isDirectory)
@@ -106,7 +113,7 @@ class GenerationE2ETest {
         }
         assertFalse(mavenProjects.isEmpty(), "generation produced no Maven projects under " + output);
         for (Path project : mavenProjects) {
-            assertEquals(0, compile(project), "generated project did not compile: " + project.getFileName());
+            assertEquals(0, maven(project, "package"), "generated project did not package: " + project.getFileName());
         }
 
         // 4. flow-derived code is present (materializes → a read model in the target context)
@@ -124,6 +131,58 @@ class GenerationE2ETest {
         for (Path form : forms) {
             validateForm(json.readTree(form.toFile()), form);
         }
+
+        // 6. runtime smoke: each service application jar boots with the local profile
+        var appJars = findFiles(output, ".jar").stream()
+                .filter(p -> "target".equals(p.getParent().getFileName().toString()))
+                .filter(p -> p.getFileName().toString().matches(".*-app-.*\\.jar"))
+                .toList();
+        assertFalse(appJars.isEmpty(), "no runnable service application jar was produced");
+        for (Path appJar : appJars) {
+            smokeBoot(appJar);
+        }
+    }
+
+    /** Boots the app jar with the local profile and asserts the Spring context starts. */
+    private void smokeBoot(Path appJar) throws Exception {
+        var started = new AtomicBoolean(false);
+        var failed = new AtomicBoolean(false);
+        var done = new CountDownLatch(1);
+
+        var process = new ProcessBuilder("java", "-jar", appJar.toString(),
+                "--spring.profiles.active=local", "--server.port=0")
+                .redirectErrorStream(true)
+                .start();
+
+        var reader = new Thread(() -> {
+            try (var r = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (line.contains("Started ") && line.contains("Application")) {
+                        started.set(true);
+                        done.countDown();
+                        return;
+                    }
+                    if (line.contains("APPLICATION FAILED TO START") || line.contains("Error starting ApplicationContext")) {
+                        failed.set(true);
+                        done.countDown();
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {
+                // process output closed
+            }
+            done.countDown();
+        });
+        reader.setDaemon(true);
+        reader.start();
+
+        boolean signalled = done.await(120, TimeUnit.SECONDS);
+        process.destroyForcibly();
+        process.waitFor(20, TimeUnit.SECONDS);
+
+        assertTrue(started.get(), "generated app did not start with profile 'local': " + appJar.getFileName()
+                + (failed.get() ? " (context failed to start)" : signalled ? "" : " (timed out)"));
     }
 
     private void validateWorkflow(JsonNode wf, Path file) {
@@ -165,9 +224,9 @@ class GenerationE2ETest {
         }
     }
 
-    private int compile(Path projectDir) throws Exception {
+    private int maven(Path projectDir, String goal) throws Exception {
         var mvn = System.getProperty("os.name", "").toLowerCase().contains("win") ? "mvn.cmd" : "mvn";
-        var process = new ProcessBuilder(mvn, "-q", "-B", "-DskipTests", "compile")
+        var process = new ProcessBuilder(mvn, "-q", "-B", "-DskipTests", goal)
                 .directory(projectDir.toFile())
                 .redirectErrorStream(true)
                 .inheritIO()

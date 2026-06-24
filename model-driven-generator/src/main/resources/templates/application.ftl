@@ -3,6 +3,8 @@ package ${project.packageName};
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
 // io.mateu is scanned so Mateu's web layer (MateuController: the UI shell at "/"
 // and the /mateu/v3/sync API) gets registered — Mateu ships no Spring auto-configuration.
@@ -11,6 +13,12 @@ public class ${className} {
 
     public static void main(String[] args) {
         SpringApplication.run(${className}.class, args);
+    }
+
+    // Used by generated gateway adapters for synchronous outbound HTTP calls.
+    @Bean
+    RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 
 }

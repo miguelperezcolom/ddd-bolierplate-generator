@@ -48,7 +48,9 @@ logging:
         org.springframework.kafka: INFO
 
 ---
-# Local profile: H2 in-memory, no Kafka
+# Local profile: H2 in-memory database. Kafka/stream stays auto-configured (so beans like
+# StreamBridge are available); without a reachable broker the consumers just retry in the
+# background and do not block startup — enough to run and smoke-test the app locally.
 spring:
     config:
         activate:
@@ -68,12 +70,6 @@ spring:
             enabled: true
     cloud:
         stream:
-            defaultBinder: ""
-            bindings: {}
-        function:
-            definition: ""
-    autoconfigure:
-        exclude:
-            - org.springframework.cloud.stream.config.BindingServiceConfiguration
-            - org.springframework.cloud.stream.function.FunctionConfiguration
-            - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+            kafka:
+                binder:
+                    auto-create-topics: false
