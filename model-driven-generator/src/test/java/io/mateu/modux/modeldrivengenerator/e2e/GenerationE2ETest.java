@@ -75,6 +75,24 @@ class GenerationE2ETest {
               triggerEvent: "CheckinIniciadoE2E"
               targetModuleId: "mod-housekeeping"
               materializedFields: []
+            - id: "e2e-flow-trig"
+              name: "ReservaCreaEstanciaE2E"
+              archetype: "TRIGGERS"
+              triggerAggregateId: "reserva"
+              triggerEvent: "ReservaTriggersE2E"
+              targetModuleId: "mod-frontoffice"
+              targetUseCaseId: "uc-crearEstancia"
+              materializedFields:
+              - "localizador"
+              - "titular"
+            - id: "e2e-flow-notif"
+              name: "ReservaNotificadaFlowE2E"
+              archetype: "NOTIFIES"
+              triggerAggregateId: "reserva"
+              triggerEvent: "ReservaNotificadaE2E"
+              targetModuleId: "mod-frontoffice"
+              materializedFields:
+              - "localizador"
             pages:
             - id: "e2e-page-form"
               name: "CheckinFormE2E"
@@ -116,9 +134,11 @@ class GenerationE2ETest {
             assertEquals(0, maven(project, "package"), "generated project did not package: " + project.getFileName());
         }
 
-        // 4. flow-derived code is present (materializes → a read model in the target context)
+        // 4. flow-derived code is present across archetypes
         assertTrue(anyFileMatches(output, "ReservaHousekeepingE2EReadModelEntity.java"),
                 "materializes flow did not produce its read model");
+        assertTrue(anyFileMatches(output, "ReservaNotificadaE2EEvent.java"),
+                "notifies flow did not produce its domain event");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");
