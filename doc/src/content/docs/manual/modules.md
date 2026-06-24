@@ -35,8 +35,8 @@ A module groups references to all the domain artefacts that belong to it:
 | **Value Objects** | Shared value objects |
 | **Use Cases** | Application-layer use cases |
 | **Domain Events** | Events emitted by aggregates in this module |
-| **Projections** | Event-driven projections |
-| **Read Models** | Denormalized query views |
+| **Projections** | Event handlers that update Read Models |
+| **Read Models** | Denormalized query views (written by projections, read by query services) |
 | **Subscriptions** | Message handlers |
 | **Sagas** | Multi-step workflows with compensation |
 | **Scheduled Triggers** | Cron-based tasks |

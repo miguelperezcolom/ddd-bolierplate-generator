@@ -71,7 +71,7 @@ A **Project** contains one or more **Services** (microservices), each with one o
 - **Domain Events** — Events emitted by aggregates
 - **Use Cases** — Application services
 - **Sagas** — Multi-step workflows with compensation logic
-- **Projections** — Read models built from domain events
+- **Projections** — Event handlers that maintain Read Models
 - **Gateways** — External service definitions
 - **Subscriptions** — Message handlers with filtering and retry policies
 - **Scheduled Triggers** — Cron-based tasks

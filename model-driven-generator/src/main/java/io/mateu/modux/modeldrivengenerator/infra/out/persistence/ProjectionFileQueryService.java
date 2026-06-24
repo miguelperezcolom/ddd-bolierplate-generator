@@ -45,8 +45,7 @@ public class ProjectionFileQueryService implements ProjectionQueryService {
                 .map(entity -> new ProjectionDto(
                         entity.id(),
                         entity.name(),
-                        entity.modelId(),
-                        entity.storageType(),
+                        entity.readModelId(),
                         entity.handlers() == null ? List.of() : entity.handlers().stream()
                                 .map(h -> new ProjectionEventHandlerDto(h.id(), h.name(), h.domainEventId(), h.type(), h.modelMappingId()))
                                 .toList(),

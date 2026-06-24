@@ -8,10 +8,9 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.projection.creat
 import io.mateu.modux.modeldrivengenerator.application.usecases.projection.save.SaveProjectionCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.projection.save.SaveProjectionUseCase;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ErrorHandlingStrategy;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.RebuildStrategy;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ReadModelIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -40,10 +39,9 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
     @NotEmpty
     String name;
 
-    @Lookup(search = ModelIdOptionsSupplier.class, label = ModelIdLabelSupplier.class)
-    String modelId;
+    @Lookup(search = ReadModelIdOptionsSupplier.class, label = ReadModelIdLabelSupplier.class)
+    String readModelId;
 
-    ProjectionStorageType storageType;
     RebuildStrategy rebuildStrategy;
     ErrorHandlingStrategy errorHandlingStrategy;
     Integer maxRetries;
@@ -58,13 +56,13 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
+        createUseCase.handle(new CreateProjectionCommand(id, name, readModelId, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveProjectionCommand(id, name, modelId, storageType != null ? storageType.name() : null, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
+        saveUseCase.handle(new SaveProjectionCommand(id, name, readModelId, toHandlerData(handlers), rebuildStrategy != null ? rebuildStrategy.name() : null, errorHandlingStrategy != null ? errorHandlingStrategy.name() : null, maxRetries, snapshotEnabled, snapshotFrequency));
     }
 
     @Override
@@ -75,8 +73,7 @@ public class ProjectionViewModel implements Identifiable, CrudEditorForm<String>
     public ProjectionViewModel load(ProjectionDto model) {
         id = model.id();
         name = model.name();
-        modelId = model.modelId();
-        storageType = model.storageType() != null ? ProjectionStorageType.valueOf(model.storageType()) : null;
+        readModelId = model.readModelId();
         rebuildStrategy = model.rebuildStrategy() != null ? RebuildStrategy.valueOf(model.rebuildStrategy()) : null;
         errorHandlingStrategy = model.errorHandlingStrategy() != null ? ErrorHandlingStrategy.valueOf(model.errorHandlingStrategy()) : null;
         maxRetries = model.maxRetries();

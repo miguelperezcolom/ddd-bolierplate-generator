@@ -911,6 +911,12 @@
             "type" : "string"
           }
         },
+        "readModelIds" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "sagaIds" : {
           "type" : "array",
           "items" : {
@@ -1442,10 +1448,10 @@
         "maxRetries" : {
           "type" : "integer"
         },
-        "modelId" : {
+        "name" : {
           "type" : "string"
         },
-        "name" : {
+        "readModelId" : {
           "type" : "string"
         },
         "rebuildStrategy" : {
@@ -1456,9 +1462,6 @@
         },
         "snapshotFrequency" : {
           "type" : "integer"
-        },
-        "storageType" : {
-          "type" : "string"
         }
       },
       "additionalProperties" : false
@@ -1915,6 +1918,12 @@
           "type" : "string"
         },
         "id" : {
+          "type" : "string"
+        },
+        "idempotencyEnabled" : {
+          "type" : "boolean"
+        },
+        "idempotencyKeyField" : {
           "type" : "string"
         },
         "inputModelId" : {

@@ -10,6 +10,8 @@ projects:
 services:
 - id: "hotel"
   name: "Hotel"
+  gatewayIds:
+  - "gw-reservas"
   moduleIds:
   - "mod-frontoffice"
   - "mod-reservas"
@@ -30,11 +32,19 @@ modules:
   - "historialCliente"
   domainEventIds:
   - "ev-habitacionPreasignada"
+  - "ev-estanciaCreada"
+  - "ev-estanciaActualizada"
+  projectionIds:
+  - "proj-llegadas"
+  readModelIds:
+  - "rm-llegadas"
   subscriptionIds:
   - "sub-frontoffice-reservaCreada"
   - "sub-frontoffice-reservaModificada"
   useCaseIds:
   - "uc-realizarCheckin"
+  - "uc-crearEstancia"
+  - "uc-actualizarEstancia"
 - id: "mod-reservas"
   name: "Reservas"
   aggregateIds:
@@ -583,9 +593,62 @@ domainEvents:
   topicName: "hotel.pagos.pago-registrado"
   serializationFormat: "JSON"
   replayable: true
+- id: "ev-estanciaCreada"
+  name: "EstanciaCreada"
+  modelId: "payload-estanciaCreada"
+  publishAsIntegrationEvent: false
+- id: "ev-estanciaActualizada"
+  name: "EstanciaActualizada"
+  modelId: "payload-estanciaCreada"
+  publishAsIntegrationEvent: false
 useCases:
 - id: "uc-realizarCheckin"
   name: "RealizarCheckin"
+- id: "uc-crearEstancia"
+  name: "CrearEstancia"
+  inputModelId: "payload-reservaCreada"
+  steps:
+  - id: "step-crear-callGateway"
+    name: "fetchReserva"
+    type: "CallGateway"
+    gatewayId: "gw-reservas"
+    gatewayOperationId: "op-getReserva"
+  - id: "step-crear-save"
+    name: "saveEstancia"
+    type: "SaveAggregate"
+    aggregateId: "estancia"
+  - id: "step-crear-publish"
+    name: "publishEstanciaCreada"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-estanciaCreada"
+- id: "uc-actualizarEstancia"
+  name: "ActualizarEstancia"
+  inputModelId: "payload-reservaModificada"
+  steps:
+  - id: "step-actualizar-callGateway"
+    name: "fetchReserva"
+    type: "CallGateway"
+    gatewayId: "gw-reservas"
+    gatewayOperationId: "op-getReserva"
+  - id: "step-actualizar-save"
+    name: "saveEstancia"
+    type: "SaveAggregate"
+    aggregateId: "estancia"
+  - id: "step-actualizar-publish"
+    name: "publishEstanciaActualizada"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-estanciaActualizada"
+gateways:
+- id: "gw-reservas"
+  name: "ReservasGateway"
+  baseUrl: "http://reservas/api"
+  operations:
+  - id: "op-getReserva"
+    name: "getReserva"
+    httpMethod: "GET"
+    path: "/reservas/{reserva}"
+    inputModelId: "payload-reservaCreada"
+    outputModelId: "payload-estanciaCreada"
 models:
 # --- master-data catalogs {codigo, nombre} ---
 - id: "hotel"
@@ -1160,6 +1223,36 @@ models:
   - name: "divisa"
     basicType: true
     type: "string"
+- id: "payload-estanciaCreada"
+  name: "EstanciaCreadaPayload"
+  fields:
+  - name: "estancia"
+    basicType: true
+    type: "string"
+  - name: "reserva"
+    basicType: true
+    type: "string"
+  - name: "localizador"
+    basicType: true
+    type: "string"
+  - name: "hotel"
+    basicType: true
+    type: "string"
+  - name: "agencia"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+  - name: "apellidos"
+    basicType: true
+    type: "string"
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    basicType: true
+    type: "string"
 # --- read model output models ---
 - id: "LlegadaResumen"
   name: "LlegadaResumen"
@@ -1237,7 +1330,12 @@ subscriptions:
   inputModelId: "payload-reservaCreada"
   topicName: "hotel.reservas.reserva-creada"
   consumerGroup: "frontoffice"
-  actions: []
+  actions:
+  - id: "act-frontoffice-crearEstancia"
+    name: "crearEstancia"
+    type: "CallUseCase"
+    useCaseId: "uc-crearEstancia"
+    modelMappingId: "mm-reservaCreada-to-crearEstancia"
 - id: "sub-frontoffice-reservaModificada"
   name: "FrontofficeReservaModificada"
   eventName: "ReservaModificada"
@@ -1245,7 +1343,12 @@ subscriptions:
   inputModelId: "payload-reservaModificada"
   topicName: "hotel.reservas.reserva-modificada"
   consumerGroup: "frontoffice"
-  actions: []
+  actions:
+  - id: "act-frontoffice-actualizarEstancia"
+    name: "actualizarEstancia"
+    type: "CallUseCase"
+    useCaseId: "uc-actualizarEstancia"
+    modelMappingId: "mm-reservaModificada-to-actualizarEstancia"
 - id: "sub-folios-pagoRegistrado"
   name: "FoliosPagoRegistrado"
   eventName: "PagoRegistrado"
@@ -1411,6 +1514,36 @@ integrationEvents:
   serializationFormat: "JSON"
   compressionType: "NONE"
   replayable: true
+modelMappings:
+- id: "mm-reservaCreada-to-crearEstancia"
+  name: "ReservaCreadaToCrearEstancia"
+  sourceModelId: "payload-reservaCreada"
+  targetModelId: "payload-estanciaCreada"
+  hasCustomPart: true
+  rules: []
+- id: "mm-reservaModificada-to-actualizarEstancia"
+  name: "ReservaModificadaToActualizarEstancia"
+  sourceModelId: "payload-reservaModificada"
+  targetModelId: "payload-estanciaCreada"
+  hasCustomPart: true
+  rules: []
+projections:
+- id: "proj-llegadas"
+  name: "Llegadas"
+  readModelId: "rm-llegadas"
+  handlers:
+  - id: "h-llegadas-estanciaCreada"
+    name: "onEstanciaCreada"
+    domainEventId: "ev-estanciaCreada"
+    type: "Upsert"
+  - id: "h-llegadas-estanciaActualizada"
+    name: "onEstanciaActualizada"
+    domainEventId: "ev-estanciaActualizada"
+    type: "Upsert"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+  maxRetries: 3
+  snapshotEnabled: false
 readModels:
 - id: "rm-llegadas"
   name: "LlegadasReadModel"

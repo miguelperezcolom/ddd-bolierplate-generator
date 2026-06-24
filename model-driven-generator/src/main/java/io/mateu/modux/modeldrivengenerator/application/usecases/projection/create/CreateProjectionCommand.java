@@ -7,8 +7,7 @@ import java.util.List;
 public record CreateProjectionCommand(
         String id,
         String name,
-        String modelId,
-        String storageType,
+        String readModelId,
         List<ProjectionEventHandlerData> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,

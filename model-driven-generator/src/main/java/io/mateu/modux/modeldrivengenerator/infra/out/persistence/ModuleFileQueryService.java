@@ -55,6 +55,7 @@ public class ModuleFileQueryService implements ModuleQueryService {
                         entity.useCaseIds(),
                         entity.domainEventIds(),
                         entity.projectionIds(),
+                        entity.readModelIds(),
                         entity.subscriptionIds(),
                         entity.sagaIds(),
                         entity.scheduledTriggerIds(),

@@ -18,6 +18,8 @@ public record SubscriptionDto(
         Integer batchSize,
         Long batchTimeout,
         String offsetResetStrategy,
-        Long consumerTimeout
+        Long consumerTimeout,
+        boolean idempotencyEnabled,
+        String idempotencyKeyField
 ) {
 }

@@ -81,14 +81,16 @@ public class ImportAsyncApiUseCase {
                             s.inputModelId(), channelKey, s.consumerGroup(), s.retryCount(),
                             s.deadLetterTopic(), s.actions(), s.scalingStrategy(),
                             s.filterExpression(), s.batchSize(), s.batchTimeout(),
-                            s.offsetResetStrategy(), s.consumerTimeout());
+                            s.offsetResetStrategy(), s.consumerTimeout(),
+                            s.idempotencyEnabled(), s.idempotencyKeyField());
                 } else {
                     subscription = new SubscriptionEntity(
                             UUID.randomUUID().toString(), name, channelKey, null,
                             null, channelKey, null, null,
                             null, null, null,
                             null, null, null,
-                            null, null);
+                            null, null,
+                            true, null);
                 }
                 repository.save(subscription);
                 log.info("Saved subscription '{}' for topic '{}'", name, channelKey);

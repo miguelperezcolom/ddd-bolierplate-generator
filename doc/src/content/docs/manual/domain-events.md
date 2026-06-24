@@ -3,7 +3,12 @@ title: Domain Events
 description: Events emitted by aggregates in Modux
 ---
 
-**Domain Events** represent something that happened in the domain. They are facts — immutable records of a state change that already occurred. Other parts of the system (projections, sagas, subscriptions) react to these events.
+**Domain Events** represent something that happened in the domain. They are facts — immutable records of a state change that already occurred.
+
+A domain event can be consumed in two ways:
+
+- **Inside the same module** — by **Projections** (which write to ReadModels) and **Sagas** (which coordinate long-running processes). No Subscription is needed for in-module consumers.
+- **From another module or external system** — only after the event is promoted to an **integration event** (see below). Cross-context consumers receive it through a [Subscription](/manual/subscriptions/), which then dispatches it to a use case, projection or saga via its configured action.
 
 ## Creating a domain event
 
@@ -49,8 +54,11 @@ Events are plain Java records — immutable and serialisable.
 ```
 Aggregate operation
     → domain event emitted
-        → published to Kafka topic
-            → consumed by Projections, Sagas, Subscriptions
+        → in-module: consumed by Projections / Sagas in the same module
+        → cross-module (if promoted to IntegrationEvent):
+              → published to Kafka topic
+                  → Subscription in the consuming module
+                      → CallUseCase | UpdateProjection | StartSaga
 ```
 
 If the **Outbox Pattern** is enabled on the service, events are written to an outbox table in the same transaction as the aggregate state change, and then published to Kafka by a background process. This guarantees at-least-once delivery without distributed transactions.

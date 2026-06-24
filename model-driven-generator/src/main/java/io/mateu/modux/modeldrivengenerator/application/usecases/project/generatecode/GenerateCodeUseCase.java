@@ -17,6 +17,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.uidl.data.FieldDataType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
@@ -542,8 +543,19 @@ public class GenerateCodeUseCase {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(useCase)));
 
-        var enrichedSteps = new java.util.ArrayList<>();
+        Set<String> commandFieldNames = java.util.Collections.emptySet();
+        if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
+            var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
+            if (inputModel != null && inputModel.fields() != null) {
+                commandFieldNames = inputModel.fields().stream()
+                        .map(ModelFieldEntity::name)
+                        .collect(java.util.stream.Collectors.toSet());
+            }
+        }
+
+        var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
+        var loadedAggregates = new java.util.HashSet<String>();
 
         if (useCase.steps() != null) {
             for (var step : useCase.steps()) {
@@ -552,6 +564,32 @@ public class GenerateCodeUseCase {
                         step.aggregateId(), step.operationId(),
                         step.gatewayId(), step.gatewayOperationId(),
                         step.domainEventId(), step.useCaseId(), step.modelMappingId());
+
+                String stepType = (String) stepMap.get("type");
+                if ("CallGateway".equals(stepType) && stepMap.get("gatewayOperation") instanceof Map<?, ?> opMap) {
+                    var inModelId = (String) opMap.get("inputModelId");
+                    if (inModelId != null) {
+                        var inModel = repository.findById(inModelId, ModelEntity.class).orElse(null);
+                        if (inModel != null && inModel.fields() != null) {
+                            stepMap.put("argFields", buildArgs(inModel.fields(), commandFieldNames));
+                        }
+                    }
+                } else if ("PublishDomainEvent".equals(stepType) && stepMap.get("domainEvent") instanceof Map<?, ?> evMap) {
+                    var modelId = (String) evMap.get("modelId");
+                    if (modelId != null) {
+                        var payloadModel = repository.findById(modelId, ModelEntity.class).orElse(null);
+                        if (payloadModel != null && payloadModel.fields() != null) {
+                            stepMap.put("argFields", buildArgs(payloadModel.fields(), commandFieldNames));
+                        }
+                    }
+                } else if ("ReadAggregate".equals(stepType) && stepMap.get("aggregate") instanceof Map<?, ?> aggMap) {
+                    var aggName = (String) aggMap.get("name");
+                    if (aggName != null) loadedAggregates.add(aggName);
+                } else if ("SaveAggregate".equals(stepType) && stepMap.get("aggregate") instanceof Map<?, ?> aggMap) {
+                    var aggName = (String) aggMap.get("name");
+                    stepMap.put("aggregateLoaded", aggName != null && loadedAggregates.contains(aggName));
+                }
+
                 enrichedSteps.add(stepMap);
                 if ("PublishDomainEvent".equals(stepMap.get("type"))) {
                     needsStreamBridge = true;
@@ -562,6 +600,19 @@ public class GenerateCodeUseCase {
         map.put("steps", enrichedSteps);
         map.put("needsStreamBridge", needsStreamBridge);
         return map;
+    }
+
+    private List<Map<String, Object>> buildArgs(List<ModelFieldEntity> fields, Set<String> commandFieldNames) {
+        var args = new java.util.ArrayList<Map<String, Object>>();
+        for (var f : fields) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", f.name());
+            m.put("basicType", f.basicType());
+            m.put("type", f.type() != null ? f.type().name() : null);
+            m.put("matched", commandFieldNames.contains(f.name()));
+            args.add(m);
+        }
+        return args;
     }
 
     // ─── Gateways ─────────────────────────────────────────────────────────────
@@ -578,7 +629,26 @@ public class GenerateCodeUseCase {
         var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
 
         Map<String, Object> model = buildBaseModel(project, service, firstModule);
-        model.put("gateway", fromJson(toJson(gateway)));
+        var gwMap = new HashMap<String, Object>();
+        gwMap.putAll(fromJson(toJson(gateway)));
+        if (gateway.operations() != null) {
+            var enrichedOps = new java.util.ArrayList<Map<String, Object>>();
+            for (var op : gateway.operations()) {
+                var opMap = new HashMap<String, Object>();
+                opMap.putAll(fromJson(toJson(op)));
+                if (op.inputModelId() != null && !op.inputModelId().isBlank()) {
+                    var im = repository.findById(op.inputModelId(), ModelEntity.class).orElse(null);
+                    if (im != null) opMap.put("inputModel", fromJson(toJson(im)));
+                }
+                if (op.outputModelId() != null && !op.outputModelId().isBlank()) {
+                    var om = repository.findById(op.outputModelId(), ModelEntity.class).orElse(null);
+                    if (om != null) opMap.put("outputModel", fromJson(toJson(om)));
+                }
+                enrichedOps.add(opMap);
+            }
+            gwMap.put("operations", enrichedOps);
+        }
+        model.put("gateway", gwMap);
 
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/gateway");
@@ -605,8 +675,24 @@ public class GenerateCodeUseCase {
         }
 
         createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/readmodel");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query");
+        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/persistence");
+
+        // Read-side DTO (record)
         createFile(moduleDir, model, "read-model.ftl",
                 "src/main/java/" + modulePackageDir + "/application/query/readmodel/" + className + ".java");
+
+        // JPA persistence
+        createFile(moduleDir, model, "readmodel-entity.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "Entity.java");
+        createFile(moduleDir, model, "readmodel-entityrepository.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "EntityRepository.java");
+
+        // QueryService interface + impl
+        createFile(moduleDir, model, "readmodel-queryservice.ftl",
+                "src/main/java/" + modulePackageDir + "/application/query/" + className + "QueryService.java");
+        createFile(moduleDir, model, "readmodel-dbqueryservice.ftl",
+                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "DBQueryService.java");
     }
 
     // ─── IntegrationEvents ────────────────────────────────────────────────────
@@ -1036,9 +1122,94 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = buildBaseModel(project, service, module);
         model.put("projection", fromJson(toJson(projection)));
 
+        var rawName = capitalize(projection.name());
+        var className = rawName.endsWith("Projection") ? rawName : rawName + "Projection";
+        model.put("className", className);
+
+        ModelEntity rmModelEntity = null;
+        if (projection.readModelId() != null && !projection.readModelId().isBlank()) {
+            var rm = repository.findById(projection.readModelId(), ReadModelEntity.class).orElse(null);
+            if (rm != null) {
+                var typeName = toTypeName(rm.name());
+                var rmClassName = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
+                Map<String, Object> rmModel = new HashMap<>();
+                rmModel.put("className", rmClassName);
+                rmModel.put("entityClassName", rmClassName + "Entity");
+                rmModel.put("name", rm.name());
+                if (rm.modelId() != null && !rm.modelId().isBlank()) {
+                    rmModelEntity = repository.findById(rm.modelId(), ModelEntity.class).orElse(null);
+                    if (rmModelEntity != null && rmModelEntity.fields() != null) {
+                        rmModel.put("fields", toFieldMaps(rmModelEntity.fields()));
+                    }
+                }
+                model.put("readModel", rmModel);
+            }
+        }
+
+        // Enrich each handler with payload fields + field mapping for auto-deserialization
+        var enrichedHandlers = new java.util.ArrayList<Map<String, Object>>();
+        if (projection.handlers() != null) {
+            for (var h : projection.handlers()) {
+                Map<String, Object> handler = new HashMap<>();
+                handler.put("id", h.id());
+                handler.put("name", h.name());
+                handler.put("type", h.type() != null ? h.type().name() : null);
+                handler.put("modelMappingId", h.modelMappingId());
+                handler.put("domainEventId", h.domainEventId());
+
+                if (h.domainEventId() != null) {
+                    var ev = repository.findById(h.domainEventId(), DomainEventEntity.class).orElse(null);
+                    if (ev != null && ev.modelId() != null) {
+                        var payloadModel = repository.findById(ev.modelId(), ModelEntity.class).orElse(null);
+                        if (payloadModel != null && payloadModel.fields() != null) {
+                            var payloadFields = payloadModel.fields();
+                            payloadFields.stream()
+                                    .filter(ModelFieldEntity::basicType)
+                                    .findFirst()
+                                    .map(ModelFieldEntity::name)
+                                    .ifPresent(idField -> handler.put("idField", idField));
+                            if (rmModelEntity != null && rmModelEntity.fields() != null) {
+                                var payloadNames = payloadFields.stream()
+                                        .map(ModelFieldEntity::name)
+                                        .collect(java.util.stream.Collectors.toSet());
+                                var matched = new java.util.ArrayList<Map<String, Object>>();
+                                var unmatched = new java.util.ArrayList<String>();
+                                for (var rmf : rmModelEntity.fields()) {
+                                    if (payloadNames.contains(rmf.name())) {
+                                        Map<String, Object> mf = new HashMap<>();
+                                        mf.put("name", rmf.name());
+                                        mf.put("basicType", rmf.basicType());
+                                        mf.put("type", rmf.type() != null ? rmf.type().name() : null);
+                                        matched.add(mf);
+                                    } else {
+                                        unmatched.add(rmf.name());
+                                    }
+                                }
+                                handler.put("matchedFields", matched);
+                                handler.put("unmatchedFields", unmatched);
+                            }
+                        }
+                    }
+                }
+                enrichedHandlers.add(handler);
+            }
+        }
+        model.put("enrichedHandlers", enrichedHandlers);
+
         createFile(moduleDir, model, "projection.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/projection/"
-                        + capitalize(projection.name()) + "Projection.java");
+                "src/main/java/" + modulePackageDir + "/infra/in/projection/" + className + ".java");
+    }
+
+    private List<Map<String, Object>> toFieldMaps(List<ModelFieldEntity> fields) {
+        var out = new java.util.ArrayList<Map<String, Object>>();
+        for (var f : fields) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", f.name());
+            m.put("basicType", f.basicType());
+            m.put("type", f.type() != null ? f.type().name() : null);
+            out.add(m);
+        }
+        return out;
     }
 
     // ─── Shared step enrichment ───────────────────────────────────────────────
@@ -1134,6 +1305,66 @@ public class GenerateCodeUseCase {
 
         Map<String, Object> model = buildBaseModel(project, service, module);
         model.put("subscription", fromJson(toJson(subscription)));
+
+        // Resolve subscription's input model (payload schema)
+        ModelEntity payloadModel = null;
+        if (subscription.inputModelId() != null && !subscription.inputModelId().isBlank()) {
+            payloadModel = repository.findById(subscription.inputModelId(), ModelEntity.class).orElse(null);
+        }
+        var payloadNames = payloadModel != null && payloadModel.fields() != null
+                ? payloadModel.fields().stream().map(ModelFieldEntity::name).collect(java.util.stream.Collectors.toSet())
+                : java.util.Collections.<String>emptySet();
+
+        var enrichedActions = new java.util.ArrayList<Map<String, Object>>();
+        if (subscription.actions() != null) {
+            for (var a : subscription.actions()) {
+                Map<String, Object> action = new HashMap<>();
+                action.put("id", a.id());
+                action.put("name", a.name());
+                action.put("type", a.type() != null ? a.type().name() : null);
+                action.put("useCaseId", a.useCaseId());
+                action.put("projectionId", a.projectionId());
+                action.put("sagaId", a.sagaId());
+                action.put("modelMappingId", a.modelMappingId());
+
+                if (a.type() != null && "CallUseCase".equals(a.type().name()) && a.useCaseId() != null) {
+                    var uc = repository.findById(a.useCaseId(), UseCaseEntity.class).orElse(null);
+                    if (uc != null) {
+                        var ucName = capitalize(uc.name());
+                        var ucSlug = uc.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+                        action.put("useCaseName", uc.name());
+                        action.put("useCaseClassName", ucName + "UseCase");
+                        action.put("commandClassName", ucName + "Command");
+                        action.put("useCaseFieldName", uncapitalize(uc.name()) + "UseCase");
+                        action.put("useCaseSlug", ucSlug);
+
+                        if (uc.inputModelId() != null && !uc.inputModelId().isBlank()) {
+                            var commandModel = repository.findById(uc.inputModelId(), ModelEntity.class).orElse(null);
+                            if (commandModel != null && commandModel.fields() != null) {
+                                var matched = new java.util.ArrayList<Map<String, Object>>();
+                                var unmatched = new java.util.ArrayList<String>();
+                                for (var cf : commandModel.fields()) {
+                                    if (payloadNames.contains(cf.name())) {
+                                        Map<String, Object> m = new HashMap<>();
+                                        m.put("name", cf.name());
+                                        m.put("basicType", cf.basicType());
+                                        m.put("type", cf.type() != null ? cf.type().name() : null);
+                                        matched.add(m);
+                                    } else {
+                                        unmatched.add(cf.name());
+                                    }
+                                }
+                                action.put("commandFields", toFieldMaps(commandModel.fields()));
+                                action.put("matchedFields", matched);
+                                action.put("unmatchedFields", unmatched);
+                            }
+                        }
+                    }
+                }
+                enrichedActions.add(action);
+            }
+        }
+        model.put("enrichedActions", enrichedActions);
 
         createFile(moduleDir, model, "subscription.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/in/async/" + capitalize(subscription.name()) + "Subscription.java");

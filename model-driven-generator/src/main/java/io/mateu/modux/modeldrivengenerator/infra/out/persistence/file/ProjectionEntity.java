@@ -7,8 +7,7 @@ import java.util.List;
 public record ProjectionEntity(
         String id,
         String name,
-        String modelId,
-        String storageType,
+        String readModelId,
         List<ProjectionEventHandlerEntity> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,

@@ -59,6 +59,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
                         entity.scalingStrategy(),
                         entity.filterExpression(),
                         entity.batchSize(), entity.batchTimeout(), entity.offsetResetStrategy(),
-                        entity.consumerTimeout()));
+                        entity.consumerTimeout(),
+                        entity.idempotencyEnabled(), entity.idempotencyKeyField()));
     }
 }

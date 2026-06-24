@@ -3,9 +3,6 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.projection.save
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ProjectionRepository;
 import io.mateu.modux.modeldrivengenerator.application.usecases.projection.ProjectionEventHandlerData;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.*;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ErrorHandlingStrategy;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ProjectionStorageType;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.RebuildStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +18,7 @@ public class SaveProjectionUseCase {
         var projection = repository.findById(new ProjectionId(command.id())).orElseThrow();
         projection.update(
                 new ProjectionName(command.name()),
-                command.modelId() != null ? new ProjectionModelId(command.modelId()) : null,
-                command.storageType() != null ? ProjectionStorageType.valueOf(command.storageType()) : null,
+                command.readModelId() != null ? new ProjectionReadModelId(command.readModelId()) : null,
                 toHandlers(command.handlers()),
                 command.rebuildStrategy() != null ? RebuildStrategy.valueOf(command.rebuildStrategy()) : null,
                 command.errorHandlingStrategy() != null ? ErrorHandlingStrategy.valueOf(command.errorHandlingStrategy()) : null,

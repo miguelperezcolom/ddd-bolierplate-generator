@@ -32,7 +32,8 @@ public class SaveSubscriptionUseCase {
                 command.scalingStrategy() != null ? ScalingStrategy.valueOf(command.scalingStrategy()) : null,
                 command.filterExpression(),
                 command.batchSize(), command.batchTimeout(), command.offsetResetStrategy(),
-                command.consumerTimeout());
+                command.consumerTimeout(),
+                command.idempotencyEnabled(), command.idempotencyKeyField());
         repository.save(subscription);
     }
 

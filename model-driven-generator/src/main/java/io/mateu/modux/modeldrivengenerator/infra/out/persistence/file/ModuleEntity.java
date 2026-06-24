@@ -14,6 +14,7 @@ public record ModuleEntity(
         List<String> useCaseIds,
         List<String> domainEventIds,
         List<String> projectionIds,
+        List<String> readModelIds,
         List<String> subscriptionIds,
         List<String> sagaIds,
         List<String> scheduledTriggerIds,

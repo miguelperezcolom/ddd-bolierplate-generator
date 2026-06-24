@@ -24,6 +24,8 @@ public class Subscription {
     private Long batchTimeout;
     private String offsetResetStrategy;
     private Long consumerTimeout;
+    private boolean idempotencyEnabled;
+    private String idempotencyKeyField;
 
     public static Subscription of(SubscriptionId id, SubscriptionName name,
                                   String eventName, String sourceService, String inputModelId,
@@ -33,7 +35,8 @@ public class Subscription {
                                   ScalingStrategy scalingStrategy,
                                   String filterExpression,
                                   Integer batchSize, Long batchTimeout, String offsetResetStrategy,
-                                  Long consumerTimeout) {
+                                  Long consumerTimeout,
+                                  boolean idempotencyEnabled, String idempotencyKeyField) {
         var subscription = new Subscription();
         subscription.id = id;
         subscription.name = name;
@@ -51,6 +54,8 @@ public class Subscription {
         subscription.batchTimeout = batchTimeout;
         subscription.offsetResetStrategy = offsetResetStrategy;
         subscription.consumerTimeout = consumerTimeout;
+        subscription.idempotencyEnabled = idempotencyEnabled;
+        subscription.idempotencyKeyField = idempotencyKeyField;
         return subscription;
     }
 
@@ -62,7 +67,8 @@ public class Subscription {
                                     String scalingStrategy,
                                     String filterExpression,
                                     Integer batchSize, Long batchTimeout, String offsetResetStrategy,
-                                    Long consumerTimeout) {
+                                    Long consumerTimeout,
+                                    boolean idempotencyEnabled, String idempotencyKeyField) {
         var subscription = new Subscription();
         subscription.id = new SubscriptionId(id);
         subscription.name = new SubscriptionName(name);
@@ -80,6 +86,8 @@ public class Subscription {
         subscription.batchTimeout = batchTimeout;
         subscription.offsetResetStrategy = offsetResetStrategy;
         subscription.consumerTimeout = consumerTimeout;
+        subscription.idempotencyEnabled = idempotencyEnabled;
+        subscription.idempotencyKeyField = idempotencyKeyField;
         return subscription;
     }
 
@@ -91,7 +99,8 @@ public class Subscription {
                        ScalingStrategy scalingStrategy,
                        String filterExpression,
                        Integer batchSize, Long batchTimeout, String offsetResetStrategy,
-                       Long consumerTimeout) {
+                       Long consumerTimeout,
+                       boolean idempotencyEnabled, String idempotencyKeyField) {
         this.name = name;
         this.eventName = eventName;
         this.sourceService = sourceService;
@@ -107,5 +116,7 @@ public class Subscription {
         this.batchTimeout = batchTimeout;
         this.offsetResetStrategy = offsetResetStrategy;
         this.consumerTimeout = consumerTimeout;
+        this.idempotencyEnabled = idempotencyEnabled;
+        this.idempotencyKeyField = idempotencyKeyField;
     }
 }

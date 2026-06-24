@@ -5,8 +5,7 @@ import java.util.List;
 public record ProjectionDto(
         String id,
         String name,
-        String modelId,
-        String storageType,
+        String readModelId,
         List<ProjectionEventHandlerDto> handlers,
         String rebuildStrategy,
         String errorHandlingStrategy,

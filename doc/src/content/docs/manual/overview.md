@@ -67,7 +67,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 - [Business Rules](/manual/business-rules/) — declarative when/then rules for a rules engine
 - [Domain Events](/manual/domain-events/) — events emitted by aggregates
 - [Sagas](/manual/sagas/) — multi-step workflows with compensation
-- [Projections & Read Models](/manual/projections/) — event-driven read models
+- [Projections & Read Models](/manual/projections/) — the read-side pattern: projections maintain denormalized read models
 - [Gateways](/manual/gateways/) — external service calls
 - [Subscriptions](/manual/subscriptions/) — message handlers
 - [Scheduled Triggers](/manual/scheduled-triggers/) — cron tasks

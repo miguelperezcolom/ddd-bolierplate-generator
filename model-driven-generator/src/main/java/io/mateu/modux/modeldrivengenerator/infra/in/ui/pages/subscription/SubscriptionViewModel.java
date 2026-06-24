@@ -56,6 +56,8 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
     Long batchTimeout;
     String offsetResetStrategy;
     Long consumerTimeout;
+    boolean idempotencyEnabled = true;
+    String idempotencyKeyField;
 
     @Tab
     List<SubscriptionActionViewModel> actions = new ArrayList<>();
@@ -65,13 +67,13 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout));
+        createUseCase.handle(new CreateSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout, idempotencyEnabled, idempotencyKeyField));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout));
+        saveUseCase.handle(new SaveSubscriptionCommand(id, name, eventName, sourceService, inputModelId, topicName, consumerGroup, retryCount, deadLetterTopic, toActionData(actions), scalingStrategy != null ? scalingStrategy.name() : null, filterExpression, batchSize, batchTimeout, offsetResetStrategy, consumerTimeout, idempotencyEnabled, idempotencyKeyField));
     }
 
     @Override
@@ -95,6 +97,8 @@ public class SubscriptionViewModel implements Identifiable, CrudEditorForm<Strin
         batchTimeout = model.batchTimeout();
         offsetResetStrategy = model.offsetResetStrategy();
         consumerTimeout = model.consumerTimeout();
+        idempotencyEnabled = model.idempotencyEnabled();
+        idempotencyKeyField = model.idempotencyKeyField();
         actions = model.actions() == null ? new ArrayList<>() : model.actions().stream().map(a -> {
             var vm = new SubscriptionActionViewModel();
             vm.id = a.id();

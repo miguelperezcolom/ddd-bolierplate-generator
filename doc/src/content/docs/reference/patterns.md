@@ -35,7 +35,7 @@ Events are immutable records emitted by aggregates when state changes. They are:
 
 - Named in past tense (`BookingConfirmed`, not `ConfirmBooking`)
 - Published to Kafka after the transaction commits
-- Consumed by projections, sagas, and subscriptions
+- Consumed by projections and sagas in the same module; consumed across bounded contexts via subscriptions (when promoted to integration events)
 
 ---
 

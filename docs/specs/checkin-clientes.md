@@ -353,6 +353,77 @@ descrita más abajo.)
 
 Esas UIs se **agregan en una shell** (**UiShell**) que las reúne en una sola aplicación.
 
+## Patrones de integración event-driven
+
+Hay **dos patrones** para reaccionar a un evento publicado por otro bounded
+context. La diferencia clave está en el **destino** de la escritura.
+
+### Patrón A — Subscription + UseCase → Aggregate
+
+El evento llega y dispara un **comando** sobre un agregado local. Pasa por el
+lado de **escritura**: hay invariantes, identidad de agregado, posibilidad de
+publicar nuevos eventos. El destino es un **Aggregate** con su propio ciclo de
+vida.
+
+```
+DomainEvent (origen)
+   → IntegrationEvent
+      → Subscription (destino)
+         → UseCase
+            → Aggregate  ← creado/actualizado
+```
+
+**Cuándo:** el destino tiene **comandos propios**. P.ej. la `Habitación` de
+rack tiene comando "marcar Ocupada" cuando llega `HabitacionPreasignada` — es
+un agregado con comportamiento, no una vista.
+
+#### Completar el payload cuando no basta
+
+El payload del IntegrationEvent rara vez trae **toda** la información que el
+agregado local necesita. El UseCase tiene dos palancas, combinables:
+
+- **ModelMapping** (lado de mapeo): traduce los campos del payload al *shape*
+  del command del UseCase (renombrados, transformaciones de tipo, valores
+  derivados). Resuelve el mismatch nominal/estructural.
+- **Gateway callback al BC origen** (lado de enriquecimiento): el UseCase llama
+  vía **Gateway** a una API del BC publicador para obtener los campos que
+  faltan. Resuelve el déficit de datos.
+
+> **Ejemplo — `ReservaCreada` (reservas → frontoffice).** El payload publicado
+> es `{ reserva, localizador, hotel }`, pero crear una `Estancia` requiere
+> también la **Habitación reservada** y la lista de **Pax**. El UseCase
+> `CrearEstancia` consume el evento, mapea la cabecera con un ModelMapping, y
+> **llama vía Gateway** a `reservas.getReserva(reserva)` para obtener líneas
+> y pax. La `Estancia` se materializa con los datos combinados.
+
+### Patrón B — Projection → ReadModel
+
+El evento llega y se **escribe directamente** en una tabla/documento
+denormalizado. Sin comandos, sin invariantes. El destino es un **ReadModel**
+que solo existe para ser leído por la UI vía QueryService.
+
+```
+DomainEvent (origen)
+   → IntegrationEvent
+      → Projection (destino)
+         → ReadModel  ← escrito
+            → QueryService → Page
+```
+
+**Cuándo:** el destino **no tiene comandos**, solo se lee. P.ej. el read model
+del check-in que cruza cardex/producción/folios/… para alimentar la pantalla
+— nadie ejecuta comandos contra él.
+
+### Regla de decisión
+
+Para cada flujo event-driven, pregunta: **¿el destino tiene comandos propios?**
+
+- **Sí** → Patrón A (`Subscription + UseCase → Aggregate`)
+- **No, solo se lee** → Patrón B (`Projection → ReadModel`)
+
+> En modux, *Projection* se reserva para el Patrón B. Llamar "proyección" al
+> Patrón A es informal y confunde dos patrones distintos.
+
 ## Integración entre módulos (resumen)
 
 1. **Eventos de master data → crean entidades en otros módulos.** Al dar de alta datos
@@ -365,26 +436,20 @@ Esas UIs se **agregan en una shell** (**UiShell**) que las reúne en una sola ap
    datos de **producción** (cargos), **folios**, **pagos**, **servicio técnico**, **rack** y
    **housekeeping** (además de master data y cardex).
 
-   **Mecanismo (decidido):** frontoffice **materializa** esa información en **ReadModels**
-   propios, alimentados por **Projections** que se suscriben a los eventos de esos módulos;
-   la **Page** de check-in se sirve de ellos vía **QueryService**. Es decir, el tríptico CQRS:
-
-   - **Projection** (*comportamiento*): consume eventos de integración y **escribe** en…
-   - **ReadModel** (*lectura*): vista materializada, desnormalizada, **sin invariantes ni comandos**…
-   - **QueryService** (*outbound*): **lee** del ReadModel y lo sirve a la Page.
-
-   > Nota terminológica: **ReadModel ≠ Projection**. El ReadModel es el *dato* (el qué);
-   > la Projection es el *proceso* que lo mantiene (el cómo). En Modux son dos conceptos
-   > distintos (ReadModel re-añadido en el menú *Patrones*; Projection en *Comportamiento*).
+   **Mecanismo (decidido):** **Patrón B** (ver §"Patrones de integración event-driven").
+   Frontoffice mantiene **ReadModels** propios alimentados por **Projections** que se
+   suscriben a los eventos de esos módulos; la **Page** de check-in se sirve de ellos
+   vía **QueryService**.
 
 ### Tabla de flujos event-driven
 
-| Evento | Origen | Consumidor(es) | Efecto |
-|---|---|---|---|
-| `HabitacionCreada` | master data | rack, housekeeping, servicio técnico | crean su `Habitación` (fan-out) |
-| `ReservaCreada` / `ReservaModificada` | reservas | frontoffice | crea/actualiza `Estancia`s |
-| `HabitacionPreasignada` | frontoffice | rack | ocupa los días del rango |
-| `PagoRegistrado` | pagos | folios | actualiza el saldo del folio |
+| Evento | Origen | Consumidor(es) | Patrón | Efecto |
+|---|---|---|---|---|
+| `HabitacionCreada` | master data | rack, housekeeping, servicio técnico | A | crean su `Habitación` (fan-out) |
+| `ReservaCreada` / `ReservaModificada` | reservas | frontoffice | A | crea/actualiza `Estancia`s |
+| `HabitacionPreasignada` | frontoffice | rack | A | ocupa los días del rango |
+| `PagoRegistrado` | pagos | folios | A | actualiza el saldo del `Folio` |
+| eventos de producción/folios/pagos/housekeeping/serviciotécnico/rack | varios | frontoffice | B | mantienen el read model de la pantalla de check-in |
 
 ## Proceso de check-in
 
@@ -510,10 +575,76 @@ Envío confirmación reserva, Auditoría reserva, New Key.
     > ⇒ La consulta de pre-asignación **cruza tres contextos**: master data (tipo),
     > rack (libre) y housekeeping (estado de limpieza).
 
-<!-- spec en construcción — dictada por el usuario, redactada incrementalmente -->
-<!-- Cómo se alimenta el frontoffice: PARCIALMENTE resuelto — las estancias se crean por
-     suscripción a `ReservaCreada` (reservas → frontoffice). PENDIENTE: cómo lee la pantalla
-     de check-in los datos de master data / rack / housekeeping / cardex / producción / folios. -->
+## Plan de validación de esta especificación
+
+Para verificar que esta especificación es completa y no ambigua se aplica un ciclo
+de **dogfooding sobre modux**:
+
+1. **Producir el modelo del sistema.** Un agente (Claude) lee únicamente este
+   documento y produce el modelo del sistema en `.dev/data/model-driven-store.yaml`,
+   conforme al esquema de modux (`.dev/data/model-driven-store-schema.json`).
+   - Si el agente tiene que inventarse algo, preguntar o elegir arbitrariamente,
+     eso es síntoma de **hueco** o **ambigüedad** en esta especificación → se
+     anota y se corrige aquí.
+2. **Generar el código.** Se ejecuta modux sobre el YAML resultante para generar
+   el proyecto.
+3. **Compilar y arrancar.** Se compila el proyecto generado y se levanta la app.
+   Si arranca y los flujos descritos en §"Proceso de check-in" funcionan, el
+   ciclo *spec → modelo → código → app* queda demostrado de extremo a extremo.
+
+El ciclo cumple dos objetivos: **valida esta especificación** (hace explícitas
+las ambigüedades) y **valida modux** (ejercita su pipeline sobre un caso real).
+
+### Hallazgos del primer ciclo
+
+Una primera versión del YAML modeló `LlegadasReadModel` con una `Projection`
+consumiendo `ReservaCreada` directamente. Esto **no encaja** con la dicotomía
+A/B: la consecuencia de `ReservaCreada` en frontoffice es la **creación de un
+agregado `Estancia`** (Patrón A), no la escritura de un ReadModel. La ReadModel
+de llegadas debe alimentarse de **eventos locales** del agregado `Estancia`
+(`EstanciaCreada`, `EstanciaActualizada`), no del cross-BC.
+
+Cadena correcta:
+
+```
+reservas: ReservaCreada (IntegrationEvent)
+   → frontoffice.Subscription (cross-BC entry point)
+      → action: CallUseCase → uc-crearEstancia
+         → ModelMapping del payload + Gateway a reservas para completar líneas/pax
+         → Estancia (agregado) emite EstanciaCreada (DomainEvent local)
+            → frontoffice.LlegadasProjection consume EstanciaCreada (in-module)
+               → LlegadasReadModel
+```
+
+Preserva la regla: **cross-BC siempre entra vía Subscription + UseCase →
+Aggregate**; los **ReadModels se alimentan de eventos locales** (in-module).
+Una Projection que consume un evento cross-BC directamente es síntoma de salto
+de capa.
+
+## Escenarios de aceptación
+
+Escenarios que el sistema generado debe cumplir. Se añaden de forma incremental
+y sirven a la vez como contrato adicional de la spec y como tests automatizables
+(Cucumber) sobre el código que emite modux.
+
+### E1 — Alta de habitación se propaga a rack, housekeeping y servicio técnico
+
+**Dado** que el usuario opera la UI de **master data**,
+**cuando** da de alta una `Habitación`,
+**entonces**:
+
+1. master data persiste la nueva `Habitación` y publica `HabitacionCreada` como
+   **evento de integración**.
+2. **rack**, **housekeeping** y **servicio técnico** consumen el evento (cada uno
+   vía **Subscription + UseCase**) y **materializan en su propia BD** su
+   correspondiente agregado `Habitación`.
+
+Es el escenario estrella de **fan-out 1 → 3** anticipado en §master data.
+
+> **Nota terminológica:** los `Habitación` de rack/housekeeping/servicio técnico
+> son **agregados**, no ReadModels. Por tanto la materialización aquí **no** es
+> una *Projection* (Projection se reserva para alimentar **ReadModels**, ver
+> §"Integración entre módulos"); es **Subscription + UseCase → Aggregate**.
 
 <!-- spec en construcción — dictada por el usuario, redactada incrementalmente -->
 <!-- Cómo se alimenta el frontoffice: PARCIALMENTE resuelto — las estancias se crean por

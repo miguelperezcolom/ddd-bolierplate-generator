@@ -110,15 +110,18 @@ public class ${usecase.name?cap_first}UseCase {
         // TODO: call operation on ${step.aggregate.name?uncap_first} (operationId not resolved)
 </#if>
 <#elseif step.type == "SaveAggregate" && step.aggregate??>
+<#if !step.aggregateLoaded?? || !step.aggregateLoaded>
+        ${step.aggregate.name} ${step.aggregate.name?uncap_first} = null; // TODO: build ${step.aggregate.name} from command + gateway results
+</#if>
         ${step.aggregate.name?uncap_first}Repository.save(${step.aggregate.name?uncap_first});
 <#elseif step.type == "CallGateway" && step.gateway??>
 <#if step.gatewayOperation??>
-        ${step.gateway.name?uncap_first}Gateway.${step.gatewayOperation.name?uncap_first}(/* TODO: pass gateway args */);
+        ${step.gateway.name?uncap_first}Gateway.${step.gatewayOperation.name?uncap_first}(<#if step.argFields??><#list step.argFields as a><#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if><#sep>, </#sep></#list></#if>);
 <#else>
         // TODO: call gateway ${step.gateway.name?uncap_first}Gateway (operation not resolved)
 </#if>
 <#elseif step.type == "PublishDomainEvent" && step.domainEvent??>
-        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.name?cap_first}Event(/* TODO: fill event fields */));
+        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.name?cap_first}Event(null /* TODO: aggregateId */<#if step.argFields??><#list step.argFields as a>, <#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
 <#elseif step.type == "CallUseCase" && step.useCase??>
         ${step.useCase.name?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.name?cap_first}Command */);
 <#elseif step.type == "ApplyModelMapping">

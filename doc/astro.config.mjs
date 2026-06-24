@@ -57,6 +57,7 @@ export default defineConfig({
 					label: 'Reference',
 					items: [
 						{ label: 'Architecture', slug: 'reference/architecture' },
+						{ label: 'End-to-End Flows', slug: 'reference/flows' },
 						{ label: 'Generated Code Structure', slug: 'reference/generated-code' },
 						{ label: 'Architecture Patterns', slug: 'reference/patterns' },
 						{ label: 'Maven Plugin', slug: 'reference/maven-plugin' },

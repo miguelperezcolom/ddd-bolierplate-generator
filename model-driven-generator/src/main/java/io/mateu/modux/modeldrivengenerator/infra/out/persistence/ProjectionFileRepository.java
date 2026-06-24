@@ -25,8 +25,7 @@ public class ProjectionFileRepository implements ProjectionRepository {
                 .map(entity -> Projection.load(
                         entity.id(),
                         entity.name(),
-                        entity.modelId(),
-                        entity.storageType(),
+                        entity.readModelId(),
                         toHandlers(entity.handlers()),
                         entity.rebuildStrategy(),
                         entity.errorHandlingStrategy(),
@@ -39,8 +38,7 @@ public class ProjectionFileRepository implements ProjectionRepository {
         repository.save(new ProjectionEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getModelId() != null ? entity.getModelId().id() : null,
-                entity.getStorageType() != null ? entity.getStorageType().name() : null,
+                entity.getReadModelId() != null ? entity.getReadModelId().id() : null,
                 toHandlerEntities(entity.getHandlers()),
                 entity.getRebuildStrategy() != null ? entity.getRebuildStrategy().name() : null,
                 entity.getErrorHandlingStrategy() != null ? entity.getErrorHandlingStrategy().name() : null,

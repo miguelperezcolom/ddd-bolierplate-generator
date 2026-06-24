@@ -20,6 +20,8 @@ public record SubscriptionEntity(
         Integer batchSize,
         Long batchTimeout,
         String offsetResetStrategy,
-        Long consumerTimeout
+        Long consumerTimeout,
+        boolean idempotencyEnabled,
+        String idempotencyKeyField
 ) implements Identifiable {
 }

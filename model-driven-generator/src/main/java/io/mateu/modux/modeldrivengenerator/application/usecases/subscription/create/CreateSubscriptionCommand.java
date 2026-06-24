@@ -20,6 +20,8 @@ public record CreateSubscriptionCommand(
         Integer batchSize,
         Long batchTimeout,
         String offsetResetStrategy,
-        Long consumerTimeout
+        Long consumerTimeout,
+        boolean idempotencyEnabled,
+        String idempotencyKeyField
 ) {
 }

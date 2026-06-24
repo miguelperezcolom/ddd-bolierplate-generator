@@ -10,8 +10,7 @@ public class Projection {
 
     private ProjectionId id;
     private ProjectionName name;
-    private ProjectionModelId modelId;
-    private ProjectionStorageType storageType;
+    private ProjectionReadModelId readModelId;
     private List<ProjectionEventHandler> handlers;
     private RebuildStrategy rebuildStrategy;
     private ErrorHandlingStrategy errorHandlingStrategy;
@@ -20,8 +19,7 @@ public class Projection {
     private Integer snapshotFrequency;
 
     public static Projection of(ProjectionId id, ProjectionName name,
-                                ProjectionModelId modelId,
-                                ProjectionStorageType storageType,
+                                ProjectionReadModelId readModelId,
                                 List<ProjectionEventHandler> handlers,
                                 RebuildStrategy rebuildStrategy,
                                 ErrorHandlingStrategy errorHandlingStrategy,
@@ -30,8 +28,7 @@ public class Projection {
         var projection = new Projection();
         projection.id = id;
         projection.name = name;
-        projection.modelId = modelId;
-        projection.storageType = storageType;
+        projection.readModelId = readModelId;
         projection.handlers = handlers != null ? handlers : List.of();
         projection.rebuildStrategy = rebuildStrategy;
         projection.errorHandlingStrategy = errorHandlingStrategy;
@@ -42,8 +39,7 @@ public class Projection {
     }
 
     public static Projection load(String id, String name,
-                                  String modelId,
-                                  String storageType,
+                                  String readModelId,
                                   List<ProjectionEventHandler> handlers,
                                   String rebuildStrategy,
                                   String errorHandlingStrategy,
@@ -52,8 +48,7 @@ public class Projection {
         var projection = new Projection();
         projection.id = new ProjectionId(id);
         projection.name = new ProjectionName(name);
-        projection.modelId = modelId != null ? new ProjectionModelId(modelId) : null;
-        projection.storageType = storageType != null ? ProjectionStorageType.valueOf(storageType) : null;
+        projection.readModelId = readModelId != null ? new ProjectionReadModelId(readModelId) : null;
         projection.handlers = handlers != null ? handlers : List.of();
         projection.rebuildStrategy = rebuildStrategy != null ? RebuildStrategy.valueOf(rebuildStrategy) : null;
         projection.errorHandlingStrategy = errorHandlingStrategy != null ? ErrorHandlingStrategy.valueOf(errorHandlingStrategy) : null;
@@ -64,16 +59,14 @@ public class Projection {
     }
 
     public void update(ProjectionName name,
-                       ProjectionModelId modelId,
-                       ProjectionStorageType storageType,
+                       ProjectionReadModelId readModelId,
                        List<ProjectionEventHandler> handlers,
                        RebuildStrategy rebuildStrategy,
                        ErrorHandlingStrategy errorHandlingStrategy,
                        Integer maxRetries,
                        boolean snapshotEnabled, Integer snapshotFrequency) {
         this.name = name;
-        this.modelId = modelId;
-        this.storageType = storageType;
+        this.readModelId = readModelId;
         this.handlers = handlers != null ? handlers : List.of();
         this.rebuildStrategy = rebuildStrategy;
         this.errorHandlingStrategy = errorHandlingStrategy;

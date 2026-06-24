@@ -34,6 +34,7 @@ public class SaveModuleUseCase {
                 command.entityIds(), command.valueObjectIds(),
                 command.useCaseIds(), command.domainEventIds(),
                 command.projectionIds(),
+                command.readModelIds(),
                 command.subscriptionIds(), command.sagaIds(), command.scheduledTriggerIds(),
                 bddScenarios, command.llmSystemPrompt(), command.tableNamePrefix(), command.autoTableNamePrefix(), command.version(),
                 command.bffs() == null ? List.<Bff>of() : command.bffs().stream()
