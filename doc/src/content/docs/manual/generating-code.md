@@ -140,7 +140,7 @@ A generated project has two zones, so you can regenerate as often as you like wi
 | **Generated** | Every structural module (domain, application, infra, app) | Always overwritten — **do not edit** |
 | **Custom** | The `{service}-custom` module | **Never overwritten** — it's yours |
 
-Modux never puts business logic you must write inside the generated zone. Instead, where a decision can't be derived from the model, it generates a **hook** (a port interface, with a context that exposes the relevant aggregate state) and scaffolds a **default implementation once** in the `{service}-custom` module. You fill that implementation in; the generated code calls it via Spring. The four business-logic hooks are:
+Modux never puts business logic you must write inside the generated zone. Instead, where a decision can't be derived from the model, it generates a **hook** (a port interface, with a context that exposes the relevant aggregate state) and scaffolds a **default implementation once** in the `{service}-custom` module. You fill that implementation in; the generated code calls it via Spring. The six business-logic hooks are:
 
 | Hook | Generated when | Interface (locked) | Default impl (yours, write-once) |
 |---|---|---|---|

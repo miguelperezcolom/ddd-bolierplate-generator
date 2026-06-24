@@ -133,19 +133,26 @@ La granularidad **habilita** lazy loading (cargar solo los ficheros de una vista
 Un nuevo tipo de catálogo (es un elemento más, con su id), **puramente proyectivo**:
 
 ```yaml
+# Curada: lista sus miembros
 - id: "view-checkin-journey"
   name: "Journey de check-in"
   description: "Todo lo que toca el check-in, de reservas a housekeeping"
-  kind: "CURATED"          # o COMPUTED
-  members:                 # solo para CURATED: ids de elementos
+  kind: "CURATED"
+  memberIds:
     - "reserva"
     - "uc-crearEstancia"
     - "ev-estanciaCreada"
-  groups:                  # opcional: agrupar/anotar para navegación/docs
-    - { name: "Reservas", members: ["reserva"] }
-  # para COMPUTED, en vez de members:
-  # query: { seed: "mod-frontoffice", expand: "DEPENDENCY_CLOSURE" }
+
+# Computada: nombra una semilla y deriva sus miembros (su cierre de dependencias)
+- id: "view-frontoffice"
+  name: "FrontOffice bounded context"
+  kind: "COMPUTED"
+  seedId: "mod-frontoffice"
 ```
+
+> Nota de implementación: los campos finales de `ViewEntity` son `id`, `name`, `description`, `kind`
+> (`CURATED`/`COMPUTED`), `memberIds` y `seedId`. La idea de `groups` (agrupar/anotar) quedó como diseño,
+> no implementada.
 
 Dos sabores:
 

@@ -113,7 +113,7 @@ A partir de `when: Reservas.Booking recorded` + el arquetipo, se deriva:
 | Pieza | Convención por defecto |
 |---|---|
 | DomainEvent | nombre del verbo sobre el agregado (`BookingRecorded`); `publishAsIntegrationEvent` si cruza contexto |
-| IntegrationEvent · topic | `hotel.<contexto-origen>.<evento-kebab>` → `hotel.reservas.booking-recorded` |
+| IntegrationEvent · topic | `<proyecto>.<servicio-origen>.<evento-kebab>` → `hotel.reservas.reserva-creada` |
 | IntegrationEvent · formato | JSON, `schemaVersion: v1`, `replayable: true`, DLQ on |
 | Model (payload) | exactamente los `fields` declarados |
 | ReadModel | `storageType: table`, `consistency: eventual` |

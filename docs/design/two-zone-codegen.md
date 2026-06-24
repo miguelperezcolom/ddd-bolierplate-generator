@@ -73,14 +73,20 @@ El **use case generado** (bean, bloqueado) invoca el hook tras mutar el agregado
 
 Hooks previstos (cada uno = interfaz en generado + impl por defecto en custom):
 
+> Nota: la tabla siguiente era el plan de diseño inicial. Los **seis hooks finales implementados** (ver
+> la cabecera de este RFC y el manual *Generating Code*) son: invariantes, operación custom de agregado
+> (`{Operation}{Aggregate}Operation`), pasos custom de saga (`{Saga}Steps`), pasos custom de use case
+> (`{UseCase}Steps`), lógica de business rules (`{Rule}Logic`) y parte custom de model mappings
+> (`{Mapping}CustomMapping`). Las **proyecciones se autogeneran** (no llevan hook).
+
 | Hueco de negocio actual (`// TODO`) | Hook |
 |---|---|
 | Cuerpo de invariantes del agregado | `{Aggregate}Invariants.check(ctx)` |
-| Precondición / cuerpo de operación | `{Aggregate}Operations` (método por operación) |
-| Pasos de use case sin lógica derivable | `{UseCase}Logic` |
-| Pasos de saga | `{Saga}Steps` |
-| Handlers de proyección | `{Projection}Handler` |
-| Mapeo/efecto del cuerpo de gateway | (ya es impl; puede quedar como hook custom) |
+| Precondición / cuerpo de operación CUSTOM | `{Operation}{Aggregate}Operation` (default en custom) |
+| Pasos custom de use case | `{UseCase}Steps` |
+| Pasos custom de saga | `{Saga}Steps` |
+| Lógica de business rules | `{Rule}Logic` |
+| Parte custom de model mappings | `{Mapping}CustomMapping` |
 
 El **contexto** crece según el hook: invariantes → el agregado; use case → input + repos/gateways;
 saga → variables del proceso; proyección → el evento + el read model.
@@ -125,6 +131,6 @@ Cada fichero generado lleva una cabecera con un **hash de su contenido**:
    cableado; mover invariantes a `{Aggregate}Invariants` + `{Aggregate}Context` (generado) e impl
    por defecto (custom, never-overwrite); cabecera de hash en ficheros generados. Verificar con el
    e2e (compila + arranca; el módulo custom existe y la app depende de él).
-3. **Fase 2 — Resto de hooks** (operaciones, use cases, sagas, proyecciones), uno a uno.
+3. **Fase 2 — Resto de hooks** (operaciones, use cases, sagas, business rules, model mappings), uno a uno.
 4. **Fase 3 — Manifest + validación de tamper** (aviso de generado editado / hook huérfano).
 5. **Fase 4 — Doc**: reemplazar la tabla "Overwrite behaviour" por el modelo de dos zonas.
