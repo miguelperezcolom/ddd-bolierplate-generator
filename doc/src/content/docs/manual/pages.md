@@ -141,3 +141,9 @@ Depending on the page type, Modux generates:
 - **WIZARD** — `WizardOrchestrator` subclass with one `WizardStep` field per step and one `@WizardCompletionAction` method per completion action
 
 All pages respect the configured toolbar, bottom bar, triggers, rules, validations and field overrides.
+
+**FORM** and **WIZARD** pages additionally emit an [EventConductor](https://eventconductor.mateu.io/)
+form definition (`src/main/resources/forms/<Page>.form.json`) derived from the page's model fields.
+EventConductor `USER_TASK` [workflow steps](/manual/sagas/#orchestration-with-eventconductor) can
+reference these forms by id, so a human task in a workflow renders the same form you designed in
+Modux.
