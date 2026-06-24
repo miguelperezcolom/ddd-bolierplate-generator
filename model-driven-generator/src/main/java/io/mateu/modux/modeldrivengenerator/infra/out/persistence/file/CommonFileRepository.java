@@ -46,6 +46,9 @@ public class CommonFileRepository {
     /** The format the model was loaded with; persist writes back in the same format. */
     private io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelStorageFormat activeFormat;
 
+    /** True after a scoped (partial) load: only a slice of a granular model is in memory, so it is read-only. */
+    private boolean scoped;
+
     public CommonFileRepository(
             io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat,
             io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat) {
@@ -106,6 +109,7 @@ public class CommonFileRepository {
     public void init() {
         var specFile = overrideModelFile != null ? overrideModelFile
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
+        scoped = false;
         storePath = Path.of(specFile).toAbsolutePath().normalize();
         activeFormat = granularFormat.handles(storePath) ? granularFormat : monolithicFormat;
         dataDir = activeFormat.dataDir(storePath);
@@ -168,7 +172,43 @@ public class CommonFileRepository {
 
     @SneakyThrows
     private void persist() {
+        if (scoped) {
+            throw new IllegalStateException("The model is partially loaded (a view scope) and is read-only. "
+                    + "Load the full model before saving.");
+        }
         activeFormat.save(storePath, buildAllData());
+    }
+
+    /** Begin a partial (scoped) load on a granular store: clears the catalog and marks it read-only. */
+    public void beginScopedLoad() {
+        if (!(activeFormat instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat)) {
+            throw new IllegalStateException("Partial loading needs a granular store. Run --modux.split first, "
+                    + "and point modux.model-file at the model directory.");
+        }
+        store.clear();
+        scoped = true;
+    }
+
+    /** Load all elements of one type (e.g. "views") into the catalog; returns them. */
+    @SneakyThrows
+    public java.util.List<Object> loadTypeIntoStore(String componentName) {
+        var elements = granularFormat.loadType(storePath, componentName);
+        for (var element : elements) {
+            if (element instanceof Identifiable identifiable) {
+                store.put(storeKey(identifiable.id(), element.getClass()), element);
+            }
+        }
+        return elements;
+    }
+
+    /** Load a single element by id into the catalog (lazy); returns it, or null if not a stored element. */
+    @SneakyThrows
+    public Object loadElementIntoStore(String id) {
+        var element = granularFormat.loadElement(storePath, id);
+        if (element instanceof Identifiable identifiable) {
+            store.put(storeKey(identifiable.id(), element.getClass()), element);
+        }
+        return element;
     }
 
     @SneakyThrows

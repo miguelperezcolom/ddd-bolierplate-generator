@@ -69,6 +69,41 @@ public class GranularYamlStorageFormat implements ModelStorageFormat {
         return (AllData) constructor.newInstance(args);
     }
 
+    /** Load just the elements of one AllData list (one type) — for partial/lazy loading. */
+    public List<Object> loadType(Path root, String componentName) throws Exception {
+        var reader = ModelYaml.reader();
+        var elements = new ArrayList<Object>();
+        for (var component : AllData.class.getRecordComponents()) {
+            if (!component.getName().equals(componentName)) continue;
+            var elementType = (Class<?>) ((ParameterizedType) component.getGenericType())
+                    .getActualTypeArguments()[0];
+            var dir = root.resolve(componentName);
+            if (Files.isDirectory(dir)) {
+                try (Stream<Path> files = Files.list(dir)) {
+                    for (var file : files.filter(p -> p.getFileName().toString().endsWith(".yaml")).sorted().toList()) {
+                        elements.add(reader.readValue(file.toFile(), elementType));
+                    }
+                }
+            }
+        }
+        return elements;
+    }
+
+    /** Locate and load a single top-level element by id (scans type dirs); null if not a stored element. */
+    public Object loadElement(Path root, String id) throws Exception {
+        var reader = ModelYaml.reader();
+        var fileName = sanitize(id) + ".yaml";
+        for (var component : AllData.class.getRecordComponents()) {
+            var file = root.resolve(component.getName()).resolve(fileName);
+            if (Files.exists(file)) {
+                var elementType = (Class<?>) ((ParameterizedType) component.getGenericType())
+                        .getActualTypeArguments()[0];
+                return reader.readValue(file.toFile(), elementType);
+            }
+        }
+        return null;
+    }
+
     @Override
     public void save(Path path, AllData data) throws Exception {
         var writer = ModelYaml.writer();

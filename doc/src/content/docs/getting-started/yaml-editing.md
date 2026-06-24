@@ -263,6 +263,13 @@ mvn spring-boot:run \
 This is the payoff of catalog-and-views: with a huge model you regenerate one bounded context at a time
 instead of the whole thing.
 
+On a granular store you can also **load only a view's closure** into memory (read-only), to open one
+bounded context of a huge model without loading everything:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.load-view=view-frontoffice
+```
+
 ## Keeping the schema up to date
 
 The schema is regenerated on every startup of the Modux generator. If you add custom entity types or the data model evolves, restart the generator and the new schema will be written to `.dev/data/model-driven-store-schema.json` automatically.

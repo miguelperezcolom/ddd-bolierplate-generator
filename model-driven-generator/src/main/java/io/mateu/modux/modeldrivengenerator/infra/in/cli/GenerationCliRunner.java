@@ -32,6 +32,7 @@ public class GenerationCliRunner implements ApplicationRunner {
     private final GenerateCodeUseCase generateCodeUseCase;
     private final CheckModelUseCase checkModelUseCase;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.LoadViewScopeUseCase loadViewScopeUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository repository;
     private final ConfigurableApplicationContext context;
 
@@ -49,6 +50,10 @@ public class GenerationCliRunner implements ApplicationRunner {
         if (args.containsOption("modux.merge")) {
             runStorageConversion(() ->
                     repository.mergeTo(java.nio.file.Path.of(firstOrNull(args.getOptionValues("modux.merge")))));
+            return;
+        }
+        if (args.containsOption("modux.load-view")) {
+            runLoadView(firstOrNull(args.getOptionValues("modux.load-view")));
             return;
         }
         var viewId = firstOrNull(args.getOptionValues("modux.view"));
@@ -71,6 +76,21 @@ public class GenerationCliRunner implements ApplicationRunner {
             System.exit(SpringApplication.exit(context, () -> 0));
         } catch (Exception e) {
             log.error("CLI code generation failed for project '{}'", projectId, e);
+            System.exit(SpringApplication.exit(context, () -> 1));
+        }
+    }
+
+    private void runLoadView(String viewId) {
+        try {
+            var load = loadViewScopeUseCase.load(viewId);
+            log.info("Partially loaded view '{}': {} element(s) in memory (the rest of the model stays on disk)",
+                    viewId, load.loadedElements());
+            if (!load.missing().isEmpty()) {
+                log.error("Missing members (no such element): {}", load.missing());
+            }
+            System.exit(SpringApplication.exit(context, () -> load.missing().isEmpty() ? 0 : 1));
+        } catch (Exception e) {
+            log.error("Partial load failed for view '{}'", viewId, e);
             System.exit(SpringApplication.exit(context, () -> 1));
         }
     }

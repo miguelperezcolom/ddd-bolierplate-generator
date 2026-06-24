@@ -3,7 +3,8 @@
 > Estado: **propuesta** (RFC). Implementado: **A1** (integridad + `--modux.check`), **A2**
 > (almacenamiento granular + `--modux.split`/`--modux.merge` + `ModelStorageFormat`), **B1** (elemento
 > `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`),
-> **B3** (vistas computadas: `kind: COMPUTED` + `seedId`). Pendiente: **C** (lazy loading). Ver §8.
+> **B3** (vistas computadas: `kind: COMPUTED` + `seedId`), **C** (carga parcial read-only de un cierre:
+> `--modux.load-view`). Track A y B completos. Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -223,7 +224,17 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
    cambiar el modelo. `--modux.view` y `generate --view` lo soportan gratis (van por el mismo `resolve`).
    La integridad valida `seedId` (es una referencia). Test: una vista sembrada en `mod-frontoffice`
    cierra sobre su bounded context y no se filtra a otro contexto (`reserva`).
-6. **C — Lazy loading.** Cargar solo el cierre de la vista activa en UI/edición/gen parcial.
+6. **C — Carga parcial (lazy).** ✅ *Implementado (read-only).* Sobre el store granular,
+   `LoadViewScopeUseCase` carga **solo el cierre de una vista** en memoria intercalando carga y
+   seguimiento de referencias (carga la semilla/miembros → carga lo que referencian → repite). Apoyado
+   en primitivas nuevas del formato granular (`loadType`, `loadElement`). El catálogo parcial queda
+   **read-only** (`persist` lanza error) para no arriesgar borrar el resto del modelo en disco. CLI:
+   `--modux.load-view=<id>`. Test: cargar la vista de FrontOffice trae solo su cierre (menos elementos
+   que el total, con el contexto, sin `reserva`) y rechaza guardar.
+   *Límites honestos (§5.4):* (a) **edición con guardado parcial** necesita un *merge-save* (upsert sin
+   borrar huérfanos) — siguiente paso; (b) hoy el `@PostConstruct` aún hace una carga completa al
+   arrancar; el *lazy en arranque* real (no cargar nada hasta abrir una vista) es un cambio aparte. La
+   **generación completa** sigue cargando el grafo entero, como se anticipó.
 
 Cada fase es entregable y verificable de forma aislada (tests de carga/guardado, de integridad, de
 cierre, e2e de `generate --view`).

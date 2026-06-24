@@ -24,6 +24,7 @@ public record ViewEntity(
         return memberIds != null ? memberIds : List.of();
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public boolean isComputed() {
         return "COMPUTED".equalsIgnoreCase(kind) && seedId != null && !seedId.isBlank();
     }
