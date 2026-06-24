@@ -1,7 +1,8 @@
 # Event sourcing para agregados
 
-> Estado: **Fase 1 implementada** (event store generado para agregados `EVENT_SOURCED`); la
-> reconstitución completa (eventos como fuente de verdad) es **propuesta**. Ver §4.
+> Estado: **Fases 1 y 2 implementadas** — event store generado y **repositorio event-sourced** (eventos
+> como fuente de verdad, con snapshot de estado para lecturas), con hook de dos zonas para lo
+> no-derivable. Refinamientos (snapshots periódicos, read-side puro por proyección) son **propuesta**. Ver §4.
 > Relacionado: [`two-zone-codegen.md`](./two-zone-codegen.md), [`system-evolution`](../../doc/src/content/docs/manual/system-evolution.md).
 
 ## 1. El hueco
@@ -46,33 +47,47 @@ eventos de dominio, e `history(...)` para leer el stream.
 Verificado por `LedgerGenerationTest`: el proyecto ledger con un agregado event-sourced
 **genera → empaqueta → migra → valida → arranca**.
 
-## 4. Fase 2+ (propuesta): eventos como fuente de verdad
+## 4. Fase 2 (implementada): eventos como fuente de verdad
 
-Para llegar a event sourcing real:
+Para un agregado `EVENT_SOURCED`, el adaptador JPA del puerto (`{Aggregate}DBRepository`) **se reemplaza**
+por uno event-sourced (`{Aggregate}EventSourcedRepository`) — el puerto sigue con **una sola
+implementación**, así que ni la CRUD UI ni nada más se entera:
 
-1. **El agregado produce eventos.** Las operaciones (`CUSTOM`) registran eventos de dominio en vez de
-   mutar estado directamente; el estado se deriva aplicándolos. Encaja con los hooks de dos zonas: "qué
-   evento produce esta operación" y "cómo aplico este evento al estado" no son derivables del modelo →
-   son hooks `{Aggregate}EventSourcing` (`eventsOf` / `apply`).
-2. **Repositorio event-sourced.** Una implementación del puerto `{Aggregate}Repository` que en `save`
-   añade los eventos pendientes y en `findById` carga el stream y lo pliega (vía el hook). Sustituye al
-   adaptador JPA de estado (el puerto sigue igual, así el resto no se entera).
-3. **Quitar el estado JPA** (o dejarlo solo como snapshot). Implica **gate** de la entidad/repos JPA y de
-   la **CRUD UI** para agregados event-sourced (que asumen estado actual) — o servir la UI desde una
-   proyección.
-4. **Snapshots** cada `snapshotFrequency` eventos (el campo ya existe en el modelo).
-5. **Read side por proyección.** El estado consultable se materializa con proyecciones (que ya existen),
-   no leyendo el agregado — CQRS de verdad.
+- `save(domain)`: añade los eventos de dominio (vía el hook `eventsOf` + el `EventAppender`) **y** guarda
+  un **snapshot de estado** (la entidad JPA), para que lecturas/queries/CRUD sigan funcionando.
+- `findById(id)`: **pliega el stream de eventos** (la reconstitución canónica, vía el hook `replay`) y, si
+  aún no está implementado, cae al snapshot. Los eventos son la fuente de verdad; el estado es derivado.
 
-### Riesgos / decisiones abiertas
-- **Serialización polimórfica de eventos** (deserializar `payload` al tipo correcto en el replay): un
-  registro de tipos de evento o un campo `eventType` + mapa. El `eventType` ya se persiste.
-- **UI para agregados event-sourced**: ¿gate del CRUD, o UI sobre proyección? (Recomendado: proyección.)
-- **Migración de un agregado JPA existente a event-sourced**: fuera de alcance inicial.
+Lo no-derivable es un **hook de dos zonas** `{Aggregate}EventSourcing` (puerto generado en
+`infra/out/persistence`, default write-once en el módulo custom):
 
-## 5. Resumen
+| Método | Qué decide |
+|---|---|
+| `List<Object> eventsOf({Aggregate} aggregate)` | qué eventos de dominio produce el cambio actual |
+| `{Aggregate} replay({Aggregate}Id id, List<{Aggregate}EventEntity> events)` | cómo se pliega el stream para reconstruir el estado |
 
-El meta-modelo ya sabía de event sourcing; el generador no. La Fase 1 cierra la pieza con valor
-independiente —un event store generado, con tabla migrada y un appender listo— sin romper nada. La
-reconstitución completa (Fase 2+) es un cambio mayor que toca agregado, persistencia y UI, y se hace
-cuando se decida, reutilizando los hooks de dos zonas para lo no-derivable.
+Verificado por `LedgerGenerationTest`: se genera `{Aggregate}EventSourcedRepository` + el hook + su
+default, **no** se genera el `DBRepository` JPA, y el proyecto arranca.
+
+**Decisión:** se mantiene el snapshot de estado JPA como read-side (en vez de hacer "ES puro" sin tabla
+de estado), porque la alternativa —quitar la entidad JPA— forzaría a hacer *gate* de la CRUD UI, el menú,
+el query service y los tests, una cascada grande y frágil. El snapshot es un patrón ES legítimo (read
+model embebido) y deja el sistema funcionando out-of-the-box.
+
+## 5. Refinamientos (propuesta)
+
+1. **Snapshots periódicos** cada `snapshotFrequency` eventos (el campo ya existe) para acelerar el replay.
+2. **Read-side puro por proyección**: materializar el estado consultable con proyecciones (que ya
+   existen) y retirar el snapshot embebido — CQRS de verdad.
+3. **Serialización polimórfica**: el `replay` recibe `eventType` + `payload`; falta un helper estándar
+   para deserializar al tipo correcto (hoy lo hace el hook a mano).
+4. **Migrar un agregado JPA existente a event-sourced**: fuera de alcance inicial.
+
+## 6. Resumen
+
+El meta-modelo ya sabía de event sourcing; el generador no. Las Fases 1 y 2 lo cierran: un agregado
+`EVENT_SOURCED` genera un event store con tabla migrada y un repositorio event-sourced que añade eventos
+(la fuente de verdad) y los pliega al cargar, manteniendo un snapshot de estado para las lecturas y la
+CRUD UI. Lo no-derivable —qué eventos produce una operación y cómo se pliegan— es un hook de dos zonas,
+fiel a la tesis de todo el proyecto: lo estructural se genera, lo que el modelo no puede capturar lo
+posees tú. Los refinamientos (snapshots, read-side puro) quedan documentados arriba.

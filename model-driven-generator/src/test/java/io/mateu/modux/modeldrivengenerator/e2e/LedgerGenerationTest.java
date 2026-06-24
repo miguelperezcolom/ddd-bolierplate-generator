@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -57,6 +58,17 @@ class LedgerGenerationTest {
 
         var output = Files.createTempDirectory("modux-ledger");
         generateCodeUseCase.handle(new GenerateCodeCommand("ledger", output.toString(), null, false));
+
+        // event sourcing: the event store, the event-sourced repository and the two-zone fold hook
+        assertTrue(anyFile(output, "AccountEventEntity.java"), "event-store entity was not generated");
+        assertTrue(anyFile(output, "AccountEventAppender.java"), "event appender was not generated");
+        assertTrue(anyFile(output, "AccountEventSourcedRepository.java"),
+                "event-sourced repository (port impl) was not generated");
+        assertTrue(anyFile(output, "AccountEventSourcing.java"), "event-sourcing fold hook was not generated");
+        assertTrue(anyFile(output, "DefaultAccountEventSourcing.java"),
+                "default event-sourcing impl was not scaffolded in the custom module");
+        assertFalse(anyFile(output, "AccountDBRepository.java"),
+                "the JPA port impl should be replaced by the event-sourced one for an event-sourced aggregate");
 
         // package every generated service
         List<Path> projects;
@@ -118,6 +130,13 @@ class LedgerGenerationTest {
         var process = new ProcessBuilder(cmd, "-q", "-DskipTests", goal)
                 .directory(project.toFile()).redirectErrorStream(true).inheritIO().start();
         return process.waitFor();
+    }
+
+    private boolean anyFile(Path root, String fileName) throws Exception {
+        try (Stream<Path> walk = Files.walk(root)) {
+            return walk.anyMatch(p -> p.getFileName().toString().equals(fileName)
+                    && !p.toString().contains("target"));
+        }
     }
 
     private List<Path> findFiles(Path root, String suffix) throws Exception {

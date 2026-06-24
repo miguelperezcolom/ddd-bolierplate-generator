@@ -539,8 +539,12 @@ public class GenerateCodeUseCase {
 
         createFile(moduleDir, project, service, module, aggregate, "dbentity.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
-        createFile(moduleDir, project, service, module, aggregate, "dbrepository.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
+        // The repository port has a single implementation: JPA for a normal aggregate, event-sourced
+        // (events as the source of truth, with a state snapshot for reads) for an event-sourced one.
+        if (!isEventSourced(aggregate)) {
+            createFile(moduleDir, project, service, module, aggregate, "dbrepository.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
+        }
         createFile(moduleDir, project, service, module, aggregate, "dbqueryservice.ftl",
                 "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
         createFile(moduleDir, project, service, module, aggregate, "entityrepository.ftl",
@@ -556,6 +560,16 @@ public class GenerateCodeUseCase {
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventStore.java");
             createFile(moduleDir, project, service, module, aggregate, "es-event-appender.ftl",
                     "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventAppender.java");
+            // event-sourced port implementation (appends events + keeps a state snapshot; folds on read)
+            createFile(moduleDir, project, service, module, aggregate, "es-repository.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcedRepository.java");
+            // two-zone hook: how operations produce events and how events fold back into state
+            createFile(moduleDir, project, service, module, aggregate, "es-handler.ftl",
+                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcing.java");
+            var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+            createCustomFile(customDir, project, service, module, aggregate, "es-handler-default.ftl",
+                    "src/main/java/" + project.packageName().replace(".", "/")
+                            + "/custom/Default" + aggregate.name() + "EventSourcing.java");
         }
 
         createDir(moduleDir,
