@@ -1,7 +1,8 @@
 # Catálogo y vistas: trabajar con modelos gigantescos
 
-> Estado: **propuesta** (RFC). Fase **A1 implementada** (integridad referencial + `--modux.check`); el
-> resto, sin implementar. Diseño para discusión. Ver §8.
+> Estado: **propuesta** (RFC). Fases **A1 y A2 implementadas** (integridad + `--modux.check`;
+> almacenamiento granular + `--modux.split`/`--modux.merge` + estrategia `ModelStorageFormat`); el
+> Track B (vistas) y C (lazy loading), sin implementar. Diseño para discusión. Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -186,8 +187,16 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
    *Nota:* la "interfaz `ModelStore`" del plan original se **pospone a A2**: extraer una interfaz con una
    sola implementación es indirección sin retorno (YAGNI); se hará cuando exista la implementación
    granular que la justifique.
-2. **A2 — Almacenamiento granular + migración.** Implementación granular de `ModelStore`, `index.yaml`,
-   y comandos `model split` / `model merge`. El monolítico sigue soportado.
+2. **A2 — Almacenamiento granular + migración.** ✅ *Implementado.* Estrategia `ModelStorageFormat`
+   con dos implementaciones —`MonolithicYamlStorageFormat` (el fichero único de siempre) y
+   `GranularYamlStorageFormat` (un fichero por elemento bajo `model/{tipo}/{id}.yaml` + `index.yaml`)—
+   conducida por reflexión sobre los componentes de `AllData` (los nuevos tipos se soportan solos). El
+   repositorio autodetecta el formato por la ruta (directorio → granular; fichero → monolítico) y
+   persiste en el mismo. Comandos `--modux.split=<dir>` y `--modux.merge=<file>` convierten entre
+   formatos. Test de round-trip: monolítico → granular → recarga (mismo nº de elementos, sigue limpio)
+   → merge → mismo nº. El e2e completo (generación) pasa sin cambios.
+   *Esto es también la "interfaz `ModelStore`" que se había pospuesto en A1: ahora la justifican dos
+   implementaciones reales.*
 3. **B1 — `View` curada.** El tipo `View` en el catálogo, edición en la UI, navegación con scope.
 4. **B2 — `ViewClosure` + `generate --view`.** Cierre reutilizando el expander; generación por slice.
 5. **B3 — Vistas computadas.** Queries guardadas (semilla + expansión), p. ej. bounded-context view.

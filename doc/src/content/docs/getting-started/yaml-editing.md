@@ -179,6 +179,44 @@ bddScenarios: []
 Keep all lists present (even as `[]`) to avoid deserialization warnings. The Modux store initialises missing lists to empty by default, but leaving them out removes autocomplete hints for those sections.
 :::
 
+## Large models: a granular store
+
+A single store file is convenient at first, but a large model (many bounded contexts, hundreds of
+elements) is painful to diff, merge and edit as one giant YAML. Modux can keep the model as a
+**granular tree** instead — one file per element, grouped by type:
+
+```
+model/
+├── index.yaml
+├── aggregates/{id}.yaml
+├── usecases/{id}.yaml
+└── …
+```
+
+Convert between the two formats with the CLI:
+
+```bash
+# split the monolithic store into a granular tree
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.split=./model
+
+# merge a granular tree back into a single file
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.merge=./model-driven-store.yaml
+```
+
+Point `modux.model-file` at the directory to load the granular store (the format is auto-detected:
+a directory → granular, a file → monolithic), and Modux persists changes in whatever format it loaded.
+Granular storage diffs and merges cleanly and is the basis for the catalog-and-views work on huge
+models.
+
+### Checking referential integrity
+
+Whatever the format, a dangling reference (an `…Id` pointing at an element that no longer exists) is
+easy to introduce. Validate the whole model — handy as a CI gate:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.check   # exits non-zero if broken
+```
+
 ## Keeping the schema up to date
 
 The schema is regenerated on every startup of the Modux generator. If you add custom entity types or the data model evolves, restart the generator and the new schema will be written to `.dev/data/model-driven-store-schema.json` automatically.

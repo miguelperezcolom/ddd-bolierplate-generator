@@ -38,8 +38,21 @@ public class CommonFileRepository {
     /** Directory that holds the resolved model store; generated schema is written next to it. */
     private Path dataDir = Path.of(".dev/data");
 
-    /** The resolved model store file; persist writes back here (consistent with where it was read). */
+    /** The resolved model store path; persist writes back here (consistent with where it was read). */
     private Path storePath = Path.of(".dev/data/model-driven-store.yaml");
+
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat;
+    /** The format the model was loaded with; persist writes back in the same format. */
+    private io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelStorageFormat activeFormat;
+
+    public CommonFileRepository(
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat,
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat) {
+        this.monolithicFormat = monolithicFormat;
+        this.granularFormat = granularFormat;
+        this.activeFormat = monolithicFormat;
+    }
 
     private String storeKey(String id, Class<?> type) {
         return type.getSimpleName() + ":" + id;
@@ -93,124 +106,69 @@ public class CommonFileRepository {
     public void init() {
         var specFile = overrideModelFile != null ? overrideModelFile
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
-        Path yamlPath = Path.of(specFile);
-        Path jsonPath = Path.of(".dev/data/model-driven-store.json");
-        storePath = yamlPath.toAbsolutePath().normalize();
-        var parent = storePath.getParent();
-        if (parent != null) {
-            dataDir = parent;
-        }
-        AllData data;
-        if (Files.exists(yamlPath)) {
-            log.info("spec store in {}", yamlPath.toAbsolutePath());
-            YAMLMapper yamlMapper = new YAMLMapper();
-            data = yamlMapper.readValue(yamlPath.toFile(), AllData.class);
-        } else {
-            log.info("spec store in {}", jsonPath.toAbsolutePath());
-            String json = Files.readString(jsonPath);
-            data = pojoFromJson(json, AllData.class);
-        }
+        storePath = Path.of(specFile).toAbsolutePath().normalize();
+        activeFormat = granularFormat.handles(storePath) ? granularFormat : monolithicFormat;
+        dataDir = activeFormat.dataDir(storePath);
+        log.info("spec store ({}) in {}", activeFormat.getClass().getSimpleName(), storePath);
+
+        AllData data = activeFormat.load(storePath);
         generateSchema();
+        loadIntoStore(data);
+    }
+
+    /** Flatten an {@link AllData} into the in-memory catalog, keyed by (id, type), via reflection. */
+    private void loadIntoStore(AllData data) {
         store.clear();
-        data.projects().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.services().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.modules().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.aggregates().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.entities().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.valueObjects().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.invariants().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.domainEvents().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.useCases().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.models().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.gateways().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.modelMappings().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.sagas().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.projections().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.subscriptions().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.scheduledTriggers().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.businessRules().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.roles().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.pages().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.uiAdapters().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.uiShells().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.components().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.bddScenarios().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.enums().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.queryServices().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.integrationEvents().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.readModels().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
-        data.flows().forEach(p -> store.put(storeKey(p.id(), p.getClass()), p));
+        for (var component : AllData.class.getRecordComponents()) {
+            try {
+                var list = (List<?>) component.getAccessor().invoke(data);
+                if (list == null) continue;
+                for (var element : list) {
+                    if (element instanceof Identifiable identifiable) {
+                        store.put(storeKey(identifiable.id(), element.getClass()), element);
+                    }
+                }
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Could not read AllData component " + component.getName(), e);
+            }
+        }
+    }
+
+    /** Rebuild an {@link AllData} from the in-memory catalog (inverse of {@link #loadIntoStore}). */
+    private AllData buildAllData() {
+        var components = AllData.class.getRecordComponents();
+        var args = new Object[components.length];
+        for (var i = 0; i < components.length; i++) {
+            var elementType = (Class<?>) ((java.lang.reflect.ParameterizedType) components[i].getGenericType())
+                    .getActualTypeArguments()[0];
+            args[i] = store.values().stream().filter(v -> v.getClass().equals(elementType)).toList();
+        }
+        try {
+            var constructor = AllData.class.getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            return (AllData) constructor.newInstance(args);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Could not build AllData from the catalog", e);
+        }
+    }
+
+    /** Write the loaded model out as a granular file tree (one file per element). */
+    @SneakyThrows
+    public void splitTo(Path dir) {
+        granularFormat.save(dir.toAbsolutePath().normalize(), buildAllData());
+        log.info("model split into granular store at {}", dir.toAbsolutePath().normalize());
+    }
+
+    /** Write the loaded model out as a single monolithic YAML file. */
+    @SneakyThrows
+    public void mergeTo(Path file) {
+        monolithicFormat.save(file.toAbsolutePath().normalize(), buildAllData());
+        log.info("model merged into monolithic store at {}", file.toAbsolutePath().normalize());
     }
 
     @SneakyThrows
     private void persist() {
-        List<ProjectEntity> projects = store.values().stream().filter(v -> v instanceof ProjectEntity).map(v -> (ProjectEntity) v).toList();
-        List<ServiceEntity> services = store.values().stream().filter(v -> v instanceof ServiceEntity).map(v -> (ServiceEntity) v).toList();
-        List<ModuleEntity> modules = store.values().stream().filter(v -> v instanceof ModuleEntity).map(v -> (ModuleEntity) v).toList();
-        List<AggregateEntity> aggregates = store.values().stream().filter(v -> v instanceof AggregateEntity).map(v -> (AggregateEntity) v).toList();
-        List<EntityEntity> entities = store.values().stream().filter(v -> v instanceof EntityEntity).map(v -> (EntityEntity) v).toList();
-        List<ValueObjectEntity> valueObjects = store.values().stream().filter(v -> v instanceof ValueObjectEntity).map(v -> (ValueObjectEntity) v).toList();
-        List<InvariantEntity> ivariants = store.values().stream().filter(v -> v instanceof InvariantEntity).map(v -> (InvariantEntity) v).toList();
-        List<DomainEventEntity> domainEvents = store.values().stream().filter(v -> v instanceof DomainEventEntity).map(v -> (DomainEventEntity) v).toList();
-        List<UseCaseEntity> useCases = store.values().stream().filter(v -> v instanceof UseCaseEntity).map(v -> (UseCaseEntity) v).toList();
-        List<ModelEntity> models = store.values().stream().filter(v -> v instanceof ModelEntity).map(v -> (ModelEntity) v).toList();
-        List<GatewayEntity> gateways = store.values().stream().filter(v -> v instanceof GatewayEntity).map(v -> (GatewayEntity) v).toList();
-        List<ModelMappingEntity> modelMappings = store.values().stream().filter(v -> v instanceof ModelMappingEntity).map(v -> (ModelMappingEntity) v).toList();
-        List<SagaEntity> sagas = store.values().stream().filter(v -> v instanceof SagaEntity).map(v -> (SagaEntity) v).toList();
-        List<ProjectionEntity> projections = store.values().stream().filter(v -> v instanceof ProjectionEntity).map(v -> (ProjectionEntity) v).toList();
-        List<SubscriptionEntity> subscriptions = store.values().stream().filter(v -> v instanceof SubscriptionEntity).map(v -> (SubscriptionEntity) v).toList();
-        List<ScheduledTriggerEntity> scheduledTriggers = store.values().stream().filter(v -> v instanceof ScheduledTriggerEntity).map(v -> (ScheduledTriggerEntity) v).toList();
-        List<BusinessRuleEntity> businessRules = store.values().stream().filter(v -> v instanceof BusinessRuleEntity).map(v -> (BusinessRuleEntity) v).toList();
-        List<RoleEntity> roles = store.values().stream().filter(v -> v instanceof RoleEntity).map(v -> (RoleEntity) v).toList();
-        List<PageEntity> pages = store.values().stream().filter(v -> v instanceof PageEntity).map(v -> (PageEntity) v).toList();
-        List<UiAdapterEntity> uiAdapters = store.values().stream().filter(v -> v instanceof UiAdapterEntity).map(v -> (UiAdapterEntity) v).toList();
-        List<UiShellEntity> uiShells = store.values().stream().filter(v -> v instanceof UiShellEntity).map(v -> (UiShellEntity) v).toList();
-        List<ComponentEntity> components = store.values().stream().filter(v -> v instanceof ComponentEntity).map(v -> (ComponentEntity) v).toList();
-        List<BddScenarioEntity> bddScenarios = store.values().stream().filter(v -> v instanceof BddScenarioEntity).map(v -> (BddScenarioEntity) v).toList();
-        List<EnumEntity> enums = store.values().stream().filter(v -> v instanceof EnumEntity).map(v -> (EnumEntity) v).toList();
-        List<QueryServiceEntity> queryServices = store.values().stream().filter(v -> v instanceof QueryServiceEntity).map(v -> (QueryServiceEntity) v).toList();
-        List<IntegrationEventEntity> integrationEvents = store.values().stream().filter(v -> v instanceof IntegrationEventEntity).map(v -> (IntegrationEventEntity) v).toList();
-        List<ReadModelEntity> readModels = store.values().stream().filter(v -> v instanceof ReadModelEntity).map(v -> (ReadModelEntity) v).toList();
-        List<FlowEntity> flows = store.values().stream().filter(v -> v instanceof FlowEntity).map(v -> (FlowEntity) v).toList();
-        AllData data = new AllData(
-                projects,
-                services,
-                modules,
-                aggregates,
-                entities,
-                valueObjects,
-                ivariants,
-                domainEvents,
-                useCases,
-                models,
-                gateways,
-                modelMappings,
-                sagas,
-                projections,
-                subscriptions,
-                scheduledTriggers,
-                businessRules,
-                roles,
-                pages,
-                uiAdapters,
-                uiShells,
-                components,
-                bddScenarios,
-                enums,
-                queryServices,
-                integrationEvents,
-                readModels,
-                flows
-        );
-        YAMLMapper yamlMapper = new YAMLMapper();
-        yamlMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        yamlMapper.configOverride(boolean.class).setInclude(
-                JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
-        yamlMapper.configOverride(Boolean.class).setInclude(
-                JsonInclude.Value.construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT));
-        String yamlContent = "# yaml-language-server: $schema=./model-driven-store-schema.json\n"
-                + yamlMapper.writeValueAsString(data);
-        Files.writeString(storePath, yamlContent);
+        activeFormat.save(storePath, buildAllData());
     }
 
     @SneakyThrows

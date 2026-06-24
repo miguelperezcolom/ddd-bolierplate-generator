@@ -31,12 +31,23 @@ public class GenerationCliRunner implements ApplicationRunner {
 
     private final GenerateCodeUseCase generateCodeUseCase;
     private final CheckModelUseCase checkModelUseCase;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository repository;
     private final ConfigurableApplicationContext context;
 
     @Override
     public void run(ApplicationArguments args) {
         if (args.containsOption("modux.check")) {
             runCheck();
+            return;
+        }
+        if (args.containsOption("modux.split")) {
+            runStorageConversion(() ->
+                    repository.splitTo(java.nio.file.Path.of(firstOrNull(args.getOptionValues("modux.split")))));
+            return;
+        }
+        if (args.containsOption("modux.merge")) {
+            runStorageConversion(() ->
+                    repository.mergeTo(java.nio.file.Path.of(firstOrNull(args.getOptionValues("modux.merge")))));
             return;
         }
         var projectIds = args.getOptionValues("modux.generate");
@@ -53,6 +64,16 @@ public class GenerationCliRunner implements ApplicationRunner {
             System.exit(SpringApplication.exit(context, () -> 0));
         } catch (Exception e) {
             log.error("CLI code generation failed for project '{}'", projectId, e);
+            System.exit(SpringApplication.exit(context, () -> 1));
+        }
+    }
+
+    private void runStorageConversion(Runnable conversion) {
+        try {
+            conversion.run();
+            System.exit(SpringApplication.exit(context, () -> 0));
+        } catch (Exception e) {
+            log.error("Model storage conversion failed", e);
             System.exit(SpringApplication.exit(context, () -> 1));
         }
     }
