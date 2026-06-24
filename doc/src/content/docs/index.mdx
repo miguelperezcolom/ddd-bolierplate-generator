@@ -1,6 +1,6 @@
 ---
 title: Modux
-description: Spec-driven code generation framework for Domain-Driven Design systems
+description: Model-driven code generation framework for enterprise information systems built with DDD
 template: splash
 hero:
   tagline: Define your domain in YAML. Get a production-ready Spring Boot application.
@@ -18,7 +18,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## What is Modux?
 
-Modux is a **model-driven code generation framework** for Domain-Driven Design systems. You describe your domain using YAML files and Modux generates a fully structured Spring Boot application following hexagonal architecture — with domain, application, infrastructure, and UI layers — so your team can focus on business logic instead of boilerplate.
+Modux is a **model-driven code generation framework** for building **enterprise information systems** in Java with Domain-Driven Design. It targets the long-lived, business-critical systems made of several bounded contexts that must hold invariants, run business processes, and integrate with each other — not just forms over tables. You describe your domain using YAML files and Modux generates a fully structured Spring Boot application following hexagonal architecture — with domain, application, infrastructure, and UI layers — so your team can focus on business logic instead of boilerplate.
+
+See [Enterprise Information Systems](/getting-started/enterprise-systems/) for *why* Modux ships the patterns it does, each derived from what such a system actually requires.
 
 ## Key features
 
@@ -29,8 +31,8 @@ Modux is a **model-driven code generation framework** for Domain-Driven Design s
   <Card title="Full code generation" icon="rocket">
     Generates use cases, repositories, JPA entities, CRUD UI, and database migrations automatically.
   </Card>
-  <Card title="Modern patterns" icon="setting">
-    CQRS, Event Sourcing, Sagas, Projections, Outbox Pattern, and more — all configurable per aggregate.
+  <Card title="Enterprise patterns" icon="setting">
+    CQRS, Event Sourcing, Sagas, Projections, Gateways, Outbox, RBAC and more — each derived from a real system requirement.
   </Card>
   <Card title="Production ready" icon="approve-check">
     Generated projects include Spring Boot 4, Kafka, PostgreSQL, Flyway/Liquibase, and observability support.

@@ -5,7 +5,9 @@ description: What is Modux and why use it
 
 ## What is Modux?
 
-Modux is a **model-driven code generation framework** for building Domain-Driven Design (DDD) systems in Java. Instead of writing the same structural boilerplate over and over, you describe your domain in a simple YAML specification and let Modux generate the code for you.
+Modux is a **model-driven code generation framework** for building **enterprise information systems** in Java, using Domain-Driven Design (DDD). It targets the long-lived, business-critical systems made of several bounded contexts that must hold invariants, run business processes, and integrate with each other — not just forms over tables. Instead of writing the same structural boilerplate over and over, you describe your domain in a simple YAML specification and let Modux generate the code for you.
+
+For *why* Modux ships the patterns it does — derived from what an enterprise system actually requires — see [Enterprise Information Systems](/getting-started/enterprise-systems/).
 
 The generated code follows **Hexagonal Architecture** (also known as Ports & Adapters), with a clear separation between:
 
@@ -51,18 +53,7 @@ fields:
 
 ## What patterns does Modux support?
 
-| Pattern | Support |
-|---|---|
-| DDD (Aggregates, Entities, Value Objects, Domain Events) | Full |
-| CQRS | Full |
-| Hexagonal Architecture | Full |
-| Event Sourcing | Per-aggregate (optional) |
-| Saga (choreography / orchestration) | Full |
-| Projections & Read Models | Full |
-| Outbox Pattern | Configurable per service |
-| RBAC | Role definitions generated |
-| Gateway (external services) | Full |
-| Scheduled Triggers | Full |
+Modux implements the patterns an enterprise information system requires — DDD aggregates and invariants, CQRS, hexagonal ports & adapters, the outbox pattern, sagas, projections, gateways, RBAC, scheduled triggers and more. Rather than list them flat, the [Enterprise Information Systems](/getting-started/enterprise-systems/) page derives each pattern from the requirement it answers and links to its building block.
 
 ## Tech stack
 
