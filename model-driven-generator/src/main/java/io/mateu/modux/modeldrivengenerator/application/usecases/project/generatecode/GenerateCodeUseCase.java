@@ -707,6 +707,14 @@ public class GenerateCodeUseCase {
                     var om = allModels.get(op.outputModelId());
                     if (om != null) opMap.put("outputClass", toTypeName(om.name()));
                 }
+                // give each parameter a Java-safe argument name (header names often have hyphens)
+                @SuppressWarnings("unchecked")
+                var paramMaps = (List<Map<String, Object>>) opMap.get("parameters");
+                if (paramMaps != null) {
+                    for (var pm : paramMaps) {
+                        pm.put("argName", uncapitalize(toTypeName(String.valueOf(pm.get("name")))));
+                    }
+                }
                 enrichedOps.add(opMap);
             }
             gwMap.put("operations", enrichedOps);

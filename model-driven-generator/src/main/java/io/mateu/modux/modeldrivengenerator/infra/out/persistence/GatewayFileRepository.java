@@ -7,6 +7,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayO
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayParameterEntity;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -41,12 +42,19 @@ public class GatewayFileRepository implements GatewayRepository {
 
     @Override
     public Gateway save(Gateway entity) {
+        // the domain model does not carry OpenAPI parameters; preserve any already stored, by op id,
+        // so editing a gateway in the UI does not drop them
+        var existingParameters = repository.findById(entity.getId().id(), GatewayEntity.class)
+                .map(g -> g.operations() == null ? java.util.Map.<String, List<GatewayParameterEntity>>of()
+                        : g.operations().stream().collect(java.util.stream.Collectors.toMap(
+                                GatewayOperationEntity::id, GatewayOperationEntity::parameters, (a, b) -> a)))
+                .orElse(java.util.Map.of());
         var operationEntities = entity.getOperations() == null ? List.<GatewayOperationEntity>of() :
                 entity.getOperations().stream()
                         .map(o -> new GatewayOperationEntity(o.id(), o.name(), o.httpMethod(), o.path(), o.inputModelId(), o.outputModelId(),
                                 o.timeoutMs(), o.retryMaxAttempts(), o.retryWaitDurationMs(),
                                 o.circuitBreakerEnabled(), o.circuitBreakerFailureRateThreshold(), o.circuitBreakerSlidingWindowSize(),
-                                java.util.List.of()))
+                                existingParameters.getOrDefault(o.id(), List.of())))
                         .toList();
         repository.save(new GatewayEntity(
                 entity.getId().id(),

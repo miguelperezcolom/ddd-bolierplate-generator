@@ -147,8 +147,8 @@ public final class OpenApiGatewayMapper {
         List<GatewayParameterEntity> params = new ArrayList<>();
         for (var p : operation.getParameters()) {
             var in = p.getIn();
-            if (!"path".equals(in) && !"query".equals(in)) {
-                continue; // header/cookie params are not bound into the URL
+            if (!"path".equals(in) && !"query".equals(in) && !"header".equals(in)) {
+                continue; // cookie params are not supported
             }
             var type = p.getSchema() != null ? dataType(p.getSchema()).name() : "string";
             params.add(new GatewayParameterEntity(

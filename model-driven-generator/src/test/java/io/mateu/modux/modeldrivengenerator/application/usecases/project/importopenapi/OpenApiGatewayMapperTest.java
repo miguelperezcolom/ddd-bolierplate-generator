@@ -63,6 +63,11 @@ class OpenApiGatewayMapperTest {
                       required: false
                       schema:
                         type: string
+                    - name: X-Trace-Id
+                      in: header
+                      required: false
+                      schema:
+                        type: string
                   responses:
                     '200':
                       content:
@@ -134,15 +139,17 @@ class OpenApiGatewayMapperTest {
     }
 
     @Test
-    void captures_path_and_query_parameters() {
+    void captures_path_query_and_header_parameters() {
         var getPet = op(map().operations(), "getPet");
-        assertEquals(2, getPet.parameters().size());
+        assertEquals(3, getPet.parameters().size());
         var petId = getPet.parameters().stream().filter(p -> p.name().equals("petId")).findFirst().orElseThrow();
         assertEquals("path", petId.location());
         assertEquals("integer", petId.type());
         assertTrue(petId.required());
         var expand = getPet.parameters().stream().filter(p -> p.name().equals("expand")).findFirst().orElseThrow();
         assertEquals("query", expand.location());
+        var trace = getPet.parameters().stream().filter(p -> p.name().equals("X-Trace-Id")).findFirst().orElseThrow();
+        assertEquals("header", trace.location());
     }
 
     @Test

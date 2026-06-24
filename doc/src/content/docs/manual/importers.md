@@ -66,7 +66,7 @@ Each operation's `inputModelId` and `outputModelId` are wired to the models deri
 
 ### Path and query parameters
 
-OpenAPI `path` and `query` parameters are captured per operation and become typed method arguments. The generated adapter binds them automatically: path placeholders (e.g. `/pets/{petId}`) and query parameters are expanded from the call's arguments. (Header parameters are skipped for now.)
+OpenAPI `path`, `query` and `header` parameters are captured per operation and become typed method arguments. The generated adapter binds them automatically: path placeholders (e.g. `/pets/{petId}`) and query parameters are expanded from the call's arguments, and header parameters are set on the request headers. Parameter names that aren't valid Java identifiers (e.g. `X-Trace-Id`) are turned into camelCase arguments while the original name is used on the wire. (Cookie parameters are not supported.)
 
 ### Auth detection
 

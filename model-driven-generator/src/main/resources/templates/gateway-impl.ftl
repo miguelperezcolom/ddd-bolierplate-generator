@@ -60,12 +60,21 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 <#if op.parameters?has_content><#list op.parameters as p><#if p.location=="query"><#assign __qs = __qs + ((__qs=="")?then("?","&")) + p.name + "={" + p.name + "}"></#if></#list></#if>
 <#assign __url = 'BASE_URL + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + __qs + '"'>
     @Override
-    public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.name}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>) {
+    public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>) {
         var requestHeaders = authHeaders();
+<#if op.parameters?has_content>
+<#list op.parameters as p>
+<#if p.location == "header">
+        requestHeaders.set("${p.name}", String.valueOf(${p.argName}));
+</#if>
+</#list>
+</#if>
         var uriVariables = new java.util.HashMap<String, Object>();
 <#if op.parameters?has_content>
 <#list op.parameters as p>
-        uriVariables.put("${p.name}", ${p.name});
+<#if p.location != "header">
+        uriVariables.put("${p.name}", ${p.argName});
+</#if>
 </#list>
 </#if>
         var requestBody = new java.util.HashMap<String, Object>();
