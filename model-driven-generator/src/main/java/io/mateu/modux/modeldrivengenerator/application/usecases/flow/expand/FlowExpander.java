@@ -16,7 +16,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEventHandlerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import org.springframework.stereotype.Service;
@@ -141,10 +143,14 @@ public class FlowExpander {
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
         var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
 
-        // skeleton saga triggered by the event; steps and compensations are filled in by the author
+        // skeleton saga triggered by the event with one placeholder step; the author fills in the
+        // real steps and compensations (it is generated as an EventConductor workflow definition)
+        var firstStep = new SagaStepEntity(
+                "step-" + base, "process", SagaStepType.Custom,
+                null, null, null, null, null, null, null, null);
         var saga = new SagaEntity(
                 sagaId, flow.getName().name() + "Saga",
-                null, null, List.of(eventId), List.of(),
+                null, null, List.of(eventId), List.of(firstStep),
                 3, null, dlq, true);
 
         var subscription = new SubscriptionEntity(

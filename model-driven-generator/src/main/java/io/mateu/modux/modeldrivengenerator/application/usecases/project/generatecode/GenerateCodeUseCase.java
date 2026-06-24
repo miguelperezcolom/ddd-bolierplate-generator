@@ -816,6 +816,10 @@ public class GenerateCodeUseCase {
         createFile(moduleDir, model, "saga.ftl",
                 "src/main/java/" + modulePackageDir + "/application/sagas/"
                         + capitalize(saga.name()) + "Saga.java");
+
+        // EventConductor workflow definition (the workflow engine owns the orchestration)
+        createFile(moduleDir, model, "workflow-definition.ftl",
+                "src/main/resources/workflows/" + capitalize(saga.name()) + ".workflow.json");
     }
 
     private Map<String, Object> enrichSagaMap(SagaEntity saga) {
@@ -830,6 +834,9 @@ public class GenerateCodeUseCase {
                         step.aggregateId(), step.operationId(),
                         step.gatewayId(), step.gatewayOperationId(),
                         step.domainEventId(), step.useCaseId(), step.modelMappingId());
+                if (step.compensatingStepId() != null) {
+                    stepMap.put("compensatingStepId", step.compensatingStepId());
+                }
                 enrichedSteps.add(stepMap);
             }
         }
