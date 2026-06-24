@@ -14,12 +14,17 @@ public record ViewEntity(
         String id,
         String name,
         String description,
-        String kind,            // "CURATED" (default); "COMPUTED" is reserved for a future phase
-        List<String> memberIds
+        String kind,            // "CURATED" (members listed) or "COMPUTED" (members derived from a seed)
+        List<String> memberIds,
+        String seedId           // COMPUTED: the element whose dependency closure is the view
 ) implements Identifiable {
 
     @Override
     public List<String> memberIds() {
         return memberIds != null ? memberIds : List.of();
+    }
+
+    public boolean isComputed() {
+        return "COMPUTED".equalsIgnoreCase(kind) && seedId != null && !seedId.isBlank();
     }
 }

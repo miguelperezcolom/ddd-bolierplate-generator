@@ -2,8 +2,8 @@
 
 > Estado: **propuesta** (RFC). Implementado: **A1** (integridad + `--modux.check`), **A2**
 > (almacenamiento granular + `--modux.split`/`--modux.merge` + `ModelStorageFormat`), **B1** (elemento
-> `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`).
-> Pendiente: **B3** (vistas computadas) y **C** (lazy loading). Ver §8.
+> `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`),
+> **B3** (vistas computadas: `kind: COMPUTED` + `seedId`). Pendiente: **C** (lazy loading). Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
 
 ## 1. El problema
@@ -215,7 +215,14 @@ Jerarquía = folders; vistas = consultas guardadas sobre el catálogo.
    `--modux.generate=<proj> --modux.view=<id>`. Test: la vista de `uc-crearEstancia` emite
    `EstanciaEntity`/`CrearEstanciaUseCase` + esqueleto, pero **no** `HotelEntity`/`HabitacionEntity`. El
    e2e completo (sin scope) sigue verde.
-5. **B3 — Vistas computadas.** Queries guardadas (semilla + expansión), p. ej. bounded-context view.
+5. **B3 — Vistas computadas.** ✅ *Implementado.* `ViewEntity` gana `seedId`; con `kind: COMPUTED` los
+   miembros se **derivan** de la semilla en vez de listarse. Clave de diseño: como el cierre ya expande
+   las referencias de **cualquier** elemento (incluidos contenedores), basta sembrar con `[seedId]` y
+   dejar que el cierre haga el resto —semilla módulo → bounded context; semilla use case → use case +
+   deps; semilla servicio → todo el servicio—, uniforme y sin tipos de regla. Se recalcula sola al
+   cambiar el modelo. `--modux.view` y `generate --view` lo soportan gratis (van por el mismo `resolve`).
+   La integridad valida `seedId` (es una referencia). Test: una vista sembrada en `mod-frontoffice`
+   cierra sobre su bounded context y no se filtra a otro contexto (`reserva`).
 6. **C — Lazy loading.** Cargar solo el cierre de la vista activa en UI/edición/gen parcial.
 
 Cada fase es entregable y verificable de forma aislada (tests de carga/guardado, de integridad, de

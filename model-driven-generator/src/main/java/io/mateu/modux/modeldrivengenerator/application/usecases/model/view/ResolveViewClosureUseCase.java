@@ -33,6 +33,11 @@ public class ResolveViewClosureUseCase {
         var view = repository.findById(viewId, ViewEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("No view with id '" + viewId + "'"));
 
+        // A computed view derives its members from a seed element; a curated one lists them. Either way
+        // the closure below does the real work — seeding with a module yields its whole bounded context,
+        // seeding with a use case yields that use case plus everything it depends on.
+        var members = view.isComputed() ? List.of(view.seedId()) : view.memberIds();
+
         var elements = repository.allElements();
 
         // index: any id (top-level or nested) → the top-level element that owns it
@@ -47,7 +52,7 @@ public class ResolveViewClosureUseCase {
         var missingMembers = new ArrayList<String>();
         var frontier = new ArrayDeque<Object>();
 
-        for (var memberId : view.memberIds()) {
+        for (var memberId : members) {
             var owner = ownerByAnyId.get(memberId);
             if (owner == null) {
                 missingMembers.add(memberId);
@@ -72,6 +77,6 @@ public class ResolveViewClosureUseCase {
                 .sorted()
                 .toList();
 
-        return new Closure(viewId, view.memberIds(), closureIds, missingMembers);
+        return new Closure(viewId, members, closureIds, missingMembers);
     }
 }

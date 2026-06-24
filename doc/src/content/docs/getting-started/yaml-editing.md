@@ -233,9 +233,20 @@ views:
       - reserva
 ```
 
-Because members are plain references, [`--modux.check`](#checking-referential-integrity) validates them
-too. Expand a view to its **dependency closure** — what it actually touches once you follow every
-reference (a use case pulls in its aggregate, gateway, event and input model):
+A **computed** view names a *seed* instead of listing members, and recalculates itself as the model
+changes — seeding with a module gives its whole bounded context:
+
+```yaml
+views:
+  - id: view-frontoffice
+    name: FrontOffice bounded context
+    kind: COMPUTED
+    seedId: mod-frontoffice
+```
+
+Because members (and the seed) are plain references, [`--modux.check`](#checking-referential-integrity)
+validates them too. Expand a view to its **dependency closure** — what it actually touches once you
+follow every reference (a use case pulls in its aggregate, gateway, event and input model):
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
