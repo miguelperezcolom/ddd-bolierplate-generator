@@ -79,7 +79,11 @@ public class GenerateCodeUseCase {
 
     private void generate(GenerateCodeCommand command) {
 
-        var project = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
+        var stored = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
+        // honor an explicit output path from the command (e.g. CLI), overriding the stored one
+        var project = (command.outputPath() != null && !command.outputPath().isBlank())
+                ? withOutputPath(stored, command.outputPath())
+                : stored;
 
         if (project.gitRepository() != null && !project.gitRepository().isBlank()) {
             generateRootPom(project);
@@ -1409,6 +1413,15 @@ public class GenerateCodeUseCase {
     }
 
     // ─── Model mappers ────────────────────────────────────────────────────────
+
+    private ProjectEntity withOutputPath(ProjectEntity p, String outputPath) {
+        return new ProjectEntity(p.id(), p.name(), outputPath, p.packageName(), p.gitRepository(),
+                p.database(), p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
+                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
+                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
+                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
+                p.environments(), p.serviceIds(), p.contextMap());
+    }
 
     private Map<String, Object> projectToMap(ProjectEntity project) {
         var map = new HashMap<String, Object>();
