@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationD
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ComponentEntity;
@@ -313,6 +314,9 @@ public class GenerateCodeUseCase {
 
         // Model mappings (discovered by scanning use case and saga steps)
         generateModelMappingsForModule(project, service, module, moduleDir, modulePackageDir);
+
+        // Business rules (associated to an owned aggregate via its fact model)
+        generateBusinessRulesForModule(project, service, module, moduleDir, modulePackageDir);
 
         // Pages (find by matching aggregateId to module's aggregate IDs)
         var moduleAggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.of();
@@ -1130,18 +1134,108 @@ public class GenerateCodeUseCase {
             Map<String, Object> model = buildBaseModel(project, service, module);
             model.put("mapping", fromJson(toJson(mapping)));
 
+            ModelEntity sourceModel = null;
+            ModelEntity targetModel = null;
             if (mapping.sourceModelId() != null && !mapping.sourceModelId().isBlank()) {
-                var sourceModel = repository.findById(mapping.sourceModelId(), ModelEntity.class).orElse(null);
+                sourceModel = repository.findById(mapping.sourceModelId(), ModelEntity.class).orElse(null);
                 model.put("sourceModel", sourceModel != null ? fromJson(toJson(sourceModel)) : null);
             }
             if (mapping.targetModelId() != null && !mapping.targetModelId().isBlank()) {
-                var targetModel = repository.findById(mapping.targetModelId(), ModelEntity.class).orElse(null);
+                targetModel = repository.findById(mapping.targetModelId(), ModelEntity.class).orElse(null);
                 model.put("targetModel", targetModel != null ? fromJson(toJson(targetModel)) : null);
+            }
+
+            // Self-contained mapping DTOs (colocated) so the mapper compiles regardless of how the
+            // model is represented elsewhere; the type name is derived from the model name.
+            if (sourceModel != null) {
+                model.put("sourceTypeName", typeName(sourceModel.name()));
+                createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers/dto");
+                Map<String, Object> dto = buildBaseModel(project, service, module);
+                dto.put("model", fromJson(toJson(sourceModel)));
+                dto.put("className", typeName(sourceModel.name()));
+                createFile(moduleDir, dto, "mapper-dto.ftl",
+                        "src/main/java/" + modulePackageDir + "/application/mappers/dto/"
+                                + typeName(sourceModel.name()) + ".java");
+            }
+            if (targetModel != null) {
+                model.put("targetTypeName", typeName(targetModel.name()));
+                createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers/dto");
+                Map<String, Object> dto = buildBaseModel(project, service, module);
+                dto.put("model", fromJson(toJson(targetModel)));
+                dto.put("className", typeName(targetModel.name()));
+                createFile(moduleDir, dto, "mapper-dto.ftl",
+                        "src/main/java/" + modulePackageDir + "/application/mappers/dto/"
+                                + typeName(targetModel.name()) + ".java");
             }
 
             createFile(moduleDir, model, "model-mapper.ftl",
                     "src/main/java/" + modulePackageDir + "/application/mappers/"
                             + capitalize(mapping.name()) + "Mapper.java");
+
+            // custom part: a two-zone hook (port in the generated module, default impl in the custom module)
+            var hasResolvedModels = model.get("sourceModel") != null && model.get("targetModel") != null;
+            if (mapping.hasCustomPart() && hasResolvedModels) {
+                createFile(moduleDir, model, "model-mapper-custom.ftl",
+                        "src/main/java/" + modulePackageDir + "/application/mappers/"
+                                + capitalize(mapping.name()) + "CustomMapping.java");
+                var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+                createCustomFile(customDir, model, "model-mapper-custom-default.ftl",
+                        "src/main/java/" + project.packageName().replace(".", "/")
+                                + "/custom/Default" + capitalize(mapping.name()) + "CustomMapping.java");
+            }
+        }
+    }
+
+    // ─── Business rules (fact = the aggregate whose modelId matches the rule) ───
+
+    private void generateBusinessRulesForModule(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+                                                String moduleDir, String modulePackageDir) {
+        var aggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.<String>of();
+        if (aggregateIds.isEmpty()) return;
+
+        var allRules = repository.findAllOfType(BusinessRuleEntity.class);
+        if (allRules == null || allRules.isEmpty()) return;
+
+        var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+
+        for (var aggregateId : aggregateIds) {
+            var aggregate = repository.findById(aggregateId, AggregateEntity.class).orElse(null);
+            if (aggregate == null || aggregate.modelId() == null) continue;
+
+            var rules = allRules.stream()
+                    .filter(r -> aggregate.modelId().equals(r.modelId()))
+                    .toList();
+            if (rules.isEmpty()) continue;
+
+            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/rules");
+            var aggMap = aggregateToMap(aggregate);
+
+            // per-aggregate port + evaluator (generated once)
+            Map<String, Object> aggModel = buildBaseModel(project, service, module);
+            aggModel.put("aggregate", aggMap);
+            createFile(moduleDir, aggModel, "business-rule-port.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/rules/"
+                            + capitalize(aggregate.name()) + "Rule.java");
+            createFile(moduleDir, aggModel, "business-rules-evaluator.ftl",
+                    "src/main/java/" + modulePackageDir + "/application/rules/"
+                            + capitalize(aggregate.name()) + "RulesEvaluator.java");
+
+            // per rule: generated glue + hook port, plus write-once default impl in the custom module
+            for (var rule : rules) {
+                Map<String, Object> model = buildBaseModel(project, service, module);
+                model.put("aggregate", aggMap);
+                model.put("rule", fromJson(toJson(rule)));
+
+                createFile(moduleDir, model, "business-rule.ftl",
+                        "src/main/java/" + modulePackageDir + "/application/rules/"
+                                + capitalize(rule.name()) + "Rule.java");
+                createFile(moduleDir, model, "business-rule-logic.ftl",
+                        "src/main/java/" + modulePackageDir + "/application/rules/"
+                                + capitalize(rule.name()) + "Logic.java");
+                createCustomFile(customDir, model, "business-rule-logic-default.ftl",
+                        "src/main/java/" + project.packageName().replace(".", "/")
+                                + "/custom/Default" + capitalize(rule.name()) + "Logic.java");
+            }
         }
     }
 
@@ -1874,6 +1968,18 @@ public class GenerateCodeUseCase {
             return value;
         }
         return value.substring(0, 1).toUpperCase() + value.substring(1);
+    }
+
+    /** A safe Java type name from a model name: strip non-identifier chars and capitalize. */
+    private String typeName(String value) {
+        if (value == null || value.isBlank()) {
+            return "Object";
+        }
+        var cleaned = value.replaceAll("[^A-Za-z0-9]", "");
+        if (cleaned.isEmpty()) {
+            return "Object";
+        }
+        return cleaned.substring(0, 1).toUpperCase() + cleaned.substring(1);
     }
 
     private String uncapitalize(String value) {

@@ -1,8 +1,9 @@
 # Dos zonas: código generado (bloqueado) vs. implementación del desarrollador
 
 > Estado: **implementado y cerrado** (Fases 1-3 + doc). El módulo `{service}-custom`, la protección
-> por manifest y los cuatro hooks de lógica de negocio —**invariantes** (create+update),
-> **operaciones de agregado**, **pasos custom de saga** y **pasos custom de use case**— están en
+> por manifest y los seis hooks de lógica de negocio —**invariantes** (create+update),
+> **operaciones de agregado**, **pasos custom de saga**, **pasos custom de use case**,
+> **lógica de business rules** y **parte custom de model mappings**— están en
 > producción y verificados por el e2e. Ver §8.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md).
 

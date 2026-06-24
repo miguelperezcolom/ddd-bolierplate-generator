@@ -114,6 +114,32 @@ This page lists every file Modux generates and what it contains.
 
 ---
 
+## Per model mapping
+
+Generated when a mapping is referenced by a use-case or saga `ApplyModelMapping` step.
+
+| File | Description |
+|---|---|
+| `application/mappers/dto/{SourceModel}.java` | Self-contained source record DTO derived from the model fields |
+| `application/mappers/dto/{TargetModel}.java` | Self-contained target record DTO |
+| `application/mappers/{Mapping}Mapper.java` | `@Component` mapping source → target via the declarative field rules |
+| `application/mappers/{Mapping}CustomMapping.java` | Custom-part hook interface (only when the mapping has a custom part) |
+
+---
+
+## Per business rule
+
+Generated when a business rule's fact model matches an aggregate owned by the module.
+
+| File | Description |
+|---|---|
+| `application/rules/{Aggregate}Rule.java` | Port interface implemented by every rule of that aggregate (one per aggregate-with-rules) |
+| `application/rules/{Aggregate}RulesEvaluator.java` | `@Component` that runs enabled rules by priority (one per aggregate-with-rules) |
+| `application/rules/{Rule}Rule.java` | `@Component` glue per rule — priority/enabled + delegation to the logic hook |
+| `application/rules/{Rule}Logic.java` | Logic hook interface per rule (conditions + actions) |
+
+---
+
 ## Custom module (your business logic)
 
 Everything above lives in the **generated zone** (overwritten on every run). Business logic that can't be derived from the model goes into a separate `{service}-custom` module that Modux scaffolds **once** and never overwrites. See [Generating code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones).
@@ -125,8 +151,10 @@ Everything above lives in the **generated zone** (overwritten on every run). Bus
 | `custom/Default{Operation}{Aggregate}Operation.java` | operation marked `CUSTOM` | Default impl of the `{Operation}{Aggregate}Operation` strategy |
 | `custom/Default{Saga}Steps.java` | saga has a `Custom` step | Default impl of the `{Saga}Steps` hook |
 | `custom/Default{UseCase}Steps.java` | use case has a `Custom` step | Default impl of the `{UseCase}Steps` hook |
+| `custom/Default{Rule}Logic.java` | aggregate has business rules | Default impl of a business rule's `{Rule}Logic` hook |
+| `custom/Default{Mapping}CustomMapping.java` | mapping has a custom part | Default impl of the `{Mapping}CustomMapping` hook |
 
-The matching hook **interfaces** (`{Aggregate}Invariants`, `{Saga}Steps`, `{UseCase}Steps`, and the operation strategy) plus their `{Aggregate}Context` live in the generated zone and are regenerated from the model.
+The matching hook **interfaces** (`{Aggregate}Invariants`, `{Saga}Steps`, `{UseCase}Steps`, `{Rule}Logic`, `{Mapping}CustomMapping`, and the operation strategy) plus their `{Aggregate}Context` live in the generated zone and are regenerated from the model.
 
 To keep the generated zone honest, every generated file's SHA-256 is recorded in `.modux/generated-manifest.json`; a hand-edited generated file is detected, reported and overwritten on the next run. The custom module is not tracked.
 

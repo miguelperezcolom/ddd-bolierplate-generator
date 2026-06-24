@@ -1,21 +1,43 @@
+<#assign hasModels = (sourceTypeName?? && targetTypeName??)>
+<#assign hasCustom = (mapping.hasCustomPart?? && mapping.hasCustomPart && hasModels)>
+<#assign mapperClass = mapping.name?cap_first?replace("[^a-zA-Z0-9]","",'r')>
 package ${project.packageName}.${module.slug}.application.mappers;
 
+<#if hasModels>
+import ${project.packageName}.${module.slug}.application.mappers.dto.${sourceTypeName};
+import ${project.packageName}.${module.slug}.application.mappers.dto.${targetTypeName};
+</#if>
+<#if hasCustom>
+import lombok.RequiredArgsConstructor;
+</#if>
 import org.springframework.stereotype.Component;
 
 @Component
-public class ${mapping.name?cap_first?replace("[^a-zA-Z0-9]","",'r')}Mapper {
+<#if hasCustom>
+@RequiredArgsConstructor
+</#if>
+public class ${mapperClass}Mapper {
 
-<#if sourceModel?? && targetModel??>
-    public ${targetModel.name?cap_first} map(${sourceModel.name?cap_first} source) {
+<#if hasCustom>
+    private final ${mapperClass}CustomMapping customMapping;
+
+</#if>
+<#if hasModels>
+    public ${targetTypeName} map(${sourceTypeName} source) {
 <#if mapping.rules?has_content>
-        return new ${targetModel.name?cap_first}(
+        var mapped = new ${targetTypeName}(
 <#list mapping.rules as rule>
             source.${rule.sourceFieldName!'?'}()<#sep>,</#sep>
 </#list>
         );
 <#else>
-        // TODO: implement mapping from ${sourceModel.name} to ${targetModel.name}
-        return new ${targetModel.name?cap_first}(/* TODO */);
+        // TODO: implement the declarative mapping from ${sourceModel.name} to ${targetModel.name}
+        var mapped = new ${targetTypeName}(<#if targetModel?? && targetModel.fields?has_content><#list targetModel.fields as f>null<#sep>, </#sep></#list></#if>);
+</#if>
+<#if hasCustom>
+        return customMapping.apply(source, mapped);
+<#else>
+        return mapped;
 </#if>
     }
 <#else>
@@ -23,13 +45,6 @@ public class ${mapping.name?cap_first?replace("[^a-zA-Z0-9]","",'r')}Mapper {
     public Object map(Object source) {
         // TODO: implement mapping
         return source;
-    }
-</#if>
-
-<#if mapping.hasCustomPart?? && mapping.hasCustomPart>
-    // Custom mapping logic — implement below
-    protected void customMap(/* source, target */) {
-        // TODO: add custom mapping logic
     }
 </#if>
 

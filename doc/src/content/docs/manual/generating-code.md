@@ -148,6 +148,8 @@ Modux never puts business logic you must write inside the generated zone. Instea
 | Custom aggregate operation | an operation is marked `CUSTOM` | `{Operation}{Aggregate}Operation` | `Default{Operation}{Aggregate}Operation` |
 | Custom saga step | a saga has a `Custom` step | `{Saga}Steps` | `Default{Saga}Steps` |
 | Custom use-case step | a use case has a `Custom` step | `{UseCase}Steps` | `Default{UseCase}Steps` |
+| Business-rule logic | an aggregate has business rules | `{Rule}Logic` | `Default{Rule}Logic` |
+| Model-mapping custom part | a mapping has a custom part | `{Mapping}CustomMapping` | `Default{Mapping}CustomMapping` |
 
 To keep the generated zone honest, every generated file's hash is recorded in `.modux/generated-manifest.json`. On the next run, a file that was edited by hand is detected, reported and overwritten — a reminder to move that logic into the custom module. Files in the custom module are not tracked and are left untouched.
 

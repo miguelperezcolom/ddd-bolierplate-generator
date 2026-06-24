@@ -102,6 +102,22 @@ class GenerationE2ETest {
               type: "FORM"
               aggregateId: "reserva"
               modelId: "habitacion"
+            businessRules:
+            - id: "br-reserva-e2e"
+              name: "ReservaPrioritariaE2E"
+              description: "E2E business rule over the Reserva aggregate"
+              modelId: "reserva"
+              priority: 10
+              enabled: true
+              ruleGroup: "reservas"
+              conditions:
+              - id: "cond-loc-e2e"
+                expression: "fact.getLocalizador() != null"
+                description: "the reservation has a locator"
+              actions:
+              - id: "act-custom-e2e"
+                type: "CUSTOM"
+                description: "flag the reservation as priority"
             """;
 
     @Autowired
@@ -124,10 +140,12 @@ class GenerationE2ETest {
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n  invariants:\n"
                         + "  - id: \"inv-reserva-e2e\"\n    name: \"ReservaValidaE2E\"\n    conditions: []\n");
-        // give the CrearEstancia use case a custom step so the use-case steps hook is exercised
+        // give the CrearEstancia use case a custom step (use-case steps hook) and an ApplyModelMapping
+        // step (exercises the model-mapping custom-part hook + colocated mapping DTOs)
         hotelStore = hotelStore.replace(
                 "  steps:\n  - id: \"step-crear-callGateway\"\n",
                 "  steps:\n  - id: \"step-crear-custom-e2e\"\n    name: \"validarReservaE2E\"\n    type: \"Custom\"\n"
+                        + "  - id: \"step-crear-map-e2e\"\n    name: \"mapReservaToEstanciaE2E\"\n    type: \"ApplyModelMapping\"\n    modelMappingId: \"mm-reservaCreada-to-crearEstancia\"\n"
                         + "  - id: \"step-crear-callGateway\"\n");
         var fixture = Files.createTempFile("modux-e2e-store", ".yaml");
         Files.writeString(fixture, hotelStore + FIXTURE_EXTRA);
@@ -173,6 +191,20 @@ class GenerationE2ETest {
                 "use-case custom-steps interface was not generated in the module");
         assertTrue(anyFileMatches(output, "DefaultCrearEstanciaSteps.java"),
                 "use-case custom-steps default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "ReservaRulesEvaluator.java"),
+                "business-rules evaluator was not generated for the Reserva aggregate");
+        assertTrue(anyFileMatches(output, "ReservaPrioritariaE2ERule.java"),
+                "business-rule glue component was not generated");
+        assertTrue(anyFileMatches(output, "ReservaPrioritariaE2ELogic.java"),
+                "business-rule logic hook interface was not generated in the module");
+        assertTrue(anyFileMatches(output, "DefaultReservaPrioritariaE2ELogic.java"),
+                "business-rule logic default implementation was not scaffolded in the custom module");
+        assertTrue(anyFileMatches(output, "ReservaCreadaToCrearEstanciaMapper.java"),
+                "model mapper was not generated for the referenced mapping");
+        assertTrue(anyFileMatches(output, "ReservaCreadaToCrearEstanciaCustomMapping.java"),
+                "model-mapping custom-part hook interface was not generated in the module");
+        assertTrue(anyFileMatches(output, "DefaultReservaCreadaToCrearEstanciaCustomMapping.java"),
+                "model-mapping custom-part default implementation was not scaffolded in the custom module");
 
         // 5. every generated EventConductor workflow / form validates structurally
         var workflows = findFiles(output, ".workflow.json");

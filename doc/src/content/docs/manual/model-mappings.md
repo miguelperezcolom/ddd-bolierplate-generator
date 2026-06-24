@@ -20,7 +20,7 @@ A **Model Mapping** defines how to transform data from one model to another. It 
 | **Name** | Mapping name (e.g. `BookingRequestToCreateBookingCommand`) |
 | **Source model** | The model to transform from |
 | **Target model** | The model to transform into |
-| **Has custom part** | Whether part of the mapping requires hand-written logic (adds a `customMap()` stub to the generated `{Mapping}Mapper`) |
+| **Has custom part** | Whether part of the mapping requires hand-written logic (generates a `{Mapping}CustomMapping` two-zone hook you implement in the `{service}-custom` module) |
 
 ### Rules
 
@@ -47,12 +47,11 @@ Multiple expressions on the same rule are evaluated in order; the first whose in
 
 ## What gets generated
 
-For each model mapping Modux generates:
+A model mapping is generated when it is referenced by a use-case or saga `ApplyModelMapping` step. For each one Modux generates:
 
-- A `{Name}Mapper.java` class with one `map(Source source)` method
-- Each rule with only a direct assignment produces a single field copy
-- Each rule with expressions produces an if/else chain evaluating the input expressions
-- If **Has custom part** is enabled, an abstract method is generated for you to implement the parts that cannot be expressed declaratively
+- `application/mappers/dto/{SourceModel}.java` and `{TargetModel}.java` — self-contained record DTOs derived from the model fields, so the mapper compiles regardless of how those models are represented elsewhere
+- `application/mappers/{Name}Mapper.java` — a `@Component` with one `map(Source source)` method that builds the target from the declarative field rules
+- If **Has custom part** is enabled, a [two-zone hook](/manual/generating-code/#generated-code-vs-your-code-two-zones): a generated `{Name}CustomMapping` interface (`apply(source, mapped)`) that the mapper calls after the declarative rules, plus a write-once `Default{Name}CustomMapping` in the `{service}-custom` module for you to fill in
 
 ## Usage in use cases
 

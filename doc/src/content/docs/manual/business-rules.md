@@ -49,20 +49,26 @@ Actions are executed in order when all conditions pass.
 | **SET_FIELD_VALUE** | Write a computed value to a field on the fact | **Field id** — target field name; **Expression** — value expression (e.g. `booking.basePrice * 0.8`) |
 | **CALL_USE_CASE** | Invoke a use case as a side effect | **Use case** — the use case to invoke |
 | **PUBLISH_EVENT** | Publish a domain event | **Domain event** — the event to publish |
-| **CUSTOM** | Hand-written action (planned: a custom hook you implement) | — |
+| **CUSTOM** | Hand-written action, implemented in the rule's logic hook | — |
+
+A rule is associated with an aggregate through its **fact model**: the rule's model id is matched to the aggregate whose `modelId` is the same, and the rule is evaluated against that aggregate root.
 
 ## What gets generated
 
-:::caution[Not yet implemented]
-Business rules can be **defined** in the model today (conditions, actions, fact bindings) and are stored in your spec, but Modux does **not yet emit code** for them — there are no rules-engine artifacts in a generated project yet. The shape below is the intended target.
-:::
+Modux generates a small, dependency-free rules subsystem per aggregate that has rules. The structural wiring is generated and locked; the condition and action logic — the free-text part that can't be derived from the model — is a [two-zone hook](/manual/generating-code/#generated-code-vs-your-code-two-zones) you implement in the `{service}-custom` module.
 
-The planned output, per business rule:
+For an aggregate `Reserva` with rules:
 
-- A rule definition file in the format expected by the configured rules engine (e.g. a `.drl` file for Drools, a `Rule` bean for Easy Rules)
-- For `CUSTOM` actions: a hook in the `{service}-custom` module (matching the [two-zone model](/manual/generating-code/#generated-code-vs-your-code-two-zones)), left for you to implement
-- A Spring `@Configuration` class that registers all rules into the rules engine session/registry
+| File | Zone | Description |
+|---|---|---|
+| `application/rules/ReservaRule.java` | generated | Port interface (`priority`, `enabled`, `matches`, `apply`) all rules of this aggregate implement |
+| `application/rules/ReservaRulesEvaluator.java` | generated | `@Component` that runs every enabled rule against a fact, highest priority first |
+| `application/rules/{Rule}Rule.java` | generated | One `@Component` per rule — holds priority/enabled, delegates `matches`/`apply` to the logic hook |
+| `application/rules/{Rule}Logic.java` | generated | The hook interface; its Javadoc lists the rule's conditions and actions |
+| `custom/Default{Rule}Logic.java` | **custom (write-once)** | Where you implement the conditions and actions |
+
+The generated `Default{Rule}Logic.matches()` returns `false` until you implement it, so a rule never fires by accident.
 
 ## Usage in the domain
 
-Business rules are evaluated explicitly — they do not fire automatically. You trigger evaluation from a use case step (`Custom` step) or from an aggregate operation, passing the fact model to the rules engine session.
+Business rules are evaluated explicitly — they do not fire automatically. Inject the `{Aggregate}RulesEvaluator` where they should run (typically a use-case `Custom` step or an aggregate operation) and call `evaluate(fact)`.
