@@ -1,5 +1,9 @@
 .idea
 *.iml
 target
-sample/
+# generated sample apps are not versioned…
+sample/*
+# …but hand-authored sample SPECS are (the generated code inside them is not)
+!sample/hla-booking/
+sample/hla-booking/generated/
 model-driven-generator/src/test/resources/examples/model-driven-store-schema.json

@@ -1,0 +1,750 @@
+# yaml-language-server: $schema=./model-driven-store-schema.json
+---
+# ============================================================================
+# HLA — Servicio de grabado de reservas (v5) expresado como especificación modux
+# Fuente: ~/Downloads/hla_booking/hla_booking_v5.md
+# Trazabilidad: cada bloque referencia la decisión (D1..D13) o sección (§) del HLA.
+# Decisión de negocio aplicada: SIN bloqueo de cupo (D12 · opción A, book atómico).
+# ============================================================================
+
+# §2 — las decisiones del HLA como ADRs first-class; los elementos las referencian
+# vía decisionIds (trazabilidad en el modelo, verificada por integridad referencial)
+decisions:
+- id: "d1"
+  name: "reservas es el system of record"
+  decision: "reservas es el SoR de la reserva; el PMS legacy (rumbo) se alimenta downstream."
+  rationale: "Strangler-fig: ir sustituyendo el PMS sin big-bang."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D1"
+- id: "d2"
+  name: "rumbo autoritativo del inventario"
+  decision: "rumbo sigue autoritativo del inventario (hold + folio) durante la transición."
+  rationale: "Menos riesgo de overbooking; se reutiliza el allotment legacy."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D2"
+- id: "d3"
+  name: "Confirmación async por saga"
+  decision: "La agencia recibe ONREQUEST/pending; la confirmación llega async por saga."
+  rationale: "Tolerancia a fallos del legacy; compensación explícita."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D3"
+- id: "d4"
+  name: "Escritura a rumbo vía SP idempotente"
+  decision: "La escritura a rumbo va por stored procedure idempotente que encapsula el esquema legacy."
+  rationale: "La SP es la frontera transaccional en Oracle y el contrato del ACL."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D4"
+- id: "d5"
+  name: "Idempotencia extremo a extremo"
+  decision: "Idempotencia en toda la cadena; clave SP = {reservationId}:{paso}."
+  rationale: "Reintentos y relanzar desde la UI del engine sin doblar folio."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D5"
+- id: "d6"
+  name: "Orquestación con workflow engine"
+  decision: "Saga orquestada (EventConductor), no coreografía."
+  rationale: "Saga multi-paso con compensación + visibilidad + re-drive."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D6"
+- id: "d7"
+  name: "Outbox siempre"
+  decision: "Los eventos se emiten por outbox, atómico con el cambio de estado."
+  rationale: "Sin dual-write; EventConductor es outbox-native."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D7"
+- id: "d8"
+  name: "distribution es un BFF stateless"
+  decision: "distribution es una experience-API stateless: compone el read side y reenvía el comando."
+  rationale: "Fachada fina; el dominio no vive en el borde."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D8"
+- id: "d9"
+  name: "Quote-token validado re-preciando"
+  decision: "Quote-token = stays[].rateId + selección de suplementos; reservas lo valida re-preciando."
+  rationale: "El precio valorado es el precio reservado; EasyTravelAPI no requiere cambios."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D9"
+- id: "d10"
+  name: "gRPC sync · eventos async · SP legacy"
+  decision: "Síncrono entre microservicios por gRPC; asíncrono por eventos (outbox); legacy por SP."
+  rationale: "Contratos tipados y rápidos; sin acoplar el camino async."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D10"
+- id: "d11"
+  name: "UI · gRPC · MCP por servicio"
+  decision: "Cada servicio de dominio expone UI, gRPC y MCP sobre un único core hexagonal."
+  rationale: "Simetría Mateu: shell agrega UIs, agente agrega MCPs, BFF compone gRPC."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D11"
+- id: "d12"
+  name: "Sin hold de cupo (book atómico)"
+  decision: "No hay bloqueo de cupo: sp_book_reservation hace check + decremento + folio atómicamente; un pending puede volverse rejected."
+  rationale: "Negocio no vende opciones y el book es atómico → no hay ventana que proteger; sin compensación de hold ni reclamador de TTL."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2/§6 D12 · resuelta en la revisión del modelo"
+- id: "d13"
+  name: "Valoración preciada · catálogo en ficha"
+  decision: "getHotelPriceDetails devuelve la oferta preciada (rateId + suplementos seleccionables); el catálogo descriptivo va en ficha."
+  rationale: "Cambiar la selección = re-invocar la valoración; el BFF compone dinámico + estático."
+  status: "ACCEPTED"
+  source: "hla_booking_v5.md §2 D13"
+
+projects:
+- id: "booking"
+  name: "Booking"
+  outputPath: "sample/hla-booking/generated"
+  packageName: "com.acme.booking"
+  serviceIds:
+  - "svc-distribution"
+  - "svc-reservas"
+  - "svc-readside"
+  # §1 del HLA — contexto y objetivo, en prosa (alimenta el documento generado)
+  objective: "Hoy existe el read side del CQRS: un motor de disponibilidad y precios (dispo) alimentado por CDC desde el PMS legacy Oracle. Falta cerrar el write side: grabar la reserva. Se crea un servicio de dominio reservas (system of record) y una fachada de journey (distribution, un BFF) que expone EasyTravelAPI a las agencias. El flujo de la agencia es disponibilidad → valoración → reserva; el PMS legacy (rumbo) coexiste durante la transición (strangler fig)."
+  # §7 — sistema nuevo single-tenant (decisión explícita, no omisión)
+  tenancyStrategy: "NONE"
+  # Los socios del mapa: el PMS legacy (D1/D2) y el callback de agencias (§5.1 nota)
+  externalSystems:
+  - id: "ext-rumbo"
+    name: "rumbo · PMS (Oracle)"
+    description: "PMS legacy. Autoritativo del inventario durante la transición (D2). Se escribe vía SP idempotente con ledger (D4/D5); alimenta el read side por CDC."
+    protocol: "DATABASE"
+    direction: "BOTH"
+    owner: "equipo PMS"
+    decisionIds: ["d1", "d2"]
+  - id: "ext-agencia-callback"
+    name: "Callback de agencias"
+    description: "Notificación opcional a la agencia al confirmarse la reserva (la alternativa es polling getBooking)."
+    protocol: "REST"
+    direction: "OUTBOUND"
+    owner: "integraciones"
+    decisionIds: ["d3"]
+  # DDD estratégico — direccion source=upstream → target=downstream
+  contextMap:
+  - id: "rel-reservas-distribution"
+    name: "reservas expone gRPC formal al BFF"
+    sourceModuleId: "mod-reservas"
+    targetModuleId: "mod-distribution"
+    type: "OPEN_HOST_SERVICE"
+    description: "D8/D10: el BFF compone; reservas publica contrato gRPC estable (book/get/cancel)."
+    decisionIds: ["d8", "d10"]
+  - id: "rel-dispo-distribution"
+    name: "dispo sirve al BFF"
+    sourceModuleId: "mod-dispo"
+    targetModuleId: "mod-distribution"
+    type: "OPEN_HOST_SERVICE"
+  - id: "rel-valoracion-distribution"
+    name: "valoración sirve al BFF"
+    sourceModuleId: "mod-valoracion"
+    targetModuleId: "mod-distribution"
+    type: "OPEN_HOST_SERVICE"
+  - id: "rel-ficha-distribution"
+    name: "ficha sirve al BFF"
+    sourceModuleId: "mod-ficha"
+    targetModuleId: "mod-distribution"
+    type: "OPEN_HOST_SERVICE"
+  - id: "rel-valoracion-reservas"
+    name: "reservas re-precia contra valoración"
+    sourceModuleId: "mod-valoracion"
+    targetModuleId: "mod-reservas"
+    type: "CUSTOMER_SUPPLIER"
+    description: "D9: el quote-token (stays[].rateId + suplementos) se valida re-preciando."
+    decisionIds: ["d9"]
+  - id: "rel-reservas-rumbowriter"
+    name: "el writer traduce dominio → Oracle"
+    sourceModuleId: "mod-reservas"
+    targetModuleId: "mod-rumbo-writer"
+    type: "ANTI_CORRUPTION_LAYER"
+    description: "D4: la SP idempotente es el contrato del ACL; el writer aísla el esquema legacy."
+    decisionIds: ["d4"]
+
+services:
+- id: "svc-distribution"
+  name: "distribution"
+  owner: "equipo journey"
+  moduleIds:
+  - "mod-distribution"
+- id: "svc-reservas"
+  name: "reservas"
+  owner: "equipo reservas"
+  moduleIds:
+  - "mod-reservas"
+  - "mod-rumbo-writer"
+- id: "svc-readside"
+  name: "readside"
+  owner: "equipo reservas"
+  moduleIds:
+  - "mod-dispo"
+  - "mod-valoracion"
+  - "mod-ficha"
+
+modules:
+# D8 — BFF/experience-API stateless: fachada fina, el dominio no vive en el borde
+- id: "mod-distribution"
+  name: "Distribution"
+  subdomainType: "SUPPORTING"
+  decisionIds: ["d8", "d10"]
+  description: "Expone EasyTravelAPI a las agencias; compone ficha+dispo+valoración y reenvía el comando bookHotel. Stateless, sin dominio."
+  bffs:
+  - id: "bff-easytravel"
+    name: "EasyTravelAPI"
+    clientType: "agencias"
+    description: "§8: contrato EasyTravelAPI vertical hotel. REST hacia fuera, gRPC hacia dentro (D10). Reenvía Idempotency-Key; no dedupe ni SoR. La COMPOSICIÓN (ficha+dispo+valoración) es código CUSTOM del desarrollador."
+    basePath: "/easytravel"
+    authRequired: true
+    exposedUseCaseIds:
+    - "uc-book"
+    - "uc-getBooking"
+    - "uc-cancelBooking"
+
+# D1 — reservas es el system of record: el corazón del write side
+- id: "mod-reservas"
+  name: "Reservas"
+  subdomainType: "CORE"
+  decisionIds: ["d1", "d11"]
+  description: "System of record del agregado Reserva; valida el quote-token re-preciando, crea Pending y emite eventos por outbox."
+  aggregateIds:
+  - "agg-reserva"
+  domainEventIds:
+  - "ev-reservationRequested"
+  - "ev-reservationConfirmed"
+  - "ev-reservationRejected"
+  - "ev-reservationFailed"
+  - "ev-reservationCancelled"
+  useCaseIds:
+  - "uc-book"
+  - "uc-getBooking"
+  - "uc-cancelBooking"
+  - "uc-confirmReservation"
+  - "uc-failReservation"
+  - "uc-rejectReservation"
+  - "uc-reconciliar"
+  scheduledTriggerIds:
+  - "st-reconciliador"
+  # Seguridad por datos (row-level): una agencia solo ve sus reservas
+  accessPolicies:
+  - id: "pol-agencia-sus-reservas"
+    name: "La agencia solo ve sus reservas"
+    appliesToId: "agg-reserva"
+    expression: "subject.agencyCode == resource.agencyCode"
+    description: "ABAC sobre el claim agencyCode del token de la agencia."
+  # Reporting de negocio declarado por intención
+  kpis:
+  - id: "kpi-reservas-confirmadas"
+    name: "Reservas confirmadas"
+    description: "Confirmaciones por hotel y agencia, por día."
+    sourceDomainEventId: "ev-reservationConfirmed"
+    measure: "COUNT"
+    dimensionFields:
+    - "hotelId"
+    - "agencyCode"
+    timeGrain: "DAY"
+  - id: "kpi-ventas-confirmadas"
+    name: "Ventas confirmadas"
+    description: "Importe total confirmado por hotel, por día."
+    sourceDomainEventId: "ev-reservationConfirmed"
+    measure: "SUM"
+    valueField: "totalAmount"
+    dimensionFields:
+    - "hotelId"
+    timeGrain: "DAY"
+
+# D4 — ACL rumbo-writer: worker que consume comandos de la saga y llama a la SP
+- id: "mod-rumbo-writer"
+  name: "RumboWriter"
+  subdomainType: "SUPPORTING"
+  decisionIds: ["d4", "d5"]
+  description: "Worker: consume comandos de la saga y llama a las SP idempotentes de rumbo; emite progreso/resultado."
+  domainEventIds:
+  - "ev-folioBooked"
+  - "ev-bookFailed"
+  useCaseIds:
+  - "uc-bookFolio"
+  acls:
+  - id: "acl-rumbo"
+    name: "rumbo-writer"
+    externalSystem: "ext-rumbo"
+    description: "Traduce dominio ↔ Oracle. La llamada a la SP idempotente (clave reservationId:{paso}, ledger + dup_val_on_index) queda como CÓDIGO CUSTOM del desarrollador — no por gateway REST (D4/D5)."
+    direction: "OUTBOUND"
+    translatedUseCaseIds:
+    - "uc-bookFolio"
+    translatedDomainEventIds:
+    - "ev-folioBooked"
+    - "ev-bookFailed"
+
+# Read side existente (§1) — alimentado por CDC desde rumbo (externo a este modelo)
+- id: "mod-dispo"
+  name: "Dispo"
+  subdomainType: "SUPPORTING"
+  description: "Read side: disponibilidad, alimentada por CDC desde rumbo."
+- id: "mod-valoracion"
+  name: "Valoracion"
+  subdomainType: "SUPPORTING"
+  description: "Read side: precio firme (rateId) y suplementos seleccionables (getRates / getHotelPriceDetails)."
+- id: "mod-ficha"
+  name: "Ficha"
+  subdomainType: "GENERIC"
+  description: "Read side: catálogo descriptivo (definiciones, fotos, meal plans) — estático y cacheable."
+
+aggregates:
+# §6 + §9.1 — el agregado Reserva con su máquina de estados explícita
+- id: "agg-reserva"
+  name: "Reserva"
+  modelId: "model-reserva"
+  optimisticLockingEnabled: true
+  # D7 outbox siempre + trazabilidad: el log de eventos ES el audit trail
+  eventSourcingEnabled: true
+  snapshotFrequency: 50
+  audited: true
+  decisionIds: ["d1", "d7", "d12"]
+  # D12 — decisión de negocio: SIN bloqueo de cupo (opción A, book atómico).
+  # El estado Held y el hold técnico desaparecen del modelo.
+  lifecycle:
+    stateField: "status"
+    initialState: "Pending"
+    states:
+    - "Pending"
+    - "Confirmed"
+    - "Rejected"
+    - "Failed"
+    - "Cancelled"
+    transitions:
+    - id: "t-confirm"
+      fromState: "Pending"
+      toState: "Confirmed"
+      operationId: "op-confirm"
+      description: "Booked — sp_book_reservation atómica (check + decremento + folio)."
+    - id: "t-reject"
+      fromState: "Pending"
+      toState: "Rejected"
+      operationId: "op-reject"
+      description: "Sin cupo / rateId inválido — un pending puede legítimamente rechazarse (D12·A)."
+    - id: "t-fail"
+      fromState: "Pending"
+      toState: "Failed"
+      operationId: "op-fail"
+      description: "Error técnico durante la grabación → pasa a revisión de operaciones."
+    - id: "t-cancel"
+      fromState: "Confirmed"
+      toState: "Cancelled"
+      operationId: "op-cancel"
+      description: "cancelBooking (§9.5 — la saga de cancelación es punto abierto)."
+  operations:
+  - id: "op-confirm"
+    name: "Confirmar"
+    type: "CUSTOM"
+    emits: "ReservationConfirmed"
+  - id: "op-reject"
+    name: "Rechazar"
+    type: "CUSTOM"
+    emits: "ReservationRejected"
+  - id: "op-fail"
+    name: "MarcarFallida"
+    type: "CUSTOM"
+    emits: "ReservationFailed"
+  - id: "op-cancel"
+    name: "Cancelar"
+    type: "CUSTOM"
+    emits: "ReservationCancelled"
+  invariants:
+  - id: "inv-quote-token"
+    name: "El precio reservado es el precio valorado"
+    conditions:
+    - id: "inv-quote-token-c1"
+      expression: "quoteValidated == true"
+      custom: true
+      description: "D9: al recibir book se re-precia (stays[].rateId vigentes + suplementos ofertados + total cuadra) y se congela el precio."
+      errorMessage: "El quote-token no supera la re-valoración"
+  - id: "inv-total-positivo"
+    name: "Importe total positivo"
+    conditions:
+    - id: "inv-total-positivo-c1"
+      expression: "totalAmount > 0"
+      custom: false
+      errorMessage: "El importe de la reserva debe ser positivo"
+
+models:
+# El agregado — con clasificación PII (GDPR)
+- id: "model-reserva"
+  name: "Reserva"
+  fields:
+  - id: "f-reserva-bookingId"
+    name: "bookingId"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-bookingReference"
+    name: "bookingReference"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-agencyCode"
+    name: "agencyCode"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-hotelId"
+    name: "hotelId"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-checkIn"
+    name: "checkIn"
+    basicType: true
+    type: "date"
+  - id: "f-reserva-checkOut"
+    name: "checkOut"
+    basicType: true
+    type: "date"
+  - id: "f-reserva-status"
+    name: "status"
+    basicType: true
+    type: "status"
+  - id: "f-reserva-stays"
+    name: "stays"
+    basicType: true
+    type: "array"
+  - id: "f-reserva-selectedSupplements"
+    name: "selectedSupplements"
+    basicType: true
+    type: "array"
+  - id: "f-reserva-holderName"
+    name: "holderName"
+    basicType: true
+    type: "string"
+    piiClassification: "PII"
+    anonymizationStrategy: "CRYPTO_SHRED"   # agregado event-sourced → la única estrategia GDPR-safe
+  - id: "f-reserva-holderEmail"
+    name: "holderEmail"
+    basicType: true
+    type: "string"
+    piiClassification: "PII"
+    anonymizationStrategy: "CRYPTO_SHRED"
+  - id: "f-reserva-paxNames"
+    name: "paxNames"
+    basicType: true
+    type: "array"
+    piiClassification: "PII"
+    anonymizationStrategy: "CRYPTO_SHRED"
+  - id: "f-reserva-paymentLines"
+    name: "paymentLines"
+    basicType: true
+    type: "array"
+    piiClassification: "SENSITIVE"
+    anonymizationStrategy: "CRYPTO_SHRED"
+  - id: "f-reserva-totalAmount"
+    name: "totalAmount"
+    basicType: true
+    type: "money"
+  - id: "f-reserva-currency"
+    name: "currency"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-locator"
+    name: "locator"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-quoteValidated"
+    name: "quoteValidated"
+    basicType: true
+    type: "bool"
+
+# Input del bookHotel (§8) — el quote-token viaja aquí (D9)
+- id: "model-book-input"
+  name: "BookInput"
+  fields:
+  - id: "f-book-bookingReference"
+    name: "bookingReference"
+    basicType: true
+    type: "string"
+  - id: "f-book-agencyCode"
+    name: "agencyCode"
+    basicType: true
+    type: "string"
+  - id: "f-book-stays"
+    name: "stays"
+    basicType: true
+    type: "array"
+  - id: "f-book-selectedSupplements"
+    name: "selectedSupplements"
+    basicType: true
+    type: "array"
+  - id: "f-book-holderName"
+    name: "holderName"
+    basicType: true
+    type: "string"
+    piiClassification: "PII"
+    anonymizationStrategy: "MASK"
+  - id: "f-book-holderEmail"
+    name: "holderEmail"
+    basicType: true
+    type: "string"
+    piiClassification: "PII"
+    anonymizationStrategy: "MASK"
+  - id: "f-book-paxNames"
+    name: "paxNames"
+    basicType: true
+    type: "array"
+    piiClassification: "PII"
+    anonymizationStrategy: "MASK"
+
+domainEvents:
+# D7 — outbox siempre: cambio de estado + evento en una transacción
+- id: "ev-reservationRequested"
+  name: "ReservationRequested"
+  modelId: "model-reserva"
+  publishAsIntegrationEvent: true
+  integrationModelId: "model-reserva"
+  topicName: "booking.reservas.reservation-requested"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.reservas.reservation-requested.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+- id: "ev-reservationConfirmed"
+  name: "ReservationConfirmed"
+  modelId: "model-reserva"
+  publishAsIntegrationEvent: true
+  integrationModelId: "model-reserva"
+  topicName: "booking.reservas.reservation-confirmed"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.reservas.reservation-confirmed.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+- id: "ev-reservationRejected"
+  name: "ReservationRejected"
+  modelId: "model-reserva"
+  publishAsIntegrationEvent: true
+  integrationModelId: "model-reserva"
+  topicName: "booking.reservas.reservation-rejected"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.reservas.reservation-rejected.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+- id: "ev-reservationFailed"
+  name: "ReservationFailed"
+  modelId: "model-reserva"
+  publishAsIntegrationEvent: true
+  integrationModelId: "model-reserva"
+  topicName: "booking.reservas.reservation-failed"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.reservas.reservation-failed.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+- id: "ev-reservationCancelled"
+  name: "ReservationCancelled"
+  modelId: "model-reserva"
+  publishAsIntegrationEvent: true
+  integrationModelId: "model-reserva"
+  topicName: "booking.reservas.reservation-cancelled"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.reservas.reservation-cancelled.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+# Progreso del writer (§5.2)
+- id: "ev-folioBooked"
+  name: "FolioBooked"
+  publishAsIntegrationEvent: true
+  topicName: "booking.rumbo-writer.folio-booked"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.rumbo-writer.folio-booked.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+- id: "ev-bookFailed"
+  name: "BookFailed"
+  publishAsIntegrationEvent: true
+  topicName: "booking.rumbo-writer.book-failed"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "booking.rumbo-writer.book-failed.dlq"
+  maxDeliveryAttempts: 5
+  schemaVersion: "v1"
+  replayable: true
+
+useCases:
+# D11 — cada servicio de dominio expone UI · gRPC · MCP sobre el mismo core
+- id: "uc-book"
+  name: "BookHotel"
+  exposedAsGrpc: true
+  exposedAsMcp: true
+  exposedAsUi: true
+  inputModelId: "model-book-input"
+  outputModelId: "model-reserva"
+  # D9: re-valida el quote-token re-preciando contra valoración (cruza servicio → API gRPC, D10)
+  steps:
+  - id: "step-book-revalorar"
+    name: "ReValorarQuoteToken"
+    type: "CallQueryService"
+    queryServiceId: "qs-valoracion"
+    queryOperationId: "qop-getHotelPriceDetails"
+  transactionBoundary: "LOCAL"
+  idempotencyEnabled: true
+  idempotencyKeyField: "bookingReference"
+  grpcServiceName: "Reservas"
+  grpcMethodName: "Book"
+  decisionIds: ["d5", "d9", "d11"]
+- id: "uc-getBooking"
+  name: "GetBooking"
+  exposedAsGrpc: true
+  exposedAsMcp: true
+  exposedAsUi: true
+  outputModelId: "model-reserva"
+  cacheable: false
+  grpcServiceName: "Reservas"
+  grpcMethodName: "Get"
+- id: "uc-cancelBooking"
+  name: "CancelBooking"
+  exposedAsGrpc: true
+  exposedAsMcp: true
+  exposedAsUi: true
+  transactionBoundary: "LOCAL"
+  idempotencyEnabled: true
+  idempotencyKeyField: "bookingId"
+  grpcServiceName: "Reservas"
+  grpcMethodName: "Cancel"
+# Internos (los invoca la saga; async por outbox, D3/D10)
+- id: "uc-confirmReservation"
+  name: "ConfirmReservation"
+  exposedAsAsync: true
+  idempotencyEnabled: true
+  idempotencyKeyField: "bookingId"
+- id: "uc-failReservation"
+  name: "FailReservation"
+  exposedAsAsync: true
+  idempotencyEnabled: true
+  idempotencyKeyField: "bookingId"
+- id: "uc-rejectReservation"
+  name: "RejectReservation"
+  exposedAsAsync: true
+  idempotencyEnabled: true
+  idempotencyKeyField: "bookingId"
+# §7 reconciliación — por si Forms toca la reserva por detrás
+- id: "uc-reconciliar"
+  name: "ReconciliarConRumbo"
+  exposedAsUi: true
+# Worker ACL (D4/D5) — clave idempotente reservationId:{paso}
+# Implementación CUSTOM (el desarrollador escribe la llamada a sp_book_reservation)
+- id: "uc-bookFolio"
+  name: "BookFolio"
+  exposedAsAsync: true
+  idempotencyEnabled: true
+  idempotencyKeyField: "reservationId"
+  decisionIds: ["d4", "d5", "d12"]
+
+# El read side de valoración expone su API (la consume reservas cruzando servicio — D9/D10)
+queryServices:
+- id: "qs-valoracion"
+  name: "Valoracion"
+  moduleId: "mod-valoracion"
+  description: "Oferta preciada: rateId por estancia + suplementos seleccionables (getRates / getHotelPriceDetails)."
+  exposedAsGrpc: true
+  operations:
+  - id: "qop-getHotelPriceDetails"
+    name: "getHotelPriceDetails"
+    description: "Re-invocable: precio firme + detalle + forma de pago para una selección."
+    inputModelId: "model-book-input"
+    outputModelId: "model-reserva"
+    cardinality: "Single"
+
+roles:
+- id: "bookingOps"
+  name: "Operaciones de reservas"
+  allowedUseCaseIds:
+  - "uc-getBooking"
+  - "uc-rejectReservation"
+  - "uc-reconciliar"
+- id: "jefeOperaciones"
+  name: "Jefe de operaciones"
+  allowedUseCaseIds:
+  - "uc-getBooking"
+  - "uc-rejectReservation"
+  - "uc-cancelBooking"
+  - "uc-reconciliar"
+
+scheduledTriggers:
+- id: "st-reconciliador"
+  name: "Reconciliador reservas-rumbo"
+  cronExpression: "0 0 * * * *"
+  useCaseId: "uc-reconciliar"
+  description: "§7: reconcilia reservas ↔ rumbo por si Forms modifica la reserva por detrás del CDC."
+  retryOnFailure: true
+  retryCount: 3
+
+# ============================================================================
+# CAPA DE INTENCIÓN
+# ============================================================================
+
+processes:
+# D3/D6 — la saga de grabación, declarada como proceso de negocio (sin hold, D12·A)
+- id: "grabar-reserva"
+  name: "GrabarReserva"
+  description: "§5.1: book → confirm, orquestado (EventConductor). El pending de la agencia (ONREQUEST) se resuelve al completar."
+  triggerAggregateId: "agg-reserva"
+  triggerEvent: "ReservationRequested"
+  ownerModuleId: "mod-reservas"
+  sla: "PT1H"
+  decisionIds: ["d3", "d6", "d12"]
+  # D12 resuelto por negocio: SIN hold — el book atómico es toda la escritura (opción A)
+  steps:
+  - id: "step-book"
+    name: "BookFolio"
+    type: "AUTOMATED"
+    useCaseId: "uc-bookFolio"
+    description: "Check de allotment + decremento + folio, atómico en Oracle (D12·A). Sin compensación — es el único paso de escritura; si falla, el pending pasa a Rejected/Failed."
+  - id: "step-confirm"
+    name: "ConfirmarReserva"
+    type: "AUTOMATED"
+    useCaseId: "uc-confirmReservation"
+    description: "Confirmed + outbox ReservationConfirmed; la agencia ve OK en getBooking."
+  onCompletionEventName: "GrabacionReservaCompletada"
+
+# Operativa — rechazos y fallos pasan por revisión humana antes de responder a la agencia
+- id: "revisar-fallo-reserva"
+  name: "RevisarFalloReserva"
+  description: "Cuando la grabación falla, operaciones revisa el caso — puede relanzar (re-drive idempotente, D5) o rechazar definitivamente."
+  triggerAggregateId: "agg-reserva"
+  triggerEvent: "ReservationFailed"
+  ownerModuleId: "mod-reservas"
+  sla: "P1D"
+  decisionIds: ["d5"]
+  steps:
+  - id: "step-revisar"
+    name: "RevisarReservaFallida"
+    type: "HUMAN"
+    roleId: "bookingOps"
+    deadline: "PT4H"
+    escalationRoleId: "jefeOperaciones"
+    description: "Bandeja de operaciones: decidir relanzar la saga o rechazar."
+  - id: "step-notificar-rechazo"
+    name: "NotificarRechazo"
+    type: "AUTOMATED"
+    useCaseId: "uc-rejectReservation"
+  onCompletionEventName: "FalloReservaResuelto"
+
+flows:
+# La agencia puede recibir callback al confirmarse (además del polling getBooking)
+- id: "notificar-agencia-confirmacion"
+  name: "NotificarAgenciaConfirmacion"
+  description: "Callback OUTBOUND a la agencia al confirmarse la reserva."
+  archetype: "NOTIFIES"
+  triggerAggregateId: "agg-reserva"
+  triggerEvent: "ReservationConfirmed"
+  targetModuleId: "ext-agencia-callback"
+  materializedFields:
+  - "bookingId"
+  - "locator"
+  - "status"
+  - "holderEmail"   # ⚠ deliberado: PII cruzando la frontera — el linter debe avisar
