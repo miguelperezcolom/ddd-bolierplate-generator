@@ -25,6 +25,7 @@ public class CreateFlowUseCase {
                 command.readModelName(),
                 command.materializedFields(),
                 command.targetUseCaseId(),
+                command.inputMappings(),
                 command.overrides());
         repository.save(flow);
     }

@@ -16,6 +16,7 @@ public record FlowEntity(
         String readModelName,
         List<String> materializedFields,
         String targetUseCaseId,
+        List<String> inputMappings,
         List<String> overrides
 ) implements Identifiable {
 }

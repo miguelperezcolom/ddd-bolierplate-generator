@@ -13,6 +13,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Integratio
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEventHandlerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
@@ -23,6 +24,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Subscripti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -95,10 +97,12 @@ public class FlowExpander {
 
         var useCaseName = ctx.targetUseCaseName() != null ? ctx.targetUseCaseName() : flow.getTargetUseCaseId();
         var mappingId = "mm-" + base;
-        // identity mapping (payload field → use case input field by same name); renames are an override
+        // rules come from the flow's `with` renames ("targetInput=sourcePayload"); an empty list means
+        // the identity mapping (payload field → use case input of the same name).
+        var rules = mappingRules(flow.getInputMappings(), base);
         var modelMapping = new ModelMappingEntity(
                 mappingId, eventName + "To" + capitalize(useCaseName),
-                modelId, ctx.targetUseCaseInputModelId(), true, List.of());
+                modelId, ctx.targetUseCaseInputModelId(), true, rules);
 
         var subscription = new SubscriptionEntity(
                 "sub-" + base, ctx.targetModuleName() + eventName,
@@ -201,6 +205,31 @@ public class FlowExpander {
                 IntegrationEventSerializationFormat.JSON,
                 IntegrationEventCompressionType.NONE,
                 true, dlq, 5, "v1", null, true);
+    }
+
+    /** Turns "targetInput=sourcePayload" lines into model-mapping rules (by field name). */
+    private static List<ModelMappingRuleEntity> mappingRules(List<String> inputMappings, String base) {
+        if (inputMappings == null || inputMappings.isEmpty()) {
+            return List.of();
+        }
+        var rules = new ArrayList<ModelMappingRuleEntity>();
+        int i = 0;
+        for (var line : inputMappings) {
+            if (line == null) {
+                continue;
+            }
+            int eq = line.indexOf('=');
+            if (eq < 0) {
+                continue; // skip malformed entries (no '=')
+            }
+            var target = line.substring(0, eq).trim();
+            var source = line.substring(eq + 1).trim();
+            if (target.isEmpty() || source.isEmpty()) {
+                continue;
+            }
+            rules.add(new ModelMappingRuleEntity("mmr-" + base + "-" + i++, source, target, List.of()));
+        }
+        return rules;
     }
 
     private static String capitalize(String s) {

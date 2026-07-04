@@ -82,6 +82,6 @@ public class FlowExpansionService {
         return Flow.load(e.id(), e.name(), e.description(),
                 e.archetype() != null ? e.archetype().name() : null,
                 e.triggerAggregateId(), e.triggerEvent(), e.targetModuleId(),
-                e.readModelName(), e.materializedFields(), e.targetUseCaseId(), e.overrides());
+                e.readModelName(), e.materializedFields(), e.targetUseCaseId(), e.inputMappings(), e.overrides());
     }
 }

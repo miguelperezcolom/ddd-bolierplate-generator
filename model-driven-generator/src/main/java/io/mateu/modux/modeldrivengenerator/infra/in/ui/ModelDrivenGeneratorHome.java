@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui;
 
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.menu.*;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace.WorkspaceCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
@@ -8,6 +9,9 @@ import io.mateu.uidl.annotations.UI;
 @UI("")
 @Title("Modux")
 public class ModelDrivenGeneratorHome {
+
+    @Menu
+    WorkspaceCrudOrchestrator workspace;
 
     @Menu
     OrganizacionMenu organizacion;

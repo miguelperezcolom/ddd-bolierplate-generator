@@ -148,10 +148,11 @@ Configured per module. Modux generates a translation layer with a `ModelMapping`
 
 ## Context Map relationships
 
-Defines how bounded contexts relate to each other:
+Defines how bounded contexts relate to each other. A relation goes from a **source** (upstream, U) to a **target** (downstream, D) module for the asymmetric types; the symmetric types (`PARTNERSHIP`, `SHARED_KERNEL`, `SEPARATE_WAYS`) carry no up/down role.
 
 | Relationship | Description |
 |---|---|
+| `PARTNERSHIP` | Two contexts succeed or fail together and coordinate as partners |
 | `SHARED_KERNEL` | Two contexts share a subset of the domain model |
 | `CUSTOMER_SUPPLIER` | Upstream publishes, downstream conforms (with negotiation) |
 | `CONFORMIST` | Downstream conforms to upstream with no negotiation |

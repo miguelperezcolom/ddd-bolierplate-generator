@@ -459,6 +459,12 @@
         "id" : {
           "type" : "string"
         },
+        "inputMappings" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "materializedFields" : {
           "type" : "array",
           "items" : {

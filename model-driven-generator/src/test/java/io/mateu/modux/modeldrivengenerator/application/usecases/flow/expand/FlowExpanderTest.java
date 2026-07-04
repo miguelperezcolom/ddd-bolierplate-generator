@@ -38,6 +38,7 @@ class FlowExpanderTest {
                 "ReservaFrontOffice",   // readModelName
                 List.of("localizador", "titular"),
                 null,                   // targetUseCaseId (n/a for materializes)
+                List.of(),              // inputMappings (n/a for materializes)
                 List.of());
     }
 
@@ -104,7 +105,7 @@ class FlowExpanderTest {
                 FlowArchetype.TRIGGERS,
                 "agg-reserva", "ReservaCreada", "frontoffice",
                 null, List.of("localizador", "titular"),
-                "uc-crearEstancia", List.of());
+                "uc-crearEstancia", List.of(), List.of());
         var ctx = new FlowExpansionContext(
                 "hotel", "reservas", "Reserva", "frontoffice",
                 Map.of("localizador", FieldDataType.string, "titular", FieldDataType.string),
@@ -131,12 +132,39 @@ class FlowExpanderTest {
     }
 
     @Test
+    void triggers_with_renames_produces_model_mapping_rules() {
+        var flow = Flow.of(
+                new FlowId("reservaCreaEstancia"),
+                new FlowName("ReservaCreaEstancia"),
+                null,
+                FlowArchetype.TRIGGERS,
+                "agg-reserva", "ReservaCreada", "frontoffice",
+                null, List.of("locator", "holder"),
+                "uc-crearEstancia",
+                List.of("titular=holder", "localizador=locator"),   // targetInput=sourcePayload
+                List.of());
+        var ctx = new FlowExpansionContext(
+                "hotel", "reservas", "Reserva", "frontoffice",
+                Map.of("locator", FieldDataType.string, "holder", FieldDataType.string),
+                "CrearEstancia", "model-crearEstancia-input", "mod-reservas");
+
+        var x = expander.expand(flow, ctx);
+
+        var rules = x.modelMapping().rules();
+        assertEquals(2, rules.size());
+        assertEquals("holder", rules.get(0).sourceFieldId());
+        assertEquals("titular", rules.get(0).targetFieldId());
+        assertEquals("locator", rules.get(1).sourceFieldId());
+        assertEquals("localizador", rules.get(1).targetFieldId());
+    }
+
+    @Test
     void notifies_only_publishes_the_event_outbound() {
         var flow = Flow.of(
                 new FlowId("avisaPasarela"), new FlowName("AvisaPasarela"), null,
                 FlowArchetype.NOTIFIES,
                 "agg-reserva", "ReservaCreada", "external",
-                null, List.of("localizador"), null, List.of());
+                null, List.of("localizador"), null, List.of(), List.of());
         var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "external",
                 Map.of("localizador", FieldDataType.string), null, null, "mod-reservas");
 
@@ -156,7 +184,7 @@ class FlowExpanderTest {
                 new FlowId("procesoCheckin"), new FlowName("ProcesoCheckin"), null,
                 FlowArchetype.ORCHESTRATES,
                 "agg-reserva", "ReservaCreada", "frontoffice",
-                null, List.of("localizador"), null, List.of());
+                null, List.of("localizador"), null, List.of(), List.of());
         var ctx = new FlowExpansionContext("hotel", "reservas", "Reserva", "frontoffice",
                 Map.of("localizador", FieldDataType.string), null, null, "mod-reservas");
 

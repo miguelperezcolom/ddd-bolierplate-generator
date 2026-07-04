@@ -86,17 +86,18 @@ You can define one entry per environment (`DEV`, `STAGING`, `PROD`). Each entry 
 
 ### Context Map
 
-The context map defines how bounded contexts in your project relate to each other. Supported relationship types:
+The context map defines how bounded contexts in your project relate to each other. A relation goes from a **source** to a **target** module; for the asymmetric types the source is the **upstream** (U) context and the target is the **downstream** (D) context. Supported relationship types:
 
 | Type | Description |
 |---|---|
-| `SHARED_KERNEL` | Two contexts share a common model |
-| `PUBLISHED_LANGUAGE` | One context publishes a well-defined API |
+| `PARTNERSHIP` | Two contexts succeed or fail together and coordinate as partners |
+| `SHARED_KERNEL` | Two contexts share (and jointly own) a common model |
+| `CUSTOMER_SUPPLIER` | Upstream/downstream with a negotiated interface |
+| `CONFORMIST` | Downstream conforms to upstream model with no negotiation |
 | `OPEN_HOST_SERVICE` | A service exposed to multiple consumers |
-| `ANTI_CORRUPTION_LAYER` | Translation layer between two models |
-| `CONFORMIST` | Downstream conforms to upstream model |
-| `CUSTOMER_SUPPLIER` | Upstream/downstream with negotiated interface |
-| `SEPARATE_WAYS` | Contexts evolve independently |
+| `ANTI_CORRUPTION_LAYER` | Translation layer isolating downstream from the upstream model |
+| `PUBLISHED_LANGUAGE` | A well-defined shared exchange language (e.g. an event schema) |
+| `SEPARATE_WAYS` | Contexts evolve independently, no integration |
 
 ## What gets generated
 

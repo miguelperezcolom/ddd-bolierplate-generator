@@ -26,7 +26,7 @@ class FlowExpansionContextResolverTest {
                 new FlowId("f1"), new FlowName("ReservaVisibleEnFrontOffice"), null,
                 FlowArchetype.MATERIALIZES,
                 "agg-reserva", "ReservaCreada", "frontoffice",
-                "ReservaFrontOffice", List.of("localizador", "titular"), null, List.of());
+                "ReservaFrontOffice", List.of("localizador", "titular"), null, List.of(), List.of());
 
         var ctx = FlowExpansionContextResolver.resolve(flow,
                 List.of(agg("agg-reserva", "Reserva", "model-reserva")),
@@ -55,7 +55,7 @@ class FlowExpansionContextResolverTest {
         var flow = Flow.of(
                 new FlowId("f2"), new FlowName("Orphan"), null, FlowArchetype.MATERIALIZES,
                 "missing-agg", "Something", "missing-module",
-                "X", List.of("a"), null, List.of());
+                "X", List.of("a"), null, List.of(), List.of());
 
         var ctx = FlowExpansionContextResolver.resolve(flow,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());

@@ -43,6 +43,6 @@ public class FlowFileQueryService implements FlowQueryService {
                 .map(entity -> new FlowDto(entity.id(), entity.name(), entity.description(), entity.archetype(),
                         entity.triggerAggregateId(), entity.triggerEvent(), entity.targetModuleId(),
                         entity.readModelName(), entity.materializedFields(),
-                        entity.targetUseCaseId(), entity.overrides()));
+                        entity.targetUseCaseId(), entity.inputMappings(), entity.overrides()));
     }
 }

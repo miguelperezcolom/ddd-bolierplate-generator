@@ -62,6 +62,10 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
     String targetUseCaseId;
 
+    // triggers-only: "targetInputField=sourcePayloadField" renames; empty => identity mapping.
+    @Hidden("state['archetype'] != 'TRIGGERS'")
+    List<String> inputMappings;
+
     @Tab("Overrides")
     List<String> overrides;
 
@@ -72,7 +76,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateFlowCommand(id, name, description, archetype,
                 triggerAggregateId, triggerEvent, targetModuleId,
-                readModelName, materializedFields, targetUseCaseId, overrides));
+                readModelName, materializedFields, targetUseCaseId, inputMappings, overrides));
         return id;
     }
 
@@ -80,7 +84,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveFlowCommand(id, name, description, archetype,
                 triggerAggregateId, triggerEvent, targetModuleId,
-                readModelName, materializedFields, targetUseCaseId, overrides));
+                readModelName, materializedFields, targetUseCaseId, inputMappings, overrides));
     }
 
     @Override
@@ -99,6 +103,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
         readModelName = model.readModelName();
         materializedFields = model.materializedFields();
         targetUseCaseId = model.targetUseCaseId();
+        inputMappings = model.inputMappings();
         overrides = model.overrides();
         return this;
     }

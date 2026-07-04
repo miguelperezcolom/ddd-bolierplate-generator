@@ -15,6 +15,7 @@ public record CreateFlowCommand(
         String readModelName,
         List<String> materializedFields,
         String targetUseCaseId,
+        List<String> inputMappings,
         List<String> overrides
 ) {
 }

@@ -23,7 +23,7 @@ public class FlowFileRepository implements FlowRepository {
                 .map(entity -> Flow.load(entity.id(), entity.name(), entity.description(), entity.archetype() != null ? entity.archetype().name() : null,
                         entity.triggerAggregateId(), entity.triggerEvent(), entity.targetModuleId(),
                         entity.readModelName(), entity.materializedFields(),
-                        entity.targetUseCaseId(), entity.overrides()));
+                        entity.targetUseCaseId(), entity.inputMappings(), entity.overrides()));
     }
 
     @Override
@@ -39,6 +39,7 @@ public class FlowFileRepository implements FlowRepository {
                 entity.getReadModelName(),
                 entity.getMaterializedFields(),
                 entity.getTargetUseCaseId(),
+                entity.getInputMappings(),
                 entity.getOverrides()));
         return entity;
     }

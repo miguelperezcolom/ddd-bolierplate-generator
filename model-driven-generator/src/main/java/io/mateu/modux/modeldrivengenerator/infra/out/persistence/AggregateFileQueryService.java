@@ -63,9 +63,9 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                         operationEntity.name(),
                                         operationEntity.inputModelId(),
                                         operationEntity.outputModelId(),
-                                        Arrays.asList(operationEntity.preconditions().split(",")),
+                                        splitCsv(operationEntity.preconditions()),
                                         listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
-                                        Arrays.asList(operationEntity.emits().split(",")),
+                                        splitCsv(operationEntity.emits()),
                                         OperationType.valueOf(operationEntity.type()),
                                         operationEntity.paginated(),
                                         operationEntity.defaultPageSize()
@@ -80,5 +80,11 @@ public class AggregateFileQueryService implements AggregateQueryService {
                                                 .toList() : java.util.List.of()))
                                 .toList(),
                         entity.valueObjectIds()));
+    }
+
+    /** Splits a comma-separated field, tolerating null/blank (returns an empty list). */
+    private static java.util.List<String> splitCsv(String value) {
+        if (value == null || value.isBlank()) return java.util.List.of();
+        return Arrays.asList(value.split(","));
     }
 }

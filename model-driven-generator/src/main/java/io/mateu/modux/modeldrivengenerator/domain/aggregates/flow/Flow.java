@@ -35,13 +35,17 @@ public class Flow {
     // triggers: the target use case to call
     private String targetUseCaseId;
 
+    // triggers: input mapping (renames) as "targetInputField=sourcePayloadField" lines.
+    // Empty => identity mapping (payload field → use case input of the same name).
+    private List<String> inputMappings;
+
     // escape hatch: per-piece overrides as "scope.property=value" lines
     private List<String> overrides;
 
     public static Flow of(FlowId id, FlowName name, String description, FlowArchetype archetype,
                           String triggerAggregateId, String triggerEvent, String targetModuleId,
                           String readModelName, List<String> materializedFields,
-                          String targetUseCaseId, List<String> overrides) {
+                          String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         var flow = new Flow();
         flow.id = id;
         flow.name = name;
@@ -53,6 +57,7 @@ public class Flow {
         flow.readModelName = readModelName;
         flow.materializedFields = materializedFields != null ? materializedFields : List.of();
         flow.targetUseCaseId = targetUseCaseId;
+        flow.inputMappings = inputMappings != null ? inputMappings : List.of();
         flow.overrides = overrides != null ? overrides : List.of();
         return flow;
     }
@@ -60,7 +65,7 @@ public class Flow {
     public static Flow load(String id, String name, String description, String archetype,
                             String triggerAggregateId, String triggerEvent, String targetModuleId,
                             String readModelName, List<String> materializedFields,
-                            String targetUseCaseId, List<String> overrides) {
+                            String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         var flow = new Flow();
         flow.id = new FlowId(id);
         flow.name = new FlowName(name);
@@ -72,6 +77,7 @@ public class Flow {
         flow.readModelName = readModelName;
         flow.materializedFields = materializedFields != null ? materializedFields : List.of();
         flow.targetUseCaseId = targetUseCaseId;
+        flow.inputMappings = inputMappings != null ? inputMappings : List.of();
         flow.overrides = overrides != null ? overrides : List.of();
         return flow;
     }
@@ -79,7 +85,7 @@ public class Flow {
     public void update(FlowName name, String description, FlowArchetype archetype,
                        String triggerAggregateId, String triggerEvent, String targetModuleId,
                        String readModelName, List<String> materializedFields,
-                       String targetUseCaseId, List<String> overrides) {
+                       String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         this.name = name;
         this.description = description;
         this.archetype = archetype;
@@ -89,6 +95,7 @@ public class Flow {
         this.readModelName = readModelName;
         this.materializedFields = materializedFields != null ? materializedFields : List.of();
         this.targetUseCaseId = targetUseCaseId;
+        this.inputMappings = inputMappings != null ? inputMappings : List.of();
         this.overrides = overrides != null ? overrides : List.of();
     }
 }

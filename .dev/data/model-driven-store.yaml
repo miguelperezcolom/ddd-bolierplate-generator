@@ -6,9 +6,9 @@ projects:
   outputPath: "sample/hotel-checkin"
   packageName: "com.hotel.checkin"
   serviceIds:
-  - "hotel"
+  - "hotel-svc"
 services:
-- id: "hotel"
+- id: "hotel-svc"
   name: "Hotel"
   gatewayIds:
   - "gw-reservas"
@@ -1369,7 +1369,7 @@ uiShells:
   name: "HotelShell"
   title: "Hotel Checkin"
   serviceIds:
-  - "hotel"
+  - "hotel-svc"
 enums:
 - id: "sexo"
   values:
