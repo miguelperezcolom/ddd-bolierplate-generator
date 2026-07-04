@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrat
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.EmailProvider;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.FileStorageProvider;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.SecretsProvider;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.TenancyStrategy;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.IamProvider;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.LlmProvider;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.LoggingProvider;
@@ -41,13 +42,59 @@ public record ProjectEntity(
         String cicdProvider,
         List<ProjectEnvironmentConfigEntity> environments,
         List<String> serviceIds,
-        List<ContextMapRelationEntity> contextMap
+        List<ContextMapRelationEntity> contextMap,
+        /** How the system isolates tenants; NONE/null for single-tenant. */
+        TenancyStrategy tenancyStrategy,
+        /** Systems outside the project's bounded contexts (partners on the context map). */
+        List<ExternalSystemEntity> externalSystems,
+        /** Context and objective of the system, in prose (the §1 of a design document). */
+        String objective
 ) implements Identifiable {
 
     public ProjectEntity {
         if (serviceIds == null) serviceIds = List.of();
         if (contextMap == null) contextMap = List.of();
         if (environments == null) environments = List.of();
+        if (externalSystems == null) externalSystems = List.of();
+    }
+
+    /** Backward-compatible constructor (pre tenancy/externalSystems callers and stores). */
+    public ProjectEntity(String id, String name, String outputPath, String packageName,
+                         String gitRepository, String database, DbMigrationTool dbMigrationTool,
+                         TerraformProvider terraformProvider, String terraformProviderVersion,
+                         TerraformBackendType terraformBackendType, IamProvider iamProvider,
+                         MessageBrokerType messageBrokerType, TracingProvider tracingProvider,
+                         MetricsProvider metricsProvider, LoggingProvider loggingProvider,
+                         LlmProvider llmProvider, CacheProvider cacheProvider,
+                         FileStorageProvider fileStorageProvider, EmailProvider emailProvider,
+                         SecretsProvider secretsProvider, String cicdProvider,
+                         List<ProjectEnvironmentConfigEntity> environments,
+                         List<String> serviceIds, List<ContextMapRelationEntity> contextMap) {
+        this(id, name, outputPath, packageName, gitRepository, database, dbMigrationTool,
+                terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
+                messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
+                cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
+                environments, serviceIds, contextMap, null, List.of(), null);
+    }
+
+    /** Backward-compatible constructor (pre-objective callers). */
+    public ProjectEntity(String id, String name, String outputPath, String packageName,
+                         String gitRepository, String database, DbMigrationTool dbMigrationTool,
+                         TerraformProvider terraformProvider, String terraformProviderVersion,
+                         TerraformBackendType terraformBackendType, IamProvider iamProvider,
+                         MessageBrokerType messageBrokerType, TracingProvider tracingProvider,
+                         MetricsProvider metricsProvider, LoggingProvider loggingProvider,
+                         LlmProvider llmProvider, CacheProvider cacheProvider,
+                         FileStorageProvider fileStorageProvider, EmailProvider emailProvider,
+                         SecretsProvider secretsProvider, String cicdProvider,
+                         List<ProjectEnvironmentConfigEntity> environments,
+                         List<String> serviceIds, List<ContextMapRelationEntity> contextMap,
+                         TenancyStrategy tenancyStrategy, List<ExternalSystemEntity> externalSystems) {
+        this(id, name, outputPath, packageName, gitRepository, database, dbMigrationTool,
+                terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
+                messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
+                cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
+                environments, serviceIds, contextMap, tenancyStrategy, externalSystems, null);
     }
 
 }

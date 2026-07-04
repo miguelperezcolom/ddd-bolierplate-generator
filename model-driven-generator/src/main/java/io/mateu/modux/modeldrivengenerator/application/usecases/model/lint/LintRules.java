@@ -1,0 +1,579 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
+
+import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
+import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiMeasure;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * The built-in rule catalog of the model linter. Each rule is a small pure function over a
+ * {@link ModelSnapshot}; add new rules here (or as separate {@link LintRule} beans) as the
+ * meta-model grows.
+ */
+public final class LintRules {
+
+    private LintRules() {}
+
+    public static List<LintRule> all() {
+        return List.of(
+                new FlowContextRelation(),
+                new SubscriptionIdempotency(),
+                new IntegrationEventDlq(),
+                new ProjectionRebuild(),
+                new SagaCompensation(),
+                new OrphanUseCase(),
+                new AggregateInvariants(),
+                new EventSourcingSnapshot(),
+                new LifecycleCoherence(),
+                new PiiAnonymization(),
+                new PiiCrossContext(),
+                new AuditedEventSourcing(),
+                new ProcessHumanRole(),
+                new ProcessDeadlineEscalation(),
+                new AccessPolicyExpression(),
+                new KpiValueField(),
+                new SubdomainClassification(),
+                new TenancyDeclared(),
+                new NotifiesExternalSystem(),
+                new OpenDecisions(),
+                new ModelOrphan(),
+                new CrossContextDataAccess(),
+                new CrossServiceConsumption());
+    }
+
+    // --- cross-context coherence ---------------------------------------------
+
+    /** Every cross-context flow should be backed by a declared strategic relation. */
+    static class FlowContextRelation implements LintRule {
+        public String id() { return "flow-context-relation"; }
+        public String description() { return "Cross-context flows should be backed by a context-map relation"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return FlowContextMapCoherenceService.analyze(m.flows(), m.aggregates(), m.modules(), m.projects()).stream()
+                    .filter(f -> f.status() == FlowContextMapFinding.Status.MISSING_RELATION
+                            || f.status() == FlowContextMapFinding.Status.REVERSED)
+                    .map(f -> new LintFinding(id(), LintSeverity.WARNING, "Flow", f.flowId(), f.flowName(), f.message()))
+                    .toList();
+        }
+    }
+
+    // --- event-driven hygiene -------------------------------------------------
+
+    /** Cross-context consumption without idempotency duplicates side effects on redelivery. */
+    static class SubscriptionIdempotency implements LintRule {
+        public String id() { return "subscription-idempotency"; }
+        public String description() { return "Subscriptions should be idempotent"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.subscriptions().stream()
+                    .filter(s -> !s.idempotencyEnabled())
+                    .map(s -> new LintFinding(id(), LintSeverity.WARNING, "Subscription", s.id(), s.name(),
+                            "Idempotency is off — redelivered events will duplicate side effects."))
+                    .toList();
+        }
+    }
+
+    /** An integration event without a dead-letter queue loses failed deliveries silently. */
+    static class IntegrationEventDlq implements LintRule {
+        public String id() { return "integration-event-dlq"; }
+        public String description() { return "Integration events should have a dead-letter queue"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.integrationEvents().stream()
+                    .filter(e -> !e.deadLetterQueueEnabled())
+                    .map(e -> new LintFinding(id(), LintSeverity.WARNING, "IntegrationEvent", e.id(), e.name(),
+                            "No dead-letter queue — failed deliveries are lost silently."))
+                    .toList();
+        }
+    }
+
+    /** A projection without a rebuild strategy cannot recover from bugs or schema changes. */
+    static class ProjectionRebuild implements LintRule {
+        public String id() { return "projection-rebuild"; }
+        public String description() { return "Projections should declare a rebuild strategy"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.projections().stream()
+                    .filter(p -> p.rebuildStrategy() == null || p.rebuildStrategy().isBlank())
+                    .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(), p.name(),
+                            "No rebuild strategy — the read model cannot recover from projection bugs."))
+                    .toList();
+        }
+    }
+
+    /** Saga steps with side effects should declare how to undo them. */
+    static class SagaCompensation implements LintRule {
+        private static final Set<SagaStepType> SIDE_EFFECTING =
+                Set.of(SagaStepType.CallUseCase, SagaStepType.CallAggregateOperation,
+                        SagaStepType.SaveAggregate, SagaStepType.CallGateway);
+        public String id() { return "saga-compensation"; }
+        public String description() { return "Side-effecting saga steps should have compensation"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var saga : m.sagas()) {
+                var compensationIds = saga.steps() == null ? Set.<String>of() : saga.steps().stream()
+                        .map(s -> s.compensatingStepId()).filter(Objects::nonNull).collect(HashSet::new, HashSet::add, HashSet::addAll);
+                if (saga.steps() == null) continue;
+                for (var step : saga.steps()) {
+                    if (SIDE_EFFECTING.contains(step.type())
+                            && (step.compensatingStepId() == null || step.compensatingStepId().isBlank())
+                            && !compensationIds.contains(step.id())) {
+                        findings.add(new LintFinding(id(), LintSeverity.INFO, "Saga", saga.id(), saga.name(),
+                                "Step '" + step.name() + "' has side effects but no compensation."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    // --- structure ------------------------------------------------------------
+
+    /** A use case owned by no module is invisible to generation and the context map. */
+    static class OrphanUseCase implements LintRule {
+        public String id() { return "orphan-use-case"; }
+        public String description() { return "Every use case should belong to a module"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var owned = new HashSet<String>();
+            m.modules().forEach(mod -> {
+                if (mod.useCaseIds() != null) owned.addAll(mod.useCaseIds());
+            });
+            return m.useCases().stream()
+                    .filter(uc -> !owned.contains(uc.id()))
+                    .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(), uc.name(),
+                            "Not referenced by any module — orphan use cases are skipped by generation."))
+                    .toList();
+        }
+    }
+
+    /** Behaviour without invariants is a hint of an anemic aggregate. */
+    static class AggregateInvariants implements LintRule {
+        public String id() { return "aggregate-invariants"; }
+        public String description() { return "Aggregates with operations should declare invariants"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aggregates().stream()
+                    .filter(a -> !a.operations().isEmpty() && a.invariants().isEmpty())
+                    .map(a -> new LintFinding(id(), LintSeverity.INFO, "Aggregate", a.id(), a.name(),
+                            "Has operations but no invariants — what makes this aggregate consistent?"))
+                    .toList();
+        }
+    }
+
+    /** Event-sourced aggregates without snapshots degrade linearly with history length. */
+    static class EventSourcingSnapshot implements LintRule {
+        public String id() { return "event-sourcing-snapshot"; }
+        public String description() { return "Event-sourced aggregates should declare a snapshot frequency"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aggregates().stream()
+                    .filter(a -> a.eventSourcingEnabled() && a.snapshotFrequency() == null)
+                    .map(a -> new LintFinding(id(), LintSeverity.INFO, "Aggregate", a.id(), a.name(),
+                            "Event-sourced without snapshots — replay cost grows with history."))
+                    .toList();
+        }
+    }
+
+    // --- lifecycle --------------------------------------------------------------
+
+    /** The declared state machine must be internally coherent. */
+    static class LifecycleCoherence implements LintRule {
+        public String id() { return "lifecycle-coherence"; }
+        public String description() { return "Aggregate lifecycles must be coherent state machines"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var a : m.aggregates()) {
+                var lc = a.lifecycle();
+                if (lc == null) continue;
+                var states = new HashSet<>(lc.states());
+                if (lc.initialState() == null || !states.contains(lc.initialState())) {
+                    findings.add(finding(a, LintSeverity.ERROR,
+                            "Initial state '" + lc.initialState() + "' is not one of the declared states."));
+                }
+                var operationIds = a.operations().stream().map(o -> o.id()).collect(HashSet::new, HashSet::add, HashSet::addAll);
+                for (var t : lc.transitions()) {
+                    if (t.fromState() == null || !states.contains(t.fromState())) {
+                        findings.add(finding(a, LintSeverity.ERROR,
+                                "Transition '" + t.id() + "' starts at unknown state '" + t.fromState() + "'."));
+                    }
+                    if (t.toState() == null || !states.contains(t.toState())) {
+                        findings.add(finding(a, LintSeverity.ERROR,
+                                "Transition '" + t.id() + "' ends at unknown state '" + t.toState() + "'."));
+                    }
+                    if (t.operationId() != null && !operationIds.contains(t.operationId())) {
+                        findings.add(finding(a, LintSeverity.WARNING,
+                                "Transition '" + t.id() + "' references operation '" + t.operationId()
+                                        + "', which is not an operation of this aggregate."));
+                    }
+                }
+                // reachability from the initial state
+                if (lc.initialState() != null && states.contains(lc.initialState())) {
+                    var reached = new HashSet<String>();
+                    var queue = new ArrayDeque<String>();
+                    queue.add(lc.initialState());
+                    reached.add(lc.initialState());
+                    while (!queue.isEmpty()) {
+                        var current = queue.poll();
+                        for (var t : lc.transitions()) {
+                            if (current.equals(t.fromState()) && t.toState() != null && reached.add(t.toState())) {
+                                queue.add(t.toState());
+                            }
+                        }
+                    }
+                    for (var state : lc.states()) {
+                        if (!reached.contains(state)) {
+                            findings.add(finding(a, LintSeverity.WARNING,
+                                    "State '" + state + "' is unreachable from the initial state."));
+                        }
+                    }
+                }
+            }
+            return findings;
+        }
+        private LintFinding finding(AggregateEntity a, LintSeverity severity, String message) {
+            return new LintFinding(id(), severity, "Aggregate", a.id(), a.name(), message);
+        }
+    }
+
+    // --- compliance -------------------------------------------------------------
+
+    /** PII fields should say how they are anonymized on erasure requests. */
+    static class PiiAnonymization implements LintRule {
+        public String id() { return "pii-anonymization"; }
+        public String description() { return "PII fields should declare an anonymization strategy"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var model : m.models()) {
+                if (model.fields() == null) continue;
+                for (var f : model.fields()) {
+                    if (isPii(f) && (f.anonymizationStrategy() == null
+                            || f.anonymizationStrategy() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.AnonymizationStrategy.NONE)) {
+                        findings.add(new LintFinding(id(), LintSeverity.INFO, "Model", model.id(), model.name(),
+                                "Field '" + f.name() + "' is classified as " + f.piiClassification()
+                                        + " but declares no anonymization strategy (GDPR erasure)."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** PII crossing a context boundary through a flow deserves an explicit decision. */
+    static class PiiCrossContext implements LintRule {
+        public String id() { return "pii-cross-context"; }
+        public String description() { return "PII materialized into another context should be a conscious decision"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var flow : m.flows()) {
+                if (flow.materializedFields() == null || flow.materializedFields().isEmpty()) continue;
+                var model = modelOfAggregate(m, flow.triggerAggregateId());
+                if (model == null || model.fields() == null) continue;
+                for (var f : model.fields()) {
+                    if (isPii(f) && flow.materializedFields().contains(f.name())) {
+                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "Flow", flow.id(), flow.name(),
+                                "Materializes PII field '" + f.name() + "' into another context — every copy "
+                                        + "multiplies the erasure surface. Confirm it is needed."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** An audit trail is strongest (and cheapest) when the aggregate is event-sourced. */
+    static class AuditedEventSourcing implements LintRule {
+        public String id() { return "audited-event-sourcing"; }
+        public String description() { return "Audited aggregates benefit from event sourcing"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aggregates().stream()
+                    .filter(a -> a.audited() && !a.eventSourcingEnabled())
+                    .map(a -> new LintFinding(id(), LintSeverity.INFO, "Aggregate", a.id(), a.name(),
+                            "Audited without event sourcing — consider ES: the event log IS the audit trail."))
+                    .toList();
+        }
+    }
+
+    // --- processes ---------------------------------------------------------------
+
+    /** A human task nobody owns lands on no worklist. */
+    static class ProcessHumanRole implements LintRule {
+        public String id() { return "process-human-role"; }
+        public String description() { return "HUMAN process steps must assign a role"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var p : m.processes()) {
+                for (var s : p.steps()) {
+                    if (s.type() == ProcessStepType.HUMAN && (s.roleId() == null || s.roleId().isBlank())) {
+                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "Process", p.id(), p.name(),
+                                "Human step '" + s.name() + "' has no role — the task lands on nobody's worklist."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** A deadline that nobody hears about is not a deadline. */
+    static class ProcessDeadlineEscalation implements LintRule {
+        public String id() { return "process-deadline-escalation"; }
+        public String description() { return "Deadline-bounded steps should declare escalation"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var p : m.processes()) {
+                for (var s : p.steps()) {
+                    if (s.deadline() != null && !s.deadline().isBlank()
+                            && (s.escalationRoleId() == null || s.escalationRoleId().isBlank())) {
+                        findings.add(new LintFinding(id(), LintSeverity.INFO, "Process", p.id(), p.name(),
+                                "Step '" + s.name() + "' has a deadline but no escalation role."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    // --- authorization / metrics / strategy ---------------------------------------
+
+    /** A policy without an expression grants nothing and protects nothing. */
+    static class AccessPolicyExpression implements LintRule {
+        public String id() { return "access-policy-expression"; }
+        public String description() { return "Access policies must have an expression"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var mod : m.modules()) {
+                for (var p : mod.accessPolicies()) {
+                    if (p.expression() == null || p.expression().isBlank()) {
+                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "Module", mod.id(), mod.name(),
+                                "Access policy '" + p.name() + "' has no expression."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** SUM/AVG/MIN/MAX need a field to aggregate. */
+    static class KpiValueField implements LintRule {
+        public String id() { return "kpi-value-field"; }
+        public String description() { return "Non-COUNT KPIs need a value field"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var mod : m.modules()) {
+                for (var k : mod.kpis()) {
+                    if (k.measure() != null && k.measure() != KpiMeasure.COUNT
+                            && (k.valueField() == null || k.valueField().isBlank())) {
+                        findings.add(new LintFinding(id(), LintSeverity.ERROR, "Module", mod.id(), mod.name(),
+                                "KPI '" + k.name() + "' uses " + k.measure() + " but declares no value field."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** Classifying subdomains is the whole point of strategic design: where to invest. */
+    static class SubdomainClassification implements LintRule {
+        public String id() { return "subdomain-classification"; }
+        public String description() { return "Modules should be classified core/supporting/generic"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.modules().stream()
+                    .filter(mod -> mod.subdomainType() == null)
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                            "No subdomain classification — is this CORE, SUPPORTING or GENERIC?"))
+                    .toList();
+        }
+    }
+
+    /** Tenancy is painful to retrofit; make the decision explicit even if it is NONE. */
+    static class TenancyDeclared implements LintRule {
+        public String id() { return "tenancy-declared"; }
+        public String description() { return "Projects should declare a tenancy strategy"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.projects().stream()
+                    .filter(p -> p.tenancyStrategy() == null)
+                    .map(p -> new LintFinding(id(), LintSeverity.INFO, "Project", p.id(), p.name(),
+                            "No tenancy strategy declared — say NONE explicitly if single-tenant."))
+                    .toList();
+        }
+    }
+
+    /** NOTIFIES flows target outside systems that should exist on the map. */
+    static class NotifiesExternalSystem implements LintRule {
+        public String id() { return "notifies-external-system"; }
+        public String description() { return "NOTIFIES flows should have declared external systems"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            boolean anyExternal = m.projects().stream().anyMatch(p -> !p.externalSystems().isEmpty());
+            if (anyExternal) return List.of();
+            return m.flows().stream()
+                    .filter(f -> f.archetype() == FlowArchetype.NOTIFIES)
+                    .map(f -> new LintFinding(id(), LintSeverity.INFO, "Flow", f.id(), f.name(),
+                            "Notifies an external system, but the project declares none — add it to the "
+                                    + "context map (externalSystems) so the integration is visible."))
+                    .toList();
+        }
+    }
+
+    /** The open-points inbox: PROPOSED decisions are the questions still driving the design. */
+    static class OpenDecisions implements LintRule {
+        public String id() { return "open-decisions"; }
+        public String description() { return "Proposed decisions are open design questions"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.decisions().stream()
+                    .filter(d -> d.status() == io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.PROPOSED)
+                    .map(d -> new LintFinding(id(), LintSeverity.INFO, "Decision", d.id(), d.name(),
+                            "Open decision: " + (d.decision() != null ? d.decision() : "(sin enunciado)")
+                                    + " — resolve it (ACCEPTED/…) and reflect the outcome in the model."))
+                    .toList();
+        }
+    }
+
+    /**
+     * Data living in another subdomain is consumed through its API (query service) or materialized
+     * as a projection — never by reaching into the foreign aggregate directly. This rule catches a
+     * use case whose steps read/write an aggregate owned by a different module.
+     */
+    static class CrossContextDataAccess implements LintRule {
+        private static final Set<io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType> AGGREGATE_ACCESS =
+                Set.of(io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.ReadAggregate,
+                        io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation,
+                        io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate);
+        public String id() { return "cross-context-data-access"; }
+        public String description() { return "Foreign-context data is consumed via API or projection, not by touching the aggregate"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var module : m.modules()) {
+                if (module.useCaseIds() == null) continue;
+                for (var useCaseId : module.useCaseIds()) {
+                    var useCase = m.useCases().stream().filter(uc -> uc.id().equals(useCaseId)).findFirst().orElse(null);
+                    if (useCase == null || useCase.steps() == null) continue;
+                    for (var step : useCase.steps()) {
+                        if (!AGGREGATE_ACCESS.contains(step.type()) || step.aggregateId() == null) continue;
+                        var owner = m.modules().stream()
+                                .filter(other -> other.aggregateIds() != null && other.aggregateIds().contains(step.aggregateId()))
+                                .findFirst().orElse(null);
+                        if (owner != null && !owner.id().equals(module.id())) {
+                            findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
+                                    useCase.id(), useCase.name(),
+                                    "Step '" + step.name() + "' " + step.type() + " on aggregate '" + step.aggregateId()
+                                            + "', owned by context '" + owner.name() + "' — consume it through "
+                                            + owner.name() + "'s API (query service) or materialize a projection "
+                                            + "(MATERIALIZES flow) instead of touching the foreign aggregate."));
+                        }
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /**
+     * A use case consumes functionality (a use case or a query service) in the same or another
+     * subdomain. Same service → in-process interface, fine. Modules distributed into different
+     * services → the call crosses a process boundary, which requires an API: the provider must be
+     * exposed (gRPC/REST). The deriver (Derive APIs) can fix these automatically.
+     */
+    static class CrossServiceConsumption implements LintRule {
+        public String id() { return "cross-service-consumption"; }
+        public String description() { return "Cross-service consumption requires the provider to expose an API"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var module : m.modules()) {
+                if (module.useCaseIds() == null) continue;
+                var consumerService = serviceOf(m, module.id());
+                for (var useCaseId : module.useCaseIds()) {
+                    var consumer = m.useCases().stream().filter(uc -> uc.id().equals(useCaseId)).findFirst().orElse(null);
+                    if (consumer == null || consumer.steps() == null) continue;
+                    for (var step : consumer.steps()) {
+                        if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
+                                && step.useCaseId() != null) {
+                            var provider = m.useCases().stream().filter(uc -> uc.id().equals(step.useCaseId())).findFirst().orElse(null);
+                            var providerModule = m.modules().stream()
+                                    .filter(other -> other.useCaseIds() != null && other.useCaseIds().contains(step.useCaseId()))
+                                    .findFirst().orElse(null);
+                            if (provider == null || providerModule == null) continue;
+                            if (crossesService(m, consumerService, providerModule.id())
+                                    && !provider.exposedAsGrpc() && !provider.exposedAsRest()) {
+                                findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
+                                        consumer.id(), consumer.name(),
+                                        "Consumes use case '" + provider.name() + "' deployed in another service — "
+                                                + "the call crosses a process boundary: expose it as gRPC (or run Derive APIs)."));
+                            }
+                        }
+                        if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService
+                                && step.queryServiceId() != null) {
+                            var provider = m.queryServices().stream()
+                                    .filter(qs -> qs.id().equals(step.queryServiceId())).findFirst().orElse(null);
+                            if (provider == null) continue;
+                            if (crossesService(m, consumerService, provider.moduleId()) && !provider.exposedAsGrpc()) {
+                                findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
+                                        consumer.id(), consumer.name(),
+                                        "Consumes query service '" + provider.name() + "' deployed in another service — "
+                                                + "the call crosses a process boundary: expose it as gRPC (or run Derive APIs)."));
+                            }
+                        }
+                    }
+                }
+            }
+            return findings;
+        }
+        private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity serviceOf(ModelSnapshot m, String moduleId) {
+            if (moduleId == null) return null;
+            return m.services().stream()
+                    .filter(s -> s.moduleIds() != null && s.moduleIds().contains(moduleId))
+                    .findFirst().orElse(null);
+        }
+        private static boolean crossesService(ModelSnapshot m, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity consumerService, String providerModuleId) {
+            var providerService = serviceOf(m, providerModuleId);
+            if (consumerService == null || providerService == null) return false;
+            return !Objects.equals(consumerService.id(), providerService.id());
+        }
+    }
+
+    /** Models are the axis of the system — a model no station references is dead weight. */
+    static class ModelOrphan implements LintRule {
+        public String id() { return "model-orphan"; }
+        public String description() { return "Every model should be used by at least one station"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var referenced = new HashSet<String>();
+            m.aggregates().forEach(a -> referenced.add(a.modelId()));
+            m.entities().forEach(e -> referenced.add(e.modelId()));
+            m.readModels().forEach(rm -> referenced.add(rm.modelId()));
+            m.pages().forEach(p -> referenced.add(p.modelId()));
+            m.useCases().forEach(uc -> { referenced.add(uc.inputModelId()); referenced.add(uc.outputModelId()); });
+            m.domainEvents().forEach(ev -> { referenced.add(ev.modelId()); referenced.add(ev.integrationModelId()); });
+            m.subscriptions().forEach(s -> referenced.add(s.inputModelId()));
+            m.modelMappings().forEach(mm -> { referenced.add(mm.sourceModelId()); referenced.add(mm.targetModelId()); });
+            m.queryServices().forEach(qs -> {
+                if (qs.operations() != null) qs.operations().forEach(op -> {
+                    referenced.add(op.inputModelId());
+                    referenced.add(op.outputModelId());
+                });
+            });
+            return m.models().stream()
+                    .filter(model -> !referenced.contains(model.id()))
+                    .map(model -> new LintFinding(id(), LintSeverity.INFO, "Model", model.id(), model.name(),
+                            "No station references this model — dead weight or work in progress?"))
+                    .toList();
+        }
+    }
+
+    // --- shared helpers ------------------------------------------------------------
+
+    private static boolean isPii(ModelFieldEntity f) {
+        return f.piiClassification() != null && f.piiClassification() != PiiClassification.NONE;
+    }
+
+    private static ModelEntity modelOfAggregate(ModelSnapshot m, String aggregateId) {
+        if (aggregateId == null) return null;
+        var aggregate = m.aggregates().stream().filter(a -> a.id().equals(aggregateId)).findFirst().orElse(null);
+        if (aggregate == null || aggregate.modelId() == null) return null;
+        return m.models().stream().filter(mo -> mo.id().equals(aggregate.modelId())).findFirst().orElse(null);
+    }
+}

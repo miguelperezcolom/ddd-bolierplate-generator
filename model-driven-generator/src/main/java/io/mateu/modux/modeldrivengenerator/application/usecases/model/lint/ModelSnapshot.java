@@ -1,0 +1,103 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
+
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
+
+import java.util.List;
+
+/** Immutable view of the loaded model that lint rules run against. Pure and unit-testable. */
+public record ModelSnapshot(
+        List<ProjectEntity> projects,
+        List<ServiceEntity> services,
+        List<ModuleEntity> modules,
+        List<AggregateEntity> aggregates,
+        List<ModelEntity> models,
+        List<UseCaseEntity> useCases,
+        List<DomainEventEntity> domainEvents,
+        List<IntegrationEventEntity> integrationEvents,
+        List<SubscriptionEntity> subscriptions,
+        List<ProjectionEntity> projections,
+        List<ReadModelEntity> readModels,
+        List<SagaEntity> sagas,
+        List<FlowEntity> flows,
+        List<ProcessEntity> processes,
+        List<DecisionEntity> decisions,
+        List<PageEntity> pages,
+        List<QueryServiceEntity> queryServices,
+        List<ModelMappingEntity> modelMappings,
+        List<EntityEntity> entities
+) {
+
+    public ModelSnapshot {
+        projects = nvl(projects);
+        services = nvl(services);
+        modules = nvl(modules);
+        aggregates = nvl(aggregates);
+        models = nvl(models);
+        useCases = nvl(useCases);
+        domainEvents = nvl(domainEvents);
+        integrationEvents = nvl(integrationEvents);
+        subscriptions = nvl(subscriptions);
+        projections = nvl(projections);
+        readModels = nvl(readModels);
+        sagas = nvl(sagas);
+        flows = nvl(flows);
+        processes = nvl(processes);
+        decisions = nvl(decisions);
+        pages = nvl(pages);
+        queryServices = nvl(queryServices);
+        modelMappings = nvl(modelMappings);
+        entities = nvl(entities);
+    }
+
+    public static ModelSnapshot from(CommonFileRepository repository) {
+        return new ModelSnapshot(
+                repository.findAllOfType(ProjectEntity.class),
+                repository.findAllOfType(ServiceEntity.class),
+                repository.findAllOfType(ModuleEntity.class),
+                repository.findAllOfType(AggregateEntity.class),
+                repository.findAllOfType(ModelEntity.class),
+                repository.findAllOfType(UseCaseEntity.class),
+                repository.findAllOfType(DomainEventEntity.class),
+                repository.findAllOfType(IntegrationEventEntity.class),
+                repository.findAllOfType(SubscriptionEntity.class),
+                repository.findAllOfType(ProjectionEntity.class),
+                repository.findAllOfType(ReadModelEntity.class),
+                repository.findAllOfType(SagaEntity.class),
+                repository.findAllOfType(FlowEntity.class),
+                repository.findAllOfType(ProcessEntity.class),
+                repository.findAllOfType(DecisionEntity.class),
+                repository.findAllOfType(PageEntity.class),
+                repository.findAllOfType(QueryServiceEntity.class),
+                repository.findAllOfType(ModelMappingEntity.class),
+                repository.findAllOfType(EntityEntity.class));
+    }
+
+    /** Snapshot with only the given slices — for tests. Everything else is empty. */
+    public static ModelSnapshot empty() {
+        return new ModelSnapshot(null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private static <T> List<T> nvl(List<T> list) {
+        return list != null ? list : List.of();
+    }
+}

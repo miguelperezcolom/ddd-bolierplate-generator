@@ -31,6 +31,8 @@ public record AllData(
         List<IntegrationEventEntity> integrationEvents,
         List<ReadModelEntity> readModels,
         List<FlowEntity> flows,
+        List<ProcessEntity> processes,
+        List<DecisionEntity> decisions,
         List<ViewEntity> views
         ) {
 
@@ -63,6 +65,8 @@ public record AllData(
         integrationEvents = integrationEvents != null ? integrationEvents : List.of();
         readModels = readModels != null ? readModels : List.of();
         flows = flows != null ? flows : List.of();
+        processes = processes != null ? processes : List.of();
+        decisions = decisions != null ? decisions : List.of();
         views = views != null ? views : List.of();
     }
 }

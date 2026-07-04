@@ -72,6 +72,9 @@ public class AggregateFileRepository implements AggregateRepository {
 
     @Override
     public Aggregate save(Aggregate entity) {
+        // The domain Aggregate does not (yet) model lifecycle/audited — carry them over from the
+        // stored entity so a UI save never wipes what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), AggregateEntity.class).orElse(null);
         repository.save(new AggregateEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -106,7 +109,10 @@ public class AggregateFileRepository implements AggregateRepository {
                                         .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList() : List.of()
                         )).toList(),
-                entity.getValueObjectIds()));
+                entity.getValueObjectIds(),
+                existing != null ? existing.lifecycle() : null,
+                existing != null && existing.audited(),
+                existing != null ? existing.decisionIds() : List.of()));
         return entity;
     }
 

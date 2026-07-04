@@ -38,7 +38,7 @@ public class FlowContextMapCoherenceService {
     }
 
     /** Pure analysis over the given model slices — unit-testable without Spring or files. */
-    static List<FlowContextMapFinding> analyze(List<FlowEntity> flows,
+    public static List<FlowContextMapFinding> analyze(List<FlowEntity> flows,
                                                List<AggregateEntity> aggregates,
                                                List<ModuleEntity> modules,
                                                List<ProjectEntity> projects) {

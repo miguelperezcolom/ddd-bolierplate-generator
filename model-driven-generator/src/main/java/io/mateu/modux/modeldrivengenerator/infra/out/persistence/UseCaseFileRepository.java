@@ -58,6 +58,9 @@ public class UseCaseFileRepository implements UseCaseRepository {
 
     @Override
     public UseCase save(UseCase entity) {
+        // decisionIds are not modeled in the domain UseCase yet — carry them over from the stored
+        // entity so a UI save never wipes what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), UseCaseEntity.class).orElse(null);
         repository.save(new UseCaseEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -68,7 +71,7 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getExposedAsUi().value(),
                 entity.getInputModelId() != null ? entity.getInputModelId().id() : null,
                 entity.getOutputModelId() != null ? entity.getOutputModelId().id() : null,
-                toStepEntities(entity.getSteps()),
+                toStepEntities(entity.getSteps(), existing),
                 entity.getAllowedRoles(),
                 entity.getAllowedScopes(),
                 entity.getApiVersion() != null ? entity.getApiVersion().version() : null,
@@ -88,7 +91,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getIdempotencyKeyField(),
                 entity.isRateLimitEnabled(),
                 entity.getRateLimitRequestsPerSecond(),
-                entity.getGrpcServiceName(), entity.getGrpcMethodName()));
+                entity.getGrpcServiceName(), entity.getGrpcMethodName(),
+                existing != null ? existing.decisionIds() : List.of()));
         return entity;
     }
 
@@ -107,13 +111,21 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 .toList();
     }
 
-    private List<UseCaseStepEntity> toStepEntities(List<UseCaseStep> steps) {
+    private List<UseCaseStepEntity> toStepEntities(List<UseCaseStep> steps, UseCaseEntity existing) {
         if (steps == null) return List.of();
         return steps.stream()
-                .map(s -> new UseCaseStepEntity(s.id(), s.name(), s.type(),
-                        s.aggregateId(), s.operationId(),
-                        s.gatewayId(), s.gatewayOperationId(),
-                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                .map(s -> {
+                    // carry over per-step fields the domain does not model yet (query-service consumption)
+                    var previous = existing == null || existing.steps() == null ? null : existing.steps().stream()
+                            .filter(e -> e.id() != null && e.id().equals(s.id()))
+                            .findFirst().orElse(null);
+                    return new UseCaseStepEntity(s.id(), s.name(), s.type(),
+                            s.aggregateId(), s.operationId(),
+                            s.gatewayId(), s.gatewayOperationId(),
+                            s.domainEventId(), s.useCaseId(), s.modelMappingId(),
+                            previous != null ? previous.queryServiceId() : null,
+                            previous != null ? previous.queryOperationId() : null);
+                })
                 .toList();
     }
 }

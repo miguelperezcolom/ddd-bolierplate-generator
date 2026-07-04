@@ -75,6 +75,9 @@ public class ModuleFileRepository implements ModuleRepository {
                 entity.getBddScenarios().stream()
                         .map(s -> new BddScenarioEntity(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
                         .toList();
+        // Carry over fields the domain Module does not (yet) model, so a UI save never wipes
+        // what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), ModuleEntity.class).orElse(null);
         repository.save(new ModuleEntity(entity.getId().id(), entity.getName().name(), entity.getGitRepository(),
                 entity.getAggregateIds().stream().map(AggregateId::id).toList(),
                 entity.getEntityIds(),
@@ -103,7 +106,12 @@ public class ModuleFileRepository implements ModuleRepository {
                                 inv.getConditions() == null ? List.of() : inv.getConditions().stream()
                                         .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList()))
-                        .toList()));
+                        .toList(),
+                existing != null ? existing.subdomainType() : null,
+                existing != null ? existing.accessPolicies() : List.of(),
+                existing != null ? existing.kpis() : List.of(),
+                existing != null ? existing.decisionIds() : List.of(),
+                existing != null ? existing.description() : null));
         return entity;
     }
 

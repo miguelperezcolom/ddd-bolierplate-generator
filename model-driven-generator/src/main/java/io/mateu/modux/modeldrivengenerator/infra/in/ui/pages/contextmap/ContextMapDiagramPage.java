@@ -40,9 +40,12 @@ public class ContextMapDiagramPage implements ComponentTreeSupplier {
 
     @Override
     public Component component(HttpRequest httpRequest) {
-        var nodes = repository.findAllOfType(ModuleEntity.class).stream()
-                .map(m -> new ContextMapSvgRenderer.Node(m.id(), m.name()))
-                .toList();
+        var nodes = new java.util.ArrayList<ContextMapSvgRenderer.Node>();
+        repository.findAllOfType(ModuleEntity.class).forEach(m ->
+                nodes.add(new ContextMapSvgRenderer.Node(m.id(), m.name(), m.subdomainType(), false)));
+        repository.findAllOfType(ProjectEntity.class).forEach(p ->
+                p.externalSystems().forEach(x ->
+                        nodes.add(ContextMapSvgRenderer.Node.external(x.id(), x.name()))));
 
         var relations = repository.findAllOfType(ProjectEntity.class).stream()
                 .flatMap(p -> p.contextMap().stream())

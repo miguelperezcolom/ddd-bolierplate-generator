@@ -28,6 +28,9 @@ public class FlowFileRepository implements FlowRepository {
 
     @Override
     public Flow save(Flow entity) {
+        // decisionIds are not modeled in the domain Flow yet — carry them over from the stored
+        // entity so a UI save never wipes what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), FlowEntity.class).orElse(null);
         repository.save(new FlowEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -40,7 +43,8 @@ public class FlowFileRepository implements FlowRepository {
                 entity.getMaterializedFields(),
                 entity.getTargetUseCaseId(),
                 entity.getInputMappings(),
-                entity.getOverrides()));
+                entity.getOverrides(),
+                existing != null ? existing.decisionIds() : List.of()));
         return entity;
     }
 

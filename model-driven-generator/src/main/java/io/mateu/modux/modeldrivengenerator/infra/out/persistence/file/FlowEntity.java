@@ -17,6 +17,17 @@ public record FlowEntity(
         List<String> materializedFields,
         String targetUseCaseId,
         List<String> inputMappings,
-        List<String> overrides
+        List<String> overrides,
+        /** Architecture decisions (ADRs) this flow traces back to. */
+        List<String> decisionIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-decisionIds callers). */
+    public FlowEntity(String id, String name, String description, FlowArchetype archetype,
+                      String triggerAggregateId, String triggerEvent, String targetModuleId,
+                      String readModelName, List<String> materializedFields, String targetUseCaseId,
+                      List<String> inputMappings, List<String> overrides) {
+        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
+                readModelName, materializedFields, targetUseCaseId, inputMappings, overrides, List.of());
+    }
 }

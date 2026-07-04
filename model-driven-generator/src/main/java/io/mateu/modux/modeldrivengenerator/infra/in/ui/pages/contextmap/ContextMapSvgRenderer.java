@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 
 import java.util.ArrayList;
@@ -20,7 +21,16 @@ import java.util.Map;
  */
 public final class ContextMapSvgRenderer {
 
-    public record Node(String id, String label) {}
+    public record Node(String id, String label, SubdomainType subdomain, boolean external) {
+        /** A bounded-context node with no strategic classification. */
+        public Node(String id, String label) {
+            this(id, label, null, false);
+        }
+        /** An external-system node (drawn dashed, outside the strategic classification). */
+        public static Node external(String id, String label) {
+            return new Node(id, label, null, true);
+        }
+    }
 
     public record Relation(String sourceId, String targetId, ContextMapRelationType type) {}
 
@@ -162,15 +172,29 @@ public final class ContextMapSvgRenderer {
     private static String nodeBox(Node node, Pt p) {
         double x = p.x() - NODE_HW;
         double y = p.y() - NODE_HH;
+        String fill = node.external() ? "#f8fafc" : subdomainFill(node.subdomain());
+        String dash = node.external() ? " stroke-dasharray=\"6 4\"" : "";
+        String tip = node.label()
+                + (node.subdomain() != null ? " — " + node.subdomain().name().toLowerCase() + " subdomain" : "")
+                + (node.external() ? " — external system" : "");
         // data-module-id + pointer cursor are the hooks for click-to-open (wired via the Element's
         // event map once the frontend navigation primitive is confirmed).
         return "<g data-module-id=\"" + esc(node.id()) + "\" style=\"cursor: pointer;\">"
-                + "<title>" + esc(node.label()) + "</title>"
+                + "<title>" + esc(tip) + "</title>"
                 + "<rect x=\"" + f(x) + "\" y=\"" + f(y) + "\" width=\"" + f(NODE_HW * 2) + "\" height=\"" + f(NODE_HH * 2)
-                + "\" rx=\"8\" fill=\"#ffffff\" stroke=\"#334155\" stroke-width=\"1.5\"/>"
+                + "\" rx=\"8\" fill=\"" + fill + "\" stroke=\"#334155\" stroke-width=\"1.5\"" + dash + "/>"
                 + "<text x=\"" + f(p.x()) + "\" y=\"" + f(p.y() + 4) + "\" text-anchor=\"middle\" "
                 + "font-size=\"13\" font-family=\"sans-serif\" font-weight=\"600\" fill=\"#0f172a\">"
                 + esc(truncate(node.label())) + "</text></g>";
+    }
+
+    private static String subdomainFill(SubdomainType subdomain) {
+        if (subdomain == null) return "#ffffff";
+        return switch (subdomain) {
+            case CORE -> "#fef3c7";       // amber tint: invest here
+            case SUPPORTING -> "#e0e7ff"; // indigo tint
+            case GENERIC -> "#f1f5f9";    // slate tint: consider off-the-shelf
+        };
     }
 
     private static String labelOf(Map<String, String> labels, String id) {
@@ -202,7 +226,18 @@ public final class ContextMapSvgRenderer {
         items.add(legendRow(1, "#16a34a", true, "flow — backed by a relation"));
         items.add(legendRow(2, "#f59e0b", true, "flow — no relation (suggests a type)"));
         items.add(legendRow(3, "#d97706", true, "flow — relation points the other way"));
+        items.add(legendSwatch(4, "#fef3c7", "core subdomain"));
+        items.add(legendSwatch(5, "#e0e7ff", "supporting"));
+        items.add(legendSwatch(6, "#f1f5f9", "generic"));
+        items.add(legendSwatch(7, "#f8fafc", "external system (dashed)"));
         return "<g font-family=\"sans-serif\" font-size=\"11\" fill=\"#475569\">" + String.join("", items) + "</g>";
+    }
+
+    private static String legendSwatch(int i, String fill, String text) {
+        double y = 12 + i * 18;
+        return "<rect x=\"18\" y=\"" + f(y) + "\" width=\"22\" height=\"12\" rx=\"3\" fill=\"" + fill
+                + "\" stroke=\"#334155\" stroke-width=\"0.8\"/>"
+                + "<text x=\"50\" y=\"" + f(y + 10) + "\">" + esc(text) + "</text>";
     }
 
     private static String legendRow(int i, String color, boolean dashed, String text) {

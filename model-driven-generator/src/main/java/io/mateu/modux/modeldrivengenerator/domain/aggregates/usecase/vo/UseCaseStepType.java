@@ -8,5 +8,6 @@ public enum UseCaseStepType {
     CallGateway,
     PublishDomainEvent,
     CallUseCase,
+    CallQueryService,
     ApplyModelMapping
 }

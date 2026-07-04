@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: EasyTravelAPI
+  version: "1.0"
+paths:
+  /hotels/book:
+    post:
+      operationId: bookHotel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookHotelRequest'
+      responses:
+        '200':
+          description: booking accepted (pending)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingStatus'
+  /bookings/{bookingId}:
+    get:
+      operationId: getBooking
+      parameters:
+      - name: bookingId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: current booking status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingStatus'
+components:
+  schemas:
+    BookHotelRequest:
+      type: object
+      properties:
+        bookingReference:
+          type: string
+        rateIds:
+          type: array
+          items:
+            type: string
+        holderName:
+          type: string
+        holderEmail:
+          type: string
+    BookingStatus:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        status:
+          type: string
+        locator:
+          type: string

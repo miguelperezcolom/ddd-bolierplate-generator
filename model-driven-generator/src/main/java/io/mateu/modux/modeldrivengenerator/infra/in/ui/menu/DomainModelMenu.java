@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudOr
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.enumdefinition.EnumDefinitionCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model.ModelCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model.ModelJourneyPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
@@ -34,5 +35,8 @@ public class DomainModelMenu {
 
     @Menu
     ModelCrudOrchestrator models;
+
+    @Menu
+    ModelJourneyPage modelJourneys;
 
 }

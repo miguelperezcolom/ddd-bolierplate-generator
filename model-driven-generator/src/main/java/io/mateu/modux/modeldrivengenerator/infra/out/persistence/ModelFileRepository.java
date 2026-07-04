@@ -37,10 +37,22 @@ public class ModelFileRepository implements ModelRepository {
 
     @Override
     public Model save(Model entity) {
+        // Carry over per-field PII settings (not yet modeled in the domain Model) from the stored
+        // entity, matching by field id, so a UI save never wipes what was authored in the YAML store.
+        var existingFields = repository.findById(entity.getId().id(), ModelEntity.class)
+                .map(ModelEntity::fields)
+                .orElse(List.of());
         var fieldEntities = entity.getFields() == null ? List.<ModelFieldEntity>of() :
                 entity.getFields().stream()
-                        .map(f -> new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
-                                f.isEnum(), f.enumId(), toFieldValidationEntities(f.validations())))
+                        .map(f -> {
+                            var previous = existingFields.stream()
+                                    .filter(e -> e.id() != null && e.id().equals(f.id()))
+                                    .findFirst().orElse(null);
+                            return new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
+                                    f.isEnum(), f.enumId(), toFieldValidationEntities(f.validations()),
+                                    previous != null ? previous.piiClassification() : null,
+                                    previous != null ? previous.anonymizationStrategy() : null);
+                        })
                         .toList();
         var validationEntities = toValidationEntities(entity.getValidations());
         repository.save(new ModelEntity(

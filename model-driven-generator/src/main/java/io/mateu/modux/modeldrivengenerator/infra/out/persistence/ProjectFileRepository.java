@@ -101,6 +101,9 @@ public class ProjectFileRepository implements ProjectRepository {
 
     @Override
     public Project save(Project entity) {
+        // Carry over fields the domain Project does not (yet) model, so a UI save never wipes
+        // what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), ProjectEntity.class).orElse(null);
         repository.save(new ProjectEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -172,8 +175,16 @@ public class ProjectFileRepository implements ProjectRepository {
                         .toList(),
                 entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
                         .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
-                                r.type() != null ? r.type().name() : null, r.description()))
-                        .toList()));
+                                r.type() != null ? r.type().name() : null, r.description(),
+                                // per-relation decisionIds carry-over (not modeled in the domain yet)
+                                existing == null ? List.of() : existing.contextMap().stream()
+                                        .filter(e -> e.id() != null && e.id().equals(r.id()))
+                                        .findFirst().map(ContextMapRelationEntity::decisionIds)
+                                        .orElse(List.of())))
+                        .toList(),
+                existing != null ? existing.tenancyStrategy() : null,
+                existing != null ? existing.externalSystems() : List.of(),
+                existing != null ? existing.objective() : null));
         return entity;
     }
 

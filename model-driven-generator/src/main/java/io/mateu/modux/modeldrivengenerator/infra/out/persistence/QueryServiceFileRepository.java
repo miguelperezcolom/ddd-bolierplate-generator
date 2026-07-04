@@ -38,12 +38,16 @@ public class QueryServiceFileRepository implements QueryServiceRepository {
                         .map(o -> new QueryOperationEntity(o.id(), o.name(), o.description(),
                                 o.inputModelId(), o.outputModelId(), o.cardinality()))
                         .toList();
+        // exposedAsGrpc is not modeled in the domain QueryService yet — carry it over so a UI
+        // save never wipes what was authored in the YAML store or set by the deriver.
+        var existing = repository.findById(entity.getId().id(), QueryServiceEntity.class).orElse(null);
         repository.save(new QueryServiceEntity(
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getModuleId(),
                 entity.getDescription(),
-                operationEntities));
+                operationEntities,
+                existing != null && existing.exposedAsGrpc()));
         return entity;
     }
 
