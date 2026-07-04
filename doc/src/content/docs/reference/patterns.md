@@ -161,6 +161,88 @@ Defines how bounded contexts relate to each other. A relation goes from a **sour
 | `ANTI_CORRUPTION_LAYER` | Translation layer between two different models |
 | `SEPARATE_WAYS` | No integration — contexts evolve independently |
 
+### Subdomain classification
+
+Each module can be classified strategically — it colours the context map and drives investment advice:
+
+| Type | Meaning |
+|---|---|
+| `CORE` | Differentiating heart of the business — invest the most here |
+| `SUPPORTING` | Necessary but not differentiating — keep it simple |
+| `GENERIC` | Solved problem (auth, billing, email) — consider off-the-shelf |
+
+### External systems
+
+Systems outside your bounded contexts (channel managers, payment gateways, ERPs) are declared on the project (`externalSystems`: protocol, direction, owner, gateway). They appear as dashed nodes on the context map, give `NOTIFIES` flows a real target, and place the anti-corruption layer correctly.
+
+---
+
+## Aggregate lifecycle (state machine)
+
+Most enterprise aggregates *are* state machines (Booking: `pending → confirmed → checkedIn → checkedOut / cancelled`). Declaring `lifecycle` on the aggregate (states, initial state, transitions bound to operations, guards) makes the machine explicit: illegal transitions become domain errors, each transition can emit its event, and the UI can adapt to the current state. The linter validates coherence (unknown states, unreachable states, transitions referencing missing operations).
+
+---
+
+## Business processes
+
+A `process` declares a long-running business journey by intent — the rung above `flows`: ordered steps that are `AUTOMATED` (run a use case, with optional compensation) or `HUMAN` (a task lands on a role's worklist, optionally deadline-bounded with escalation), an end-to-end SLA, and a completion event. It desugars into a saga + trigger subscription + a task worklist read model + scheduled deadline watches. See `docs/design/process-intent-layer.md`.
+
+---
+
+## Authorization: roles and access policies
+
+Use cases carry RBAC (`allowedRoles` / `allowedScopes`). For *data-scoped* authorization — which rows a subject may see — modules declare **access policies** (ABAC-lite): a boolean expression over `subject.*` (token claims) and `resource.*` (row fields), e.g. `subject.hotelId == resource.hotelId`. This is the row-level security that enterprise apps otherwise hand-roll.
+
+---
+
+## Compliance: PII, audit, tenancy
+
+- **PII**: model fields carry a `piiClassification` (`PII`, `SENSITIVE`) and an `anonymizationStrategy` (`MASK`, `HASH`, `ERASE`, `CRYPTO_SHRED` — the event-sourcing-safe one: encrypt per subject, forget by destroying the key). The linter warns when PII crosses a context boundary through a flow.
+- **Audit**: aggregates can be marked `audited` (who/what/when trail). Tip: with event sourcing, the event log *is* the audit trail.
+- **Multi-tenancy**: the project declares a `tenancyStrategy` (`NONE`, `SHARED_SCHEMA`, `SCHEMA_PER_TENANT`, `DATABASE_PER_TENANT`) so the tenant dimension is a generation concern instead of a painful retrofit.
+
+---
+
+## KPIs
+
+Modules declare business metrics by intent: a `measure` (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) over a stream of domain events, sliced by `dimensionFields` and bucketed by a `timeGrain`. Example: occupancy per hotel per day from `CheckInCompleted` events. Non-`COUNT` measures require a `valueField` (linted).
+
+---
+
+## Decisions (ADRs) and traceability
+
+Architecture decisions are first-class: a `Decision` records what was decided, why (`rationale`), its status (`PROPOSED`, `ACCEPTED`, `DEPRECATED`, `SUPERSEDED`) and its source document. Model elements link to them through `decisionIds`, so design-doc → spec traceability lives *in* the model (referentially checked) instead of in comments. `PROPOSED` decisions are the open points of the design and surface in Model health.
+
+---
+
+## The design document, generated
+
+The HLA/design document the team receives is generated **from** the model (Organización › Design document): context and objective (`project.objective`), the ADR table, the structural view, one sequence diagram per business process, one state diagram per aggregate lifecycle (all mermaid), transversal concerns derived from the declared flags, exposed contracts, and open points. It cannot drift from the spec because it is a report of it.
+
+---
+
+## Model journeys
+
+Models are the axis of the system: one model can be an aggregate's state, an entity, a use-case command, a screen, a listing row, an API request/response or an event payload — and the system's essence is passing, enriching and **mapping** models between those stations. The *Model journeys* view shows, per model, every role it plays and the mapping edges that connect it to the next model.
+
+---
+
+## Deriving use cases (screen-first, API-first)
+
+Use cases are derived from the surfaces that need them: sketch a **page** (buttons, CRUD over an aggregate, listing) and *Derive use cases* creates the wired stubs (plus a query service for the listing); import an **OpenAPI** contract inbound and each operation becomes a REST-exposed use-case stub. Both are idempotent.
+
+---
+
+## Consuming another subdomain
+
+A use case consumes functionality — another use case or a query service — in the same or another subdomain (step types `CallUseCase` / `CallQueryService`). The transport derives from deployment topology: same service → in-process interface; modules distributed into different services → the call crosses a process boundary, which **requires an API** (the provider is exposed as gRPC — *Derive APIs* does it by convention). Reaching into a foreign aggregate directly is linted (`cross-context-data-access`): consume the owner's API or materialize a projection.
+
+---
+
+## Model health (the linter)
+
+The model validates itself before any code is generated — the core payoff of being model-driven. Two layers: referential integrity (dangling ids are errors) and a semantic rule catalog (lifecycle coherence, subscription idempotency, DLQs, projection rebuild strategies, saga compensation, orphan use cases, PII exposure, human steps without roles, unclassified subdomains…). Open **Model health** in the UI for the full report. It doubles as the feedback loop for AI-authored specs: generate → lint → fix → regenerate.
+
 ---
 
 ## Resilience patterns
