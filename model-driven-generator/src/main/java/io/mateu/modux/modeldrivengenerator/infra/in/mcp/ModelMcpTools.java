@@ -8,6 +8,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.check.Chec
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintFinding;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintSeverity;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelLintService;
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.search.SearchModelQueryService;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
@@ -45,6 +46,7 @@ public class ModelMcpTools {
     private final ModelJsonSchemaGenerator schemaGenerator;
     private final CheckModelUseCase checkModelUseCase;
     private final ModelLintService modelLintService;
+    private final SearchModelQueryService searchModelQueryService;
     private final GenerateCodeUseCase generateCodeUseCase;
     private final ApplyRecipeUseCase applyRecipeUseCase;
     private final AiCompleteCodeUseCase aiCompleteCodeUseCase;
@@ -92,8 +94,11 @@ public class ModelMcpTools {
                         obj(Map.of("type", str("Element type name as returned by list_element_types, e.g. 'aggregates'")),
                                 List.of("type"))),
                 new ToolSpec("search_elements",
-                        "Find elements of any type whose id or name contains the given text (case-insensitive).",
-                        obj(Map.of("query", str("Text to look for in element ids and names")),
+                        "Full-text search across the whole model: matches when the text appears in an "
+                                + "element's id, name, or ANY line of its YAML (descriptions, fields, "
+                                + "invariants, step intents…). Case-insensitive; returns type, id, name "
+                                + "and the matching lines, ranked id > name > content.",
+                        obj(Map.of("query", str("Text to look for anywhere in the elements")),
                                 List.of("query"))),
                 new ToolSpec("get_element",
                         "Read one element, returned as YAML exactly as it would appear in the store.",
@@ -283,20 +288,10 @@ public class ModelMcpTools {
     }
 
     private String searchElements(String query) {
-        var needle = query.toLowerCase(Locale.ROOT);
-        var matches = repository.allElements().stream()
-                .filter(e -> e instanceof Identifiable)
-                .filter(e -> {
-                    var name = nameOf(e);
-                    return ((Identifiable) e).id().toLowerCase(Locale.ROOT).contains(needle)
-                            || (name != null && name.toLowerCase(Locale.ROOT).contains(needle));
-                })
-                .sorted(java.util.Comparator.comparing(e -> ((Identifiable) e).id()))
-                .map(e -> {
-                    var name = nameOf(e);
-                    return "- " + registry.nameFor(e.getClass()) + " " + ((Identifiable) e).id()
-                            + (name != null ? " — " + name : "");
-                })
+        var matches = searchModelQueryService.search(query).stream()
+                .map(hit -> "- " + hit.type() + " " + hit.id()
+                        + (hit.name() != null ? " — " + hit.name() : "")
+                        + (hit.snippet() != null ? ": " + hit.snippet() : ""))
                 .toList();
         return matches.isEmpty() ? "No elements match '" + query + "'."
                 : matches.size() + " match(es):\n" + String.join("\n", matches);

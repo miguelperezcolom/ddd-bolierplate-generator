@@ -144,6 +144,12 @@ class McpStdioServerTest {
         var search = call("search_elements", """
                 {"query":"reserva"}""");
         assertTrue(search.contains("reserva"), search);
+
+        // full-text: "limpieza" lives only in prose/field content, never in an id or name
+        var contentSearch = call("search_elements", """
+                {"query":"limpieza"}""");
+        assertTrue(contentSearch.toLowerCase().contains("limpieza"),
+                "content matches must show the matching line: " + contentSearch);
     }
 
     @Test

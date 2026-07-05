@@ -40,7 +40,7 @@ claude mcp add modux -- java -jar model-driven-generator.jar --modux.mcp --modux
 | `bootstrap_project` | Step 1 in one call: project + service + modules, wired, from the user's description |
 | `list_element_types` | Every element type in the model (aggregates, useCases, flows…) with counts |
 | `list_elements` | The elements of one type (id and name) |
-| `search_elements` | Find elements of any type by id/name substring |
+| `search_elements` | Full-text search: matches id, name or any line of the element's YAML (descriptions, fields, invariants…), returning the matching lines |
 | `get_element` | Read one element as YAML, exactly as stored |
 | `get_element_schema` | The JSON schema of one element type — the contract for `upsert_element` |
 | `upsert_element` | Create or update an element and persist; returns the dangling references it introduces |
