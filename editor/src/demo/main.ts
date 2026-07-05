@@ -96,6 +96,29 @@ function applyCommand(command: ModuxCommand): void {
       if (process) process.steps = process.steps.filter((s) => s.id !== command.id);
       break;
     }
+    case 'move-process-step': {
+      const process = (model.processes ?? []).find((p) => p.id === command.processId);
+      const step = process?.steps.find((s) => s.id === command.id);
+      if (process && step) {
+        process.steps = process.steps.filter((s) => s.id !== command.id);
+        const index = command.afterStepId
+          ? process.steps.findIndex((s) => s.id === command.afterStepId) + 1
+          : 0;
+        process.steps.splice(index, 0, step);
+      }
+      break;
+    }
+    case 'update-process-step': {
+      const step = (model.processes ?? [])
+        .find((p) => p.id === command.processId)
+        ?.steps.find((s) => s.id === command.id);
+      if (step) {
+        step.roleId = command.roleId;
+        step.deadline = command.deadline;
+        step.compensationUseCaseId = command.compensationUseCaseId;
+      }
+      break;
+    }
     case 'rename-element': {
       const list =
         command.type === 'module' ? model.modules

@@ -204,6 +204,8 @@ public class EditorApiController {
             case "remove-process" -> removeProcess(command);
             case "add-process-step" -> addProcessStep(command);
             case "remove-process-step" -> removeProcessStep(command);
+            case "move-process-step" -> moveProcessStep(command);
+            case "update-process-step" -> updateProcessStep(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -280,6 +282,38 @@ public class EditorApiController {
                         "Proceso desconocido: " + command.processId()));
         var steps = process.steps().stream().filter(s -> !s.id().equals(command.id())).toList();
         repository.save(withSteps(process, steps));
+    }
+
+    /** Reposition a step: afterStepId null moves it to the front. */
+    private void moveProcessStep(EditorCommand command) {
+        var process = repository.findById(command.processId(), ProcessEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Proceso desconocido: " + command.processId()));
+        var step = process.steps().stream()
+                .filter(s -> s.id().equals(command.id()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Paso desconocido: " + command.id()));
+        var steps = new ArrayList<>(process.steps().stream()
+                .filter(s -> !s.id().equals(command.id()))
+                .toList());
+        var index = command.afterStepId() == null ? 0 : indexAfter(steps, command.afterStepId());
+        steps.add(index, step);
+        repository.save(withSteps(process, steps));
+    }
+
+    /** Replaces roleId, deadline and compensationUseCaseId wholesale (null clears). */
+    private void updateProcessStep(EditorCommand command) {
+        var process = repository.findById(command.processId(), ProcessEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Proceso desconocido: " + command.processId()));
+        repository.save(withSteps(process, process.steps().stream()
+                .map(s -> s.id().equals(command.id())
+                        ? new ProcessStepEntity(s.id(), s.name(), s.type(), s.useCaseId(),
+                                command.roleId(), command.deadline(), s.escalationRoleId(),
+                                command.compensationUseCaseId(), s.description())
+                        : s)
+                .toList()));
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */

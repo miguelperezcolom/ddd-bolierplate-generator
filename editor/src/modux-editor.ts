@@ -31,6 +31,20 @@ const VIEWS: { id: ViewId; label: string; ready: boolean }[] = [
 
 const SUBDOMAIN_TYPES: SubdomainType[] = ['CORE', 'SUPPORTING', 'GENERIC'];
 
+/**
+ * Undo/redo operate on edit operations: model commands (sent to the host) plus
+ * node moves (applied locally to the layout). One stack entry can bundle both —
+ * e.g. dragging a step to reorder it undoes position AND order together.
+ */
+type MoveNodeOp = {
+  kind: 'move-node';
+  view: ViewId;
+  id: string;
+  /** Position to restore; null removes the entry (back to the default layout). */
+  pos: { x: number; y: number } | null;
+};
+type EditOp = ModuxCommand | MoveNodeOp;
+
 const slug = (name: string) =>
   name
     .toLowerCase()
@@ -97,11 +111,14 @@ export class ModuxEditor extends LitElement {
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
   @state() private _newTargetId = '';
-  @state() private _undoStack: ModuxCommand[][] = [];
-  @state() private _redoStack: ModuxCommand[][] = [];
+  @state() private _undoStack: EditOp[][] = [];
+  @state() private _redoStack: EditOp[][] = [];
   @state() private _newStepName = '';
   @state() private _newStepType: 'AUTOMATED' | 'HUMAN' = 'AUTOMATED';
   @state() private _newStepRole = '';
+  @state() private _editStepRole = '';
+  @state() private _editStepDeadline = '';
+  @state() private _editStepComp = '';
 
   static styles = css`
     :host {
@@ -197,15 +214,45 @@ export class ModuxEditor extends LitElement {
   private command(command: ModuxCommand, pushUndo = true): void {
     if (pushUndo) {
       const inverse = this.inverseOf(command);
-      if (inverse) this._undoStack = [...this._undoStack.slice(-19), inverse];
-      this._redoStack = []; // a fresh user action invalidates the redo branch
+      if (inverse) this.pushUndoEntry(inverse);
     }
     this.emit('modux-command', { command });
   }
 
-  /** Inverses of a command list, computed against the current model, in reverse order. */
-  private inversesOf(commands: ModuxCommand[]): ModuxCommand[] {
-    return [...commands].reverse().flatMap((cmd) => this.inverseOf(cmd) ?? []);
+  private pushUndoEntry(ops: EditOp[]): void {
+    this._undoStack = [...this._undoStack.slice(-19), ops];
+    this._redoStack = []; // a fresh user action invalidates the redo branch
+  }
+
+  /** Inverses of an operation list, computed against the current state, in reverse order. */
+  private inversesOf(ops: EditOp[]): EditOp[] {
+    return [...ops].reverse().flatMap((op): EditOp[] => {
+      if (op.kind === 'move-node') {
+        return [
+          {
+            kind: 'move-node',
+            view: op.view,
+            id: op.id,
+            pos: this.layout[op.view]?.[op.id] ?? null,
+          } satisfies MoveNodeOp,
+        ];
+      }
+      return this.inverseOf(op) ?? [];
+    });
+  }
+
+  private applyOps(ops: EditOp[]): void {
+    for (const op of ops) {
+      if (op.kind === 'move-node') {
+        const viewLayout = { ...(this.layout[op.view] ?? {}) };
+        if (op.pos) viewLayout[op.id] = op.pos;
+        else delete viewLayout[op.id];
+        this.layout = { ...this.layout, [op.view]: viewLayout };
+        this.emit('layout-changed', { layout: this.layout });
+      } else {
+        this.command(op, false);
+      }
+    }
   }
 
   /**
@@ -305,6 +352,34 @@ export class ModuxEditor extends LitElement {
           },
         ];
       }
+      case 'move-process-step': {
+        const process = (this.model.processes ?? []).find((p) => p.id === c.processId);
+        const index = process?.steps.findIndex((s) => s.id === c.id) ?? -1;
+        if (!process || index < 0) return null;
+        return [
+          {
+            kind: 'move-process-step',
+            processId: c.processId,
+            id: c.id,
+            afterStepId: index > 0 ? process.steps[index - 1].id : undefined,
+          },
+        ];
+      }
+      case 'update-process-step': {
+        const process = (this.model.processes ?? []).find((p) => p.id === c.processId);
+        const step = process?.steps.find((s) => s.id === c.id);
+        if (!step) return null;
+        return [
+          {
+            kind: 'update-process-step',
+            processId: c.processId,
+            id: c.id,
+            roleId: step.roleId,
+            deadline: step.deadline,
+            compensationUseCaseId: step.compensationUseCaseId,
+          },
+        ];
+      }
       case 'remove-process': {
         const p = (this.model.processes ?? []).find((x) => x.id === c.id);
         return p
@@ -330,25 +405,57 @@ export class ModuxEditor extends LitElement {
     if (!inverse) return;
     this._undoStack = this._undoStack.slice(0, -1);
     this._redoStack = [...this._redoStack.slice(-19), this.inversesOf(inverse)];
-    for (const cmd of inverse) this.command(cmd, false);
+    this.applyOps(inverse);
   }
 
   private redo(): void {
-    const commands = this._redoStack[this._redoStack.length - 1];
-    if (!commands) return;
+    const ops = this._redoStack[this._redoStack.length - 1];
+    if (!ops) return;
     this._redoStack = this._redoStack.slice(0, -1);
-    this._undoStack = [...this._undoStack.slice(-19), this.inversesOf(commands)];
-    for (const cmd of commands) this.command(cmd, false);
+    this._undoStack = [...this._undoStack.slice(-19), this.inversesOf(ops)];
+    this.applyOps(ops);
   }
 
   private onNodeMoved(e: CustomEvent): void {
     const { id, x, y } = e.detail;
+    const view = this._view;
+    const previous = this.layout[view]?.[id] ?? null;
     const next: EditorLayout = {
       ...this.layout,
-      [this._view]: { ...(this.layout[this._view] ?? {}), [id]: { x, y } },
+      [view]: { ...(this.layout[view] ?? {}), [id]: { x, y } },
     };
     this.layout = next;
     this.emit('layout-changed', { layout: next });
+    const inverseOps: EditOp[] = [{ kind: 'move-node', view, id, pos: previous }];
+    // Dragging a step across its siblings also reorders the process.
+    if (view === 'processes') {
+      const reorder = this.stepReorderCommand(id);
+      if (reorder) {
+        const inverse = this.inverseOf(reorder);
+        if (inverse) inverseOps.unshift(...inverse);
+        this.command(reorder, false);
+      }
+    }
+    this.pushUndoEntry(inverseOps);
+  }
+
+  /** Order the owner's steps by their effective x; a changed order becomes a move command. */
+  private stepReorderCommand(stepId: string): ModuxCommand | null {
+    const owner = this.owningProcessOf(stepId);
+    if (!owner) return null;
+    const scene = processesScene(this.model, this.layout['processes'] ?? {});
+    const xOf = new Map(scene.nodes.map((n) => [n.id, n.x]));
+    const sorted = [...owner.steps].sort(
+      (a, b) => (xOf.get(a.id) ?? 0) - (xOf.get(b.id) ?? 0),
+    );
+    if (sorted.every((s, i) => s.id === owner.steps[i].id)) return null;
+    const index = sorted.findIndex((s) => s.id === stepId);
+    return {
+      kind: 'move-process-step',
+      processId: owner.id,
+      id: stepId,
+      afterStepId: index > 0 ? sorted[index - 1].id : undefined,
+    };
   }
 
   private onConnectRequested(e: CustomEvent): void {
@@ -442,7 +549,27 @@ export class ModuxEditor extends LitElement {
 
   private onElementSelected(e: CustomEvent): void {
     this._selectedId = e.detail.id;
+    if (e.detail.kind === 'process-step') {
+      const step = this.owningProcessOf(e.detail.id)?.steps.find((s) => s.id === e.detail.id);
+      this._editStepRole = step?.roleId ?? '';
+      this._editStepDeadline = step?.deadline ?? '';
+      this._editStepComp = step?.compensationUseCaseId ?? '';
+    }
     this.emit('modux-select', { elementType: e.detail.kind, id: e.detail.id });
+  }
+
+  private applyStepEdit(): void {
+    const stepId = this._selectedId;
+    const owner = stepId ? this.owningProcessOf(stepId) : undefined;
+    if (!stepId || !owner) return;
+    this.command({
+      kind: 'update-process-step',
+      processId: owner.id,
+      id: stepId,
+      roleId: this._editStepRole.trim() || undefined,
+      deadline: this._editStepDeadline.trim() || undefined,
+      compensationUseCaseId: this._editStepComp.trim() || undefined,
+    });
   }
 
   private onElementActivated(e: CustomEvent): void {
@@ -656,6 +783,38 @@ export class ModuxEditor extends LitElement {
               <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
                 ＋ Paso
               </button>
+              ${this.owningProcessOf(this._selectedId)
+                ? html`
+                    <span class="sep"></span>
+                    <input
+                      class="new-name evt"
+                      placeholder="Rol…"
+                      title="Rol del paso seleccionado (HUMAN)"
+                      .value=${this._editStepRole}
+                      @input=${(e: Event) =>
+                        (this._editStepRole = (e.target as HTMLInputElement).value)}
+                    />
+                    <input
+                      class="new-name evt"
+                      placeholder="Deadline (PT4H)…"
+                      title="Deadline ISO-8601 del paso seleccionado"
+                      .value=${this._editStepDeadline}
+                      @input=${(e: Event) =>
+                        (this._editStepDeadline = (e.target as HTMLInputElement).value)}
+                    />
+                    <input
+                      class="new-name evt"
+                      placeholder="Compensación…"
+                      title="Use case de compensación del paso seleccionado"
+                      .value=${this._editStepComp}
+                      @input=${(e: Event) =>
+                        (this._editStepComp = (e.target as HTMLInputElement).value)}
+                    />
+                    <button class="tab" title="Aplicar cambios al paso" @click=${this.applyStepEdit}>
+                      ✓ Aplicar
+                    </button>
+                  `
+                : ''}
             `
           : ''}
         <button

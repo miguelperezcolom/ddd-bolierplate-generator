@@ -80,7 +80,23 @@ export type ModuxCommand =
       /** Insert after this step; append when omitted. */
       afterStepId?: string;
     }
-  | { kind: 'remove-process-step'; processId: string; id: string };
+  | { kind: 'remove-process-step'; processId: string; id: string }
+  | {
+      /** Reposition a step; afterStepId omitted moves it to the front. */
+      kind: 'move-process-step';
+      processId: string;
+      id: string;
+      afterStepId?: string;
+    }
+  | {
+      /** Replaces roleId/deadline/compensationUseCaseId wholesale (omitted clears). */
+      kind: 'update-process-step';
+      processId: string;
+      id: string;
+      roleId?: string;
+      deadline?: string;
+      compensationUseCaseId?: string;
+    };
 
 export interface ModuxSelection {
   elementType: string;
