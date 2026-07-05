@@ -45,8 +45,24 @@ class McpAuthoringPathE2ETest {
         var output = dir.resolve("generated");
         repository.loadFrom(store.toAbsolutePath().toString());
 
-        // ── paso 1: topología ────────────────────────────────────────────────
-        var projectFeedback = call("upsert_element", """
+        // ── paso 1: topología en una llamada (la entrada natural desde una descripción NL) ──
+        var bootstrap = call("bootstrap_project", """
+                {"projectId":"club","name":"Club de Pádel","packageName":"com.club.padel",
+                 "outputPath":"%s","serviceId":"svc-club",
+                 "objective":"Reservas de pistas de pádel: franjas de 90 minutos, sin solapes.",
+                 "modules":[
+                  {"id":"mod-reservas","name":"Reservas","subdomainType":"CORE",
+                   "description":"Reserva de pistas: valida solapes y emite eventos de ocupación.",
+                   "aggregateIds":["reserva-pista"],"domainEventIds":["ev-reserva-creada"],
+                   "useCaseIds":["uc-reservar"]},
+                  {"id":"mod-panel","name":"Panel","subdomainType":"SUPPORTING",
+                   "description":"Ocupación del día para la recepción."}]}"""
+                .formatted(output.toAbsolutePath()));
+        assertTrue(bootstrap.contains("bootstrapped"), bootstrap);
+        assertTrue(bootstrap.contains("Next (the authoring path)"), "bootstrap should teach the next step");
+
+        // the cross-context relation is declared on the project (the lint message points here)
+        call("upsert_element", """
                 {"type":"projects","element":{"id":"club","name":"Club de Pádel",
                  "packageName":"com.club.padel","outputPath":"%s","serviceIds":["svc-club"],
                  "tenancyStrategy":"NONE",
@@ -54,20 +70,6 @@ class McpAuthoringPathE2ETest {
                  "contextMap":[{"id":"rel-reservas-panel","name":"Reservas publica ocupación al Panel",
                    "sourceModuleId":"mod-reservas","targetModuleId":"mod-panel","type":"OPEN_HOST_SERVICE"}]}}"""
                 .formatted(output.toAbsolutePath()));
-        // the dangling-reference feedback is the guide through the path
-        assertTrue(projectFeedback.contains("missing id 'svc-club'"), projectFeedback);
-
-        call("upsert_element", """
-                {"type":"services","element":{"id":"svc-club","name":"club",
-                 "moduleIds":["mod-reservas","mod-panel"]}}""");
-        call("upsert_element", """
-                {"type":"modules","element":{"id":"mod-reservas","name":"Reservas","subdomainType":"CORE",
-                 "description":"Reserva de pistas: valida solapes y emite eventos de ocupación.",
-                 "aggregateIds":["reserva-pista"],"domainEventIds":["ev-reserva-creada"],
-                 "useCaseIds":["uc-reservar"]}}""");
-        call("upsert_element", """
-                {"type":"modules","element":{"id":"mod-panel","name":"Panel","subdomainType":"SUPPORTING",
-                 "description":"Ocupación del día para la recepción."}}""");
 
         // ── paso 2: modelos primero; el agregado, porque hay invariante y lifecycle ──
         call("upsert_element", """

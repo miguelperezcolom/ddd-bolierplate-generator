@@ -37,6 +37,7 @@ claude mcp add modux -- java -jar model-driven-generator.jar --modux.mcp --modux
 
 | Tool | What it does |
 |---|---|
+| `bootstrap_project` | Step 1 in one call: project + service + modules, wired, from the user's description |
 | `list_element_types` | Every element type in the model (aggregates, useCases, flows…) with counts |
 | `list_elements` | The elements of one type (id and name) |
 | `search_elements` | Find elements of any type by id/name substring |
@@ -46,19 +47,21 @@ claude mcp add modux -- java -jar model-driven-generator.jar --modux.mcp --modux
 | `delete_element` | Delete an element and persist; returns the references that become dangling |
 | `check_model` | Referential-integrity check over the whole model |
 | `lint_model` | The full linter: integrity plus the architectural rule catalog, filterable by severity |
+| `list_recipes` / `apply_recipe` | [Starter recipes](/manual/recipes/): emit intent-layer elements instead of structure |
 | `generate_code` | Generate a project's code, like `--modux.generate` |
+| `propose_implementations` | Run [AI completion](/manual/ai-completion/) over the two-zone hooks (needs `ANTHROPIC_API_KEY` in the server's env) |
 
 The tools are generic over the element-type catalog, so new element types in the metamodel are exposed automatically.
 
 ## The authoring loop
 
-The design intent is a tight loop the agent can run without leaving the conversation:
+The design intent is a tight loop the agent can run without leaving the conversation, following [the authoring path](/getting-started/authoring-path/):
 
-1. `list_element_types` / `search_elements` — orient in the existing model.
-2. `get_element_schema` — learn the exact shape before writing a new element type.
-3. `upsert_element` — write; the response includes any dangling references introduced, so the agent fixes them immediately.
-4. `lint_model` — after a batch of edits, run the full rule catalog (lifecycle coherence, idempotency, DLQ, PII, tenancy…).
-5. `generate_code` — once the model is clean.
+1. `bootstrap_project` — from the user's natural-language description, one call creates the topology (project + service + modules); on an existing model, orient first with `list_element_types` / `search_elements`.
+2. `get_element_schema` — learn the exact shape before writing a new element type (`upsert_element` rejects unknown fields with a *did-you-mean* suggestion).
+3. `upsert_element` / `apply_recipe` — write; upserts return the dangling references introduced, and recipes emit intent-layer elements instead of structure.
+4. `lint_model` — after a batch of edits, run the full rule catalog (lifecycle coherence, idempotency, DLQ, PII, tenancy…); the findings are the next-step to-do list.
+5. `generate_code` — once the model is clean — and optionally `propose_implementations`, so the AI drafts the two-zone hook bodies (from their natural-language intents) for the developer to review.
 
 Because `upsert_element` rejects unknown fields and points back at `get_element_schema`, typos and hallucinated fields fail fast instead of landing silently in the store.
 

@@ -67,8 +67,9 @@ class McpStdioServerTest {
         var toolsList = mapper.readTree(lines[1]);
         var toolNames = new java.util.ArrayList<String>();
         toolsList.at("/result/tools").forEach(t -> toolNames.add(t.get("name").asText()));
-        assertTrue(toolNames.containsAll(java.util.List.of("list_element_types", "get_element_schema",
-                "upsert_element", "delete_element", "lint_model", "check_model", "generate_code")),
+        assertTrue(toolNames.containsAll(java.util.List.of("bootstrap_project", "list_element_types",
+                "get_element_schema", "upsert_element", "delete_element", "lint_model", "check_model",
+                "list_recipes", "apply_recipe", "propose_implementations", "generate_code")),
                 "tool catalog incomplete: " + toolNames);
     }
 

@@ -28,24 +28,27 @@ public class AiCompleteCodeUseCase {
             The code will be inserted directly into a method body or a file.
             """;
 
+    /** Returns the paths of the AI-PROPOSALS.md files written (one per module). */
     @SneakyThrows
-    public void handle(AiCompleteCodeCommand command) {
+    public List<Path> handle(AiCompleteCodeCommand command) {
         var project = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
         var outputPath = command.outputPath() != null && !command.outputPath().isBlank()
                 ? command.outputPath()
                 : project.outputPath();
 
+        var written = new ArrayList<Path>();
         for (var serviceId : project.serviceIds()) {
             var service = repository.findById(serviceId, ServiceEntity.class).orElseThrow();
             for (var moduleId : service.moduleIds()) {
                 var module = repository.findById(moduleId, ModuleEntity.class).orElseThrow();
-                processModule(command, project, service, module, outputPath);
+                written.add(processModule(command, project, service, module, outputPath));
             }
         }
+        return written;
     }
 
     @SneakyThrows
-    private void processModule(AiCompleteCodeCommand command,
+    private Path processModule(AiCompleteCodeCommand command,
                                ProjectEntity project, ServiceEntity service,
                                ModuleEntity module, String outputPath) {
         var slug = moduleSlug(module.name());
@@ -65,9 +68,10 @@ public class AiCompleteCodeUseCase {
 
         var proposalDir = Path.of(outputPath, "proposals", slug);
         Files.createDirectories(proposalDir);
-        Files.writeString(proposalDir.resolve("AI-PROPOSALS.md"),
-                String.join("\n", proposals));
-        log.info("AI proposals written to {}", proposalDir.resolve("AI-PROPOSALS.md").toAbsolutePath());
+        var proposalFile = proposalDir.resolve("AI-PROPOSALS.md");
+        Files.writeString(proposalFile, String.join("\n", proposals));
+        log.info("AI proposals written to {}", proposalFile.toAbsolutePath());
+        return proposalFile;
     }
 
     private void processAggregate(AiCompleteCodeCommand command,

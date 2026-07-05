@@ -11,6 +11,8 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintS
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelLintService;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.recipes.ApplyRecipeUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
@@ -45,6 +47,7 @@ public class ModelMcpTools {
     private final ModelLintService modelLintService;
     private final GenerateCodeUseCase generateCodeUseCase;
     private final ApplyRecipeUseCase applyRecipeUseCase;
+    private final AiCompleteCodeUseCase aiCompleteCodeUseCase;
 
     private final ObjectMapper json = new ObjectMapper();
     private final YAMLMapper yaml = displayYaml();
@@ -55,6 +58,30 @@ public class ModelMcpTools {
 
     public List<ToolSpec> tools() {
         return List.of(
+                new ToolSpec("bootstrap_project",
+                        "Step 1 of the authoring path in ONE call: create a project, its service and its "
+                                + "modules, wired together. Extract the names and the objective from the user's "
+                                + "natural-language description; then continue with models (step 2) — the linter "
+                                + "guides from there.",
+                        obj(Map.of(
+                                        "projectId", str("Id of the new project (kebab-case)"),
+                                        "name", str("Project display name"),
+                                        "packageName", str("Java base package, e.g. com.acme.booking"),
+                                        "outputPath", str("Directory where the code will be generated"),
+                                        "objective", str("The system's objective, in prose (from the user's description; feeds the HLA)"),
+                                        "serviceId", str("Id of the service (defaults to <projectId>-svc)"),
+                                        "modules", Map.of(
+                                                "type", "array",
+                                                "description", "The bounded contexts, from the description",
+                                                "items", obj(Map.of(
+                                                                "id", str("Module id (kebab-case)"),
+                                                                "name", str("Module name"),
+                                                                "description", str("Responsibility of the module, in prose"),
+                                                                "subdomainType", Map.of("type", "string",
+                                                                        "enum", List.of("CORE", "SUPPORTING", "GENERIC"),
+                                                                        "description", "Strategic classification")),
+                                                        List.of("id", "name")))),
+                                List.of("projectId", "name", "packageName", "outputPath", "modules"))),
                 new ToolSpec("list_element_types",
                         "List every element type in the modux model (aggregates, useCases, flows, processes…) "
                                 + "with the number of elements currently in the store. Start here to see the model's shape.",
@@ -123,6 +150,17 @@ public class ModelMcpTools {
                                                 "description", "Recipe parameters as string key/values",
                                                 "additionalProperties", Map.of("type", "string"))),
                                 List.of("recipe", "params"))),
+                new ToolSpec("propose_implementations",
+                        "Run AI completion (like `mvn modux:ai-complete`): for every two-zone hook whose spec "
+                                + "lives in the model — invariants, operation preconditions, CUSTOM operations and "
+                                + "Custom steps with a natural-language intent, BDD scenarios — an AI proposes the "
+                                + "implementation into AI-PROPOSALS.md files for the developer to review. Requires "
+                                + "ANTHROPIC_API_KEY in the server's environment. Generate the code first.",
+                        obj(Map.of(
+                                        "projectId", str("Id of the project whose hooks to complete"),
+                                        "model", str("Claude model id (default claude-haiku-4-5-20251001)"),
+                                        "outputPath", str("Optional output directory; defaults to the project's stored outputPath")),
+                                List.of("projectId"))),
                 new ToolSpec("generate_code",
                         "Generate the code for a project from the current model. Equivalent to the CLI "
                                 + "--modux.generate. Lint first: an inconsistent model may generate broken output.",
@@ -135,6 +173,7 @@ public class ModelMcpTools {
     /** Dispatch a tool call; the returned text is the MCP text content. Throws on tool errors. */
     public String call(String tool, JsonNode args) throws Exception {
         return switch (tool) {
+            case "bootstrap_project" -> bootstrapProject(args);
             case "list_element_types" -> listElementTypes();
             case "list_elements" -> listElements(requireText(args, "type"));
             case "search_elements" -> searchElements(requireText(args, "query"));
@@ -146,10 +185,64 @@ public class ModelMcpTools {
             case "lint_model" -> lintModel(args != null && args.hasNonNull("severity") ? args.get("severity").asText() : null);
             case "list_recipes" -> listRecipes();
             case "apply_recipe" -> applyRecipe(requireText(args, "recipe"), args.get("params"));
+            case "propose_implementations" -> proposeImplementations(requireText(args, "projectId"),
+                    args.hasNonNull("model") ? args.get("model").asText() : null,
+                    args.hasNonNull("outputPath") ? args.get("outputPath").asText() : null);
             case "generate_code" -> generateCode(requireText(args, "projectId"),
                     args.hasNonNull("outputPath") ? args.get("outputPath").asText() : null);
             default -> throw new IllegalArgumentException("Unknown tool '" + tool + "'");
         };
+    }
+
+    /** One-call topology: the deterministic landing point for a natural-language description. */
+    private String bootstrapProject(JsonNode args) throws Exception {
+        var projectId = requireText(args, "projectId");
+        var serviceId = args.hasNonNull("serviceId") && !args.get("serviceId").asText().isBlank()
+                ? args.get("serviceId").asText() : projectId + "-svc";
+        var modules = args.get("modules");
+        if (modules == null || !modules.isArray() || modules.isEmpty()) {
+            throw new IllegalArgumentException("'modules' must be a non-empty array — carve the description"
+                    + " into at least one bounded context.");
+        }
+
+        var moduleIds = new java.util.ArrayList<String>();
+        for (var module : modules) {
+            if (!module.hasNonNull("id") || module.get("id").asText().isBlank()) {
+                throw new IllegalArgumentException("Every module needs an id.");
+            }
+            moduleIds.add(module.get("id").asText());
+        }
+
+        // build the three layers as JSON so this stays generic over the entities
+        var project = json.createObjectNode();
+        project.put("id", projectId);
+        project.put("name", requireText(args, "name"));
+        project.put("packageName", requireText(args, "packageName"));
+        project.put("outputPath", requireText(args, "outputPath"));
+        if (args.hasNonNull("objective")) {
+            project.put("objective", args.get("objective").asText());
+        }
+        project.putArray("serviceIds").add(serviceId);
+
+        var service = json.createObjectNode();
+        service.put("id", serviceId);
+        // the service name drives the generated directory layout — default to the project id
+        service.put("name", projectId);
+        var serviceModules = service.putArray("moduleIds");
+        moduleIds.forEach(serviceModules::add);
+
+        // reuse upsert so uniqueness/shape checks and persistence behave identically
+        upsertElement("projects", project);
+        upsertElement("services", service);
+        for (var module : modules) {
+            upsertElement("modules", module);
+        }
+
+        return "Project '" + projectId + "' bootstrapped: service '" + serviceId + "' with module(s) "
+                + String.join(", ", moduleIds) + ". Store persisted.\n"
+                + "Next (the authoring path): create the models of each module (step 2); add an aggregate "
+                + "only where there are invariants or a lifecycle to protect; then relations as intent "
+                + "(apply_recipe / flows) and run lint_model — its findings are the to-do list.";
     }
 
     private String listElementTypes() {
@@ -301,6 +394,18 @@ public class ModelMcpTools {
         var created = applyRecipeUseCase.handle(recipeId, params);
         return "Recipe '" + recipeId + "' applied; created: " + String.join(", ", created)
                 + ". Run lint_model to see what is still open (roles, use cases…).";
+    }
+
+    private String proposeImplementations(String projectId, String model, String outputPath) {
+        var apiKey = System.getenv("ANTHROPIC_API_KEY");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalArgumentException("ANTHROPIC_API_KEY is not set in the MCP server's environment."
+                    + " Add it to the server configuration (env) and reconnect.");
+        }
+        var written = aiCompleteCodeUseCase.handle(new AiCompleteCodeCommand(projectId, outputPath, null,
+                apiKey, model != null && !model.isBlank() ? model : "claude-haiku-4-5-20251001"));
+        return "AI proposals written (review each before committing — the developer has the last word):\n"
+                + written.stream().map(p -> "- " + p.toAbsolutePath()).collect(Collectors.joining("\n"));
     }
 
     private String generateCode(String projectId, String outputPath) {
