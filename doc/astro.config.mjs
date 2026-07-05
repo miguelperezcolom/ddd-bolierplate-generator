@@ -31,6 +31,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'manual/overview' },
 						{ label: 'Workspace', slug: 'manual/workspace' },
+						{ label: 'Graphical Editor', slug: 'manual/graphical-editor' },
 						{ label: 'Projects', slug: 'manual/projects' },
 						{ label: 'Services', slug: 'manual/services' },
 						{ label: 'Modules', slug: 'manual/modules' },

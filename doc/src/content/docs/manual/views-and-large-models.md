@@ -108,3 +108,11 @@ disabled (read-only) so a slice can't clobber the rest of the model on disk.
 Views sit **on top of** the project → service → module → aggregate hierarchy; they don't replace it. The
 hierarchy says where an element lives and who owns it; a view is a curated cross-cut (a saga spanning
 three modules, a journey crossing bounded contexts).
+
+## Creating curated views from the canvas
+
+The [Graphical Editor](/manual/graphical-editor/) can create CURATED views directly:
+shift+click (or rubber-band) a set of elements on any diagram and press **⊞ Vista** —
+the selection becomes the view's members. The editor's **Vista:** selector then scopes
+the canvas to any curated view, which doubles as a quick visual check of what a slice
+contains before generating it.
