@@ -103,6 +103,8 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
 export class ModuxCanvas extends LitElement {
   @property({ attribute: false }) scene: Scene = { nodes: [], edges: [] };
   @property({ attribute: false }) selectedId: string | null = null;
+  /** Additional highlighted nodes (multi-selection, host-owned). */
+  @property({ attribute: false }) selectedIds: string[] = [];
   /** Whether the connect gesture (drag from node handles) is available. */
   @property({ type: Boolean }) connectable = true;
   /** Manual bend points per edge id (host-owned geometry, like node positions). */
@@ -115,6 +117,7 @@ export class ModuxCanvas extends LitElement {
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
+  @state() private _rubber: { a: Point; b: Point } | null = null;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
   private _fitted = false;
@@ -249,6 +252,7 @@ export class ModuxCanvas extends LitElement {
         if (target.closest('[data-node-id]') || target.closest('[data-handle]')) {
           return event.type === 'wheel' || this._spaceDown;
         }
+        if ((event as MouseEvent).shiftKey && event.type !== 'wheel') return false;
         return event.type === 'wheel' || (event as MouseEvent).button === 0;
       })
       .on('zoom', (event) => {
@@ -340,6 +344,8 @@ export class ModuxCanvas extends LitElement {
       window.removeEventListener('pointerup', onUp);
       if (moved && this._dragPos) {
         this.emit('node-moved', { id: node.id, x: this._dragPos.x, y: this._dragPos.y });
+      } else if (e.shiftKey) {
+        this.emit('element-multi-toggled', { id: node.id, kind: node.kind });
       } else {
         this.emit('element-selected', { elementType: 'node', id: node.id, kind: node.kind });
       }
@@ -544,7 +550,7 @@ export class ModuxCanvas extends LitElement {
 
   private renderNode(node: SceneNode): TemplateResult | typeof svg.prototype {
     const { x, y } = this.nodePos(node);
-    const selected = this.selectedId === node.id;
+    const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
     const hovered = this._hoverNodeId === node.id;
     const hw = node.w / 2;
     const hh = node.h / 2;
@@ -618,6 +624,48 @@ export class ModuxCanvas extends LitElement {
     return svg`
       <line x1=${a.x} y1=${a.y} x2=${this._pendingLink.x} y2=${this._pendingLink.y}
             stroke="#2563eb" stroke-width="2" stroke-dasharray="4 4" pointer-events="none"></line>
+    `;
+  }
+
+  // ---- rubber-band multi-selection ------------------------------------------
+
+  private startRubberBand(e: PointerEvent): void {
+    const origin = this.toScene(e);
+    this._rubber = { a: origin, b: origin };
+    const onMove = (ev: PointerEvent) => {
+      if (this._rubber) this._rubber = { a: origin, b: this.toScene(ev) };
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (this._rubber) {
+        const { a, b } = this._rubber;
+        const minX = Math.min(a.x, b.x);
+        const maxX = Math.max(a.x, b.x);
+        const minY = Math.min(a.y, b.y);
+        const maxY = Math.max(a.y, b.y);
+        const ids = this.scene.nodes
+          .filter((n) => {
+            const p = this.nodePos(n);
+            return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+          })
+          .map((n) => n.id);
+        if (ids.length) this.emit('nodes-boxed', { ids });
+      }
+      this._rubber = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  private renderRubber(): TemplateResult | typeof svg.prototype {
+    if (!this._rubber) return svg``;
+    const { a, b } = this._rubber;
+    return svg`
+      <rect x=${Math.min(a.x, b.x)} y=${Math.min(a.y, b.y)}
+            width=${Math.abs(b.x - a.x)} height=${Math.abs(b.y - a.y)}
+            fill="rgba(37, 99, 235, 0.06)" stroke="#2563eb" stroke-width="1"
+            stroke-dasharray="4 3" pointer-events="none"></rect>
     `;
   }
 
@@ -717,7 +765,10 @@ export class ModuxCanvas extends LitElement {
         class="main ${this._pendingLink ? 'linking' : ''}"
         @pointerdown=${(e: PointerEvent) => {
           const target = e.target as Element;
-          if (!target.closest('[data-node-id]') && !target.closest('[data-edge-id]')) {
+          if (target.closest('[data-node-id]') || target.closest('[data-edge-id]')) return;
+          if (e.shiftKey) {
+            this.startRubberBand(e);
+          } else {
             this.emit('selection-cleared');
           }
         }}
@@ -740,6 +791,7 @@ export class ModuxCanvas extends LitElement {
           ${edgeTemplates}
           ${this.scene.nodes.map((n) => this.renderNode(n))}
           ${this.renderPendingLink()}
+          ${this.renderRubber()}
         </g>
       </svg>
       ${this.renderMinimap()}

@@ -82,6 +82,14 @@ export type ModuxCommand =
     }
   | { kind: 'remove-process-step'; processId: string; id: string }
   | {
+      /** CURATED modux View whose members come from the canvas selection. */
+      kind: 'add-view';
+      id: string;
+      name: string;
+      memberIds: string[];
+    }
+  | { kind: 'remove-view'; id: string }
+  | {
       /** Reposition a step; afterStepId omitted moves it to the front. */
       kind: 'move-process-step';
       processId: string;

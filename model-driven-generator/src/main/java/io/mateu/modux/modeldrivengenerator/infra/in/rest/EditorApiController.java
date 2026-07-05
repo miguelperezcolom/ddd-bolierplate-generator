@@ -15,6 +15,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -66,6 +67,7 @@ public class EditorApiController {
     public record ProcessDto(String id, String name, String triggerAggregateId, String triggerEvent,
                              String ownerModuleId, String onCompletionEventName, String sla,
                              List<ProcessStepDto> steps) {}
+    public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -75,7 +77,8 @@ public class EditorApiController {
             List<AggregateDto> aggregates,
             List<EntityDto> entities,
             List<AggregateReferenceDto> aggregateReferences,
-            List<ProcessDto> processes) {}
+            List<ProcessDto> processes,
+            List<ViewDto> views) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -243,8 +246,13 @@ public class EditorApiController {
                                 .toList()))
                 .toList();
 
+        var views = repository.findAllOfType(ViewEntity.class).stream()
+                .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
+                .toList();
+
         return new EditorModelDto(
-                modules, externalSystems, relations, flows, aggregates, entities, references, processes);
+                modules, externalSystems, relations, flows, aggregates, entities, references, processes,
+                views);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -256,7 +264,8 @@ public class EditorApiController {
                                 List<ProcessStepDto> steps,
                                 String processId, String afterStepId, String stepType,
                                 String roleId, String deadline, String useCaseId,
-                                String compensationUseCaseId) {}
+                                String compensationUseCaseId,
+                                List<String> memberIds) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -276,6 +285,8 @@ public class EditorApiController {
             case "remove-process-step" -> removeProcessStep(command);
             case "move-process-step" -> moveProcessStep(command);
             case "update-process-step" -> updateProcessStep(command);
+            case "add-view" -> addView(command);
+            case "remove-view" -> removeView(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -352,6 +363,17 @@ public class EditorApiController {
                         "Proceso desconocido: " + command.processId()));
         var steps = process.steps().stream().filter(s -> !s.id().equals(command.id())).toList();
         repository.save(withSteps(process, steps));
+    }
+
+    private void addView(EditorCommand command) {
+        if (repository.findById(command.id(), ViewEntity.class).isPresent()) return;
+        repository.save(new ViewEntity(
+                command.id(), command.name(), null, "CURATED",
+                command.memberIds() == null ? List.of() : command.memberIds(), null));
+    }
+
+    private void removeView(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), ViewEntity.class);
     }
 
     /** Reposition a step: afterStepId null moves it to the front. */

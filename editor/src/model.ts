@@ -90,6 +90,13 @@ export interface AggregateReference {
   label?: string;
 }
 
+export interface ViewRef {
+  id: string;
+  name: string;
+  kind: 'CURATED' | 'COMPUTED' | string;
+  memberIds: string[];
+}
+
 export interface ModuxModel {
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
@@ -99,4 +106,5 @@ export interface ModuxModel {
   entities?: EntityRef[];
   aggregateReferences?: AggregateReference[];
   processes?: ProcessRef[];
+  views?: ViewRef[];
 }

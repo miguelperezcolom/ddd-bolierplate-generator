@@ -129,6 +129,9 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepRole = '';
   @state() private _editStepDeadline = '';
   @state() private _editStepComp = '';
+  @state() private _multi: string[] = [];
+  @state() private _newViewName = '';
+  @state() private _activeViewId = '';
 
   static styles = css`
     :host {
@@ -362,6 +365,12 @@ export class ModuxEditor extends LitElement {
               },
             ]
           : null;
+      }
+      case 'add-view':
+        return [{ kind: 'remove-view', id: c.id }];
+      case 'remove-view': {
+        const v = (this.model.views ?? []).find((x) => x.id === c.id);
+        return v ? [{ kind: 'add-view', id: v.id, name: v.name, memberIds: v.memberIds }] : null;
       }
       case 'add-process':
         return [{ kind: 'remove-process', id: c.id }];
@@ -601,6 +610,7 @@ export class ModuxEditor extends LitElement {
 
   private onElementSelected(e: CustomEvent): void {
     this._selectedId = e.detail.id;
+    this._multi = [];
     if (e.detail.kind === 'process-step') {
       const step = this.owningProcessOf(e.detail.id)?.steps.find((s) => s.id === e.detail.id);
       this._editStepRole = step?.roleId ?? '';
@@ -608,6 +618,96 @@ export class ModuxEditor extends LitElement {
       this._editStepComp = step?.compensationUseCaseId ?? '';
     }
     this.emit('modux-select', { elementType: e.detail.kind, id: e.detail.id });
+  }
+
+  private onMultiToggled(e: CustomEvent): void {
+    const { id } = e.detail;
+    this._multi = this._multi.includes(id)
+      ? this._multi.filter((x) => x !== id)
+      : [...this._multi, id];
+  }
+
+  private onNodesBoxed(e: CustomEvent): void {
+    this._multi = e.detail.ids;
+  }
+
+  /** Canvas node ids → catalog element ids (view members). */
+  private memberIdsFromSelection(): string[] {
+    const scene = this.sceneFor(this._view);
+    const members = new Set<string>();
+    for (const id of this._multi) {
+      const node = scene.nodes.find((n) => n.id === id);
+      if (!node) continue;
+      switch (node.kind) {
+        case 'module':
+        case 'external-system':
+          members.add(id.replace(/^tgt:/, ''));
+          break;
+        case 'aggregate':
+        case 'entity':
+        case 'process':
+          members.add(id);
+          break;
+        case 'flow':
+          members.add(id.replace(/^flow:/, ''));
+          break;
+        case 'process-step': {
+          const owner = this.owningProcessOf(id);
+          if (owner) members.add(owner.id);
+          break;
+        }
+        default:
+          break; // compensations / completion events are derived, not catalog elements
+      }
+    }
+    return [...members];
+  }
+
+  private createViewFromSelection(): void {
+    const name = this._newViewName.trim();
+    const memberIds = this.memberIdsFromSelection();
+    if (!name || !memberIds.length) return;
+    this.command({ kind: 'add-view', id: `view-${slug(name)}`, name, memberIds });
+    this._newViewName = '';
+    this._multi = [];
+  }
+
+  /** Model scoped to the active modux View (CURATED members + their context). */
+  private filteredModel(): ModuxModel {
+    if (!this._activeViewId) return this.model;
+    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    if (!view) return this.model;
+    const members = new Set(view.memberIds);
+    const modules = this.model.modules.filter((m) => members.has(m.id));
+    const moduleIds = new Set(modules.map((m) => m.id));
+    const externalSystems = this.model.externalSystems.filter((x) => members.has(x.id));
+    const externalIds = new Set(externalSystems.map((x) => x.id));
+    const aggregates = (this.model.aggregates ?? []).filter(
+      (a) => members.has(a.id) || moduleIds.has(a.moduleId),
+    );
+    const aggregateIds = new Set(aggregates.map((a) => a.id));
+    return {
+      ...this.model,
+      modules,
+      externalSystems,
+      relations: this.model.relations.filter(
+        (r) => moduleIds.has(r.sourceId) && moduleIds.has(r.targetId),
+      ),
+      flows: this.model.flows.filter(
+        (f) =>
+          members.has(f.id) ||
+          ((moduleIds.has(f.sourceId) || externalIds.has(f.sourceId)) &&
+            (moduleIds.has(f.targetId) || externalIds.has(f.targetId))),
+      ),
+      aggregates,
+      entities: (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId)),
+      aggregateReferences: (this.model.aggregateReferences ?? []).filter(
+        (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
+      ),
+      processes: (this.model.processes ?? []).filter(
+        (p) => members.has(p.id) || (p.ownerModuleId ? moduleIds.has(p.ownerModuleId) : false),
+      ),
+    };
   }
 
   private applyStepEdit(): void {
@@ -679,13 +779,14 @@ export class ModuxEditor extends LitElement {
 
   private sceneFor(view: ViewId) {
     const viewLayout = this.viewLayout(view).nodes;
+    const model = this.filteredModel();
     return view === 'aggregates'
-      ? aggregatesScene(this.model, viewLayout)
+      ? aggregatesScene(model, viewLayout)
       : view === 'flows'
-        ? flowsScene(this.model, viewLayout)
+        ? flowsScene(model, viewLayout)
         : view === 'processes'
-          ? processesScene(this.model, viewLayout)
-          : contextMapScene(this.model, viewLayout);
+          ? processesScene(model, viewLayout)
+          : contextMapScene(model, viewLayout);
   }
 
   /** ELK layout for the current view, applied as ONE undoable composite move. */
@@ -735,7 +836,36 @@ export class ModuxEditor extends LitElement {
             `,
           )}
         </div>
+        <select
+          title="Limitar el lienzo a una vista del modelo"
+          @change=${(e: Event) => (this._activeViewId = (e.target as HTMLSelectElement).value)}
+        >
+          <option value="" ?selected=${this._activeViewId === ''}>Vista: todo el modelo</option>
+          ${(this.model.views ?? [])
+            .filter((v) => v.kind === 'CURATED')
+            .map(
+              (v) =>
+                html`<option value=${v.id} ?selected=${v.id === this._activeViewId}>
+                  Vista: ${v.name}
+                </option>`,
+            )}
+        </select>
         <div class="spacer"></div>
+        ${this._multi.length
+          ? html`
+              <input
+                class="new-name"
+                placeholder="Nombre de la vista…"
+                .value=${this._newViewName}
+                @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
+              />
+              <button class="tab" title="Crear una vista modux con la selección" @click=${this.createViewFromSelection}>
+                ⊞ Vista (${this._multi.length})
+              </button>
+              <span class="sep"></span>
+            `
+          : ''}
         <input
           class="new-name"
           placeholder=${{
@@ -954,18 +1084,22 @@ export class ModuxEditor extends LitElement {
         .scene=${scene}
         .edgePoints=${this.viewLayout(this._view).edges}
         .selectedId=${this._selectedId}
+        .selectedIds=${this._multi}
         .connectable=${this._view === 'context-map'}
         @node-moved=${this.onNodeMoved}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
         @node-renamed=${this.onNodeRenamed}
         @edge-points-changed=${this.onEdgePointsChanged}
+        @element-multi-toggled=${this.onMultiToggled}
+        @nodes-boxed=${this.onNodesBoxed}
         @undo-requested=${this.undo}
         @redo-requested=${this.redo}
         @element-selected=${this.onElementSelected}
         @element-activated=${this.onElementActivated}
         @selection-cleared=${() => {
           this._selectedId = null;
+          this._multi = [];
           this.emit('modux-select', null);
         }}
       ></modux-canvas>
