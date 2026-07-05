@@ -680,17 +680,22 @@ public final class LintRules {
         }
     }
 
-    /** Step 4 of the path, for aggregate operations: no sets, no emits, no output = decoration. */
+    /**
+     * Step 4 of the path, for aggregate operations: no sets, no emits, no output = decoration —
+     * unless the operation carries a natural-language intent (the spec of its two-zone hook).
+     */
     static class OperationPipeline implements LintRule {
         public String id() { return "operation-pipeline"; }
         public String description() { return "Aggregate operations should write state, emit events or return"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.aggregates().stream()
                     .flatMap(a -> a.operations().stream()
-                            .filter(op -> isBlank(op.sets()) && isBlank(op.emits()) && op.outputModelId() == null)
+                            .filter(op -> isBlank(op.sets()) && isBlank(op.emits())
+                                    && op.outputModelId() == null && isBlank(op.intent()))
                             .map(op -> new LintFinding(id(), LintSeverity.INFO, "Operation", op.id(),
                                     a.name() + "." + op.name(),
-                                    "Neither sets state, emits events nor returns a model — what is its effect?")))
+                                    "Neither sets state, emits events nor returns a model — declare its"
+                                            + " effect, or state its intent in natural language.")))
                     .toList();
         }
     }

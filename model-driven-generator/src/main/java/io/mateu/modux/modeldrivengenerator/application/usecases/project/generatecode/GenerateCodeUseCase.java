@@ -511,7 +511,8 @@ public class GenerateCodeUseCase {
                             splitCsv(operationEntity.emits()),
                             OperationType.valueOf(operationEntity.type()),
                             operationEntity.paginated(),
-                            operationEntity.defaultPageSize()
+                            operationEntity.defaultPageSize(),
+                            operationEntity.intent()
                     ))
                     .forEach(operation -> {
                         Map<String, Object> model = new HashMap<>();
@@ -2239,7 +2240,8 @@ public class GenerateCodeUseCase {
                             splitCsv(operationEntity.emits()),
                             OperationType.valueOf(operationEntity.type()),
                             operationEntity.paginated(),
-                            operationEntity.defaultPageSize()
+                            operationEntity.defaultPageSize(),
+                            operationEntity.intent()
                     ))
                     .map(op -> fromJson(toJson(op)))
                     .toList());

@@ -135,6 +135,9 @@ aggregates:
     name: "Crear"
     type: "CUSTOM"
     sets: "[ ]"
+    # El spec del hook two-zone en lenguaje natural: viaja al scaffold como javadoc
+    # y `mvn modux:ai-complete` propone la implementación a partir de él.
+    intent: "Da de alta la habitación con su tipo y estado LIBRE, validando que el número no exista ya en la planta"
 - id: "agencia"
   name: "Agencia"
   modelId: "agencia"

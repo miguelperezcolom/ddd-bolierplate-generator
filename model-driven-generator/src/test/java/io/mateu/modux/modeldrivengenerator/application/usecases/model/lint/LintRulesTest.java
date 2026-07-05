@@ -285,16 +285,18 @@ class LintRulesTest {
     }
 
     @Test
-    void operation_with_no_effect_is_flagged() throws Exception {
+    void operation_with_no_effect_is_flagged_unless_it_states_an_intent() throws Exception {
         var aggregate = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
                 "{\"id\":\"a1\",\"name\":\"Reserva\",\"operations\":["
                         + "{\"id\":\"op1\",\"name\":\"decorativa\"},"
-                        + "{\"id\":\"op2\",\"name\":\"confirmar\",\"sets\":\"estado=CONFIRMADA\",\"emits\":\"ReservaConfirmada\"}]}",
+                        + "{\"id\":\"op2\",\"name\":\"confirmar\",\"sets\":\"estado=CONFIRMADA\",\"emits\":\"ReservaConfirmada\"},"
+                        + "{\"id\":\"op3\",\"name\":\"repreciar\",\"type\":\"CUSTOM\","
+                        + "\"intent\":\"Recalcula el importe con la tarifa vigente\"}]}",
                 AggregateEntity.class);
 
         var findings = new LintRules.OperationPipeline().apply(snapshotWith(aggregate));
 
-        assertEquals(1, findings.size(), findings.toString());
+        assertEquals(1, findings.size(), "the intent is the spec of the hook: " + findings);
         assertTrue(findings.get(0).elementName().contains("decorativa"), findings.toString());
     }
 

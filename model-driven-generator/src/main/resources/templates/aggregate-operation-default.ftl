@@ -12,8 +12,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class Default${operation.name?cap_first}${aggregate.name}Operation implements ${operation.name?cap_first}${aggregate.name}Operation {
 
+<#if operation.intent?? && operation.intent?has_content>
+    /** Intent (from the model): ${operation.intent} */
+</#if>
     @Override
     public void execute(${aggregate.name}OperationContext context) {
+<#if operation.intent?? && operation.intent?has_content>
+        // TODO: implement "${operation.name}" — intended behaviour: ${operation.intent}
+        // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+<#else>
         // TODO: implement the "${operation.name}" operation of ${aggregate.name} using the context.
+</#if>
     }
 }

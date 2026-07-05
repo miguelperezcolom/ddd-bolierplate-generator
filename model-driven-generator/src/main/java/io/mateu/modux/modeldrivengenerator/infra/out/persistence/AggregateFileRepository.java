@@ -87,20 +87,27 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.isEventSourcingEnabled(),
                 entity.getSnapshotFrequency(),
                 entity.getOperations().stream()
-                        .map(operation -> new OperationEntity(
-                                operation.getId().id(),
-                                operation.getName().name(),
-                                operation.getInputModelId(),
-                                operation.getOutputModelId(),
-                                String.join(",", operation.getPreconditions().stream()
-                                        .map(OperationPrecondition::precondition).toList()),
-                                (operation.getSets() != null && !operation.getSets().isEmpty()) ? toJson(operation.getSets()) : null,
-                                String.join(",", operation.getEmits().stream()
-                                        .map(DomainEventName::eventName).toList()),
-                                operation.getType().name(),
-                                operation.isPaginated(),
-                                operation.getDefaultPageSize()
-                        )).toList(),
+                        .map(operation -> {
+                            // carry over per-operation fields the domain does not model yet (intent)
+                            var previousOp = existing == null || existing.operations() == null ? null
+                                    : existing.operations().stream()
+                                            .filter(o -> o.id() != null && o.id().equals(operation.getId().id()))
+                                            .findFirst().orElse(null);
+                            return new OperationEntity(
+                                    operation.getId().id(),
+                                    operation.getName().name(),
+                                    operation.getInputModelId(),
+                                    operation.getOutputModelId(),
+                                    String.join(",", operation.getPreconditions().stream()
+                                            .map(OperationPrecondition::precondition).toList()),
+                                    (operation.getSets() != null && !operation.getSets().isEmpty()) ? toJson(operation.getSets()) : null,
+                                    String.join(",", operation.getEmits().stream()
+                                            .map(DomainEventName::eventName).toList()),
+                                    operation.getType().name(),
+                                    operation.isPaginated(),
+                                    operation.getDefaultPageSize(),
+                                    previousOp != null ? previousOp.intent() : null);
+                        }).toList(),
                 entity.getInvariants().stream()
                         .map(invariant -> new InvariantEntity(
                                 invariant.getId().id(),

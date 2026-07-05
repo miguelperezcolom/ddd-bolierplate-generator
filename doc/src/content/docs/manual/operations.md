@@ -64,6 +64,19 @@ What happens after the operation executes:
 | **Field sets** | Which aggregate fields are updated and how |
 | **Events emitted** | Domain events fired as a result of this operation |
 
+### Intent (CUSTOM operations)
+
+A `CUSTOM` operation delegates its body to a two-zone hook (`Default{Op}{Aggregate}Operation`, developer-owned). Its **spec is natural language**: fill the operation's `intent` field with what it must do.
+
+```yaml
+- id: "crear-habitacion"
+  name: "Crear"
+  type: "CUSTOM"
+  intent: "Da de alta la habitación con su tipo y estado LIBRE, validando que el número no exista ya en la planta"
+```
+
+The intent becomes javadoc on the generated hook and scaffold, and [`mvn modux:ai-complete`](/manual/ai-completion/) proposes the `execute()` body from it (mutating state only through the `OperationContext`). The developer — who owns the scaffold — reviews, commits or rewrites the proposal. An operation with an intent also satisfies the `operation-pipeline` lint rule: the NL is its declared effect.
+
 ### Non-functional
 
 | Setting | Description |

@@ -71,6 +71,10 @@ public void escalateStaleTickets() {
 
 The `custom-step-intent` lint finding reminds you when a Custom step has no intent.
 
+### CUSTOM aggregate operations (from natural-language intent)
+
+The same treatment applies to `CUSTOM` aggregate operations: fill the operation's `intent` field and `ai-complete` proposes the body of the `Default{Op}{Aggregate}Operation.execute()` hook — reading and mutating state only through the `OperationContext`, with invariants and preconditions checked by the aggregate around it. The scaffold carries the intent as javadoc either way, so any developer (or agent) opening the file sees the spec.
+
 ### Cucumber step definition bodies
 
 BDD steps are generated with empty bodies:

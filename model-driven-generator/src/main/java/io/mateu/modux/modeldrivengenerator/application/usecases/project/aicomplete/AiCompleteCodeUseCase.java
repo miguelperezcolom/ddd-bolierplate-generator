@@ -106,6 +106,36 @@ public class AiCompleteCodeUseCase {
                     + "/" + aggregate.name() + ".java` → `checkInvariants()`*\n");
         }
 
+        // ── CUSTOM operation bodies (from natural-language intent) ──────────────
+        if (aggregate.operations() != null) {
+            for (var op : aggregate.operations()) {
+                if (!"CUSTOM".equals(op.type()) || op.intent() == null || op.intent().isBlank()) continue;
+                var hookName = "Default" + capitalize(op.name()) + aggregate.name() + "Operation";
+                proposals.add("\n## " + aggregate.name() + " — `" + hookName + ".execute()`\n");
+                proposals.add("*Intent:* " + op.intent() + "\n");
+
+                String system = BASE_SYSTEM + extraContext(module);
+                String user = """
+                        Aggregate: %s
+                        Fields (readable/writable through the OperationContext passed to the method):
+                        %s
+
+                        Implement the body of the `execute(%sOperationContext context)` method of the
+                        `%s` two-zone hook.
+                        What the operation must do (natural-language intent from the model): %s
+
+                        Rules:
+                        - Read and mutate state only through the context accessors (context.field() / context.field(value))
+                        - Invariants and preconditions are checked by the aggregate around this hook — do not re-check them
+                        - Return only the statements that go inside the method body (no signature, no braces)
+                        """.formatted(aggregate.name(), fields, aggregate.name(), hookName, op.intent());
+
+                var code = claude.complete(command.apiKey(), command.model(), system, user);
+                proposals.add("```java\n" + code.strip() + "\n```\n");
+                proposals.add("*File: `custom/" + hookName + ".java` → `execute()` (developer-owned: review, adapt, commit)*\n");
+            }
+        }
+
         // ── Operation preconditions ──────────────────────────────────────────────
         if (aggregate.operations() != null) {
             for (var op : aggregate.operations()) {
