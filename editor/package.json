@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "copy": "npm run build && mkdir -p ../model-driven-generator/src/main/resources/static/modux-editor && cp dist/modux-editor.js ../model-driven-generator/src/main/resources/static/modux-editor/",
+    "copy": "npm run build && mkdir -p ../model-driven-generator/src/main/resources/static/modux-editor && cp dist/modux-editor.js ../model-driven-generator/src/main/resources/static/modux-editor/ && (cp dist/modux-editor.js ../model-driven-generator/target/classes/static/modux-editor/ 2>/dev/null || true)",
     "preview": "vite preview"
   },
   "dependencies": {

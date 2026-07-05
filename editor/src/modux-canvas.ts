@@ -41,8 +41,9 @@ export class ModuxCanvas extends LitElement {
       background: var(--modux-canvas-bg, #fafafa);
       overflow: hidden;
       outline: none;
+      position: relative;
     }
-    svg {
+    svg.main {
       display: block;
       width: 100%;
       height: 100%;
@@ -50,8 +51,25 @@ export class ModuxCanvas extends LitElement {
       user-select: none;
       -webkit-user-select: none;
     }
-    svg.linking {
+    svg.main.linking {
       cursor: crosshair;
+    }
+    .minimap {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 160px;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .minimap svg {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
     g[data-node-id] {
       cursor: move;
@@ -135,7 +153,7 @@ export class ModuxCanvas extends LitElement {
   }
 
   protected firstUpdated(): void {
-    const svgEl = this.renderRoot.querySelector('svg') as SVGSVGElement;
+    const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement;
     this._zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
       .filter((event: Event) => {
@@ -177,7 +195,7 @@ export class ModuxCanvas extends LitElement {
   /** Center and scale the viewport so the whole scene is visible. */
   fit(padding = 60): void {
     const nodes = this.scene.nodes;
-    const svgEl = this.renderRoot.querySelector('svg') as SVGSVGElement | null;
+    const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
     if (!nodes.length || !svgEl || !this._zoomBehavior) return;
     const rect = this.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
@@ -423,11 +441,91 @@ export class ModuxCanvas extends LitElement {
     `;
   }
 
+  // ---- minimap -------------------------------------------------------------
+
+  private sceneBounds(padding = 40) {
+    const nodes = this.scene.nodes;
+    if (!nodes.length) return null;
+    const minX = Math.min(...nodes.map((n) => n.x - n.w / 2)) - padding;
+    const maxX = Math.max(...nodes.map((n) => n.x + n.w / 2)) + padding;
+    const minY = Math.min(...nodes.map((n) => n.y - n.h / 2)) - padding;
+    const maxY = Math.max(...nodes.map((n) => n.y + n.h / 2)) + padding;
+    return { minX, minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  private centerViewportOn(sceneX: number, sceneY: number): void {
+    const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
+    if (!svgEl || !this._zoomBehavior) return;
+    const rect = this.getBoundingClientRect();
+    const k = this._t.k;
+    const t = zoomIdentity.translate(rect.width / 2 - k * sceneX, rect.height / 2 - k * sceneY).scale(k);
+    select(svgEl).call(this._zoomBehavior.transform, t);
+  }
+
+  private onMinimapPointer(e: PointerEvent, bounds: NonNullable<ReturnType<typeof this.sceneBounds>>, scale: number): void {
+    const box = (e.currentTarget as Element).getBoundingClientRect();
+    const sceneX = bounds.minX + (e.clientX - box.left) / scale;
+    const sceneY = bounds.minY + (e.clientY - box.top) / scale;
+    this.centerViewportOn(sceneX, sceneY);
+  }
+
+  private renderMinimap(): TemplateResult | typeof svg.prototype {
+    const bounds = this.sceneBounds();
+    if (!bounds || this.scene.nodes.length < 2) return html``;
+    const MW = 160;
+    const MH = 110;
+    const scale = Math.min(MW / bounds.w, MH / bounds.h);
+    const rect = this.getBoundingClientRect();
+    // visible scene area under the current transform
+    const vx = (0 - this._t.x) / this._t.k;
+    const vy = (0 - this._t.y) / this._t.k;
+    const vw = rect.width / this._t.k;
+    const vh = rect.height / this._t.k;
+    return html`
+      <div
+        class="minimap"
+        title="Minimapa — click o arrastra para navegar"
+        @pointerdown=${(e: PointerEvent) => {
+          e.stopPropagation();
+          try {
+            (e.currentTarget as Element).setPointerCapture(e.pointerId);
+          } catch {
+            /* synthetic or stale pointer id — dragging just won't track */
+          }
+          this.onMinimapPointer(e, bounds, scale);
+        }}
+        @pointermove=${(e: PointerEvent) => {
+          if ((e.currentTarget as Element).hasPointerCapture?.(e.pointerId)) {
+            this.onMinimapPointer(e, bounds, scale);
+          }
+        }}
+      >
+        <svg viewBox="0 0 ${MW} ${MH}">
+          ${this.scene.nodes.map((n) => {
+            const p = this.nodePos(n);
+            return svg`<rect
+              x=${(p.x - n.w / 2 - bounds.minX) * scale}
+              y=${(p.y - n.h / 2 - bounds.minY) * scale}
+              width=${Math.max(2, n.w * scale)}
+              height=${Math.max(2, n.h * scale)}
+              rx="1" fill=${n.fill ?? '#e2e8f0'} stroke="#94a3b8" stroke-width="0.4"></rect>`;
+          })}
+          <rect
+            x=${(vx - bounds.minX) * scale}
+            y=${(vy - bounds.minY) * scale}
+            width=${vw * scale}
+            height=${vh * scale}
+            fill="rgba(37, 99, 235, 0.08)" stroke="#2563eb" stroke-width="1"></rect>
+        </svg>
+      </div>
+    `;
+  }
+
   render() {
     const colors = [...new Set(this.scene.edges.map((e) => e.color ?? '#64748b'))];
     return html`
       <svg
-        class=${this._pendingLink ? 'linking' : ''}
+        class="main ${this._pendingLink ? 'linking' : ''}"
         @pointerdown=${(e: PointerEvent) => {
           const target = e.target as Element;
           if (!target.closest('[data-node-id]') && !target.closest('[data-edge-id]')) {
@@ -455,6 +553,7 @@ export class ModuxCanvas extends LitElement {
           ${this.renderPendingLink()}
         </g>
       </svg>
+      ${this.renderMinimap()}
     `;
   }
 }

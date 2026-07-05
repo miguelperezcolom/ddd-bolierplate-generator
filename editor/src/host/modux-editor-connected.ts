@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
+import type { ModuxEditor } from '../modux-editor.js';
 import '../modux-editor.js';
 
 /**
@@ -19,16 +20,25 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _layout: EditorLayout = {};
   @state() private _error: string | null = null;
   @state() private _saving = false;
-  @state() private _toast: string | null = null;
+  @state() private _toast: { message: string; kind: 'error' | 'info' } | null = null;
 
   private _layoutTimer: number | undefined;
   private _toastTimer: number | undefined;
   private _pollTimer: number | undefined;
   private _lastVersion: string | null = null;
+  private _pendingVersion: string | null = null;
   private _interacting = false;
+  private _sse: EventSource | undefined;
 
   private _onPointerDown = () => (this._interacting = true);
-  private _onPointerUp = () => (this._interacting = false);
+  private _onPointerUp = () => {
+    this._interacting = false;
+    if (this._pendingVersion) {
+      const version = this._pendingVersion;
+      this._pendingVersion = null;
+      void this.onVersionSignal(version);
+    }
+  };
 
   static styles = css`
     :host {
@@ -68,6 +78,10 @@ export class ModuxEditorConnected extends LitElement {
       cursor: pointer;
       z-index: 10;
     }
+    .toast.info {
+      background: #1e3a8a;
+      color: #eff6ff;
+    }
   `;
 
   connectedCallback(): void {
@@ -75,32 +89,70 @@ export class ModuxEditorConnected extends LitElement {
     this.addEventListener('pointerdown', this._onPointerDown, true);
     window.addEventListener('pointerup', this._onPointerUp, true);
     void this.reload();
-    // Live refresh: poll the store fingerprint and refetch on change — covers
-    // edits from the Mateu CRUDs, MCP, or another editor instance. Paused while
-    // the user is mid-gesture or a command is in flight.
-    this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
+    this.startLiveUpdates();
   }
 
   disconnectedCallback(): void {
     window.clearTimeout(this._layoutTimer);
     window.clearInterval(this._pollTimer);
+    this._sse?.close();
     this.removeEventListener('pointerdown', this._onPointerDown, true);
     window.removeEventListener('pointerup', this._onPointerUp, true);
     super.disconnectedCallback();
   }
 
+  /**
+   * Live refresh: the server pushes the store fingerprint over SSE; when it
+   * changes, the model is refetched — covering edits from the Mateu CRUDs, MCP
+   * or another editor instance. Falls back to 4s polling when SSE is not
+   * available. Signals are deferred while the user is mid-gesture or a command
+   * is in flight.
+   */
+  private startLiveUpdates(): void {
+    try {
+      this._sse = new EventSource(`${this.base}/events`);
+      this._sse.addEventListener('version', (e) =>
+        void this.onVersionSignal((e as MessageEvent).data),
+      );
+      this._sse.onerror = () => {
+        this._sse?.close();
+        this._sse = undefined;
+        if (!this._pollTimer) {
+          this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
+        }
+      };
+    } catch {
+      this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
+    }
+  }
+
   private async pollVersion(): Promise<void> {
-    if (this._saving || this._interacting || !this._model) return;
     try {
       const res = await fetch(`${this.base}/version`);
       if (!res.ok) return;
-      const { version } = await res.json();
-      if (this._lastVersion !== null && version !== this._lastVersion) {
-        await this.reload();
-      }
-      this._lastVersion = version;
+      await this.onVersionSignal((await res.json()).version);
     } catch {
       /* transient network issue — next tick retries */
+    }
+  }
+
+  private async onVersionSignal(version: string): Promise<void> {
+    if (!this._model) return;
+    if (this._saving || this._interacting) {
+      this._pendingVersion = version; // processed on pointerup / after the command
+      return;
+    }
+    const external = this._lastVersion !== null && version !== this._lastVersion;
+    this._lastVersion = version;
+    if (external) {
+      await this.reload();
+      // Someone else changed the model: the local undo history no longer
+      // describes valid inverses, so it is discarded rather than misapplied.
+      (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
+      this.showToast(
+        'El modelo ha cambiado fuera de este editor: recargado (historial de deshacer reiniciado)',
+        'info',
+      );
     }
   }
 
@@ -121,8 +173,8 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
-  private showToast(message: string): void {
-    this._toast = message;
+  private showToast(message: string, kind: 'error' | 'info' = 'error'): void {
+    this._toast = { message, kind };
     window.clearTimeout(this._toastTimer);
     this._toastTimer = window.setTimeout(() => (this._toast = null), 5000);
   }
@@ -159,6 +211,11 @@ export class ModuxEditorConnected extends LitElement {
       this.showToast(String(err));
     } finally {
       this._saving = false;
+      if (this._pendingVersion) {
+        const version = this._pendingVersion;
+        this._pendingVersion = null;
+        void this.onVersionSignal(version);
+      }
     }
   }
 
@@ -190,8 +247,12 @@ export class ModuxEditorConnected extends LitElement {
         style=${this._saving ? 'opacity: 0.7' : ''}
       ></modux-editor>
       ${this._toast
-        ? html`<div class="toast" role="alert" @click=${() => (this._toast = null)}>
-            ⚠ ${this._toast}
+        ? html`<div
+            class="toast ${this._toast.kind}"
+            role="alert"
+            @click=${() => (this._toast = null)}
+          >
+            ${this._toast.kind === 'error' ? '⚠' : 'ℹ'} ${this._toast.message}
           </div>`
         : ''}
     `;

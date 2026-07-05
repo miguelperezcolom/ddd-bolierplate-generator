@@ -78,15 +78,73 @@ public class EditorApiController {
             List<ProcessDto> processes) {}
 
     /**
-     * Cheap, order-independent fingerprint of the whole store. The editor polls
-     * it and refetches the projection when it changes — covering edits made from
-     * the Mateu CRUDs, another editor instance, or MCP.
+     * Cheap, order-independent fingerprint of the whole store. The editor
+     * listens for changes over SSE (/events) with this endpoint as the
+     * polling fallback — both cover edits made from the Mateu CRUDs, another
+     * editor instance, or MCP.
      */
     @GetMapping("/version")
     public Map<String, String> version() {
+        return Map.of("version", currentVersion());
+    }
+
+    private String currentVersion() {
         var elements = repository.allElements();
         var hash = elements.stream().mapToInt(Objects::hashCode).sum() * 31 + elements.size();
-        return Map.of("version", Integer.toHexString(hash));
+        return Integer.toHexString(hash);
+    }
+
+    // ---- change push (SSE) -------------------------------------------------
+
+    private final java.util.concurrent.CopyOnWriteArrayList<org.springframework.web.servlet.mvc.method.annotation.SseEmitter> emitters =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+    private java.util.concurrent.ScheduledExecutorService watcher;
+    private volatile String lastBroadcast;
+
+    @jakarta.annotation.PostConstruct
+    void startWatcher() {
+        watcher = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            var thread = new Thread(r, "modux-editor-events");
+            thread.setDaemon(true);
+            return thread;
+        });
+        watcher.scheduleWithFixedDelay(this::broadcastIfChanged, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    @jakarta.annotation.PreDestroy
+    void stopWatcher() {
+        watcher.shutdownNow();
+    }
+
+    private void broadcastIfChanged() {
+        if (emitters.isEmpty()) return;
+        var version = currentVersion();
+        if (version.equals(lastBroadcast)) return;
+        lastBroadcast = version;
+        for (var emitter : emitters) {
+            try {
+                emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+                        .event().name("version").data(version));
+            } catch (Exception e) {
+                emitters.remove(emitter);
+            }
+        }
+    }
+
+    /** The server watches its own fingerprint and pushes it; clients never poll while connected. */
+    @GetMapping("/events")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter events() {
+        var emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(0L);
+        emitters.add(emitter);
+        emitter.onCompletion(() -> emitters.remove(emitter));
+        emitter.onTimeout(() -> emitters.remove(emitter));
+        try {
+            emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+                    .event().name("version").data(currentVersion()));
+        } catch (Exception ignored) {
+            emitters.remove(emitter);
+        }
+        return emitter;
     }
 
     @GetMapping("/model")

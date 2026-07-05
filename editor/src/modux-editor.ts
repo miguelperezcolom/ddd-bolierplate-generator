@@ -401,6 +401,12 @@ export class ModuxEditor extends LitElement {
     return null;
   }
 
+  /** Discard undo/redo — called by the host when the model changed externally. */
+  clearHistory(): void {
+    this._undoStack = [];
+    this._redoStack = [];
+  }
+
   private undo(): void {
     const inverse = this._undoStack[this._undoStack.length - 1];
     if (!inverse) return;
