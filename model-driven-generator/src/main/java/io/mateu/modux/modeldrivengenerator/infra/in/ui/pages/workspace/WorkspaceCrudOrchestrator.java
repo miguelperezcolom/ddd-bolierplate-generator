@@ -1,8 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace;
 
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
-import io.mateu.uidl.annotations.NotCreatable;
-import io.mateu.uidl.annotations.NotDeletable;
 import io.mateu.uidl.annotations.SplitCrud;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
@@ -22,15 +20,15 @@ import org.springframework.stereotype.Service;
  * ({@code gridLayout = tree}) of the whole model (Project ▸ Service ▸ Module ▸ Aggregates/Entities/…),
  * and whose detail pane shows the selected node's own editor. The framework handles selection→editor and
  * save routing; this class only supplies the tree data (via {@link WorkspaceCrudAdapter}) and delegates
- * save to the right concept editor by decoding the composite id.
+ * save to the right concept editor by decoding the composite id. New elements are created through
+ * {@link WorkspaceCreationForm} (skeleton + owner attachment); deletion resolves the owning type and
+ * detaches the id from every reference list.
  */
 @Service
 @RequiredArgsConstructor
 @Scope("prototype")
 @Title("Workspace")
 @SplitCrud
-@NotCreatable
-@NotDeletable
 public class WorkspaceCrudOrchestrator
     extends Crud<
         CrudEditorForm<String>,
@@ -91,6 +89,10 @@ public class WorkspaceCrudOrchestrator
 
   @Override
   public Object saveNew(HttpRequest httpRequest) {
+    var form = adapter.getCreationForm(httpRequest);
+    if (form instanceof CrudCreationForm<?> creationForm) {
+      return creationForm.create(httpRequest);
+    }
     return null;
   }
 
@@ -103,6 +105,8 @@ public class WorkspaceCrudOrchestrator
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
   public Class creationFormClass() {
-    return GenericClassProvider.getGenericClass(this.getClass(), Crud.class, "CreationForm");
+    // the generic parameter is the CrudCreationForm interface (the tree is heterogeneous);
+    // the concrete form drives what the "New" dialog renders
+    return WorkspaceCreationForm.class;
   }
 }
