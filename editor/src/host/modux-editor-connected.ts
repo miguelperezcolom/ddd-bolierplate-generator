@@ -23,6 +23,12 @@ export class ModuxEditorConnected extends LitElement {
 
   private _layoutTimer: number | undefined;
   private _toastTimer: number | undefined;
+  private _pollTimer: number | undefined;
+  private _lastVersion: string | null = null;
+  private _interacting = false;
+
+  private _onPointerDown = () => (this._interacting = true);
+  private _onPointerUp = () => (this._interacting = false);
 
   static styles = css`
     :host {
@@ -66,23 +72,49 @@ export class ModuxEditorConnected extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this.addEventListener('pointerdown', this._onPointerDown, true);
+    window.addEventListener('pointerup', this._onPointerUp, true);
     void this.reload();
+    // Live refresh: poll the store fingerprint and refetch on change — covers
+    // edits from the Mateu CRUDs, MCP, or another editor instance. Paused while
+    // the user is mid-gesture or a command is in flight.
+    this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
   }
 
   disconnectedCallback(): void {
     window.clearTimeout(this._layoutTimer);
+    window.clearInterval(this._pollTimer);
+    this.removeEventListener('pointerdown', this._onPointerDown, true);
+    window.removeEventListener('pointerup', this._onPointerUp, true);
     super.disconnectedCallback();
+  }
+
+  private async pollVersion(): Promise<void> {
+    if (this._saving || this._interacting || !this._model) return;
+    try {
+      const res = await fetch(`${this.base}/version`);
+      if (!res.ok) return;
+      const { version } = await res.json();
+      if (this._lastVersion !== null && version !== this._lastVersion) {
+        await this.reload();
+      }
+      this._lastVersion = version;
+    } catch {
+      /* transient network issue — next tick retries */
+    }
   }
 
   async reload(): Promise<void> {
     try {
-      const [modelRes, layoutRes] = await Promise.all([
+      const [modelRes, layoutRes, versionRes] = await Promise.all([
         fetch(`${this.base}/model`),
         fetch(`${this.base}/layout`),
+        fetch(`${this.base}/version`),
       ]);
       if (!modelRes.ok) throw new Error(`GET ${this.base}/model → ${modelRes.status}`);
       this._model = await modelRes.json();
       this._layout = layoutRes.ok ? await layoutRes.json() : {};
+      if (versionRes.ok) this._lastVersion = (await versionRes.json()).version;
       this._error = null;
     } catch (err) {
       this._error = String(err);
@@ -117,8 +149,12 @@ export class ModuxEditorConnected extends LitElement {
         return;
       }
       // The server is the source of truth: re-read the projection.
-      const modelRes = await fetch(`${this.base}/model`);
+      const [modelRes, versionRes] = await Promise.all([
+        fetch(`${this.base}/model`),
+        fetch(`${this.base}/version`),
+      ]);
       if (modelRes.ok) this._model = await modelRes.json();
+      if (versionRes.ok) this._lastVersion = (await versionRes.json()).version;
     } catch (err) {
       this.showToast(String(err));
     } finally {

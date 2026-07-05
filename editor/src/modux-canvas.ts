@@ -28,6 +28,7 @@ export class ModuxCanvas extends LitElement {
   @state() private _pendingLink: { sourceId: string; x: number; y: number } | null = null;
   @state() private _hoverNodeId: string | null = null;
   @state() private _editingId: string | null = null;
+  @state() private _spaceDown = false;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
   private _fitted = false;
@@ -70,15 +71,27 @@ export class ModuxCanvas extends LitElement {
     super.connectedCallback();
     this.tabIndex = 0;
     this.addEventListener('keydown', this._onKeyDown);
+    this.addEventListener('keyup', this._onKeyUp);
   }
 
   disconnectedCallback(): void {
     this.removeEventListener('keydown', this._onKeyDown);
+    this.removeEventListener('keyup', this._onKeyUp);
     super.disconnectedCallback();
   }
 
+  private _onKeyUp = (e: KeyboardEvent): void => {
+    if (e.key === ' ') this._spaceDown = false;
+  };
+
   private _onKeyDown = (e: KeyboardEvent): void => {
     if (this._editingId) return; // the inline input handles its own keys
+    if (e.key === ' ') {
+      // hold space: pan from anywhere, even over nodes
+      e.preventDefault();
+      this._spaceDown = true;
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
       this.emit(e.shiftKey ? 'redo-requested' : 'undo-requested');
@@ -127,9 +140,10 @@ export class ModuxCanvas extends LitElement {
       .scaleExtent([0.15, 4])
       .filter((event: Event) => {
         const target = event.target as Element;
-        // Nodes and handles manage their own pointer gestures; wheel zoom works anywhere.
+        // Nodes and handles manage their own pointer gestures; wheel zoom works
+        // anywhere, and holding space turns any drag into a pan.
         if (target.closest('[data-node-id]') || target.closest('[data-handle]')) {
-          return event.type === 'wheel';
+          return event.type === 'wheel' || this._spaceDown;
         }
         return event.type === 'wheel' || (event as MouseEvent).button === 0;
       })
@@ -202,6 +216,7 @@ export class ModuxCanvas extends LitElement {
 
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {
     if (e.button !== 0) return;
+    if (this._spaceDown) return; // let the zoom behavior pan instead
     e.stopPropagation();
     this.focus();
     const start = this.toScene(e);

@@ -116,6 +116,7 @@ export class ModuxEditor extends LitElement {
   @state() private _newStepName = '';
   @state() private _newStepType: 'AUTOMATED' | 'HUMAN' = 'AUTOMATED';
   @state() private _newStepRole = '';
+  @state() private _newStepDeadline = '';
   @state() private _editStepRole = '';
   @state() private _editStepDeadline = '';
   @state() private _editStepComp = '';
@@ -542,9 +543,11 @@ export class ModuxEditor extends LitElement {
       name,
       stepType: this._newStepType,
       roleId: this._newStepType === 'HUMAN' ? this._newStepRole.trim() || undefined : undefined,
+      deadline: this._newStepType === 'HUMAN' ? this._newStepDeadline.trim() || undefined : undefined,
       afterStepId,
     });
     this._newStepName = '';
+    this._newStepDeadline = '';
   }
 
   private onElementSelected(e: CustomEvent): void {
@@ -773,12 +776,19 @@ export class ModuxEditor extends LitElement {
               </select>
               ${this._newStepType === 'HUMAN'
                 ? html`<input
-                    class="new-name evt"
-                    placeholder="Rol…"
-                    .value=${this._newStepRole}
-                    @input=${(e: Event) =>
-                      (this._newStepRole = (e.target as HTMLInputElement).value)}
-                  />`
+                      class="new-name evt"
+                      placeholder="Rol…"
+                      .value=${this._newStepRole}
+                      @input=${(e: Event) =>
+                        (this._newStepRole = (e.target as HTMLInputElement).value)}
+                    /><input
+                      class="new-name evt"
+                      placeholder="Deadline (PT4H)…"
+                      title="Deadline ISO-8601 del nuevo paso"
+                      .value=${this._newStepDeadline}
+                      @input=${(e: Event) =>
+                        (this._newStepDeadline = (e.target as HTMLInputElement).value)}
+                    />`
                 : ''}
               <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
                 ＋ Paso

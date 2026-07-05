@@ -77,6 +77,18 @@ public class EditorApiController {
             List<AggregateReferenceDto> aggregateReferences,
             List<ProcessDto> processes) {}
 
+    /**
+     * Cheap, order-independent fingerprint of the whole store. The editor polls
+     * it and refetches the projection when it changes — covering edits made from
+     * the Mateu CRUDs, another editor instance, or MCP.
+     */
+    @GetMapping("/version")
+    public Map<String, String> version() {
+        var elements = repository.allElements();
+        var hash = elements.stream().mapToInt(Objects::hashCode).sum() * 31 + elements.size();
+        return Map.of("version", Integer.toHexString(hash));
+    }
+
     @GetMapping("/model")
     public EditorModelDto model() {
         var services = repository.findAllOfType(ServiceEntity.class);
