@@ -18,6 +18,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Introduction', slug: 'getting-started/introduction' },
 						{ label: 'Spec-Driven Development', slug: 'getting-started/spec-driven-development' },
+						{ label: 'The Authoring Path', slug: 'getting-started/authoring-path' },
 						{ label: 'Enterprise Information Systems', slug: 'getting-started/enterprise-systems' },
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'Quick Start', slug: 'getting-started/quick-start' },

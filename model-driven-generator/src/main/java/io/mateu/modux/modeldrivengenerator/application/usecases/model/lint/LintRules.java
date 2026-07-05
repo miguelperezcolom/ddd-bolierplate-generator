@@ -51,7 +51,10 @@ public final class LintRules {
                 new OpenDecisions(),
                 new ModelOrphan(),
                 new CrossContextDataAccess(),
-                new CrossServiceConsumption());
+                new CrossServiceConsumption(),
+                new ModuleNotInService(),
+                new ModuleReadPath(),
+                new ModuleWritePath());
     }
 
     // --- cross-context coherence ---------------------------------------------
@@ -562,6 +565,72 @@ public final class LintRules {
                             "No station references this model — dead weight or work in progress?"))
                     .toList();
         }
+    }
+
+    // --- the authoring path (see getting-started/authoring-path): these rules turn the natural
+    // modeling sequence — topology → models → read/write sides → relations → operations — into
+    // next-step feedback instead of leaving it as tribal knowledge -------------------------------
+
+    /** Step 1 of the path: a module nobody deploys is a dead end. */
+    static class ModuleNotInService implements LintRule {
+        public String id() { return "module-not-in-service"; }
+        public String description() { return "Every module should belong to a service"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var deployed = new HashSet<String>();
+            m.services().forEach(s -> {
+                if (s.moduleIds() != null) deployed.addAll(s.moduleIds());
+            });
+            return m.modules().stream()
+                    .filter(mod -> !deployed.contains(mod.id()))
+                    .map(mod -> new LintFinding(id(), LintSeverity.WARNING, "Module", mod.id(), mod.name(),
+                            "Not referenced by any service — it will never be generated or deployed."))
+                    .toList();
+        }
+    }
+
+    /** Step 2 of the path: state without a read side is invisible. */
+    static class ModuleReadPath implements LintRule {
+        public String id() { return "module-read-path"; }
+        public String description() { return "Modules holding state should expose a way to read it"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.modules().stream()
+                    .filter(mod -> mod.aggregateIds() != null && !mod.aggregateIds().isEmpty())
+                    .filter(mod -> mod.readModelIds() == null || mod.readModelIds().isEmpty())
+                    .filter(mod -> m.queryServices().stream().noneMatch(qs -> mod.id().equals(qs.moduleId())))
+                    .filter(mod -> {
+                        var moduleModels = new HashSet<String>();
+                        mod.aggregateIds().forEach(aggId -> {
+                            var model = modelOfAggregate(m, aggId);
+                            if (model != null) moduleModels.add(model.id());
+                        });
+                        return m.pages().stream().noneMatch(p -> moduleModels.contains(p.modelId()));
+                    })
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                            "Has aggregates but no query service, read model or page — how is this state read?"))
+                    .toList();
+        }
+    }
+
+    /** Step 2 of the path: an aggregate no station writes to is decoration. */
+    static class ModuleWritePath implements LintRule {
+        public String id() { return "module-write-path"; }
+        public String description() { return "Modules holding aggregates should have a way to write them"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.modules().stream()
+                    .filter(mod -> mod.aggregateIds() != null && !mod.aggregateIds().isEmpty())
+                    .filter(mod -> isEmpty(mod.useCaseIds()) && isEmpty(mod.subscriptionIds())
+                            && isEmpty(mod.scheduledTriggerIds()))
+                    .filter(mod -> m.processes().stream().noneMatch(p -> mod.id().equals(p.ownerModuleId())))
+                    .filter(mod -> m.flows().stream().noneMatch(f -> mod.id().equals(f.targetModuleId())))
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                            "Has aggregates but no use cases, subscriptions, processes, flows or triggers"
+                                    + " — who writes to them?"))
+                    .toList();
+        }
+    }
+
+    private static boolean isEmpty(List<String> list) {
+        return list == null || list.isEmpty();
     }
 
     // --- shared helpers ------------------------------------------------------------

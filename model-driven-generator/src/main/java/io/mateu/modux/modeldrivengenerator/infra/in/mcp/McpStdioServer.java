@@ -81,10 +81,18 @@ public class McpStdioServer {
         serverInfo.put("title", "Modux model authoring");
         serverInfo.put("version", "0.0.1");
         result.put("instructions", "Authoring tools for the modux model store (the YAML spec that modux "
-                + "turns into code). Typical loop: list_element_types to see the model's shape, "
-                + "get_element_schema before writing a new element type, upsert_element to create/update "
-                + "(it returns the dangling references you introduce), lint_model after a batch of edits, "
-                + "and generate_code when the model is clean.");
+                + "turns into code). Model in the natural order (the authoring path): "
+                + "1) topology — project, modules, and every module inside a service; "
+                + "2) models first (data with shape), then escalate only when needed: add an aggregate "
+                + "when there are invariants or a lifecycle to protect, a query service or read model "
+                + "for the read side, domain events for what happened, use cases for what the system does; "
+                + "3) relations between modules are declared as intent, not structure: use flows "
+                + "(MATERIALIZES/TRIGGERS/NOTIFIES/ORCHESTRATES), processes, or a recipe (list_recipes) — "
+                + "prefer apply_recipe over hand-building the pieces; "
+                + "4) operations are pipelines: gather data, transform (model mappings), write or return. "
+                + "Tool loop: list_element_types to orient, get_element_schema before a new type, "
+                + "upsert_element (returns the dangling references you introduce), lint_model after each "
+                + "batch — its findings are the next-step to-do list — and generate_code when clean.");
         return result;
     }
 

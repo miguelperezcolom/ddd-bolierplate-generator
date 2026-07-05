@@ -168,6 +168,56 @@ class LintRulesTest {
 
     // --- helpers ---
 
+    @Test
+    void module_not_in_service_is_flagged_as_undeployed() throws Exception {
+        var module = module("mod1", List.of());
+        var service = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                "{\"id\":\"s1\",\"name\":\"S1\",\"moduleIds\":[\"mod1\"]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class);
+
+        var orphanFindings = new LintRules.ModuleNotInService().apply(new ModelSnapshot(
+                null, null, List.of(module), null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null));
+        var deployedFindings = new LintRules.ModuleNotInService().apply(new ModelSnapshot(
+                null, List.of(service), List.of(module), null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null));
+
+        assertTrue(orphanFindings.stream().anyMatch(f -> "mod1".equals(f.elementId())
+                && f.severity() == LintSeverity.WARNING), orphanFindings.toString());
+        assertTrue(deployedFindings.isEmpty(), deployedFindings.toString());
+    }
+
+    @Test
+    void module_with_aggregates_but_no_read_or_write_path_gets_next_step_advice() {
+        var module = new ModuleEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
+                null, null, null, null, null, null, null, null, false, null, null, null, null, null,
+                null, List.of(), List.of());
+        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null);
+
+        var readFindings = new LintRules.ModuleReadPath().apply(snapshot);
+        var writeFindings = new LintRules.ModuleWritePath().apply(snapshot);
+
+        assertTrue(readFindings.stream().anyMatch(f -> f.message().contains("how is this state read")),
+                readFindings.toString());
+        assertTrue(writeFindings.stream().anyMatch(f -> f.message().contains("who writes to them")),
+                writeFindings.toString());
+    }
+
+    @Test
+    void a_flow_targeting_the_module_satisfies_the_write_path() {
+        var module = new ModuleEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
+                null, null, null, null, null, null, null, null, false, null, null, null, null, null,
+                null, List.of(), List.of());
+        var flow = new FlowEntity("f1", "Materializa", null,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype.MATERIALIZES,
+                "a0", "Evento", "mod1", "Vista", List.of(), null, List.of(), List.of());
+        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+                null, null, null, null, List.of(flow), null, null, null, null, null, null);
+
+        assertTrue(new LintRules.ModuleWritePath().apply(snapshot).isEmpty());
+    }
+
     private static ModelSnapshot snapshotWith(AggregateEntity aggregate) {
         return new ModelSnapshot(null, null, null, List.of(aggregate), null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null);
