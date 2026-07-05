@@ -5,6 +5,29 @@ import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zo
 import type { Scene, SceneNode, SceneEdge } from './scene.js';
 
 /**
+ * ArchiMate-inspired glyphs drawn in the node's top-right corner, keyed by
+ * SceneNode.symbol. Each fits a 12×12 box, stroke-only.
+ */
+const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
+  component: svg`<rect x="3.5" y="0.5" width="8" height="11" rx="1"></rect>
+    <rect x="0.5" y="2.5" width="6" height="2.6"></rect>
+    <rect x="0.5" y="6.9" width="6" height="2.6"></rect>`,
+  aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
+  entity: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1"></rect>
+    <line x1="0.5" y1="4.6" x2="11.5" y2="4.6"></line>`,
+  flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
+  process: svg`<path d="M0.5 3 H7 V0.8 L11.5 6 L7 11.2 V9 H0.5 Z"></path>`,
+  person: svg`<circle cx="6" cy="3.2" r="2.4"></circle>
+    <path d="M1.5 11.5 C1.5 7.6, 10.5 7.6, 10.5 11.5"></path>`,
+  gear: svg`<circle cx="6" cy="6" r="2.6"></circle>
+    <line x1="6" y1="0.5" x2="6" y2="2.6"></line><line x1="6" y1="9.4" x2="6" y2="11.5"></line>
+    <line x1="0.5" y1="6" x2="2.6" y2="6"></line><line x1="9.4" y1="6" x2="11.5" y2="6"></line>`,
+  event: svg`<circle cx="6" cy="6" r="5"></circle><circle cx="6" cy="6" r="2.6"></circle>`,
+  undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
+    <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
+};
+
+/**
  * Generic, fully editable diagram canvas. Semantics-free: renders a Scene and
  * emits gestures as events. The embedding shell (modux-editor) translates
  * gestures into model commands.
@@ -392,6 +415,13 @@ export class ModuxCanvas extends LitElement {
         ${node.badge
           ? svg`<text x=${-hw} y=${-hh - 7} font-size="10" font-family="ui-sans-serif, system-ui"
                   fill="#64748b" letter-spacing="0.08em">${node.badge}</text>`
+          : ''}
+        ${node.symbol && SYMBOLS[node.symbol]
+          ? svg`<g transform="translate(${hw - 17}, ${-hh + 5})" fill="none"
+                  stroke=${node.stroke ?? '#64748b'} stroke-width="1.1" stroke-linejoin="round"
+                  stroke-linecap="round" opacity="0.85" pointer-events="none">
+                ${SYMBOLS[node.symbol]}
+              </g>`
           : ''}
         ${this._editingId === node.id
           ? svg`

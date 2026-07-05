@@ -17,6 +17,8 @@ export interface SceneNode {
   dashed?: boolean;
   /** Small tag rendered above the node (e.g. subdomain type). */
   badge?: string;
+  /** ArchiMate-style glyph id drawn in the node's top-right corner (see modux-canvas SYMBOLS). */
+  symbol?: string;
   tooltip?: string;
 }
 

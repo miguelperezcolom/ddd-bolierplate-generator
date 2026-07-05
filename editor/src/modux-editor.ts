@@ -7,6 +7,7 @@ import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
+import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 
 const RELATION_TYPES: ContextMapRelationType[] = [
@@ -634,16 +635,40 @@ export class ModuxEditor extends LitElement {
     this._newName = '';
   }
 
+  private sceneFor(view: ViewId) {
+    const viewLayout = this.layout[view] ?? {};
+    return view === 'aggregates'
+      ? aggregatesScene(this.model, viewLayout)
+      : view === 'flows'
+        ? flowsScene(this.model, viewLayout)
+        : view === 'processes'
+          ? processesScene(this.model, viewLayout)
+          : contextMapScene(this.model, viewLayout);
+  }
+
+  /** ELK layout for the current view, applied as ONE undoable composite move. */
+  private async runAutoLayout(): Promise<void> {
+    const view = this._view;
+    const scene = this.sceneFor(view);
+    if (!scene.nodes.length) return;
+    const algorithm = view === 'flows' || view === 'processes' ? 'layered' : 'force';
+    const positions = await autoLayout(scene, algorithm);
+    this.pushUndoEntry(
+      scene.nodes.map((n) => ({
+        kind: 'move-node' as const,
+        view,
+        id: n.id,
+        pos: this.layout[view]?.[n.id] ?? null,
+      })),
+    );
+    this.layout = { ...this.layout, [view]: positions };
+    this.emit('layout-changed', { layout: this.layout });
+    await this.updateComplete;
+    this.renderRoot.querySelector('modux-canvas')?.fit();
+  }
+
   render() {
-    const viewLayout = this.layout[this._view] ?? {};
-    const scene =
-      this._view === 'aggregates'
-        ? aggregatesScene(this.model, viewLayout)
-        : this._view === 'flows'
-          ? flowsScene(this.model, viewLayout)
-          : this._view === 'processes'
-            ? processesScene(this.model, viewLayout)
-            : contextMapScene(this.model, viewLayout);
+    const scene = this.sceneFor(this._view);
     return html`
       <div class="toolbar">
         <div class="tabs">
@@ -867,6 +892,13 @@ export class ModuxEditor extends LitElement {
           @click=${() => this.renderRoot.querySelector('modux-canvas')?.fit()}
         >
           ⌖ Ajustar
+        </button>
+        <button
+          class="tab"
+          title="Recolocar los nodos automáticamente (deshacible)"
+          @click=${() => void this.runAutoLayout()}
+        >
+          ✨ Auto-layout
         </button>
       </div>
       <modux-canvas
