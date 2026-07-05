@@ -216,8 +216,7 @@ public class ModelMcpTools {
         try {
             element = json.treeToValue(elementNode, type);
         } catch (JacksonException e) {
-            throw new IllegalArgumentException("The element does not match the '" + typeName + "' schema: "
-                    + e.getOriginalMessage() + ". Call get_element_schema('" + typeName + "') for the exact shape.");
+            throw new IllegalArgumentException(schemaMismatchMessage(typeName, e));
         }
         if (!(element instanceof Identifiable identifiable) || identifiable.id() == null || identifiable.id().isBlank()) {
             throw new IllegalArgumentException("The element must have a non-blank 'id'.");
@@ -308,6 +307,91 @@ public class ModelMcpTools {
         generateCodeUseCase.handle(new GenerateCodeCommand(projectId, outputPath, null, false));
         return "Code generated for project '" + projectId + "'"
                 + (outputPath != null ? " into " + outputPath : " into its stored outputPath") + ".";
+    }
+
+    /**
+     * Agent-friendly schema rejection: for unknown fields, name the offending class, suggest the
+     * closest valid field ("did you mean…?") and list what the class accepts — so the fix takes
+     * one turn instead of a round-trip through the full schema.
+     */
+    private String schemaMismatchMessage(String typeName, JacksonException e) {
+        if (e instanceof com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException unrecognized) {
+            var unknown = unrecognized.getPropertyName();
+            var known = unrecognized.getKnownPropertyIds() == null ? List.<String>of()
+                    : unrecognized.getKnownPropertyIds().stream().map(String::valueOf).sorted().toList();
+            var target = unrecognized.getReferringClass() != null
+                    ? unrecognized.getReferringClass().getSimpleName() : typeName;
+            var suggestion = closestField(unknown, known);
+            return "Unknown field '" + unknown + "' on " + target
+                    + (suggestion != null ? " — did you mean '" + suggestion + "'?" : "")
+                    + (known.isEmpty() ? "" : " Valid fields: " + String.join(", ", known) + ".");
+        }
+        return "The element does not match the '" + typeName + "' schema: " + e.getOriginalMessage()
+                + ". Call get_element_schema('" + typeName + "') for the exact shape.";
+    }
+
+    /**
+     * The closest valid field, or null when nothing is plausibly close. Three signals, in order:
+     * containment ("contextMapRelations" → "contextMap"), small edit distance (typos), and a
+     * shared camelCase token ("fieldName" → "stateField"); ties resolved by edit distance.
+     */
+    private static String closestField(String unknown, List<String> known) {
+        var unknownLower = unknown.toLowerCase(Locale.ROOT);
+        String best = null;
+        var bestRank = Integer.MAX_VALUE;
+        var bestDistance = Integer.MAX_VALUE;
+        for (var candidate : known) {
+            var candidateLower = candidate.toLowerCase(Locale.ROOT);
+            var distance = editDistance(unknownLower, candidateLower);
+            int rank;
+            if (candidateLower.contains(unknownLower) || unknownLower.contains(candidateLower)) {
+                rank = 0;
+            } else if (distance <= Math.max(2, unknown.length() / 3)) {
+                rank = 1;
+            } else if (sharesToken(unknown, candidate)) {
+                rank = 2;
+            } else {
+                continue;
+            }
+            if (rank < bestRank || (rank == bestRank && distance < bestDistance)) {
+                bestRank = rank;
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /** Do two camelCase names share a meaningful token (e.g. fieldName / stateField → "field")? */
+    private static boolean sharesToken(String a, String b) {
+        var tokensA = camelTokens(a);
+        var tokensB = camelTokens(b);
+        tokensA.retainAll(tokensB);
+        tokensA.removeIf(token -> token.length() < 3 || "id".equals(token) || "ids".equals(token));
+        return !tokensA.isEmpty();
+    }
+
+    private static java.util.Set<String> camelTokens(String name) {
+        return java.util.Arrays.stream(name.split("(?<=[a-z0-9])(?=[A-Z])|_|-"))
+                .map(t -> t.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toCollection(java.util.HashSet::new));
+    }
+
+    private static int editDistance(String a, String b) {
+        var previous = new int[b.length() + 1];
+        for (var j = 0; j <= b.length(); j++) {
+            previous[j] = j;
+        }
+        for (var i = 1; i <= a.length(); i++) {
+            var current = new int[b.length() + 1];
+            current[0] = i;
+            for (var j = 1; j <= b.length(); j++) {
+                var substitution = previous[j - 1] + (a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1);
+                current[j] = Math.min(substitution, Math.min(previous[j] + 1, current[j - 1] + 1));
+            }
+            previous = current;
+        }
+        return previous[b.length()];
     }
 
     private String nameOf(Object element) {

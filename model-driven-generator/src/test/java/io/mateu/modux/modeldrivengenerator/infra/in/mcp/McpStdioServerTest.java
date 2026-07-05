@@ -100,12 +100,28 @@ class McpStdioServerTest {
     }
 
     @Test
-    void upsert_with_unknown_field_is_rejected_with_guidance() throws Exception {
-        var response = rawCall("upsert_element", """
+    void upsert_with_unknown_field_suggests_the_closest_one() throws Exception {
+        // a plain typo
+        var typo = rawCall("upsert_element", """
                 {"type":"decisions","element":{"id":"x","naem":"typo"}}""");
-        assertTrue(response.at("/result/isError").asBoolean(), response.toString());
-        assertTrue(response.at("/result/content/0/text").asText().contains("get_element_schema"),
-                response.toString());
+        assertTrue(typo.at("/result/isError").asBoolean(), typo.toString());
+        assertTrue(typo.at("/result/content/0/text").asText().contains("did you mean 'name'"),
+                typo.toString());
+
+        // the two real mistakes from the first MCP dogfooding session:
+        // a nested field guessed wrong (shared token: fieldName → stateField)…
+        var nested = rawCall("upsert_element", """
+                {"type":"aggregates","element":{"id":"dym-agg","name":"Dym",
+                 "lifecycle":{"fieldName":"estado","initialState":"a","states":["a"]}}}""");
+        var nestedText = nested.at("/result/content/0/text").asText();
+        assertTrue(nestedText.contains("LifecycleEntity"), nestedText);
+        assertTrue(nestedText.contains("did you mean 'stateField'"), nestedText);
+
+        // …and an over-specified name (containment: contextMapRelations → contextMap)
+        var contained = rawCall("upsert_element", """
+                {"type":"projects","element":{"id":"dym-prj","name":"Dym","contextMapRelations":[]}}""");
+        assertTrue(contained.at("/result/content/0/text").asText().contains("did you mean 'contextMap'"),
+                contained.at("/result/content/0/text").asText());
     }
 
     @Test
