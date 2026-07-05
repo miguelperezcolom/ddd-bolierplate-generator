@@ -268,6 +268,23 @@ class LintRulesTest {
     }
 
     @Test
+    void custom_step_without_intent_is_flagged_and_with_intent_is_not() throws Exception {
+        var useCase = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                "{\"id\":\"uc1\",\"name\":\"Repreciar\",\"steps\":["
+                        + "{\"id\":\"s1\",\"name\":\"sinIntent\",\"type\":\"Custom\"},"
+                        + "{\"id\":\"s2\",\"name\":\"conIntent\",\"type\":\"Custom\","
+                        + "\"intent\":\"Recalcula el precio con la tarifa vigente y rechaza si difiere >1%\"}]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity.class);
+        var snapshot = new ModelSnapshot(null, null, null, null, null, List.of(useCase),
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        var findings = new LintRules.CustomStepIntent().apply(snapshot);
+
+        assertEquals(1, findings.size(), findings.toString());
+        assertTrue(findings.get(0).elementName().contains("sinIntent"), findings.toString());
+    }
+
+    @Test
     void operation_with_no_effect_is_flagged() throws Exception {
         var aggregate = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
                 "{\"id\":\"a1\",\"name\":\"Reserva\",\"operations\":["

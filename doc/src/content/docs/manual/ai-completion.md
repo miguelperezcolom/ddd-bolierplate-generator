@@ -54,6 +54,23 @@ private void checkConfirmPreconditions() {
 
 The AI proposes a guard based on the precondition description and the aggregate's fields.
 
+### Custom use-case steps (from natural-language intent)
+
+A `Custom` step is a two-zone hook, and its **spec is natural language**: fill the step's `intent` field with what the step must do. The intent travels into the generated scaffold as javadoc:
+
+```java
+/** Intent (from the model): Busca tickets abiertos sin actividad en 48h, sube su prioridad un nivel y notifica al agente asignado */
+@Override
+public void escalateStaleTickets() {
+    // TODO: implement "escalateStaleTickets" — intended behaviour: …
+    // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+}
+```
+
+`ai-complete` reads the intent plus the use case's input/output model fields and proposes the method body for `Default{Name}Steps` — a file the **developer owns**: review the proposal, commit it, or rewrite it; it is scaffolded once and never overwritten. This is the intended division of labor: the model states *what* in natural language, the AI drafts *how*, the developer has the last word.
+
+The `custom-step-intent` lint finding reminds you when a Custom step has no intent.
+
 ### Cucumber step definition bodies
 
 BDD steps are generated with empty bodies:

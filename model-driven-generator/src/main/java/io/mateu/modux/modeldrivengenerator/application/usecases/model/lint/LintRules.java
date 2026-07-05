@@ -56,7 +56,8 @@ public final class LintRules {
                 new ModuleReadPath(),
                 new ModuleWritePath(),
                 new UseCasePipeline(),
-                new OperationPipeline());
+                new OperationPipeline(),
+                new CustomStepIntent());
     }
 
     // --- cross-context coherence ---------------------------------------------
@@ -653,6 +654,28 @@ public final class LintRules {
                     .map(uc -> new LintFinding(id(), LintSeverity.INFO, "UseCase", uc.id(), uc.name(),
                             "Its steps only gather/transform, and it declares no output model — it neither"
                                     + " writes nor returns. What does this use case do?"))
+                    .toList();
+        }
+    }
+
+    /**
+     * Step 4 of the path: a Custom step is a two-zone hook, and its spec is natural language.
+     * With an intent, the scaffold documents itself and {@code mvn modux:ai-complete} can propose
+     * the implementation; without it, the hook is a TODO with no contract.
+     */
+    static class CustomStepIntent implements LintRule {
+        public String id() { return "custom-step-intent"; }
+        public String description() { return "Custom steps should state their intent in natural language"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.useCases().stream()
+                    .filter(uc -> uc.steps() != null)
+                    .flatMap(uc -> uc.steps().stream()
+                            .filter(s -> s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom)
+                            .filter(s -> isBlank(s.intent()))
+                            .map(s -> new LintFinding(id(), LintSeverity.INFO, "UseCaseStep", s.id(),
+                                    uc.name() + "." + s.name(),
+                                    "Custom step without an intent — describe what it does in natural language"
+                                            + " so the scaffold self-documents and ai-complete can propose the code.")))
                     .toList();
         }
     }

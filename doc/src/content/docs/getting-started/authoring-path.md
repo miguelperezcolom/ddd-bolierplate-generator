@@ -57,7 +57,7 @@ Prefer a [starter recipe](/manual/recipes/) over hand-building: `materialized-re
 Finally, the fine grain: the operations inside use cases and aggregates. Every one of them has the same shape — **gather data, transform it, then write it somewhere or return it**. Modux gives each stage an element:
 
 - *gather* — input models, query services, gateway calls
-- *transform* — **model mappings** (declarative field-level rules) or two-zone hooks for logic that deserves code
+- *transform* — **model mappings** (declarative field-level rules) or two-zone hooks for logic that deserves code. A hook's spec is natural language: give the `Custom` step an `intent` and `ai-complete` proposes the implementation, which the developer owns and can overwrite
 - *write / return* — aggregate operations (guarded by invariants), repositories, output models, emitted events
 
 If an operation doesn't fit "gather → transform → write/return", that is usually a sign it is two operations.

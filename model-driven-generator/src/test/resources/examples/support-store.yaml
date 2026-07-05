@@ -199,6 +199,9 @@ useCases:
   - id: "step-es-custom"
     name: "escalateStaleTickets"
     type: "Custom"
+    # El spec del hook two-zone, en lenguaje natural: viaja al scaffold como javadoc
+    # y `mvn modux:ai-complete` propone la implementación a partir de él.
+    intent: "Busca tickets abiertos sin actividad en 48h, sube su prioridad un nivel y notifica al agente asignado"
 
 domainEvents:
 - id: "ev-ticketOpened"

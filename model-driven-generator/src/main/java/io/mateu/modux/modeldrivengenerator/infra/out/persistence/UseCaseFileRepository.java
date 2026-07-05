@@ -115,7 +115,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
         if (steps == null) return List.of();
         return steps.stream()
                 .map(s -> {
-                    // carry over per-step fields the domain does not model yet (query-service consumption)
+                    // carry over per-step fields the domain does not model yet
+                    // (query-service consumption, natural-language intent)
                     var previous = existing == null || existing.steps() == null ? null : existing.steps().stream()
                             .filter(e -> e.id() != null && e.id().equals(s.id()))
                             .findFirst().orElse(null);
@@ -124,7 +125,8 @@ public class UseCaseFileRepository implements UseCaseRepository {
                             s.gatewayId(), s.gatewayOperationId(),
                             s.domainEventId(), s.useCaseId(), s.modelMappingId(),
                             previous != null ? previous.queryServiceId() : null,
-                            previous != null ? previous.queryOperationId() : null);
+                            previous != null ? previous.queryOperationId() : null,
+                            previous != null ? previous.intent() : null);
                 })
                 .toList();
     }

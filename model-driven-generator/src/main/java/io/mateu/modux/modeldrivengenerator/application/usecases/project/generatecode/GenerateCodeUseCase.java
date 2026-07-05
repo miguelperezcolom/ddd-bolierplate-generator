@@ -724,6 +724,9 @@ public class GenerateCodeUseCase {
                         step.aggregateId(), step.operationId(),
                         step.gatewayId(), step.gatewayOperationId(),
                         step.domainEventId(), step.useCaseId(), step.modelMappingId());
+                if (step.intent() != null && !step.intent().isBlank()) {
+                    stepMap.put("intent", step.intent());
+                }
 
                 String stepType = (String) stepMap.get("type");
                 if ("CallGateway".equals(stepType) && stepMap.get("gatewayOperation") instanceof Map<?, ?> opMap) {

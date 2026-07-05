@@ -59,6 +59,8 @@ public class AiCompleteCodeUseCase {
             processAggregate(command, project, module, aggregate, proposals);
         }
 
+        processCustomSteps(command, module, proposals);
+
         processBddSteps(command, module, proposals);
 
         var proposalDir = Path.of(outputPath, "proposals", slug);
@@ -134,6 +136,56 @@ public class AiCompleteCodeUseCase {
         }
     }
 
+    /**
+     * Custom use-case steps carry their spec in natural language ({@code intent}): the AI proposes
+     * the implementation for the {@code Default{Name}Steps} scaffold, and the developer — who owns
+     * that file — reviews, commits or rewrites it. NL in the model, code as a proposal.
+     */
+    private void processCustomSteps(AiCompleteCodeCommand command,
+                                    ModuleEntity module,
+                                    List<String> proposals) {
+        for (var useCaseId : safeList(module.useCaseIds())) {
+            var useCase = repository.findById(useCaseId, UseCaseEntity.class).orElse(null);
+            if (useCase == null || useCase.steps() == null) continue;
+
+            for (var step : useCase.steps()) {
+                if (step.type() != io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom
+                        || step.intent() == null || step.intent().isBlank()) {
+                    continue;
+                }
+                var methodName = uncapitalize(step.name().replaceAll("[^a-zA-Z0-9]", ""));
+                proposals.add("\n## " + useCase.name() + " — `Default" + capitalize(useCase.name())
+                        + "Steps." + methodName + "()`\n");
+                proposals.add("*Intent:* " + step.intent() + "\n");
+
+                String system = BASE_SYSTEM + extraContext(module);
+                String user = """
+                        Use case: %s
+                        Input model fields:
+                        %s
+                        Output model fields:
+                        %s
+
+                        Implement the body of the `%s()` method of the custom-steps hook.
+                        What the step must do (natural-language intent from the model): %s
+
+                        Rules:
+                        - This is a Spring @Component in the developer-owned custom module; assume
+                          repository/gateway beans can be @Autowired if needed and say so in a comment
+                        - Return only the statements that go inside the method body (no signature, no braces)
+                        """.formatted(useCase.name(),
+                        resolveModelFields(useCase.inputModelId()),
+                        resolveModelFields(useCase.outputModelId()),
+                        methodName, step.intent());
+
+                var code = claude.complete(command.apiKey(), command.model(), system, user);
+                proposals.add("```java\n" + code.strip() + "\n```\n");
+                proposals.add("*File: `custom/Default" + capitalize(useCase.name())
+                        + "Steps.java` → `" + methodName + "()` (developer-owned: review, adapt, commit)*\n");
+            }
+        }
+    }
+
     private void processBddSteps(AiCompleteCodeCommand command,
                                   ModuleEntity module,
                                   List<String> proposals) {
@@ -196,6 +248,20 @@ public class AiCompleteCodeUseCase {
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
+
+    private String resolveModelFields(String modelId) {
+        if (modelId == null || modelId.isBlank()) return "(none)";
+        var model = repository.findById(modelId, ModelEntity.class).orElse(null);
+        if (model == null || model.fields() == null) return "(none)";
+        return model.fields().stream()
+                .map(f -> "  - " + javaType(f) + " " + f.name())
+                .collect(Collectors.joining("\n"));
+    }
+
+    private String uncapitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toLowerCase(s.charAt(0)) + s.substring(1);
+    }
 
     private String resolveFields(AggregateEntity aggregate) {
         if (aggregate.modelId() == null || aggregate.modelId().isBlank()) return "(no fields defined)";

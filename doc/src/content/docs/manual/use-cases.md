@@ -114,6 +114,7 @@ Every operation of an information system has the same shape: **gather data → t
 |---|---|---|
 | **Gather** | `ReadAggregate`, `CallQueryService` | bring data in |
 | **Transform** | `ApplyModelMapping` | reshape it (declaratively; use `Custom` when the logic deserves code) |
+| **Custom** | `Custom` + `intent` | logic that deserves code: state the *intent* in natural language — it becomes javadoc in the scaffold and [`ai-complete`](/manual/ai-completion/) proposes the implementation |
 | **Write** | `CallAggregateOperation`, `SaveAggregate`, `PublishDomainEvent`, `CallGateway` | produce an effect |
 | **Return** | the use case's **output model** | give data back to the caller |
 | — | `CallUseCase` | compose another pipeline |
