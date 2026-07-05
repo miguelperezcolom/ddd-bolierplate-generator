@@ -1412,6 +1412,19 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "readSideExternalSystemId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'readSideExternalSystem' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "readSideModuleId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'readSideModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "readSideVia" : {
+          "type" : "string"
+        },
         "sagaIds" : {
           "description" : "References to existing 'saga' ids (referential integrity is checked by the linter).",
           "type" : "array",
