@@ -103,7 +103,22 @@ Steps describe the orchestration logic of the use case. They are executed in ord
 | **CallGateway** | Call an outbound gateway operation |
 | **PublishDomainEvent** | Publish a domain event to the message broker |
 | **CallUseCase** | Delegate to another use case |
+| **CallQueryService** | Read from a query service operation |
 | **ApplyModelMapping** | Transform data between two models via a mapping definition |
+
+### The pipeline shape
+
+Every operation of an information system has the same shape: **gather data → transform it → write it somewhere or return it**. Each step type plays one of those roles:
+
+| Phase | Step types | Role |
+|---|---|---|
+| **Gather** | `ReadAggregate`, `CallQueryService` | bring data in |
+| **Transform** | `ApplyModelMapping` | reshape it (declaratively; use `Custom` when the logic deserves code) |
+| **Write** | `CallAggregateOperation`, `SaveAggregate`, `PublishDomainEvent`, `CallGateway` | produce an effect |
+| **Return** | the use case's **output model** | give data back to the caller |
+| — | `CallUseCase` | compose another pipeline |
+
+If a use case doesn't fit *gather → transform → write/return*, that is usually a sign it is two use cases. The linter asks the pipeline questions for you: `use-case-pipeline` flags use cases whose steps only gather/transform with no output model, and `operation-pipeline` flags aggregate operations that neither set state, emit events nor return.
 
 Each step has:
 

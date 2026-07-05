@@ -54,7 +54,9 @@ public final class LintRules {
                 new CrossServiceConsumption(),
                 new ModuleNotInService(),
                 new ModuleReadPath(),
-                new ModuleWritePath());
+                new ModuleWritePath(),
+                new UseCasePipeline(),
+                new OperationPipeline());
     }
 
     // --- cross-context coherence ---------------------------------------------
@@ -588,13 +590,15 @@ public final class LintRules {
         }
     }
 
-    /** Step 2 of the path: state without a read side is invisible. */
+    /** Step 2 of the path: state without a read side is invisible — unless the read side lives elsewhere. */
     static class ModuleReadPath implements LintRule {
         public String id() { return "module-read-path"; }
         public String description() { return "Modules holding state should expose a way to read it"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.modules().stream()
                     .filter(mod -> mod.aggregateIds() != null && !mod.aggregateIds().isEmpty())
+                    // declared read delegation ("the read side lives elsewhere") satisfies the path
+                    .filter(mod -> isBlank(mod.readSideModuleId()) && isBlank(mod.readSideExternalSystemId()))
                     .filter(mod -> mod.readModelIds() == null || mod.readModelIds().isEmpty())
                     .filter(mod -> m.queryServices().stream().noneMatch(qs -> mod.id().equals(qs.moduleId())))
                     .filter(mod -> {
@@ -629,8 +633,51 @@ public final class LintRules {
         }
     }
 
+    /**
+     * Step 4 of the path: every operation is a pipeline — gather, transform, then write or
+     * return. A use case whose steps do neither of the last two does nothing observable.
+     */
+    static class UseCasePipeline implements LintRule {
+        public String id() { return "use-case-pipeline"; }
+        public String description() { return "Use cases with steps should end in a write or a return"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.useCases().stream()
+                    .filter(uc -> uc.steps() != null && !uc.steps().isEmpty())
+                    .filter(uc -> uc.outputModelId() == null)
+                    .filter(uc -> uc.steps().stream()
+                            .filter(s -> s.type() != null)
+                            .map(s -> s.type().phase())
+                            .noneMatch(p -> p == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.WRITE
+                                    || p == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.COMPOSE
+                                    || p == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.CUSTOM))
+                    .map(uc -> new LintFinding(id(), LintSeverity.INFO, "UseCase", uc.id(), uc.name(),
+                            "Its steps only gather/transform, and it declares no output model — it neither"
+                                    + " writes nor returns. What does this use case do?"))
+                    .toList();
+        }
+    }
+
+    /** Step 4 of the path, for aggregate operations: no sets, no emits, no output = decoration. */
+    static class OperationPipeline implements LintRule {
+        public String id() { return "operation-pipeline"; }
+        public String description() { return "Aggregate operations should write state, emit events or return"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aggregates().stream()
+                    .flatMap(a -> a.operations().stream()
+                            .filter(op -> isBlank(op.sets()) && isBlank(op.emits()) && op.outputModelId() == null)
+                            .map(op -> new LintFinding(id(), LintSeverity.INFO, "Operation", op.id(),
+                                    a.name() + "." + op.name(),
+                                    "Neither sets state, emits events nor returns a model — what is its effect?")))
+                    .toList();
+        }
+    }
+
     private static boolean isEmpty(List<String> list) {
         return list == null || list.isEmpty();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     // --- shared helpers ------------------------------------------------------------

@@ -9,5 +9,20 @@ public enum UseCaseStepType {
     PublishDomainEvent,
     CallUseCase,
     CallQueryService,
-    ApplyModelMapping
+    ApplyModelMapping;
+
+    /**
+     * Which role this step plays in the gather → transform → write/return pipeline.
+     * {@code CallGateway} counts as WRITE (an outbound effect); when a gateway is used to fetch
+     * data, its result feeds a transform and the pipeline still holds.
+     */
+    public StepPhase phase() {
+        return switch (this) {
+            case ReadAggregate, CallQueryService -> StepPhase.GATHER;
+            case ApplyModelMapping -> StepPhase.TRANSFORM;
+            case CallAggregateOperation, SaveAggregate, PublishDomainEvent, CallGateway -> StepPhase.WRITE;
+            case CallUseCase -> StepPhase.COMPOSE;
+            case Custom -> StepPhase.CUSTOM;
+        };
+    }
 }

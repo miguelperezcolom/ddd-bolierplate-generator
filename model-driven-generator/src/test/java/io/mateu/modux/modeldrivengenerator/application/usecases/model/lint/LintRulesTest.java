@@ -205,6 +205,20 @@ class LintRulesTest {
     }
 
     @Test
+    void declared_read_delegation_satisfies_the_read_path() throws Exception {
+        // "the read side lives elsewhere": a CQRS module whose reads are served by another module
+        var module = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                "{\"id\":\"mod1\",\"name\":\"Reservas\",\"aggregateIds\":[\"a1\"],"
+                        + "\"readSideModuleId\":\"mod-dispo\",\"readSideVia\":\"CDC\"}",
+                ModuleEntity.class);
+        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null);
+
+        assertTrue(new LintRules.ModuleReadPath().apply(snapshot).isEmpty(),
+                "a declared read delegation is a read path");
+    }
+
+    @Test
     void a_flow_targeting_the_module_satisfies_the_write_path() {
         var module = new ModuleEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
                 null, null, null, null, null, null, null, null, false, null, null, null, null, null,
@@ -216,6 +230,55 @@ class LintRulesTest {
                 null, null, null, null, List.of(flow), null, null, null, null, null, null);
 
         assertTrue(new LintRules.ModuleWritePath().apply(snapshot).isEmpty());
+    }
+
+    @Test
+    void step_types_classify_into_pipeline_phases() {
+        assertEquals(io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.GATHER,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService.phase());
+        assertEquals(io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.TRANSFORM,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.ApplyModelMapping.phase());
+        assertEquals(io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.StepPhase.WRITE,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation.phase());
+    }
+
+    @Test
+    void use_case_that_only_gathers_and_never_writes_or_returns_is_flagged() throws Exception {
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var pointless = mapper.readValue(
+                "{\"id\":\"uc1\",\"name\":\"Mira y calla\",\"steps\":["
+                        + "{\"id\":\"s1\",\"name\":\"lee\",\"type\":\"ReadAggregate\",\"aggregateId\":\"a1\"},"
+                        + "{\"id\":\"s2\",\"name\":\"mapea\",\"type\":\"ApplyModelMapping\",\"modelMappingId\":\"mm1\"}]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity.class);
+        var writing = mapper.readValue(
+                "{\"id\":\"uc2\",\"name\":\"Confirma\",\"steps\":["
+                        + "{\"id\":\"s1\",\"name\":\"op\",\"type\":\"CallAggregateOperation\",\"aggregateId\":\"a1\"}]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity.class);
+        var returning = mapper.readValue(
+                "{\"id\":\"uc3\",\"name\":\"Consulta\",\"outputModelId\":\"m1\",\"steps\":["
+                        + "{\"id\":\"s1\",\"name\":\"lee\",\"type\":\"CallQueryService\",\"queryServiceId\":\"qs1\"}]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity.class);
+        var snapshot = new ModelSnapshot(null, null, null, null, null, List.of(pointless, writing, returning),
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        var findings = new LintRules.UseCasePipeline().apply(snapshot);
+
+        assertEquals(1, findings.size(), findings.toString());
+        assertEquals("uc1", findings.get(0).elementId());
+    }
+
+    @Test
+    void operation_with_no_effect_is_flagged() throws Exception {
+        var aggregate = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                "{\"id\":\"a1\",\"name\":\"Reserva\",\"operations\":["
+                        + "{\"id\":\"op1\",\"name\":\"decorativa\"},"
+                        + "{\"id\":\"op2\",\"name\":\"confirmar\",\"sets\":\"estado=CONFIRMADA\",\"emits\":\"ReservaConfirmada\"}]}",
+                AggregateEntity.class);
+
+        var findings = new LintRules.OperationPipeline().apply(snapshotWith(aggregate));
+
+        assertEquals(1, findings.size(), findings.toString());
+        assertTrue(findings.get(0).elementName().contains("decorativa"), findings.toString());
     }
 
     private static ModelSnapshot snapshotWith(AggregateEntity aggregate) {
