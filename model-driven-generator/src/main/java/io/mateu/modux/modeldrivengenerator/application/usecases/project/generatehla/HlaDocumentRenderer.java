@@ -125,6 +125,15 @@ public final class HlaDocumentRenderer {
                     .append("**BFF** ").append(b.name()).append(" (").append(nvl(b.basePath())).append(")."));
             nvlList(module.acls()).forEach(a -> notes.append(notes.isEmpty() ? "" : " ")
                     .append("**ACL** hacia ").append(a.externalSystem()).append("."));
+            // "la lectura vive en otro sitio" — the delegated read side is an architectural fact
+            if (module.readSideModuleId() != null || module.readSideExternalSystemId() != null) {
+                var target = module.readSideModuleId() != null
+                        ? moduleById(m, module.readSideModuleId()) != null
+                                ? moduleById(m, module.readSideModuleId()).name() : module.readSideModuleId()
+                        : module.readSideExternalSystemId();
+                notes.append(notes.isEmpty() ? "" : " ").append("**Lectura delegada** en ").append(target)
+                        .append(module.readSideVia() != null ? " vía " + module.readSideVia() : "").append(".");
+            }
             md.append("| ").append(module.name())
                     .append(" | ").append(module.subdomainType() != null ? module.subdomainType().name() : "—")
                     .append(" | ").append(notes.isEmpty() ? "—" : notes.toString()).append(" |\n");

@@ -111,7 +111,10 @@ public class ModuleFileRepository implements ModuleRepository {
                 existing != null ? existing.accessPolicies() : List.of(),
                 existing != null ? existing.kpis() : List.of(),
                 existing != null ? existing.decisionIds() : List.of(),
-                existing != null ? existing.description() : null));
+                existing != null ? existing.description() : null,
+                existing != null ? existing.readSideModuleId() : null,
+                existing != null ? existing.readSideExternalSystemId() : null,
+                existing != null ? existing.readSideVia() : null));
         return entity;
     }
 

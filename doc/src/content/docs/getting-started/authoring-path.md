@@ -26,6 +26,16 @@ The foundation of an information system is **data with shape**: create the **mod
 
 > Lint: `module-read-path` (state nobody can read) and `module-write-path` (aggregates nobody writes to) point at the missing half.
 
+**When the read side genuinely lives elsewhere** — a CQRS read side in another module, or an external system fed by CDC — say so on the module instead of leaving the linter guessing:
+
+```yaml
+- id: "mod-reservas"
+  readSideModuleId: "mod-dispo"          # or readSideExternalSystemId
+  readSideVia: "CDC (rumbo → dispo)"     # prose; feeds the generated HLA
+```
+
+The declaration satisfies `module-read-path`, is checked by referential integrity, and the generated HLA documents the delegation ("Lectura delegada en dispo vía CDC").
+
 ## 3. Relations between modules — declared as intent
 
 Modules relate in exactly three ways, and all three are **flow archetypes** — you declare the intent and the structure is derived:
@@ -51,6 +61,8 @@ Finally, the fine grain: the operations inside use cases and aggregates. Every o
 - *write / return* — aggregate operations (guarded by invariants), repositories, output models, emitted events
 
 If an operation doesn't fit "gather → transform → write/return", that is usually a sign it is two operations.
+
+> Lint: `use-case-pipeline` (steps that only gather/transform, no output model) and `operation-pipeline` (operations that neither set state, emit events nor return) flag pipelines with no observable effect.
 
 ## The path as a loop
 

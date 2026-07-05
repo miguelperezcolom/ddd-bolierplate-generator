@@ -202,6 +202,9 @@ modules:
   subdomainType: "CORE"
   decisionIds: ["d1", "d11"]
   description: "System of record del agregado Reserva; valida el quote-token re-preciando, crea Pending y emite eventos por outbox."
+  # La lectura vive en otro sitio (CQRS): el read side es dispo, alimentado por CDC desde rumbo (D1/D2)
+  readSideModuleId: "mod-dispo"
+  readSideVia: "CDC (rumbo → dispo); reservas solo expone getBooking puntual"
   aggregateIds:
   - "agg-reserva"
   domainEventIds:

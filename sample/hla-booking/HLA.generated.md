@@ -56,7 +56,7 @@ flowchart LR
 | Contenedor | Subdominio | Responsabilidad |
 |---|---|---|
 | Dispo | SUPPORTING | Read side: disponibilidad, alimentada por CDC desde rumbo. |
-| Reservas | CORE | System of record del agregado Reserva; valida el quote-token re-preciando, crea Pending y emite eventos por outbox. |
+| Reservas | CORE | System of record del agregado Reserva; valida el quote-token re-preciando, crea Pending y emite eventos por outbox. **Lectura delegada** en Dispo vía CDC (rumbo → dispo); reservas solo expone getBooking puntual. |
 | RumboWriter | SUPPORTING | Worker: consume comandos de la saga y llama a las SP idempotentes de rumbo; emite progreso/resultado. **ACL** hacia ext-rumbo. |
 | Distribution | SUPPORTING | Expone EasyTravelAPI a las agencias; compone ficha+dispo+valoración y reenvía el comando bookHotel. Stateless, sin dominio. **BFF** EasyTravelAPI (/easytravel). |
 | Valoracion | SUPPORTING | Read side: precio firme (rateId) y suplementos seleccionables (getRates / getHotelPriceDetails). |
