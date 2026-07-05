@@ -66,7 +66,21 @@ export type ModuxCommand =
       triggerEvent?: string;
       steps?: import('./model.js').ProcessStepRef[];
     }
-  | { kind: 'remove-process'; id: string };
+  | { kind: 'remove-process'; id: string }
+  | {
+      kind: 'add-process-step';
+      processId: string;
+      id: string;
+      name: string;
+      stepType: 'AUTOMATED' | 'HUMAN';
+      roleId?: string;
+      deadline?: string;
+      useCaseId?: string;
+      compensationUseCaseId?: string;
+      /** Insert after this step; append when omitted. */
+      afterStepId?: string;
+    }
+  | { kind: 'remove-process-step'; processId: string; id: string };
 
 export interface ModuxSelection {
   elementType: string;

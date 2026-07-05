@@ -60,6 +60,15 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
   }
 }
 
+/** A step opens its owning process — steps have no CRUD of their own. */
+function activationForStep(
+  processes: { id: string; steps: { id: string }[] }[] | undefined,
+  stepId: string,
+): { elementType: string; id: string } | null {
+  const owner = (processes ?? []).find((p) => p.steps.some((s) => s.id === stepId));
+  return owner ? { elementType: 'process', id: owner.id } : null;
+}
+
 /**
  * Editor shell. Host contract:
  *   properties in:  model (ModuxModel JSON), layout (EditorLayout)
@@ -89,6 +98,10 @@ export class ModuxEditor extends LitElement {
   @state() private _newTriggerEvent = '';
   @state() private _newTargetId = '';
   @state() private _undoStack: ModuxCommand[][] = [];
+  @state() private _redoStack: ModuxCommand[][] = [];
+  @state() private _newStepName = '';
+  @state() private _newStepType: 'AUTOMATED' | 'HUMAN' = 'AUTOMATED';
+  @state() private _newStepRole = '';
 
   static styles = css`
     :host {
@@ -156,6 +169,12 @@ export class ModuxEditor extends LitElement {
     .tab:disabled {
       opacity: 0.4;
     }
+    .sep {
+      width: 1px;
+      align-self: stretch;
+      background: #e2e8f0;
+      margin: 2px 4px;
+    }
     [hidden] {
       display: none !important;
     }
@@ -179,8 +198,14 @@ export class ModuxEditor extends LitElement {
     if (pushUndo) {
       const inverse = this.inverseOf(command);
       if (inverse) this._undoStack = [...this._undoStack.slice(-19), inverse];
+      this._redoStack = []; // a fresh user action invalidates the redo branch
     }
     this.emit('modux-command', { command });
+  }
+
+  /** Inverses of a command list, computed against the current model, in reverse order. */
+  private inversesOf(commands: ModuxCommand[]): ModuxCommand[] {
+    return [...commands].reverse().flatMap((cmd) => this.inverseOf(cmd) ?? []);
   }
 
   /**
@@ -258,6 +283,28 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-process':
         return [{ kind: 'remove-process', id: c.id }];
+      case 'add-process-step':
+        return [{ kind: 'remove-process-step', processId: c.processId, id: c.id }];
+      case 'remove-process-step': {
+        const process = (this.model.processes ?? []).find((p) => p.id === c.processId);
+        const index = process?.steps.findIndex((s) => s.id === c.id) ?? -1;
+        if (!process || index < 0) return null;
+        const step = process.steps[index];
+        return [
+          {
+            kind: 'add-process-step',
+            processId: c.processId,
+            id: step.id,
+            name: step.name,
+            stepType: step.type,
+            roleId: step.roleId,
+            deadline: step.deadline,
+            useCaseId: step.useCaseId,
+            compensationUseCaseId: step.compensationUseCaseId,
+            afterStepId: index > 0 ? process.steps[index - 1].id : undefined,
+          },
+        ];
+      }
       case 'remove-process': {
         const p = (this.model.processes ?? []).find((x) => x.id === c.id);
         return p
@@ -282,7 +329,16 @@ export class ModuxEditor extends LitElement {
     const inverse = this._undoStack[this._undoStack.length - 1];
     if (!inverse) return;
     this._undoStack = this._undoStack.slice(0, -1);
+    this._redoStack = [...this._redoStack.slice(-19), this.inversesOf(inverse)];
     for (const cmd of inverse) this.command(cmd, false);
+  }
+
+  private redo(): void {
+    const commands = this._redoStack[this._redoStack.length - 1];
+    if (!commands) return;
+    this._redoStack = this._redoStack.slice(0, -1);
+    this._undoStack = [...this._undoStack.slice(-19), this.inversesOf(commands)];
+    for (const cmd of commands) this.command(cmd, false);
   }
 
   private onNodeMoved(e: CustomEvent): void {
@@ -342,14 +398,46 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'process') {
       this._selectedId = null;
       this.command({ kind: 'remove-process', id });
+      return;
     }
+    if (elementType === 'node' && kind === 'process-step') {
+      const owner = this.owningProcessOf(id);
+      if (!owner) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-process-step', processId: owner.id, id });
+    }
+  }
+
+  private owningProcessOf(stepId: string) {
+    return (this.model.processes ?? []).find((p) => p.steps.some((s) => s.id === stepId));
   }
 
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
-    if (kind === 'module' || kind === 'aggregate' || kind === 'entity') {
+    if (kind === 'module' || kind === 'aggregate' || kind === 'entity' || kind === 'process-step') {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
+  }
+
+  private addStepFromToolbar(): void {
+    const name = this._newStepName.trim();
+    if (!name || !this._selectedId) return;
+    const selectedProcess = (this.model.processes ?? []).find((p) => p.id === this._selectedId);
+    const owner = selectedProcess ?? this.owningProcessOf(this._selectedId);
+    if (!owner) return;
+    const afterStepId = selectedProcess
+      ? undefined // process selected → append at the end
+      : this._selectedId;
+    this.command({
+      kind: 'add-process-step',
+      processId: owner.id,
+      id: `step-${slug(name)}`,
+      name,
+      stepType: this._newStepType,
+      roleId: this._newStepType === 'HUMAN' ? this._newStepRole.trim() || undefined : undefined,
+      afterStepId,
+    });
+    this._newStepName = '';
   }
 
   private onElementSelected(e: CustomEvent): void {
@@ -358,7 +446,10 @@ export class ModuxEditor extends LitElement {
   }
 
   private onElementActivated(e: CustomEvent): void {
-    const mapped = normalizeActivation(e.detail.id, e.detail.kind);
+    const mapped =
+      e.detail.kind === 'process-step'
+        ? activationForStep(this.model.processes, e.detail.id)
+        : normalizeActivation(e.detail.id, e.detail.kind);
     if (mapped) this.emit('modux-activate', mapped);
   }
 
@@ -529,6 +620,44 @@ export class ModuxEditor extends LitElement {
             `
           : ''}
         <button class="tab" @click=${this.createElementFromToolbar}>＋ Crear</button>
+        ${this._view === 'processes' &&
+        this._selectedId &&
+        ((this.model.processes ?? []).some((p) => p.id === this._selectedId) ||
+          this.owningProcessOf(this._selectedId))
+          ? html`
+              <span class="sep"></span>
+              <input
+                class="new-name evt"
+                placeholder="Nuevo paso…"
+                .value=${this._newStepName}
+                @input=${(e: Event) => (this._newStepName = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addStepFromToolbar()}
+              />
+              <select
+                title="Tipo de paso"
+                @change=${(e: Event) =>
+                  (this._newStepType = (e.target as HTMLSelectElement).value as
+                    | 'AUTOMATED'
+                    | 'HUMAN')}
+              >
+                ${['AUTOMATED', 'HUMAN'].map(
+                  (t) => html`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`,
+                )}
+              </select>
+              ${this._newStepType === 'HUMAN'
+                ? html`<input
+                    class="new-name evt"
+                    placeholder="Rol…"
+                    .value=${this._newStepRole}
+                    @input=${(e: Event) =>
+                      (this._newStepRole = (e.target as HTMLInputElement).value)}
+                  />`
+                : ''}
+              <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
+                ＋ Paso
+              </button>
+            `
+          : ''}
         <button
           class="tab"
           title="Deshacer el último cambio (Ctrl+Z)"
@@ -536,6 +665,14 @@ export class ModuxEditor extends LitElement {
           @click=${this.undo}
         >
           ↶ Deshacer
+        </button>
+        <button
+          class="tab"
+          title="Rehacer (Ctrl+Shift+Z / Ctrl+Y)"
+          ?disabled=${this._redoStack.length === 0}
+          @click=${this.redo}
+        >
+          ↷ Rehacer
         </button>
         <label for="relation-type" ?hidden=${this._view !== 'context-map'}>Nueva relación:</label>
         <select
@@ -566,6 +703,7 @@ export class ModuxEditor extends LitElement {
         @delete-requested=${this.onDeleteRequested}
         @node-renamed=${this.onNodeRenamed}
         @undo-requested=${this.undo}
+        @redo-requested=${this.redo}
         @element-selected=${this.onElementSelected}
         @element-activated=${this.onElementActivated}
         @selection-cleared=${() => {

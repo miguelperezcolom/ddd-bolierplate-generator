@@ -81,7 +81,12 @@ export class ModuxCanvas extends LitElement {
     if (this._editingId) return; // the inline input handles its own keys
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
-      this.emit('undo-requested');
+      this.emit(e.shiftKey ? 'redo-requested' : 'undo-requested');
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      this.emit('redo-requested');
       return;
     }
     if (e.key === 'F2' && this.selectedId) {

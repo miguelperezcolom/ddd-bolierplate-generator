@@ -77,6 +77,25 @@ function applyCommand(command: ModuxCommand): void {
     case 'remove-process':
       model.processes = (model.processes ?? []).filter((p) => p.id !== command.id);
       break;
+    case 'add-process-step': {
+      const process = (model.processes ?? []).find((p) => p.id === command.processId);
+      if (process) {
+        const index = command.afterStepId
+          ? process.steps.findIndex((s) => s.id === command.afterStepId) + 1
+          : process.steps.length;
+        process.steps.splice(index, 0, {
+          id: command.id, name: command.name, type: command.stepType,
+          roleId: command.roleId, deadline: command.deadline,
+          useCaseId: command.useCaseId, compensationUseCaseId: command.compensationUseCaseId,
+        });
+      }
+      break;
+    }
+    case 'remove-process-step': {
+      const process = (model.processes ?? []).find((p) => p.id === command.processId);
+      if (process) process.steps = process.steps.filter((s) => s.id !== command.id);
+      break;
+    }
     case 'rename-element': {
       const list =
         command.type === 'module' ? model.modules

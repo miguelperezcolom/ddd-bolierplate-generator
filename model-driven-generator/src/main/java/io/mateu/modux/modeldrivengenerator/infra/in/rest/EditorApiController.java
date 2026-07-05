@@ -183,7 +183,10 @@ public class EditorApiController {
                                 String id, String name, String subdomainType, String moduleId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String readModelName, String targetUseCaseId,
-                                List<ProcessStepDto> steps) {}
+                                List<ProcessStepDto> steps,
+                                String processId, String afterStepId, String stepType,
+                                String roleId, String deadline, String useCaseId,
+                                String compensationUseCaseId) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -199,6 +202,8 @@ public class EditorApiController {
             case "remove-flow" -> removeFlow(command);
             case "add-process" -> addProcess(command);
             case "remove-process" -> removeProcess(command);
+            case "add-process-step" -> addProcessStep(command);
+            case "remove-process-step" -> removeProcessStep(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -242,6 +247,46 @@ public class EditorApiController {
 
     private void removeProcess(EditorCommand command) {
         repository.deleteAllById(List.of(command.id()), ProcessEntity.class);
+    }
+
+    private void addProcessStep(EditorCommand command) {
+        var process = repository.findById(command.processId(), ProcessEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Proceso desconocido: " + command.processId()));
+        if (process.steps().stream().anyMatch(s -> s.id().equals(command.id()))) return;
+        var step = new ProcessStepEntity(
+                command.id(), command.name(),
+                command.stepType() == null ? ProcessStepType.AUTOMATED
+                        : ProcessStepType.valueOf(command.stepType()),
+                command.useCaseId(), command.roleId(), command.deadline(), null,
+                command.compensationUseCaseId(), null);
+        var steps = new ArrayList<>(process.steps());
+        var index = command.afterStepId() == null ? steps.size()
+                : indexAfter(steps, command.afterStepId());
+        steps.add(index, step);
+        repository.save(withSteps(process, steps));
+    }
+
+    private static int indexAfter(List<ProcessStepEntity> steps, String afterStepId) {
+        for (int i = 0; i < steps.size(); i++) {
+            if (steps.get(i).id().equals(afterStepId)) return i + 1;
+        }
+        return steps.size();
+    }
+
+    private void removeProcessStep(EditorCommand command) {
+        var process = repository.findById(command.processId(), ProcessEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Proceso desconocido: " + command.processId()));
+        var steps = process.steps().stream().filter(s -> !s.id().equals(command.id())).toList();
+        repository.save(withSteps(process, steps));
+    }
+
+    /** Record copy with only steps replaced — every other field preserved verbatim. */
+    private static ProcessEntity withSteps(ProcessEntity p, List<ProcessStepEntity> steps) {
+        return new ProcessEntity(
+                p.id(), p.name(), p.description(), p.triggerAggregateId(), p.triggerEvent(),
+                p.ownerModuleId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
     }
 
     private void removeModule(EditorCommand command) {
@@ -299,6 +344,17 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "process-step" -> repository.findAllOfType(ProcessEntity.class).stream()
+                    .filter(p -> p.steps().stream().anyMatch(s -> s.id().equals(command.id())))
+                    .findFirst()
+                    .ifPresent(p -> repository.save(withSteps(p, p.steps().stream()
+                            .map(s -> s.id().equals(command.id())
+                                    ? new ProcessStepEntity(s.id(), command.name(), s.type(),
+                                            s.useCaseId(), s.roleId(), s.deadline(),
+                                            s.escalationRoleId(), s.compensationUseCaseId(),
+                                            s.description())
+                                    : s)
+                            .toList())));
             default -> throw new IllegalArgumentException(
                     "rename-element no soportado para: " + command.type());
         }
