@@ -2,7 +2,67 @@ import { LitElement, html, svg, css, type PropertyValues, type TemplateResult } 
 import { customElement, property, state } from 'lit/decorators.js';
 import { select } from 'd3-selection';
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
-import type { Scene, SceneNode, SceneEdge } from './scene.js';
+import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
+
+/** Segment intersection with parameter t on (a→b); endpoints excluded. */
+function segIntersect(
+  a: Point,
+  b: Point,
+  c: Point,
+  d: Point,
+): (Point & { t: number }) | null {
+  const rx = b.x - a.x;
+  const ry = b.y - a.y;
+  const sx = d.x - c.x;
+  const sy = d.y - c.y;
+  const denom = rx * sy - ry * sx;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((c.x - a.x) * sy - (c.y - a.y) * sx) / denom;
+  const u = ((c.x - a.x) * ry - (c.y - a.y) * rx) / denom;
+  if (t <= 0.02 || t >= 0.98 || u <= 0.02 || u >= 0.98) return null;
+  return { x: a.x + t * rx, y: a.y + t * ry, t };
+}
+
+/** Distance from point p to segment a→b, plus the projection parameter. */
+function pointToSegment(p: Point, a: Point, b: Point): { dist: number; t: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  const qx = a.x + t * dx;
+  const qy = a.y + t * dy;
+  return { dist: Math.hypot(p.x - qx, p.y - qy), t };
+}
+
+/**
+ * SVG path along `pts`, hopping over earlier edges with a small arc wherever
+ * they cross — the classic wire "bridge".
+ */
+function pathWithBridges(pts: Point[], priorSegments: [Point, Point][], radius = 7): string {
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    const crossings = priorSegments
+      .map(([c, e]) => segIntersect(a, b, c, e))
+      .filter((p): p is Point & { t: number } => p !== null)
+      .filter((p) => p.t * len > radius + 2 && (1 - p.t) * len > radius + 2)
+      .sort((p, q) => p.t - q.t);
+    let lastEnd = -Infinity;
+    for (const p of crossings) {
+      const start = p.t * len - radius;
+      if (start <= lastEnd + 2) continue; // merged with the previous hop
+      d += ` L ${p.x - ux * radius} ${p.y - uy * radius}`;
+      d += ` A ${radius} ${radius} 0 0 1 ${p.x + ux * radius} ${p.y + uy * radius}`;
+      lastEnd = p.t * len + radius;
+    }
+    d += ` L ${b.x} ${b.y}`;
+  }
+  return d;
+}
 
 /**
  * ArchiMate-inspired glyphs drawn in the node's top-right corner, keyed by
@@ -45,6 +105,8 @@ export class ModuxCanvas extends LitElement {
   @property({ attribute: false }) selectedId: string | null = null;
   /** Whether the connect gesture (drag from node handles) is available. */
   @property({ type: Boolean }) connectable = true;
+  /** Manual bend points per edge id (host-owned geometry, like node positions). */
+  @property({ attribute: false }) edgePoints: Record<string, Point[]> = {};
 
   @state() private _t: ZoomTransform = zoomIdentity;
   @state() private _dragPos: { id: string; x: number; y: number } | null = null;
@@ -52,6 +114,7 @@ export class ModuxCanvas extends LitElement {
   @state() private _hoverNodeId: string | null = null;
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
+  @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
   private _fitted = false;
@@ -342,47 +405,134 @@ export class ModuxCanvas extends LitElement {
     return (index - (siblings.length - 1) / 2) * 20;
   }
 
-  private renderEdge(edge: SceneEdge): TemplateResult | typeof svg.prototype {
+  /** Full polyline of an edge: border point → waypoints → border point. */
+  private edgePolyline(edge: SceneEdge): Point[] | null {
     const source = this.scene.nodes.find((n) => n.id === edge.sourceId);
     const target = this.scene.nodes.find((n) => n.id === edge.targetId);
-    if (!source || !target) return svg``;
+    if (!source || !target) return null;
+    const waypoints =
+      this._wpDrag && this._wpDrag.edgeId === edge.id
+        ? this._wpDrag.points
+        : this.edgePoints[edge.id] ?? [];
     const sp = this.nodePos(source);
     const tp = this.nodePos(target);
-    let a = this.borderPoint(source, tp.x, tp.y);
-    let b = this.borderPoint(target, sp.x, sp.y);
-    const offset = this.edgeOffset(edge);
-    if (offset !== 0) {
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const nx = (-(b.y - a.y) / len) * offset;
-      const ny = ((b.x - a.x) / len) * offset;
-      a = { x: a.x + nx, y: a.y + ny };
-      b = { x: b.x + nx, y: b.y + ny };
+    const firstTowards = waypoints[0] ?? tp;
+    const lastTowards = waypoints[waypoints.length - 1] ?? sp;
+    let a = this.borderPoint(source, firstTowards.x, firstTowards.y);
+    let b = this.borderPoint(target, lastTowards.x, lastTowards.y);
+    if (!waypoints.length) {
+      const offset = this.edgeOffset(edge);
+      if (offset !== 0) {
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = (-(b.y - a.y) / len) * offset;
+        const ny = ((b.x - a.x) / len) * offset;
+        a = { x: a.x + nx, y: a.y + ny };
+        b = { x: b.x + nx, y: b.y + ny };
+      }
     }
+    return [a, ...waypoints, b];
+  }
+
+  // ---- edge waypoints (split & adjust) -------------------------------------
+
+  private startWaypointDrag(edge: SceneEdge, points: Point[], index: number): void {
+    this._wpDrag = { edgeId: edge.id, points, index };
+    const onMove = (ev: PointerEvent) => {
+      if (!this._wpDrag) return;
+      const p = this.toScene(ev);
+      const next = [...this._wpDrag.points];
+      next[this._wpDrag.index] = p;
+      this._wpDrag = { ...this._wpDrag, points: next };
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (this._wpDrag) {
+        this.emit('edge-points-changed', { id: this._wpDrag.edgeId, points: this._wpDrag.points });
+      }
+      this._wpDrag = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  /** Dragging on a selected edge splits it: a new bend is born under the cursor. */
+  private onEdgeHitPointerDown(e: PointerEvent, edge: SceneEdge, pts: Point[]): void {
+    if (e.button !== 0 || this.selectedId !== edge.id) return;
+    e.stopPropagation();
+    const p = this.toScene(e);
+    let best = { seg: 0, dist: Infinity };
+    for (let i = 0; i < pts.length - 1; i++) {
+      const { dist } = pointToSegment(p, pts[i], pts[i + 1]);
+      if (dist < best.dist) best = { seg: i, dist };
+    }
+    const waypoints = [...(this.edgePoints[edge.id] ?? [])];
+    waypoints.splice(best.seg, 0, p); // waypoint w sits between pts[w] and pts[w+1]
+    this.startWaypointDrag(edge, waypoints, best.seg);
+  }
+
+  private removeWaypoint(edge: SceneEdge, index: number): void {
+    const points = [...(this.edgePoints[edge.id] ?? [])];
+    points.splice(index, 1);
+    this.emit('edge-points-changed', { id: edge.id, points });
+  }
+
+  private renderEdge(
+    edge: SceneEdge,
+    pts: Point[],
+    priorSegments: [Point, Point][],
+  ): TemplateResult | typeof svg.prototype {
     const color = edge.color ?? '#64748b';
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const selected = this.selectedId === edge.id;
+    const midIndex = Math.floor((pts.length - 1) / 2);
+    const mid = {
+      x: (pts[midIndex].x + pts[midIndex + 1].x) / 2,
+      y: (pts[midIndex].y + pts[midIndex + 1].y) / 2,
+    };
+    const waypoints = pts.slice(1, -1);
+    const hitPoints = pts.map((p) => `${p.x},${p.y}`).join(' ');
     return svg`
       <g data-edge-id=${edge.id}>
-        <line class="edge-hit" x1=${a.x} y1=${a.y} x2=${b.x} y2=${b.y}
-              stroke="transparent" stroke-width="14"
+        <polyline class="edge-hit" points=${hitPoints}
+              fill="none" stroke="transparent" stroke-width="14"
               @click=${(e: MouseEvent) => {
                 e.stopPropagation();
                 this.focus();
                 this.emit('element-selected', { elementType: 'edge', id: edge.id, kind: edge.kind });
-              }}>
+              }}
+              @pointerdown=${(e: PointerEvent) => this.onEdgeHitPointerDown(e, edge, pts)}>
           ${edge.tooltip ? svg`<title>${edge.tooltip}</title>` : ''}
-        </line>
-        <line x1=${a.x} y1=${a.y} x2=${b.x} y2=${b.y}
+        </polyline>
+        <path d=${pathWithBridges(pts, priorSegments)}
+              fill="none"
               stroke=${color} stroke-width=${selected ? 3 : 1.6}
               stroke-dasharray=${edge.dashed ? '6 4' : ''}
               marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}
-              pointer-events="none"></line>
+              pointer-events="none"></path>
         ${edge.label
           ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
                   font-size="11" font-family="ui-sans-serif, system-ui" fill=${color}
                   paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3">
                   ${edge.label}
                 </text>`
+          : ''}
+        ${selected
+          ? waypoints.map(
+              (p, i) => svg`
+                <circle data-waypoint cx=${p.x} cy=${p.y} r="5" fill="#ffffff"
+                        stroke="#2563eb" stroke-width="1.6" style="cursor: move"
+                        @pointerdown=${(e: PointerEvent) => {
+                          if (e.button !== 0) return;
+                          e.stopPropagation();
+                          this.startWaypointDrag(edge, [...(this.edgePoints[edge.id] ?? [])], i);
+                        }}
+                        @dblclick=${(e: MouseEvent) => {
+                          e.stopPropagation();
+                          this.removeWaypoint(edge, i);
+                        }}>
+                  <title>Arrastra para ajustar · doble click para quitar el punto</title>
+                </circle>`,
+            )
           : ''}
       </g>
     `;
@@ -553,6 +703,15 @@ export class ModuxCanvas extends LitElement {
 
   render() {
     const colors = [...new Set(this.scene.edges.map((e) => e.color ?? '#64748b'))];
+    // Edges render in order; each one bridges over the segments drawn before it.
+    const priorSegments: [Point, Point][] = [];
+    const edgeTemplates = this.scene.edges.map((edge) => {
+      const pts = this.edgePolyline(edge);
+      if (!pts) return svg``;
+      const template = this.renderEdge(edge, pts, [...priorSegments]);
+      for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
+      return template;
+    });
     return html`
       <svg
         class="main ${this._pendingLink ? 'linking' : ''}"
@@ -578,7 +737,7 @@ export class ModuxCanvas extends LitElement {
         <g transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
-          ${this.scene.edges.map((e) => this.renderEdge(e))}
+          ${edgeTemplates}
           ${this.scene.nodes.map((n) => this.renderNode(n))}
           ${this.renderPendingLink()}
         </g>

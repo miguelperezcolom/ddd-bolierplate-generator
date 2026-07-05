@@ -1,7 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType, SubdomainType } from './model.js';
-import type { EditorLayout } from './scene.js';
+import { normalizeViewLayout } from './scene.js';
+import type { EditorLayout, Point, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
@@ -44,7 +45,14 @@ type MoveNodeOp = {
   /** Position to restore; null removes the entry (back to the default layout). */
   pos: { x: number; y: number } | null;
 };
-type EditOp = ModuxCommand | MoveNodeOp;
+type SetEdgePointsOp = {
+  kind: 'set-edge-points';
+  view: ViewId;
+  id: string;
+  /** Waypoints to restore; null removes the entry (straight edge again). */
+  points: Point[] | null;
+};
+type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp;
 
 const slug = (name: string) =>
   name
@@ -221,6 +229,15 @@ export class ModuxEditor extends LitElement {
     this.emit('modux-command', { command });
   }
 
+  private viewLayout(view: ViewId): ViewLayout {
+    return normalizeViewLayout(this.layout[view]);
+  }
+
+  private writeViewLayout(view: ViewId, next: ViewLayout): void {
+    this.layout = { ...this.layout, [view]: next };
+    this.emit('layout-changed', { layout: this.layout });
+  }
+
   private pushUndoEntry(ops: EditOp[]): void {
     this._undoStack = [...this._undoStack.slice(-19), ops];
     this._redoStack = []; // a fresh user action invalidates the redo branch
@@ -235,8 +252,18 @@ export class ModuxEditor extends LitElement {
             kind: 'move-node',
             view: op.view,
             id: op.id,
-            pos: this.layout[op.view]?.[op.id] ?? null,
+            pos: this.viewLayout(op.view).nodes[op.id] ?? null,
           } satisfies MoveNodeOp,
+        ];
+      }
+      if (op.kind === 'set-edge-points') {
+        return [
+          {
+            kind: 'set-edge-points',
+            view: op.view,
+            id: op.id,
+            points: this.viewLayout(op.view).edges[op.id] ?? null,
+          } satisfies SetEdgePointsOp,
         ];
       }
       return this.inverseOf(op) ?? [];
@@ -246,11 +273,17 @@ export class ModuxEditor extends LitElement {
   private applyOps(ops: EditOp[]): void {
     for (const op of ops) {
       if (op.kind === 'move-node') {
-        const viewLayout = { ...(this.layout[op.view] ?? {}) };
-        if (op.pos) viewLayout[op.id] = op.pos;
-        else delete viewLayout[op.id];
-        this.layout = { ...this.layout, [op.view]: viewLayout };
-        this.emit('layout-changed', { layout: this.layout });
+        const current = this.viewLayout(op.view);
+        const nodes = { ...current.nodes };
+        if (op.pos) nodes[op.id] = op.pos;
+        else delete nodes[op.id];
+        this.writeViewLayout(op.view, { ...current, nodes });
+      } else if (op.kind === 'set-edge-points') {
+        const current = this.viewLayout(op.view);
+        const edges = { ...current.edges };
+        if (op.points && op.points.length) edges[op.id] = op.points;
+        else delete edges[op.id];
+        this.writeViewLayout(op.view, { ...current, edges });
       } else {
         this.command(op, false);
       }
@@ -427,13 +460,9 @@ export class ModuxEditor extends LitElement {
   private onNodeMoved(e: CustomEvent): void {
     const { id, x, y } = e.detail;
     const view = this._view;
-    const previous = this.layout[view]?.[id] ?? null;
-    const next: EditorLayout = {
-      ...this.layout,
-      [view]: { ...(this.layout[view] ?? {}), [id]: { x, y } },
-    };
-    this.layout = next;
-    this.emit('layout-changed', { layout: next });
+    const current = this.viewLayout(view);
+    const previous = current.nodes[id] ?? null;
+    this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: { x, y } } });
     const inverseOps: EditOp[] = [{ kind: 'move-node', view, id, pos: previous }];
     // Dragging a step across its siblings also reorders the process.
     if (view === 'processes') {
@@ -447,11 +476,24 @@ export class ModuxEditor extends LitElement {
     this.pushUndoEntry(inverseOps);
   }
 
+  private onEdgePointsChanged(e: CustomEvent): void {
+    const { id, points } = e.detail as { id: string; points: Point[] };
+    const view = this._view;
+    const current = this.viewLayout(view);
+    this.pushUndoEntry([
+      { kind: 'set-edge-points', view, id, points: current.edges[id] ?? null },
+    ]);
+    const edges = { ...current.edges };
+    if (points.length) edges[id] = points;
+    else delete edges[id];
+    this.writeViewLayout(view, { ...current, edges });
+  }
+
   /** Order the owner's steps by their effective x; a changed order becomes a move command. */
   private stepReorderCommand(stepId: string): ModuxCommand | null {
     const owner = this.owningProcessOf(stepId);
     if (!owner) return null;
-    const scene = processesScene(this.model, this.layout['processes'] ?? {});
+    const scene = processesScene(this.model, this.viewLayout('processes').nodes);
     const xOf = new Map(scene.nodes.map((n) => [n.id, n.x]));
     const sorted = [...owner.steps].sort(
       (a, b) => (xOf.get(a.id) ?? 0) - (xOf.get(b.id) ?? 0),
@@ -636,7 +678,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private sceneFor(view: ViewId) {
-    const viewLayout = this.layout[view] ?? {};
+    const viewLayout = this.viewLayout(view).nodes;
     return view === 'aggregates'
       ? aggregatesScene(this.model, viewLayout)
       : view === 'flows'
@@ -653,16 +695,23 @@ export class ModuxEditor extends LitElement {
     if (!scene.nodes.length) return;
     const algorithm = view === 'flows' || view === 'processes' ? 'layered' : 'force';
     const positions = await autoLayout(scene, algorithm);
-    this.pushUndoEntry(
-      scene.nodes.map((n) => ({
+    const current = this.viewLayout(view);
+    this.pushUndoEntry([
+      ...scene.nodes.map((n) => ({
         kind: 'move-node' as const,
         view,
         id: n.id,
-        pos: this.layout[view]?.[n.id] ?? null,
+        pos: current.nodes[n.id] ?? null,
       })),
-    );
-    this.layout = { ...this.layout, [view]: positions };
-    this.emit('layout-changed', { layout: this.layout });
+      // manual bends no longer make sense after relayout — restore them on undo
+      ...Object.keys(current.edges).map((edgeId) => ({
+        kind: 'set-edge-points' as const,
+        view,
+        id: edgeId,
+        points: current.edges[edgeId],
+      })),
+    ]);
+    this.writeViewLayout(view, { nodes: positions, edges: {} });
     await this.updateComplete;
     this.renderRoot.querySelector('modux-canvas')?.fit();
   }
@@ -903,12 +952,14 @@ export class ModuxEditor extends LitElement {
       </div>
       <modux-canvas
         .scene=${scene}
+        .edgePoints=${this.viewLayout(this._view).edges}
         .selectedId=${this._selectedId}
         .connectable=${this._view === 'context-map'}
         @node-moved=${this.onNodeMoved}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
         @node-renamed=${this.onNodeRenamed}
+        @edge-points-changed=${this.onEdgePointsChanged}
         @undo-requested=${this.undo}
         @redo-requested=${this.redo}
         @element-selected=${this.onElementSelected}

@@ -39,8 +39,32 @@ export interface Scene {
   edges: SceneEdge[];
 }
 
-/** Persisted geometry for one diagram: node id → position. */
-export type DiagramLayout = Record<string, { x: number; y: number }>;
+export interface Point {
+  x: number;
+  y: number;
+}
 
-/** Geometry for the whole editor, keyed by view id. Lives OUTSIDE the model YAML. */
-export type EditorLayout = Record<string, DiagramLayout>;
+/** Persisted geometry for one diagram: node id → position. */
+export type DiagramLayout = Record<string, Point>;
+
+/** v2 per-view geometry: node positions plus manual edge waypoints. */
+export interface ViewLayout {
+  nodes: DiagramLayout;
+  /** Edge id → intermediate bend points (scene coordinates). */
+  edges: Record<string, Point[]>;
+}
+
+/**
+ * Geometry for the whole editor, keyed by view id. Lives OUTSIDE the model
+ * YAML. Legacy persisted values are a flat node map; normalize on read.
+ */
+export type EditorLayout = Record<string, ViewLayout | DiagramLayout>;
+
+export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefined): ViewLayout {
+  if (!value) return { nodes: {}, edges: {} };
+  if ('nodes' in value && typeof value.nodes === 'object' && !('x' in (value.nodes as object))) {
+    const v = value as ViewLayout;
+    return { nodes: v.nodes ?? {}, edges: v.edges ?? {} };
+  }
+  return { nodes: value as DiagramLayout, edges: {} };
+}
