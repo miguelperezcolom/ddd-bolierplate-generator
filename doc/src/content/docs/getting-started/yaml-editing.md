@@ -15,6 +15,14 @@ The spec file and its JSON Schema live side-by-side in `.dev/data/`:
 
 The schema is regenerated automatically every time the Modux generator starts, so it always reflects the current domain model.
 
+The schema is not just structure — it encodes the authoring rules, so the IDE catches most mistakes while you type:
+
+- **`id` is required** on every addressable element (aggregates, use cases, flows…; not on name-identified parts like model fields).
+- **Id-shaped fields** (`id`, `*Id`, `*Ids`) carry a pattern that rejects spaces and exotic characters — kebab-case recommended.
+- **Reference fields** (`modelId`, `decisionIds`…) and the top-level store sections have hover documentation, including whether referential integrity is checked by the linter.
+
+What the schema *cannot* check is whether a referenced id actually exists — that is the linter's job (`--modux.lint`, the Model health page, or the MCP `check_model` tool).
+
 ## Quickest setup: inline schema declaration
 
 Add this comment as the very first line of `model-driven-store.yaml`:

@@ -5,7 +5,9 @@
       "type" : "object",
       "properties" : {
         "appliesToId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'appliesTo' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "description" : {
           "type" : "string"
@@ -14,7 +16,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -35,24 +39,32 @@
           "type" : "string"
         },
         "gatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "translatedDomainEventIds" : {
+          "description" : "References to existing 'translatedDomainEvent' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "translatedUseCaseIds" : {
+          "description" : "References to existing 'translatedUseCase' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         }
       },
@@ -64,11 +76,21 @@
         "audited" : {
           "type" : "boolean"
         },
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "eventSourcingEnabled" : {
           "type" : "boolean"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "idType" : {
           "$ref" : "#/$defs/AggregateIdType"
@@ -83,7 +105,9 @@
           "$ref" : "#/$defs/LifecycleEntity"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -110,12 +134,15 @@
           "type" : "string"
         },
         "valueObjectIds" : {
+          "description" : "References to existing 'valueObject' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "AggregateIdType" : {
@@ -137,7 +164,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -149,6 +178,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "BffEntity" : {
@@ -167,13 +197,17 @@
           "type" : "string"
         },
         "exposedUseCaseIds" : {
+          "description" : "References to existing 'exposedUseCase' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -188,22 +222,30 @@
           "type" : "string"
         },
         "domainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "expression" : {
           "type" : "string"
         },
         "fieldId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'field' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "type" : "string"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -218,7 +260,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -245,10 +289,14 @@
           "type" : "boolean"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -260,6 +308,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "CacheProvider" : {
@@ -273,10 +322,14 @@
           "type" : "string"
         },
         "gatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -285,28 +338,45 @@
           "type" : "string"
         },
         "queryServiceId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'queryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ContextMapRelationEntity" : {
       "type" : "object",
       "properties" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "description" : {
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "sourceModuleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetModuleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'targetModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "type" : "string"
@@ -317,6 +387,37 @@
     "DbMigrationTool" : {
       "type" : "string",
       "enum" : [ "Flyway", "Liquibase", "None" ]
+    },
+    "DecisionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "decision" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "rationale" : {
+          "type" : "string"
+        },
+        "source" : {
+          "type" : "string"
+        },
+        "status" : {
+          "$ref" : "#/$defs/DecisionStatus"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "DecisionStatus" : {
+      "type" : "string",
+      "enum" : [ "PROPOSED", "ACCEPTED", "DEPRECATED", "SUPERSEDED" ]
     },
     "DomainEventEntity" : {
       "type" : "object",
@@ -331,16 +432,22 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "integrationModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'integrationModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "maxDeliveryAttempts" : {
           "type" : "integer"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -370,6 +477,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "DomainPolicyEntity" : {
@@ -379,16 +487,22 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "triggeringEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'triggeringEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -401,28 +515,37 @@
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "isCollection" : {
           "type" : "boolean"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "parentAggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'parentAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "EnumEntity" : {
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "values" : {
           "type" : "array",
@@ -431,13 +554,16 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "EnumValueEntity" : {
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -473,6 +599,14 @@
     "ExternalSystemEntity" : {
       "type" : "object",
       "properties" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "description" : {
           "type" : "string"
         },
@@ -480,10 +614,14 @@
           "$ref" : "#/$defs/ExternalSystemDirection"
         },
         "gatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -519,11 +657,21 @@
         "archetype" : {
           "$ref" : "#/$defs/FlowArchetype"
         },
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "description" : {
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "inputMappings" : {
           "type" : "array",
@@ -550,18 +698,25 @@
           "type" : "string"
         },
         "targetModuleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'targetModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetUseCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'targetUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "triggerAggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "triggerEvent" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "GatewayAuthType" : {
@@ -578,7 +733,9 @@
           "type" : "string"
         },
         "authOAuth2ClientId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'authOAuth2Client' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "authOAuth2ClientSecret" : {
           "type" : "string"
@@ -611,7 +768,9 @@
           "type" : "integer"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -632,9 +791,12 @@
           "type" : "integer"
         },
         "serviceId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'service' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "GatewayOperationEntity" : {
@@ -653,16 +815,22 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "inputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "outputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "parameters" : {
           "type" : "array",
@@ -727,13 +895,17 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "maxDeliveryAttempts" : {
           "type" : "integer"
         },
         "moduleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'module' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -742,7 +914,9 @@
           "type" : "integer"
         },
         "payloadModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'payloadModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "replayable" : {
           "type" : "boolean"
@@ -760,12 +934,15 @@
           "$ref" : "#/$defs/IntegrationEventSerializationFormat"
         },
         "sourceDomainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceDomainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "topicName" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "IntegrationEventSerializationFormat" : {
@@ -788,7 +965,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -803,12 +982,15 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "KpiEntity" : {
@@ -824,7 +1006,9 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "measure" : {
           "$ref" : "#/$defs/KpiMeasure"
@@ -833,7 +1017,9 @@
           "type" : "string"
         },
         "sourceDomainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceDomainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "timeGrain" : {
           "$ref" : "#/$defs/KpiTimeGrain"
@@ -889,10 +1075,14 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "operationId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "toState" : {
           "type" : "string"
@@ -926,7 +1116,9 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -938,6 +1130,7 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ModelFieldEntity" : {
@@ -953,13 +1146,19 @@
           "type" : "boolean"
         },
         "enumId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'enum' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -983,7 +1182,9 @@
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "params" : {
           "type" : "string"
@@ -1005,7 +1206,9 @@
           "type" : "boolean"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1017,19 +1220,26 @@
           }
         },
         "sourceModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'targetModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ModelMappingExpressionEntity" : {
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "inputExpression" : {
           "type" : "string"
@@ -1050,13 +1260,19 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sourceFieldId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceField' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetFieldId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'targetField' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -1068,10 +1284,14 @@
           "type" : "string"
         },
         "fieldIds" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "References to existing 'field' ids (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "message" : {
           "type" : "string"
@@ -1095,9 +1315,11 @@
           }
         },
         "aggregateIds" : {
+          "description" : "References to existing 'aggregate' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "autoTableNamePrefix" : {
@@ -1115,10 +1337,23 @@
             "$ref" : "#/$defs/BffEntity"
           }
         },
-        "domainEventIds" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "domainEventIds" : {
+          "description" : "References to existing 'domainEvent' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "domainPolicies" : {
@@ -1128,16 +1363,20 @@
           }
         },
         "entityIds" : {
+          "description" : "References to existing 'entity' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "gitRepository" : {
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "invariants" : {
           "type" : "array",
@@ -1158,57 +1397,72 @@
           "type" : "string"
         },
         "projectionIds" : {
+          "description" : "References to existing 'projection' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "readModelIds" : {
+          "description" : "References to existing 'readModel' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "sagaIds" : {
+          "description" : "References to existing 'saga' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "scheduledTriggerIds" : {
+          "description" : "References to existing 'scheduledTrigger' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "subdomainType" : {
           "$ref" : "#/$defs/SubdomainType"
         },
         "subscriptionIds" : {
+          "description" : "References to existing 'subscription' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "tableNamePrefix" : {
           "type" : "string"
         },
         "useCaseIds" : {
+          "description" : "References to existing 'useCase' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "valueObjectIds" : {
+          "description" : "References to existing 'valueObject' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "version" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "OperationEntity" : {
@@ -1221,16 +1475,22 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "inputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "outputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "paginated" : {
           "type" : "boolean"
@@ -1245,13 +1505,16 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "PageButtonEntity" : {
       "type" : "object",
       "properties" : {
         "actionId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'action' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "icon" : {
           "type" : "string"
@@ -1260,7 +1523,9 @@
           "type" : "string"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -1269,7 +1534,9 @@
       "type" : "object",
       "properties" : {
         "aggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "bottomBar" : {
           "type" : "array",
@@ -1284,9 +1551,11 @@
           }
         },
         "componentIds" : {
+          "description" : "References to existing 'component' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "fieldConfigs" : {
@@ -1296,19 +1565,27 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "listingDataSourceType" : {
           "type" : "string"
         },
         "listingGatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'listingGateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "listingQueryServiceId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'listingQueryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1350,6 +1627,7 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "PageFieldConfigEntity" : {
@@ -1362,7 +1640,9 @@
           "type" : "string"
         },
         "fieldId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'field' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "help" : {
           "type" : "string"
@@ -1386,7 +1666,9 @@
           "type" : "string"
         },
         "actionId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'action' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "expression" : {
           "type" : "string"
@@ -1413,10 +1695,14 @@
       "type" : "object",
       "properties" : {
         "actionId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'action' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "calledActionId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'calledAction' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "condition" : {
           "type" : "string"
@@ -1446,7 +1732,9 @@
           "type" : "string"
         },
         "fieldId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'field' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "message" : {
           "type" : "string"
@@ -1461,7 +1749,9 @@
           "type" : "string"
         },
         "pageId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'page' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -1473,11 +1763,21 @@
     "ProcessEntity" : {
       "type" : "object",
       "properties" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "description" : {
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1486,7 +1786,9 @@
           "type" : "string"
         },
         "ownerModuleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'ownerModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sla" : {
           "type" : "string"
@@ -1498,19 +1800,24 @@
           }
         },
         "triggerAggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "triggerEvent" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ProcessStepEntity" : {
       "type" : "object",
       "properties" : {
         "compensationUseCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'compensationUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "deadline" : {
           "type" : "string"
@@ -1519,22 +1826,30 @@
           "type" : "string"
         },
         "escalationRoleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'escalationRole' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "roleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'role' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "$ref" : "#/$defs/ProcessStepType"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -1589,7 +1904,9 @@
           "$ref" : "#/$defs/IamProvider"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "llmProvider" : {
           "$ref" : "#/$defs/LlmProvider"
@@ -1606,6 +1923,9 @@
         "name" : {
           "type" : "string"
         },
+        "objective" : {
+          "type" : "string"
+        },
         "outputPath" : {
           "type" : "string"
         },
@@ -1616,9 +1936,11 @@
           "$ref" : "#/$defs/SecretsProvider"
         },
         "serviceIds" : {
+          "description" : "References to existing 'service' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "tenancyStrategy" : {
@@ -1637,6 +1959,7 @@
           "$ref" : "#/$defs/TracingProvider"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ProjectEnvironmentConfigEntity" : {
@@ -1688,7 +2011,9 @@
           "type" : "string"
         },
         "iamClientId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'iamClient' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "iamClientSecret" : {
           "type" : "string"
@@ -1784,7 +2109,9 @@
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "maxRetries" : {
           "type" : "integer"
@@ -1793,7 +2120,9 @@
           "type" : "string"
         },
         "readModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'readModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rebuildStrategy" : {
           "type" : "string"
@@ -1805,19 +2134,26 @@
           "type" : "integer"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ProjectionEventHandlerEntity" : {
       "type" : "object",
       "properties" : {
         "domainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelMappingId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1846,16 +2182,22 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "inputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "outputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -1866,11 +2208,18 @@
         "description" : {
           "type" : "string"
         },
+        "exposedAsGrpc" : {
+          "type" : "boolean"
+        },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "moduleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'module' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1882,6 +2231,7 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ReadModelConsistency" : {
@@ -1898,13 +2248,19 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "moduleId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'module' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -1913,6 +2269,7 @@
           "$ref" : "#/$defs/ReadModelStorageType"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ReadModelStorageType" : {
@@ -1923,18 +2280,23 @@
       "type" : "object",
       "properties" : {
         "allowedUseCaseIds" : {
+          "description" : "References to existing 'allowedUseCase' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "SagaEntity" : {
@@ -1947,7 +2309,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "maxRetries" : {
           "type" : "integer"
@@ -1971,49 +2335,70 @@
           "type" : "integer"
         },
         "triggeringEventIds" : {
+          "description" : "References to existing 'triggeringEvent' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "SagaStepEntity" : {
       "type" : "object",
       "properties" : {
         "aggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "compensatingStepId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'compensatingStep' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "domainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "gatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "gatewayOperationId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gatewayOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelMappingId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "operationId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "$ref" : "#/$defs/SagaStepType"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -2041,7 +2426,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "lockProvider" : {
           "type" : "string"
@@ -2053,7 +2440,9 @@
           "type" : "string"
         },
         "modelMappingId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -2068,9 +2457,12 @@
           "type" : "string"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "SecretsProvider" : {
@@ -2114,16 +2506,20 @@
           }
         },
         "gatewayIds" : {
+          "description" : "References to existing 'gateway' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "gitRepository" : {
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "javaVersion" : {
           "type" : "string"
@@ -2159,9 +2555,11 @@
           "type" : "string"
         },
         "moduleIds" : {
+          "description" : "References to existing 'module' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "name" : {
@@ -2195,6 +2593,7 @@
           "type" : "integer"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "SubdomainType" : {
@@ -2205,25 +2604,35 @@
       "type" : "object",
       "properties" : {
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelMappingId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "projectionId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'projection' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sagaId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'saga' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "$ref" : "#/$defs/SubscriptionActionType"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -2263,7 +2672,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "idempotencyEnabled" : {
           "type" : "boolean"
@@ -2272,7 +2683,9 @@
           "type" : "string"
         },
         "inputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -2293,6 +2706,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "TenancyStrategy" : {
@@ -2318,7 +2732,9 @@
           "$ref" : "#/$defs/UiAppVariant"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "menuItems" : {
           "type" : "array",
@@ -2333,12 +2749,15 @@
           "type" : "string"
         },
         "serviceId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'service' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "title" : {
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "UiAppVariant" : {
@@ -2382,10 +2801,14 @@
           "type" : "string"
         },
         "cdnSiteId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'cdnSite' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "deploymentServiceId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'deploymentService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "deploymentType" : {
           "type" : "string"
@@ -2394,15 +2817,19 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "serviceIds" : {
+          "description" : "References to existing 'service' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "title" : {
@@ -2412,6 +2839,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "UseCaseEntity" : {
@@ -2453,6 +2881,14 @@
         "cacheable" : {
           "type" : "boolean"
         },
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "exposedAsAsync" : {
           "type" : "boolean"
         },
@@ -2475,7 +2911,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "idempotencyEnabled" : {
           "type" : "boolean"
@@ -2484,7 +2922,9 @@
           "type" : "string"
         },
         "inputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "mcpDescription" : {
           "type" : "string"
@@ -2493,7 +2933,9 @@
           "type" : "string"
         },
         "outputModelId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rateLimitEnabled" : {
           "type" : "boolean"
@@ -2520,47 +2962,74 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "UseCaseStepEntity" : {
       "type" : "object",
       "properties" : {
         "aggregateId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "domainEventId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "gatewayId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "gatewayOperationId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'gatewayOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "modelMappingId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
         },
         "operationId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "type" : {
           "$ref" : "#/$defs/UseCaseStepType"
         },
         "useCaseId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
     },
     "UseCaseStepType" : {
       "type" : "string",
-      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "PublishDomainEvent", "CallUseCase", "ApplyModelMapping" ]
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "PublishDomainEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping" ]
     },
     "ValueObjectEntity" : {
       "type" : "object",
@@ -2572,7 +3041,9 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -2584,6 +3055,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ViewEntity" : {
@@ -2593,204 +3065,248 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "kind" : {
           "type" : "string"
         },
         "memberIds" : {
+          "description" : "References to existing 'member' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "name" : {
           "type" : "string"
         },
         "seedId" : {
-          "type" : "string"
+          "type" : "string",
+          "description" : "Reference to an existing 'seed' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     }
   },
   "type" : "object",
   "properties" : {
     "aggregates" : {
+      "description" : "DDD aggregate roots: operations, invariants, lifecycle, persistence and event sourcing.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/AggregateEntity"
       }
     },
     "bddScenarios" : {
+      "description" : "Given/when/then scenarios attached to use cases.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/BddScenarioEntity"
       }
     },
     "businessRules" : {
+      "description" : "Declarative condition/action rules evaluated by the runtime.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/BusinessRuleEntity"
       }
     },
     "components" : {
+      "description" : "Reusable UI components.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ComponentEntity"
       }
     },
+    "decisions" : {
+      "description" : "Architecture decision records (ADRs); elements trace to them via decisionIds.",
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DecisionEntity"
+      }
+    },
     "domainEvents" : {
+      "description" : "Events emitted by aggregates inside the bounded context.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/DomainEventEntity"
       }
     },
     "entities" : {
+      "description" : "Domain entities that live inside an aggregate boundary.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EntityEntity"
       }
     },
     "enums" : {
+      "description" : "Enumerated types shared by models.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EnumEntity"
       }
     },
     "flows" : {
+      "description" : "Intent layer: one line of intent (materializes/triggers/notifies/orchestrates) expanded into structure.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/FlowEntity"
       }
     },
     "gateways" : {
+      "description" : "Outbound ports to external services, with circuit breakers and rate limits.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/GatewayEntity"
       }
     },
     "integrationEvents" : {
+      "description" : "Events published across context boundaries (with DLQ/versioning concerns).",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/IntegrationEventEntity"
       }
     },
     "invariants" : {
+      "description" : "Reusable invariant definitions referenced by aggregates.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/InvariantEntity"
       }
     },
     "modelMappings" : {
+      "description" : "Field-level mappings between models (e.g. DTO ↔ domain).",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ModelMappingEntity"
       }
     },
     "models" : {
+      "description" : "Data shapes (fields + validations) backing aggregates, DTOs and read models.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ModelEntity"
       }
     },
     "modules" : {
+      "description" : "Bounded contexts: the unit that owns aggregates, use cases and the published language.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ModuleEntity"
       }
     },
     "pages" : {
+      "description" : "UI pages (CRUD, wizards) generated for the application.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/PageEntity"
       }
     },
     "processes" : {
+      "description" : "Intent layer: human/automated step lists expanded into sagas, worklists and deadlines.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProcessEntity"
       }
     },
     "projections" : {
+      "description" : "Event handlers that maintain denormalized read models.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProjectionEntity"
       }
     },
     "projects" : {
+      "description" : "Deliverable systems: output path, package, services, tenancy, external systems, context map.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProjectEntity"
       }
     },
     "queryServices" : {
+      "description" : "Read-side services exposing query operations.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/QueryServiceEntity"
       }
     },
     "readModels" : {
+      "description" : "Denormalized views kept by projections.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ReadModelEntity"
       }
     },
     "roles" : {
+      "description" : "RBAC role definitions.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/RoleEntity"
       }
     },
     "sagas" : {
+      "description" : "Multi-step workflows with compensation (orchestration or choreography).",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/SagaEntity"
       }
     },
     "scheduledTriggers" : {
+      "description" : "Cron-based tasks that invoke use cases.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ScheduledTriggerEntity"
       }
     },
     "services" : {
+      "description" : "Microservices of a project; each owns modules (bounded contexts).",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ServiceEntity"
       }
     },
     "subscriptions" : {
+      "description" : "Message handlers with filtering, retry and DLQ policies.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/SubscriptionEntity"
       }
     },
     "uiAdapters" : {
+      "description" : "Bindings between pages and use cases.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UiAdapterEntity"
       }
     },
     "uiShells" : {
+      "description" : "Application shells: menus aggregating pages across modules.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UiShellEntity"
       }
     },
     "useCases" : {
+      "description" : "Application services: the commands/queries the system exposes.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UseCaseEntity"
       }
     },
     "valueObjects" : {
+      "description" : "Immutable typed wrappers (e.g. BookingId, Email) used by models and aggregates.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ValueObjectEntity"
       }
     },
     "views" : {
+      "description" : "Named slices of the model for focused work and partial generation.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ViewEntity"

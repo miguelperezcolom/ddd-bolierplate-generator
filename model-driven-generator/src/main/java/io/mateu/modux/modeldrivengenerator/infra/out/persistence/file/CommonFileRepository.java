@@ -1,15 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import com.github.victools.jsonschema.generator.Option;
-import com.github.victools.jsonschema.generator.OptionPreset;
-import com.github.victools.jsonschema.generator.SchemaGenerator;
-import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
-import com.github.victools.jsonschema.generator.SchemaVersion;
-import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
@@ -26,9 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static io.mateu.core.infra.JsonSerializer.pojoFromJson;
-import static io.mateu.core.infra.JsonSerializer.toJson;
-
 @Service
 @Slf4j
 public class CommonFileRepository {
@@ -43,6 +32,7 @@ public class CommonFileRepository {
 
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat;
+    private final ModelJsonSchemaGenerator schemaGenerator;
     /** The format the model was loaded with; persist writes back in the same format. */
     private io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelStorageFormat activeFormat;
 
@@ -51,9 +41,11 @@ public class CommonFileRepository {
 
     public CommonFileRepository(
             io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat,
-            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat) {
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat,
+            ModelJsonSchemaGenerator schemaGenerator) {
         this.monolithicFormat = monolithicFormat;
         this.granularFormat = granularFormat;
+        this.schemaGenerator = schemaGenerator;
         this.activeFormat = monolithicFormat;
     }
 
@@ -94,6 +86,11 @@ public class CommonFileRepository {
     public <T> void deleteAllById(List<String> list, Class<T> type) {
         list.forEach(id -> store.remove(storeKey(id, type)));
         persist();
+    }
+
+    /** The resolved store path (file, or directory for granular stores). */
+    public Path storePath() {
+        return storePath;
     }
 
     private String overrideModelFile;
@@ -213,13 +210,7 @@ public class CommonFileRepository {
 
     @SneakyThrows
     private void generateSchema() {
-        SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
-                SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
-                .with(new JacksonModule())
-                .with(Option.FORBIDDEN_ADDITIONAL_PROPERTIES_BY_DEFAULT)
-                .with(Option.DEFINITIONS_FOR_ALL_OBJECTS);
-        SchemaGenerator generator = new SchemaGenerator(configBuilder.build());
-        JsonNode schema = generator.generateSchema(AllData.class);
+        JsonNode schema = schemaGenerator.fullSchema();
         String schemaJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
         Path schemaPath = dataDir.resolve("model-driven-store-schema.json");
         Files.createDirectories(schemaPath.getParent());
