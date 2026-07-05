@@ -19,7 +19,13 @@ public class MonolithicYamlStorageFormat implements ModelStorageFormat {
     @Override
     public AllData load(Path path) throws Exception {
         if (Files.exists(path)) {
-            return ModelYaml.reader().readValue(path.toFile(), AllData.class);
+            // a blank file (touch, editor-created) is a fresh model, and YAML "---" parses to null
+            var content = Files.readString(path);
+            if (content.isBlank()) {
+                return AllData.empty();
+            }
+            var data = ModelYaml.reader().readValue(content, AllData.class);
+            return data != null ? data : AllData.empty();
         }
         // fall back to the sibling JSON store, mirroring the historical behaviour
         var json = path.resolveSibling("model-driven-store.json");

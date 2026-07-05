@@ -2,9 +2,16 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
 import io.mateu.uidl.interfaces.Identifiable;
+import lombok.Builder;
 
 import java.util.List;
 
+/**
+ * Copy-with-changes goes through {@code toBuilder()} — never through a positional constructor:
+ * the compat constructors below exist for legacy callers only, and copying through them silently
+ * nulls every newer field (that bug shipped three times before the builder was added).
+ */
+@Builder(toBuilder = true)
 public record ModuleEntity(
         String id,
         String name,

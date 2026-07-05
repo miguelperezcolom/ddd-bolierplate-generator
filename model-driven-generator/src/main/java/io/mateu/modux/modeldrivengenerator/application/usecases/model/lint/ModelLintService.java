@@ -32,18 +32,19 @@ public class ModelLintService {
                 "Field '" + v.field() + "' references missing id '" + v.missingId() + "'.")));
 
         // 1b. global id uniqueness — the workspace tree, the MCP tools and cross-references all
-        // route on plain ids, so the same id in two elements is ambiguous. One blessed exception:
-        // an element and its backing data model (ModelEntity) conventionally share the id.
-        var typesById = new java.util.LinkedHashMap<String, java.util.List<String>>();
+        // route on plain ids, so the same id in two elements is ambiguous. One blessed exception,
+        // verified strictly here: an element and ITS backing data model (modelId back-link) may
+        // share the id (see GlobalIdPolicy).
+        var elementsById = new java.util.LinkedHashMap<String, java.util.List<Object>>();
         for (var element : repository.allElements()) {
             if (element instanceof io.mateu.uidl.interfaces.Identifiable identifiable) {
-                typesById.computeIfAbsent(identifiable.id(), k -> new ArrayList<>())
-                        .add(element.getClass().getSimpleName());
+                elementsById.computeIfAbsent(identifiable.id(), k -> new ArrayList<>()).add(element);
             }
         }
-        typesById.forEach((id, types) -> {
-            var isBackingModelPair = types.size() == 2 && types.contains("ModelEntity");
-            if (types.size() > 1 && !isBackingModelPair) {
+        elementsById.forEach((id, elements) -> {
+            if (elements.size() > 1 && !io.mateu.modux.modeldrivengenerator.infra.out.persistence.file
+                    .GlobalIdPolicy.isBackingModelPair(elements)) {
+                var types = elements.stream().map(e -> e.getClass().getSimpleName()).toList();
                 findings.add(new LintFinding("duplicate-id", LintSeverity.ERROR,
                         String.join(", ", types), id, id,
                         "Id '" + id + "' is used by " + types.size() + " elements (" + String.join(", ", types)

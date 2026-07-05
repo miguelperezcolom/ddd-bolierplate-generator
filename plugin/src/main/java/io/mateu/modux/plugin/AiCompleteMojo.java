@@ -48,7 +48,10 @@ public class AiCompleteMojo extends AbstractMojo {
         System.setProperty("modux.model-file", specFile);
 
         try (var ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(CommonFileRepository.class, ClaudeApiClient.class, AiCompleteCodeUseCase.class);
+            ctx.register(CommonFileRepository.class, ClaudeApiClient.class, AiCompleteCodeUseCase.class,
+                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelJsonSchemaGenerator.class,
+                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat.class,
+                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat.class);
             ctx.refresh();
             ctx.getBean(AiCompleteCodeUseCase.class)
                .handle(new AiCompleteCodeCommand(projectId, outputPath, packageName, apiKey, model));

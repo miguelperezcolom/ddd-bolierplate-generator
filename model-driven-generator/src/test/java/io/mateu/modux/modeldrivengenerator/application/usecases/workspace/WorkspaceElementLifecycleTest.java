@@ -92,6 +92,54 @@ class WorkspaceElementLifecycleTest {
     }
 
     @Test
+    void deleting_one_half_of_the_blessed_pair_keeps_references_to_the_survivor() {
+        // the hotel store pairs aggregates with their backing models (same id)
+        var aggregate = repository.findAllOfType(AggregateEntity.class).stream()
+                .filter(a -> a.id().equals(a.modelId()))
+                .findFirst().orElseThrow();
+        var moduleOwning = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
+                .findFirst().orElseThrow();
+
+        deleteUseCase.handle(List.of(aggregate.id()));
+
+        assertTrue(repository.findById(aggregate.id(), AggregateEntity.class).isEmpty(), "aggregate deleted");
+        assertTrue(repository.findById(aggregate.id(),
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity.class)
+                .isPresent(), "the backing model must survive");
+        var module = repository.findById(moduleOwning.id(), ModuleEntity.class).orElseThrow();
+        assertTrue(module.aggregateIds().contains(aggregate.id()),
+                "references still resolve (to the surviving model) — they must not be pruned");
+    }
+
+    @Test
+    void lint_exempts_only_the_verified_backing_pair() {
+        var aggregate = repository.findAllOfType(AggregateEntity.class).stream()
+                .filter(a -> a.id().equals(a.modelId()))
+                .findFirst().orElseThrow();
+        // a flow sharing an id with an UNRELATED model is not the blessed pair
+        var unrelatedModelId = repository.findAllOfType(
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity.class).stream()
+                .map(m -> m.id())
+                .filter(id -> repository.findById(id, AggregateEntity.class).isEmpty())
+                .filter(id -> repository.findById(id,
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity.class).isEmpty())
+                .findFirst().orElseThrow();
+        repository.save(new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity(
+                unrelatedModelId, "Impostor", null, null, null, null, null, null,
+                List.of(), null, List.of(), List.of()));
+
+        var duplicates = modelLintService.lint().stream()
+                .filter(f -> "duplicate-id".equals(f.ruleId()))
+                .toList();
+
+        assertTrue(duplicates.stream().anyMatch(f -> unrelatedModelId.equals(f.elementId())),
+                "a flow squatting an unrelated model's id must be flagged: " + duplicates);
+        assertFalse(duplicates.stream().anyMatch(f -> aggregate.id().equals(f.elementId())),
+                "an aggregate sharing the id of ITS backing model stays blessed: " + duplicates);
+    }
+
+    @Test
     void lint_flags_duplicate_ids_as_errors() {
         var existingAggregateId = repository.findAllOfType(AggregateEntity.class).get(0).id();
         // bypass the use-case guard by saving directly, as a hand-edit of the YAML would

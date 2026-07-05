@@ -1,6 +1,5 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.mcp;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +15,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomple
 import io.mateu.modux.modeldrivengenerator.application.usecases.recipes.ApplyRecipeUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelJsonSchemaGenerator;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
@@ -48,9 +48,10 @@ public class ModelMcpTools {
     private final GenerateCodeUseCase generateCodeUseCase;
     private final ApplyRecipeUseCase applyRecipeUseCase;
     private final AiCompleteCodeUseCase aiCompleteCodeUseCase;
+    private final GlobalIdPolicy idPolicy;
 
     private final ObjectMapper json = new ObjectMapper();
-    private final YAMLMapper yaml = displayYaml();
+    private final YAMLMapper yaml = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelYaml.writer();
 
     /** One MCP tool: name, what it does, and the JSON schema of its arguments. */
     public record ToolSpec(String name, String description, Map<String, Object> inputSchema) {
@@ -211,6 +212,20 @@ public class ModelMcpTools {
                 throw new IllegalArgumentException("Every module needs an id.");
             }
             moduleIds.add(module.get("id").asText());
+            // validate the shape up front — nothing is persisted until every layer parses
+            try {
+                json.treeToValue(module, registry.classFor("modules"));
+            } catch (JacksonException e) {
+                throw new IllegalArgumentException(schemaMismatchMessage("modules", e));
+            }
+        }
+        for (var newId : java.util.stream.Stream.concat(
+                java.util.stream.Stream.of(projectId, serviceId), moduleIds.stream()).toList()) {
+            var owner = idPolicy.conflict(newId, "n/a").orElse(null);
+            if (owner != null) {
+                throw new IllegalArgumentException("Id '" + newId + "' already exists (in " + owner
+                        + "). Nothing was created — pick unique ids for the whole topology.");
+            }
         }
 
         // build the three layers as JSON so this stays generic over the entities
@@ -315,6 +330,13 @@ public class ModelMcpTools {
             throw new IllegalArgumentException("The element must have a non-blank 'id'.");
         }
         var existed = repository.findById(identifiable.id(), type).isPresent();
+        if (!existed) {
+            var conflict = idPolicy.conflict(identifiable.id(), typeName).orElse(null);
+            if (conflict != null) {
+                throw new IllegalArgumentException("Id '" + identifiable.id() + "' already exists (in "
+                        + conflict + "). Ids must be unique across the whole model.");
+            }
+        }
         repository.save(identifiable);
 
         var report = new StringBuilder((existed ? "Updated" : "Created") + " " + typeName
@@ -529,10 +551,4 @@ public class ModelMcpTools {
         return Map.of("type", "string", "description", description);
     }
 
-    /** Same style as the store writer: nulls/empties omitted, so elements read like the YAML store. */
-    private static YAMLMapper displayYaml() {
-        var mapper = new YAMLMapper();
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        return mapper;
-    }
 }

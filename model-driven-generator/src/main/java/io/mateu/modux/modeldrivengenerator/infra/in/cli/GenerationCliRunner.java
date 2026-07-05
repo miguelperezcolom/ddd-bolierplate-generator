@@ -42,6 +42,7 @@ public class GenerationCliRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         if (args.containsOption("modux.check")) {
+            failIfStoreMissing("--modux.check");
             runCheck();
             return;
         }
@@ -49,6 +50,7 @@ public class GenerationCliRunner implements ApplicationRunner {
             if (args.containsOption("modux.watch")) {
                 runLintWatch();
             } else {
+                failIfStoreMissing("--modux.lint");
                 runLint();
             }
             return;
@@ -76,6 +78,7 @@ public class GenerationCliRunner implements ApplicationRunner {
             }
             return;
         }
+        failIfStoreMissing("--modux.generate");
         var projectId = projectIds.get(0);
         var output = firstOrNull(args.getOptionValues("modux.output"));
 
@@ -132,6 +135,20 @@ public class GenerationCliRunner implements ApplicationRunner {
         }
     }
 
+    /**
+     * Validation/generation against a nonexistent store is almost always a typo'd path: a phantom
+     * empty model would lint green or generate nothing. Authoring modes (MCP, UI, --modux.watch)
+     * legitimately start from scratch and are not gated.
+     */
+    private void failIfStoreMissing(String flag) {
+        if (repository.startedFromScratch()) {
+            log.error("Model store not found at {} — refusing {} against an empty model. "
+                    + "Fix the path, or author the model first (--modux.mcp, the UI, or --modux.lint --modux.watch).",
+                    repository.storePath(), flag);
+            System.exit(SpringApplication.exit(context, () -> 1));
+        }
+    }
+
     private void runLint() {
         var hasErrors = lintOnce();
         System.exit(SpringApplication.exit(context, () -> hasErrors ? 1 : 0));
@@ -161,9 +178,14 @@ public class GenerationCliRunner implements ApplicationRunner {
         var storePath = repository.storePath();
         try (var watchService = java.nio.file.FileSystems.getDefault().newWatchService()) {
             var granular = java.nio.file.Files.isDirectory(storePath);
-            var roots = granular
-                    ? java.nio.file.Files.walk(storePath).filter(java.nio.file.Files::isDirectory).toList()
-                    : List.of(storePath.getParent());
+            List<java.nio.file.Path> roots;
+            if (granular) {
+                try (var tree = java.nio.file.Files.walk(storePath)) {
+                    roots = tree.filter(java.nio.file.Files::isDirectory).toList();
+                }
+            } else {
+                roots = List.of(storePath.getParent());
+            }
             for (var dir : roots) {
                 dir.register(watchService,
                         java.nio.file.StandardWatchEventKinds.ENTRY_CREATE,
@@ -175,7 +197,10 @@ public class GenerationCliRunner implements ApplicationRunner {
                 var key = watchService.take();
                 var watchedDir = (java.nio.file.Path) key.watchable();
                 var relevant = key.pollEvents().stream().anyMatch(event -> {
-                    var changed = watchedDir.resolve((java.nio.file.Path) event.context());
+                    if (!(event.context() instanceof java.nio.file.Path changedPath)) {
+                        return true; // OVERFLOW: unknown changes — re-lint conservatively
+                    }
+                    var changed = watchedDir.resolve(changedPath);
                     return granular ? changed.toString().endsWith(".yaml") : changed.equals(storePath);
                 });
                 key.reset();

@@ -127,16 +127,12 @@ public class FlowStoreMaterializer {
     }
 
     private static ModuleEntity withAppended(ModuleEntity m, ModuleAdditions add) {
-        return new ModuleEntity(
-                m.id(), m.name(), m.gitRepository(), m.aggregateIds(), m.entityIds(), m.valueObjectIds(),
-                m.useCaseIds(),
-                concat(m.domainEventIds(), add.domainEvents()),
-                concat(m.projectionIds(), add.projections()),
-                m.readModelIds(),
-                concat(m.subscriptionIds(), add.subscriptions()),
-                concat(m.sagaIds(), add.sagas()),
-                m.scheduledTriggerIds(), m.bddScenarios(), m.llmSystemPrompt(), m.tableNamePrefix(),
-                m.autoTableNamePrefix(), m.version(), m.bffs(), m.acls(), m.domainPolicies(), m.invariants());
+        return m.toBuilder()
+                .domainEventIds(concat(m.domainEventIds(), add.domainEvents()))
+                .projectionIds(concat(m.projectionIds(), add.projections()))
+                .subscriptionIds(concat(m.subscriptionIds(), add.subscriptions()))
+                .sagaIds(concat(m.sagaIds(), add.sagas()))
+                .build();
     }
 
     private static List<String> concat(List<String> base, List<String> extra) {

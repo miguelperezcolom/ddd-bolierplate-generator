@@ -147,6 +147,33 @@ class McpStdioServerTest {
     }
 
     @Test
+    void upsert_rejects_a_new_element_squatting_an_existing_id() throws Exception {
+        var aggregateId = repository.findAllOfType(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity.class)
+                .get(0).id();
+        var response = rawCall("upsert_element", """
+                {"type":"decisions","element":{"id":"%s","name":"Squatter"}}""".formatted(aggregateId));
+        assertTrue(response.at("/result/isError").asBoolean(), response.toString());
+        assertTrue(response.at("/result/content/0/text").asText().contains("already exists"),
+                response.toString());
+    }
+
+    @Test
+    void bootstrap_is_atomic_a_bad_module_persists_nothing() throws Exception {
+        var response = rawCall("bootstrap_project", """
+                {"projectId":"boot-atomic","name":"Boot","packageName":"com.x","outputPath":"/tmp/x",
+                 "modules":[{"id":"m-ok","name":"Ok"},{"id":"m-bad","name":"Bad","subdomain":"CORE"}]}""");
+        assertTrue(response.at("/result/isError").asBoolean(), response.toString());
+        assertTrue(response.at("/result/content/0/text").asText().contains("did you mean 'subdomainType'"),
+                response.toString());
+        // nothing was persisted — the topology is all-or-nothing
+        assertTrue(repository.findById("boot-atomic",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class).isEmpty());
+        assertTrue(repository.findById("m-ok",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).isEmpty());
+    }
+
+    @Test
     void unknown_method_and_notifications_follow_jsonrpc() throws Exception {
         assertNull(server.process("""
                 {"jsonrpc":"2.0","method":"notifications/whatever"}"""), "notifications get no response");

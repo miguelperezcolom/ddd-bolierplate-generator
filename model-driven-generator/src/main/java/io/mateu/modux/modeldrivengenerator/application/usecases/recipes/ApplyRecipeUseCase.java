@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.recipes.Recipe.R
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
@@ -27,7 +27,7 @@ import java.util.Map;
 public class ApplyRecipeUseCase {
 
     private final CommonFileRepository repository;
-    private final ElementTypeRegistry registry;
+    private final GlobalIdPolicy idPolicy;
 
     public List<Recipe> catalog() {
         return List.of(
@@ -82,7 +82,11 @@ public class ApplyRecipeUseCase {
             throw new IllegalArgumentException("Recipe '" + recipeId + "' is missing required parameter(s): "
                     + String.join(", ", missing));
         }
-        assertNewId(params.get("id"));
+        var typeName = "human-approval-process".equals(recipeId) ? "processes" : "flows";
+        idPolicy.conflict(params.get("id"), typeName).ifPresent(owner -> {
+            throw new IllegalArgumentException("Id '" + params.get("id") + "' already exists (in " + owner
+                    + "). Pick a new id for the recipe's element.");
+        });
         return switch (recipeId) {
             case "materialized-read-model" -> materializedReadModel(params);
             case "human-approval-process" -> humanApprovalProcess(params);
@@ -124,15 +128,6 @@ public class ApplyRecipeUseCase {
                 FlowArchetype.NOTIFIES, p.get("triggerAggregateId"), p.get("triggerEvent"),
                 p.get("targetModuleId"), null, List.of(), null, List.of(), List.of()));
         return List.of(p.get("id"));
-    }
-
-    private void assertNewId(String id) {
-        for (var entry : registry.all().entrySet()) {
-            if (repository.findById(id, entry.getValue()).isPresent()) {
-                throw new IllegalArgumentException("Id '" + id + "' already exists (in " + entry.getKey()
-                        + "). Pick a new id for the recipe's element.");
-            }
-        }
     }
 
     private static boolean isBlank(String value) {

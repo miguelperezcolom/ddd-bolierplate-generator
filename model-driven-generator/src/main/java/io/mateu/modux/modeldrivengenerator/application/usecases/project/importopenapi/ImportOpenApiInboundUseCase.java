@@ -70,14 +70,7 @@ public class ImportOpenApiInboundUseCase {
         repository.findById(moduleId, ModuleEntity.class).ifPresent(m -> {
             var merged = new ArrayList<>(m.useCaseIds() != null ? m.useCaseIds() : List.<String>of());
             useCaseIds.stream().filter(id -> !merged.contains(id)).forEach(merged::add);
-            repository.save(new ModuleEntity(
-                    m.id(), m.name(), m.gitRepository(), m.aggregateIds(), m.entityIds(),
-                    m.valueObjectIds(), merged, m.domainEventIds(), m.projectionIds(),
-                    m.readModelIds(), m.subscriptionIds(), m.sagaIds(), m.scheduledTriggerIds(),
-                    m.bddScenarios(), m.llmSystemPrompt(), m.tableNamePrefix(),
-                    m.autoTableNamePrefix(), m.version(), m.bffs(), m.acls(), m.domainPolicies(),
-                    m.invariants(), m.subdomainType(), m.accessPolicies(), m.kpis(),
-                    m.decisionIds(), m.description()));
+            repository.save(m.toBuilder().useCaseIds(merged).build());
         });
     }
 

@@ -40,8 +40,14 @@ public class DeleteWorkspaceElementsUseCase {
                 }
             }
         }
-        if (!deleted.isEmpty()) {
-            detachEverywhere(deleted);
+        // The blessed id-sharing pair (element + its backing model): when another element still
+        // holds the deleted id, references to that id still resolve — leave them untouched.
+        var fullyGone = deleted.stream()
+                .filter(id -> registry.all().values().stream()
+                        .noneMatch(type -> repository.findById(id, type).isPresent()))
+                .collect(java.util.stream.Collectors.toSet());
+        if (!fullyGone.isEmpty()) {
+            detachEverywhere(fullyGone);
         }
     }
 

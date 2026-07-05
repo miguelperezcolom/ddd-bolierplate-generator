@@ -39,6 +39,9 @@ public class CommonFileRepository {
     /** True after a scoped (partial) load: only a slice of a granular model is in memory, so it is read-only. */
     private boolean scoped;
 
+    /** True when the store path did not exist at load time (authoring from scratch). */
+    private boolean startedFromScratch;
+
     public CommonFileRepository(
             io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat monolithicFormat,
             io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat granularFormat,
@@ -93,6 +96,15 @@ public class CommonFileRepository {
         return storePath;
     }
 
+    /**
+     * True when no store existed at the given path — fine for authoring modes (MCP, UI, watch),
+     * but validation/generation gates should refuse to run against a phantom empty model
+     * (a typo'd path would otherwise pass green or fork the store).
+     */
+    public boolean startedFromScratch() {
+        return startedFromScratch;
+    }
+
     private String overrideModelFile;
 
     /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
@@ -108,6 +120,7 @@ public class CommonFileRepository {
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
         scoped = false;
         storePath = Path.of(specFile).toAbsolutePath().normalize();
+        startedFromScratch = !Files.exists(storePath);
         activeFormat = granularFormat.handles(storePath) ? granularFormat : monolithicFormat;
         dataDir = activeFormat.dataDir(storePath);
         log.info("spec store ({}) in {}", activeFormat.getClass().getSimpleName(), storePath);

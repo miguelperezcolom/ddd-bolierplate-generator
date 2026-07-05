@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class CreateWorkspaceElementUseCase {
 
     private final CommonFileRepository repository;
     private final ElementTypeRegistry registry;
+    private final GlobalIdPolicy idPolicy;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -29,7 +31,10 @@ public class CreateWorkspaceElementUseCase {
             throw new IllegalArgumentException("The new element needs an id.");
         }
         var type = registry.classFor(command.typeName());
-        assertGloballyUnique(command.id(), command.typeName());
+        idPolicy.conflict(command.id(), command.typeName()).ifPresent(owner -> {
+            throw new IllegalArgumentException("Id '" + command.id() + "' already exists (in " + owner
+                    + "). Ids must be unique across the whole model.");
+        });
 
         var node = mapper.createObjectNode();
         node.put("id", command.id());
@@ -39,21 +44,6 @@ public class CreateWorkspaceElementUseCase {
 
         if (command.parentTypeName() != null) {
             attachToParent(command);
-        }
-    }
-
-    /**
-     * Ids are unique across the whole model — duplicate ids would make tree routing ambiguous.
-     * Blessed exception (mirrors the {@code duplicate-id} lint rule): an element and its backing
-     * data model conventionally share the id, so a ModelEntity never conflicts with other types.
-     */
-    private void assertGloballyUnique(String id, String typeName) {
-        for (var entry : registry.all().entrySet()) {
-            var oneSideIsBackingModel = "models".equals(entry.getKey()) ^ "models".equals(typeName);
-            if (!oneSideIsBackingModel && repository.findById(id, entry.getValue()).isPresent()) {
-                throw new IllegalArgumentException("Id '" + id + "' already exists (in " + entry.getKey()
-                        + "). Ids must be unique across the whole model.");
-            }
         }
     }
 

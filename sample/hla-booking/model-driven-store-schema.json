@@ -1497,6 +1497,9 @@
           "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "intent" : {
+          "type" : "string"
+        },
         "name" : {
           "type" : "string"
         },
@@ -3005,6 +3008,9 @@
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "intent" : {
+          "type" : "string"
         },
         "modelMappingId" : {
           "type" : "string",
