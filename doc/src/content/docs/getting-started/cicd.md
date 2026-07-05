@@ -119,6 +119,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Lint the model            # gate: exits 1 on ERROR findings
+        run: |
+          java -jar model-driven-generator.jar --modux.lint \
+            --modux.model-file=.dev/data/model-driven-store.yaml
+
       - name: Generate code
         run: mvn modux:generate --no-transfer-progress
 
@@ -159,6 +164,24 @@ jobs:
 :::note
 The workflow is triggered only when the spec file changes (`paths` filter), avoiding unnecessary runs on documentation or config-only commits.
 :::
+
+### Validation gates
+
+Two CLI gates are available, in increasing order of strictness:
+
+| Flag | What it checks | Exit 1 when |
+|---|---|---|
+| `--modux.check` | Referential integrity only (dangling `*Id` references) | any dangling reference |
+| `--modux.lint` | Integrity **plus** the full architectural rule catalog (lifecycle coherence, idempotency, DLQ, PII, tenancy…) | any ERROR finding (warnings and info are reported but don't fail) |
+
+Run `--modux.lint` in the PR workflow so an inconsistent model never reaches `main`; the same rule catalog powers the **Model health** page in the UI and the MCP `lint_model` tool, so what CI enforces is exactly what authors see while editing.
+
+While editing the YAML locally, `--modux.lint --modux.watch` keeps re-linting on every save — errors show up seconds after you introduce them:
+
+```bash
+java -jar model-driven-generator.jar --modux.lint --modux.watch \
+  --modux.model-file=.dev/data/model-driven-store.yaml
+```
 
 ### Push to a PR instead of directly to main
 

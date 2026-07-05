@@ -19,10 +19,12 @@ import java.util.List;
  * <pre>
  *   --modux.generate=&lt;projectId&gt; [--modux.output=&lt;dir&gt;]
  *   --modux.check                              # referential-integrity check, exits 1 if broken
+ *   --modux.lint                               # full lint catalog, exits 1 on ERROR findings
+ *   --modux.lint --modux.watch                 # re-lint on every store save (the authoring loop)
  * </pre>
  *
- * Generates the project (or checks the model) and exits. Without either flag the application starts
- * normally (UI server mode).
+ * Generates the project (or checks/lints the model) and exits. Without any flag the application
+ * starts normally (UI server mode).
  */
 @Component
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class GenerationCliRunner implements ApplicationRunner {
 
     private final GenerateCodeUseCase generateCodeUseCase;
     private final CheckModelUseCase checkModelUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelLintService modelLintService;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.LoadViewScopeUseCase loadViewScopeUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository repository;
@@ -40,6 +43,14 @@ public class GenerationCliRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (args.containsOption("modux.check")) {
             runCheck();
+            return;
+        }
+        if (args.containsOption("modux.lint")) {
+            if (args.containsOption("modux.watch")) {
+                runLintWatch();
+            } else {
+                runLint();
+            }
             return;
         }
         if (args.containsOption("modux.split")) {
@@ -117,6 +128,76 @@ public class GenerationCliRunner implements ApplicationRunner {
             System.exit(SpringApplication.exit(context, () -> 0));
         } catch (Exception e) {
             log.error("Model storage conversion failed", e);
+            System.exit(SpringApplication.exit(context, () -> 1));
+        }
+    }
+
+    private void runLint() {
+        var hasErrors = lintOnce();
+        System.exit(SpringApplication.exit(context, () -> hasErrors ? 1 : 0));
+    }
+
+    /** Lint + report; returns true when there are ERROR findings. */
+    private boolean lintOnce() {
+        var findings = modelLintService.lint();
+        var report = io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintReportFormatter
+                .render(findings);
+        var hasErrors = io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintReportFormatter
+                .hasErrors(findings);
+        if (hasErrors) {
+            log.error(report);
+        } else {
+            log.info(report);
+        }
+        return hasErrors;
+    }
+
+    /**
+     * The tight authoring loop for IDE editing: re-lint every time the store is saved. Watches the
+     * store file's directory (or the store directory tree, for granular stores) until interrupted.
+     */
+    private void runLintWatch() {
+        lintOnce();
+        var storePath = repository.storePath();
+        try (var watchService = java.nio.file.FileSystems.getDefault().newWatchService()) {
+            var granular = java.nio.file.Files.isDirectory(storePath);
+            var roots = granular
+                    ? java.nio.file.Files.walk(storePath).filter(java.nio.file.Files::isDirectory).toList()
+                    : List.of(storePath.getParent());
+            for (var dir : roots) {
+                dir.register(watchService,
+                        java.nio.file.StandardWatchEventKinds.ENTRY_CREATE,
+                        java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY,
+                        java.nio.file.StandardWatchEventKinds.ENTRY_DELETE);
+            }
+            log.info("Watching {} for changes — save the store to re-lint (Ctrl-C to stop)", storePath);
+            while (true) {
+                var key = watchService.take();
+                var watchedDir = (java.nio.file.Path) key.watchable();
+                var relevant = key.pollEvents().stream().anyMatch(event -> {
+                    var changed = watchedDir.resolve((java.nio.file.Path) event.context());
+                    return granular ? changed.toString().endsWith(".yaml") : changed.equals(storePath);
+                });
+                key.reset();
+                if (!relevant) {
+                    continue;
+                }
+                Thread.sleep(150); // editors save in bursts; let the write settle
+                while (watchService.poll() instanceof java.nio.file.WatchKey burst) {
+                    burst.pollEvents();
+                    burst.reset();
+                }
+                try {
+                    repository.loadFrom(storePath.toString());
+                    lintOnce();
+                } catch (Exception e) {
+                    log.error("Model reload failed (fix the YAML and save again): {}", e.getMessage());
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.error("Lint watch failed", e);
             System.exit(SpringApplication.exit(context, () -> 1));
         }
     }
