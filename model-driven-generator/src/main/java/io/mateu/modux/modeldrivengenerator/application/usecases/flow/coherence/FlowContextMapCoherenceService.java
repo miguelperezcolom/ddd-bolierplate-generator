@@ -96,7 +96,8 @@ public class FlowContextMapCoherenceService {
         var suggested = ContextMapArchetypeInference.impliedRelation(archetype).orElse(null);
         return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.MISSING_RELATION,
                 null, suggested,
-                "Cross-context flow with no declared relation."
+                "Cross-context flow with no declared relation — declare it in the project's contextMap "
+                        + "(sourceModuleId/targetModuleId/type)."
                         + (suggested != null ? " Suggested type: " + suggested + "." : ""));
     }
 

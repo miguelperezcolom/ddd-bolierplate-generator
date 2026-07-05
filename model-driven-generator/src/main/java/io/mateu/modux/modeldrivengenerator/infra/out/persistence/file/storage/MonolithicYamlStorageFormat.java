@@ -22,8 +22,13 @@ public class MonolithicYamlStorageFormat implements ModelStorageFormat {
             return ModelYaml.reader().readValue(path.toFile(), AllData.class);
         }
         // fall back to the sibling JSON store, mirroring the historical behaviour
-        var json = Files.readString(path.resolveSibling("model-driven-store.json"));
-        return new ObjectMapper().readValue(json, AllData.class);
+        var json = path.resolveSibling("model-driven-store.json");
+        if (Files.exists(json)) {
+            return new ObjectMapper().readValue(Files.readString(json), AllData.class);
+        }
+        // authoring from scratch (e.g. an MCP session on a new project): start empty;
+        // the file is created on first save
+        return AllData.empty();
     }
 
     @Override

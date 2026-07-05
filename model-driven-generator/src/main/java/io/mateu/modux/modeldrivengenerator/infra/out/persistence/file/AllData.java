@@ -36,6 +36,13 @@ public record AllData(
         List<ViewEntity> views
         ) {
 
+    /** An empty model — the starting point when the store file does not exist yet. */
+    public static AllData empty() {
+        return new AllData(null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+    }
+
     public AllData {
         projects = projects != null ? projects : List.of();
         services = services != null ? services : List.of();
