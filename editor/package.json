@@ -1,0 +1,29 @@
+{
+  "name": "@modux/editor",
+  "version": "0.1.0",
+  "description": "Graphical model editor for modux — Lit web component, embeddable in Mateu",
+  "type": "module",
+  "main": "dist/modux-editor.js",
+  "module": "dist/modux-editor.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "copy": "npm run build && mkdir -p ../model-driven-generator/src/main/resources/static/modux-editor && cp dist/modux-editor.js ../model-driven-generator/src/main/resources/static/modux-editor/",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "d3-zoom": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "lit": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0"
+  }
+}

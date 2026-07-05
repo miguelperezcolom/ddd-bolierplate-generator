@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>modux editor — demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: #f1f5f9;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 12px;
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+      }
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+        color: #0f172a;
+      }
+      header span {
+        font-size: 13px;
+        color: #64748b;
+      }
+      main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        gap: 12px;
+      }
+      modux-editor {
+        flex: 1;
+        min-width: 0;
+      }
+      aside {
+        width: 340px;
+        background: #0f172a;
+        border-radius: 10px;
+        padding: 12px;
+        overflow-y: auto;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        color: #cbd5e1;
+      }
+      aside h2 {
+        font-size: 12px;
+        margin: 0 0 8px;
+        color: #94a3b8;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      .log-line {
+        padding: 3px 0;
+        border-bottom: 1px solid #1e293b;
+        word-break: break-all;
+      }
+      .log-kind {
+        color: #38bdf8;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>modux · editor gráfico</h1>
+      <span>demo standalone — el host aplica los comandos y persiste el layout (localStorage)</span>
+    </header>
+    <main>
+      <modux-editor></modux-editor>
+      <aside>
+        <h2>Eventos emitidos (contrato con el host / Mateu)</h2>
+        <div id="event-log"></div>
+      </aside>
+    </main>
+    <script type="module" src="/src/demo/main.ts"></script>
+  </body>
+</html>

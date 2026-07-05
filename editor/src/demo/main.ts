@@ -1,0 +1,113 @@
+import '../index.js';
+import type { ModuxEditor } from '../modux-editor.js';
+import type { ModuxCommand } from '../commands.js';
+import type { EditorLayout } from '../scene.js';
+import { demoModel } from './demo-model.js';
+
+const LAYOUT_KEY = 'modux-editor-demo-layout';
+
+const editor = document.querySelector('modux-editor') as ModuxEditor;
+const logEl = document.querySelector('#event-log') as HTMLElement;
+
+const model = structuredClone(demoModel);
+let layout: EditorLayout = {};
+try {
+  layout = JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? '{}');
+} catch {
+  layout = {};
+}
+
+editor.model = model;
+editor.layout = layout;
+
+function log(kind: string, detail: unknown): void {
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-kind">${kind}</span> ${detail == null ? '' : JSON.stringify(detail)}`;
+  logEl.prepend(line);
+  while (logEl.children.length > 40) logEl.lastChild?.remove();
+}
+
+function applyCommand(command: ModuxCommand): void {
+  switch (command.kind) {
+    case 'add-relation':
+      model.relations.push({
+        sourceId: command.sourceId,
+        targetId: command.targetId,
+        type: command.type,
+      });
+      break;
+    case 'remove-relation':
+      model.relations = model.relations.filter(
+        (r) => !(r.sourceId === command.sourceId && r.targetId === command.targetId),
+      );
+      break;
+    case 'add-module':
+      model.modules.push({ id: command.id, name: command.name, subdomainType: command.subdomainType });
+      break;
+    case 'add-aggregate':
+      (model.aggregates ??= []).push({ id: command.id, name: command.name, moduleId: command.moduleId });
+      break;
+    case 'remove-module':
+      model.modules = model.modules.filter((m) => m.id !== command.id);
+      model.relations = model.relations.filter(
+        (r) => r.sourceId !== command.id && r.targetId !== command.id,
+      );
+      break;
+    case 'remove-aggregate':
+      model.aggregates = (model.aggregates ?? []).filter((a) => a.id !== command.id);
+      break;
+    case 'add-flow':
+      model.flows.push({
+        id: command.id, name: command.name, archetype: command.archetype as never,
+        sourceId: '', targetId: command.targetId,
+        triggerAggregateId: command.triggerAggregateId, triggerEvent: command.triggerEvent,
+      });
+      break;
+    case 'remove-flow':
+      model.flows = model.flows.filter((f) => f.id !== command.id);
+      break;
+    case 'add-process':
+      (model.processes ??= []).push({
+        id: command.id, name: command.name, ownerModuleId: command.moduleId,
+        triggerAggregateId: command.triggerAggregateId, triggerEvent: command.triggerEvent,
+        steps: command.steps ?? [],
+      });
+      break;
+    case 'remove-process':
+      model.processes = (model.processes ?? []).filter((p) => p.id !== command.id);
+      break;
+    case 'rename-element': {
+      const list =
+        command.type === 'module' ? model.modules
+        : command.type === 'aggregate' ? model.aggregates ?? []
+        : model.entities ?? [];
+      const el = (list as { id: string; name: string }[]).find((x) => x.id === command.id);
+      if (el) el.name = command.name;
+      break;
+    }
+  }
+  // New object identity so Lit re-renders.
+  editor.model = { ...model };
+}
+
+editor.addEventListener('modux-command', (e) => {
+  const { command } = (e as CustomEvent).detail;
+  applyCommand(command);
+  log('command', command);
+});
+
+editor.addEventListener('layout-changed', (e) => {
+  const { layout: next } = (e as CustomEvent).detail;
+  layout = next;
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify(next));
+  log('layout-changed', Object.keys(next['context-map'] ?? {}).length + ' nodos posicionados');
+});
+
+editor.addEventListener('modux-select', (e) => {
+  log('select', (e as CustomEvent).detail);
+});
+
+editor.addEventListener('modux-activate', (e) => {
+  log('activate (doble click → abrir formulario en Mateu)', (e as CustomEvent).detail);
+});
