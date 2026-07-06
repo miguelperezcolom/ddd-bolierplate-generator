@@ -18,11 +18,18 @@ export type ContextMapRelationType =
 
 export type FlowArchetype = 'MATERIALIZES' | 'TRIGGERS' | 'ORCHESTRATES' | 'NOTIFIES';
 
+export interface UseCaseRef {
+  id: string;
+  name: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
   subdomainType?: SubdomainType;
   serviceId?: string;
+  /** Use cases owned by this bounded context (populated for the detailed context map). */
+  useCases?: UseCaseRef[];
 }
 
 export interface ExternalSystemRef {

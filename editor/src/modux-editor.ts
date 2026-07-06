@@ -11,16 +11,19 @@ import { processesScene } from './views/processes.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 
-const RELATION_TYPES: ContextMapRelationType[] = [
-  'PARTNERSHIP',
-  'SHARED_KERNEL',
-  'CUSTOMER_SUPPLIER',
-  'CONFORMIST',
-  'OPEN_HOST_SERVICE',
-  'ANTI_CORRUPTION_LAYER',
-  'PUBLISHED_LANGUAGE',
-  'SEPARATE_WAYS',
-];
+/** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
+const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string }> = {
+  PARTNERSHIP: { abbr: 'P', name: 'Partnership' },
+  SHARED_KERNEL: { abbr: 'SK', name: 'Shared Kernel' },
+  CUSTOMER_SUPPLIER: { abbr: 'C/S', name: 'Customer / Supplier' },
+  CONFORMIST: { abbr: 'CF', name: 'Conformist' },
+  OPEN_HOST_SERVICE: { abbr: 'OHS', name: 'Open Host Service' },
+  ANTI_CORRUPTION_LAYER: { abbr: 'ACL', name: 'Anti-Corruption Layer' },
+  PUBLISHED_LANGUAGE: { abbr: 'PL', name: 'Published Language' },
+  SEPARATE_WAYS: { abbr: 'SW', name: 'Separate Ways' },
+};
+
+const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
 type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes';
 
@@ -52,7 +55,14 @@ type SetEdgePointsOp = {
   /** Waypoints to restore; null removes the entry (straight edge again). */
   points: Point[] | null;
 };
-type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp;
+type ResizeNodeOp = {
+  kind: 'resize-node';
+  view: ViewId;
+  id: string;
+  /** Size to restore; null removes the entry (back to the default size). */
+  size: { w: number; h: number } | null;
+};
+type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp | ResizeNodeOp;
 
 const slug = (name: string) =>
   name
@@ -72,6 +82,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'module', id: id.replace(/^tgt:/, '') };
     case 'aggregate':
       return { elementType: 'aggregate', id };
+    case 'use-case':
+      return { elementType: 'use-case', id };
     case 'entity':
       return { elementType: 'entity', id };
     case 'flow':
@@ -111,7 +123,18 @@ export class ModuxEditor extends LitElement {
   @property({ attribute: false }) layout: EditorLayout = {};
 
   @state() private _view: ViewId = 'context-map';
+  /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
+  @state() private _detail: 'contexts' | 'detail' = 'contexts';
+  /** Last chosen relation type — the default pre-selection in the picker. */
   @state() private _relationType: ContextMapRelationType = 'CUSTOMER_SUPPLIER';
+  /** Open type picker: creating a new relation, or editing an existing one. */
+  @state() private _relationPicker: {
+    sourceId: string;
+    targetId: string;
+    mode: 'create' | 'edit';
+    x: number;
+    y: number;
+  } | null = null;
   @state() private _selectedId: string | null = null;
   @state() private _newName = '';
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
@@ -196,6 +219,62 @@ export class ModuxEditor extends LitElement {
     .new-name.evt {
       width: 110px;
     }
+    .picker-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+    }
+    .relation-picker {
+      position: fixed;
+      z-index: 21;
+      min-width: 210px;
+      transform: translate(-50%, 12px);
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .picker-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 8px 6px;
+    }
+    .picker-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      padding: 6px 8px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+      color: #1e293b;
+    }
+    .picker-item:hover {
+      background: #f1f5f9;
+    }
+    .picker-item.current {
+      background: #eff6ff;
+    }
+    .picker-item .abbr {
+      flex: 0 0 34px;
+      font-weight: 700;
+      font-size: 11px;
+      color: #2563eb;
+      text-align: center;
+    }
+    .picker-item.current .abbr::after {
+      content: ' ✓';
+    }
     .tab:disabled {
       opacity: 0.4;
     }
@@ -269,6 +348,16 @@ export class ModuxEditor extends LitElement {
           } satisfies SetEdgePointsOp,
         ];
       }
+      if (op.kind === 'resize-node') {
+        return [
+          {
+            kind: 'resize-node',
+            view: op.view,
+            id: op.id,
+            size: this.viewLayout(op.view).sizes?.[op.id] ?? null,
+          } satisfies ResizeNodeOp,
+        ];
+      }
       return this.inverseOf(op) ?? [];
     });
   }
@@ -287,6 +376,12 @@ export class ModuxEditor extends LitElement {
         if (op.points && op.points.length) edges[op.id] = op.points;
         else delete edges[op.id];
         this.writeViewLayout(op.view, { ...current, edges });
+      } else if (op.kind === 'resize-node') {
+        const current = this.viewLayout(op.view);
+        const sizes = { ...(current.sizes ?? {}) };
+        if (op.size) sizes[op.id] = op.size;
+        else delete sizes[op.id];
+        this.writeViewLayout(op.view, { ...current, sizes });
       } else {
         this.command(op, false);
       }
@@ -308,6 +403,14 @@ export class ModuxEditor extends LitElement {
         );
         return rel
           ? [{ kind: 'add-relation', sourceId: rel.sourceId, targetId: rel.targetId, type: rel.type }]
+          : null;
+      }
+      case 'set-relation-type': {
+        const rel = this.model.relations.find(
+          (r) => r.sourceId === c.sourceId && r.targetId === c.targetId,
+        );
+        return rel
+          ? [{ kind: 'set-relation-type', sourceId: c.sourceId, targetId: c.targetId, type: rel.type }]
           : null;
       }
       case 'add-module':
@@ -471,7 +574,16 @@ export class ModuxEditor extends LitElement {
     const view = this._view;
     const current = this.viewLayout(view);
     const previous = current.nodes[id] ?? null;
-    this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: { x, y } } });
+    // A nested child is stored as an offset from its container, so it stays put
+    // relative to the container when the container itself moves.
+    let pos = { x, y };
+    const scene = this.sceneFor(view);
+    const node = scene.nodes.find((n) => n.id === id);
+    if (node?.parentId) {
+      const parent = scene.nodes.find((n) => n.id === node.parentId);
+      if (parent) pos = { x: x - parent.x, y: y - parent.y };
+    }
+    this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: pos } });
     const inverseOps: EditOp[] = [{ kind: 'move-node', view, id, pos: previous }];
     // Dragging a step across its siblings also reorders the process.
     if (view === 'processes') {
@@ -483,6 +595,15 @@ export class ModuxEditor extends LitElement {
       }
     }
     this.pushUndoEntry(inverseOps);
+  }
+
+  private onNodeResized(e: CustomEvent): void {
+    const { id, w, h } = e.detail as { id: string; w: number; h: number };
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const previous = current.sizes?.[id] ?? null;
+    this.pushUndoEntry([{ kind: 'resize-node', view, id, size: previous }]);
+    this.writeViewLayout(view, { ...current, sizes: { ...(current.sizes ?? {}), [id]: { w, h } } });
   }
 
   private onEdgePointsChanged(e: CustomEvent): void {
@@ -518,17 +639,35 @@ export class ModuxEditor extends LitElement {
   }
 
   private onConnectRequested(e: CustomEvent): void {
-    const { sourceId, targetId } = e.detail;
-    if (this._view === 'context-map') {
-      const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
-      if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
-      const exists = this.model.relations.some(
-        (r) =>
-          (r.sourceId === sourceId && r.targetId === targetId) ||
-          (r.sourceId === targetId && r.targetId === sourceId),
-      );
-      if (exists) return;
-      this.command({ kind: 'add-relation', sourceId, targetId, type: this._relationType });
+    const { sourceId, targetId, x, y } = e.detail;
+    if (this._view !== 'context-map') return;
+    const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
+    if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
+    const exists = this.model.relations.some(
+      (r) =>
+        (r.sourceId === sourceId && r.targetId === targetId) ||
+        (r.sourceId === targetId && r.targetId === sourceId),
+    );
+    if (exists) return;
+    // Ask which strategic pattern before creating it.
+    this._relationPicker = { sourceId, targetId, mode: 'create', x: x ?? 0, y: y ?? 0 };
+  }
+
+  /** Apply the picker's choice: create the new relation or retype the existing one. */
+  private pickRelationType(type: ContextMapRelationType): void {
+    const p = this._relationPicker;
+    this._relationPicker = null;
+    if (!p) return;
+    this._relationType = type; // remember as the next default
+    if (p.mode === 'create') {
+      this.command({ kind: 'add-relation', sourceId: p.sourceId, targetId: p.targetId, type });
+      return;
+    }
+    const rel = this.model.relations.find(
+      (r) => r.sourceId === p.sourceId && r.targetId === p.targetId,
+    );
+    if (rel && rel.type !== type) {
+      this.command({ kind: 'set-relation-type', sourceId: p.sourceId, targetId: p.targetId, type });
     }
   }
 
@@ -725,6 +864,20 @@ export class ModuxEditor extends LitElement {
   }
 
   private onElementActivated(e: CustomEvent): void {
+    // Double-clicking a relation's label edits its type rather than opening a CRUD.
+    if (this._view === 'context-map' && e.detail.elementType === 'edge' && e.detail.kind === 'relation') {
+      const m = /^rel:(.+)->(.+)$/.exec(e.detail.id);
+      if (m) {
+        this._relationPicker = {
+          sourceId: m[1],
+          targetId: m[2],
+          mode: 'edit',
+          x: e.detail.x ?? 0,
+          y: e.detail.y ?? 0,
+        };
+      }
+      return;
+    }
     const mapped =
       e.detail.kind === 'process-step'
         ? activationForStep(this.model.processes, e.detail.id)
@@ -778,15 +931,15 @@ export class ModuxEditor extends LitElement {
   }
 
   private sceneFor(view: ViewId) {
-    const viewLayout = this.viewLayout(view).nodes;
+    const vl = this.viewLayout(view);
     const model = this.filteredModel();
     return view === 'aggregates'
-      ? aggregatesScene(model, viewLayout)
+      ? aggregatesScene(model, vl.nodes)
       : view === 'flows'
-        ? flowsScene(model, viewLayout)
+        ? flowsScene(model, vl.nodes)
         : view === 'processes'
-          ? processesScene(model, viewLayout)
-          : contextMapScene(model, viewLayout);
+          ? processesScene(model, vl.nodes)
+          : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
   }
 
   /** ELK layout for the current view, applied as ONE undoable composite move. */
@@ -794,11 +947,19 @@ export class ModuxEditor extends LitElement {
     const view = this._view;
     const scene = this.sceneFor(view);
     if (!scene.nodes.length) return;
+    // Nested children (aggregates/use cases) are derived from their container's
+    // position, so only top-level nodes take part in the layout.
+    const topNodes = scene.nodes.filter((n) => !n.parentId);
+    const topIds = new Set(topNodes.map((n) => n.id));
+    const layoutScene = {
+      nodes: topNodes,
+      edges: scene.edges.filter((e) => topIds.has(e.sourceId) && topIds.has(e.targetId)),
+    };
     const algorithm = view === 'flows' || view === 'processes' ? 'layered' : 'force';
-    const positions = await autoLayout(scene, algorithm);
+    const positions = await autoLayout(layoutScene, algorithm);
     const current = this.viewLayout(view);
     this.pushUndoEntry([
-      ...scene.nodes.map((n) => ({
+      ...topNodes.map((n) => ({
         kind: 'move-node' as const,
         view,
         id: n.id,
@@ -812,7 +973,8 @@ export class ModuxEditor extends LitElement {
         points: current.edges[edgeId],
       })),
     ]);
-    this.writeViewLayout(view, { nodes: positions, edges: {} });
+    // Keep container sizes; children re-grid inside them from the default.
+    this.writeViewLayout(view, { nodes: positions, edges: {}, sizes: current.sizes });
     await this.updateComplete;
     this.renderRoot.querySelector('modux-canvas')?.fit();
   }
@@ -1053,17 +1215,18 @@ export class ModuxEditor extends LitElement {
         >
           ↷ Rehacer
         </button>
-        <label for="relation-type" ?hidden=${this._view !== 'context-map'}>Nueva relación:</label>
+        <label ?hidden=${this._view !== 'context-map'}>Detalle:</label>
         <select
           ?hidden=${this._view !== 'context-map'}
-          id="relation-type"
-          .value=${this._relationType}
+          title="Nivel de detalle: contextos, o sus agregados y casos de uso"
+          .value=${this._detail}
           @change=${(e: Event) =>
-            (this._relationType = (e.target as HTMLSelectElement).value as ContextMapRelationType)}
+            (this._detail = (e.target as HTMLSelectElement).value as 'contexts' | 'detail')}
         >
-          ${RELATION_TYPES.map(
-            (t) => html`<option value=${t} ?selected=${t === this._relationType}>${t}</option>`,
-          )}
+          <option value="contexts" ?selected=${this._detail === 'contexts'}>Contextos</option>
+          <option value="detail" ?selected=${this._detail === 'detail'}>
+            Agregados y casos de uso
+          </option>
         </select>
         <button
           class="tab"
@@ -1087,6 +1250,7 @@ export class ModuxEditor extends LitElement {
         .selectedIds=${this._multi}
         .connectable=${this._view === 'context-map'}
         @node-moved=${this.onNodeMoved}
+        @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
         @node-renamed=${this.onNodeRenamed}
@@ -1105,11 +1269,49 @@ export class ModuxEditor extends LitElement {
       ></modux-canvas>
       <div class="hint">
         ${this._view === 'context-map'
-          ? html`Arrastra para reordenar · asa azul → crear relación (${this._relationType}) · Supr
-            borra la relación o el contexto vacío seleccionado · F2 renombra · doble click abre el
-            CRUD · rueda para zoom`
-          : html`Arrastra para reordenar · click para seleccionar · Supr borra (si está vacío) · F2
-            renombra · doble click abre el CRUD · rueda para zoom`}
+          ? html`Arrastra para reordenar · asa azul → crear relación (elige el tipo) · doble click
+            en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
+            mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
+            · rueda para zoom`
+          : html`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
+            mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
+            rueda para zoom`}
+      </div>
+      ${this.renderRelationPicker()}
+    `;
+  }
+
+  private renderRelationPicker() {
+    const p = this._relationPicker;
+    if (!p) return '';
+    const current =
+      p.mode === 'edit'
+        ? this.model.relations.find(
+            (r) => r.sourceId === p.sourceId && r.targetId === p.targetId,
+          )?.type
+        : this._relationType;
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._relationPicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${p.x}px; top:${p.y}px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">
+          ${p.mode === 'create' ? 'Tipo de relación' : 'Cambiar tipo'}
+        </div>
+        ${RELATION_TYPES.map(
+          (t) => html`
+            <button
+              class="picker-item ${t === current ? 'current' : ''}"
+              title=${t}
+              @click=${() => this.pickRelationType(t)}
+            >
+              <span class="abbr">${RELATION_META[t].abbr}</span>
+              <span class="name">${RELATION_META[t].name}</span>
+            </button>
+          `,
+        )}
       </div>
     `;
   }

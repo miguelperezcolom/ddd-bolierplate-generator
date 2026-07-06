@@ -18,6 +18,13 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** Change the strategic pattern of an existing relation in place. */
+      kind: 'set-relation-type';
+      sourceId: string;
+      targetId: string;
+      type: ContextMapRelationType;
+    }
+  | {
       kind: 'add-module';
       id: string;
       name: string;

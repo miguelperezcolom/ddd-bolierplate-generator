@@ -83,9 +83,15 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <line x1="6" y1="0.5" x2="6" y2="2.6"></line><line x1="6" y1="9.4" x2="6" y2="11.5"></line>
     <line x1="0.5" y1="6" x2="2.6" y2="6"></line><line x1="9.4" y1="6" x2="11.5" y2="6"></line>`,
   event: svg`<circle cx="6" cy="6" r="5"></circle><circle cx="6" cy="6" r="2.6"></circle>`,
+  usecase: svg`<ellipse cx="6" cy="6" rx="5.5" ry="3.6"></ellipse>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
 };
+
+// Inner margins used to keep a dragged child inside its container (the top
+// margin clears the header). Mirrors context-map's C_HEADER.
+const CONTAINER_HEADER = 34;
+const CONTAINER_INSET = 10;
 
 /**
  * Generic, fully editable diagram canvas. Semantics-free: renders a Scene and
@@ -117,6 +123,8 @@ export class ModuxCanvas extends LitElement {
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
+  @state() private _selectedWaypoint: { edgeId: string; index: number } | null = null;
+  @state() private _resize: { id: string; w: number; h: number } | null = null;
   @state() private _rubber: { a: Point; b: Point } | null = null;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
@@ -136,12 +144,15 @@ export class ModuxCanvas extends LitElement {
       display: block;
       width: 100%;
       height: 100%;
-      cursor: grab;
+      cursor: default;
       user-select: none;
       -webkit-user-select: none;
     }
     svg.main.linking {
       cursor: crosshair;
+    }
+    svg.main.panning {
+      cursor: grab;
     }
     .minimap {
       position: absolute;
@@ -179,16 +190,24 @@ export class ModuxCanvas extends LitElement {
     this.tabIndex = 0;
     this.addEventListener('keydown', this._onKeyDown);
     this.addEventListener('keyup', this._onKeyUp);
+    this.addEventListener('blur', this._onBlur);
   }
 
   disconnectedCallback(): void {
     this.removeEventListener('keydown', this._onKeyDown);
     this.removeEventListener('keyup', this._onKeyUp);
+    this.removeEventListener('blur', this._onBlur);
     super.disconnectedCallback();
   }
 
   private _onKeyUp = (e: KeyboardEvent): void => {
     if (e.key === ' ') this._spaceDown = false;
+  };
+
+  // Losing focus while space is held would otherwise leave pan mode stuck on,
+  // silently disabling rubber-band selection.
+  private _onBlur = (): void => {
+    this._spaceDown = false;
   };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
@@ -217,9 +236,23 @@ export class ModuxCanvas extends LitElement {
       }
       return;
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      // A selected waypoint takes precedence: remove the bend, keep the edge.
+      if (this._selectedWaypoint) {
+        const edge = this.scene.edges.find((x) => x.id === this._selectedWaypoint!.edgeId);
+        if (edge) {
+          e.preventDefault();
+          this.removeWaypoint(edge, this._selectedWaypoint.index);
+          this._selectedWaypoint = null;
+        }
+        return;
+      }
+      if (!this.selectedId) return;
       const edge = this.scene.edges.find((x) => x.id === this.selectedId);
       const node = this.scene.nodes.find((x) => x.id === this.selectedId);
+      // Nested children (aggregates/use cases in the detailed map) are a
+      // projection here — deleting them belongs to their own view, not Supr.
+      if (node?.parentId && !edge) return;
       const el = edge ?? node;
       if (el) {
         e.preventDefault();
@@ -246,14 +279,12 @@ export class ModuxCanvas extends LitElement {
     this._zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
       .filter((event: Event) => {
-        const target = event.target as Element;
-        // Nodes and handles manage their own pointer gestures; wheel zoom works
-        // anywhere, and holding space turns any drag into a pan.
-        if (target.closest('[data-node-id]') || target.closest('[data-handle]')) {
-          return event.type === 'wheel' || this._spaceDown;
-        }
-        if ((event as MouseEvent).shiftKey && event.type !== 'wheel') return false;
-        return event.type === 'wheel' || (event as MouseEvent).button === 0;
+        // Wheel zooms anywhere. Panning is a deliberate gesture: hold space and
+        // drag with the left button. A plain drag is a rubber-band selection,
+        // and nodes/handles/waypoints/edges manage their own drags (they stop
+        // propagation), so they never reach this filter unless space is held.
+        if (event.type === 'wheel') return true;
+        return this._spaceDown && (event as MouseEvent).button === 0;
       })
       .on('zoom', (event) => {
         this._t = event.transform;
@@ -265,6 +296,14 @@ export class ModuxCanvas extends LitElement {
     if (changed.has('scene')) {
       // The host is the source of truth for geometry once it re-emits the scene.
       this._dragPos = null;
+    }
+    // A waypoint only stays selected while its edge is the selected element and
+    // it still exists; otherwise drop the sub-selection so Supr targets the edge.
+    if (this._selectedWaypoint && (changed.has('selectedId') || changed.has('edgePoints'))) {
+      const wp = this._selectedWaypoint;
+      const stillValid =
+        this.selectedId === wp.edgeId && wp.index < (this.edgePoints[wp.edgeId]?.length ?? 0);
+      if (!stillValid) this._selectedWaypoint = null;
     }
   }
 
@@ -313,6 +352,13 @@ export class ModuxCanvas extends LitElement {
     if (this._dragPos && this._dragPos.id === node.id) {
       return { x: this._dragPos.x, y: this._dragPos.y };
     }
+    // A child follows its container live while the container is being dragged.
+    if (node.parentId && this._dragPos && this._dragPos.id === node.parentId) {
+      const parent = this.scene.nodes.find((n) => n.id === node.parentId);
+      if (parent) {
+        return { x: node.x + (this._dragPos.x - parent.x), y: node.y + (this._dragPos.y - parent.y) };
+      }
+    }
     return { x: node.x, y: node.y };
   }
 
@@ -321,6 +367,23 @@ export class ModuxCanvas extends LitElement {
   }
 
   // ---- node dragging ------------------------------------------------------
+
+  /** Keep a dragged child inside its container's inner area (below the header). */
+  private clampToParent(node: SceneNode, x: number, y: number): { id: string; x: number; y: number } {
+    if (node.parentId) {
+      const parent = this.scene.nodes.find((n) => n.id === node.parentId);
+      if (parent) {
+        const pp = this.nodePos(parent);
+        const minX = pp.x - parent.w / 2 + CONTAINER_INSET + node.w / 2;
+        const maxX = pp.x + parent.w / 2 - CONTAINER_INSET - node.w / 2;
+        const minY = pp.y - parent.h / 2 + CONTAINER_HEADER + node.h / 2;
+        const maxY = pp.y + parent.h / 2 - CONTAINER_INSET - node.h / 2;
+        x = Math.min(Math.max(x, minX), maxX);
+        y = Math.min(Math.max(y, minY), maxY);
+      }
+    }
+    return { id: node.id, x, y };
+  }
 
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {
     if (e.button !== 0) return;
@@ -337,7 +400,7 @@ export class ModuxCanvas extends LitElement {
       const dy = p.y - start.y;
       if (!moved && Math.hypot(dx, dy) < 3 / this._t.k) return;
       moved = true;
-      this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
+      this._dragPos = this.clampToParent(node, origin.x + dx, origin.y + dy);
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -349,6 +412,36 @@ export class ModuxCanvas extends LitElement {
       } else {
         this.emit('element-selected', { elementType: 'node', id: node.id, kind: node.kind });
       }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  // ---- container resize ----------------------------------------------------
+
+  /** Corner-handle drag resizes a container symmetrically about its centre. */
+  private onResizePointerDown(e: PointerEvent, node: SceneNode): void {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    this.focus();
+    const center = this.nodePos(node);
+    const MIN_W = 160;
+    const MIN_H = 90;
+    const onMove = (ev: PointerEvent) => {
+      const p = this.toScene(ev);
+      this._resize = {
+        id: node.id,
+        w: Math.max(MIN_W, 2 * Math.abs(p.x - center.x)),
+        h: Math.max(MIN_H, 2 * Math.abs(p.y - center.y)),
+      };
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (this._resize && this._resize.id === node.id) {
+        this.emit('node-resized', { id: node.id, w: this._resize.w, h: this._resize.h });
+      }
+      this._resize = null;
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -375,7 +468,12 @@ export class ModuxCanvas extends LitElement {
       const el = this.shadowRoot?.elementFromPoint(ev.clientX, ev.clientY);
       const targetId = el?.closest('[data-node-id]')?.getAttribute('data-node-id');
       if (targetId && targetId !== node.id) {
-        this.emit('connect-requested', { sourceId: node.id, targetId });
+        this.emit('connect-requested', {
+          sourceId: node.id,
+          targetId,
+          x: ev.clientX,
+          y: ev.clientY,
+        });
       }
       this._pendingLink = null;
       this._hoverNodeId = null;
@@ -443,8 +541,10 @@ export class ModuxCanvas extends LitElement {
 
   private startWaypointDrag(edge: SceneEdge, points: Point[], index: number): void {
     this._wpDrag = { edgeId: edge.id, points, index };
+    let moved = false;
     const onMove = (ev: PointerEvent) => {
       if (!this._wpDrag) return;
+      moved = true;
       const p = this.toScene(ev);
       const next = [...this._wpDrag.points];
       next[this._wpDrag.index] = p;
@@ -453,7 +553,9 @@ export class ModuxCanvas extends LitElement {
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      if (this._wpDrag) {
+      // Only a genuine drag rewrites geometry; a plain click that merely selects
+      // an existing waypoint changes nothing.
+      if (this._wpDrag && moved) {
         this.emit('edge-points-changed', { id: this._wpDrag.edgeId, points: this._wpDrag.points });
       }
       this._wpDrag = null;
@@ -462,19 +564,62 @@ export class ModuxCanvas extends LitElement {
     window.addEventListener('pointerup', onUp);
   }
 
-  /** Dragging on a selected edge splits it: a new bend is born under the cursor. */
-  private onEdgeHitPointerDown(e: PointerEvent, edge: SceneEdge, pts: Point[]): void {
-    if (e.button !== 0 || this.selectedId !== edge.id) return;
-    e.stopPropagation();
-    const p = this.toScene(e);
+  /** Index of the polyline segment nearest to point `p`. */
+  private nearestSegment(pts: Point[], p: Point): number {
     let best = { seg: 0, dist: Infinity };
     for (let i = 0; i < pts.length - 1; i++) {
       const { dist } = pointToSegment(p, pts[i], pts[i + 1]);
       if (dist < best.dist) best = { seg: i, dist };
     }
+    return best.seg;
+  }
+
+  /** Insert a new bend on `edge` at scene point `at`, selecting it. */
+  private addWaypointAt(edge: SceneEdge, pts: Point[], at: Point): void {
+    const seg = this.nearestSegment(pts, at);
     const waypoints = [...(this.edgePoints[edge.id] ?? [])];
-    waypoints.splice(best.seg, 0, p); // waypoint w sits between pts[w] and pts[w+1]
-    this.startWaypointDrag(edge, waypoints, best.seg);
+    waypoints.splice(seg, 0, at); // a waypoint at index w sits between pts[w] and pts[w+1]
+    this._selectedWaypoint = { edgeId: edge.id, index: seg };
+    this.emit('edge-points-changed', { id: edge.id, points: waypoints });
+  }
+
+  /**
+   * Dragging along a selected edge splits it: a bend is born once the pointer
+   * actually moves, then follows the cursor. A plain click (no movement) leaves
+   * the line alone so it just selects — and so a double-click can add a point.
+   */
+  private onEdgeHitPointerDown(e: PointerEvent, edge: SceneEdge, pts: Point[]): void {
+    if (e.button !== 0 || this.selectedId !== edge.id) return;
+    e.stopPropagation();
+    const start = this.toScene(e);
+    const seg = this.nearestSegment(pts, start);
+    let created = false;
+    const onMove = (ev: PointerEvent) => {
+      const p = this.toScene(ev);
+      if (!created) {
+        if (Math.hypot(p.x - start.x, p.y - start.y) < 4 / this._t.k) return;
+        created = true;
+        this.focus();
+        const waypoints = [...(this.edgePoints[edge.id] ?? [])];
+        waypoints.splice(seg, 0, p);
+        this._selectedWaypoint = { edgeId: edge.id, index: seg };
+        this._wpDrag = { edgeId: edge.id, points: waypoints, index: seg };
+      } else if (this._wpDrag) {
+        const next = [...this._wpDrag.points];
+        next[seg] = p;
+        this._wpDrag = { ...this._wpDrag, points: next };
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (created && this._wpDrag) {
+        this.emit('edge-points-changed', { id: this._wpDrag.edgeId, points: this._wpDrag.points });
+      }
+      this._wpDrag = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   }
 
   private removeWaypoint(edge: SceneEdge, index: number): void {
@@ -490,6 +635,11 @@ export class ModuxCanvas extends LitElement {
   ): TemplateResult | typeof svg.prototype {
     const color = edge.color ?? '#64748b';
     const selected = this.selectedId === edge.id;
+    // A line belongs to a rubber-band selection when both its endpoints do, so
+    // boxing a region highlights the sub-graph, not just its nodes.
+    const highlighted =
+      selected ||
+      (this.selectedIds.includes(edge.sourceId) && this.selectedIds.includes(edge.targetId));
     const midIndex = Math.floor((pts.length - 1) / 2);
     const mid = {
       x: (pts[midIndex].x + pts[midIndex + 1].x) / 2,
@@ -506,39 +656,64 @@ export class ModuxCanvas extends LitElement {
                 this.focus();
                 this.emit('element-selected', { elementType: 'edge', id: edge.id, kind: edge.kind });
               }}
+              @dblclick=${(e: MouseEvent) => {
+                e.stopPropagation();
+                this.focus();
+                this.addWaypointAt(edge, pts, this.toScene(e));
+              }}
               @pointerdown=${(e: PointerEvent) => this.onEdgeHitPointerDown(e, edge, pts)}>
           ${edge.tooltip ? svg`<title>${edge.tooltip}</title>` : ''}
         </polyline>
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
-              stroke=${color} stroke-width=${selected ? 3 : 1.6}
+              stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashed ? '6 4' : ''}
               marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}
               pointer-events="none"></path>
         ${edge.label
-          ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
+          ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle" style="cursor: pointer"
                   font-size="11" font-family="ui-sans-serif, system-ui" fill=${color}
-                  paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3">
+                  paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3"
+                  @click=${(e: MouseEvent) => {
+                    e.stopPropagation();
+                    this.focus();
+                    this.emit('element-selected', { elementType: 'edge', id: edge.id, kind: edge.kind });
+                  }}
+                  @dblclick=${(e: MouseEvent) => {
+                    e.stopPropagation();
+                    this.emit('element-activated', {
+                      elementType: 'edge',
+                      id: edge.id,
+                      kind: edge.kind,
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }}>
                   ${edge.label}
                 </text>`
           : ''}
         ${selected
-          ? waypoints.map(
-              (p, i) => svg`
-                <circle data-waypoint cx=${p.x} cy=${p.y} r="5" fill="#ffffff"
+          ? waypoints.map((p, i) => {
+              const wpSelected =
+                this._selectedWaypoint?.edgeId === edge.id && this._selectedWaypoint.index === i;
+              return svg`
+                <circle data-waypoint cx=${p.x} cy=${p.y} r=${wpSelected ? 6 : 5}
+                        fill=${wpSelected ? '#2563eb' : '#ffffff'}
                         stroke="#2563eb" stroke-width="1.6" style="cursor: move"
                         @pointerdown=${(e: PointerEvent) => {
                           if (e.button !== 0) return;
                           e.stopPropagation();
+                          this.focus();
+                          this._selectedWaypoint = { edgeId: edge.id, index: i };
                           this.startWaypointDrag(edge, [...(this.edgePoints[edge.id] ?? [])], i);
                         }}
                         @dblclick=${(e: MouseEvent) => {
                           e.stopPropagation();
                           this.removeWaypoint(edge, i);
                         }}>
-                  <title>Arrastra para ajustar · doble click para quitar el punto</title>
-                </circle>`,
-            )
+                  <title>Arrastra para ajustar · Supr o doble click para quitar el punto</title>
+                </circle>`;
+            })
           : ''}
       </g>
     `;
@@ -552,8 +727,15 @@ export class ModuxCanvas extends LitElement {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
     const hovered = this._hoverNodeId === node.id;
-    const hw = node.w / 2;
-    const hh = node.h / 2;
+    const isContainer = !!node.container;
+    const isChild = !!node.parentId;
+    // A container previews its in-progress size while being resized.
+    const rw = this._resize?.id === node.id ? this._resize.w : node.w;
+    const rh = this._resize?.id === node.id ? this._resize.h : node.h;
+    const hw = rw / 2;
+    const hh = rh / 2;
+    const childLabel =
+      isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
     return svg`
       <g data-node-id=${node.id} transform="translate(${x}, ${y})"
          @pointerdown=${(e: PointerEvent) => this.onNodePointerDown(e, node)}
@@ -561,7 +743,7 @@ export class ModuxCanvas extends LitElement {
            e.stopPropagation();
            this.emit('element-activated', { elementType: 'node', id: node.id, kind: node.kind });
          }}>
-        <rect x=${-hw} y=${-hh} width=${node.w} height=${node.h} rx="10"
+        <rect x=${-hw} y=${-hh} width=${node.w} height=${node.h} rx=${isChild ? 6 : 10}
               fill=${node.fill ?? '#ffffff'}
               stroke=${hovered ? '#2563eb' : selected ? '#2563eb' : node.stroke ?? '#94a3b8'}
               stroke-width=${selected || hovered ? 2.5 : 1.4}
@@ -572,18 +754,25 @@ export class ModuxCanvas extends LitElement {
           ? svg`<text x=${-hw} y=${-hh - 7} font-size="10" font-family="ui-sans-serif, system-ui"
                   fill="#64748b" letter-spacing="0.08em">${node.badge}</text>`
           : ''}
-        ${node.symbol && SYMBOLS[node.symbol]
+        ${node.symbol && SYMBOLS[node.symbol] && !isChild
           ? svg`<g transform="translate(${hw - 17}, ${-hh + 5})" fill="none"
                   stroke=${node.stroke ?? '#64748b'} stroke-width="1.1" stroke-linejoin="round"
                   stroke-linecap="round" opacity="0.85" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
           : ''}
+        ${isChild && node.symbol && SYMBOLS[node.symbol]
+          ? svg`<g transform="translate(${-hw + 8}, -6)" fill="none"
+                  stroke=${node.stroke ?? '#64748b'} stroke-width="1.2" stroke-linejoin="round"
+                  stroke-linecap="round" pointer-events="none">
+                ${SYMBOLS[node.symbol]}
+              </g>`
+          : ''}
         ${this._editingId === node.id
           ? svg`
-              <foreignObject x=${-hw + 6} y="-14" width=${node.w - 12} height="28">
+              <foreignObject x=${-hw + 6} y=${isContainer ? -hh + 6 : -14} width=${node.w - 12} height="28">
                 <input
-                  style="width: 100%; box-sizing: border-box; font: 600 13px ui-sans-serif, system-ui; text-align: center; border: 1px solid #2563eb; border-radius: 4px; padding: 3px;"
+                  style="width: 100%; box-sizing: border-box; font: 600 13px ui-sans-serif, system-ui; text-align: ${isContainer ? 'left' : 'center'}; border: 1px solid #2563eb; border-radius: 4px; padding: 3px;"
                   .value=${node.label}
                   @pointerdown=${(e: PointerEvent) => e.stopPropagation()}
                   @keydown=${(e: KeyboardEvent) => {
@@ -595,9 +784,19 @@ export class ModuxCanvas extends LitElement {
                     this.commitRename(node, (e.target as HTMLInputElement).value)}
                 />
               </foreignObject>`
-          : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
-              font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`}
-        ${selected && this.connectable
+          : isChild
+            ? svg`<text x=${-hw + 24} y="4" text-anchor="start" font-size="12" font-weight="600"
+                font-family="ui-sans-serif, system-ui" fill="#1e293b" pointer-events="none">${childLabel}</text>`
+            : isContainer
+              ? svg`<text x=${-hw + 12} y=${-hh + 21} text-anchor="start" font-size="13"
+                  font-weight="700" font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`
+              : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
+                  font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`}
+        ${isContainer
+          ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
+                stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>`
+          : ''}
+        ${selected && this.connectable && !isChild
           ? [
               [hw, 0],
               [-hw, 0],
@@ -611,6 +810,13 @@ export class ModuxCanvas extends LitElement {
                   <title>Arrastra hasta otro nodo para crear una relación</title>
                 </circle>`,
             )
+          : ''}
+        ${isContainer && selected
+          ? svg`<rect data-resize x=${hw - 9} y=${hh - 9} width="13" height="13" rx="2.5"
+                fill="#2563eb" stroke="#ffffff" stroke-width="1.5" style="cursor: nwse-resize"
+                @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node)}>
+              <title>Arrastra para cambiar el tamaño del contexto</title>
+            </rect>`
           : ''}
       </g>
     `;
@@ -632,13 +838,17 @@ export class ModuxCanvas extends LitElement {
   private startRubberBand(e: PointerEvent): void {
     const origin = this.toScene(e);
     this._rubber = { a: origin, b: origin };
+    let moved = false;
     const onMove = (ev: PointerEvent) => {
-      if (this._rubber) this._rubber = { a: origin, b: this.toScene(ev) };
+      const p = this.toScene(ev);
+      if (!moved && Math.hypot(p.x - origin.x, p.y - origin.y) < 4 / this._t.k) return;
+      moved = true;
+      this._rubber = { a: origin, b: p };
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      if (this._rubber) {
+      if (moved && this._rubber) {
         const { a, b } = this._rubber;
         const minX = Math.min(a.x, b.x);
         const maxX = Math.max(a.x, b.x);
@@ -650,7 +860,10 @@ export class ModuxCanvas extends LitElement {
             return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
           })
           .map((n) => n.id);
-        if (ids.length) this.emit('nodes-boxed', { ids });
+        this.emit('nodes-boxed', { ids });
+      } else {
+        // A plain click on empty canvas clears the selection.
+        this.emit('selection-cleared');
       }
       this._rubber = null;
     };
@@ -762,15 +975,12 @@ export class ModuxCanvas extends LitElement {
     });
     return html`
       <svg
-        class="main ${this._pendingLink ? 'linking' : ''}"
+        class="main ${this._pendingLink ? 'linking' : ''} ${this._spaceDown ? 'panning' : ''}"
         @pointerdown=${(e: PointerEvent) => {
           const target = e.target as Element;
           if (target.closest('[data-node-id]') || target.closest('[data-edge-id]')) return;
-          if (e.shiftKey) {
-            this.startRubberBand(e);
-          } else {
-            this.emit('selection-cleared');
-          }
+          if (this._spaceDown || e.button !== 0) return; // space+drag pans (d3-zoom)
+          this.startRubberBand(e);
         }}
       >
         <defs>

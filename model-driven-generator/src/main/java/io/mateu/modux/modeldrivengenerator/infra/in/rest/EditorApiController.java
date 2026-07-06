@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.Subdomain
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
@@ -31,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,12 +55,14 @@ public class EditorApiController {
 
     // ---- projection -------------------------------------------------------
 
-    public record ModuleDto(String id, String name, String subdomainType, String serviceId) {}
+    public record ModuleDto(String id, String name, String subdomainType, String serviceId,
+                            List<UseCaseDto> useCases) {}
     public record ExternalSystemDto(String id, String name) {}
     public record RelationDto(String sourceId, String targetId, String type) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
+    public record UseCaseDto(String id, String name) {}
     public record AggregateDto(String id, String name, String moduleId) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
@@ -153,6 +157,8 @@ public class EditorApiController {
     @GetMapping("/model")
     public EditorModelDto model() {
         var services = repository.findAllOfType(ServiceEntity.class);
+        var useCasesById = repository.findAllOfType(UseCaseEntity.class).stream()
+                .collect(Collectors.toMap(UseCaseEntity::id, uc -> uc, (a, b) -> a));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -162,7 +168,12 @@ public class EditorApiController {
                                 .filter(s -> s.moduleIds() != null && s.moduleIds().contains(m.id()))
                                 .map(ServiceEntity::id)
                                 .findFirst()
-                                .orElse(null)))
+                                .orElse(null),
+                        (m.useCaseIds() == null ? List.<String>of() : m.useCaseIds()).stream()
+                                .map(useCasesById::get)
+                                .filter(Objects::nonNull)
+                                .map(uc -> new UseCaseDto(uc.id(), uc.name()))
+                                .toList()))
                 .toList();
 
         var projects = repository.findAllOfType(ProjectEntity.class);
@@ -272,6 +283,7 @@ public class EditorApiController {
         switch (Objects.requireNonNull(command.kind(), "command.kind")) {
             case "add-relation" -> addRelation(command);
             case "remove-relation" -> removeRelation(command);
+            case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
             case "add-aggregate" -> addAggregate(command);
             case "remove-module" -> removeModule(command);
@@ -552,6 +564,18 @@ public class EditorApiController {
         var relations = project.contextMap().stream()
                 .filter(r -> !(r.sourceModuleId().equals(command.sourceId())
                         && r.targetModuleId().equals(command.targetId())))
+                .toList();
+        repository.save(withContextMap(project, relations));
+    }
+
+    private void setRelationType(EditorCommand command) {
+        var project = owningProject();
+        var relations = project.contextMap().stream()
+                .map(r -> (r.sourceModuleId().equals(command.sourceId())
+                        && r.targetModuleId().equals(command.targetId()))
+                        ? new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(),
+                                r.targetModuleId(), command.type(), r.description(), r.decisionIds())
+                        : r)
                 .toList();
         repository.save(withContextMap(project, relations));
     }

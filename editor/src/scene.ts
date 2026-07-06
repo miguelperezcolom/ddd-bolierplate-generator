@@ -17,9 +17,17 @@ export interface SceneNode {
   dashed?: boolean;
   /** Small tag rendered above the node (e.g. subdomain type). */
   badge?: string;
-  /** ArchiMate-style glyph id drawn in the node's top-right corner (see modux-canvas SYMBOLS). */
+  /** ArchiMate-style glyph id drawn in the node's corner (see modux-canvas SYMBOLS). */
   symbol?: string;
   tooltip?: string;
+  /**
+   * This node is nested inside the container node with this id: it renders on
+   * top of it and follows it while the container is dragged. Adapters derive
+   * child geometry from the container, so children are typically `fixed`.
+   */
+  parentId?: string;
+  /** A container: renders with a top header instead of a centred label. */
+  container?: boolean;
 }
 
 export interface SceneEdge {
@@ -49,9 +57,15 @@ export type DiagramLayout = Record<string, Point>;
 
 /** v2 per-view geometry: node positions plus manual edge waypoints. */
 export interface ViewLayout {
+  /**
+   * Node id → position. Top-level nodes carry an absolute centre; a nested
+   * child (see SceneNode.parentId) carries an offset relative to its container.
+   */
   nodes: DiagramLayout;
   /** Edge id → intermediate bend points (scene coordinates). */
   edges: Record<string, Point[]>;
+  /** Node id → explicit size, for resizable containers. */
+  sizes?: Record<string, { w: number; h: number }>;
 }
 
 /**
@@ -61,10 +75,10 @@ export interface ViewLayout {
 export type EditorLayout = Record<string, ViewLayout | DiagramLayout>;
 
 export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefined): ViewLayout {
-  if (!value) return { nodes: {}, edges: {} };
+  if (!value) return { nodes: {}, edges: {}, sizes: {} };
   if ('nodes' in value && typeof value.nodes === 'object' && !('x' in (value.nodes as object))) {
     const v = value as ViewLayout;
-    return { nodes: v.nodes ?? {}, edges: v.edges ?? {} };
+    return { nodes: v.nodes ?? {}, edges: v.edges ?? {}, sizes: v.sizes ?? {} };
   }
-  return { nodes: value as DiagramLayout, edges: {} };
+  return { nodes: value as DiagramLayout, edges: {}, sizes: {} };
 }

@@ -37,6 +37,20 @@ const FLOW_COLOR: Record<FlowCoherence, string> = {
 const NODE_W = 168;
 const NODE_H = 56;
 
+// Detail level: a context becomes a resizable container holding small aggregate
+// and use-case boxes the user can rearrange inside it. Children are stored as
+// offsets from the container centre (see ViewLayout.nodes), so they follow the
+// container when it moves; the container size is stored in ViewLayout.sizes.
+const C_HEADER = 34; // header band (context name)
+const C_PAD = 14; // inner padding
+const C_BOTTOM = 14;
+const CHILD_W = 108;
+const CHILD_H = 32;
+const CHILD_GAP_X = 12;
+const CHILD_GAP_Y = 10;
+const CHILD_COLS = 2;
+const C_W_DEFAULT = CHILD_COLS * CHILD_W + (CHILD_COLS - 1) * CHILD_GAP_X + 2 * C_PAD;
+
 export function relationEdgeId(sourceId: string, targetId: string): string {
   return `rel:${sourceId}->${targetId}`;
 }
@@ -67,40 +81,127 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
   };
 }
 
-export function contextMapScene(model: ModuxModel, layout: DiagramLayout): Scene {
+interface ChildDesc {
+  id: string;
+  name: string;
+  kind: 'aggregate' | 'use-case';
+}
+
+const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
+  aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
+  'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
+};
+
+/** Default container size that fits `childCount` boxes in a grid. */
+function defaultContainerSize(childCount: number): { w: number; h: number } {
+  const rows = Math.max(1, Math.ceil(childCount / CHILD_COLS));
+  const contentH = rows * CHILD_H + (rows - 1) * CHILD_GAP_Y;
+  return { w: C_W_DEFAULT, h: C_HEADER + contentH + C_BOTTOM };
+}
+
+/** Default grid offset (relative to the container centre) for child index `i`. */
+function defaultChildOffset(i: number, size: { w: number; h: number }): { x: number; y: number } {
+  const col = i % CHILD_COLS;
+  const row = Math.floor(i / CHILD_COLS);
+  return {
+    x: -size.w / 2 + C_PAD + col * (CHILD_W + CHILD_GAP_X) + CHILD_W / 2,
+    y: -size.h / 2 + C_HEADER + row * (CHILD_H + CHILD_GAP_Y) + CHILD_H / 2,
+  };
+}
+
+/**
+ * A bounded context at the detail level: the module itself as a resizable
+ * container plus one small box per aggregate and per use case (both hang off the
+ * module — there is no aggregate→use-case link). Child positions are offsets
+ * from the container centre (stored in `layout` under the child id, falling back
+ * to a grid); the container size comes from `sizes`. Children are draggable and
+ * become connectable once relations between them are added.
+ */
+function detailedContext(
+  model: ModuxModel,
+  module: ModuxModel['modules'][number],
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const aggregates = (model.aggregates ?? []).filter((a) => a.moduleId === module.id);
+  const children: ChildDesc[] = [
+    ...aggregates.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
+    ...(module.useCases ?? []).map((u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case' })),
+  ];
+  if (!children.length) {
+    // Nothing to nest — keep the compact context box.
+    return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
+  }
+
+  const size = sizes[module.id] ?? defaultContainerSize(children.length);
+  const container: SceneNode = {
+    ...base,
+    x: center.x,
+    y: center.y,
+    w: size.w,
+    h: size.h,
+    container: true,
+  };
+  const childNodes: SceneNode[] = children.map((c, i) => {
+    const off = layout[c.id] ?? defaultChildOffset(i, size);
+    const style = CHILD_STYLE[c.kind];
+    return {
+      id: c.id,
+      label: c.name,
+      kind: c.kind,
+      x: center.x + off.x,
+      y: center.y + off.y,
+      w: CHILD_W,
+      h: CHILD_H,
+      symbol: style.symbol,
+      fill: style.fill,
+      stroke: style.stroke,
+      parentId: module.id,
+      tooltip: c.kind === 'aggregate' ? `Agregado ${c.name}` : `Caso de uso ${c.name}`,
+    };
+  });
+  return [container, ...childNodes];
+}
+
+export function contextMapScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  detailed = false,
+  sizes: Record<string, { w: number; h: number }> = {},
+): Scene {
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false })),
     ...model.externalSystems.map((e) => ({ ref: e, external: true })),
   ];
 
-  const nodes: SceneNode[] = allNodes.map((entry, i) => {
+  const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
     if (entry.external) {
-      return {
-        id: entry.ref.id,
-        label: entry.ref.name,
-        x: pos.x,
-        y: pos.y,
-        w: NODE_W,
-        h: NODE_H,
-        kind: 'external-system',
-        symbol: 'component',
-        fill: '#ffffff',
-        stroke: '#64748b',
-        dashed: true,
-        badge: 'EXTERNAL',
-        tooltip: `${entry.ref.name} (sistema externo)`,
-      };
+      return [
+        {
+          id: entry.ref.id,
+          label: entry.ref.name,
+          x: pos.x,
+          y: pos.y,
+          w: NODE_W,
+          h: NODE_H,
+          kind: 'external-system',
+          symbol: 'component',
+          fill: '#ffffff',
+          stroke: '#64748b',
+          dashed: true,
+          badge: 'EXTERNAL',
+          tooltip: `${entry.ref.name} (sistema externo)`,
+        },
+      ];
     }
     const m = entry.ref as ModuxModel['modules'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
-    return {
+    const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
       id: m.id,
       label: m.name,
-      x: pos.x,
-      y: pos.y,
-      w: NODE_W,
-      h: NODE_H,
       kind: 'module',
       symbol: 'component',
       fill: SUBDOMAIN_FILL[subdomain],
@@ -108,7 +209,11 @@ export function contextMapScene(model: ModuxModel, layout: DiagramLayout): Scene
       badge: subdomain,
       tooltip: `${m.name} — subdominio ${subdomain}`,
     };
+    if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
+    return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
+  // Children must paint over every container, not just their own.
+  nodes.sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
   const relationEdges: SceneEdge[] = model.relations.map((r) => ({
     id: relationEdgeId(r.sourceId, r.targetId),
