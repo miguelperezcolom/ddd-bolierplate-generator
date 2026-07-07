@@ -104,7 +104,11 @@ interface ChildDesc {
     | 'domain-service'
     | 'query-service'
     | 'external-use-case';
+  /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
+  policy?: boolean;
 }
+
+const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
@@ -164,7 +168,9 @@ function detailedContext(
   const aggregates = (model.aggregates ?? []).filter((a) => a.moduleId === module.id);
   const children: ChildDesc[] = [
     ...aggregates.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
-    ...(module.useCases ?? []).map((u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case' })),
+    ...(module.useCases ?? []).map(
+      (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
+    ),
     ...(module.domainEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'domain-event' }),
     ),
@@ -216,7 +222,7 @@ function detailedContainer(
   };
   const childNodes: SceneNode[] = children.map((c, i) => {
     const off = offsets[i];
-    const style = CHILD_STYLE[c.kind];
+    const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
     return {
       id: c.id,
       label: c.name,
@@ -229,7 +235,7 @@ function detailedContainer(
       fill: style.fill,
       stroke: style.stroke,
       parentId: base.id,
-      tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
+      tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
     };
   });
   return [container, ...childNodes];

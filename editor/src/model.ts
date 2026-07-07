@@ -21,6 +21,8 @@ export type FlowArchetype = 'MATERIALIZES' | 'TRIGGERS' | 'ORCHESTRATES' | 'NOTI
 export interface UseCaseRef {
   id: string;
   name: string;
+  /** A policy: use-case-shaped reaction logic, not a business use case. */
+  policy?: boolean;
 }
 
 export interface DomainEventRef {

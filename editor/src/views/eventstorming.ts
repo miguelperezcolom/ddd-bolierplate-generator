@@ -58,7 +58,7 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
     (m.readModels ?? []).map((rm) => ({ ...rm, moduleId: m.id })),
   );
 
-  // ---- commands (every use case is a command) -----------------------------
+  // ---- commands (every use case is a command; policies wear lilac) --------
   for (const uc of useCases) {
     addNode(b, {
       id: uc.id,
@@ -68,11 +68,13 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
       w: STICKY.command.w,
       h: STICKY.command.h,
       kind: 'use-case',
-      symbol: 'gear',
-      fill: STICKY.command.fill,
-      stroke: STICKY.command.stroke,
-      badge: 'COMANDO',
-      tooltip: `${uc.name} — caso de uso de ${moduleName.get(uc.moduleId) ?? uc.moduleId}`,
+      symbol: uc.policy ? 'flow' : 'gear',
+      fill: uc.policy ? STICKY.policy.fill : STICKY.command.fill,
+      stroke: uc.policy ? STICKY.policy.stroke : STICKY.command.stroke,
+      badge: uc.policy ? 'POLICY' : 'COMANDO',
+      tooltip: uc.policy
+        ? `${uc.name} — policy de ${moduleName.get(uc.moduleId) ?? uc.moduleId} (reacción, no caso de negocio)`
+        : `${uc.name} — caso de uso de ${moduleName.get(uc.moduleId) ?? uc.moduleId}`,
     });
   }
 

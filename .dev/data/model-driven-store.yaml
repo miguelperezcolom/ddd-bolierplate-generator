@@ -1547,8 +1547,8 @@ diagrams:
     x: -144.1
     "y": -44.7
   - ref: "ev-habitacionPreasignada"
-    x: 13.8
-    "y": -16.5
+    x: 109.7
+    "y": -43.9
   - ref: "ev-estanciaCreada"
     x: -144.1
     "y": -2.7
@@ -1568,8 +1568,8 @@ diagrams:
     x: -51.2
     "y": 610.2
   - ref: "mod-produccion"
-    x: -80.9
-    "y": 120.5
+    x: -49.6
+    "y": 196.4
   - ref: "mod-folios"
     x: 64.7
     "y": 370.7

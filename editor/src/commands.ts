@@ -173,11 +173,13 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
-      /** A plain use case in a bounded context. */
+      /** A plain use case in a bounded context — or a policy when flagged. */
       kind: 'add-use-case';
       id: string;
       name: string;
       moduleId: string;
+      /** Reaction logic with use-case shape that expresses no business case. */
+      policy?: boolean;
     }
   | {
       kind: 'remove-use-case';

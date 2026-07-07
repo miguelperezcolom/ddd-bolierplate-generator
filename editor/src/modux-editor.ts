@@ -165,6 +165,7 @@ export class ModuxEditor extends LitElement {
     | 'domain-service'
     | 'query-service'
     | 'use-case'
+    | 'policy'
     | 'external-use-case' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
@@ -529,7 +530,11 @@ export class ModuxEditor extends LitElement {
       case 'remove-use-case': {
         for (const m of this.model.modules) {
           const u = (m.useCases ?? []).find((x) => x.id === c.id);
-          if (u) return [{ kind: 'add-use-case', id: u.id, name: u.name, moduleId: m.id }];
+          if (u) {
+            return [
+              { kind: 'add-use-case', id: u.id, name: u.name, moduleId: m.id, policy: u.policy },
+            ];
+          }
         }
         return null;
       }
@@ -1635,6 +1640,11 @@ export class ModuxEditor extends LitElement {
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'policy') {
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId, policy: true });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'external-use-case') {
         const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
         const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
@@ -1829,7 +1839,9 @@ export class ModuxEditor extends LitElement {
                         ? 'Nuevo evento de aplicación…'
                         : this._newContextMapKind === 'domain-service'
                           ? 'Nuevo servicio de dominio…'
-                          : 'Nuevo read model…',
+                          : this._newContextMapKind === 'policy'
+                            ? 'Nueva policy…'
+                            : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -1897,6 +1909,9 @@ export class ModuxEditor extends LitElement {
                     <option value="use-case" ?selected=${this._newContextMapKind === 'use-case'}>
                       Caso de uso
                     </option>
+                    <option value="policy" ?selected=${this._newContextMapKind === 'policy'}>
+                      Policy
+                    </option>
                     <option
                       value="external-use-case"
                       ?selected=${this._newContextMapKind === 'external-use-case'}
@@ -1962,7 +1977,8 @@ export class ModuxEditor extends LitElement {
             this._newContextMapKind === 'application-event' ||
             this._newContextMapKind === 'domain-service' ||
             this._newContextMapKind === 'query-service' ||
-            this._newContextMapKind === 'use-case'))
+            this._newContextMapKind === 'use-case' ||
+            this._newContextMapKind === 'policy'))
           ? html`<select
               title=${this._view === 'aggregates'
                 ? 'Módulo del nuevo agregado'

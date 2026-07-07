@@ -103,7 +103,7 @@ public class EditorApiController {
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
-    public record UseCaseDto(String id, String name) {}
+    public record UseCaseDto(String id, String name, boolean policy) {}
     public record AggregateDto(String id, String name, String moduleId) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
@@ -266,7 +266,7 @@ public class EditorApiController {
                         (m.useCaseIds() == null ? List.<String>of() : m.useCaseIds()).stream()
                                 .map(useCasesById::get)
                                 .filter(Objects::nonNull)
-                                .map(uc -> new UseCaseDto(uc.id(), uc.name()))
+                                .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy()))
                                 .toList(),
                         (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
                                 .map(domainEventsById::get)
@@ -596,7 +596,8 @@ public class EditorApiController {
                                 String workflowId, String emittedEventName,
                                 String completionEventName, String dependsOnStepId,
                                 List<String> dependsOnStepIds,
-                                List<WorkflowStepDto> workflowSteps) {}
+                                List<WorkflowStepDto> workflowSteps,
+                                Boolean policy) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -1016,7 +1017,7 @@ public class EditorApiController {
                             uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(),
                             uc.idempotencyEnabled(), uc.idempotencyKeyField(), uc.rateLimitEnabled(),
                             uc.rateLimitRequestsPerSecond(), uc.grpcServiceName(), uc.grpcMethodName(),
-                            uc.decisionIds())));
+                            uc.decisionIds(), uc.policy())));
             case "external-use-case" -> {
                 var project = owningProject();
                 repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -1384,7 +1385,9 @@ public class EditorApiController {
         if (repository.findById(command.id(), UseCaseEntity.class).isPresent()) return;
         var module = repository.findById(command.moduleId(), ModuleEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        repository.save(stubUseCase(command.id(), command.name(), List.of(), false));
+        // A policy is a use-case-shaped reaction: same catalog, no UI derivation.
+        repository.save(stubUseCase(command.id(), command.name(), List.of(), false,
+                Boolean.TRUE.equals(command.policy())));
         var useCaseIds = new ArrayList<>(module.useCaseIds() == null ? List.of() : module.useCaseIds());
         useCaseIds.add(command.id());
         repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
@@ -1586,10 +1589,15 @@ public class EditorApiController {
     /** A minimal use case stub — fields get refined later through the CRUDs. */
     private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
                                              boolean exposedAsUi) {
+        return stubUseCase(id, name, steps, exposedAsUi, false);
+    }
+
+    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
+                                             boolean exposedAsUi, boolean policy) {
         return new UseCaseEntity(id, name, false, false, false, false, exposedAsUi,
                 null, null, steps, List.of(), List.of(), null, null, null, null,
                 null, null, null, null, null, false, null, null, null, false, null,
-                false, null, null, null, List.of());
+                false, null, null, null, List.of(), policy);
     }
 
     private static String capitalize(String s) {
@@ -1648,7 +1656,7 @@ public class EditorApiController {
                 uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds());
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy());
     }
 
     /**
@@ -1837,7 +1845,7 @@ public class EditorApiController {
                 uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds());
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy());
     }
 
     private void addActor(EditorCommand command) {

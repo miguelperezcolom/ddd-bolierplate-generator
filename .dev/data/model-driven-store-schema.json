@@ -3160,6 +3160,9 @@
           "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "policy" : {
+          "type" : "boolean"
+        },
         "rateLimitEnabled" : {
           "type" : "boolean"
         },

@@ -61,7 +61,57 @@ public final class LintRules {
                 new WorkflowDag(),
                 new WorkflowTrigger(),
                 new WorkflowStepTarget(),
-                new WorkflowDependsScope());
+                new WorkflowDependsScope(),
+                new PolicyWithoutTrigger(),
+                new PolicyExposedAsUi());
+    }
+
+    // --- policies (use-case-shaped reactions, the lilac sticky) -----------------
+
+    /**
+     * A policy is reaction logic: if no event ever invokes it (subscription action,
+     * flow, process step or workflow step), it never runs.
+     */
+    static class PolicyWithoutTrigger implements LintRule {
+        public String id() { return "policy-without-trigger"; }
+        public String description() { return "A policy must be invoked by some event reaction"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var invoked = new HashSet<String>();
+            for (var s : m.subscriptions()) {
+                if (s.actions() == null) continue;
+                s.actions().forEach(a -> { if (a.useCaseId() != null) invoked.add(a.useCaseId()); });
+            }
+            m.flows().forEach(f -> { if (f.targetUseCaseId() != null) invoked.add(f.targetUseCaseId()); });
+            m.processes().forEach(p -> p.steps().forEach(s -> {
+                if (s.useCaseId() != null) invoked.add(s.useCaseId());
+            }));
+            m.workflows().forEach(w -> w.steps().forEach(s -> {
+                if (s.targetUseCaseId() != null) invoked.add(s.targetUseCaseId());
+            }));
+            return m.useCases().stream()
+                    .filter(uc -> uc.policy())
+                    .filter(uc -> !invoked.contains(uc.id()))
+                    .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(),
+                            uc.name(),
+                            "Policy sin disparador: ningún evento la invoca (subscription, flow,"
+                                    + " proceso o workflow) — nunca se ejecutará."))
+                    .toList();
+        }
+    }
+
+    /** A policy reacts to events; deriving a UI from it contradicts its nature. */
+    static class PolicyExposedAsUi implements LintRule {
+        public String id() { return "policy-exposed-as-ui"; }
+        public String description() { return "Policies should not derive UIs"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.useCases().stream()
+                    .filter(uc -> uc.policy() && uc.exposedAsUi())
+                    .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(),
+                            uc.name(),
+                            "Policy expuesta como UI: una policy reacciona a eventos, no la usa"
+                                    + " una persona — quita exposedAsUi o hazla caso de uso normal."))
+                    .toList();
+        }
     }
 
     // --- workflows (cross-context orchestrators) --------------------------------

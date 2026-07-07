@@ -116,6 +116,6 @@ public final class ConsumptionApiDerivation {
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
                 uc.grpcServiceName() != null ? uc.grpcServiceName() : providerModule.name(),
                 uc.grpcMethodName() != null ? uc.grpcMethodName() : uc.name(),
-                uc.decisionIds());
+                uc.decisionIds(), uc.policy());
     }
 }
