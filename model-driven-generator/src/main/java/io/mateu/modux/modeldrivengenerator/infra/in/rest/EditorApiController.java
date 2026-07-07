@@ -33,7 +33,10 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Projection
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -109,6 +112,22 @@ public class EditorApiController {
     public record ProcessDto(String id, String name, String triggerAggregateId, String triggerEvent,
                              String ownerModuleId, String onCompletionEventName, String sla,
                              List<ProcessStepDto> steps) {}
+    public record WorkflowStepDto(String id, String name, String emittedEventName,
+                                  String targetUseCaseId, String completionEventName,
+                                  List<String> dependsOnStepIds) {}
+    /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
+    public record WorkflowDto(String id, String name, String triggerAggregateId,
+                              String triggerDomainServiceId, String triggerUseCaseId,
+                              String triggerEvent, String onCompletionEventName,
+                              List<WorkflowStepDto> steps) {}
+    /** A use case acts on an aggregate (CallAggregateOperation / SaveAggregate step). */
+    public record AggregateCallDto(String sourceId, String targetId) {}
+    public record SubscriptionActionDto(String type, String useCaseId, String sagaId,
+                                        String projectionId) {}
+    public record SubscriptionDto(String id, String name, String eventName, String consumerGroup,
+                                  List<SubscriptionActionDto> actions) {}
+    public record ProjectionDto(String id, String name, String readModelId, String readModelName,
+                                List<String> handledEventIds) {}
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
@@ -141,7 +160,12 @@ public class EditorApiController {
             List<ExternalCallDto> externalCalls,
             List<ExternalUseCaseCallDto> externalUseCaseCalls,
             List<AiAgentDto> aiAgents,
-            List<AgentUseDto> agentUses) {}
+            List<AgentUseDto> agentUses,
+            List<WorkflowDto> workflows,
+            List<AggregateCallDto> aggregateCalls,
+            List<EmissionDto> useCaseEmissions,
+            List<SubscriptionDto> subscriptions,
+            List<ProjectionDto> projections) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -351,6 +375,17 @@ public class EditorApiController {
                 .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
                 .toList();
 
+        var workflows = repository.findAllOfType(WorkflowEntity.class).stream()
+                .map(w -> new WorkflowDto(
+                        w.id(), w.name(), w.triggerAggregateId(), w.triggerDomainServiceId(),
+                        w.triggerUseCaseId(), w.triggerEvent(), w.onCompletionEventName(),
+                        w.steps().stream()
+                                .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
+                                        s.targetUseCaseId(), s.completionEventName(),
+                                        s.dependsOnStepIds()))
+                                .toList()))
+                .toList();
+
 
         // Who publishes what: DOMAIN events are emitted by aggregates (operations
         // declare emitted event NAMES as a CSV in OperationEntity.emits). Use cases
@@ -398,6 +433,43 @@ public class EditorApiController {
                 }
             }
         }
+
+        // The eventstorming chain: command → aggregate (write steps), command → domain
+        // event (publish steps), plus the event → reaction wiring (subscriptions and
+        // projections; flows/processes/workflows are already projected above).
+        var aggregateCalls = new ArrayList<AggregateCallDto>();
+        var useCaseEmissions = new ArrayList<EmissionDto>();
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                var type = step.type();
+                if ((type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation
+                        || type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate)
+                        && step.aggregateId() != null) {
+                    aggregateCalls.add(new AggregateCallDto(uc.id(), step.aggregateId()));
+                }
+                if (type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
+                        && step.domainEventId() != null) {
+                    useCaseEmissions.add(new EmissionDto(uc.id(), step.domainEventId()));
+                }
+            }
+        }
+        var subscriptions = repository.findAllOfType(SubscriptionEntity.class).stream()
+                .map(s -> new SubscriptionDto(s.id(), s.name(), s.eventName(), s.consumerGroup(),
+                        (s.actions() == null ? List.<SubscriptionActionDto>of() : s.actions().stream()
+                                .map(a -> new SubscriptionActionDto(
+                                        a.type() != null ? a.type().name() : null,
+                                        a.useCaseId(), a.sagaId(), a.projectionId()))
+                                .toList())))
+                .toList();
+        var projectionDtos = repository.findAllOfType(ProjectionEntity.class).stream()
+                .map(p -> new ProjectionDto(p.id(), p.name(), p.readModelId(),
+                        p.readModelId() == null ? null
+                                : repository.findById(p.readModelId(), ReadModelEntity.class)
+                                        .map(ReadModelEntity::name).orElse(p.readModelId()),
+                        (p.handlers() == null ? List.<String>of() : p.handlers().stream()
+                                .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList())))
+                .toList();
 
         var queryCalls = new ArrayList<QueryCallDto>();
         for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
@@ -500,7 +572,12 @@ public class EditorApiController {
                 externalCalls.stream().distinct().toList(),
                 externalUseCaseCalls.stream().distinct().toList(),
                 aiAgents,
-                agentUses.stream().distinct().toList());
+                agentUses.stream().distinct().toList(),
+                workflows,
+                aggregateCalls.stream().distinct().toList(),
+                useCaseEmissions.stream().distinct().toList(),
+                subscriptions,
+                projectionDtos);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -515,7 +592,11 @@ public class EditorApiController {
                                 String processId, String afterStepId, String stepType,
                                 String roleId, String deadline, String useCaseId,
                                 String compensationUseCaseId,
-                                List<String> memberIds) {}
+                                List<String> memberIds,
+                                String workflowId, String emittedEventName,
+                                String completionEventName, String dependsOnStepId,
+                                List<String> dependsOnStepIds,
+                                List<WorkflowStepDto> workflowSteps) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -574,6 +655,13 @@ public class EditorApiController {
             case "update-process-step" -> updateProcessStep(command);
             case "add-view" -> addView(command);
             case "remove-view" -> removeView(command);
+            case "add-workflow" -> addWorkflow(command);
+            case "remove-workflow" -> removeWorkflow(command);
+            case "add-workflow-step" -> addWorkflowStep(command);
+            case "remove-workflow-step" -> removeWorkflowStep(command);
+            case "update-workflow-step" -> updateWorkflowStep(command);
+            case "add-workflow-dependency" -> addWorkflowDependency(command);
+            case "remove-workflow-dependency" -> removeWorkflowDependency(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -703,6 +791,124 @@ public class EditorApiController {
                 p.ownerModuleId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
     }
 
+    private void addWorkflow(EditorCommand command) {
+        if (repository.findById(command.id(), WorkflowEntity.class).isPresent()) return;
+        var steps = command.workflowSteps() == null ? List.<WorkflowStepEntity>of()
+                : command.workflowSteps().stream()
+                        .map(s -> new WorkflowStepEntity(
+                                s.id(), s.name(), s.emittedEventName(), s.targetUseCaseId(),
+                                s.completionEventName(), s.dependsOnStepIds(), null))
+                        .toList();
+        repository.save(new WorkflowEntity(
+                command.id(), command.name(), null,
+                command.triggerAggregateId(), command.triggerDomainServiceId(),
+                command.triggerUseCaseId(), command.triggerEvent(),
+                steps, command.completionEventName(), List.of()));
+    }
+
+    private void removeWorkflow(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), WorkflowEntity.class);
+    }
+
+    private void addWorkflowStep(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        if (workflow.steps().stream().anyMatch(s -> s.id().equals(command.id()))) return;
+        var step = new WorkflowStepEntity(
+                command.id(), command.name(), command.emittedEventName(),
+                command.targetUseCaseId(), command.completionEventName(),
+                command.dependsOnStepIds(), null);
+        var steps = new ArrayList<>(workflow.steps());
+        var index = command.afterStepId() == null ? steps.size()
+                : indexAfterWorkflowStep(steps, command.afterStepId());
+        steps.add(index, step);
+        repository.save(withWorkflowSteps(workflow, steps));
+    }
+
+    /** Removing a step also drops it from every other step's dependencies. */
+    private void removeWorkflowStep(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        var steps = workflow.steps().stream()
+                .filter(s -> !s.id().equals(command.id()))
+                .map(s -> s.dependsOnStepIds().contains(command.id())
+                        ? withDependsOn(s, s.dependsOnStepIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        : s)
+                .toList();
+        repository.save(withWorkflowSteps(workflow, steps));
+    }
+
+    /** Replaces emittedEventName, targetUseCaseId and completionEventName wholesale (null clears). */
+    private void updateWorkflowStep(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
+                .map(s -> s.id().equals(command.id())
+                        ? new WorkflowStepEntity(s.id(), s.name(), command.emittedEventName(),
+                                command.targetUseCaseId(), command.completionEventName(),
+                                s.dependsOnStepIds(), s.description())
+                        : s)
+                .toList()));
+    }
+
+    private void addWorkflowDependency(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        if (command.id().equals(command.dependsOnStepId())) {
+            throw new IllegalArgumentException("Un paso no puede depender de sí mismo");
+        }
+        if (workflow.steps().stream().noneMatch(s -> s.id().equals(command.dependsOnStepId()))) {
+            throw new IllegalArgumentException("Paso desconocido: " + command.dependsOnStepId());
+        }
+        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
+                .map(s -> s.id().equals(command.id())
+                        && !s.dependsOnStepIds().contains(command.dependsOnStepId())
+                        ? withDependsOn(s, concat(s.dependsOnStepIds(), command.dependsOnStepId()))
+                        : s)
+                .toList()));
+    }
+
+    private void removeWorkflowDependency(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
+                .map(s -> s.id().equals(command.id())
+                        ? withDependsOn(s, s.dependsOnStepIds().stream()
+                                .filter(id -> !id.equals(command.dependsOnStepId())).toList())
+                        : s)
+                .toList()));
+    }
+
+    private WorkflowEntity requireWorkflow(String workflowId) {
+        return repository.findById(workflowId, WorkflowEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Workflow desconocido: " + workflowId));
+    }
+
+    private static int indexAfterWorkflowStep(List<WorkflowStepEntity> steps, String afterStepId) {
+        for (int i = 0; i < steps.size(); i++) {
+            if (steps.get(i).id().equals(afterStepId)) return i + 1;
+        }
+        return steps.size();
+    }
+
+    private static List<String> concat(List<String> list, String extra) {
+        var next = new ArrayList<>(list);
+        next.add(extra);
+        return List.copyOf(next);
+    }
+
+    /** Record copy with only steps replaced — every other field preserved verbatim. */
+    private static WorkflowEntity withWorkflowSteps(WorkflowEntity w, List<WorkflowStepEntity> steps) {
+        return new WorkflowEntity(
+                w.id(), w.name(), w.description(), w.triggerAggregateId(),
+                w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
+                steps, w.onCompletionEventName(), w.decisionIds());
+    }
+
+    /** Record copy with only dependsOnStepIds replaced — every other field preserved verbatim. */
+    private static WorkflowStepEntity withDependsOn(WorkflowStepEntity s, List<String> dependsOnStepIds) {
+        return new WorkflowStepEntity(
+                s.id(), s.name(), s.emittedEventName(), s.targetUseCaseId(),
+                s.completionEventName(), dependsOnStepIds, s.description());
+    }
+
     private void removeModule(EditorCommand command) {
         var module = repository.findById(command.id(), ModuleEntity.class).orElse(null);
         if (module == null) return;
@@ -795,6 +1001,46 @@ public class EditorApiController {
                                     ? new ProcessStepEntity(s.id(), command.name(), s.type(),
                                             s.useCaseId(), s.roleId(), s.deadline(),
                                             s.escalationRoleId(), s.compensationUseCaseId(),
+                                            s.description())
+                                    : s)
+                            .toList())));
+            case "use-case" -> repository.findById(command.id(), UseCaseEntity.class)
+                    .ifPresent(uc -> repository.save(new UseCaseEntity(
+                            uc.id(), command.name(), uc.exposedAsRest(), uc.exposedAsGrpc(),
+                            uc.exposedAsMcp(), uc.exposedAsAsync(), uc.exposedAsUi(),
+                            uc.inputModelId(), uc.outputModelId(), uc.steps(),
+                            uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(),
+                            uc.mcpDescription(), uc.restHttpMethod(), uc.restPath(),
+                            uc.asyncRetryCount(), uc.asyncDeadLetterQueue(), uc.asyncOrderingKey(),
+                            uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
+                            uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(),
+                            uc.idempotencyEnabled(), uc.idempotencyKeyField(), uc.rateLimitEnabled(),
+                            uc.rateLimitRequestsPerSecond(), uc.grpcServiceName(), uc.grpcMethodName(),
+                            uc.decisionIds())));
+            case "external-use-case" -> {
+                var project = owningProject();
+                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        .map(x -> withUseCases(x, x.useCases().stream()
+                                .map(u -> u.id().equals(command.id())
+                                        ? new ExternalSystemUseCaseEntity(
+                                                u.id(), command.name(), u.description())
+                                        : u)
+                                .toList()))
+                        .toList()));
+            }
+            case "workflow" -> repository.findById(command.id(), WorkflowEntity.class)
+                    .ifPresent(w -> repository.save(new WorkflowEntity(
+                            w.id(), command.name(), w.description(), w.triggerAggregateId(),
+                            w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
+                            w.steps(), w.onCompletionEventName(), w.decisionIds())));
+            case "workflow-step" -> repository.findAllOfType(WorkflowEntity.class).stream()
+                    .filter(w -> w.steps().stream().anyMatch(s -> s.id().equals(command.id())))
+                    .findFirst()
+                    .ifPresent(w -> repository.save(withWorkflowSteps(w, w.steps().stream()
+                            .map(s -> s.id().equals(command.id())
+                                    ? new WorkflowStepEntity(s.id(), command.name(),
+                                            s.emittedEventName(), s.targetUseCaseId(),
+                                            s.completionEventName(), s.dependsOnStepIds(),
                                             s.description())
                                     : s)
                             .toList())));

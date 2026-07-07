@@ -31,12 +31,18 @@ import java.util.Map;
 public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler {
 
     /** elementType (as emitted by the editor views) → CRUD listing route. */
-    private static final Map<String, String> CRUD_ROUTES = Map.of(
-            "module", "/organizacion/modules",
-            "aggregate", "/domainModel/aggregates",
-            "entity", "/domainModel/entities",
-            "flow", "/patrones/flows",
-            "process", "/patrones/processes");
+    private static final Map<String, String> CRUD_ROUTES = Map.ofEntries(
+            Map.entry("module", "/organizacion/modules"),
+            Map.entry("aggregate", "/domainModel/aggregates"),
+            Map.entry("entity", "/domainModel/entities"),
+            Map.entry("flow", "/patrones/flows"),
+            Map.entry("process", "/patrones/processes"),
+            Map.entry("workflow", "/patrones/workflows"),
+            Map.entry("use-case", "/behaviour/useCases"),
+            Map.entry("domain-event", "/domainModel/domainEvents"),
+            Map.entry("subscription", "/inbound/subscriptions"),
+            Map.entry("projection", "/behaviour/projections"),
+            Map.entry("read-model", "/patrones/readModels"));
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so
@@ -74,7 +80,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
                 null);
         return PageView.builder()
                 .title("Editor gráfico")
-                .subtitle("Context map, agregados, flows y procesos sobre lienzo editable — los cambios se guardan en el modelo.")
+                .subtitle("Context map, agregados, flows, procesos y eventstorming sobre lienzo editable — los cambios se guardan en el modelo.")
                 .content(List.of(editor))
                 .build();
     }
