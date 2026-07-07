@@ -309,6 +309,55 @@ export type ModuxCommand =
       roleId?: string;
       deadline?: string;
       compensationUseCaseId?: string;
+    }
+  | {
+      /** A cross-context orchestrator living OUTSIDE the bounded contexts. */
+      kind: 'add-workflow';
+      id: string;
+      name: string;
+      triggerAggregateId?: string;
+      triggerDomainServiceId?: string;
+      triggerUseCaseId?: string;
+      triggerEvent?: string;
+      /** Event published when every step completes. */
+      completionEventName?: string;
+      workflowSteps?: import('./model.js').WorkflowStepRef[];
+    }
+  | { kind: 'remove-workflow'; id: string }
+  | {
+      kind: 'add-workflow-step';
+      workflowId: string;
+      id: string;
+      name: string;
+      emittedEventName?: string;
+      targetUseCaseId?: string;
+      completionEventName?: string;
+      dependsOnStepIds?: string[];
+      /** Insert after this step; append when omitted. */
+      afterStepId?: string;
+    }
+  | { kind: 'remove-workflow-step'; workflowId: string; id: string }
+  | {
+      /** Replaces emittedEventName/targetUseCaseId/completionEventName wholesale (omitted clears). */
+      kind: 'update-workflow-step';
+      workflowId: string;
+      id: string;
+      emittedEventName?: string;
+      targetUseCaseId?: string;
+      completionEventName?: string;
+    }
+  | {
+      /** The step `id` starts only after `dependsOnStepId` completes. */
+      kind: 'add-workflow-dependency';
+      workflowId: string;
+      id: string;
+      dependsOnStepId: string;
+    }
+  | {
+      kind: 'remove-workflow-dependency';
+      workflowId: string;
+      id: string;
+      dependsOnStepId: string;
     };
 
 export interface ModuxSelection {

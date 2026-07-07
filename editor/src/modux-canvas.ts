@@ -862,7 +862,10 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
             node.kind === 'application-event'
-          : node.kind === 'external-system' || node.kind === 'actor' || node.kind === 'ai-agent')
+          : node.kind === 'external-system' ||
+            node.kind === 'actor' ||
+            node.kind === 'ai-agent' ||
+            node.kind === 'workflow-step')
           ? [
               [hw, 0],
               [-hw, 0],
@@ -878,7 +881,9 @@ export class ModuxCanvas extends LitElement {
                       ? 'Arrastra hasta un caso de uso, query service o agregado: el actor lo usará (deriva una UI)'
                       : node.kind === 'ai-agent'
                         ? 'Arrastra hasta un caso de uso: el agente lo consumirá por MCP'
-                        : 'Arrastra hasta otro nodo para crear una relación'
+                        : node.kind === 'workflow-step'
+                          ? 'Arrastra hasta otro paso: el destino esperará a que éste complete'
+                          : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'use-case'

@@ -8,6 +8,8 @@ import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
+import { eventstormingScene } from './views/eventstorming.js';
+import { workflowsScene } from './views/workflows.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 
@@ -25,13 +27,15 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'eventstorming';
 
 const VIEWS: { id: ViewId; label: string; ready: boolean }[] = [
   { id: 'context-map', label: 'Context map', ready: true },
   { id: 'aggregates', label: 'Agregados', ready: true },
   { id: 'flows', label: 'Flows', ready: true },
   { id: 'processes', label: 'Procesos', ready: true },
+  { id: 'workflows', label: 'Workflows', ready: true },
+  { id: 'eventstorming', label: 'EventStorming', ready: true },
 ];
 
 const SUBDOMAIN_TYPES: SubdomainType[] = ['CORE', 'SUPPORTING', 'GENERIC'];
@@ -90,6 +94,16 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'flow', id: id.replace(/^flow:/, '') };
     case 'process':
       return { elementType: 'process', id };
+    case 'workflow':
+      return { elementType: 'workflow', id };
+    case 'domain-event':
+      return { elementType: 'domain-event', id };
+    case 'subscription':
+      return { elementType: 'subscription', id };
+    case 'projection':
+      return { elementType: 'projection', id };
+    case 'read-model':
+      return { elementType: 'read-model', id };
     default:
       return null;
   }
@@ -169,6 +183,11 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepRole = '';
   @state() private _editStepDeadline = '';
   @state() private _editStepComp = '';
+  @state() private _newStepUseCase = '';
+  @state() private _newStepEmits = '';
+  @state() private _editStepUseCase = '';
+  @state() private _editStepEmits = '';
+  @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
   @state() private _activeViewId = '';
@@ -725,6 +744,91 @@ export class ModuxEditor extends LitElement {
             ]
           : null;
       }
+      case 'add-workflow':
+        return [{ kind: 'remove-workflow', id: c.id }];
+      case 'remove-workflow': {
+        const w = (this.model.workflows ?? []).find((x) => x.id === c.id);
+        return w
+          ? [
+              {
+                kind: 'add-workflow',
+                id: w.id,
+                name: w.name,
+                triggerAggregateId: w.triggerAggregateId,
+                triggerDomainServiceId: w.triggerDomainServiceId,
+                triggerUseCaseId: w.triggerUseCaseId,
+                triggerEvent: w.triggerEvent,
+                completionEventName: w.onCompletionEventName,
+                workflowSteps: w.steps,
+              },
+            ]
+          : null;
+      }
+      case 'add-workflow-step':
+        return [{ kind: 'remove-workflow-step', workflowId: c.workflowId, id: c.id }];
+      case 'remove-workflow-step': {
+        const workflow = (this.model.workflows ?? []).find((x) => x.id === c.workflowId);
+        const index = workflow?.steps.findIndex((s) => s.id === c.id) ?? -1;
+        if (!workflow || index < 0) return null;
+        const step = workflow.steps[index];
+        return [
+          {
+            kind: 'add-workflow-step',
+            workflowId: c.workflowId,
+            id: step.id,
+            name: step.name,
+            emittedEventName: step.emittedEventName,
+            targetUseCaseId: step.targetUseCaseId,
+            completionEventName: step.completionEventName,
+            dependsOnStepIds: step.dependsOnStepIds,
+            afterStepId: index > 0 ? workflow.steps[index - 1].id : undefined,
+          },
+          // Removing a step also strips it from its dependents; restore those edges.
+          ...workflow.steps
+            .filter((s) => s.id !== c.id && (s.dependsOnStepIds ?? []).includes(c.id))
+            .map(
+              (s): ModuxCommand => ({
+                kind: 'add-workflow-dependency',
+                workflowId: c.workflowId,
+                id: s.id,
+                dependsOnStepId: c.id,
+              }),
+            ),
+        ];
+      }
+      case 'update-workflow-step': {
+        const workflow = (this.model.workflows ?? []).find((x) => x.id === c.workflowId);
+        const step = workflow?.steps.find((s) => s.id === c.id);
+        if (!step) return null;
+        return [
+          {
+            kind: 'update-workflow-step',
+            workflowId: c.workflowId,
+            id: c.id,
+            emittedEventName: step.emittedEventName,
+            targetUseCaseId: step.targetUseCaseId,
+            completionEventName: step.completionEventName,
+          },
+        ];
+      }
+      case 'add-workflow-dependency':
+        return [
+          {
+            kind: 'remove-workflow-dependency',
+            workflowId: c.workflowId,
+            id: c.id,
+            dependsOnStepId: c.dependsOnStepId,
+          },
+        ];
+      case 'remove-workflow-dependency':
+        return [
+          {
+            kind: 'add-workflow-dependency',
+            workflowId: c.workflowId,
+            id: c.id,
+            dependsOnStepId: c.dependsOnStepId,
+          },
+        ];
     }
     return null;
   }
@@ -834,6 +938,21 @@ export class ModuxEditor extends LitElement {
 
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y } = e.detail;
+    // In the workflows view, dragging step A → step B declares "B depends on A".
+    if (this._view === 'workflows') {
+      const sourceOwner = this.owningWorkflowOf(sourceId);
+      const targetOwner = this.owningWorkflowOf(targetId);
+      if (!sourceOwner || sourceOwner !== targetOwner || sourceId === targetId) return;
+      const target = sourceOwner.steps.find((s) => s.id === targetId);
+      if ((target?.dependsOnStepIds ?? []).includes(sourceId)) return;
+      this.command({
+        kind: 'add-workflow-dependency',
+        workflowId: sourceOwner.id,
+        id: targetId,
+        dependsOnStepId: sourceId,
+      });
+      return;
+    }
     if (this._view !== 'context-map') return;
     // Actor and AI-agent drags come first: they may legally end on children (use
     // cases, query services, aggregates) that other gestures treat as off-limits.
@@ -1067,6 +1186,32 @@ export class ModuxEditor extends LitElement {
 
   private onDeleteRequested(e: CustomEvent): void {
     const { elementType, id, kind } = e.detail;
+    if (this._view === 'workflows' && elementType === 'edge' && kind === 'workflow-dependency') {
+      const match = /^wfdep:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      const owner = this.owningWorkflowOf(match[2]);
+      if (!owner) return;
+      this._selectedId = null;
+      this.command({
+        kind: 'remove-workflow-dependency',
+        workflowId: owner.id,
+        id: match[2],
+        dependsOnStepId: match[1],
+      });
+      return;
+    }
+    if (elementType === 'node' && kind === 'workflow') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-workflow', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'workflow-step') {
+      const owner = this.owningWorkflowOf(id);
+      if (!owner) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-workflow-step', workflowId: owner.id, id });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'relation') {
       // Edge ids for relations are `rel:<sourceId>-><targetId>` (see relationEdgeId).
       const match = /^rel:(.+)->(.+)$/.exec(id);
@@ -1210,6 +1355,10 @@ export class ModuxEditor extends LitElement {
     return (this.model.processes ?? []).find((p) => p.steps.some((s) => s.id === stepId));
   }
 
+  private owningWorkflowOf(stepId: string) {
+    return (this.model.workflows ?? []).find((w) => w.steps.some((s) => s.id === stepId));
+  }
+
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
     if (
@@ -1217,6 +1366,8 @@ export class ModuxEditor extends LitElement {
       kind === 'aggregate' ||
       kind === 'entity' ||
       kind === 'process-step' ||
+      kind === 'workflow' ||
+      kind === 'workflow-step' ||
       kind === 'domain-event' ||
       kind === 'read-model' ||
       kind === 'domain-service' ||
@@ -1255,6 +1406,42 @@ export class ModuxEditor extends LitElement {
     this._newStepDeadline = '';
   }
 
+  private addWorkflowStepFromToolbar(): void {
+    const name = this._newStepName.trim();
+    if (!name || !this._selectedId) return;
+    const selectedWorkflow = (this.model.workflows ?? []).find((w) => w.id === this._selectedId);
+    const owner = selectedWorkflow ?? this.owningWorkflowOf(this._selectedId);
+    if (!owner) return;
+    this.command({
+      kind: 'add-workflow-step',
+      workflowId: owner.id,
+      id: `wfstep-${slug(name)}`,
+      name,
+      emittedEventName: this._newStepEmits.trim() || undefined,
+      targetUseCaseId: this._newStepUseCase || undefined,
+      // Dragging a step onto another declares dependencies later; a selected
+      // step is the natural predecessor of the new one.
+      dependsOnStepIds: selectedWorkflow ? undefined : [this._selectedId],
+      afterStepId: selectedWorkflow ? undefined : this._selectedId,
+    });
+    this._newStepName = '';
+    this._newStepEmits = '';
+  }
+
+  private applyWorkflowStepEdit(): void {
+    const stepId = this._selectedId;
+    const owner = stepId ? this.owningWorkflowOf(stepId) : undefined;
+    if (!stepId || !owner) return;
+    this.command({
+      kind: 'update-workflow-step',
+      workflowId: owner.id,
+      id: stepId,
+      emittedEventName: this._editStepEmits.trim() || undefined,
+      targetUseCaseId: this._editStepUseCase || undefined,
+      completionEventName: this._editStepAwaits.trim() || undefined,
+    });
+  }
+
   private onElementSelected(e: CustomEvent): void {
     this._selectedId = e.detail.id;
     this._multi = [];
@@ -1263,6 +1450,12 @@ export class ModuxEditor extends LitElement {
       this._editStepRole = step?.roleId ?? '';
       this._editStepDeadline = step?.deadline ?? '';
       this._editStepComp = step?.compensationUseCaseId ?? '';
+    }
+    if (e.detail.kind === 'workflow-step') {
+      const step = this.owningWorkflowOf(e.detail.id)?.steps.find((s) => s.id === e.detail.id);
+      this._editStepUseCase = step?.targetUseCaseId ?? '';
+      this._editStepEmits = step?.emittedEventName ?? '';
+      this._editStepAwaits = step?.completionEventName ?? '';
     }
     this.emit('modux-select', { elementType: e.detail.kind, id: e.detail.id });
   }
@@ -1293,6 +1486,7 @@ export class ModuxEditor extends LitElement {
         case 'aggregate':
         case 'entity':
         case 'process':
+        case 'workflow':
           members.add(id);
           break;
         case 'flow':
@@ -1300,6 +1494,11 @@ export class ModuxEditor extends LitElement {
           break;
         case 'process-step': {
           const owner = this.owningProcessOf(id);
+          if (owner) members.add(owner.id);
+          break;
+        }
+        case 'workflow-step': {
+          const owner = this.owningWorkflowOf(id);
           if (owner) members.add(owner.id);
           break;
         }
@@ -1354,6 +1553,8 @@ export class ModuxEditor extends LitElement {
       processes: (this.model.processes ?? []).filter(
         (p) => members.has(p.id) || (p.ownerModuleId ? moduleIds.has(p.ownerModuleId) : false),
       ),
+      // Workflows have no owner module (they live outside the contexts): member-only.
+      workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
     };
   }
 
@@ -1389,7 +1590,12 @@ export class ModuxEditor extends LitElement {
     const mapped =
       e.detail.kind === 'process-step'
         ? activationForStep(this.model.processes, e.detail.id)
-        : normalizeActivation(e.detail.id, e.detail.kind);
+        : e.detail.kind === 'workflow-step'
+          ? (() => {
+              const owner = this.owningWorkflowOf(e.detail.id);
+              return owner ? { elementType: 'workflow', id: owner.id } : null;
+            })()
+          : normalizeActivation(e.detail.id, e.detail.kind);
     if (mapped) this.emit('modux-activate', mapped);
   }
 
@@ -1484,6 +1690,17 @@ export class ModuxEditor extends LitElement {
         triggerEvent: this._newTriggerEvent.trim() || undefined,
       });
       this._newTriggerEvent = '';
+    } else if (this._view === 'workflows') {
+      // No owner module on purpose: a workflow lives outside the bounded contexts.
+      this.command({
+        kind: 'add-workflow',
+        id: `wf-${slug(name)}`,
+        name,
+        triggerAggregateId: this._newTriggerAggId || this.model.aggregates?.[0]?.id,
+        triggerEvent: this._newTriggerEvent.trim() || undefined,
+        completionEventName: `${name.replace(/\s+/g, '')}Completado`,
+      });
+      this._newTriggerEvent = '';
     }
     this._newName = '';
   }
@@ -1497,7 +1714,11 @@ export class ModuxEditor extends LitElement {
         ? flowsScene(model, vl.nodes)
         : view === 'processes'
           ? processesScene(model, vl.nodes)
-          : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
+          : view === 'workflows'
+            ? workflowsScene(model, vl.nodes)
+            : view === 'eventstorming'
+              ? eventstormingScene(model, vl.nodes)
+              : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
   }
 
   /** ELK layout for the current view, applied as ONE undoable composite move. */
@@ -1513,7 +1734,10 @@ export class ModuxEditor extends LitElement {
       nodes: topNodes,
       edges: scene.edges.filter((e) => topIds.has(e.sourceId) && topIds.has(e.targetId)),
     };
-    const algorithm = view === 'flows' || view === 'processes' ? 'layered' : 'force';
+    const algorithm =
+      view === 'flows' || view === 'processes' || view === 'workflows' || view === 'eventstorming'
+        ? 'layered'
+        : 'force';
     const positions = await autoLayout(layoutScene, algorithm);
     const current = this.viewLayout(view);
     this.pushUndoEntry([
@@ -1588,6 +1812,7 @@ export class ModuxEditor extends LitElement {
           : ''}
         <input
           class="new-name"
+          ?hidden=${this._view === 'eventstorming'}
           placeholder=${{
             'context-map':
               this._newContextMapKind === 'external-system'
@@ -1608,6 +1833,8 @@ export class ModuxEditor extends LitElement {
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
+            workflows: 'Nuevo workflow…',
+            eventstorming: '',
           }[this._view]}
           .value=${this._newName}
           @input=${(e: Event) => (this._newName = (e.target as HTMLInputElement).value)}
@@ -1755,7 +1982,7 @@ export class ModuxEditor extends LitElement {
               )}
             </select>`
           : ''}
-        ${this._view === 'flows' || this._view === 'processes'
+        ${this._view === 'flows' || this._view === 'processes' || this._view === 'workflows'
           ? html`
               ${this._view === 'flows'
                 ? html`<select
@@ -1809,7 +2036,13 @@ export class ModuxEditor extends LitElement {
                 : ''}
             `
           : ''}
-        <button class="tab" @click=${this.createElementFromToolbar}>＋ Crear</button>
+        <button
+          class="tab"
+          ?hidden=${this._view === 'eventstorming'}
+          @click=${this.createElementFromToolbar}
+        >
+          ＋ Crear
+        </button>
         ${this._view === 'processes' &&
         this._selectedId &&
         ((this.model.processes ?? []).some((p) => p.id === this._selectedId) ||
@@ -1887,6 +2120,95 @@ export class ModuxEditor extends LitElement {
                 : ''}
             `
           : ''}
+        ${this._view === 'workflows' &&
+        this._selectedId &&
+        ((this.model.workflows ?? []).some((w) => w.id === this._selectedId) ||
+          this.owningWorkflowOf(this._selectedId))
+          ? html`
+              <span class="sep"></span>
+              <input
+                class="new-name evt"
+                placeholder="Nuevo paso…"
+                .value=${this._newStepName}
+                @input=${(e: Event) => (this._newStepName = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) =>
+                  e.key === 'Enter' && this.addWorkflowStepFromToolbar()}
+              />
+              <select
+                title="Caso de uso que lanza el nuevo paso"
+                @change=${(e: Event) => (this._newStepUseCase = (e.target as HTMLSelectElement).value)}
+              >
+                <option value="" ?selected=${this._newStepUseCase === ''}>— sin use case —</option>
+                ${this.model.modules
+                  .flatMap((m) => m.useCases ?? [])
+                  .map(
+                    (u) =>
+                      html`<option value=${u.id} ?selected=${u.id === this._newStepUseCase}>
+                        ${u.name}
+                      </option>`,
+                  )}
+              </select>
+              <input
+                class="new-name evt"
+                placeholder="Evento que emite…"
+                title="Evento que el workflow emite para arrancar el paso"
+                .value=${this._newStepEmits}
+                @input=${(e: Event) => (this._newStepEmits = (e.target as HTMLInputElement).value)}
+              />
+              <button
+                class="tab"
+                title="Añadir paso (workflow seleccionado = suelto; paso seleccionado = dependiente de él)"
+                @click=${this.addWorkflowStepFromToolbar}
+              >
+                ＋ Paso
+              </button>
+              ${this.owningWorkflowOf(this._selectedId)
+                ? html`
+                    <span class="sep"></span>
+                    <select
+                      title="Caso de uso destino del paso seleccionado"
+                      @change=${(e: Event) =>
+                        (this._editStepUseCase = (e.target as HTMLSelectElement).value)}
+                    >
+                      <option value="" ?selected=${this._editStepUseCase === ''}>
+                        — sin use case —
+                      </option>
+                      ${this.model.modules
+                        .flatMap((m) => m.useCases ?? [])
+                        .map(
+                          (u) =>
+                            html`<option value=${u.id} ?selected=${u.id === this._editStepUseCase}>
+                              ${u.name}
+                            </option>`,
+                        )}
+                    </select>
+                    <input
+                      class="new-name evt"
+                      placeholder="Emite…"
+                      title="Evento que arranca el paso seleccionado"
+                      .value=${this._editStepEmits}
+                      @input=${(e: Event) =>
+                        (this._editStepEmits = (e.target as HTMLInputElement).value)}
+                    />
+                    <input
+                      class="new-name evt"
+                      placeholder="Espera…"
+                      title="Evento que marca el paso como completado"
+                      .value=${this._editStepAwaits}
+                      @input=${(e: Event) =>
+                        (this._editStepAwaits = (e.target as HTMLInputElement).value)}
+                    />
+                    <button
+                      class="tab"
+                      title="Aplicar cambios al paso"
+                      @click=${this.applyWorkflowStepEdit}
+                    >
+                      ✓ Aplicar
+                    </button>
+                  `
+                : ''}
+            `
+          : ''}
         <button
           class="tab"
           title="Deshacer el último cambio (Ctrl+Z)"
@@ -1936,7 +2258,7 @@ export class ModuxEditor extends LitElement {
         .edgePoints=${this.viewLayout(this._view).edges}
         .selectedId=${this._selectedId}
         .selectedIds=${this._multi}
-        .connectable=${this._view === 'context-map'}
+        .connectable=${this._view === 'context-map' || this._view === 'workflows'}
         @node-moved=${this.onNodeMoved}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
@@ -1961,7 +2283,15 @@ export class ModuxEditor extends LitElement {
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
             · rueda para zoom`
-          : html`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
+          : this._view === 'eventstorming'
+            ? html`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
+              policy lila → read model verde · se edita desde las otras vistas o los CRUD (doble
+              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom`
+            : this._view === 'workflows'
+              ? html`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
+                · Supr borra el paso o la dependencia seleccionada · F2 renombra · doble click abre
+                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom`
+              : html`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
       </div>

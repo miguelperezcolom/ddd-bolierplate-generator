@@ -205,6 +205,58 @@ export interface ViewRef {
   memberIds: string[];
 }
 
+/** A use case acts on an aggregate (CallAggregateOperation / SaveAggregate step). */
+export interface AggregateCallRef {
+  sourceId: string;
+  targetId: string;
+}
+
+export interface SubscriptionActionRef {
+  type: 'CallUseCase' | 'StartSaga' | 'UpdateProjection' | 'Custom' | string;
+  useCaseId?: string;
+  sagaId?: string;
+  projectionId?: string;
+}
+
+/** Event listener: reacts to a domain/integration event by name. */
+export interface SubscriptionRef {
+  id: string;
+  name: string;
+  eventName?: string;
+  consumerGroup?: string;
+  actions?: SubscriptionActionRef[];
+}
+
+/** Projects domain events into a read model. */
+export interface ProjectionRef {
+  id: string;
+  name: string;
+  readModelId?: string;
+  readModelName?: string;
+  handledEventIds: string[];
+}
+
+export interface WorkflowStepRef {
+  id: string;
+  name: string;
+  emittedEventName?: string;
+  targetUseCaseId?: string;
+  completionEventName?: string;
+  dependsOnStepIds?: string[];
+}
+
+/** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
+export interface WorkflowRef {
+  id: string;
+  name: string;
+  triggerAggregateId?: string;
+  triggerDomainServiceId?: string;
+  triggerUseCaseId?: string;
+  triggerEvent?: string;
+  onCompletionEventName?: string;
+  steps: WorkflowStepRef[];
+}
+
 export interface ModuxModel {
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
@@ -225,4 +277,10 @@ export interface ModuxModel {
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];
   agentUses?: AgentUseRef[];
+  workflows?: WorkflowRef[];
+  aggregateCalls?: AggregateCallRef[];
+  /** Domain events published directly by use cases (PublishDomainEvent steps). */
+  useCaseEmissions?: EmissionRef[];
+  subscriptions?: SubscriptionRef[];
+  projections?: ProjectionRef[];
 }
