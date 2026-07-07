@@ -85,13 +85,14 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
 interface ChildDesc {
   id: string;
   name: string;
-  kind: 'aggregate' | 'use-case' | 'domain-event' | 'read-model' | 'domain-service';
+  kind: 'aggregate' | 'use-case' | 'domain-event' | 'application-event' | 'read-model' | 'domain-service';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
+  'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
 };
@@ -100,6 +101,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   aggregate: 'Agregado',
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
+  'application-event': 'Evento de aplicación',
   'read-model': 'Read model',
   'domain-service': 'Servicio de dominio',
 };
@@ -149,6 +151,9 @@ function detailedContext(
     ),
     ...(module.domainServices ?? []).map(
       (ds): ChildDesc => ({ id: ds.id, name: ds.name, kind: 'domain-service' }),
+    ),
+    ...(module.applicationEvents ?? []).map(
+      (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'application-event' }),
     ),
   ];
   if (!children.length) {
@@ -261,11 +266,10 @@ export function contextMapScene(
     // At the detail level a flow anchors on the concrete pieces when they are
     // visible: the trigger event in the source context and (for MATERIALIZES)
     // the read model in the target — the drawing mirrors the intent.
-    const sourceEvent = detailed
-      ? model.modules
-          .find((m) => m.id === f.sourceId)
-          ?.domainEvents?.find((ev) => ev.name === f.triggerEvent)
-      : undefined;
+    const sourceModule = detailed ? model.modules.find((m) => m.id === f.sourceId) : undefined;
+    const sourceEvent =
+      sourceModule?.domainEvents?.find((ev) => ev.name === f.triggerEvent) ??
+      sourceModule?.applicationEvents?.find((ev) => ev.name === f.triggerEvent);
     const targetReadModel =
       detailed && f.readModelName
         ? model.modules

@@ -55,6 +55,17 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** An application event: a fact published by a use case. */
+      kind: 'add-application-event';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-application-event';
+      id: string;
+    }
+  | {
       /** A domain service: stateless domain logic owned by a bounded context. */
       kind: 'add-domain-service';
       id: string;
@@ -103,6 +114,8 @@ export type ModuxCommand =
       triggerEvent: string;
       /** Alternative trigger: the domain service emitting the trigger event. */
       triggerDomainServiceId?: string;
+      /** Alternative trigger: the use case publishing the trigger APPLICATION event. */
+      triggerUseCaseId?: string;
       /** Target module or external system. */
       targetId: string;
       readModelName?: string;

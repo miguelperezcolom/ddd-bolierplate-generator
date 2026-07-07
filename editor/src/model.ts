@@ -28,6 +28,11 @@ export interface DomainEventRef {
   name: string;
 }
 
+export interface ApplicationEventRef {
+  id: string;
+  name: string;
+}
+
 export interface DomainServiceRef {
   id: string;
   name: string;
@@ -59,6 +64,8 @@ export interface ModuleRef {
   readModels?: ReadModelRef[];
   /** Domain services owned by this bounded context (they emit domain events, like aggregates). */
   domainServices?: DomainServiceRef[];
+  /** Application events owned by this bounded context (published by its use cases). */
+  applicationEvents?: ApplicationEventRef[];
 }
 
 export interface ExternalSystemRef {

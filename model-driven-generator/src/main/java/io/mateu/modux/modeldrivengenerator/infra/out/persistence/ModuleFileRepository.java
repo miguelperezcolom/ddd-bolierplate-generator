@@ -115,7 +115,8 @@ public class ModuleFileRepository implements ModuleRepository {
                 existing != null ? existing.readSideModuleId() : null,
                 existing != null ? existing.readSideExternalSystemId() : null,
                 existing != null ? existing.readSideVia() : null,
-                existing != null ? existing.domainServiceIds() : List.of()));
+                existing != null ? existing.domainServiceIds() : List.of(),
+                existing != null ? existing.applicationEventIds() : List.of()));
         return entity;
     }
 

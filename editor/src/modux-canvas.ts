@@ -258,6 +258,7 @@ export class ModuxCanvas extends LitElement {
         node?.parentId &&
         !edge &&
         node.kind !== 'domain-event' &&
+        node.kind !== 'application-event' &&
         node.kind !== 'read-model' &&
         node.kind !== 'domain-service'
       )
@@ -850,7 +851,9 @@ export class ModuxCanvas extends LitElement {
         (!isChild ||
           node.kind === 'aggregate' ||
           node.kind === 'domain-service' ||
-          node.kind === 'domain-event')
+          node.kind === 'use-case' ||
+          node.kind === 'domain-event' ||
+          node.kind === 'application-event')
           ? [
               [hw, 0],
               [-hw, 0],
@@ -863,9 +866,11 @@ export class ModuxCanvas extends LitElement {
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
                   <title>${!isChild
                     ? 'Arrastra hasta otro nodo para crear una relación'
-                    : node.kind === 'domain-event'
+                    : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
-                      : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
+                      : node.kind === 'use-case'
+                        ? 'Arrastra hasta un evento de aplicación para declarar que lo publica'
+                        : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
                 </circle>`,
             )
           : ''}

@@ -52,7 +52,9 @@ public record ModuleEntity(
         /** How the delegated read side is fed from here (e.g. "CDC", "events", "API"); prose, feeds the HLA. */
         String readSideVia,
         /** Domain services owned by this bounded context (stateless domain logic; they emit domain events). */
-        List<String> domainServiceIds
+        List<String> domainServiceIds,
+        /** Application events owned by this bounded context (published by its use cases). */
+        List<String> applicationEventIds
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-domainServiceIds callers and stores). */
@@ -72,7 +74,7 @@ public record ModuleEntity(
                 scheduledTriggerIds, bddScenarios, llmSystemPrompt, tableNamePrefix,
                 autoTableNamePrefix, version, bffs, acls, domainPolicies, invariants,
                 subdomainType, accessPolicies, kpis, decisionIds, description,
-                readSideModuleId, readSideExternalSystemId, readSideVia, List.of());
+                readSideModuleId, readSideExternalSystemId, readSideVia, List.of(), List.of());
     }
 
     /** Backward-compatible constructor (pre subdomain/accessPolicies/kpis callers and stores). */
@@ -137,5 +139,9 @@ public record ModuleEntity(
 
     public List<String> domainServiceIds() {
         return domainServiceIds != null ? domainServiceIds : List.of();
+    }
+
+    public List<String> applicationEventIds() {
+        return applicationEventIds != null ? applicationEventIds : List.of();
     }
 }

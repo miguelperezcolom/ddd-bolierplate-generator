@@ -22,8 +22,20 @@ public record UseCaseStepEntity(
          * it travels into the generated scaffold as javadoc and {@code mvn modux:ai-complete} uses
          * it to propose an implementation — which the developer owns and can overwrite.
          */
-        String intent
+        String intent,
+        /** PublishApplicationEvent: the application event this step publishes. */
+        String applicationEventId
 ) {
+
+    /** Backward-compatible constructor (pre-applicationEventId callers and stores). */
+    public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,
+                             String operationId, String gatewayId, String gatewayOperationId,
+                             String domainEventId, String useCaseId, String modelMappingId,
+                             String queryServiceId, String queryOperationId, String intent) {
+        this(id, name, type, aggregateId, operationId, gatewayId, gatewayOperationId,
+                domainEventId, useCaseId, modelMappingId, queryServiceId, queryOperationId,
+                intent, null);
+    }
 
     /** Backward-compatible constructor (pre-CallQueryService callers). */
     public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,

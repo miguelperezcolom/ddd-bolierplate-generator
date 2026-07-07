@@ -21,8 +21,21 @@ public record FlowEntity(
         /** Architecture decisions (ADRs) this flow traces back to. */
         List<String> decisionIds,
         /** Alternative trigger: the domain service emitting the trigger event (instead of an aggregate). */
-        String triggerDomainServiceId
+        String triggerDomainServiceId,
+        /** Alternative trigger: the use case publishing the trigger APPLICATION event. */
+        String triggerUseCaseId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-triggerUseCaseId callers and stores). */
+    public FlowEntity(String id, String name, String description, FlowArchetype archetype,
+                      String triggerAggregateId, String triggerEvent, String targetModuleId,
+                      String readModelName, List<String> materializedFields, String targetUseCaseId,
+                      List<String> inputMappings, List<String> overrides, List<String> decisionIds,
+                      String triggerDomainServiceId) {
+        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
+                readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
+                decisionIds, triggerDomainServiceId, null);
+    }
 
     /** Backward-compatible constructor (pre-triggerDomainServiceId callers and stores). */
     public FlowEntity(String id, String name, String description, FlowArchetype archetype,
@@ -31,7 +44,7 @@ public record FlowEntity(
                       List<String> inputMappings, List<String> overrides, List<String> decisionIds) {
         this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
-                decisionIds, null);
+                decisionIds, null, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -41,6 +54,6 @@ public record FlowEntity(
                       List<String> inputMappings, List<String> overrides) {
         this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
-                List.of(), null);
+                List.of(), null, null);
     }
 }

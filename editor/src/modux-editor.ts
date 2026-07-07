@@ -140,8 +140,12 @@ export class ModuxEditor extends LitElement {
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
   @state() private _newModuleId = '';
   /** What the context-map toolbar creates at detail level: a context, or a child element. */
-  @state() private _newContextMapKind: 'module' | 'domain-event' | 'read-model' | 'domain-service' =
-    'module';
+  @state() private _newContextMapKind:
+    | 'module'
+    | 'domain-event'
+    | 'application-event'
+    | 'read-model'
+    | 'domain-service' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
   @state() private _newArchetype = 'TRIGGERS';
@@ -464,6 +468,17 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-emission':
         return [{ kind: 'add-emission', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-application-event':
+        return [{ kind: 'remove-application-event', id: c.id }];
+      case 'remove-application-event': {
+        for (const m of this.model.modules) {
+          const ev = (m.applicationEvents ?? []).find((x) => x.id === c.id);
+          if (ev) {
+            return [{ kind: 'add-application-event', id: ev.id, name: ev.name, moduleId: m.id }];
+          }
+        }
+        return null;
+      }
       case 'add-domain-service':
         return [{ kind: 'remove-domain-service', id: c.id }];
       case 'remove-domain-service': {
@@ -503,7 +518,9 @@ export class ModuxEditor extends LitElement {
                   ? this.model.modules.flatMap((m) => m.readModels ?? [])
                   : c.type === 'domain-service'
                     ? this.model.modules.flatMap((m) => m.domainServices ?? [])
-                    : this.model.entities ?? [];
+                    : c.type === 'application-event'
+                      ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
+                      : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -721,7 +738,14 @@ export class ModuxEditor extends LitElement {
       ...(this.model.aggregates ?? []).map((a) => a.id),
       ...this.model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
     ]);
-    if (emitterIds.has(sourceId) && eventIds.has(targetId)) {
+    const appEventIds = new Set(
+      this.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
+    );
+    const ucIds = new Set(this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)));
+    if (
+      (emitterIds.has(sourceId) && eventIds.has(targetId)) ||
+      (ucIds.has(sourceId) && appEventIds.has(targetId))
+    ) {
       const already = (this.model.emissions ?? []).some(
         (em) => em.sourceId === sourceId && em.domainEventId === targetId,
       );
@@ -731,9 +755,10 @@ export class ModuxEditor extends LitElement {
     // Dragging an event onto another context (or one of its read models) draws a
     // materialization: a MATERIALIZES flow — the projection/read model/subscription
     // triple stays derived at generation time (flows are the source of truth).
-    if (eventIds.has(sourceId)) {
+    if (eventIds.has(sourceId) || appEventIds.has(sourceId)) {
+      const isApplicationEvent = appEventIds.has(sourceId);
       const event = this.model.modules
-        .flatMap((m) => m.domainEvents ?? [])
+        .flatMap((m) => (isApplicationEvent ? m.applicationEvents : m.domainEvents) ?? [])
         .find((ev) => ev.id === sourceId);
       const targetReadModel = this.model.modules
         .flatMap((m) => (m.readModels ?? []).map((rm) => ({ rm, module: m })))
@@ -748,16 +773,20 @@ export class ModuxEditor extends LitElement {
       const emitter = (this.model.emissions ?? []).find(
         (em) =>
           em.domainEventId === sourceId &&
-          (aggregateIds.has(em.sourceId) || domainServiceIds.has(em.sourceId)),
+          (isApplicationEvent
+            ? ucIds.has(em.sourceId)
+            : aggregateIds.has(em.sourceId) || domainServiceIds.has(em.sourceId)),
       );
       if (!emitter) {
         this.emit('modux-notice', {
-          message: `Declara primero quién emite ${event.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
+          message: isApplicationEvent
+            ? `Declara primero qué caso de uso publica ${event.name} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador`
+            : `Declara primero quién emite ${event.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
           kind: 'info',
         });
         return;
       }
-      const emitterIsAggregate = aggregateIds.has(emitter.sourceId);
+      const emitterIsAggregate = !isApplicationEvent && aggregateIds.has(emitter.sourceId);
       const readModelName = targetReadModel?.rm.name ?? `${event.name}View`;
       const exists = this.model.flows.some(
         (f) =>
@@ -773,7 +802,9 @@ export class ModuxEditor extends LitElement {
         name: readModelName,
         archetype: 'MATERIALIZES',
         triggerAggregateId: emitterIsAggregate ? emitter.sourceId : '',
-        triggerDomainServiceId: emitterIsAggregate ? undefined : emitter.sourceId,
+        triggerDomainServiceId:
+          !isApplicationEvent && !emitterIsAggregate ? emitter.sourceId : undefined,
+        triggerUseCaseId: isApplicationEvent ? emitter.sourceId : undefined,
         triggerEvent: event.name,
         targetId: targetModule.id,
         readModelName,
@@ -783,10 +814,15 @@ export class ModuxEditor extends LitElement {
     // Any other pair touching a nested child is not a strategic relation.
     const childIds = new Set([
       ...emitterIds,
-      ...this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      ...ucIds,
       ...this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
     ]);
-    if (childIds.has(sourceId) || childIds.has(targetId) || eventIds.has(targetId)) {
+    if (
+      childIds.has(sourceId) ||
+      childIds.has(targetId) ||
+      eventIds.has(targetId) ||
+      appEventIds.has(targetId)
+    ) {
       return;
     }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
@@ -865,6 +901,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-domain-service', id });
       return;
     }
+    if (elementType === 'node' && kind === 'application-event') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-application-event', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-flow', id: id.replace(/^flow:/, '') });
@@ -896,7 +937,8 @@ export class ModuxEditor extends LitElement {
       kind === 'process-step' ||
       kind === 'domain-event' ||
       kind === 'read-model' ||
-      kind === 'domain-service'
+      kind === 'domain-service' ||
+      kind === 'application-event'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1073,6 +1115,11 @@ export class ModuxEditor extends LitElement {
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-domain-event', id: `ev-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'application-event') {
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-application-event', id: `aev-${slug(name)}`, name, moduleId });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-service') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
@@ -1233,9 +1280,11 @@ export class ModuxEditor extends LitElement {
                 ? 'Nuevo contexto…'
                 : this._newContextMapKind === 'domain-event'
                   ? 'Nuevo evento de dominio…'
-                  : this._newContextMapKind === 'domain-service'
-                    ? 'Nuevo servicio de dominio…'
-                    : 'Nuevo read model…',
+                  : this._newContextMapKind === 'application-event'
+                    ? 'Nuevo evento de aplicación…'
+                    : this._newContextMapKind === 'domain-service'
+                      ? 'Nuevo servicio de dominio…'
+                      : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -1257,6 +1306,12 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="domain-event" ?selected=${this._newContextMapKind === 'domain-event'}>
                 Evento de dominio
+              </option>
+              <option
+                value="application-event"
+                ?selected=${this._newContextMapKind === 'application-event'}
+              >
+                Evento de aplicación
               </option>
               <option value="read-model" ?selected=${this._newContextMapKind === 'read-model'}>
                 Read model
@@ -1304,6 +1359,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'context-map' &&
           this._detail === 'detail' &&
           (this._newContextMapKind === 'domain-event' ||
+            this._newContextMapKind === 'application-event' ||
             this._newContextMapKind === 'domain-service'))
           ? html`<select
               title=${this._view === 'aggregates'

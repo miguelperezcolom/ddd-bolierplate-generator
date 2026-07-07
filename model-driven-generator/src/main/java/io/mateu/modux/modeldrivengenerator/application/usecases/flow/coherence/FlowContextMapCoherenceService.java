@@ -58,9 +58,10 @@ public class FlowContextMapCoherenceService {
                                                     List<ContextMapRelationEntity> relations) {
         var archetype = flow.archetype();
         var aggregateOwner = ownerModuleId(flow.triggerAggregateId(), modules);
-        var sourceModuleId = aggregateOwner != null
-                ? aggregateOwner
-                : domainServiceOwnerModuleId(flow.triggerDomainServiceId(), modules);
+        var nonAggregateOwner = flow.triggerDomainServiceId() != null
+                ? domainServiceOwnerModuleId(flow.triggerDomainServiceId(), modules)
+                : useCaseOwnerModuleId(flow.triggerUseCaseId(), modules);
+        var sourceModuleId = aggregateOwner != null ? aggregateOwner : nonAggregateOwner;
         var targetModuleId = flow.targetModuleId();
 
         // NOTIFIES targets an external system — it is not an edge of the bounded-context map.
@@ -108,6 +109,15 @@ public class FlowContextMapCoherenceService {
         if (aggregateId == null) return null;
         return modules.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
+                .map(ModuleEntity::id)
+                .findFirst().orElse(null);
+    }
+
+    /** Alternative trigger: the module owning the publishing use case (application events). */
+    private static String useCaseOwnerModuleId(String useCaseId, List<ModuleEntity> modules) {
+        if (useCaseId == null) return null;
+        return modules.stream()
+                .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(useCaseId))
                 .map(ModuleEntity::id)
                 .findFirst().orElse(null);
     }

@@ -7,6 +7,7 @@ public enum UseCaseStepType {
     SaveAggregate,
     CallGateway,
     PublishDomainEvent,
+    PublishApplicationEvent,
     CallUseCase,
     CallQueryService,
     ApplyModelMapping;
@@ -20,7 +21,8 @@ public enum UseCaseStepType {
         return switch (this) {
             case ReadAggregate, CallQueryService -> StepPhase.GATHER;
             case ApplyModelMapping -> StepPhase.TRANSFORM;
-            case CallAggregateOperation, SaveAggregate, PublishDomainEvent, CallGateway -> StepPhase.WRITE;
+            case CallAggregateOperation, SaveAggregate, PublishDomainEvent, PublishApplicationEvent,
+                    CallGateway -> StepPhase.WRITE;
             case CallUseCase -> StepPhase.COMPOSE;
             case Custom -> StepPhase.CUSTOM;
         };

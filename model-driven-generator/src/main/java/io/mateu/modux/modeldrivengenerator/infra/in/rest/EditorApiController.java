@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.Subdomain
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
@@ -68,8 +69,10 @@ public class EditorApiController {
 
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
-                            List<ReadModelDto> readModels, List<DomainServiceDto> domainServices) {}
+                            List<ReadModelDto> readModels, List<DomainServiceDto> domainServices,
+                            List<ApplicationEventDto> applicationEvents) {}
     public record DomainServiceDto(String id, String name) {}
+    public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
     public record ReadModelDto(String id, String name, String aggregateId) {}
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
@@ -183,6 +186,8 @@ public class EditorApiController {
                 .collect(Collectors.toMap(ReadModelEntity::id, rm -> rm, (a, b) -> a));
         var domainServicesById = repository.findAllOfType(DomainServiceEntity.class).stream()
                 .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
+        var applicationEventsById = repository.findAllOfType(ApplicationEventEntity.class).stream()
+                .collect(Collectors.toMap(ApplicationEventEntity::id, ev -> ev, (a, b) -> a));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -212,6 +217,11 @@ public class EditorApiController {
                                 .map(domainServicesById::get)
                                 .filter(Objects::nonNull)
                                 .map(ds -> new DomainServiceDto(ds.id(), ds.name()))
+                                .toList(),
+                        m.applicationEventIds().stream()
+                                .map(applicationEventsById::get)
+                                .filter(Objects::nonNull)
+                                .map(ev -> new ApplicationEventDto(ev.id(), ev.name()))
                                 .toList()))
                 .toList();
 
@@ -315,6 +325,15 @@ public class EditorApiController {
         for (var ds : repository.findAllOfType(DomainServiceEntity.class)) {
             collectEmissions(ds.id(), ds.operations(), eventIdByName, emissions);
         }
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishApplicationEvent
+                        && step.applicationEventId() != null) {
+                    emissions.add(new EmissionDto(uc.id(), step.applicationEventId()));
+                }
+            }
+        }
 
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
@@ -327,7 +346,7 @@ public class EditorApiController {
                                 String id, String name, String subdomainType, String moduleId,
                                 String aggregateId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
-                                String triggerDomainServiceId,
+                                String triggerDomainServiceId, String triggerUseCaseId,
                                 String readModelName, String targetUseCaseId,
                                 List<ProcessStepDto> steps,
                                 String processId, String afterStepId, String stepType,
@@ -345,6 +364,8 @@ public class EditorApiController {
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
+            case "add-application-event" -> addApplicationEvent(command);
+            case "remove-application-event" -> removeApplicationEvent(command);
             case "remove-domain-service" -> removeDomainService(command);
             case "add-emission" -> addEmission(command);
             case "add-read-model" -> addReadModel(command);
@@ -382,7 +403,8 @@ public class EditorApiController {
                 command.archetype() == null ? null : FlowArchetype.valueOf(command.archetype()),
                 command.triggerAggregateId(), command.triggerEvent(), command.targetId(),
                 command.readModelName(), List.of(), command.targetUseCaseId(),
-                List.of(), List.of(), List.of(), command.triggerDomainServiceId()));
+                List.of(), List.of(), List.of(), command.triggerDomainServiceId(),
+                command.triggerUseCaseId()));
     }
 
     private void removeFlow(EditorCommand command) {
@@ -539,6 +561,9 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "application-event" -> repository.findById(command.id(), ApplicationEventEntity.class)
+                    .ifPresent(ev -> repository.save(new ApplicationEventEntity(
+                            ev.id(), command.name(), ev.modelId())));
             case "domain-service" -> repository.findById(command.id(), DomainServiceEntity.class)
                     .ifPresent(ds -> repository.save(new DomainServiceEntity(
                             ds.id(), command.name(), ds.description(), ds.operations())));
@@ -622,6 +647,23 @@ public class EditorApiController {
      * Use cases do not emit domain events — they emit application events.
      */
     private void addEmission(EditorCommand command) {
+        // Use case → application event: a PublishApplicationEvent step.
+        var applicationEvent = repository.findById(command.targetId(), ApplicationEventEntity.class);
+        if (applicationEvent.isPresent()) {
+            var uc = repository.findById(command.sourceId(), UseCaseEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Solo los casos de uso emiten eventos de aplicación; emisor desconocido: "
+                                    + command.sourceId()));
+            var appEvent = applicationEvent.get();
+            var steps = new ArrayList<>(uc.steps() == null ? List.of() : uc.steps());
+            var alreadyThere = steps.stream().anyMatch(st -> appEvent.id().equals(st.applicationEventId()));
+            if (alreadyThere) return;
+            steps.add(new UseCaseStepEntity("step-emit-" + appEvent.id(), "publish" + appEvent.name(),
+                    io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishApplicationEvent,
+                    null, null, null, null, null, null, null, null, null, null, appEvent.id()));
+            repository.save(withSteps(uc, steps));
+            return;
+        }
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
         var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
@@ -661,6 +703,14 @@ public class EditorApiController {
     }
 
     private void removeEmission(EditorCommand command) {
+        var applicationEvent = repository.findById(command.targetId(), ApplicationEventEntity.class);
+        if (applicationEvent.isPresent()) {
+            repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                    repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                            .filter(st -> !command.targetId().equals(st.applicationEventId()))
+                            .toList())));
+            return;
+        }
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
         repository.findById(command.sourceId(), AggregateEntity.class).ifPresent(a ->
@@ -680,6 +730,34 @@ public class EditorApiController {
                 // A stub created just to carry this emission leaves with it.
                 .filter(op -> !(op.id().startsWith("op-emit-") && op.emits() == null))
                 .toList();
+    }
+
+    private void addApplicationEvent(EditorCommand command) {
+        if (repository.findById(command.id(), ApplicationEventEntity.class).isPresent()) return;
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new ApplicationEventEntity(command.id(), command.name(), null));
+        var applicationEventIds = new ArrayList<>(module.applicationEventIds());
+        applicationEventIds.add(command.id());
+        repository.save(module.toBuilder().applicationEventIds(applicationEventIds).build());
+    }
+
+    private void removeApplicationEvent(EditorCommand command) {
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.applicationEventIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .applicationEventIds(m.applicationEventIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        // Publishing steps referencing it leave with it.
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null || uc.steps().stream().noneMatch(st ->
+                    command.id().equals(st.applicationEventId()))) continue;
+            repository.save(withSteps(uc, uc.steps().stream()
+                    .filter(st -> !command.id().equals(st.applicationEventId()))
+                    .toList()));
+        }
+        repository.deleteAllById(List.of(command.id()), ApplicationEventEntity.class);
     }
 
     private void addDomainService(EditorCommand command) {
