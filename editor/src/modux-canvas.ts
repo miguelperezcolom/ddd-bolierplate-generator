@@ -743,7 +743,7 @@ export class ModuxCanvas extends LitElement {
            e.stopPropagation();
            this.emit('element-activated', { elementType: 'node', id: node.id, kind: node.kind });
          }}>
-        <rect x=${-hw} y=${-hh} width=${node.w} height=${node.h} rx=${isChild ? 6 : 10}
+        <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${isChild ? 6 : 10}
               fill=${node.fill ?? '#ffffff'}
               stroke=${hovered ? '#2563eb' : selected ? '#2563eb' : node.stroke ?? '#94a3b8'}
               stroke-width=${selected || hovered ? 2.5 : 1.4}
