@@ -129,6 +129,24 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /**
+       * Project an aggregate's state onto a read model — possibly in another bounded
+       * context. `targetId` names an existing read model; otherwise `moduleId` is the
+       * target context and a stub read model is created there.
+       */
+      kind: 'add-projection';
+      id: string;
+      name: string;
+      aggregateId: string;
+      targetId?: string;
+      moduleId?: string;
+      readModelName?: string;
+    }
+  | {
+      kind: 'remove-projection';
+      id: string;
+    }
+  | {
       /** A query service owned by a bounded context. */
       kind: 'add-query-service';
       id: string;

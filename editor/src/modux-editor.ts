@@ -609,6 +609,25 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-read-model':
         return [{ kind: 'remove-read-model', id: c.id }];
+      case 'add-projection':
+        return [{ kind: 'remove-projection', id: c.id }];
+      case 'remove-projection': {
+        const p = (this.model.projections ?? []).find((x) => x.id === c.id);
+        // Only aggregate-sourced projections are restorable from the canvas; the
+        // stub read model survives the removal, so relinking by targetId suffices.
+        return p && p.sourceAggregateId
+          ? [
+              {
+                kind: 'add-projection',
+                id: p.id,
+                name: p.name,
+                aggregateId: p.sourceAggregateId,
+                targetId: p.readModelId,
+                moduleId: p.moduleId,
+              },
+            ]
+          : null;
+      }
       case 'remove-read-model': {
         for (const m of this.model.modules) {
           const rm = (m.readModels ?? []).find((x) => x.id === c.id);
@@ -996,6 +1015,48 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // Dragging an aggregate onto a read model (or another context) declares a state
+    // projection: the aggregate's state is materialized there. What that implies
+    // (CDC, snapshots, replication…) is decided later — this only records the intent.
+    const projAggregate = (this.model.aggregates ?? []).find((a) => a.id === sourceId);
+    if (projAggregate) {
+      const targetReadModel = this.model.modules
+        .flatMap((m) => m.readModels ?? [])
+        .find((rm) => rm.id === targetId);
+      if (targetReadModel) {
+        const exists = (this.model.projections ?? []).some(
+          (p) => p.sourceAggregateId === sourceId && p.readModelId === targetId,
+        );
+        if (!exists) {
+          this.command({
+            kind: 'add-projection',
+            id: `proj-${slug(projAggregate.name)}-${slug(targetReadModel.name)}`,
+            name: `${targetReadModel.name}Projection`,
+            aggregateId: sourceId,
+            targetId,
+          });
+        }
+        return;
+      }
+      const targetModule = this.model.modules.find((m) => m.id === targetId);
+      if (targetModule) {
+        const exists = (this.model.projections ?? []).some(
+          (p) => p.sourceAggregateId === sourceId && p.moduleId === targetId,
+        );
+        if (!exists) {
+          this.command({
+            kind: 'add-projection',
+            id: `proj-${slug(projAggregate.name)}-${slug(targetModule.name)}`,
+            name: `${projAggregate.name}ViewProjection`,
+            aggregateId: sourceId,
+            moduleId: targetId,
+            readModelName: `${projAggregate.name}View`,
+          });
+        }
+        return;
+      }
+      // any other target (e.g. a domain event) falls through to the gestures below
+    }
     // Dragging from an aggregate/use case onto a domain event declares an emission.
     const eventIds = new Set(
       this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
@@ -1230,6 +1291,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-emission', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'projection') {
+      const match = /^proj:(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-projection', id: match[1] });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'uc-call') {

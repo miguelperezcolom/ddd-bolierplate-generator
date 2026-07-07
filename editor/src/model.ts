@@ -229,13 +229,17 @@ export interface SubscriptionRef {
   actions?: SubscriptionActionRef[];
 }
 
-/** Projects domain events into a read model. */
+/** Projects domain events — or an aggregate's whole state — into a read model. */
 export interface ProjectionRef {
   id: string;
   name: string;
   readModelId?: string;
   readModelName?: string;
   handledEventIds: string[];
+  /** Alternative source: the aggregate whose state this projection materializes. */
+  sourceAggregateId?: string;
+  /** Bounded context that owns the projection (and its read model). */
+  moduleId?: string;
 }
 
 export interface WorkflowStepRef {

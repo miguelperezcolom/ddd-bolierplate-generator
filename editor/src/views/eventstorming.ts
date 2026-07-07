@@ -393,6 +393,19 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
         arrow: true,
       });
     }
+    // Aggregate-sourced projection: the aggregate's whole state feeds it.
+    if (projection.sourceAggregateId && b.nodes.has(projection.sourceAggregateId)) {
+      addEdge(b, {
+        id: `es-state:${projection.id}`,
+        sourceId: projection.sourceAggregateId,
+        targetId: id,
+        kind: 'es-projects-state',
+        color: '#0d9488',
+        dashed: true,
+        arrow: true,
+        tooltip: 'proyecta su estado',
+      });
+    }
     const rm = readModelNodeFor({ id: projection.readModelId, name: projection.readModelName });
     if (rm) {
       addEdge(b, {

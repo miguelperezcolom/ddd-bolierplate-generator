@@ -2342,6 +2342,11 @@
         },
         "snapshotFrequency" : {
           "type" : "integer"
+        },
+        "sourceAggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],

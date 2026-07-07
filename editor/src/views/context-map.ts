@@ -402,6 +402,24 @@ export function contextMapScene(
         }))
     : [];
 
+  // Aggregate-state projections (aggregate → read model, possibly cross-context),
+  // visible at the detail level where both render as children.
+  const projectionEdges: SceneEdge[] = detailed
+    ? (model.projections ?? [])
+        .filter((p) => p.sourceAggregateId && p.readModelId)
+        .filter((p) => nodeIds.has(p.sourceAggregateId!) && nodeIds.has(p.readModelId!))
+        .map((p) => ({
+          id: `proj:${p.id}`,
+          sourceId: p.sourceAggregateId!,
+          targetId: p.readModelId!,
+          kind: 'projection',
+          color: '#0d9488',
+          dashed: true,
+          arrow: true,
+          tooltip: `Proyección ${p.name}: el estado del agregado se materializa en ${p.readModelName ?? p.readModelId}`,
+        }))
+    : [];
+
   // Use case → use case invocations, visible when both render as children.
   const callEdges: SceneEdge[] = detailed
     ? (model.useCaseCalls ?? [])
@@ -495,6 +513,7 @@ export function contextMapScene(
       ...relationEdges,
       ...flowEdges,
       ...emissionEdges,
+      ...projectionEdges,
       ...callEdges,
       ...queryEdges,
       ...actorUseEdges,

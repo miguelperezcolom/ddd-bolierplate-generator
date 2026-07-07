@@ -127,7 +127,8 @@ public class EditorApiController {
     public record SubscriptionDto(String id, String name, String eventName, String consumerGroup,
                                   List<SubscriptionActionDto> actions) {}
     public record ProjectionDto(String id, String name, String readModelId, String readModelName,
-                                List<String> handledEventIds) {}
+                                List<String> handledEventIds, String sourceAggregateId,
+                                String moduleId) {}
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
@@ -468,7 +469,12 @@ public class EditorApiController {
                                 : repository.findById(p.readModelId(), ReadModelEntity.class)
                                         .map(ReadModelEntity::name).orElse(p.readModelId()),
                         (p.handlers() == null ? List.<String>of() : p.handlers().stream()
-                                .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList())))
+                                .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList()),
+                        p.sourceAggregateId(),
+                        repository.findAllOfType(ModuleEntity.class).stream()
+                                .filter(m -> m.projectionIds() != null
+                                        && m.projectionIds().contains(p.id()))
+                                .map(ModuleEntity::id).findFirst().orElse(null)))
                 .toList();
 
         var queryCalls = new ArrayList<QueryCallDto>();
@@ -641,6 +647,8 @@ public class EditorApiController {
             case "remove-external-uc-call" -> removeExternalUcCall(command);
             case "add-read-model" -> addReadModel(command);
             case "remove-read-model" -> removeReadModel(command);
+            case "add-projection" -> addProjection(command);
+            case "remove-projection" -> removeProjection(command);
             case "remove-module" -> removeModule(command);
             case "remove-aggregate" -> removeAggregate(command);
             case "remove-domain-event" -> removeDomainEvent(command);
@@ -1702,6 +1710,70 @@ public class EditorApiController {
                                 .filter(id -> !id.equals(command.id())).toList())
                         .build()));
         repository.deleteAllById(List.of(command.id()), ReadModelEntity.class);
+    }
+
+    /**
+     * A projection SOURCED FROM AN AGGREGATE's state (no event handlers): the aggregate is
+     * projected onto a read model — possibly in another bounded context. Without a
+     * readModelId a stub read model is born in the target module, shaped after the
+     * aggregate's state model. How the state travels is a later decision.
+     */
+    private void addProjection(EditorCommand command) {
+        if (repository.findById(command.id(), ProjectionEntity.class).isPresent()) return;
+        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown aggregate: " + command.aggregateId()));
+        String readModelId;
+        ModuleEntity owner;
+        if (command.targetId() != null
+                && repository.findById(command.targetId(), ReadModelEntity.class).isPresent()) {
+            readModelId = command.targetId();
+            owner = repository.findAllOfType(ModuleEntity.class).stream()
+                    .filter(m -> m.readModelIds() != null && m.readModelIds().contains(readModelId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "El read model " + readModelId + " no pertenece a ningún módulo"));
+        } else {
+            owner = repository.findById(command.moduleId(), ModuleEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown module: " + command.moduleId()));
+            readModelId = "rm-" + command.id().replaceFirst("^proj-", "");
+            if (repository.findById(readModelId, ReadModelEntity.class).isEmpty()) {
+                repository.save(new ReadModelEntity(readModelId,
+                        command.readModelName() != null ? command.readModelName()
+                                : aggregate.name() + "View",
+                        owner.id(), null, aggregate.modelId(), null, null, aggregate.id()));
+                var readModelIds = new ArrayList<>(
+                        owner.readModelIds() == null ? List.of() : owner.readModelIds());
+                readModelIds.add(readModelId);
+                owner = owner.toBuilder().readModelIds(readModelIds).build();
+                repository.save(owner);
+            }
+        }
+        repository.save(new ProjectionEntity(command.id(), command.name(), readModelId,
+                List.of(), null, null, null, false, null, aggregate.id()));
+        var projectionIds = new ArrayList<>(
+                owner.projectionIds() == null ? List.of() : owner.projectionIds());
+        projectionIds.add(command.id());
+        repository.save(owner.toBuilder().projectionIds(projectionIds).build());
+    }
+
+    private void removeProjection(EditorCommand command) {
+        var updatedBySubscription = repository.findAllOfType(SubscriptionEntity.class).stream()
+                .filter(s -> s.actions() != null)
+                .anyMatch(s -> s.actions().stream()
+                        .anyMatch(a -> command.id().equals(a.projectionId())));
+        if (updatedBySubscription) {
+            throw new IllegalArgumentException("La proyección " + command.id()
+                    + " la actualizan subscriptions; quita esas acciones primero");
+        }
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.projectionIds() != null && m.projectionIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .projectionIds(m.projectionIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), ProjectionEntity.class);
     }
 
     private void removeDomainEvent(EditorCommand command) {

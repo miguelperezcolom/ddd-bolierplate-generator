@@ -35,6 +35,9 @@ public class ProjectionFileRepository implements ProjectionRepository {
 
     @Override
     public Projection save(Projection entity) {
+        // sourceAggregateId is not modeled in the domain Projection yet — carry it over from
+        // the stored entity so a UI save never wipes what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), ProjectionEntity.class).orElse(null);
         repository.save(new ProjectionEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -43,7 +46,8 @@ public class ProjectionFileRepository implements ProjectionRepository {
                 entity.getRebuildStrategy() != null ? entity.getRebuildStrategy().name() : null,
                 entity.getErrorHandlingStrategy() != null ? entity.getErrorHandlingStrategy().name() : null,
                 entity.getMaxRetries(),
-                entity.isSnapshotEnabled(), entity.getSnapshotFrequency()));
+                entity.isSnapshotEnabled(), entity.getSnapshotFrequency(),
+                existing != null ? existing.sourceAggregateId() : null));
         return entity;
     }
 

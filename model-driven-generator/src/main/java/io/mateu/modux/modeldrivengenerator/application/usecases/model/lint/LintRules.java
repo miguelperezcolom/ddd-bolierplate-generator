@@ -63,7 +63,24 @@ public final class LintRules {
                 new WorkflowStepTarget(),
                 new WorkflowDependsScope(),
                 new PolicyWithoutTrigger(),
-                new PolicyExposedAsUi());
+                new PolicyExposedAsUi(),
+                new ProjectionSource());
+    }
+
+    /** A projection needs a source: event handlers, or an aggregate whose state it projects. */
+    static class ProjectionSource implements LintRule {
+        public String id() { return "projection-source"; }
+        public String description() { return "A projection must fold events or project an aggregate"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.projections().stream()
+                    .filter(p -> (p.handlers() == null || p.handlers().isEmpty())
+                            && p.sourceAggregateId() == null)
+                    .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(),
+                            p.name(),
+                            "Proyección sin fuente: ni maneja eventos ni proyecta un agregado —"
+                                    + " el read model nunca se alimentará."))
+                    .toList();
+        }
     }
 
     // --- policies (use-case-shaped reactions, the lilac sticky) -----------------
