@@ -57,7 +57,120 @@ public final class LintRules {
                 new ModuleWritePath(),
                 new UseCasePipeline(),
                 new OperationPipeline(),
-                new CustomStepIntent());
+                new CustomStepIntent(),
+                new WorkflowDag(),
+                new WorkflowTrigger(),
+                new WorkflowStepTarget(),
+                new WorkflowDependsScope());
+    }
+
+    // --- workflows (cross-context orchestrators) --------------------------------
+
+    /** A cycle in a workflow's dependency graph means some steps can never start. */
+    static class WorkflowDag implements LintRule {
+        public String id() { return "workflow-dag"; }
+        public String description() { return "A workflow's step dependencies must form a DAG"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var workflow : m.workflows()) {
+                var dependsOn = new java.util.HashMap<String, List<String>>();
+                for (var step : workflow.steps()) {
+                    dependsOn.put(step.id(), step.dependsOnStepIds());
+                }
+                var cycleStep = findCycle(dependsOn);
+                if (cycleStep != null) {
+                    findings.add(new LintFinding(id(), LintSeverity.ERROR, "Workflow",
+                            workflow.id(), workflow.name(),
+                            "Dependency cycle through step '" + cycleStep
+                                    + "' — the steps in the cycle can never start."));
+                }
+            }
+            return findings;
+        }
+
+        /** A step id on some dependency cycle, or null when the graph is a DAG. */
+        private static String findCycle(java.util.Map<String, List<String>> dependsOn) {
+            var done = new HashSet<String>();
+            var inProgress = new HashSet<String>();
+            for (var stepId : dependsOn.keySet()) {
+                var found = visit(stepId, dependsOn, done, inProgress);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        private static String visit(String stepId, java.util.Map<String, List<String>> dependsOn,
+                                    Set<String> done, Set<String> inProgress) {
+            if (done.contains(stepId)) return null;
+            if (inProgress.contains(stepId)) return stepId;
+            inProgress.add(stepId);
+            for (var dep : dependsOn.getOrDefault(stepId, List.of())) {
+                var found = visit(dep, dependsOn, done, inProgress);
+                if (found != null) return found;
+            }
+            inProgress.remove(stepId);
+            done.add(stepId);
+            return null;
+        }
+    }
+
+    /** A workflow without a trigger event never starts. */
+    static class WorkflowTrigger implements LintRule {
+        public String id() { return "workflow-trigger"; }
+        public String description() { return "Every workflow should declare its trigger event"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.workflows().stream()
+                    .filter(w -> w.triggerEvent() == null || w.triggerEvent().isBlank())
+                    .map(w -> new LintFinding(id(), LintSeverity.WARNING, "Workflow", w.id(), w.name(),
+                            "No trigger event — the workflow never starts."))
+                    .toList();
+        }
+    }
+
+    /** A workflow step's event must start a task somewhere: a use case, for now. */
+    static class WorkflowStepTarget implements LintRule {
+        public String id() { return "workflow-step-target"; }
+        public String description() { return "Every workflow step should start a use case"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var workflow : m.workflows()) {
+                for (var step : workflow.steps()) {
+                    if (step.targetUseCaseId() == null || step.targetUseCaseId().isBlank()) {
+                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "Workflow",
+                                workflow.id(), workflow.name(),
+                                "Step '" + step.name() + "' starts no use case — its event has no reaction."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /**
+     * Step dependencies must stay inside the workflow's own graph. The global referential check
+     * accepts any existing id, so a dependsOn pointing at ANOTHER workflow's step passes it.
+     */
+    static class WorkflowDependsScope implements LintRule {
+        public String id() { return "workflow-depends-scope"; }
+        public String description() { return "Step dependencies must reference steps of the same workflow"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var workflow : m.workflows()) {
+                var ownIds = workflow.steps().stream().map(s -> s.id()).collect(HashSet<String>::new,
+                        HashSet::add, HashSet::addAll);
+                for (var step : workflow.steps()) {
+                    for (var dep : step.dependsOnStepIds()) {
+                        if (!ownIds.contains(dep)) {
+                            findings.add(new LintFinding(id(), LintSeverity.ERROR, "Workflow",
+                                    workflow.id(), workflow.name(),
+                                    "Step '" + step.name() + "' depends on '" + dep
+                                            + "', which is not a step of this workflow."));
+                        }
+                    }
+                }
+            }
+            return findings;
+        }
     }
 
     // --- cross-context coherence ---------------------------------------------

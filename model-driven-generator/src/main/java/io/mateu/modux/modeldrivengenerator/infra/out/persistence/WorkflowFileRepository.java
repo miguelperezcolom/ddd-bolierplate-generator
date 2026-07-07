@@ -1,0 +1,72 @@
+package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
+
+import io.mateu.modux.modeldrivengenerator.application.out.repositories.WorkflowRepository;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.Workflow;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.vo.WorkflowId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.vo.WorkflowStep;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class WorkflowFileRepository implements WorkflowRepository {
+
+    final CommonFileRepository repository;
+
+    @Override
+    public Optional<Workflow> findById(WorkflowId id) {
+        return repository.findById(id.id(), WorkflowEntity.class)
+                .map(entity -> Workflow.load(entity.id(), entity.name(), entity.description(),
+                        entity.triggerAggregateId(), entity.triggerDomainServiceId(),
+                        entity.triggerUseCaseId(), entity.triggerEvent(),
+                        toSteps(entity.steps()), entity.onCompletionEventName()));
+    }
+
+    @Override
+    public Workflow save(Workflow entity) {
+        // decisionIds are not modeled in the domain Workflow yet — carry them over from the stored
+        // entity so a UI save never wipes what was authored in the YAML store.
+        var existing = repository.findById(entity.getId().id(), WorkflowEntity.class).orElse(null);
+        repository.save(new WorkflowEntity(
+                entity.getId().id(),
+                entity.getName().name(),
+                entity.getDescription(),
+                entity.getTriggerAggregateId(),
+                entity.getTriggerDomainServiceId(),
+                entity.getTriggerUseCaseId(),
+                entity.getTriggerEvent(),
+                toStepEntities(entity.getSteps()),
+                entity.getOnCompletionEventName(),
+                existing != null ? existing.decisionIds() : List.of()));
+        return entity;
+    }
+
+    @Override
+    public void deleteAllById(List<WorkflowId> selectedIds) {
+        repository.deleteAllById(selectedIds.stream().map(WorkflowId::id).toList(), WorkflowEntity.class);
+    }
+
+    private static List<WorkflowStep> toSteps(List<WorkflowStepEntity> steps) {
+        if (steps == null) return List.of();
+        return steps.stream()
+                .map(s -> new WorkflowStep(s.id(), s.name(), s.emittedEventName(),
+                        s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
+                        s.description()))
+                .toList();
+    }
+
+    private static List<WorkflowStepEntity> toStepEntities(List<WorkflowStep> steps) {
+        if (steps == null) return List.of();
+        return steps.stream()
+                .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
+                        s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
+                        s.description()))
+                .toList();
+    }
+}

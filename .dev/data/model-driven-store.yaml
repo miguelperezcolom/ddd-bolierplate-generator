@@ -10,8 +10,6 @@ projects:
 services:
 - id: "hotel-svc"
   name: "Hotel"
-  gatewayIds:
-  - "gw-reservas"
   moduleIds:
   - "mod-frontoffice"
   - "mod-reservas"
@@ -24,57 +22,9 @@ services:
   - "mod-rack"
   - "mod-master-data"
   - "mod-cardex"
+  gatewayIds:
+  - "gw-reservas"
 modules:
-- id: "mod-frontoffice"
-  name: "FrontOffice"
-  aggregateIds:
-  - "estancia"
-  - "historialCliente"
-  domainEventIds:
-  - "ev-habitacionPreasignada"
-  - "ev-estanciaCreada"
-  - "ev-estanciaActualizada"
-  projectionIds:
-  - "proj-llegadas"
-  readModelIds:
-  - "rm-llegadas"
-  subscriptionIds:
-  - "sub-frontoffice-reservaCreada"
-  - "sub-frontoffice-reservaModificada"
-  useCaseIds:
-  - "uc-realizarCheckin"
-  - "uc-crearEstancia"
-  - "uc-actualizarEstancia"
-- id: "mod-reservas"
-  name: "Reservas"
-  aggregateIds:
-  - "reserva"
-  entityIds:
-  - "lineaReserva"
-  - "pax"
-  domainEventIds:
-  - "ev-reservaCreada"
-  - "ev-reservaModificada"
-- id: "mod-produccion"
-  name: "Produccion"
-  aggregateIds:
-  - "cargo"
-- id: "mod-folios"
-  name: "Folios"
-  aggregateIds:
-  - "folio"
-  subscriptionIds:
-  - "sub-folios-pagoRegistrado"
-- id: "mod-facturacion"
-  name: "Facturacion"
-  aggregateIds:
-  - "datosFacturacion"
-- id: "mod-pagos"
-  name: "Pagos"
-  aggregateIds:
-  - "pago"
-  domainEventIds:
-  - "ev-pagoRegistrado"
 - id: "mod-housekeeping"
   name: "Housekeeping"
   aggregateIds:
@@ -87,13 +37,24 @@ modules:
   - "habitacion-st"
   subscriptionIds:
   - "sub-servicio-tecnico-habitacionCreada"
-- id: "mod-rack"
-  name: "Rack"
+- id: "mod-reservas"
+  name: "Reservas"
   aggregateIds:
-  - "habitacion-rack"
-  subscriptionIds:
-  - "sub-rack-habitacionCreada"
-  - "sub-rack-habitacionPreasignada"
+  - "reserva"
+  entityIds:
+  - "lineaReserva"
+  - "pax"
+  domainEventIds:
+  - "ev-reservaCreada"
+  - "ev-reservaModificada"
+- id: "mod-cardex"
+  name: "Cardex"
+  aggregateIds:
+  - "cardex"
+- id: "mod-facturacion"
+  name: "Facturacion"
+  aggregateIds:
+  - "datosFacturacion"
 - id: "mod-master-data"
   name: "MasterData"
   aggregateIds:
@@ -112,476 +73,486 @@ modules:
   - "formaPago"
   domainEventIds:
   - "ev-habitacionCreada"
-- id: "mod-cardex"
-  name: "Cardex"
+- id: "mod-pagos"
+  name: "Pagos"
   aggregateIds:
-  - "cardex"
+  - "pago"
+  domainEventIds:
+  - "ev-pagoRegistrado"
+- id: "mod-rack"
+  name: "Rack"
+  aggregateIds:
+  - "habitacion-rack"
+  subscriptionIds:
+  - "sub-rack-habitacionCreada"
+  - "sub-rack-habitacionPreasignada"
+- id: "mod-frontoffice"
+  name: "FrontOffice"
+  aggregateIds:
+  - "estancia"
+  - "historialCliente"
+  useCaseIds:
+  - "uc-realizarCheckin"
+  - "uc-crearEstancia"
+  - "uc-actualizarEstancia"
+  domainEventIds:
+  - "ev-habitacionPreasignada"
+  - "ev-estanciaCreada"
+  - "ev-estanciaActualizada"
+  projectionIds:
+  - "proj-llegadas"
+  readModelIds:
+  - "rm-llegadas"
+  subscriptionIds:
+  - "sub-frontoffice-reservaCreada"
+  - "sub-frontoffice-reservaModificada"
+- id: "mod-folios"
+  name: "Folios"
+  aggregateIds:
+  - "folio"
+  subscriptionIds:
+  - "sub-folios-pagoRegistrado"
+- id: "mod-produccion"
+  name: "Produccion"
+  aggregateIds:
+  - "cargo"
 aggregates:
-# master-data
-- id: "hotel"
-  name: "Hotel"
-  modelId: "hotel"
-  valueObjectIds:
-  - "hotel-id"
-  - "hotel-name"
-- id: "habitacion"
-  name: "Habitacion"
-  modelId: "habitacion"
-  valueObjectIds:
-  - "habitacion-id"
-  - "habitacion-name"
-  operations:
-  - id: "crear-habitacion"
-    name: "Crear"
-    type: "CUSTOM"
-    sets: "[ ]"
-    # El spec del hook two-zone en lenguaje natural: viaja al scaffold como javadoc
-    # y `mvn modux:ai-complete` propone la implementación a partir de él.
-    intent: "Da de alta la habitación con su tipo y estado LIBRE, validando que el número no exista ya en la planta"
-- id: "agencia"
-  name: "Agencia"
-  modelId: "agencia"
-  valueObjectIds:
-  - "agencia-id"
-  - "agencia-name"
-- id: "tipoRegimen"
-  name: "TipoRegimen"
-  modelId: "tipoRegimen"
-  valueObjectIds:
-  - "tipoRegimen-id"
-  - "tipoRegimen-name"
-- id: "tipoHabitacion"
-  name: "TipoHabitacion"
-  modelId: "tipoHabitacion"
-  valueObjectIds:
-  - "tipoHabitacion-id"
-  - "tipoHabitacion-name"
-- id: "pais"
-  name: "Pais"
-  modelId: "pais"
-  valueObjectIds:
-  - "pais-id"
-  - "pais-name"
-- id: "tipoDocumento"
-  name: "TipoDocumento"
-  modelId: "tipoDocumento"
-  valueObjectIds:
-  - "tipoDocumento-id"
-  - "tipoDocumento-name"
-- id: "nacionalidad"
-  name: "Nacionalidad"
-  modelId: "nacionalidad"
-  valueObjectIds:
-  - "nacionalidad-id"
-  - "nacionalidad-name"
-- id: "idioma"
-  name: "Idioma"
-  modelId: "idioma"
-  valueObjectIds:
-  - "idioma-id"
-  - "idioma-name"
-- id: "divisa"
-  name: "Divisa"
-  modelId: "divisa"
-  valueObjectIds:
-  - "divisa-id"
-  - "divisa-name"
-- id: "tipoTarjeta"
-  name: "TipoTarjeta"
-  modelId: "tipoTarjeta"
-  valueObjectIds:
-  - "tipoTarjeta-id"
-  - "tipoTarjeta-name"
-- id: "tipoRiuClass"
-  name: "TipoRiuClass"
-  modelId: "tipoRiuClass"
-  valueObjectIds:
-  - "tipoRiuClass-id"
-  - "tipoRiuClass-name"
-- id: "formaPago"
-  name: "FormaPago"
-  modelId: "formaPago"
-  valueObjectIds:
-  - "formaPago-id"
-  - "formaPago-name"
-# cardex
-- id: "cardex"
-  name: "Cardex"
-  modelId: "cardex"
-  valueObjectIds:
-  - "cardex-id"
-  - "cardex-name"
-# frontoffice
-- id: "estancia"
-  name: "Estancia"
-  modelId: "estancia"
-  valueObjectIds:
-  - "estancia-id"
-  - "estancia-name"
-  operations:
-  - id: "check-in"
-    name: "CheckIn"
-    type: "CUSTOM"
-    sets: "[ ]"
-  - id: "pre-asignar"
-    name: "PreAsignar"
-    type: "CUSTOM"
-    sets: "[ ]"
-  - id: "deshacer-checkin"
-    name: "DeshacerCheckin"
-    type: "CUSTOM"
-    sets: "[ ]"
-- id: "historialCliente"
-  name: "HistorialCliente"
-  modelId: "historialCliente"
-  valueObjectIds:
-  - "historialCliente-id"
-  - "historialCliente-name"
-# reservas
-- id: "reserva"
-  name: "Reserva"
-  modelId: "reserva"
-  valueObjectIds:
-  - "reserva-id"
-  - "reserva-name"
-  operations:
-  - id: "crear-reserva"
-    name: "Crear"
-    type: "CUSTOM"
-    sets: "[ ]"
-  - id: "modificar-reserva"
-    name: "Modificar"
-    type: "CUSTOM"
-    sets: "[ ]"
-# produccion
-- id: "cargo"
-  name: "Cargo"
-  modelId: "cargo"
-  valueObjectIds:
-  - "cargo-id"
-  - "cargo-name"
-# folios
-- id: "folio"
-  name: "Folio"
-  modelId: "folio"
-  valueObjectIds:
-  - "folio-id"
-  - "folio-name"
-# facturacion
-- id: "datosFacturacion"
-  name: "DatosFacturacion"
-  modelId: "datosFacturacion"
-  valueObjectIds:
-  - "datosFacturacion-id"
-  - "datosFacturacion-name"
-# pagos
-- id: "pago"
-  name: "Pago"
-  modelId: "pago"
-  valueObjectIds:
-  - "pago-id"
-  - "pago-name"
-  operations:
-  - id: "registrar-pago"
-    name: "Registrar"
-    type: "CUSTOM"
-    sets: "[ ]"
-# housekeeping
 - id: "habitacion-hk"
   name: "HabitacionHousekeeping"
   modelId: "habitacion-hk"
   valueObjectIds:
   - "habitacion-hk-id"
   - "habitacion-hk-name"
-# rack
+- id: "tipoRegimen"
+  name: "TipoRegimen"
+  modelId: "tipoRegimen"
+  valueObjectIds:
+  - "tipoRegimen-id"
+  - "tipoRegimen-name"
 - id: "habitacion-rack"
   name: "HabitacionRack"
   modelId: "habitacion-rack"
   valueObjectIds:
   - "habitacion-rack-id"
   - "habitacion-rack-name"
-# servicio-tecnico
+- id: "nacionalidad"
+  name: "Nacionalidad"
+  modelId: "nacionalidad"
+  valueObjectIds:
+  - "nacionalidad-id"
+  - "nacionalidad-name"
+- id: "agencia"
+  name: "Agencia"
+  modelId: "agencia"
+  valueObjectIds:
+  - "agencia-id"
+  - "agencia-name"
+- id: "habitacion"
+  name: "Habitacion"
+  modelId: "habitacion"
+  operations:
+  - id: "crear-habitacion"
+    name: "Crear"
+    sets: "[ ]"
+    type: "CUSTOM"
+    intent: "Da de alta la habitación con su tipo y estado LIBRE, validando que el\
+      \ número no exista ya en la planta"
+  valueObjectIds:
+  - "habitacion-id"
+  - "habitacion-name"
+- id: "hotel"
+  name: "Hotel"
+  modelId: "hotel"
+  valueObjectIds:
+  - "hotel-id"
+  - "hotel-name"
+- id: "tipoDocumento"
+  name: "TipoDocumento"
+  modelId: "tipoDocumento"
+  valueObjectIds:
+  - "tipoDocumento-id"
+  - "tipoDocumento-name"
+- id: "divisa"
+  name: "Divisa"
+  modelId: "divisa"
+  valueObjectIds:
+  - "divisa-id"
+  - "divisa-name"
+- id: "tipoHabitacion"
+  name: "TipoHabitacion"
+  modelId: "tipoHabitacion"
+  valueObjectIds:
+  - "tipoHabitacion-id"
+  - "tipoHabitacion-name"
+- id: "estancia"
+  name: "Estancia"
+  modelId: "estancia"
+  operations:
+  - id: "check-in"
+    name: "CheckIn"
+    sets: "[ ]"
+    type: "CUSTOM"
+  - id: "pre-asignar"
+    name: "PreAsignar"
+    sets: "[ ]"
+    type: "CUSTOM"
+  - id: "deshacer-checkin"
+    name: "DeshacerCheckin"
+    sets: "[ ]"
+    type: "CUSTOM"
+  valueObjectIds:
+  - "estancia-id"
+  - "estancia-name"
+- id: "idioma"
+  name: "Idioma"
+  modelId: "idioma"
+  valueObjectIds:
+  - "idioma-id"
+  - "idioma-name"
+- id: "pago"
+  name: "Pago"
+  modelId: "pago"
+  operations:
+  - id: "registrar-pago"
+    name: "Registrar"
+    sets: "[ ]"
+    type: "CUSTOM"
+  valueObjectIds:
+  - "pago-id"
+  - "pago-name"
 - id: "habitacion-st"
   name: "HabitacionServicioTecnico"
   modelId: "habitacion-st"
   valueObjectIds:
   - "habitacion-st-id"
   - "habitacion-st-name"
+- id: "folio"
+  name: "Folio"
+  modelId: "folio"
+  valueObjectIds:
+  - "folio-id"
+  - "folio-name"
+- id: "formaPago"
+  name: "FormaPago"
+  modelId: "formaPago"
+  valueObjectIds:
+  - "formaPago-id"
+  - "formaPago-name"
+- id: "cardex"
+  name: "Cardex"
+  modelId: "cardex"
+  valueObjectIds:
+  - "cardex-id"
+  - "cardex-name"
+- id: "cargo"
+  name: "Cargo"
+  modelId: "cargo"
+  valueObjectIds:
+  - "cargo-id"
+  - "cargo-name"
+- id: "tipoTarjeta"
+  name: "TipoTarjeta"
+  modelId: "tipoTarjeta"
+  valueObjectIds:
+  - "tipoTarjeta-id"
+  - "tipoTarjeta-name"
+- id: "historialCliente"
+  name: "HistorialCliente"
+  modelId: "historialCliente"
+  operations:
+  - id: "op-emit-ev-estanciaActualizada"
+    name: "emitEstanciaActualizada"
+    emits: "EstanciaActualizada"
+    type: "CUSTOM"
+  valueObjectIds:
+  - "historialCliente-id"
+  - "historialCliente-name"
+- id: "pais"
+  name: "Pais"
+  modelId: "pais"
+  valueObjectIds:
+  - "pais-id"
+  - "pais-name"
+- id: "datosFacturacion"
+  name: "DatosFacturacion"
+  modelId: "datosFacturacion"
+  valueObjectIds:
+  - "datosFacturacion-id"
+  - "datosFacturacion-name"
+- id: "tipoRiuClass"
+  name: "TipoRiuClass"
+  modelId: "tipoRiuClass"
+  valueObjectIds:
+  - "tipoRiuClass-id"
+  - "tipoRiuClass-name"
+- id: "reserva"
+  name: "Reserva"
+  modelId: "reserva"
+  operations:
+  - id: "crear-reserva"
+    name: "Crear"
+    sets: "[ ]"
+    type: "CUSTOM"
+  - id: "modificar-reserva"
+    name: "Modificar"
+    sets: "[ ]"
+    type: "CUSTOM"
+  valueObjectIds:
+  - "reserva-id"
+  - "reserva-name"
 entities:
-- id: "lineaReserva"
-  name: "LineaReserva"
-  modelId: "lineaReserva"
-  parentAggregateId: "reserva"
-  isCollection: true
 - id: "pax"
   name: "Pax"
   modelId: "pax"
   parentAggregateId: "reserva"
   isCollection: true
+- id: "lineaReserva"
+  name: "LineaReserva"
+  modelId: "lineaReserva"
+  parentAggregateId: "reserva"
+  isCollection: true
 valueObjects:
-- id: "hotel-id"
-  name: "HotelId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "hotel-name"
-  name: "HotelName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-id"
-  name: "HabitacionId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-name"
-  name: "HabitacionName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "agencia-id"
-  name: "AgenciaId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "agencia-name"
-  name: "AgenciaName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoRegimen-id"
-  name: "TipoRegimenId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoRegimen-name"
-  name: "TipoRegimenName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoHabitacion-id"
-  name: "TipoHabitacionId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoHabitacion-name"
-  name: "TipoHabitacionName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "pais-id"
-  name: "PaisId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "pais-name"
-  name: "PaisName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoDocumento-id"
-  name: "TipoDocumentoId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
 - id: "tipoDocumento-name"
   name: "TipoDocumentoName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "nacionalidad-id"
-  name: "NacionalidadId"
-  type: "Wrapper"
   dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "nacionalidad-name"
-  name: "NacionalidadName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "idioma-id"
-  name: "IdiomaId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "idioma-name"
-  name: "IdiomaName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "divisa-id"
-  name: "DivisaId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
 - id: "divisa-name"
   name: "DivisaName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoTarjeta-id"
-  name: "TipoTarjetaId"
+  dataType: "string"
+- id: "tipoDocumento-id"
+  name: "TipoDocumentoId"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoTarjeta-name"
-  name: "TipoTarjetaName"
+  dataType: "string"
+- id: "habitacion-name"
+  name: "HabitacionName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoRiuClass-id"
-  name: "TipoRiuClassId"
-  type: "Wrapper"
   dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "tipoRiuClass-name"
-  name: "TipoRiuClassName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "formaPago-id"
-  name: "FormaPagoId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "formaPago-name"
-  name: "FormaPagoName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "cardex-id"
-  name: "CardexId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "cardex-name"
-  name: "CardexName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "estancia-id"
-  name: "EstanciaId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
 - id: "estancia-name"
   name: "EstanciaName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "historialCliente-id"
-  name: "HistorialClienteId"
+  dataType: "string"
+- id: "tipoHabitacion-name"
+  name: "TipoHabitacionName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "historialCliente-name"
-  name: "HistorialClienteName"
-  type: "Wrapper"
   dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "reserva-id"
-  name: "ReservaId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "reserva-name"
-  name: "ReservaName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "cargo-id"
-  name: "CargoId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "cargo-name"
-  name: "CargoName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
 - id: "folio-id"
   name: "FolioId"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "folio-name"
-  name: "FolioName"
+  dataType: "string"
+- id: "pais-id"
+  name: "PaisId"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "datosFacturacion-id"
-  name: "DatosFacturacionId"
+  dataType: "string"
+- id: "pais-name"
+  name: "PaisName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "datosFacturacion-name"
-  name: "DatosFacturacionName"
-  type: "Wrapper"
   dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "pago-id"
-  name: "PagoId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "pago-name"
-  name: "PagoName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-hk-id"
-  name: "HabitacionHousekeepingId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-hk-name"
-  name: "HabitacionHousekeepingName"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-rack-id"
-  name: "HabitacionRackId"
-  type: "Wrapper"
-  dataType: "string"
-  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
 - id: "habitacion-rack-name"
   name: "HabitacionRackName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-- id: "habitacion-st-id"
-  name: "HabitacionServicioTecnicoId"
+  dataType: "string"
+- id: "datosFacturacion-id"
+  name: "DatosFacturacionId"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "formaPago-name"
+  name: "FormaPagoName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "habitacion-hk-name"
+  name: "HabitacionHousekeepingName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "formaPago-id"
+  name: "FormaPagoId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "habitacion-hk-id"
+  name: "HabitacionHousekeepingId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "nacionalidad-id"
+  name: "NacionalidadId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoTarjeta-name"
+  name: "TipoTarjetaName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "estancia-id"
+  name: "EstanciaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "habitacion-rack-id"
+  name: "HabitacionRackId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
 - id: "habitacion-st-name"
   name: "HabitacionServicioTecnicoName"
   type: "Wrapper"
-  dataType: "string"
   fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
-invariants: []
+  dataType: "string"
+- id: "agencia-id"
+  name: "AgenciaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "idioma-name"
+  name: "IdiomaName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "reserva-name"
+  name: "ReservaName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "nacionalidad-name"
+  name: "NacionalidadName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoRegimen-id"
+  name: "TipoRegimenId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoTarjeta-id"
+  name: "TipoTarjetaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "datosFacturacion-name"
+  name: "DatosFacturacionName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "idioma-id"
+  name: "IdiomaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "pago-id"
+  name: "PagoId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "hotel-id"
+  name: "HotelId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoRiuClass-id"
+  name: "TipoRiuClassId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "habitacion-st-id"
+  name: "HabitacionServicioTecnicoId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "habitacion-id"
+  name: "HabitacionId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "divisa-id"
+  name: "DivisaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "agencia-name"
+  name: "AgenciaName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "historialCliente-name"
+  name: "HistorialClienteName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "cargo-name"
+  name: "CargoName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "historialCliente-id"
+  name: "HistorialClienteId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "hotel-name"
+  name: "HotelName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoRiuClass-name"
+  name: "TipoRiuClassName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "pago-name"
+  name: "PagoName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoHabitacion-id"
+  name: "TipoHabitacionId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "reserva-id"
+  name: "ReservaId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "cargo-id"
+  name: "CargoId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "cardex-id"
+  name: "CardexId"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "cardex-name"
+  name: "CardexName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "tipoRegimen-name"
+  name: "TipoRegimenName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
+- id: "folio-name"
+  name: "FolioName"
+  type: "Wrapper"
+  fieldsJson: "[{\"name\":\"value\",\"dataType\":\"string\"}]"
+  dataType: "string"
 domainEvents:
-- id: "ev-habitacionCreada"
-  name: "HabitacionCreada"
-  modelId: "payload-habitacionCreada"
-  publishAsIntegrationEvent: true
-  topicName: "hotel.master-data.habitacion-creada"
-  serializationFormat: "JSON"
-  replayable: true
-- id: "ev-reservaCreada"
-  name: "ReservaCreada"
-  modelId: "payload-reservaCreada"
-  publishAsIntegrationEvent: true
-  topicName: "hotel.reservas.reserva-creada"
-  serializationFormat: "JSON"
-  replayable: true
-- id: "ev-reservaModificada"
-  name: "ReservaModificada"
-  modelId: "payload-reservaModificada"
-  publishAsIntegrationEvent: true
-  topicName: "hotel.reservas.reserva-modificada"
-  serializationFormat: "JSON"
-  replayable: true
 - id: "ev-habitacionPreasignada"
   name: "HabitacionPreasignada"
   modelId: "payload-habitacionPreasignada"
@@ -596,34 +567,36 @@ domainEvents:
   topicName: "hotel.pagos.pago-registrado"
   serializationFormat: "JSON"
   replayable: true
-- id: "ev-estanciaCreada"
-  name: "EstanciaCreada"
-  modelId: "payload-estanciaCreada"
-  publishAsIntegrationEvent: false
 - id: "ev-estanciaActualizada"
   name: "EstanciaActualizada"
   modelId: "payload-estanciaCreada"
-  publishAsIntegrationEvent: false
+- id: "ev-reservaModificada"
+  name: "ReservaModificada"
+  modelId: "payload-reservaModificada"
+  publishAsIntegrationEvent: true
+  topicName: "hotel.reservas.reserva-modificada"
+  serializationFormat: "JSON"
+  replayable: true
+- id: "ev-reservaCreada"
+  name: "ReservaCreada"
+  modelId: "payload-reservaCreada"
+  publishAsIntegrationEvent: true
+  topicName: "hotel.reservas.reserva-creada"
+  serializationFormat: "JSON"
+  replayable: true
+- id: "ev-habitacionCreada"
+  name: "HabitacionCreada"
+  modelId: "payload-habitacionCreada"
+  publishAsIntegrationEvent: true
+  topicName: "hotel.master-data.habitacion-creada"
+  serializationFormat: "JSON"
+  replayable: true
+- id: "ev-estanciaCreada"
+  name: "EstanciaCreada"
+  modelId: "payload-estanciaCreada"
 useCases:
 - id: "uc-realizarCheckin"
   name: "RealizarCheckin"
-- id: "uc-crearEstancia"
-  name: "CrearEstancia"
-  inputModelId: "payload-reservaCreada"
-  steps:
-  - id: "step-crear-callGateway"
-    name: "fetchReserva"
-    type: "CallGateway"
-    gatewayId: "gw-reservas"
-    gatewayOperationId: "op-getReserva"
-  - id: "step-crear-save"
-    name: "saveEstancia"
-    type: "SaveAggregate"
-    aggregateId: "estancia"
-  - id: "step-crear-publish"
-    name: "publishEstanciaCreada"
-    type: "PublishDomainEvent"
-    domainEventId: "ev-estanciaCreada"
 - id: "uc-actualizarEstancia"
   name: "ActualizarEstancia"
   inputModelId: "payload-reservaModificada"
@@ -641,19 +614,97 @@ useCases:
     name: "publishEstanciaActualizada"
     type: "PublishDomainEvent"
     domainEventId: "ev-estanciaActualizada"
-gateways:
-- id: "gw-reservas"
-  name: "ReservasGateway"
-  baseUrl: "http://reservas/api"
-  operations:
-  - id: "op-getReserva"
-    name: "getReserva"
-    httpMethod: "GET"
-    path: "/reservas/{reserva}"
-    inputModelId: "payload-reservaCreada"
-    outputModelId: "payload-estanciaCreada"
+- id: "uc-crearEstancia"
+  name: "CrearEstancia"
+  inputModelId: "payload-reservaCreada"
+  steps:
+  - id: "step-crear-callGateway"
+    name: "fetchReserva"
+    type: "CallGateway"
+    gatewayId: "gw-reservas"
+    gatewayOperationId: "op-getReserva"
+  - id: "step-crear-save"
+    name: "saveEstancia"
+    type: "SaveAggregate"
+    aggregateId: "estancia"
+  - id: "step-crear-publish"
+    name: "publishEstanciaCreada"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-estanciaCreada"
+  - id: "step-query-qs-consultas-recepcion"
+    name: "queryConsultasRecepcion"
+    type: "CallQueryService"
+    queryServiceId: "qs-consultas-recepcion"
 models:
-# --- master-data catalogs {codigo, nombre} ---
+- id: "LlegadaResumen"
+  name: "LlegadaResumen"
+  fields:
+  - name: "localizador"
+    basicType: true
+    type: "string"
+  - name: "agencia"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+  - name: "apellidos"
+    basicType: true
+    type: "string"
+  - name: "hotel"
+    basicType: true
+    type: "string"
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    basicType: true
+    type: "string"
+- id: "pago"
+  name: "Pago"
+  fields:
+  - name: "folio"
+    basicType: true
+    type: "string"
+  - name: "importe"
+    basicType: true
+    type: "number"
+  - name: "divisa"
+    basicType: true
+    type: "string"
+  - name: "fecha"
+    basicType: true
+    type: "date"
+  - name: "formaPago"
+    basicType: true
+    type: "string"
+- id: "lineaReserva"
+  name: "LineaReserva"
+  fields:
+  - name: "numeroHabitacion"
+    basicType: true
+    type: "string"
+  - name: "espera"
+    basicType: true
+    type: "bool"
+  - name: "tipoHabitacionFisica"
+    basicType: true
+    type: "string"
+  - name: "tipoHabitacionContratada"
+    basicType: true
+    type: "string"
+  - name: "upgrade"
+    basicType: true
+    type: "bool"
+  - name: "deseos"
+    basicType: true
+    type: "string"
+  - name: "observacionesInternas"
+    basicType: true
+    type: "string"
+  - name: "avisos"
+    basicType: true
+    type: "string"
 - id: "hotel"
   name: "Hotel"
   fields:
@@ -663,104 +714,62 @@ models:
   - name: "nombre"
     basicType: true
     type: "string"
-- id: "habitacion"
-  name: "Habitacion"
+- id: "payload-habitacionPreasignada"
+  name: "HabitacionPreasignadaPayload"
   fields:
-  - name: "numero"
+  - name: "habitacion"
     basicType: true
     type: "string"
-  - name: "camasIndividuales"
+  - name: "fechaLlegada"
     basicType: true
-    type: "integer"
-  - name: "camasDobles"
+    type: "date"
+  - name: "fechaSalida"
     basicType: true
-    type: "integer"
-  - name: "hotel"
-    basicType: true
-    type: "string"
-- id: "agencia"
-  name: "Agencia"
+    type: "date"
+- id: "pax"
+  name: "Pax"
   fields:
-  - name: "codigo"
+  - name: "apellidos"
     basicType: true
     type: "string"
   - name: "nombre"
     basicType: true
     type: "string"
-- id: "tipoRegimen"
-  name: "TipoRegimen"
+  - name: "tipoPax"
+    enum: true
+    enumId: "tipoPax"
+  - name: "regimen"
+    basicType: true
+    type: "string"
+  - name: "nacionalidad"
+    basicType: true
+    type: "string"
+  - name: "estadoHabitacion"
+    enum: true
+    enumId: "estadoHabitacion"
+  - name: "tieneCardex"
+    basicType: true
+    type: "bool"
+  - name: "interHotel"
+    basicType: true
+    type: "bool"
+  - name: "aviso"
+    basicType: true
+    type: "bool"
+  - name: "observacionesHotel"
+    basicType: true
+    type: "string"
+- id: "habitacion-st"
+  name: "HabitacionServicioTecnico"
   fields:
-  - name: "codigo"
+  - name: "habitacion"
     basicType: true
     type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "tipoHabitacion"
-  name: "TipoHabitacion"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
+  - name: "observaciones"
     basicType: true
     type: "string"
 - id: "pais"
   name: "Pais"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "tipoDocumento"
-  name: "TipoDocumento"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "nacionalidad"
-  name: "Nacionalidad"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "idioma"
-  name: "Idioma"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "divisa"
-  name: "Divisa"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "tipoTarjeta"
-  name: "TipoTarjeta"
-  fields:
-  - name: "codigo"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-- id: "tipoRiuClass"
-  name: "TipoRiuClass"
   fields:
   - name: "codigo"
     basicType: true
@@ -777,7 +786,129 @@ models:
   - name: "nombre"
     basicType: true
     type: "string"
-# --- cardex ---
+- id: "idioma"
+  name: "Idioma"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "estancia"
+  name: "Estancia"
+  fields:
+  - name: "lineaReserva"
+    basicType: true
+    type: "string"
+  - name: "habitacionAsignada"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    enum: true
+    enumId: "estadoEstancia"
+  - name: "clienteEsperando"
+    basicType: true
+    type: "bool"
+  - name: "checkinCompletado"
+    basicType: true
+    type: "bool"
+- id: "nacionalidad"
+  name: "Nacionalidad"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "tipoTarjeta"
+  name: "TipoTarjeta"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "agencia"
+  name: "Agencia"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "tipoDocumento"
+  name: "TipoDocumento"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "divisa"
+  name: "Divisa"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "payload-estanciaCreada"
+  name: "EstanciaCreadaPayload"
+  fields:
+  - name: "estancia"
+    basicType: true
+    type: "string"
+  - name: "reserva"
+    basicType: true
+    type: "string"
+  - name: "localizador"
+    basicType: true
+    type: "string"
+  - name: "hotel"
+    basicType: true
+    type: "string"
+  - name: "agencia"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+  - name: "apellidos"
+    basicType: true
+    type: "string"
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    basicType: true
+    type: "string"
+- id: "folio"
+  name: "Folio"
+  fields:
+  - name: "reserva"
+    basicType: true
+    type: "string"
+  - name: "limiteCredito"
+    basicType: true
+    type: "number"
+  - name: "anticipoEntregado"
+    basicType: true
+    type: "number"
+  - name: "saldoPendiente"
+    basicType: true
+    type: "number"
+  - name: "datosTarjetaTipo"
+    basicType: true
+    type: "string"
+  - name: "datosTarjetaUltimos4"
+    basicType: true
+    type: "string"
 - id: "cardex"
   name: "Cardex"
   fields:
@@ -809,7 +940,6 @@ models:
     basicType: true
     type: "date"
   - name: "sexo"
-    basicType: false
     enum: true
     enumId: "sexo"
   - name: "ciudadNacimiento"
@@ -843,7 +973,6 @@ models:
     basicType: true
     type: "bool"
   - name: "aceptaPublicidad"
-    basicType: false
     enum: true
     enumId: "aceptaPublicidad"
   - name: "nacionalidad"
@@ -852,26 +981,30 @@ models:
   - name: "idioma"
     basicType: true
     type: "string"
-# --- frontoffice ---
-- id: "estancia"
-  name: "Estancia"
+- id: "payload-reservaModificada"
+  name: "ReservaModificadaPayload"
   fields:
-  - name: "lineaReserva"
+  - name: "reserva"
     basicType: true
     type: "string"
-  - name: "habitacionAsignada"
+  - name: "localizador"
     basicType: true
     type: "string"
-  - name: "estado"
-    basicType: false
-    enum: true
-    enumId: "estadoEstancia"
-  - name: "clienteEsperando"
+  - name: "hotel"
     basicType: true
-    type: "bool"
-  - name: "checkinCompletado"
+    type: "string"
+- id: "payload-pagoRegistrado"
+  name: "PagoRegistradoPayload"
+  fields:
+  - name: "folio"
     basicType: true
-    type: "bool"
+    type: "string"
+  - name: "importe"
+    basicType: true
+    type: "number"
+  - name: "divisa"
+    basicType: true
+    type: "string"
 - id: "historialCliente"
   name: "HistorialCliente"
   fields:
@@ -891,7 +1024,6 @@ models:
     basicType: true
     type: "integer"
   - name: "tipoCliente"
-    basicType: false
     enum: true
     enumId: "tipoCliente"
   - name: "numeroAtencionesHabitacion"
@@ -900,7 +1032,144 @@ models:
   - name: "ultimaHabitacion"
     basicType: true
     type: "integer"
-# --- reservas ---
+- id: "HabitacionDisponible"
+  name: "HabitacionDisponible"
+  fields:
+  - name: "numero"
+    basicType: true
+    type: "string"
+  - name: "tipo"
+    basicType: true
+    type: "string"
+  - name: "estadoLimpieza"
+    basicType: true
+    type: "string"
+- id: "habitacion"
+  name: "Habitacion"
+  fields:
+  - name: "numero"
+    basicType: true
+    type: "string"
+  - name: "camasIndividuales"
+    basicType: true
+    type: "integer"
+  - name: "camasDobles"
+    basicType: true
+    type: "integer"
+  - name: "hotel"
+    basicType: true
+    type: "string"
+- id: "habitacion-hk"
+  name: "HabitacionHousekeeping"
+  fields:
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "estadoLimpieza"
+    enum: true
+    enumId: "estadoHabitacion"
+  - name: "observaciones"
+    basicType: true
+    type: "string"
+- id: "habitacion-rack"
+  name: "HabitacionRack"
+  fields:
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "fecha"
+    basicType: true
+    type: "date"
+  - name: "estadoOcupacion"
+    enum: true
+    enumId: "estadoOcupacion"
+- id: "cargo"
+  name: "Cargo"
+  fields:
+  - name: "reserva"
+    basicType: true
+    type: "string"
+  - name: "concepto"
+    basicType: true
+    type: "string"
+  - name: "importe"
+    basicType: true
+    type: "number"
+  - name: "divisa"
+    basicType: true
+    type: "string"
+  - name: "tipoPrecio"
+    enum: true
+    enumId: "tipoPrecio"
+- id: "tipoHabitacion"
+  name: "TipoHabitacion"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "payload-habitacionCreada"
+  name: "HabitacionCreadaPayload"
+  fields:
+  - name: "habitacion"
+    basicType: true
+    type: "string"
+  - name: "hotel"
+    basicType: true
+    type: "string"
+  - name: "numero"
+    basicType: true
+    type: "string"
+- id: "datosFacturacion"
+  name: "DatosFacturacion"
+  fields:
+  - name: "reserva"
+    basicType: true
+    type: "string"
+  - name: "razonSocial"
+    basicType: true
+    type: "string"
+  - name: "cifNif"
+    basicType: true
+    type: "string"
+  - name: "direccionFiscal"
+    basicType: true
+    type: "string"
+  - name: "poblacion"
+    basicType: true
+    type: "string"
+  - name: "cp"
+    basicType: true
+    type: "string"
+  - name: "provincia"
+    basicType: true
+    type: "string"
+  - name: "pais"
+    basicType: true
+    type: "string"
+  - name: "email"
+    basicType: true
+    type: "string"
+- id: "tipoRegimen"
+  name: "TipoRegimen"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
+- id: "tipoRiuClass"
+  name: "TipoRiuClass"
+  fields:
+  - name: "codigo"
+    basicType: true
+    type: "string"
+  - name: "nombre"
+    basicType: true
+    type: "string"
 - id: "reserva"
   name: "Reserva"
   fields:
@@ -932,7 +1201,6 @@ models:
     basicType: true
     type: "string"
   - name: "tipoCobro"
-    basicType: false
     enum: true
     enumId: "tipoCobro"
   - name: "terceros"
@@ -948,7 +1216,6 @@ models:
     basicType: true
     type: "string"
   - name: "estado"
-    basicType: false
     enum: true
     enumId: "estadoReserva"
   - name: "exp"
@@ -970,214 +1237,8 @@ models:
     basicType: true
     type: "string"
   - name: "tipoTarifa"
-    basicType: false
     enum: true
     enumId: "tipoTarifa"
-- id: "lineaReserva"
-  name: "LineaReserva"
-  fields:
-  - name: "numeroHabitacion"
-    basicType: true
-    type: "string"
-  - name: "espera"
-    basicType: true
-    type: "bool"
-  - name: "tipoHabitacionFisica"
-    basicType: true
-    type: "string"
-  - name: "tipoHabitacionContratada"
-    basicType: true
-    type: "string"
-  - name: "upgrade"
-    basicType: true
-    type: "bool"
-  - name: "deseos"
-    basicType: true
-    type: "string"
-  - name: "observacionesInternas"
-    basicType: true
-    type: "string"
-  - name: "avisos"
-    basicType: true
-    type: "string"
-- id: "pax"
-  name: "Pax"
-  fields:
-  - name: "apellidos"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-  - name: "tipoPax"
-    basicType: false
-    enum: true
-    enumId: "tipoPax"
-  - name: "regimen"
-    basicType: true
-    type: "string"
-  - name: "nacionalidad"
-    basicType: true
-    type: "string"
-  - name: "estadoHabitacion"
-    basicType: false
-    enum: true
-    enumId: "estadoHabitacion"
-  - name: "tieneCardex"
-    basicType: true
-    type: "bool"
-  - name: "interHotel"
-    basicType: true
-    type: "bool"
-  - name: "aviso"
-    basicType: true
-    type: "bool"
-  - name: "observacionesHotel"
-    basicType: true
-    type: "string"
-# --- produccion ---
-- id: "cargo"
-  name: "Cargo"
-  fields:
-  - name: "reserva"
-    basicType: true
-    type: "string"
-  - name: "concepto"
-    basicType: true
-    type: "string"
-  - name: "importe"
-    basicType: true
-    type: "number"
-  - name: "divisa"
-    basicType: true
-    type: "string"
-  - name: "tipoPrecio"
-    basicType: false
-    enum: true
-    enumId: "tipoPrecio"
-# --- folios ---
-- id: "folio"
-  name: "Folio"
-  fields:
-  - name: "reserva"
-    basicType: true
-    type: "string"
-  - name: "limiteCredito"
-    basicType: true
-    type: "number"
-  - name: "anticipoEntregado"
-    basicType: true
-    type: "number"
-  - name: "saldoPendiente"
-    basicType: true
-    type: "number"
-  - name: "datosTarjetaTipo"
-    basicType: true
-    type: "string"
-  - name: "datosTarjetaUltimos4"
-    basicType: true
-    type: "string"
-# --- facturacion ---
-- id: "datosFacturacion"
-  name: "DatosFacturacion"
-  fields:
-  - name: "reserva"
-    basicType: true
-    type: "string"
-  - name: "razonSocial"
-    basicType: true
-    type: "string"
-  - name: "cifNif"
-    basicType: true
-    type: "string"
-  - name: "direccionFiscal"
-    basicType: true
-    type: "string"
-  - name: "poblacion"
-    basicType: true
-    type: "string"
-  - name: "cp"
-    basicType: true
-    type: "string"
-  - name: "provincia"
-    basicType: true
-    type: "string"
-  - name: "pais"
-    basicType: true
-    type: "string"
-  - name: "email"
-    basicType: true
-    type: "string"
-# --- pagos ---
-- id: "pago"
-  name: "Pago"
-  fields:
-  - name: "folio"
-    basicType: true
-    type: "string"
-  - name: "importe"
-    basicType: true
-    type: "number"
-  - name: "divisa"
-    basicType: true
-    type: "string"
-  - name: "fecha"
-    basicType: true
-    type: "date"
-  - name: "formaPago"
-    basicType: true
-    type: "string"
-# --- housekeeping ---
-- id: "habitacion-hk"
-  name: "HabitacionHousekeeping"
-  fields:
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "estadoLimpieza"
-    basicType: false
-    enum: true
-    enumId: "estadoHabitacion"
-  - name: "observaciones"
-    basicType: true
-    type: "string"
-# --- rack ---
-- id: "habitacion-rack"
-  name: "HabitacionRack"
-  fields:
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "fecha"
-    basicType: true
-    type: "date"
-  - name: "estadoOcupacion"
-    basicType: false
-    enum: true
-    enumId: "estadoOcupacion"
-# --- servicio-tecnico ---
-- id: "habitacion-st"
-  name: "HabitacionServicioTecnico"
-  fields:
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "observaciones"
-    basicType: true
-    type: "string"
-# --- event payloads ---
-- id: "payload-habitacionCreada"
-  name: "HabitacionCreadaPayload"
-  fields:
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "hotel"
-    basicType: true
-    type: "string"
-  - name: "numero"
-    basicType: true
-    type: "string"
 - id: "payload-reservaCreada"
   name: "ReservaCreadaPayload"
   fields:
@@ -1190,134 +1251,45 @@ models:
   - name: "hotel"
     basicType: true
     type: "string"
-- id: "payload-reservaModificada"
-  name: "ReservaModificadaPayload"
-  fields:
-  - name: "reserva"
-    basicType: true
-    type: "string"
-  - name: "localizador"
-    basicType: true
-    type: "string"
-  - name: "hotel"
-    basicType: true
-    type: "string"
-- id: "payload-habitacionPreasignada"
-  name: "HabitacionPreasignadaPayload"
-  fields:
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "fechaLlegada"
-    basicType: true
-    type: "date"
-  - name: "fechaSalida"
-    basicType: true
-    type: "date"
-- id: "payload-pagoRegistrado"
-  name: "PagoRegistradoPayload"
-  fields:
-  - name: "folio"
-    basicType: true
-    type: "string"
-  - name: "importe"
-    basicType: true
-    type: "number"
-  - name: "divisa"
-    basicType: true
-    type: "string"
-- id: "payload-estanciaCreada"
-  name: "EstanciaCreadaPayload"
-  fields:
-  - name: "estancia"
-    basicType: true
-    type: "string"
-  - name: "reserva"
-    basicType: true
-    type: "string"
-  - name: "localizador"
-    basicType: true
-    type: "string"
-  - name: "hotel"
-    basicType: true
-    type: "string"
-  - name: "agencia"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-  - name: "apellidos"
-    basicType: true
-    type: "string"
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "estado"
-    basicType: true
-    type: "string"
-# --- read model output models ---
-- id: "LlegadaResumen"
-  name: "LlegadaResumen"
-  fields:
-  - name: "localizador"
-    basicType: true
-    type: "string"
-  - name: "agencia"
-    basicType: true
-    type: "string"
-  - name: "nombre"
-    basicType: true
-    type: "string"
-  - name: "apellidos"
-    basicType: true
-    type: "string"
-  - name: "hotel"
-    basicType: true
-    type: "string"
-  - name: "habitacion"
-    basicType: true
-    type: "string"
-  - name: "estado"
-    basicType: true
-    type: "string"
-- id: "HabitacionDisponible"
-  name: "HabitacionDisponible"
-  fields:
-  - name: "numero"
-    basicType: true
-    type: "string"
-  - name: "tipo"
-    basicType: true
-    type: "string"
-  - name: "estadoLimpieza"
-    basicType: true
-    type: "string"
+gateways:
+- id: "gw-reservas"
+  name: "ReservasGateway"
+  baseUrl: "http://reservas/api"
+  operations:
+  - id: "op-getReserva"
+    name: "getReserva"
+    httpMethod: "GET"
+    path: "/reservas/{reserva}"
+    inputModelId: "payload-reservaCreada"
+    outputModelId: "payload-estanciaCreada"
+modelMappings:
+- id: "mm-reservaCreada-to-crearEstancia"
+  name: "ReservaCreadaToCrearEstancia"
+  sourceModelId: "payload-reservaCreada"
+  targetModelId: "payload-estanciaCreada"
+  hasCustomPart: true
+- id: "mm-reservaModificada-to-actualizarEstancia"
+  name: "ReservaModificadaToActualizarEstancia"
+  sourceModelId: "payload-reservaModificada"
+  targetModelId: "payload-estanciaCreada"
+  hasCustomPart: true
+projections:
+- id: "proj-llegadas"
+  name: "Llegadas"
+  readModelId: "rm-llegadas"
+  handlers:
+  - id: "h-llegadas-estanciaCreada"
+    name: "onEstanciaCreada"
+    domainEventId: "ev-estanciaCreada"
+    type: "Upsert"
+  - id: "h-llegadas-estanciaActualizada"
+    name: "onEstanciaActualizada"
+    domainEventId: "ev-estanciaActualizada"
+    type: "Upsert"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+  maxRetries: 3
 subscriptions:
-- id: "sub-rack-habitacionCreada"
-  name: "RackHabitacionCreada"
-  eventName: "HabitacionCreada"
-  sourceService: "master-data"
-  inputModelId: "payload-habitacionCreada"
-  topicName: "hotel.master-data.habitacion-creada"
-  consumerGroup: "rack"
-  actions: []
-- id: "sub-rack-habitacionPreasignada"
-  name: "RackHabitacionPreasignada"
-  eventName: "HabitacionPreasignada"
-  sourceService: "frontoffice"
-  inputModelId: "payload-habitacionPreasignada"
-  topicName: "hotel.frontoffice.habitacion-preasignada"
-  consumerGroup: "rack"
-  actions: []
-- id: "sub-housekeeping-habitacionCreada"
-  name: "HousekeepingHabitacionCreada"
-  eventName: "HabitacionCreada"
-  sourceService: "master-data"
-  inputModelId: "payload-habitacionCreada"
-  topicName: "hotel.master-data.habitacion-creada"
-  consumerGroup: "housekeeping"
-  actions: []
 - id: "sub-servicio-tecnico-habitacionCreada"
   name: "ServicioTecnicoHabitacionCreada"
   eventName: "HabitacionCreada"
@@ -1325,20 +1297,20 @@ subscriptions:
   inputModelId: "payload-habitacionCreada"
   topicName: "hotel.master-data.habitacion-creada"
   consumerGroup: "servicio-tecnico"
-  actions: []
-- id: "sub-frontoffice-reservaCreada"
-  name: "FrontofficeReservaCreada"
-  eventName: "ReservaCreada"
-  sourceService: "reservas"
-  inputModelId: "payload-reservaCreada"
-  topicName: "hotel.reservas.reserva-creada"
-  consumerGroup: "frontoffice"
-  actions:
-  - id: "act-frontoffice-crearEstancia"
-    name: "crearEstancia"
-    type: "CallUseCase"
-    useCaseId: "uc-crearEstancia"
-    modelMappingId: "mm-reservaCreada-to-crearEstancia"
+- id: "sub-housekeeping-habitacionCreada"
+  name: "HousekeepingHabitacionCreada"
+  eventName: "HabitacionCreada"
+  sourceService: "master-data"
+  inputModelId: "payload-habitacionCreada"
+  topicName: "hotel.master-data.habitacion-creada"
+  consumerGroup: "housekeeping"
+- id: "sub-folios-pagoRegistrado"
+  name: "FoliosPagoRegistrado"
+  eventName: "PagoRegistrado"
+  sourceService: "pagos"
+  inputModelId: "payload-pagoRegistrado"
+  topicName: "hotel.pagos.pago-registrado"
+  consumerGroup: "folios"
 - id: "sub-frontoffice-reservaModificada"
   name: "FrontofficeReservaModificada"
   eventName: "ReservaModificada"
@@ -1352,21 +1324,38 @@ subscriptions:
     type: "CallUseCase"
     useCaseId: "uc-actualizarEstancia"
     modelMappingId: "mm-reservaModificada-to-actualizarEstancia"
-- id: "sub-folios-pagoRegistrado"
-  name: "FoliosPagoRegistrado"
-  eventName: "PagoRegistrado"
-  sourceService: "pagos"
-  inputModelId: "payload-pagoRegistrado"
-  topicName: "hotel.pagos.pago-registrado"
-  consumerGroup: "folios"
-  actions: []
+- id: "sub-rack-habitacionPreasignada"
+  name: "RackHabitacionPreasignada"
+  eventName: "HabitacionPreasignada"
+  sourceService: "frontoffice"
+  inputModelId: "payload-habitacionPreasignada"
+  topicName: "hotel.frontoffice.habitacion-preasignada"
+  consumerGroup: "rack"
+- id: "sub-rack-habitacionCreada"
+  name: "RackHabitacionCreada"
+  eventName: "HabitacionCreada"
+  sourceService: "master-data"
+  inputModelId: "payload-habitacionCreada"
+  topicName: "hotel.master-data.habitacion-creada"
+  consumerGroup: "rack"
+- id: "sub-frontoffice-reservaCreada"
+  name: "FrontofficeReservaCreada"
+  eventName: "ReservaCreada"
+  sourceService: "reservas"
+  inputModelId: "payload-reservaCreada"
+  topicName: "hotel.reservas.reserva-creada"
+  consumerGroup: "frontoffice"
+  actions:
+  - id: "act-frontoffice-crearEstancia"
+    name: "crearEstancia"
+    type: "CallUseCase"
+    useCaseId: "uc-crearEstancia"
+    modelMappingId: "mm-reservaCreada-to-crearEstancia"
 roles:
 - id: "recepcionista"
   name: "Recepcionista"
-  allowedUseCaseIds: []
 - id: "jefeRecepcion"
   name: "JefeRecepcion"
-  allowedUseCaseIds: []
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1374,62 +1363,6 @@ uiShells:
   serviceIds:
   - "hotel-svc"
 enums:
-- id: "sexo"
-  values:
-  - id: "H"
-    name: "Hombre"
-  - id: "M"
-    name: "Mujer"
-- id: "aceptaPublicidad"
-  values:
-  - id: "P"
-    name: "Permite"
-  - id: "N"
-    name: "No permite"
-- id: "estadoEstancia"
-  values:
-  - id: "PENDIENTE"
-    name: "Pendiente"
-  - id: "CHECK_IN"
-    name: "Check In"
-- id: "tipoCliente"
-  values:
-  - id: "GEN"
-    name: "General"
-  - id: "VIP"
-    name: "VIP"
-- id: "tipoCobro"
-  values:
-  - id: "PFRONT"
-    name: "Pago en Front"
-  - id: "CRED"
-    name: "Crédito"
-- id: "estadoReserva"
-  values:
-  - id: "PTE"
-    name: "Pendiente"
-  - id: "CNF"
-    name: "Confirmada"
-- id: "tipoTarifa"
-  values:
-  - id: "B2C"
-    name: "B2C"
-  - id: "B2C2"
-    name: "B2C2"
-- id: "tipoPax"
-  values:
-  - id: "AD"
-    name: "Adulto"
-  - id: "CH"
-    name: "Children"
-  - id: "BB"
-    name: "Bebé"
-- id: "estadoHabitacion"
-  values:
-  - id: "LIMPIA"
-    name: "Limpia"
-  - id: "PENDIENTE"
-    name: "Pendiente"
 - id: "estadoOcupacion"
   values:
   - id: "LIBRE"
@@ -1442,6 +1375,62 @@ enums:
     name: "Pax"
   - id: "H"
     name: "Habitación"
+- id: "tipoTarifa"
+  values:
+  - id: "B2C"
+    name: "B2C"
+  - id: "B2C2"
+    name: "B2C2"
+- id: "tipoCliente"
+  values:
+  - id: "GEN"
+    name: "General"
+  - id: "VIP"
+    name: "VIP"
+- id: "estadoEstancia"
+  values:
+  - id: "PENDIENTE"
+    name: "Pendiente"
+  - id: "CHECK_IN"
+    name: "Check In"
+- id: "aceptaPublicidad"
+  values:
+  - id: "P"
+    name: "Permite"
+  - id: "N"
+    name: "No permite"
+- id: "estadoReserva"
+  values:
+  - id: "PTE"
+    name: "Pendiente"
+  - id: "CNF"
+    name: "Confirmada"
+- id: "tipoCobro"
+  values:
+  - id: "PFRONT"
+    name: "Pago en Front"
+  - id: "CRED"
+    name: "Crédito"
+- id: "sexo"
+  values:
+  - id: "H"
+    name: "Hombre"
+  - id: "M"
+    name: "Mujer"
+- id: "estadoHabitacion"
+  values:
+  - id: "LIMPIA"
+    name: "Limpia"
+  - id: "PENDIENTE"
+    name: "Pendiente"
+- id: "tipoPax"
+  values:
+  - id: "AD"
+    name: "Adulto"
+  - id: "CH"
+    name: "Children"
+  - id: "BB"
+    name: "Bebé"
 queryServices:
 - id: "qs-consultas-recepcion"
   name: "ConsultasRecepcion"
@@ -1477,16 +1466,6 @@ integrationEvents:
   serializationFormat: "JSON"
   compressionType: "NONE"
   replayable: true
-- id: "ie-reservaCreada"
-  name: "ReservaCreada"
-  moduleId: "mod-reservas"
-  description: "Alta de una reserva"
-  sourceDomainEventId: "ev-reservaCreada"
-  payloadModelId: "payload-reservaCreada"
-  topicName: "hotel.reservas.reserva-creada"
-  serializationFormat: "JSON"
-  compressionType: "NONE"
-  replayable: true
 - id: "ie-reservaModificada"
   name: "ReservaModificada"
   moduleId: "mod-reservas"
@@ -1517,36 +1496,16 @@ integrationEvents:
   serializationFormat: "JSON"
   compressionType: "NONE"
   replayable: true
-modelMappings:
-- id: "mm-reservaCreada-to-crearEstancia"
-  name: "ReservaCreadaToCrearEstancia"
-  sourceModelId: "payload-reservaCreada"
-  targetModelId: "payload-estanciaCreada"
-  hasCustomPart: true
-  rules: []
-- id: "mm-reservaModificada-to-actualizarEstancia"
-  name: "ReservaModificadaToActualizarEstancia"
-  sourceModelId: "payload-reservaModificada"
-  targetModelId: "payload-estanciaCreada"
-  hasCustomPart: true
-  rules: []
-projections:
-- id: "proj-llegadas"
-  name: "Llegadas"
-  readModelId: "rm-llegadas"
-  handlers:
-  - id: "h-llegadas-estanciaCreada"
-    name: "onEstanciaCreada"
-    domainEventId: "ev-estanciaCreada"
-    type: "Upsert"
-  - id: "h-llegadas-estanciaActualizada"
-    name: "onEstanciaActualizada"
-    domainEventId: "ev-estanciaActualizada"
-    type: "Upsert"
-  rebuildStrategy: "REPLAY"
-  errorHandlingStrategy: "RETRY"
-  maxRetries: 3
-  snapshotEnabled: false
+- id: "ie-reservaCreada"
+  name: "ReservaCreada"
+  moduleId: "mod-reservas"
+  description: "Alta de una reserva"
+  sourceDomainEventId: "ev-reservaCreada"
+  payloadModelId: "payload-reservaCreada"
+  topicName: "hotel.reservas.reserva-creada"
+  serializationFormat: "JSON"
+  compressionType: "NONE"
+  replayable: true
 readModels:
 - id: "rm-llegadas"
   name: "LlegadasReadModel"
@@ -1555,3 +1514,62 @@ readModels:
   modelId: "LlegadaResumen"
   storageType: "Document"
   consistency: "Eventual"
+flows:
+- id: "flow-estanciaactualizada-estanciaactualizadaview"
+  name: "EstanciaActualizadaView"
+  archetype: "MATERIALIZES"
+  triggerAggregateId: "historialCliente"
+  triggerEvent: "EstanciaActualizada"
+  targetModuleId: "mod-folios"
+  readModelName: "EstanciaActualizadaView"
+diagrams:
+- id: "context-map"
+  detail: "detail"
+  nodes:
+  - ref: "mod-frontoffice"
+    x: -491.9
+    "y": 290.0
+    w: 424.1
+    h: 357.4
+  - ref: "estancia"
+    x: -144.1
+    "y": -128.7
+  - ref: "historialCliente"
+    x: 90.8
+    "y": 137.2
+  - ref: "uc-realizarCheckin"
+    x: -144.1
+    "y": -86.7
+  - ref: "uc-crearEstancia"
+    x: -24.1
+    "y": -86.7
+  - ref: "uc-actualizarEstancia"
+    x: -144.1
+    "y": -44.7
+  - ref: "ev-habitacionPreasignada"
+    x: 13.8
+    "y": -16.5
+  - ref: "ev-estanciaCreada"
+    x: -144.1
+    "y": -2.7
+  - ref: "ev-estanciaActualizada"
+    x: 115.2
+    "y": 18.0
+  - ref: "rm-llegadas"
+    x: -144.1
+    "y": 39.3
+  - ref: "qs-consultas-recepcion"
+    x: -44.7
+    "y": 144.3
+  - ref: "recepcionista"
+    x: -242.1
+    "y": 604.7
+  - ref: "jefeRecepcion"
+    x: -51.2
+    "y": 610.2
+  - ref: "mod-produccion"
+    x: -80.9
+    "y": 120.5
+  - ref: "mod-folios"
+    x: 64.7
+    "y": 370.7

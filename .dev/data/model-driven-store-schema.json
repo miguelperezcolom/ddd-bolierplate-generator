@@ -153,9 +153,55 @@
       "type" : "string",
       "enum" : [ "JPA", "MONGODB", "EVENT_SOURCED", "IN_MEMORY" ]
     },
+    "AiAgentEntity" : {
+      "type" : "object",
+      "properties" : {
+        "allowedUseCaseIds" : {
+          "description" : "References to existing 'allowedUseCase' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "AnonymizationStrategy" : {
       "type" : "string",
       "enum" : [ "NONE", "MASK", "HASH", "ERASE", "CRYPTO_SHRED" ]
+    },
+    "ApplicationEventEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "modelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
     },
     "BddScenarioEntity" : {
       "type" : "object",
@@ -419,6 +465,81 @@
       "type" : "string",
       "enum" : [ "PROPOSED", "ACCEPTED", "DEPRECATED", "SUPERSEDED" ]
     },
+    "DiagramEdgeEntity" : {
+      "type" : "object",
+      "properties" : {
+        "points" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/DiagramPointEntity"
+          }
+        },
+        "ref" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "DiagramEntity" : {
+      "type" : "object",
+      "properties" : {
+        "detail" : {
+          "type" : "string"
+        },
+        "edges" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/DiagramEdgeEntity"
+          }
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "nodes" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/DiagramNodeEntity"
+          }
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "DiagramNodeEntity" : {
+      "type" : "object",
+      "properties" : {
+        "h" : {
+          "type" : "number"
+        },
+        "ref" : {
+          "type" : "string"
+        },
+        "w" : {
+          "type" : "number"
+        },
+        "x" : {
+          "type" : "number"
+        },
+        "y" : {
+          "type" : "number"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "DiagramPointEntity" : {
+      "type" : "object",
+      "properties" : {
+        "x" : {
+          "type" : "number"
+        },
+        "y" : {
+          "type" : "number"
+        }
+      },
+      "additionalProperties" : false
+    },
     "DomainEventEntity" : {
       "type" : "object",
       "properties" : {
@@ -505,6 +626,30 @@
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
+      "additionalProperties" : false
+    },
+    "DomainServiceEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationEntity"
+          }
+        }
+      },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "EmailProvider" : {
@@ -631,6 +776,12 @@
         },
         "protocol" : {
           "$ref" : "#/$defs/ExternalSystemProtocol"
+        },
+        "useCases" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ExternalSystemUseCaseEntity"
+          }
         }
       },
       "additionalProperties" : false
@@ -638,6 +789,23 @@
     "ExternalSystemProtocol" : {
       "type" : "string",
       "enum" : [ "REST", "SOAP", "GRPC", "MESSAGING", "FILE", "DATABASE", "OTHER" ]
+    },
+    "ExternalSystemUseCaseEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
     },
     "FieldDataType" : {
       "type" : "string",
@@ -712,8 +880,18 @@
           "description" : "Reference to an existing 'triggerAggregate' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "triggerDomainServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerDomainService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "triggerEvent" : {
           "type" : "string"
+        },
+        "triggerUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -1322,6 +1500,14 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "applicationEventIds" : {
+          "description" : "References to existing 'applicationEvent' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "autoTableNamePrefix" : {
           "type" : "boolean"
         },
@@ -1360,6 +1546,14 @@
           "type" : "array",
           "items" : {
             "$ref" : "#/$defs/DomainPolicyEntity"
+          }
+        },
+        "domainServiceIds" : {
+          "description" : "References to existing 'domainService' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
         "entityIds" : {
@@ -2257,6 +2451,11 @@
     "ReadModelEntity" : {
       "type" : "object",
       "properties" : {
+        "aggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "consistency" : {
           "$ref" : "#/$defs/ReadModelConsistency"
         },
@@ -2295,6 +2494,14 @@
     "RoleEntity" : {
       "type" : "object",
       "properties" : {
+        "allowedQueryServiceIds" : {
+          "description" : "References to existing 'allowedQueryService' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "allowedUseCaseIds" : {
           "description" : "References to existing 'allowedUseCase' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -2989,9 +3196,19 @@
           "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "applicationEventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'applicationEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "domainEventId" : {
           "type" : "string",
           "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "externalUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'externalUseCase' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "gatewayId" : {
@@ -3048,7 +3265,7 @@
     },
     "UseCaseStepType" : {
       "type" : "string",
-      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "PublishDomainEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping" ]
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "CallExternalUseCase", "PublishDomainEvent", "PublishApplicationEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping" ]
     },
     "ValueObjectEntity" : {
       "type" : "object",
@@ -3110,6 +3327,95 @@
       },
       "required" : [ "id" ],
       "additionalProperties" : false
+    },
+    "WorkflowEntity" : {
+      "type" : "object",
+      "properties" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "onCompletionEventName" : {
+          "type" : "string"
+        },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/WorkflowStepEntity"
+          }
+        },
+        "triggerAggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "triggerDomainServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerDomainService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "triggerEvent" : {
+          "type" : "string"
+        },
+        "triggerUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'triggerUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "WorkflowStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "completionEventName" : {
+          "type" : "string"
+        },
+        "dependsOnStepIds" : {
+          "description" : "References to existing 'dependsOnStep' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "emittedEventName" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "targetUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'targetUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "additionalProperties" : false
     }
   },
   "type" : "object",
@@ -3119,6 +3425,18 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/AggregateEntity"
+      }
+    },
+    "aiAgents" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/AiAgentEntity"
+      }
+    },
+    "applicationEvents" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ApplicationEventEntity"
       }
     },
     "bddScenarios" : {
@@ -3149,11 +3467,23 @@
         "$ref" : "#/$defs/DecisionEntity"
       }
     },
+    "diagrams" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DiagramEntity"
+      }
+    },
     "domainEvents" : {
       "description" : "Events emitted by aggregates inside the bounded context.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/DomainEventEntity"
+      }
+    },
+    "domainServices" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DomainServiceEntity"
       }
     },
     "entities" : {
@@ -3329,6 +3659,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ViewEntity"
+      }
+    },
+    "workflows" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/WorkflowEntity"
       }
     }
   },

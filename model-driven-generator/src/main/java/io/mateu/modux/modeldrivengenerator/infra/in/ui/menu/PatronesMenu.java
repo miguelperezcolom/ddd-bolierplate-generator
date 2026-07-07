@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.flow.FlowCrudOrches
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.flow.FlowExpandedPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.process.ProcessCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.readmodel.ReadModelCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workflow.WorkflowCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 
@@ -22,6 +23,9 @@ public class PatronesMenu {
 
     @Menu
     ProcessCrudOrchestrator processes;
+
+    @Menu
+    WorkflowCrudOrchestrator workflows;
 
     @Menu
     ReadModelCrudOrchestrator readModels;
