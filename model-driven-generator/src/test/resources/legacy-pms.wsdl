@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="LegacyPms"
+                  targetNamespace="http://legacy.example.com/pms"
+                  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:tns="http://legacy.example.com/pms"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <wsdl:message name="ObtenerReservaRequest">
+    <wsdl:part name="localizador" type="xsd:string"/>
+  </wsdl:message>
+  <wsdl:message name="ObtenerReservaResponse">
+    <wsdl:part name="reserva" type="xsd:string"/>
+  </wsdl:message>
+  <wsdl:message name="ConfirmarReservaRequest">
+    <wsdl:part name="localizador" type="xsd:string"/>
+  </wsdl:message>
+  <wsdl:message name="ConfirmarReservaResponse">
+    <wsdl:part name="ok" type="xsd:boolean"/>
+  </wsdl:message>
+
+  <wsdl:portType name="PmsPort">
+    <wsdl:operation name="ObtenerReserva">
+      <wsdl:documentation>Devuelve la reserva del PMS legacy por localizador</wsdl:documentation>
+      <wsdl:input message="tns:ObtenerReservaRequest"/>
+      <wsdl:output message="tns:ObtenerReservaResponse"/>
+    </wsdl:operation>
+    <wsdl:operation name="ConfirmarReserva">
+      <wsdl:input message="tns:ConfirmarReservaRequest"/>
+      <wsdl:output message="tns:ConfirmarReservaResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+
+</wsdl:definitions>

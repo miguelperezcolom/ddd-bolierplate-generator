@@ -1,0 +1,126 @@
+package io.mateu.modux.modeldrivengenerator.application.usecases.project.importwsdl;
+
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiExternalUseCase;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * WSDL import, both directions: the SOAP operations of a legacy partner land as
+ * {@link ExternalSystemUseCaseEntity} on the external system (callable/pollable surface),
+ * or — when the contract is something WE must implement — as use-case stubs attached to a
+ * bounded context. Deterministic ids make re-imports update instead of duplicate.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ImportWsdlUseCase {
+
+    final CommonFileRepository repository;
+
+    public void handle(ImportWsdlCommand command) {
+        var hasExternal = command.externalSystemId() != null && !command.externalSystemId().isBlank();
+        var hasModule = command.moduleId() != null && !command.moduleId().isBlank();
+        if (hasExternal == hasModule) {
+            throw new IllegalArgumentException(
+                    "Elige UN destino: un sistema externo o un bounded context");
+        }
+        var operations = WsdlParser.parse(Path.of(command.filePath()));
+        if (hasExternal) {
+            importIntoExternal(command.externalSystemId(), operations);
+        } else {
+            importIntoModule(command.moduleId(), operations);
+        }
+    }
+
+    private void importIntoExternal(String externalSystemId,
+                                    List<WsdlParser.WsdlOperation> operations) {
+        var project = owningProject();
+        var external = project.externalSystems().stream()
+                .filter(x -> x.id().equals(externalSystemId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown external system: " + externalSystemId));
+        var merged = new ArrayList<>(external.useCases());
+        for (var op : operations) {
+            var operation = new ExternalSystemUseCaseEntity(
+                    ImportOpenApiExternalUseCase.operationId(externalSystemId, op.name()),
+                    op.name(), description(op));
+            var existing = merged.stream()
+                    .filter(u -> u.id().equals(operation.id())).findFirst();
+            if (existing.isPresent()) {
+                merged.set(merged.indexOf(existing.get()), operation);
+            } else {
+                merged.add(operation);
+            }
+        }
+        repository.save(ImportOpenApiExternalUseCase.withExternalSystems(project,
+                project.externalSystems().stream()
+                        .map(x -> x.id().equals(externalSystemId)
+                                ? ImportOpenApiExternalUseCase.withUseCases(x, List.copyOf(merged))
+                                : x)
+                        .toList()));
+        log.info("Imported {} SOAP operations into external system '{}'",
+                operations.size(), externalSystemId);
+    }
+
+    private void importIntoModule(String moduleId, List<WsdlParser.WsdlOperation> operations) {
+        var module = repository.findById(moduleId, ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + moduleId));
+        var useCaseIds = new ArrayList<String>();
+        for (var op : operations) {
+            var id = useCaseId(op.name(), module);
+            useCaseIds.add(id);
+            repository.save(new UseCaseEntity(
+                    id, op.name(),
+                    false, false, false, false, false,   // exposure is the developer's call (SOAP shim, REST…)
+                    null, null,
+                    List.of(),                            // no steps: custom implementation stub
+                    List.of(), List.of(),
+                    null,
+                    description(op),                      // the WSDL intent travels as mcpDescription prose
+                    null, null,
+                    null, null, null, null, null,
+                    false, null, null,
+                    null, false, null,
+                    false, null,
+                    null, null));
+        }
+        var merged = new ArrayList<>(module.useCaseIds() != null ? module.useCaseIds() : List.<String>of());
+        useCaseIds.stream().filter(id -> !merged.contains(id)).forEach(merged::add);
+        repository.save(module.toBuilder().useCaseIds(merged).build());
+        log.info("Imported {} SOAP operations as use-case stubs into module '{}'",
+                operations.size(), moduleId);
+    }
+
+    /** Deterministic id, never hijacking one owned by another module (same rule as OpenAPI inbound). */
+    private String useCaseId(String operationName, ModuleEntity module) {
+        var plain = "uc-" + operationName;
+        var existing = repository.findById(plain, UseCaseEntity.class);
+        var ownedHere = module.useCaseIds() != null && module.useCaseIds().contains(plain);
+        if (existing.isEmpty() || ownedHere) return plain;
+        return "uc-" + module.name().toLowerCase().replaceAll("[^a-z0-9]+", "")
+                + "-" + operationName;
+    }
+
+    private static String description(WsdlParser.WsdlOperation op) {
+        var base = "SOAP " + op.portType() + "." + op.name();
+        return op.documentation() == null || op.documentation().isBlank()
+                ? base : base + " — " + op.documentation();
+    }
+
+    private ProjectEntity owningProject() {
+        return repository.findAllOfType(ProjectEntity.class).stream()
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No project in the model store"));
+    }
+}

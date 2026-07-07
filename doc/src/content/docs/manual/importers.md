@@ -1,16 +1,39 @@
 ---
 title: Importing Existing Specs
-description: Bootstrap your Modux spec store from OpenAPI and AsyncAPI files
+description: Bootstrap your Modux spec store from OpenAPI, WSDL and AsyncAPI files
 ---
 
-Instead of defining every gateway, event and subscription by hand, Modux can read existing API contracts and populate the spec store automatically. Two importers are available:
+Instead of defining every gateway, operation, event and subscription by hand, Modux can read existing API contracts and populate the spec store automatically:
 
 | Importer | Source | Creates |
 |---|---|---|
-| OpenAPI | OpenAPI 3.x YAML / JSON | Gateways + operations |
+| OpenAPI (outbound) | OpenAPI 3.x YAML / JSON | Gateways + operations |
+| OpenAPI (inbound) | OpenAPI 3.x YAML / JSON | REST-exposed **use-case stubs** on a module + typed models |
+| OpenAPI (partner) | OpenAPI 3.x YAML / JSON | **Operations on an external system** |
+| WSDL | WSDL 1.1 | **Operations on an external system**, or SOAP **use-case stubs** on a module |
 | AsyncAPI | AsyncAPI 2.x YAML | Domain events + subscriptions |
 
-Both importers use **upsert** semantics: if an entity with the same name or topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the store in sync.
+All importers use **upsert** semantics with deterministic ids: if an entity with the same id/name/topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the store in sync.
+
+## One door: Import API contract
+
+**Organización › Import API contract (OpenAPI / WSDL)** handles both formats and both
+directions with a single form: the file's format is detected, and the **target** decides
+the meaning —
+
+- **External system id** — the contract describes what a *partner* offers: every
+  operation lands as an operation of the external system (`xuc-<system>-<operation>`),
+  ready to be called by use cases (`CallExternalUseCase`), consumed by
+  [AI agents](/manual/ai-agents/), or polled by
+  [projections](/manual/projections/#alternative-sources). For WSDL, the
+  `portType.operation` and its `documentation` travel as the description.
+- **Module id** — the contract is something *we* must expose: OpenAPI operations become
+  REST-exposed use-case stubs (method, path, typed models); WSDL operations become
+  plain use-case stubs (the exposure — SOAP shim, REST — is the developer's call).
+
+Exactly one target is required. Module-targeted imports never hijack a use-case id
+owned by another module: the id is scoped (`uc-<module>-<operation>`) instead of
+silently overwriting.
 
 ## OpenAPI → Gateways
 

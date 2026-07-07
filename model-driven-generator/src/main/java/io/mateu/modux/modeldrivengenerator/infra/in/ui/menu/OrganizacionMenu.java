@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.menu;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.decision.DecisionCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.designdoc.DesignDocPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project.ImportApiContractForm;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
@@ -25,5 +26,8 @@ public class OrganizacionMenu {
 
     @Menu
     DesignDocPage designDocument;
+
+    @Menu
+    ImportApiContractForm importApiContract;
 
 }
