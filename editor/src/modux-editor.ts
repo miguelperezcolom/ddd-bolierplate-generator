@@ -612,12 +612,24 @@ export class ModuxEditor extends LitElement {
   }
 
   private onNodeResized(e: CustomEvent): void {
-    const { id, w, h } = e.detail as { id: string; w: number; h: number };
+    const { id, x, y, w, h } = e.detail as { id: string; x: number; y: number; w: number; h: number };
     const view = this._view;
     const current = this.viewLayout(view);
-    const previous = current.sizes?.[id] ?? null;
-    this.pushUndoEntry([{ kind: 'resize-node', view, id, size: previous }]);
-    this.writeViewLayout(view, { ...current, sizes: { ...(current.sizes ?? {}), [id]: { w, h } } });
+    // An anchored resize moves the centre; children stayed put on screen, so
+    // their offsets (relative to the centre) are re-expressed from the new one.
+    const children = this.sceneFor(view).nodes.filter((n) => n.parentId === id);
+    this.pushUndoEntry([
+      { kind: 'resize-node', view, id, size: current.sizes?.[id] ?? null },
+      { kind: 'move-node', view, id, pos: current.nodes[id] ?? null },
+      ...children.map((c): EditOp => ({ kind: 'move-node', view, id: c.id, pos: current.nodes[c.id] ?? null })),
+    ]);
+    const nodes = { ...current.nodes, [id]: { x, y } };
+    for (const c of children) nodes[c.id] = { x: c.x - x, y: c.y - y };
+    this.writeViewLayout(view, {
+      ...current,
+      nodes,
+      sizes: { ...(current.sizes ?? {}), [id]: { w, h } },
+    });
   }
 
   private onEdgePointsChanged(e: CustomEvent): void {

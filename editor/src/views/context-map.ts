@@ -1,6 +1,6 @@
 import type { ModuxModel, ContextMapRelationType, FlowRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
-import { containerMinSize } from '../scene.js';
+import { containerFit } from '../scene.js';
 
 /**
  * Context-map view adapter: projects the modux model into a generic Scene.
@@ -139,15 +139,17 @@ function detailedContext(
   const size = sizes[module.id] ?? defaultContainerSize(children.length);
   const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
   // Children must always fit inside the box: a stored size that no longer holds
-  // them (new aggregates, legacy layouts) grows instead of letting them spill.
-  const fit = containerMinSize(
-    offsets.map((off) => ({ dx: off.x, dy: off.y, w: CHILD_W, h: CHILD_H })),
+  // them (new aggregates, legacy layouts) grows per side instead of letting
+  // them spill. Children keep their absolute spot (offsets are from `center`).
+  const fit = containerFit(
+    center,
     size,
+    offsets.map((off) => ({ dx: off.x, dy: off.y, w: CHILD_W, h: CHILD_H })),
   );
   const container: SceneNode = {
     ...base,
-    x: center.x,
-    y: center.y,
+    x: fit.x,
+    y: fit.y,
     w: fit.w,
     h: fit.h,
     container: true,

@@ -38,7 +38,7 @@ export interface SceneNode {
 export const CONTAINER_HEADER = 34;
 export const CONTAINER_INSET = 10;
 
-/** The smallest width/height a child inside a container forces on it. */
+/** The smallest width/height a child inside a container forces on it (symmetric about the centre). */
 export function containerMinSize(
   children: Array<{ dx: number; dy: number; w: number; h: number }>,
   floor = { w: 160, h: 90 },
@@ -54,6 +54,35 @@ export function containerMinSize(
     );
   }
   return { w, h };
+}
+
+/**
+ * Grow a container (per side, so the growth is minimal) until every child fits
+ * inside its margins. Child offsets are relative to `centre`; the returned box
+ * may have a different centre when growth was asymmetric, but children keep
+ * their absolute positions.
+ */
+export function containerFit(
+  centre: { x: number; y: number },
+  size: { w: number; h: number },
+  children: Array<{ dx: number; dy: number; w: number; h: number }>,
+): { x: number; y: number; w: number; h: number } {
+  let left = size.w / 2;
+  let right = size.w / 2;
+  let top = size.h / 2;
+  let bottom = size.h / 2;
+  for (const c of children) {
+    left = Math.max(left, -c.dx + c.w / 2 + CONTAINER_INSET);
+    right = Math.max(right, c.dx + c.w / 2 + CONTAINER_INSET);
+    top = Math.max(top, -c.dy + c.h / 2 + CONTAINER_HEADER);
+    bottom = Math.max(bottom, c.dy + c.h / 2 + CONTAINER_INSET);
+  }
+  return {
+    x: centre.x + (right - left) / 2,
+    y: centre.y + (bottom - top) / 2,
+    w: left + right,
+    h: top + bottom,
+  };
 }
 
 export interface SceneEdge {

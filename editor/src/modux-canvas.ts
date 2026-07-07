@@ -123,7 +123,7 @@ export class ModuxCanvas extends LitElement {
   @state() private _spaceDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
   @state() private _selectedWaypoint: { edgeId: string; index: number } | null = null;
-  @state() private _resize: { id: string; w: number; h: number } | null = null;
+  @state() private _resize: { id: string; x: number; y: number; w: number; h: number } | null = null;
   @state() private _rubber: { a: Point; b: Point } | null = null;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
@@ -351,6 +351,10 @@ export class ModuxCanvas extends LitElement {
     if (this._dragPos && this._dragPos.id === node.id) {
       return { x: this._dragPos.x, y: this._dragPos.y };
     }
+    // An anchored resize moves the centre; children stay put (they are absolute here).
+    if (this._resize && this._resize.id === node.id) {
+      return { x: this._resize.x, y: this._resize.y };
+    }
     // A child follows its container live while the container is being dragged.
     if (node.parentId && this._dragPos && this._dragPos.id === node.parentId) {
       const parent = this.scene.nodes.find((n) => n.id === node.parentId);
@@ -418,32 +422,63 @@ export class ModuxCanvas extends LitElement {
 
   // ---- container resize ----------------------------------------------------
 
-  /** Corner-handle drag resizes a container symmetrically about its centre. */
-  private onResizePointerDown(e: PointerEvent, node: SceneNode): void {
+  /**
+   * Corner-handle drag resizes a container. The dragged corner follows the
+   * pointer while the opposite corner stays anchored; with Shift held the
+   * resize is symmetric about the centre. Children never leave the box: they
+   * keep their absolute position, so each edge stops at the outermost child.
+   */
+  private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: 1 | -1, sy: 1 | -1): void {
     if (e.button !== 0) return;
     e.stopPropagation();
     this.focus();
-    const center = this.nodePos(node);
-    // A container can never shrink past its children: every child keeps its
-    // offset from the centre, so each one demands enough room to stay inside.
-    const min = containerMinSize(
-      this.scene.nodes
-        .filter((n) => n.parentId === node.id)
-        .map((c) => ({ dx: c.x - node.x, dy: c.y - node.y, w: c.w, h: c.h })),
+    const MIN_W = 160;
+    const MIN_H = 90;
+    const start = { x: node.x, y: node.y, w: node.w, h: node.h };
+    const kids = this.scene.nodes.filter((n) => n.parentId === node.id);
+    const kidsLeft = Math.min(...kids.map((c) => c.x - c.w / 2));
+    const kidsRight = Math.max(...kids.map((c) => c.x + c.w / 2));
+    const kidsTop = Math.min(...kids.map((c) => c.y - c.h / 2));
+    const kidsBottom = Math.max(...kids.map((c) => c.y + c.h / 2));
+    const symMin = containerMinSize(
+      kids.map((c) => ({ dx: c.x - start.x, dy: c.y - start.y, w: c.w, h: c.h })),
+      { w: MIN_W, h: MIN_H },
     );
     const onMove = (ev: PointerEvent) => {
       const p = this.toScene(ev);
+      if (ev.shiftKey) {
+        this._resize = {
+          id: node.id,
+          x: start.x,
+          y: start.y,
+          w: Math.max(symMin.w, 2 * Math.abs(p.x - start.x)),
+          h: Math.max(symMin.h, 2 * Math.abs(p.y - start.y)),
+        };
+        return;
+      }
+      // Anchor = the opposite corner; the dragged edges stop at the floor size
+      // and at the outermost child (plus its margin).
+      const ax = start.x - (sx * start.w) / 2;
+      const ay = start.y - (sy * start.h) / 2;
+      const px = sx > 0
+        ? Math.max(p.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
+        : Math.min(p.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
+      const py = sy > 0
+        ? Math.max(p.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
+        : Math.min(p.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
       this._resize = {
         id: node.id,
-        w: Math.max(min.w, 2 * Math.abs(p.x - center.x)),
-        h: Math.max(min.h, 2 * Math.abs(p.y - center.y)),
+        x: (ax + px) / 2,
+        y: (ay + py) / 2,
+        w: Math.abs(px - ax),
+        h: Math.abs(py - ay),
       };
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       if (this._resize && this._resize.id === node.id) {
-        this.emit('node-resized', { id: node.id, w: this._resize.w, h: this._resize.h });
+        this.emit('node-resized', { ...this._resize });
       }
       this._resize = null;
     };
@@ -816,11 +851,15 @@ export class ModuxCanvas extends LitElement {
             )
           : ''}
         ${isContainer && selected
-          ? svg`<rect data-resize x=${hw - 9} y=${hh - 9} width="13" height="13" rx="2.5"
-                fill="#2563eb" stroke="#ffffff" stroke-width="1.5" style="cursor: nwse-resize"
-                @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node)}>
-              <title>Arrastra para cambiar el tamaño del contexto</title>
-            </rect>`
+          ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
+              ([sx, sy]) => svg`
+                <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width="13" height="13" rx="2.5"
+                      fill="#2563eb" stroke="#ffffff" stroke-width="1.5"
+                      style="cursor: ${sx * sy > 0 ? 'nwse' : 'nesw'}-resize"
+                      @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
+                  <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
+                </rect>`,
+            )
           : ''}
       </g>
     `;
