@@ -326,5 +326,21 @@ export function contextMapScene(
         }))
     : [];
 
-  return { nodes, edges: [...relationEdges, ...flowEdges, ...emissionEdges] };
+  // Use case → use case invocations, visible when both render as children.
+  const callEdges: SceneEdge[] = detailed
+    ? (model.useCaseCalls ?? [])
+        .filter((c) => nodeIds.has(c.sourceId) && nodeIds.has(c.targetId))
+        .map((c) => ({
+          id: `uccall:${c.sourceId}->${c.targetId}`,
+          sourceId: c.sourceId,
+          targetId: c.targetId,
+          kind: 'uc-call',
+          color: '#0891b2',
+          dashed: true,
+          arrow: true,
+          tooltip: 'invoca',
+        }))
+    : [];
+
+  return { nodes, edges: [...relationEdges, ...flowEdges, ...emissionEdges, ...callEdges] };
 }

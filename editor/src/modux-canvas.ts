@@ -869,7 +869,7 @@ export class ModuxCanvas extends LitElement {
                     : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'use-case'
-                        ? 'Arrastra hasta un evento de aplicación para declarar que lo publica'
+                        ? 'Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo'
                         : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
                 </circle>`,
             )

@@ -108,6 +108,17 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** Use case A invokes use case B (a CallUseCase step in A). */
+      kind: 'add-use-case-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-use-case-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** The source aggregate emits the target domain event. */
       kind: 'add-emission';
       sourceId: string;

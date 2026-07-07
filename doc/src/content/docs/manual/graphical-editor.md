@@ -55,6 +55,10 @@ person / gear (human / automated steps), double circle (events), return arrow
   `PublishApplicationEvent` step). Amber dashed arrows connect each emitter to its
   event, and they are drawn on the canvas: select the emitter and drag from a blue
   handle onto the event. Supr on the arrow removes the emission again.
+- **Use case invocations**: drag from a use case onto another (in the same or another
+  bounded context) to add a `CallUseCase` step to the caller — drawn as a cyan dashed
+  arrow; Supr on the arrow removes the step. Cross-context calls are the seed for a
+  gateway/API at generation time.
 - **Materializations drawn on the canvas**: at the detail level read models render as
   children too, and dragging a domain OR application event onto another context (or
   one of its read models) creates a **MATERIALIZES flow** — the projection/read

@@ -96,6 +96,8 @@ public class EditorApiController {
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
+    /** Use case A invokes use case B (a CallUseCase step in A). */
+    public record UseCaseCallDto(String sourceId, String targetId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -108,7 +110,8 @@ public class EditorApiController {
             List<ProcessDto> processes,
             List<ViewDto> views,
             List<EmissionDto> emissions,
-            List<ActorDto> actors) {}
+            List<ActorDto> actors,
+            List<UseCaseCallDto> useCaseCalls) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -344,9 +347,21 @@ public class EditorApiController {
                 .map(r -> new ActorDto(r.id(), r.name()))
                 .toList();
 
+        var useCaseCalls = new ArrayList<UseCaseCallDto>();
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
+                        && step.useCaseId() != null) {
+                    useCaseCalls.add(new UseCaseCallDto(uc.id(), step.useCaseId()));
+                }
+            }
+        }
+
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
-                views, emissions.stream().distinct().toList(), actors);
+                views, emissions.stream().distinct().toList(), actors,
+                useCaseCalls.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -381,6 +396,8 @@ public class EditorApiController {
             case "remove-application-event" -> removeApplicationEvent(command);
             case "remove-domain-service" -> removeDomainService(command);
             case "add-emission" -> addEmission(command);
+            case "add-use-case-call" -> addUseCaseCall(command);
+            case "remove-use-case-call" -> removeUseCaseCall(command);
             case "add-read-model" -> addReadModel(command);
             case "remove-read-model" -> removeReadModel(command);
             case "remove-module" -> removeModule(command);
@@ -784,6 +801,41 @@ public class EditorApiController {
                     .toList()));
         }
         repository.deleteAllById(List.of(command.id()), ApplicationEventEntity.class);
+    }
+
+    /**
+     * Use case A invokes use case B: a CallUseCase step is appended to A. When the two
+     * live in different bounded contexts this is the seed for a gateway/API later on.
+     */
+    private void addUseCaseCall(EditorCommand command) {
+        var source = repository.findById(command.sourceId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
+        var target = repository.findById(command.targetId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetId()));
+        if (source.id().equals(target.id())) {
+            throw new IllegalArgumentException("Un caso de uso no puede invocarse a sí mismo");
+        }
+        var steps = new ArrayList<>(source.steps() == null ? List.of() : source.steps());
+        var alreadyThere = steps.stream().anyMatch(st ->
+                st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
+                        && target.id().equals(st.useCaseId()));
+        if (alreadyThere) return;
+        steps.add(new UseCaseStepEntity("step-call-" + target.id(), "call" + capitalize(target.name()),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase,
+                null, null, null, null, null, target.id(), null, null, null, null, null));
+        repository.save(withSteps(source, steps));
+    }
+
+    private void removeUseCaseCall(EditorCommand command) {
+        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(st -> !(st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
+                                && command.targetId().equals(st.useCaseId())))
+                        .toList())));
+    }
+
+    private static String capitalize(String s) {
+        return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     private void addDomainService(EditorCommand command) {

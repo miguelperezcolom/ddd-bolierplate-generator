@@ -474,6 +474,10 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
+      case 'add-use-case-call':
+        return [{ kind: 'remove-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-use-case-call':
+        return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-emission':
         return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-emission':
@@ -768,6 +772,13 @@ export class ModuxEditor extends LitElement {
       this.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
     );
     const ucIds = new Set(this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)));
+    if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
+      const already = (this.model.useCaseCalls ?? []).some(
+        (c) => c.sourceId === sourceId && c.targetId === targetId,
+      );
+      if (!already) this.command({ kind: 'add-use-case-call', sourceId, targetId });
+      return;
+    }
     if (
       (emitterIds.has(sourceId) && eventIds.has(targetId)) ||
       (ucIds.has(sourceId) && appEventIds.has(targetId))
@@ -898,6 +909,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-emission', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'uc-call') {
+      const match = /^uccall:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'module') {

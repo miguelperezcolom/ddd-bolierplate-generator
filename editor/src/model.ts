@@ -51,6 +51,12 @@ export interface EmissionRef {
   domainEventId: string;
 }
 
+/** Use case A invokes use case B (a CallUseCase step in A). */
+export interface UseCaseCallRef {
+  sourceId: string;
+  targetId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -158,4 +164,5 @@ export interface ModuxModel {
   emissions?: EmissionRef[];
   /** Business actors (roles) shown on the context map. */
   actors?: ActorRef[];
+  useCaseCalls?: UseCaseCallRef[];
 }
