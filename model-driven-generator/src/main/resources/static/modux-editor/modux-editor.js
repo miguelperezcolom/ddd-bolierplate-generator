@@ -3489,7 +3489,7 @@ let R = class extends pt {
                   font-family="ui-sans-serif, system-ui" fill="#1e293b">${t.label}</text>`}
         ${o ? k`<line x1=${-c + 8} y1=${-l + 28} x2=${c - 8} y2=${-l + 28}
                 stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>` : ""}
-        ${i && this.connectable && (!r || t.kind === "aggregate" || t.kind === "use-case" || t.kind === "domain-event") ? [
+        ${i && this.connectable && (!r || t.kind === "aggregate" || t.kind === "domain-event") ? [
       [c, 0],
       [-c, 0],
       [0, l],
@@ -4136,10 +4136,7 @@ let A = class extends pt {
     if (this._view !== "context-map") return;
     const o = new Set(
       this.model.modules.flatMap((l) => (l.domainEvents ?? []).map((h) => h.id))
-    ), r = /* @__PURE__ */ new Set([
-      ...(this.model.aggregates ?? []).map((l) => l.id),
-      ...this.model.modules.flatMap((l) => (l.useCases ?? []).map((h) => h.id))
-    ]);
+    ), r = new Set((this.model.aggregates ?? []).map((l) => l.id));
     if (r.has(e) && o.has(n)) {
       (this.model.emissions ?? []).some(
         (h) => h.sourceId === e && h.domainEventId === n
@@ -4175,10 +4172,12 @@ let A = class extends pt {
       });
       return;
     }
-    const a = new Set(
-      this.model.modules.flatMap((l) => (l.readModels ?? []).map((h) => h.id))
-    );
-    if (r.has(e) || r.has(n) || o.has(n) || a.has(e) || a.has(n))
+    const a = /* @__PURE__ */ new Set([
+      ...r,
+      ...this.model.modules.flatMap((l) => (l.useCases ?? []).map((h) => h.id)),
+      ...this.model.modules.flatMap((l) => (l.readModels ?? []).map((h) => h.id))
+    ]);
+    if (a.has(e) || a.has(n) || o.has(n))
       return;
     const d = new Set(this.model.externalSystems.map((l) => l.id));
     d.has(e) || d.has(n) || this.model.relations.some(

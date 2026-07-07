@@ -290,8 +290,10 @@ public class EditorApiController {
                 .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
                 .toList();
 
-        // Who publishes what: aggregate operations declare emitted events by NAME
-        // (CSV in OperationEntity.emits); use case steps publish by id.
+        // Who publishes what: DOMAIN events are emitted by aggregates (operations
+        // declare emitted event NAMES as a CSV in OperationEntity.emits). Use cases
+        // publishing through PublishDomainEvent steps is pipeline plumbing, not an
+        // emission — application events are the use-case-level concept.
         var eventIdByName = domainEventsById.values().stream()
                 .filter(ev -> ev.name() != null)
                 .collect(Collectors.toMap(ev -> ev.name().trim().toLowerCase(),
@@ -303,15 +305,6 @@ public class EditorApiController {
                 for (var eventName : op.emits().split(",")) {
                     var eventId = eventIdByName.get(eventName.trim().toLowerCase());
                     if (eventId != null) emissions.add(new EmissionDto(a.id(), eventId));
-                }
-            }
-        }
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
-                        && step.domainEventId() != null) {
-                    emissions.add(new EmissionDto(uc.id(), step.domainEventId()));
                 }
             }
         }
@@ -611,50 +604,35 @@ public class EditorApiController {
     }
 
     /**
-     * Declares that the source (aggregate or use case) publishes the target domain event.
-     * On an aggregate the event NAME joins the `emits` CSV of its first operation (a stub
-     * operation is created when it has none); on a use case a PublishDomainEvent step is
-     * appended. Both are refinable later through the CRUDs.
+     * Declares that the source aggregate emits the target domain event: the event NAME
+     * joins the `emits` CSV of its first operation (a stub operation is created when it
+     * has none). Refinable later through the CRUDs. Only aggregates (and, in the future,
+     * domain services) emit domain events — use cases emit application events instead.
      */
     private void addEmission(EditorCommand command) {
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
-        var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
-        if (aggregate.isPresent()) {
-            var a = aggregate.get();
-            if (operationsEmitting(a, event.name()).findAny().isPresent()) return;
-            var operations = new ArrayList<>(a.operations());
-            if (operations.isEmpty()) {
-                operations.add(new OperationEntity("op-emit-" + event.id(), "emit" + event.name(),
-                        null, null, null, null, event.name(), "CUSTOM", false, null, null));
-            } else {
-                var first = operations.get(0);
-                var emits = first.emits() == null || first.emits().isBlank()
-                        ? event.name() : first.emits() + "," + event.name();
-                operations.set(0, withEmits(first, emits));
-            }
-            repository.save(withOperations(a, operations));
-            return;
+        var a = repository.findById(command.sourceId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Solo los agregados emiten eventos de dominio; emisor desconocido: " + command.sourceId()));
+        if (operationsEmitting(a, event.name()).findAny().isPresent()) return;
+        var operations = new ArrayList<>(a.operations());
+        if (operations.isEmpty()) {
+            operations.add(new OperationEntity("op-emit-" + event.id(), "emit" + event.name(),
+                    null, null, null, null, event.name(), "CUSTOM", false, null, null));
+        } else {
+            var first = operations.get(0);
+            var emits = first.emits() == null || first.emits().isBlank()
+                    ? event.name() : first.emits() + "," + event.name();
+            operations.set(0, withEmits(first, emits));
         }
-        var useCase = repository.findById(command.sourceId(), UseCaseEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown emitter: " + command.sourceId()));
-        var steps = new ArrayList<>(useCase.steps() == null ? List.of() : useCase.steps());
-        var alreadyPublishes = steps.stream().anyMatch(s ->
-                s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
-                        && event.id().equals(s.domainEventId()));
-        if (alreadyPublishes) return;
-        steps.add(new UseCaseStepEntity("step-emit-" + event.id(), "publish" + event.name(),
-                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent,
-                null, null, null, null, event.id(), null, null, null, null, null));
-        repository.save(withSteps(useCase, steps));
+        repository.save(withOperations(a, operations));
     }
 
     private void removeEmission(EditorCommand command) {
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
-        var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
-        if (aggregate.isPresent()) {
-            var a = aggregate.get();
+        repository.findById(command.sourceId(), AggregateEntity.class).ifPresent(a -> {
             var operations = a.operations().stream()
                     .map(op -> withEmits(op, java.util.Arrays.stream(
                                     (op.emits() == null ? "" : op.emits()).split(","))
@@ -665,13 +643,7 @@ public class EditorApiController {
                     .filter(op -> !(op.id().startsWith("op-emit-") && op.emits() == null))
                     .toList();
             repository.save(withOperations(a, operations));
-            return;
-        }
-        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
-                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
-                        .filter(s -> !(s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
-                                && event.id().equals(s.domainEventId())))
-                        .toList())));
+        });
     }
 
     private java.util.stream.Stream<OperationEntity> operationsEmitting(AggregateEntity a, String eventName) {

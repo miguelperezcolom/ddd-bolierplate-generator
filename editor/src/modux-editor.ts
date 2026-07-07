@@ -688,10 +688,9 @@ export class ModuxEditor extends LitElement {
     const eventIds = new Set(
       this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
     );
-    const emitterIds = new Set([
-      ...(this.model.aggregates ?? []).map((a) => a.id),
-      ...this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
-    ]);
+    // Only aggregates (and, later, domain services) emit domain events; use cases
+    // emit application events instead.
+    const emitterIds = new Set((this.model.aggregates ?? []).map((a) => a.id));
     if (emitterIds.has(sourceId) && eventIds.has(targetId)) {
       const already = (this.model.emissions ?? []).some(
         (em) => em.sourceId === sourceId && em.domainEventId === targetId,
@@ -745,16 +744,12 @@ export class ModuxEditor extends LitElement {
       return;
     }
     // Any other pair touching a nested child is not a strategic relation.
-    const readModelIds = new Set(
-      this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
-    );
-    if (
-      emitterIds.has(sourceId) ||
-      emitterIds.has(targetId) ||
-      eventIds.has(targetId) ||
-      readModelIds.has(sourceId) ||
-      readModelIds.has(targetId)
-    ) {
+    const childIds = new Set([
+      ...emitterIds,
+      ...this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      ...this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
+    ]);
+    if (childIds.has(sourceId) || childIds.has(targetId) || eventIds.has(targetId)) {
       return;
     }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
