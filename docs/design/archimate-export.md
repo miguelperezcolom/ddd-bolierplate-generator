@@ -26,7 +26,7 @@ como el HLA generado o el context map SVG.
 | View (CURATED) | ArchiMate Diagram (view del exchange format) + geometría del editor |
 
 Notas:
-- Las **Views del editor + su layout** (modux-editor-layout.json) permiten exportar
+- Las **Views del editor + su layout** (sección `diagrams` del store) permiten exportar
   también los diagramas con posiciones, no solo el modelo — el exchange format
   soporta vistas con geometría.
 - Los símbolos del editor ya siguen la iconografía ArchiMate: el mapeo visual es directo.

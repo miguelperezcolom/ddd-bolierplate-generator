@@ -6,9 +6,12 @@ description: Edit the model on a live canvas — context map, aggregates, flows 
 The **Graphical editor** page is a fully editable canvas over the model. It is not a
 drawing tool with a save button: every gesture emits a command that mutates the spec
 through the same use cases as the forms, and everything that changes the model is
-undoable. Diagram geometry (positions, edge bends) is presentation state and lives in
-`modux-editor-layout.json` **next to** the store — the authored YAML never carries
-coordinates.
+undoable. Diagram geometry (positions, sizes, edge bends, the context-map detail
+level) lives in the spec's own `diagrams` section — a separate structure that only
+*references* elements by id, so coordinates never leak into the authored elements
+themselves. Models saved before this section existed kept the geometry in a
+`modux-editor-layout.json` file next to the store; it is still read as a fallback and
+migrates into `diagrams` on the first change made in the editor.
 
 ## Views
 

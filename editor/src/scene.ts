@@ -66,11 +66,14 @@ export interface ViewLayout {
   edges: Record<string, Point[]>;
   /** Node id → explicit size, for resizable containers. */
   sizes?: Record<string, { w: number; h: number }>;
+  /** Persisted detail level (context-map only): plain contexts, or their contents. */
+  detail?: 'contexts' | 'detail';
 }
 
 /**
- * Geometry for the whole editor, keyed by view id. Lives OUTSIDE the model
- * YAML. Legacy persisted values are a flat node map; normalize on read.
+ * Geometry for the whole editor, keyed by view id. Persisted by the host as
+ * the store's `diagrams` section. Legacy persisted values are a flat node
+ * map; normalize on read.
  */
 export type EditorLayout = Record<string, ViewLayout | DiagramLayout>;
 
@@ -78,7 +81,7 @@ export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefine
   if (!value) return { nodes: {}, edges: {}, sizes: {} };
   if ('nodes' in value && typeof value.nodes === 'object' && !('x' in (value.nodes as object))) {
     const v = value as ViewLayout;
-    return { nodes: v.nodes ?? {}, edges: v.edges ?? {}, sizes: v.sizes ?? {} };
+    return { nodes: v.nodes ?? {}, edges: v.edges ?? {}, sizes: v.sizes ?? {}, detail: v.detail };
   }
   return { nodes: value as DiagramLayout, edges: {}, sizes: {} };
 }

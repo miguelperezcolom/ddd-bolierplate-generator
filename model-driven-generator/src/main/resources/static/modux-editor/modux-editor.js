@@ -2,7 +2,7 @@ function pi(t) {
   if (!t) return { nodes: {}, edges: {}, sizes: {} };
   if ("nodes" in t && typeof t.nodes == "object" && !("x" in t.nodes)) {
     const e = t;
-    return { nodes: e.nodes ?? {}, edges: e.edges ?? {}, sizes: e.sizes ?? {} };
+    return { nodes: e.nodes ?? {}, edges: e.edges ?? {}, sizes: e.sizes ?? {}, detail: e.detail };
   }
   return { nodes: t, edges: {}, sizes: {} };
 }
@@ -3377,7 +3377,7 @@ let M = class extends ft {
          @dblclick=${(m) => {
       m.stopPropagation(), this.emit("element-activated", { elementType: "node", id: t.id, kind: t.kind });
     }}>
-        <rect x=${-c} y=${-d} width=${t.w} height=${t.h} rx=${o ? 6 : 10}
+        <rect x=${-c} y=${-d} width=${l} height=${a} rx=${o ? 6 : 10}
               fill=${t.fill ?? "#ffffff"}
               stroke=${s || i ? "#2563eb" : t.stroke ?? "#94a3b8"}
               stroke-width=${i || s ? 2.5 : 1.4}
@@ -3765,6 +3765,17 @@ let S = class extends ft {
   }
   writeViewLayout(t, e) {
     this.layout = { ...this.layout, [t]: e }, this.emit("layout-changed", { layout: this.layout });
+  }
+  /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
+  willUpdate(t) {
+    if (t.has("layout")) {
+      const e = this.viewLayout("context-map").detail;
+      (e === "contexts" || e === "detail") && (this._detail = e);
+    }
+  }
+  /** Detail level changes persist with the layout, so they survive reloads. */
+  setDetail(t) {
+    this._detail = t, this.writeViewLayout("context-map", { ...this.viewLayout("context-map"), detail: t });
   }
   pushUndoEntry(t) {
     this._undoStack = [...this._undoStack.slice(-19), t], this._redoStack = [];
@@ -4470,7 +4481,7 @@ let S = class extends ft {
           ?hidden=${this._view !== "context-map"}
           title="Nivel de detalle: contextos, o sus agregados y casos de uso"
           .value=${this._detail}
-          @change=${(e) => this._detail = e.target.value}
+          @change=${(e) => this.setDetail(e.target.value)}
         >
           <option value="contexts" ?selected=${this._detail === "contexts"}>Contextos</option>
           <option value="detail" ?selected=${this._detail === "detail"}>

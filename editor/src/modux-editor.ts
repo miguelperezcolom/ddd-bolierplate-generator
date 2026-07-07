@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType, SubdomainType } from './model.js';
 import { normalizeViewLayout } from './scene.js';
@@ -318,6 +318,20 @@ export class ModuxEditor extends LitElement {
   private writeViewLayout(view: ViewId, next: ViewLayout): void {
     this.layout = { ...this.layout, [view]: next };
     this.emit('layout-changed', { layout: this.layout });
+  }
+
+  /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
+  protected willUpdate(changed: PropertyValues): void {
+    if (changed.has('layout')) {
+      const detail = this.viewLayout('context-map').detail;
+      if (detail === 'contexts' || detail === 'detail') this._detail = detail;
+    }
+  }
+
+  /** Detail level changes persist with the layout, so they survive reloads. */
+  private setDetail(detail: 'contexts' | 'detail'): void {
+    this._detail = detail;
+    this.writeViewLayout('context-map', { ...this.viewLayout('context-map'), detail });
   }
 
   private pushUndoEntry(ops: EditOp[]): void {
@@ -1221,7 +1235,7 @@ export class ModuxEditor extends LitElement {
           title="Nivel de detalle: contextos, o sus agregados y casos de uso"
           .value=${this._detail}
           @change=${(e: Event) =>
-            (this._detail = (e.target as HTMLSelectElement).value as 'contexts' | 'detail')}
+            this.setDetail((e.target as HTMLSelectElement).value as 'contexts' | 'detail')}
         >
           <option value="contexts" ?selected=${this._detail === 'contexts'}>Contextos</option>
           <option value="detail" ?selected=${this._detail === 'detail'}>

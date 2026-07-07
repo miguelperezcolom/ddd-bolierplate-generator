@@ -33,14 +33,15 @@ public record AllData(
         List<FlowEntity> flows,
         List<ProcessEntity> processes,
         List<DecisionEntity> decisions,
-        List<ViewEntity> views
+        List<ViewEntity> views,
+        List<DiagramEntity> diagrams
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
     public static AllData empty() {
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -75,5 +76,6 @@ public record AllData(
         processes = processes != null ? processes : List.of();
         decisions = decisions != null ? decisions : List.of();
         views = views != null ? views : List.of();
+        diagrams = diagrams != null ? diagrams : List.of();
     }
 }

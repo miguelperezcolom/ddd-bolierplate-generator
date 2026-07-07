@@ -9,6 +9,10 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEdgeEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
@@ -40,9 +44,10 @@ import java.util.Optional;
 /**
  * JSON API consumed by the graphical editor web component (editor/ package,
  * &lt;modux-editor-connected&gt;). Serves a projection of the model, applies the
- * editor's mutation commands, and persists the diagram geometry in a JSON file
- * NEXT TO the model store — layout is presentation state and must never touch
- * the authored YAML.
+ * editor's mutation commands, and persists the diagram geometry as the store's
+ * {@code diagrams} section — a separate structure that only references the
+ * authored elements by id, so paint concerns never leak into the elements
+ * themselves.
  */
 @RestController
 @RequestMapping("/modux/editor")
@@ -599,20 +604,107 @@ public class EditorApiController {
                 p.externalSystems(), p.objective());
     }
 
-    // ---- layout (presentation state, stored NEXT TO the model store) ------
+    // ---- layout (diagram geometry, stored in the model store as diagrams) --
 
+    /**
+     * The editor speaks its own JSON layout shape (view key → {nodes, edges, sizes, detail});
+     * here it is translated to/from {@link DiagramEntity} rows so the geometry lives in the
+     * schema-validated store next to the elements it references. Models saved before this
+     * existed kept the layout in a modux-editor-layout.json file next to the store; reads fall
+     * back to it until the first save migrates the layout into the store.
+     */
     @GetMapping(value = "/layout", produces = MediaType.APPLICATION_JSON_VALUE)
     public String layout() throws IOException {
-        var file = layoutFile();
-        return Files.exists(file) ? Files.readString(file) : "{}";
+        var diagrams = repository.findAllOfType(DiagramEntity.class);
+        if (diagrams.isEmpty()) {
+            var file = legacyLayoutFile();
+            return Files.exists(file) ? Files.readString(file) : "{}";
+        }
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var root = mapper.createObjectNode();
+        for (var diagram : diagrams) {
+            var view = root.putObject(diagram.id());
+            if (diagram.detail() != null) view.put("detail", diagram.detail());
+            var nodes = view.putObject("nodes");
+            var sizes = view.putObject("sizes");
+            for (var node : diagram.nodes()) {
+                var pos = nodes.putObject(node.ref());
+                pos.put("x", node.x());
+                pos.put("y", node.y());
+                if (node.w() != null && node.h() != null) {
+                    var size = sizes.putObject(node.ref());
+                    size.put("w", node.w());
+                    size.put("h", node.h());
+                }
+            }
+            var edges = view.putObject("edges");
+            for (var edge : diagram.edges()) {
+                var points = edges.putArray(edge.ref());
+                for (var point : edge.points()) {
+                    var p = points.addObject();
+                    p.put("x", point.x());
+                    p.put("y", point.y());
+                }
+            }
+        }
+        return mapper.writeValueAsString(root);
     }
 
     @PutMapping(value = "/layout", consumes = MediaType.APPLICATION_JSON_VALUE)
     public void saveLayout(@RequestBody String layout) throws IOException {
-        Files.writeString(layoutFile(), layout);
+        var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(layout);
+        var kept = new ArrayList<String>();
+        root.properties().forEach(entry -> {
+            var diagram = toDiagram(entry.getKey(), entry.getValue());
+            if (diagram.nodes().isEmpty() && diagram.edges().isEmpty() && diagram.detail() == null) return;
+            repository.save(diagram);
+            kept.add(diagram.id());
+        });
+        var gone = repository.findAllOfType(DiagramEntity.class).stream()
+                .map(DiagramEntity::id).filter(id -> !kept.contains(id)).toList();
+        if (!gone.isEmpty()) repository.deleteAllById(gone, DiagramEntity.class);
     }
 
-    private Path layoutFile() {
+    /** One editor view layout ({nodes, edges, sizes, detail} — or a legacy flat node map) → entity. */
+    private DiagramEntity toDiagram(String id, com.fasterxml.jackson.databind.JsonNode view) {
+        var v2 = view.get("nodes") != null && view.get("nodes").isObject();
+        var nodeMap = v2 ? view.get("nodes") : view; // legacy persisted layouts are a flat node map
+        var sizeMap = v2 && view.get("sizes") != null && view.get("sizes").isObject()
+                ? view.get("sizes") : null;
+        var nodes = new ArrayList<DiagramNodeEntity>();
+        nodeMap.properties().forEach(entry -> {
+            var pos = entry.getValue();
+            if (!pos.isObject() || !pos.has("x") || !pos.has("y")) return;
+            var size = sizeMap != null ? sizeMap.get(entry.getKey()) : null;
+            nodes.add(new DiagramNodeEntity(entry.getKey(),
+                    round1(pos.get("x").asDouble()), round1(pos.get("y").asDouble()),
+                    size != null && size.has("w") ? round1(size.get("w").asDouble()) : null,
+                    size != null && size.has("h") ? round1(size.get("h").asDouble()) : null));
+        });
+        var edges = new ArrayList<DiagramEdgeEntity>();
+        if (v2 && view.get("edges") != null && view.get("edges").isObject()) {
+            view.get("edges").properties().forEach(entry -> {
+                if (!entry.getValue().isArray()) return;
+                var points = new ArrayList<DiagramPointEntity>();
+                entry.getValue().forEach(p -> {
+                    if (p.has("x") && p.has("y")) {
+                        points.add(new DiagramPointEntity(round1(p.get("x").asDouble()), round1(p.get("y").asDouble())));
+                    }
+                });
+                if (!points.isEmpty()) edges.add(new DiagramEdgeEntity(entry.getKey(), points));
+            });
+        }
+        var detail = view.get("detail") != null && view.get("detail").isTextual()
+                ? view.get("detail").asText() : null;
+        return new DiagramEntity(id, detail, nodes, edges);
+    }
+
+    /** Coordinates are kept to one decimal — plenty for pixels, and keeps the YAML readable. */
+    private static double round1(double value) {
+        return Math.round(value * 10) / 10.0;
+    }
+
+    private Path legacyLayoutFile() {
         var store = repository.storePath();
         var dir = Files.isDirectory(store) ? store : store.getParent();
         return dir.resolve("modux-editor-layout.json");
