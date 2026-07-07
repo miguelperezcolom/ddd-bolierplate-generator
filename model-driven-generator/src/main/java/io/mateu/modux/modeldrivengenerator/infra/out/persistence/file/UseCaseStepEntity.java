@@ -24,8 +24,21 @@ public record UseCaseStepEntity(
          */
         String intent,
         /** PublishApplicationEvent: the application event this step publishes. */
-        String applicationEventId
+        String applicationEventId,
+        /** CallExternalUseCase: the external system's use case this step calls. */
+        String externalUseCaseId
 ) {
+
+    /** Backward-compatible constructor (pre-externalUseCaseId callers and stores). */
+    public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,
+                             String operationId, String gatewayId, String gatewayOperationId,
+                             String domainEventId, String useCaseId, String modelMappingId,
+                             String queryServiceId, String queryOperationId, String intent,
+                             String applicationEventId) {
+        this(id, name, type, aggregateId, operationId, gatewayId, gatewayOperationId,
+                domainEventId, useCaseId, modelMappingId, queryServiceId, queryOperationId,
+                intent, applicationEventId, null);
+    }
 
     /** Backward-compatible constructor (pre-applicationEventId callers and stores). */
     public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,

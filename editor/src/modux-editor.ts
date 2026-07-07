@@ -148,9 +148,13 @@ export class ModuxEditor extends LitElement {
     | 'application-event'
     | 'read-model'
     | 'domain-service'
-    | 'query-service' = 'module';
+    | 'query-service'
+    | 'use-case'
+    | 'external-use-case' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
+  /** Owner external system for a new external use case. */
+  @state() private _newExternalId = '';
   @state() private _newArchetype = 'TRIGGERS';
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
@@ -496,6 +500,34 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-crud':
         return [{ kind: 'add-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-use-case':
+        return [{ kind: 'remove-use-case', id: c.id }];
+      case 'remove-use-case': {
+        for (const m of this.model.modules) {
+          const u = (m.useCases ?? []).find((x) => x.id === c.id);
+          if (u) return [{ kind: 'add-use-case', id: u.id, name: u.name, moduleId: m.id }];
+        }
+        return null;
+      }
+      case 'add-external-use-case':
+        return [{ kind: 'remove-external-use-case', id: c.id }];
+      case 'remove-external-use-case': {
+        for (const x of this.model.externalSystems) {
+          const u = (x.useCases ?? []).find((e) => e.id === c.id);
+          if (u) {
+            return [{ kind: 'add-external-use-case', id: u.id, name: u.name, moduleId: x.id }];
+          }
+        }
+        return null;
+      }
+      case 'add-external-call':
+        return [{ kind: 'remove-external-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-external-call':
+        return [{ kind: 'add-external-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-uc-call':
+        return [{ kind: 'remove-external-uc-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-external-uc-call':
+        return [{ kind: 'add-external-uc-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-call':
         return [{ kind: 'remove-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-use-case-call':
@@ -568,6 +600,10 @@ export class ModuxEditor extends LitElement {
                     ? this.model.modules.flatMap((m) => m.domainServices ?? [])
                     : c.type === 'query-service'
                       ? this.model.modules.flatMap((m) => m.queryServices ?? [])
+                      : c.type === 'use-case'
+                        ? this.model.modules.flatMap((m) => m.useCases ?? [])
+                        : c.type === 'external-use-case'
+                          ? this.model.externalSystems.flatMap((x) => x.useCases ?? [])
                       : c.type === 'application-event'
                         ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
                         : c.type === 'external-system'
@@ -829,6 +865,16 @@ export class ModuxEditor extends LitElement {
       if (!already) this.command({ kind: 'add-query-call', sourceId, targetId });
       return;
     }
+    const externalUcIds = new Set(
+      this.model.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
+    );
+    if (ucIds.has(sourceId) && externalUcIds.has(targetId)) {
+      const already = (this.model.externalUseCaseCalls ?? []).some(
+        (c) => c.sourceId === sourceId && c.targetId === targetId,
+      );
+      if (!already) this.command({ kind: 'add-external-uc-call', sourceId, targetId });
+      return;
+    }
     if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
       const already = (this.model.useCaseCalls ?? []).some(
         (c) => c.sourceId === sourceId && c.targetId === targetId,
@@ -854,11 +900,16 @@ export class ModuxEditor extends LitElement {
       const event = this.model.modules
         .flatMap((m) => (isApplicationEvent ? m.applicationEvents : m.domainEvents) ?? [])
         .find((ev) => ev.id === sourceId);
+      const targetUseCase = this.model.modules
+        .flatMap((m) => (m.useCases ?? []).map((u) => ({ u, module: m })))
+        .find(({ u }) => u.id === targetId);
       const targetReadModel = this.model.modules
         .flatMap((m) => (m.readModels ?? []).map((rm) => ({ rm, module: m })))
         .find(({ rm }) => rm.id === targetId);
       const targetModule =
-        this.model.modules.find((m) => m.id === targetId) ?? targetReadModel?.module;
+        this.model.modules.find((m) => m.id === targetId) ??
+        targetReadModel?.module ??
+        targetUseCase?.module;
       if (!event || !targetModule) return;
       const aggregateIds = new Set((this.model.aggregates ?? []).map((a) => a.id));
       const domainServiceIds = new Set(
@@ -881,6 +932,30 @@ export class ModuxEditor extends LitElement {
         return;
       }
       const emitterIsAggregate = !isApplicationEvent && aggregateIds.has(emitter.sourceId);
+      if (targetUseCase) {
+        // Event onto a use case: the TRIGGERS archetype (subscription + CallUseCase derive later).
+        const exists = this.model.flows.some(
+          (f) =>
+            f.archetype === 'TRIGGERS' &&
+            f.triggerEvent === event.name &&
+            f.targetUseCaseId === targetUseCase.u.id,
+        );
+        if (exists) return;
+        this.command({
+          kind: 'add-flow',
+          id: `flow-${slug(event.name)}-${slug(targetUseCase.u.name)}`,
+          name: targetUseCase.u.name,
+          archetype: 'TRIGGERS',
+          triggerAggregateId: emitterIsAggregate ? emitter.sourceId : '',
+          triggerDomainServiceId:
+            !isApplicationEvent && !emitterIsAggregate ? emitter.sourceId : undefined,
+          triggerUseCaseId: isApplicationEvent ? emitter.sourceId : undefined,
+          triggerEvent: event.name,
+          targetId: targetModule.id,
+          targetUseCaseId: targetUseCase.u.id,
+        });
+        return;
+      }
       const readModelName = targetReadModel?.rm.name ?? `${event.name}View`;
       const exists = this.model.flows.some(
         (f) =>
@@ -921,7 +996,19 @@ export class ModuxEditor extends LitElement {
       return;
     }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
-    if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
+    if (externalIds.has(sourceId)) {
+      const extUcIds0 = new Set(
+        this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      );
+      if (extUcIds0.has(targetId)) {
+        const already = (this.model.externalCalls ?? []).some(
+          (c) => c.externalSystemId === sourceId && c.useCaseId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-external-call', sourceId, targetId });
+      }
+      return;
+    }
+    if (externalIds.has(targetId)) return;
     if (actorIds.has(targetId)) return;
     const exists = this.model.relations.some(
       (r) =>
@@ -982,6 +1069,20 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-query-call', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'external-call') {
+      const match = /^extcall:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'ext-uc-call') {
+      const match = /^extuccall:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-uc-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
       const match = /^use:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -1021,6 +1122,16 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'query-service') {
       this._selectedId = null;
       this.command({ kind: 'remove-query-service', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'use-case') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-use-case', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'external-use-case') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-use-case', id });
       return;
     }
     if (elementType === 'node' && kind === 'application-event') {
@@ -1071,6 +1182,8 @@ export class ModuxEditor extends LitElement {
       kind === 'read-model' ||
       kind === 'domain-service' ||
       kind === 'query-service' ||
+      kind === 'use-case' ||
+      kind === 'external-use-case' ||
       kind === 'application-event' ||
       kind === 'external-system' ||
       kind === 'actor'
@@ -1269,6 +1382,21 @@ export class ModuxEditor extends LitElement {
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-query-service', id: `qs-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'use-case') {
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'external-use-case') {
+        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
+        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
+        if (!externalId) return;
+        this.command({
+          kind: 'add-external-use-case',
+          id: `xuc-${slug(name)}`,
+          name,
+          moduleId: externalId,
+        });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'read-model') {
         // A read model is a view of an aggregate; a selected aggregate is the default.
         const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
@@ -1492,8 +1620,35 @@ export class ModuxEditor extends LitElement {
                     >
                       Query service
                     </option>
+                    <option value="use-case" ?selected=${this._newContextMapKind === 'use-case'}>
+                      Caso de uso
+                    </option>
+                    <option
+                      value="external-use-case"
+                      ?selected=${this._newContextMapKind === 'external-use-case'}
+                    >
+                      Caso de uso externo
+                    </option>
                   `
                 : ''}
+            </select>`
+          : ''}
+        ${this._view === 'context-map' &&
+        this._detail === 'detail' &&
+        this._newContextMapKind === 'external-use-case'
+          ? html`<select
+              title="Sistema externo que ofrece el caso de uso"
+              @change=${(e: Event) => (this._newExternalId = (e.target as HTMLSelectElement).value)}
+            >
+              ${this.model.externalSystems.map(
+                (x) =>
+                  html`<option
+                    value=${x.id}
+                    ?selected=${x.id === (this._newExternalId || this.model.externalSystems[0]?.id)}
+                  >
+                    ${x.name}
+                  </option>`,
+              )}
             </select>`
           : ''}
         ${this._view === 'context-map' &&
@@ -1532,7 +1687,8 @@ export class ModuxEditor extends LitElement {
           (this._newContextMapKind === 'domain-event' ||
             this._newContextMapKind === 'application-event' ||
             this._newContextMapKind === 'domain-service' ||
-            this._newContextMapKind === 'query-service'))
+            this._newContextMapKind === 'query-service' ||
+            this._newContextMapKind === 'use-case'))
           ? html`<select
               title=${this._view === 'aggregates'
                 ? 'Módulo del nuevo agregado'

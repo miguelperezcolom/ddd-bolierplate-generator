@@ -98,9 +98,28 @@ export interface ActorRef {
   name: string;
 }
 
+export interface ExternalUseCaseRef {
+  id: string;
+  name: string;
+}
+
 export interface ExternalSystemRef {
   id: string;
   name: string;
+  /** Use cases this external system offers (targets of calls from our use cases). */
+  useCases?: ExternalUseCaseRef[];
+}
+
+/** An external system calls one of our use cases in (INBOUND ACL). */
+export interface ExternalCallRef {
+  externalSystemId: string;
+  useCaseId: string;
+}
+
+/** One of our use cases calls a use case offered by an external system. */
+export interface ExternalUseCaseCallRef {
+  sourceId: string;
+  targetId: string;
 }
 
 export interface ContextMapRelation {
@@ -186,4 +205,6 @@ export interface ModuxModel {
   useCaseCalls?: UseCaseCallRef[];
   queryCalls?: QueryCallRef[];
   actorUses?: ActorUseRef[];
+  externalCalls?: ExternalCallRef[];
+  externalUseCaseCalls?: ExternalUseCaseCallRef[];
 }

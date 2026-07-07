@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchety
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -18,6 +19,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNod
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
@@ -81,7 +83,12 @@ public class EditorApiController {
     public record ReadModelDto(String id, String name, String aggregateId) {}
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
     public record EmissionDto(String sourceId, String domainEventId) {}
-    public record ExternalSystemDto(String id, String name) {}
+    public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases) {}
+    public record ExternalUseCaseDto(String id, String name) {}
+    /** An external system calls one of our use cases in through an INBOUND ACL. */
+    public record ExternalCallDto(String externalSystemId, String useCaseId) {}
+    /** One of our use cases calls a use case OFFERED by an external system. */
+    public record ExternalUseCaseCallDto(String sourceId, String targetId) {}
     public record RelationDto(String sourceId, String targetId, String type) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
@@ -120,7 +127,9 @@ public class EditorApiController {
             List<ActorDto> actors,
             List<UseCaseCallDto> useCaseCalls,
             List<QueryCallDto> queryCalls,
-            List<ActorUseDto> actorUses) {}
+            List<ActorUseDto> actorUses,
+            List<ExternalCallDto> externalCalls,
+            List<ExternalUseCaseCallDto> externalUseCaseCalls) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -251,7 +260,9 @@ public class EditorApiController {
         var projects = repository.findAllOfType(ProjectEntity.class);
         var externalSystems = projects.stream()
                 .flatMap(p -> p.externalSystems().stream())
-                .map(x -> new ExternalSystemDto(x.id(), x.name()))
+                .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
+                        .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
+                        .toList()))
                 .toList();
         var relations = projects.stream()
                 .flatMap(p -> p.contextMap().stream())
@@ -383,6 +394,26 @@ public class EditorApiController {
                 }
             }
         }
+        var externalCalls = new ArrayList<ExternalCallDto>();
+        for (var m : repository.findAllOfType(ModuleEntity.class)) {
+            if (m.acls() == null) continue;
+            for (var acl : m.acls()) {
+                if (!"INBOUND".equalsIgnoreCase(acl.direction()) || acl.externalSystem() == null) continue;
+                for (var ucId : acl.translatedUseCaseIds() == null ? List.<String>of() : acl.translatedUseCaseIds()) {
+                    externalCalls.add(new ExternalCallDto(acl.externalSystem(), ucId));
+                }
+            }
+        }
+        var externalUseCaseCalls = new ArrayList<ExternalUseCaseCallDto>();
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallExternalUseCase
+                        && step.externalUseCaseId() != null) {
+                    externalUseCaseCalls.add(new ExternalUseCaseCallDto(uc.id(), step.externalUseCaseId()));
+                }
+            }
+        }
         var actorUses = new ArrayList<ActorUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
             role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
@@ -394,7 +425,9 @@ public class EditorApiController {
                 views, emissions.stream().distinct().toList(), actors,
                 useCaseCalls.stream().distinct().toList(),
                 queryCalls.stream().distinct().toList(),
-                actorUses.stream().distinct().toList());
+                actorUses.stream().distinct().toList(),
+                externalCalls.stream().distinct().toList(),
+                externalUseCaseCalls.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -439,6 +472,14 @@ public class EditorApiController {
             case "remove-actor-use" -> removeActorUse(command);
             case "add-actor-crud" -> addActorCrud(command);
             case "remove-actor-crud" -> removeActorCrud(command);
+            case "add-use-case" -> addUseCase(command);
+            case "remove-use-case" -> removeUseCase(command);
+            case "add-external-call" -> addExternalCall(command);
+            case "remove-external-call" -> removeExternalCall(command);
+            case "add-external-use-case" -> addExternalUseCase(command);
+            case "remove-external-use-case" -> removeExternalUseCase(command);
+            case "add-external-uc-call" -> addExternalUcCall(command);
+            case "remove-external-uc-call" -> removeExternalUcCall(command);
             case "add-read-model" -> addReadModel(command);
             case "remove-read-model" -> removeReadModel(command);
             case "remove-module" -> removeModule(command);
@@ -1013,6 +1054,178 @@ public class EditorApiController {
         }
     }
 
+    private void addUseCase(EditorCommand command) {
+        if (repository.findById(command.id(), UseCaseEntity.class).isPresent()) return;
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(stubUseCase(command.id(), command.name(), List.of(), false));
+        var useCaseIds = new ArrayList<>(module.useCaseIds() == null ? List.of() : module.useCaseIds());
+        useCaseIds.add(command.id());
+        repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
+    }
+
+    private void removeUseCase(EditorCommand command) {
+        var calledByUseCase = repository.findAllOfType(UseCaseEntity.class).stream()
+                .filter(uc -> uc.steps() != null)
+                .anyMatch(uc -> uc.steps().stream().anyMatch(st -> command.id().equals(st.useCaseId())));
+        if (calledByUseCase) {
+            throw new IllegalArgumentException(
+                    "El caso de uso " + command.id() + " lo invocan otros casos de uso; quita esas llamadas primero");
+        }
+        var inProcesses = repository.findAllOfType(ProcessEntity.class).stream()
+                .flatMap(p -> p.steps().stream())
+                .anyMatch(st -> command.id().equals(st.useCaseId()));
+        if (inProcesses) {
+            throw new IllegalArgumentException(
+                    "El caso de uso " + command.id() + " participa en procesos; quítalo primero");
+        }
+        var triggersFlow = repository.findAllOfType(FlowEntity.class).stream()
+                .anyMatch(f -> command.id().equals(f.targetUseCaseId()) || command.id().equals(f.triggerUseCaseId()));
+        if (triggersFlow) {
+            throw new IllegalArgumentException(
+                    "El caso de uso " + command.id() + " participa en flows; bórralos primero");
+        }
+        var translatedByAcl = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.acls() != null)
+                .flatMap(m -> m.acls().stream())
+                .anyMatch(a -> a.translatedUseCaseIds() != null
+                        && a.translatedUseCaseIds().contains(command.id()));
+        if (translatedByAcl) {
+            throw new IllegalArgumentException(
+                    "El caso de uso " + command.id() + " lo llama un sistema externo (ACL); quita esa llamada primero");
+        }
+        repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> r.allowedUseCaseIds().contains(command.id()))
+                .forEach(r -> repository.save(new RoleEntity(r.id(), r.name(),
+                        r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList(),
+                        r.allowedQueryServiceIds())));
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .useCaseIds(m.useCaseIds().stream().filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), UseCaseEntity.class);
+    }
+
+    /** An external system calls one of our use cases: an INBOUND ACL in the target module. */
+    private void addExternalCall(EditorCommand command) {
+        var external = owningProject().externalSystems().stream()
+                .filter(x -> x.id().equals(command.sourceId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
+        repository.findById(command.targetId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetId()));
+        var module = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.targetId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El caso de uso " + command.targetId() + " no pertenece a ningún módulo"));
+        var acls = new ArrayList<>(module.acls() == null ? List.of() : module.acls());
+        var existing = acls.stream()
+                .filter(a -> external.id().equals(a.externalSystem()) && "INBOUND".equalsIgnoreCase(a.direction()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            if (existing.translatedUseCaseIds() != null
+                    && existing.translatedUseCaseIds().contains(command.targetId())) return;
+            var ids = new ArrayList<>(existing.translatedUseCaseIds() == null
+                    ? List.of() : existing.translatedUseCaseIds());
+            ids.add(command.targetId());
+            acls.set(acls.indexOf(existing), new AclEntity(existing.id(), existing.name(),
+                    existing.externalSystem(), existing.description(), existing.direction(),
+                    existing.gatewayId(), existing.translatedDomainEventIds(), ids));
+        } else {
+            acls.add(new AclEntity("acl-" + external.id() + "-" + module.id(),
+                    "Acl" + capitalize(external.name()), external.id(), null, "INBOUND", null,
+                    List.of(), List.of(command.targetId())));
+        }
+        repository.save(module.toBuilder().acls(acls).build());
+    }
+
+    private void removeExternalCall(EditorCommand command) {
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.acls() != null && m.acls().stream().anyMatch(a ->
+                        command.sourceId().equals(a.externalSystem())
+                                && "INBOUND".equalsIgnoreCase(a.direction())
+                                && a.translatedUseCaseIds() != null
+                                && a.translatedUseCaseIds().contains(command.targetId())))
+                .forEach(m -> repository.save(m.toBuilder().acls(m.acls().stream()
+                        .map(a -> {
+                            if (!command.sourceId().equals(a.externalSystem())
+                                    || !"INBOUND".equalsIgnoreCase(a.direction())) return a;
+                            var ids = a.translatedUseCaseIds().stream()
+                                    .filter(id -> !id.equals(command.targetId())).toList();
+                            return new AclEntity(a.id(), a.name(), a.externalSystem(), a.description(),
+                                    a.direction(), a.gatewayId(), a.translatedDomainEventIds(), ids);
+                        })
+                        // An ACL created just for this call leaves when it translates nothing.
+                        .filter(a -> !(a.id().startsWith("acl-")
+                                && (a.translatedUseCaseIds() == null || a.translatedUseCaseIds().isEmpty())
+                                && (a.translatedDomainEventIds() == null || a.translatedDomainEventIds().isEmpty())))
+                        .toList()).build()));
+    }
+
+    /** A use case OFFERED by an external system (moduleId carries the external system id). */
+    private void addExternalUseCase(EditorCommand command) {
+        var project = owningProject();
+        var externalSystems = new ArrayList<>(project.externalSystems());
+        var external = externalSystems.stream()
+                .filter(x -> x.id().equals(command.moduleId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.moduleId()));
+        if (external.useCases().stream().anyMatch(u -> u.id().equals(command.id()))) return;
+        var useCases = new ArrayList<>(external.useCases());
+        useCases.add(new ExternalSystemUseCaseEntity(command.id(), command.name(), null));
+        externalSystems.set(externalSystems.indexOf(external), withUseCases(external, useCases));
+        repository.save(withExternalSystems(project, externalSystems));
+    }
+
+    private void removeExternalUseCase(EditorCommand command) {
+        var called = repository.findAllOfType(UseCaseEntity.class).stream()
+                .filter(uc -> uc.steps() != null)
+                .anyMatch(uc -> uc.steps().stream().anyMatch(st -> command.id().equals(st.externalUseCaseId())));
+        if (called) {
+            throw new IllegalArgumentException(
+                    "El caso de uso externo " + command.id() + " lo llaman casos de uso; quita esas llamadas primero");
+        }
+        var project = owningProject();
+        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                .map(x -> withUseCases(x, x.useCases().stream()
+                        .filter(u -> !u.id().equals(command.id())).toList()))
+                .toList()));
+    }
+
+    /** Our use case calls an external system's use case: a CallExternalUseCase step. */
+    private void addExternalUcCall(EditorCommand command) {
+        var source = repository.findById(command.sourceId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
+        var target = owningProject().externalSystems().stream()
+                .flatMap(x -> x.useCases().stream())
+                .filter(u -> u.id().equals(command.targetId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown external use case: " + command.targetId()));
+        var steps = new ArrayList<>(source.steps() == null ? List.of() : source.steps());
+        if (steps.stream().anyMatch(st -> target.id().equals(st.externalUseCaseId()))) return;
+        steps.add(new UseCaseStepEntity("step-ext-" + target.id(), "call" + capitalize(target.name()),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallExternalUseCase,
+                null, null, null, null, null, null, null, null, null, null, null, target.id()));
+        repository.save(withSteps(source, steps));
+    }
+
+    private void removeExternalUcCall(EditorCommand command) {
+        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(st -> !command.targetId().equals(st.externalUseCaseId()))
+                        .toList())));
+    }
+
+    /** Record copy with only useCases replaced — every other field preserved verbatim. */
+    private static ExternalSystemEntity withUseCases(
+            ExternalSystemEntity x, List<ExternalSystemUseCaseEntity> useCases) {
+        return new ExternalSystemEntity(x.id(), x.name(), x.description(), x.protocol(),
+                x.direction(), x.gatewayId(), x.owner(), x.decisionIds(), useCases);
+    }
+
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
     private static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
         var cap = capitalize(aggregate.name());
@@ -1035,9 +1248,15 @@ public class EditorApiController {
                                 "Elimina el agregado " + cap, null))));
     }
 
-    /** A minimal, UI-exposed use case stub — fields get refined later through the CRUDs. */
+    /** UI-exposed stub (the CRUD default). */
     private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps) {
-        return new UseCaseEntity(id, name, false, false, false, false, true,
+        return stubUseCase(id, name, steps, true);
+    }
+
+    /** A minimal use case stub — fields get refined later through the CRUDs. */
+    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
+                                             boolean exposedAsUi) {
+        return new UseCaseEntity(id, name, false, false, false, false, exposedAsUi,
                 null, null, steps, List.of(), List.of(), null, null, null, null,
                 null, null, null, null, null, false, null, null, null, false, null,
                 false, null, null, null, List.of());

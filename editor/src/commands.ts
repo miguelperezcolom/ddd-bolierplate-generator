@@ -152,6 +152,50 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** A plain use case in a bounded context. */
+      kind: 'add-use-case';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-use-case';
+      id: string;
+    }
+  | {
+      /** An external system calls one of our use cases in (INBOUND ACL). */
+      kind: 'add-external-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-external-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      /** A use case OFFERED by an external system (moduleId = external system id). */
+      kind: 'add-external-use-case';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-external-use-case';
+      id: string;
+    }
+  | {
+      /** Our use case calls an external system's use case (CallExternalUseCase step). */
+      kind: 'add-external-uc-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-external-uc-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** Use case A invokes use case B (a CallUseCase step in A). */
       kind: 'add-use-case-call';
       sourceId: string;

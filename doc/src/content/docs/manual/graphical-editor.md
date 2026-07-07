@@ -60,7 +60,16 @@ person / gear (human / automated steps), double circle (events), return arrow
   arrow; Supr on the arrow removes the step. Cross-context calls are the seed for a
   gateway/API at generation time. Dragging onto a **query service** instead adds a
   `CallQueryService` step (teal dashed arrow), also across contexts. Query services
-  are created from the toolbar like the other children (lens glyph).
+  and plain **use cases** are created from the toolbar like the other children.
+- **External systems have a surface too**: give them **use cases** from the toolbar
+  (the external node becomes a container) and drag from one of our use cases onto
+  them to record a `CallExternalUseCase` step (slate dashed arrow — the seed of a
+  derived gateway/API). Drag from the external system onto one of OUR use cases and
+  the call comes in through an **INBOUND ACL** in the target module (violet arrow).
+- **Events trigger use cases**: dragging a domain or application event onto a use
+  case creates a **TRIGGERS flow** (subscription + CallUseCase + mapping derive at
+  generation time); the arrow anchors on the event and the use case at the detail
+  level.
 - **Actors use things**: drag from an actor onto a **use case** or a **query
   service** to allow it (`Role.allowedUseCaseIds` / `allowedQueryServiceIds`, indigo
   arrow) — the seed of a derived UI. Drag onto an **aggregate** and the editor

@@ -92,7 +92,8 @@ interface ChildDesc {
     | 'application-event'
     | 'read-model'
     | 'domain-service'
-    | 'query-service';
+    | 'query-service'
+    | 'external-use-case';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
@@ -103,6 +104,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
+  'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -113,6 +115,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'read-model': 'Read model',
   'domain-service': 'Servicio de dominio',
   'query-service': 'Query service',
+  'external-use-case': 'Caso de uso externo',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -172,12 +175,22 @@ function detailedContext(
     // Nothing to nest — keep the compact context box.
     return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
   }
+  return detailedContainer(center, base, children, layout, sizes);
+}
 
-  const size = sizes[module.id] ?? defaultContainerSize(children.length);
+/** A resizable container with child boxes — shared by contexts and external systems. */
+function detailedContainer(
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  children: ChildDesc[],
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const size = sizes[base.id] ?? defaultContainerSize(children.length);
   const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
   // Children must always fit inside the box: a stored size that no longer holds
-  // them (new aggregates, legacy layouts) grows per side instead of letting
-  // them spill. Children keep their absolute spot (offsets are from `center`).
+  // them (new elements, legacy layouts) grows per side instead of letting them
+  // spill. Children keep their absolute spot (offsets are from `center`).
   const fit = containerFit(
     center,
     size,
@@ -205,7 +218,7 @@ function detailedContext(
       symbol: style.symbol,
       fill: style.fill,
       stroke: style.stroke,
-      parentId: module.id,
+      parentId: base.id,
       tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
     };
   });
@@ -226,23 +239,28 @@ export function contextMapScene(
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
     if (entry.external) {
-      return [
-        {
-          id: entry.ref.id,
-          label: entry.ref.name,
-          x: pos.x,
-          y: pos.y,
-          w: NODE_W,
-          h: NODE_H,
-          kind: 'external-system',
-          symbol: 'component',
-          fill: '#ffffff',
-          stroke: '#64748b',
-          dashed: true,
-          badge: 'EXTERNAL',
-          tooltip: `${entry.ref.name} (sistema externo)`,
-        },
-      ];
+      const x = entry.ref as ModuxModel['externalSystems'][number];
+      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+        id: x.id,
+        label: x.name,
+        kind: 'external-system',
+        symbol: 'component',
+        fill: '#ffffff',
+        stroke: '#64748b',
+        dashed: true,
+        badge: 'EXTERNAL',
+        tooltip: `${x.name} (sistema externo)`,
+      };
+      if (detailed && (x.useCases ?? []).length > 0) {
+        return detailedContainer(
+          pos,
+          base,
+          (x.useCases ?? []).map((u) => ({ id: u.id, name: u.name, kind: 'external-use-case' })),
+          layout,
+          sizes,
+        );
+      }
+      return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
     }
     const m = entry.ref as ModuxModel['modules'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
@@ -307,10 +325,16 @@ export function contextMapScene(
             .find((m) => m.id === f.targetId)
             ?.readModels?.find((rm) => rm.name === f.readModelName)
         : undefined;
+    const targetUseCase =
+      detailed && f.targetUseCaseId
+        ? model.modules
+            .find((m) => m.id === f.targetId)
+            ?.useCases?.find((u) => u.id === f.targetUseCaseId)
+        : undefined;
     return {
       id: `flow:${f.id}`,
       sourceId: sourceEvent?.id ?? f.sourceId,
-      targetId: targetReadModel?.id ?? f.targetId,
+      targetId: targetUseCase?.id ?? targetReadModel?.id ?? f.targetId,
       kind: 'flow',
       label: f.name,
       color: FLOW_COLOR[coherence],
@@ -383,6 +407,34 @@ export function contextMapScene(
         }))
     : [];
 
+  const externalCallEdges: SceneEdge[] = detailed
+    ? (model.externalCalls ?? [])
+        .filter((c) => nodeIds.has(c.externalSystemId) && nodeIds.has(c.useCaseId))
+        .map((c) => ({
+          id: `extcall:${c.externalSystemId}->${c.useCaseId}`,
+          sourceId: c.externalSystemId,
+          targetId: c.useCaseId,
+          kind: 'external-call',
+          color: '#7c3aed',
+          arrow: true,
+          tooltip: 'llama (entra por un ACL)',
+        }))
+    : [];
+  const externalUcCallEdges: SceneEdge[] = detailed
+    ? (model.externalUseCaseCalls ?? [])
+        .filter((c) => nodeIds.has(c.sourceId) && nodeIds.has(c.targetId))
+        .map((c) => ({
+          id: `extuccall:${c.sourceId}->${c.targetId}`,
+          sourceId: c.sourceId,
+          targetId: c.targetId,
+          kind: 'ext-uc-call',
+          color: '#64748b',
+          dashed: true,
+          arrow: true,
+          tooltip: 'llama (derivará gateway/API)',
+        }))
+    : [];
+
   return {
     nodes,
     edges: [
@@ -392,6 +444,8 @@ export function contextMapScene(
       ...callEdges,
       ...queryEdges,
       ...actorUseEdges,
+      ...externalCallEdges,
+      ...externalUcCallEdges,
     ],
   };
 }
