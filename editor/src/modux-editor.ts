@@ -438,20 +438,22 @@ export class ModuxEditor extends LitElement {
       case 'add-relation':
         return [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-relation': {
+        // Removing = clearing the type annotation; undo re-annotates.
         const rel = this.model.relations.find(
           (r) => r.sourceId === c.sourceId && r.targetId === c.targetId,
         );
-        return rel
-          ? [{ kind: 'add-relation', sourceId: rel.sourceId, targetId: rel.targetId, type: rel.type }]
+        return rel && rel.type
+          ? [{ kind: 'set-relation-type', sourceId: c.sourceId, targetId: c.targetId, type: rel.type }]
           : null;
       }
       case 'set-relation-type': {
         const rel = this.model.relations.find(
           (r) => r.sourceId === c.sourceId && r.targetId === c.targetId,
         );
-        return rel
+        // Annotating an unannotated pair undoes to removing the annotation.
+        return rel && rel.type
           ? [{ kind: 'set-relation-type', sourceId: c.sourceId, targetId: c.targetId, type: rel.type }]
-          : null;
+          : [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       }
       case 'add-module':
         return [{ kind: 'remove-module', id: c.id }];
@@ -459,16 +461,17 @@ export class ModuxEditor extends LitElement {
         const m = this.model.modules.find((x) => x.id === c.id);
         if (!m) return null;
         const rels = this.model.relations.filter(
-          (r) => r.sourceId === c.id || r.targetId === c.id,
+          (r) => (r.sourceId === c.id || r.targetId === c.id) && r.type != null,
         );
         return [
           { kind: 'add-module', id: m.id, name: m.name, subdomainType: m.subdomainType ?? 'GENERIC' },
+          // Re-annotate the derived pairs this module participated in.
           ...rels.map(
             (r): ModuxCommand => ({
-              kind: 'add-relation',
+              kind: 'set-relation-type',
               sourceId: r.sourceId,
               targetId: r.targetId,
-              type: r.type,
+              type: r.type as NonNullable<typeof r.type>,
             }),
           ),
         ];
@@ -1023,8 +1026,8 @@ export class ModuxEditor extends LitElement {
     ) {
       return;
     }
-    const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
-    if (externalIds.has(sourceId)) {
+    const relationExternalIds = new Set(this.model.externalSystems.map((s) => s.id));
+    if (relationExternalIds.has(sourceId)) {
       const extUcIds0 = new Set(
         this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
@@ -1036,16 +1039,12 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
-    if (externalIds.has(targetId)) return;
+    if (relationExternalIds.has(targetId)) return;
     if (actorIds.has(targetId)) return;
-    const exists = this.model.relations.some(
-      (r) =>
-        (r.sourceId === sourceId && r.targetId === targetId) ||
-        (r.sourceId === targetId && r.targetId === sourceId),
-    );
-    if (exists) return;
-    // Ask which strategic pattern before creating it.
-    this._relationPicker = { sourceId, targetId, mode: 'create', x: x ?? 0, y: y ?? 0 };
+    // Strategic relations are 100% derived from the concrete dependencies —
+    // there is nothing left to hand-draw between two contexts.
+    void x;
+    void y;
   }
 
   /** Apply the picker's choice: create the new relation or retype the existing one. */

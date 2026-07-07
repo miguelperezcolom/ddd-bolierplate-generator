@@ -33,8 +33,13 @@ person / gear (human / automated steps), double circle (events), return arrow
   siblings** to reorder the process — order and position undo together.
 - **Click** selects; **double click opens the element's own editor** (steps open their
   owning process).
-- **Blue handles** on a selected context: drag onto another context to create a
-  relation of the type picked in the toolbar.
+- **Strategic relations are 100% computed**: a context→context edge exists exactly
+  where a concrete dependency does (use case calls, query calls, flows, aggregate
+  references) — nothing is hand-drawn between contexts anymore. Unannotated pairs
+  render dashed with a `?`; **double click** picks the DDD pattern (persisted as a
+  type annotation in the project's contextMap), and Supr clears the annotation
+  while the derived edge remains. The tooltip lists the concrete dependencies the
+  relation derives from; annotations whose dependency disappears stop being painted.
 - **Supr/Backspace** deletes the selection — relations, empty contexts, empty
   aggregates, domain events, flows, processes and steps. Integrity guards reject
   deleting a module with aggregates or an aggregate with entities (server-checked

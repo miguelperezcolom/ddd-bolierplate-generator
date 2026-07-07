@@ -856,12 +856,13 @@ export class ModuxCanvas extends LitElement {
           : ''}
         ${selected &&
         this.connectable &&
-        (!isChild ||
-          node.kind === 'aggregate' ||
-          node.kind === 'domain-service' ||
-          node.kind === 'use-case' ||
-          node.kind === 'domain-event' ||
-          node.kind === 'application-event')
+        (isChild
+          ? node.kind === 'aggregate' ||
+            node.kind === 'domain-service' ||
+            node.kind === 'use-case' ||
+            node.kind === 'domain-event' ||
+            node.kind === 'application-event'
+          : node.kind === 'external-system' || node.kind === 'actor' || node.kind === 'ai-agent')
           ? [
               [hw, 0],
               [-hw, 0],

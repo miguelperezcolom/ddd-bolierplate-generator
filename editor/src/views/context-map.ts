@@ -64,10 +64,20 @@ export function flowCoherence(model: ModuxModel, flow: FlowRef): FlowCoherence {
   const externalIds = new Set(model.externalSystems.map((e) => e.id));
   if (flow.sourceId === flow.targetId) return 'INTERNAL';
   if (externalIds.has(flow.sourceId) || externalIds.has(flow.targetId)) return 'EXTERNAL';
-  if (model.relations.some((r) => r.sourceId === flow.sourceId && r.targetId === flow.targetId)) {
+  // Relations always exist where flows do (they derive from them); the signal
+  // now is whether the pair carries a strategic annotation yet.
+  if (
+    model.relations.some(
+      (r) => r.sourceId === flow.sourceId && r.targetId === flow.targetId && r.declared,
+    )
+  ) {
     return 'OK';
   }
-  if (model.relations.some((r) => r.sourceId === flow.targetId && r.targetId === flow.sourceId)) {
+  if (
+    model.relations.some(
+      (r) => r.sourceId === flow.targetId && r.targetId === flow.sourceId && r.declared,
+    )
+  ) {
     return 'REVERSED';
   }
   return 'MISSING_RELATION';
@@ -319,15 +329,19 @@ export function contextMapScene(
   // Children must paint over every container, not just their own.
   nodes.sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
+  // Relations are 100% derived from concrete dependencies; the type is an annotation.
   const relationEdges: SceneEdge[] = model.relations.map((r) => ({
     id: relationEdgeId(r.sourceId, r.targetId),
     sourceId: r.sourceId,
     targetId: r.targetId,
     kind: 'relation',
-    label: RELATION_ABBREV[r.type],
-    color: '#475569',
+    label: r.type ? RELATION_ABBREV[r.type] : '?',
+    color: r.declared ? '#475569' : '#94a3b8',
+    dashed: !r.declared,
     arrow: true,
-    tooltip: `${r.type} (${r.sourceId} upstream → ${r.targetId} downstream)`,
+    tooltip: r.type
+      ? `${r.type} (${r.sourceId} upstream → ${r.targetId} downstream)${r.reasons ? ` — ${r.reasons}` : ''}`
+      : `Relación derivada — doble click para elegir el patrón${r.reasons ? ` — ${r.reasons}` : ''}`,
   }));
 
   const flowEdges: SceneEdge[] = model.flows.map((f) => {

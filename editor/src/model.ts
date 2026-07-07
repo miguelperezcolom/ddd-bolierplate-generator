@@ -137,7 +137,12 @@ export interface ContextMapRelation {
   /** Upstream side (U/D convention: source is upstream). */
   sourceId: string;
   targetId: string;
-  type: ContextMapRelationType;
+  /** The annotated DDD pattern; null while the derived relation is unannotated. */
+  type: ContextMapRelationType | null;
+  /** Whether the pair carries a type annotation (contextMap entry). */
+  declared?: boolean;
+  /** The concrete dependencies this relation derives from (tooltip). */
+  reasons?: string;
 }
 
 export interface FlowRef {

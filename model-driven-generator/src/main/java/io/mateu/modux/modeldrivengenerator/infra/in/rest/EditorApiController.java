@@ -90,7 +90,13 @@ public class EditorApiController {
     public record ExternalCallDto(String externalSystemId, String useCaseId) {}
     /** One of our use cases calls a use case OFFERED by an external system. */
     public record ExternalUseCaseCallDto(String sourceId, String targetId) {}
-    public record RelationDto(String sourceId, String targetId, String type) {}
+    /**
+     * A strategic relation, 100% COMPUTED from the concrete cross-context dependencies
+     * (use case calls, query calls, flows, aggregate references). The stored contextMap
+     * entries only ANNOTATE the strategic type; `declared` says whether the pair has one.
+     */
+    public record RelationDto(String sourceId, String targetId, String type,
+                              boolean declared, String reasons) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
@@ -270,11 +276,6 @@ public class EditorApiController {
                         .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
                         .toList()))
                 .toList();
-        var relations = projects.stream()
-                .flatMap(p -> p.contextMap().stream())
-                .map(r -> new RelationDto(r.sourceModuleId(), r.targetModuleId(), r.type()))
-                .toList();
-
         var flowEntities = repository.findAllOfType(FlowEntity.class);
         var flows = coherenceService.analyze().stream()
                 .filter(f -> f.sourceModuleId() != null && f.targetModuleId() != null)
@@ -349,6 +350,7 @@ public class EditorApiController {
         var views = repository.findAllOfType(ViewEntity.class).stream()
                 .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
                 .toList();
+
 
         // Who publishes what: DOMAIN events are emitted by aggregates (operations
         // declare emitted event NAMES as a CSV in OperationEntity.emits). Use cases
@@ -432,6 +434,62 @@ public class EditorApiController {
             role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
             role.allowedQueryServiceIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
         }
+
+        // The strategic map is a projection of the concrete dependency graph:
+        // upstream (provider) → downstream (consumer). contextMap entries only
+        // annotate the DDD pattern of a derived pair; orphaned annotations
+        // (no concrete dependency behind them) are not painted.
+        var allModules = repository.findAllOfType(ModuleEntity.class);
+        java.util.function.Function<String, String> moduleOfUseCase = ucId -> allModules.stream()
+                .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(ucId))
+                .map(ModuleEntity::id).findFirst().orElse(null);
+        java.util.function.Function<String, String> moduleOfAggregate = aggId -> allModules.stream()
+                .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggId))
+                .map(ModuleEntity::id).findFirst().orElse(null);
+        var dependencyReasons = new java.util.LinkedHashMap<List<String>, List<String>>();
+        java.util.function.BiConsumer<List<String>, String> addDependency = (pair, reason) -> {
+            if (pair.get(0) == null || pair.get(1) == null || pair.get(0).equals(pair.get(1))) return;
+            dependencyReasons.computeIfAbsent(pair, k -> new ArrayList<>()).add(reason);
+        };
+        for (var call : useCaseCalls) {
+            addDependency.accept(List.of(
+                    Objects.toString(moduleOfUseCase.apply(call.targetId()), ""),
+                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
+                    "llamada " + call.sourceId() + " → " + call.targetId());
+        }
+        for (var call : queryCalls) {
+            var qsModule = repository.findById(call.targetId(), QueryServiceEntity.class)
+                    .map(QueryServiceEntity::moduleId).orElse(null);
+            addDependency.accept(List.of(
+                    Objects.toString(qsModule, ""),
+                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
+                    "consulta " + call.sourceId() + " → " + call.targetId());
+        }
+        for (var f : flows) {
+            addDependency.accept(List.of(
+                    Objects.toString(f.sourceId(), ""), Objects.toString(f.targetId(), "")),
+                    "flow " + f.name() + " [" + f.archetype() + "]");
+        }
+        for (var ref : references) {
+            addDependency.accept(List.of(
+                    Objects.toString(moduleOfAggregate.apply(ref.targetAggregateId()), ""),
+                    Objects.toString(moduleOfAggregate.apply(ref.sourceAggregateId()), "")),
+                    "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
+        }
+        var annotations = projects.stream().flatMap(p -> p.contextMap().stream()).toList();
+        var relations = dependencyReasons.entrySet().stream()
+                .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
+                .map(e -> {
+                    var annotation = annotations.stream()
+                            .filter(a -> e.getKey().get(0).equals(a.sourceModuleId())
+                                    && e.getKey().get(1).equals(a.targetModuleId()))
+                            .findFirst().orElse(null);
+                    return new RelationDto(e.getKey().get(0), e.getKey().get(1),
+                            annotation != null ? annotation.type() : null,
+                            annotation != null,
+                            String.join(" · ", e.getValue()));
+                })
+                .toList();
 
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
@@ -1434,15 +1492,24 @@ public class EditorApiController {
         repository.save(withContextMap(project, relations));
     }
 
+    /** Upserts the type ANNOTATION of a derived relation (the pair itself is computed). */
     private void setRelationType(EditorCommand command) {
         var project = owningProject();
-        var relations = project.contextMap().stream()
-                .map(r -> (r.sourceModuleId().equals(command.sourceId())
+        var relations = new ArrayList<>(project.contextMap());
+        var existing = relations.stream()
+                .filter(r -> r.sourceModuleId().equals(command.sourceId())
                         && r.targetModuleId().equals(command.targetId()))
-                        ? new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(),
-                                r.targetModuleId(), command.type(), r.description(), r.decisionIds())
-                        : r)
-                .toList();
+                .findFirst().orElse(null);
+        if (existing != null) {
+            relations.set(relations.indexOf(existing), new ContextMapRelationEntity(
+                    existing.id(), existing.name(), existing.sourceModuleId(),
+                    existing.targetModuleId(), command.type(), existing.description(),
+                    existing.decisionIds()));
+        } else {
+            relations.add(new ContextMapRelationEntity(
+                    "rel-" + command.sourceId() + "-" + command.targetId(), null,
+                    command.sourceId(), command.targetId(), command.type(), null, List.of()));
+        }
         repository.save(withContextMap(project, relations));
     }
 
