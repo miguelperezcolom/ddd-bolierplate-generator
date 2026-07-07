@@ -46,7 +46,9 @@ person / gear (human / automated steps), double circle (events), return arrow
   (AUTOMATED or HUMAN with role and deadline) and edit the selected step's role,
   deadline and compensation. At the context map's detail level the toolbar can also
   create **domain events** inside a bounded context (owner defaults to the selected
-  context); they render as children with the ArchiMate event glyph.
+  context); they render as children with the ArchiMate event glyph, and amber dashed
+  **emission arrows** connect each publisher to its event — aggregates whose
+  operations declare `emits`, and use cases with a `PublishDomainEvent` step.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
   history, with composite entries where one gesture caused both.
 

@@ -1017,6 +1017,16 @@ export class ModuxCanvas extends LitElement {
       for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
       return template;
     });
+    // Edges touching a nested child (e.g. emissions inside a container) must paint
+    // ABOVE the nodes — the container's opaque body would hide them otherwise.
+    const childIds = new Set(this.scene.nodes.filter((n) => n.parentId).map((n) => n.id));
+    const underEdges: typeof edgeTemplates = [];
+    const overEdges: typeof edgeTemplates = [];
+    this.scene.edges.forEach((edge, i) => {
+      (childIds.has(edge.sourceId) || childIds.has(edge.targetId) ? overEdges : underEdges).push(
+        edgeTemplates[i],
+      );
+    });
     return html`
       <svg
         class="main ${this._pendingLink ? 'linking' : ''} ${this._spaceDown ? 'panning' : ''}"
@@ -1042,8 +1052,9 @@ export class ModuxCanvas extends LitElement {
         <g transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
-          ${edgeTemplates}
+          ${underEdges}
           ${this.scene.nodes.map((n) => this.renderNode(n))}
+          ${overEdges}
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>

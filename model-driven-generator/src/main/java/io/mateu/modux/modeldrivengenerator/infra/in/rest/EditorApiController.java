@@ -64,6 +64,8 @@ public class EditorApiController {
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents) {}
     public record DomainEventDto(String id, String name) {}
+    /** Who publishes a domain event: an aggregate (operation `emits`) or a use case (PublishDomainEvent step). */
+    public record EmissionDto(String sourceId, String domainEventId) {}
     public record ExternalSystemDto(String id, String name) {}
     public record RelationDto(String sourceId, String targetId, String type) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
@@ -89,7 +91,8 @@ public class EditorApiController {
             List<EntityDto> entities,
             List<AggregateReferenceDto> aggregateReferences,
             List<ProcessDto> processes,
-            List<ViewDto> views) {}
+            List<ViewDto> views,
+            List<EmissionDto> emissions) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -275,9 +278,35 @@ public class EditorApiController {
                 .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
                 .toList();
 
+        // Who publishes what: aggregate operations declare emitted events by NAME
+        // (CSV in OperationEntity.emits); use case steps publish by id.
+        var eventIdByName = domainEventsById.values().stream()
+                .filter(ev -> ev.name() != null)
+                .collect(Collectors.toMap(ev -> ev.name().trim().toLowerCase(),
+                        DomainEventEntity::id, (a, b) -> a));
+        var emissions = new ArrayList<EmissionDto>();
+        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+            for (var op : a.operations()) {
+                if (op.emits() == null || op.emits().isBlank()) continue;
+                for (var eventName : op.emits().split(",")) {
+                    var eventId = eventIdByName.get(eventName.trim().toLowerCase());
+                    if (eventId != null) emissions.add(new EmissionDto(a.id(), eventId));
+                }
+            }
+        }
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
+                        && step.domainEventId() != null) {
+                    emissions.add(new EmissionDto(uc.id(), step.domainEventId()));
+                }
+            }
+        }
+
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
-                views);
+                views, emissions.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------

@@ -261,5 +261,23 @@ export function contextMapScene(
     };
   });
 
-  return { nodes, edges: [...relationEdges, ...flowEdges] };
+  // Emission edges (aggregate/use case → domain event) only exist at the detail
+  // level, where publisher and event both render as children.
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const emissionEdges: SceneEdge[] = detailed
+    ? (model.emissions ?? [])
+        .filter((e) => nodeIds.has(e.sourceId) && nodeIds.has(e.domainEventId))
+        .map((e) => ({
+          id: `emit:${e.sourceId}->${e.domainEventId}`,
+          sourceId: e.sourceId,
+          targetId: e.domainEventId,
+          kind: 'emission',
+          color: '#f59e0b',
+          dashed: true,
+          arrow: true,
+          tooltip: 'emite',
+        }))
+    : [];
+
+  return { nodes, edges: [...relationEdges, ...flowEdges, ...emissionEdges] };
 }

@@ -28,6 +28,12 @@ export interface DomainEventRef {
   name: string;
 }
 
+/** Who publishes a domain event: an aggregate (operation emits) or a use case (publish step). */
+export interface EmissionRef {
+  sourceId: string;
+  domainEventId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -121,4 +127,5 @@ export interface ModuxModel {
   aggregateReferences?: AggregateReference[];
   processes?: ProcessRef[];
   views?: ViewRef[];
+  emissions?: EmissionRef[];
 }
