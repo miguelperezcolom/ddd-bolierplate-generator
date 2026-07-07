@@ -22,6 +22,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
@@ -68,8 +69,8 @@ public class EditorApiController {
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
                             List<ReadModelDto> readModels) {}
     public record DomainEventDto(String id, String name) {}
-    public record ReadModelDto(String id, String name) {}
-    /** Who publishes a domain event: an aggregate (operation `emits`) or a use case (PublishDomainEvent step). */
+    public record ReadModelDto(String id, String name, String aggregateId) {}
+    /** Who emits a domain event: an aggregate, through its operations' `emits`. */
     public record EmissionDto(String sourceId, String domainEventId) {}
     public record ExternalSystemDto(String id, String name) {}
     public record RelationDto(String sourceId, String targetId, String type) {}
@@ -201,7 +202,7 @@ public class EditorApiController {
                         (m.readModelIds() == null ? List.<String>of() : m.readModelIds()).stream()
                                 .map(readModelsById::get)
                                 .filter(Objects::nonNull)
-                                .map(rm -> new ReadModelDto(rm.id(), rm.name()))
+                                .map(rm -> new ReadModelDto(rm.id(), rm.name(), rm.aggregateId()))
                                 .toList()))
                 .toList();
 
@@ -318,6 +319,7 @@ public class EditorApiController {
 
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
                                 String id, String name, String subdomainType, String moduleId,
+                                String aggregateId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String readModelName, String targetUseCaseId,
                                 List<ProcessStepDto> steps,
@@ -336,6 +338,8 @@ public class EditorApiController {
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-emission" -> addEmission(command);
+            case "add-read-model" -> addReadModel(command);
+            case "remove-read-model" -> removeReadModel(command);
             case "remove-module" -> removeModule(command);
             case "remove-aggregate" -> removeAggregate(command);
             case "remove-domain-event" -> removeDomainEvent(command);
@@ -534,6 +538,10 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "read-model" -> repository.findById(command.id(), ReadModelEntity.class)
+                    .ifPresent(rm -> repository.save(new ReadModelEntity(
+                            rm.id(), command.name(), rm.moduleId(), rm.description(), rm.modelId(),
+                            rm.storageType(), rm.consistency(), rm.aggregateId())));
             case "domain-event" -> repository.findById(command.id(), DomainEventEntity.class)
                     .ifPresent(ev -> repository.save(new DomainEventEntity(
                             ev.id(), command.name(), ev.modelId(), ev.publishAsIntegrationEvent(),
@@ -679,6 +687,51 @@ public class EditorApiController {
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
                 uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds());
+    }
+
+    /**
+     * A read model born from an aggregate: it lives in the aggregate's module and its
+     * shape starts as the aggregate's state model (refinable later through the CRUDs).
+     */
+    private void addReadModel(EditorCommand command) {
+        if (repository.findById(command.id(), ReadModelEntity.class).isPresent()) return;
+        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.aggregateId()));
+        var module = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El agregado " + aggregate.id() + " no pertenece a ningún módulo"));
+        repository.save(new ReadModelEntity(command.id(), command.name(), module.id(),
+                null, aggregate.modelId(), null, null, aggregate.id()));
+        var readModelIds = new ArrayList<>(
+                module.readModelIds() == null ? List.of() : module.readModelIds());
+        readModelIds.add(command.id());
+        repository.save(module.toBuilder().readModelIds(readModelIds).build());
+    }
+
+    private void removeReadModel(EditorCommand command) {
+        var feedingProjection = repository.findAllOfType(ProjectionEntity.class).stream()
+                .anyMatch(p -> command.id().equals(p.readModelId()));
+        if (feedingProjection) {
+            throw new IllegalArgumentException(
+                    "El read model " + command.id() + " tiene proyecciones; bórralas primero");
+        }
+        var name = repository.findById(command.id(), ReadModelEntity.class)
+                .map(ReadModelEntity::name).orElse(null);
+        var materializedByFlow = name != null && repository.findAllOfType(FlowEntity.class).stream()
+                .anyMatch(f -> name.equals(f.readModelName()));
+        if (materializedByFlow) {
+            throw new IllegalArgumentException(
+                    "El read model " + name + " lo materializa un flow; borra el flow primero");
+        }
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.readModelIds() != null && m.readModelIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .readModelIds(m.readModelIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), ReadModelEntity.class);
     }
 
     private void removeDomainEvent(EditorCommand command) {

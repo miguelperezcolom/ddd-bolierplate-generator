@@ -31,6 +31,8 @@ export interface DomainEventRef {
 export interface ReadModelRef {
   id: string;
   name: string;
+  /** The aggregate this read model is a view of (optional). */
+  aggregateId?: string;
 }
 
 /** Who publishes a domain event: an aggregate (operation emits) or a use case (publish step). */

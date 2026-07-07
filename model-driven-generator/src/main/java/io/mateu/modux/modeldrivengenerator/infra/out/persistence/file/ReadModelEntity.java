@@ -11,6 +11,15 @@ public record ReadModelEntity(
         String description,
         String modelId,
         ReadModelStorageType storageType,
-        ReadModelConsistency consistency
+        ReadModelConsistency consistency,
+        /** The aggregate this read model is a view of (optional; its model seeds the shape). */
+        String aggregateId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-aggregateId callers and stores). */
+    public ReadModelEntity(String id, String name, String moduleId, String description,
+                           String modelId, ReadModelStorageType storageType,
+                           ReadModelConsistency consistency) {
+        this(id, name, moduleId, description, modelId, storageType, consistency, null);
+    }
 }

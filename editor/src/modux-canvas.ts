@@ -252,9 +252,10 @@ export class ModuxCanvas extends LitElement {
       const edge = this.scene.edges.find((x) => x.id === this.selectedId);
       const node = this.scene.nodes.find((x) => x.id === this.selectedId);
       // Nested aggregates/use cases are a projection here — deleting them
-      // belongs to their own view, not Supr. Domain events ARE managed from
-      // this view (created via the toolbar), so they are the exception.
-      if (node?.parentId && !edge && node.kind !== 'domain-event') return;
+      // belongs to their own view, not Supr. Domain events and read models ARE
+      // managed from this view (created via the toolbar), so they are exceptions.
+      if (node?.parentId && !edge && node.kind !== 'domain-event' && node.kind !== 'read-model')
+        return;
       const el = edge ?? node;
       if (el) {
         e.preventDefault();

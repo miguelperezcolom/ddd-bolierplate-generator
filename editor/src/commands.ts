@@ -55,7 +55,18 @@ export type ModuxCommand =
       id: string;
     }
   | {
-      /** Source (aggregate or use case) publishes the target domain event. */
+      /** A read model born from an aggregate (it lives in the aggregate's module). */
+      kind: 'add-read-model';
+      id: string;
+      name: string;
+      aggregateId: string;
+    }
+  | {
+      kind: 'remove-read-model';
+      id: string;
+    }
+  | {
+      /** The source aggregate emits the target domain event. */
       kind: 'add-emission';
       sourceId: string;
       targetId: string;
