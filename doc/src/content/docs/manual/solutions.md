@@ -57,13 +57,31 @@ element-by-element table — kind of change, element, and the **decisions** that
 it — in strategic → domain → behaviour → integration reading order. The to-be and its
 delta, both derived from the spec, impossible to drift.
 
+## Approval and merge
+
+A solution advances through its statuses from the bar:
+
+- **→ Proponer** (`EXPLORING → PROPOSED`) — the to-be is ready for review.
+- **✓ Aprobar** (`PROPOSED → APPROVED`) — enforced by the **approval gate**: a green
+  lint (no ERRORs) and **no open decisions** (`PROPOSED` ADRs are the design's open
+  points). Blockers come back as a toast listing them.
+- **⇧ Mergear al sistema** (APPROVED only) — a **semantic merge**, never textual: the
+  merge base, the system and the solution are compared element by element and by id.
+  Changes on one side apply cleanly; an element changed on **both** sides opens the
+  conflict panel — pick *Sistema* or *Solución* per element (each option's YAML in its
+  tooltip). The result is committed on `main` as a true merge commit (both parents),
+  the solution's registry is stripped (the system carries no solutions), the branch is
+  archived as a tag and deleted. The solution is now the as-is.
+
+**⟳ Actualizar del sistema** brings the system's advances into a *living* solution —
+the same semantic machinery in the opposite direction (the practical take on the
+rebase), with the same per-element conflict panel. Diagram geometry always follows
+the solution (naive, by design).
+
 ## Roadmap
 
-Two phases of the design remain:
+One phase of the design remains:
 
-- **Approval & merge (F3)**: a gate (green lint + no `PROPOSED` decisions) and an
-  element-by-element assisted merge into main; live solutions **rebase** when the
-  system advances.
 - **Transition (F4)**: the merged change set feeds
   [system evolution](/manual/system-evolution/) — migrations, event upcasters and
   projection rebuild plans derive from the same diff.

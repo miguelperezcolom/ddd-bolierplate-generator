@@ -99,13 +99,17 @@ to-be) sin que el diseño cambie.
 
 ## 5. Fases
 
-1. **F1 — Soluciones navegables**: repo git del store gestionado por modux; crear /
-   cambiar / descartar solución desde el editor; `SolutionEntity`; HLA de sistema
-   (main) vs HLA de solución (rama).
-2. **F2 — El diff visible**: `ModelChangeSet` main↔rama; vista diff del context map;
-   sección «Qué cambia» en el HLA de solución.
-3. **F3 — Aprobación**: puerta de lint + decisiones; merge asistido con resolución
-   por elemento; estados de la solución.
+1. **F1 — Soluciones navegables** ✅ (2026-07-08): repo git del store gestionado por
+   modux; crear / cambiar / descartar solución desde el editor; `SolutionEntity`;
+   HLA de sistema (main) vs HLA de solución (rama).
+2. **F2 — El diff visible** ✅ (2026-07-08): diff semántico main↔rama por worktree
+   efímero; anillos verde/ámbar en el canvas; sección «Qué cambia» en el HLA.
+3. **F3 — Aprobación** ✅ (2026-07-08): puerta (lint sin ERRORs + sin decisiones
+   PROPOSED); estados desde la barra; **merge semántico three-way por elemento**
+   (base = merge-base, conflicto = tocado en ambos lados, panel Sistema|Solución) con
+   commit de merge real en main, registro de solución excluido del sistema, tag de
+   archivo y borrado de rama; «Actualizar del sistema» = la misma maquinaria hacia la
+   rama (el rebase práctico). La geometría sigue siempre a la solución (naive).
 4. **F4 — Transición**: merge → migraciones/upcasters/rebuild (model-evolution F2).
 
 ## 6. Preguntas abiertas — RESUELTAS (Miguel, 2026-07-08)

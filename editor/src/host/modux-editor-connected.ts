@@ -38,6 +38,12 @@ export class ModuxEditorConnected extends LitElement {
     removed: number;
     changes: { type: string; id: string; name?: string; kind: string }[];
   } | null = null;
+  /** Element-by-element conflict resolution before a merge/update. */
+  @state() private _mergeFlow: {
+    op: 'merge' | 'update';
+    conflicts: { key: string; type: string; id: string; name?: string; system?: string; solution?: string }[];
+    resolutions: Record<string, string>;
+  } | null = null;
 
   private _layoutTimer: number | undefined;
   /** A layout edit is waiting for the debounced PUT. */
@@ -120,6 +126,46 @@ export class ModuxEditorConnected extends LitElement {
     .workspace .badge.solution {
       background: #fef3c7;
       color: #b45309;
+    }
+    .merge-panel {
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      color: #334155;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-bottom: none;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .merge-title {
+      font-weight: 600;
+    }
+    .merge-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .merge-el {
+      min-width: 320px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+    }
+    .merge-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .merge-actions button {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .merge-actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     .status {
       font-family: ui-sans-serif, system-ui, sans-serif;
@@ -282,8 +328,8 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
-  /** create / switch / discard against the solutions API, then full reload. */
-  private async solutionOp(op: string, body: Record<string, string>): Promise<void> {
+  /** create / switch / discard / status / merge against the solutions API, then reload. */
+  private async solutionOp(op: string, body: unknown): Promise<void> {
     this._saving = true;
     try {
       const res = await fetch(`${this.base}/solutions/${op}`, {
@@ -331,6 +377,44 @@ export class ModuxEditorConnected extends LitElement {
     this._creatingSolution = false;
     this._newSolutionName = '';
     void this.solutionOp('create', { name });
+  }
+
+  /** merge/update start with a dry run; conflicts open the per-element panel. */
+  private async startMergeFlow(op: 'merge' | 'update'): Promise<void> {
+    try {
+      const res = await fetch(`${this.base}/solutions/merge-check`);
+      if (!res.ok) {
+        this.showToast(`No se pudo comprobar el merge (${res.status})`);
+        return;
+      }
+      const check = await res.json();
+      if (!check.conflicts?.length) {
+        await this.solutionOp(op, { resolutions: {} });
+        this.showToast(
+          op === 'merge'
+            ? 'Solución mergeada al sistema: ahora es el nuevo as-is'
+            : 'Solución actualizada desde el sistema',
+          'info',
+        );
+        return;
+      }
+      this._mergeFlow = { op, conflicts: check.conflicts, resolutions: {} };
+    } catch (err) {
+      this.showToast(String(err));
+    }
+  }
+
+  private async confirmMergeFlow(): Promise<void> {
+    const flow = this._mergeFlow;
+    if (!flow || flow.conflicts.some((c) => !flow.resolutions[c.key])) return;
+    this._mergeFlow = null;
+    await this.solutionOp(flow.op, { resolutions: flow.resolutions });
+    this.showToast(
+      flow.op === 'merge'
+        ? 'Solución mergeada al sistema: ahora es el nuevo as-is'
+        : 'Solución actualizada desde el sistema',
+      'info',
+    );
   }
 
   private showToast(message: string, kind: 'error' | 'info' = 'error'): void {
@@ -450,16 +534,105 @@ export class ModuxEditorConnected extends LitElement {
                   `
                 : ''}
               ${!this._workspace.system && !this._creatingSolution
-                ? html`
-                    <button
-                      title="Archiva la solución (tag) y borra su rama"
-                      @click=${() =>
-                        void this.solutionOp('discard', { branch: this._workspace!.current })}
-                    >
-                      ⏏ Descartar
-                    </button>
-                  `
+                ? (() => {
+                    const status = this._workspace!.solutions.find(
+                      (s) => s.branch === this._workspace!.current,
+                    )?.status;
+                    return html`
+                      ${status === 'EXPLORING'
+                        ? html`<button
+                            title="La solución queda propuesta para revisión"
+                            @click=${() => void this.solutionOp('status', { status: 'PROPOSED' })}
+                          >
+                            → Proponer
+                          </button>`
+                        : ''}
+                      ${status === 'PROPOSED'
+                        ? html`<button
+                            title="Aprueba la solución — exige lint verde y ninguna decisión abierta"
+                            @click=${() => void this.solutionOp('status', { status: 'APPROVED' })}
+                          >
+                            ✓ Aprobar
+                          </button>`
+                        : ''}
+                      ${status === 'APPROVED'
+                        ? html`<button
+                            title="Merge semántico al sistema: la solución pasa a ser el nuevo as-is"
+                            @click=${() => void this.startMergeFlow('merge')}
+                          >
+                            ⇧ Mergear al sistema
+                          </button>`
+                        : ''}
+                      <button
+                        title="Trae al to-be los avances del sistema (merge semántico)"
+                        @click=${() => void this.startMergeFlow('update')}
+                      >
+                        ⟳ Actualizar del sistema
+                      </button>
+                      <button
+                        title="Archiva la solución (tag) y borra su rama"
+                        @click=${() =>
+                          void this.solutionOp('discard', { branch: this._workspace!.current })}
+                      >
+                        ⏏ Descartar
+                      </button>
+                    `;
+                  })()
                 : ''}
+            </div>
+          `
+        : ''}
+      ${this._mergeFlow
+        ? html`
+            <div class="merge-panel">
+              <div class="merge-title">
+                ${this._mergeFlow.conflicts.length} elemento(s) cambiados en el sistema Y en la
+                solución — elige qué versión queda:
+              </div>
+              ${this._mergeFlow.conflicts.map(
+                (c) => html`
+                  <div class="merge-row">
+                    <span class="merge-el">${c.type} · ${c.name ?? c.id}</span>
+                    <label title=${c.system ?? '(eliminado en el sistema)'}>
+                      <input
+                        type="radio"
+                        name=${c.key}
+                        .checked=${this._mergeFlow!.resolutions[c.key] === 'system'}
+                        @change=${() =>
+                          (this._mergeFlow = {
+                            ...this._mergeFlow!,
+                            resolutions: { ...this._mergeFlow!.resolutions, [c.key]: 'system' },
+                          })}
+                      />
+                      Sistema
+                    </label>
+                    <label title=${c.solution ?? '(eliminado en la solución)'}>
+                      <input
+                        type="radio"
+                        name=${c.key}
+                        .checked=${this._mergeFlow!.resolutions[c.key] === 'solution'}
+                        @change=${() =>
+                          (this._mergeFlow = {
+                            ...this._mergeFlow!,
+                            resolutions: { ...this._mergeFlow!.resolutions, [c.key]: 'solution' },
+                          })}
+                      />
+                      Solución
+                    </label>
+                  </div>
+                `,
+              )}
+              <div class="merge-actions">
+                <button
+                  ?disabled=${this._mergeFlow.conflicts.some(
+                    (c) => !this._mergeFlow!.resolutions[c.key],
+                  )}
+                  @click=${() => void this.confirmMergeFlow()}
+                >
+                  Confirmar
+                </button>
+                <button @click=${() => (this._mergeFlow = null)}>Cancelar</button>
+              </div>
             </div>
           `
         : ''}

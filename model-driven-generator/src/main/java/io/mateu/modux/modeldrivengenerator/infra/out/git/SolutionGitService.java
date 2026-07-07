@@ -99,18 +99,44 @@ public class SolutionGitService {
     }
 
     /**
-     * A read-only checkout of the SYSTEM at a temp path (git worktree) — how a solution
-     * reads the as-is to diff against without leaving its own branch. Pair with
+     * A read-only checkout of any ref at a temp path (git worktree) — how a solution
+     * reads the as-is or the merge base without leaving its own branch. Pair with
      * {@link #removeWorktree(Path)}.
      */
     @SneakyThrows
-    public Path addSystemWorktree() {
+    public Path addWorktree(String ref) {
         ensureRepo();
-        var tmp = Files.createTempDirectory("modux-system-");
+        var tmp = Files.createTempDirectory("modux-worktree-");
         // The directory must not exist for git; recreate it as git's own.
         Files.delete(tmp);
-        git("worktree", "add", "--detach", tmp.toString(), SYSTEM_BRANCH);
+        git("worktree", "add", "--detach", tmp.toString(), ref);
         return tmp;
+    }
+
+    /** A read-only checkout of the SYSTEM. */
+    public Path addSystemWorktree() {
+        return addWorktree(SYSTEM_BRANCH);
+    }
+
+    /** Escape hatch for the merge machinery (SolutionMergeService). */
+    public String raw(String... args) {
+        return git(args);
+    }
+
+    /** Public form of {@link #commitAll} for the merge machinery. */
+    public void commitAllPublic(String message) {
+        commitAll(message);
+    }
+
+    /**
+     * Concludes an in-progress merge: unlike {@link #commitAll}, it commits even when
+     * the tree is unchanged (the merge ANCESTRY must be recorded regardless — e.g. a
+     * conflict resolved entirely in favour of the current branch).
+     */
+    public void commitMerge(String message) {
+        git("add", "-A");
+        git("-c", "user.name=modux", "-c", "user.email=modux@modux.local",
+                "commit", "--allow-empty", "-m", message);
     }
 
     public void removeWorktree(Path worktree) {

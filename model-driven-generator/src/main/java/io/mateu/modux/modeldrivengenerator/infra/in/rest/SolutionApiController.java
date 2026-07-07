@@ -30,6 +30,7 @@ public class SolutionApiController {
     final SolutionGitService git;
     final CommonFileRepository repository;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
+    final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService mergeService;
 
     public record SolutionRef(String branch, String name, String status) {}
     public record WorkspaceDto(String current, boolean system, List<SolutionRef> solutions) {}
@@ -78,6 +79,46 @@ public class SolutionApiController {
     @PostMapping("/discard")
     public WorkspaceDto discard(@RequestBody SolutionCommand command) {
         git.discard(command.branch());
+        return workspace();
+    }
+
+    // ---- F3: approval and semantic merge -----------------------------------
+
+    public record StatusCommand(String status) {}
+    public record MergeCommand(Map<String, String> resolutions) {}
+
+    /** The approval gate of the CURRENT solution: green lint + no open decisions. */
+    @GetMapping("/gate")
+    public io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService.Gate gate() {
+        return mergeService.approvalGate();
+    }
+
+    /** Status transition (EXPLORING → PROPOSED → APPROVED); APPROVED enforces the gate. */
+    @PostMapping("/status")
+    public WorkspaceDto status(@RequestBody StatusCommand command) {
+        mergeService.setStatus(command.status());
+        return workspace();
+    }
+
+    /** Dry run: the element conflicts a merge would need resolved. */
+    @GetMapping("/merge-check")
+    public io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService.MergeCheck mergeCheck() {
+        return mergeService.check();
+    }
+
+    /** Semantic merge of the APPROVED current solution into the system. */
+    @PostMapping("/merge")
+    public WorkspaceDto merge(@RequestBody(required = false) MergeCommand command) {
+        mergeService.mergeIntoSystem(
+                command == null || command.resolutions() == null ? Map.of() : command.resolutions());
+        return workspace();
+    }
+
+    /** Brings the system's advances into the living solution (semantic rebase). */
+    @PostMapping("/update")
+    public WorkspaceDto update(@RequestBody(required = false) MergeCommand command) {
+        mergeService.updateFromSystem(
+                command == null || command.resolutions() == null ? Map.of() : command.resolutions());
         return workspace();
     }
 

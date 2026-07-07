@@ -153,6 +153,13 @@ public class CommonFileRepository {
         return buildAllData();
     }
 
+    /** Replace the whole catalog with the given model and persist it (semantic merges). */
+    @SneakyThrows
+    public void replaceWith(AllData data) {
+        loadIntoStore(data);
+        persist();
+    }
+
     /** Rebuild an {@link AllData} from the in-memory catalog (inverse of {@link #loadIntoStore}). */
     private AllData buildAllData() {
         var components = AllData.class.getRecordComponents();
