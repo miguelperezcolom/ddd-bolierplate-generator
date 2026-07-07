@@ -15,10 +15,22 @@ public record RagEntity(
         String name,
         String description,
         /** Read models whose content this knowledge base indexes (optional). */
-        List<String> sourceReadModelIds
+        List<String> sourceReadModelIds,
+        /** External content it also indexes: repos, web sites, FTP servers… (optional). */
+        List<RagContentSourceEntity> contentSources
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-contentSources callers and stores). */
+    public RagEntity(String id, String name, String description,
+                     List<String> sourceReadModelIds) {
+        this(id, name, description, sourceReadModelIds, List.of());
+    }
 
     public List<String> sourceReadModelIds() {
         return sourceReadModelIds != null ? sourceReadModelIds : List.of();
+    }
+
+    public List<RagContentSourceEntity> contentSources() {
+        return contentSources != null ? contentSources : List.of();
     }
 }

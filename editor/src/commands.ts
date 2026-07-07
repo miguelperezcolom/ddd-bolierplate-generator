@@ -118,6 +118,34 @@ export type ModuxCommand =
     }
   | { kind: 'remove-rag-source'; sourceId: string; targetId: string }
   | {
+      /** External content feeding the RAG: a repo, a web site, an FTP server… */
+      kind: 'add-rag-content-source';
+      sourceId: string;
+      type: string;
+      uri: string;
+    }
+  | { kind: 'remove-rag-content-source'; sourceId: string; uri: string; type?: string }
+  | {
+      /** A table/dataset owned by an external system (moduleId = external system id). */
+      kind: 'add-external-table';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | { kind: 'remove-external-table'; id: string }
+  | {
+      /** Adds an existing catalog element to a CURATED view. */
+      kind: 'add-view-member';
+      id: string;
+      targetId: string;
+    }
+  | {
+      /** Removes an element from the view WITHOUT touching the element itself. */
+      kind: 'remove-view-member';
+      id: string;
+      targetId: string;
+    }
+  | {
       /** A business actor (role). */
       kind: 'add-actor';
       id: string;
@@ -162,14 +190,17 @@ export type ModuxCommand =
     }
   | {
       /**
-       * Project an aggregate's state onto a read model — possibly in another bounded
-       * context. `targetId` names an existing read model; otherwise `moduleId` is the
-       * target context and a stub read model is created there.
+       * Project a source onto a read model — possibly in another bounded context.
+       * The source is exactly one of: an aggregate's state, an external operation to
+       * poll, or a legacy table to poll. `targetId` names an existing read model;
+       * otherwise `moduleId` is the target context and a stub read model is born there.
        */
       kind: 'add-projection';
       id: string;
       name: string;
-      aggregateId: string;
+      aggregateId?: string;
+      externalUseCaseId?: string;
+      externalTableId?: string;
       targetId?: string;
       moduleId?: string;
       readModelName?: string;

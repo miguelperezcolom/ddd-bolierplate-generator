@@ -1541,8 +1541,8 @@ diagrams:
     x: -144.1
     "y": -86.7
   - ref: "uc-crearEstancia"
-    x: -24.1
-    "y": -86.7
+    x: 31.8
+    "y": -128.7
   - ref: "uc-actualizarEstancia"
     x: -144.1
     "y": -44.7
@@ -1573,3 +1573,15 @@ diagrams:
   - ref: "mod-folios"
     x: 64.7
     "y": 370.7
+  - ref: "mod-housekeeping"
+    x: 268.2
+    "y": 118.0
+  - ref: "mod-servicio-tecnico"
+    x: 473.0
+    "y": 254.3
+  - ref: "mod-facturacion"
+    x: 882.6
+    "y": 534.5
+  - ref: "mod-master-data"
+    x: 1136.2
+    "y": 139.3

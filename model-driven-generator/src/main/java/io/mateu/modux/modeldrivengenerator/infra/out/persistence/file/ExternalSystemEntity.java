@@ -24,17 +24,33 @@ public record ExternalSystemEntity(
         /** Architecture decisions (ADRs) this integration traces back to. */
         List<String> decisionIds,
         /** Use cases this external system offers (targets of CallExternalUseCase steps). */
-        List<ExternalSystemUseCaseEntity> useCases
+        List<ExternalSystemUseCaseEntity> useCases,
+        /** Tables/datasets it owns — pollable into read models (legacy integration). */
+        List<ExternalSystemTableEntity> tables
 ) {
+
+    /** Backward-compatible constructor (pre-tables callers and stores). */
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                List.of());
+    }
 
     /** Backward-compatible constructor (pre-useCases callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,
                                 ExternalSystemProtocol protocol, ExternalSystemDirection direction,
                                 String gatewayId, String owner, List<String> decisionIds) {
-        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, List.of());
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, List.of(),
+                List.of());
     }
 
     public List<ExternalSystemUseCaseEntity> useCases() {
         return useCases != null ? useCases : List.of();
+    }
+
+    public List<ExternalSystemTableEntity> tables() {
+        return tables != null ? tables : List.of();
     }
 }

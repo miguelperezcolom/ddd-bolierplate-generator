@@ -117,12 +117,19 @@ export interface AgentExternalUseRef {
   externalUseCaseId: string;
 }
 
-/** A RAG knowledge base, optionally fed from read models. */
+export interface RagContentSourceRef {
+  /** REPO, WEB or FTP. */
+  type: string;
+  uri: string;
+}
+
+/** A RAG knowledge base, optionally fed from read models and external content. */
 export interface RagRef {
   id: string;
   name: string;
   description?: string;
   sourceReadModelIds?: string[];
+  contentSources?: RagContentSourceRef[];
 }
 
 /** An AI agent grounds its answers on a knowledge base. */
@@ -136,11 +143,18 @@ export interface ExternalUseCaseRef {
   name: string;
 }
 
+export interface ExternalTableRef {
+  id: string;
+  name: string;
+}
+
 export interface ExternalSystemRef {
   id: string;
   name: string;
   /** Use cases this external system offers (targets of calls from our use cases). */
   useCases?: ExternalUseCaseRef[];
+  /** Tables/datasets it owns — pollable into read models (legacy integration). */
+  tables?: ExternalTableRef[];
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */
@@ -260,6 +274,10 @@ export interface ProjectionRef {
   sourceAggregateId?: string;
   /** Bounded context that owns the projection (and its read model). */
   moduleId?: string;
+  /** Alternative source: an external system's operation, polled. */
+  sourceExternalUseCaseId?: string;
+  /** Alternative source: a legacy/external system's table, polled. */
+  sourceExternalTableId?: string;
 }
 
 export interface WorkflowStepRef {

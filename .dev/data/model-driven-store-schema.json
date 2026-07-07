@@ -793,6 +793,12 @@
         "protocol" : {
           "$ref" : "#/$defs/ExternalSystemProtocol"
         },
+        "tables" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ExternalSystemTableEntity"
+          }
+        },
         "useCases" : {
           "type" : "array",
           "items" : {
@@ -805,6 +811,23 @@
     "ExternalSystemProtocol" : {
       "type" : "string",
       "enum" : [ "REST", "SOAP", "GRPC", "MESSAGING", "FILE", "DATABASE", "OTHER" ]
+    },
+    "ExternalSystemTableEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
     },
     "ExternalSystemUseCaseEntity" : {
       "type" : "object",
@@ -2363,6 +2386,16 @@
           "type" : "string",
           "description" : "Reference to an existing 'sourceAggregate' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "sourceExternalTableId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceExternalTable' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "sourceExternalUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'sourceExternalUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -2465,9 +2498,27 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "RagContentSourceEntity" : {
+      "type" : "object",
+      "properties" : {
+        "type" : {
+          "type" : "string"
+        },
+        "uri" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
     "RagEntity" : {
       "type" : "object",
       "properties" : {
+        "contentSources" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/RagContentSourceEntity"
+          }
+        },
         "description" : {
           "type" : "string"
         },

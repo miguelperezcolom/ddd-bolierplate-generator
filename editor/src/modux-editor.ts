@@ -167,7 +167,8 @@ export class ModuxEditor extends LitElement {
     | 'query-service'
     | 'use-case'
     | 'policy'
-    | 'external-use-case' = 'module';
+    | 'external-use-case'
+    | 'external-table' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
   /** Owner external system for a new external use case. */
@@ -193,6 +194,12 @@ export class ModuxEditor extends LitElement {
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
   @state() private _activeViewId = '';
+  @state() private _newRagSourceType = 'WEB';
+  @state() private _newRagSourceUri = '';
+  @state() private _addMemberKey = '';
+  /** Pending node deletion while the user picks: delete from model, or only from the view. */
+  @state() private _deletePicker: { elementType: string; id: string; kind: string; memberId: string } | null =
+    null;
 
   static styles = css`
     :host {
@@ -649,21 +656,53 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-projection', id: c.id }];
       case 'remove-projection': {
         const p = (this.model.projections ?? []).find((x) => x.id === c.id);
-        // Only aggregate-sourced projections are restorable from the canvas; the
-        // stub read model survives the removal, so relinking by targetId suffices.
-        return p && p.sourceAggregateId
+        // Only source-declared projections are restorable from the canvas; the stub
+        // read model survives the removal, so relinking by targetId suffices.
+        return p && (p.sourceAggregateId || p.sourceExternalUseCaseId || p.sourceExternalTableId)
           ? [
               {
                 kind: 'add-projection',
                 id: p.id,
                 name: p.name,
                 aggregateId: p.sourceAggregateId,
+                externalUseCaseId: p.sourceExternalUseCaseId,
+                externalTableId: p.sourceExternalTableId,
                 targetId: p.readModelId,
                 moduleId: p.moduleId,
               },
             ]
           : null;
       }
+      case 'add-external-table':
+        return [{ kind: 'remove-external-table', id: c.id }];
+      case 'remove-external-table': {
+        for (const x of this.model.externalSystems) {
+          const t = (x.tables ?? []).find((e) => e.id === c.id);
+          if (t) return [{ kind: 'add-external-table', id: t.id, name: t.name, moduleId: x.id }];
+        }
+        return null;
+      }
+      case 'add-rag-content-source':
+        return [{ kind: 'remove-rag-content-source', sourceId: c.sourceId, uri: c.uri }];
+      case 'remove-rag-content-source': {
+        const source = (this.model.rags ?? [])
+          .find((r) => r.id === c.sourceId)
+          ?.contentSources?.find((s) => s.uri === c.uri);
+        return source
+          ? [
+              {
+                kind: 'add-rag-content-source',
+                sourceId: c.sourceId,
+                type: source.type,
+                uri: c.uri,
+              },
+            ]
+          : null;
+      }
+      case 'add-view-member':
+        return [{ kind: 'remove-view-member', id: c.id, targetId: c.targetId }];
+      case 'remove-view-member':
+        return [{ kind: 'add-view-member', id: c.id, targetId: c.targetId }];
       case 'remove-read-model': {
         for (const m of this.model.modules) {
           const rm = (m.readModels ?? []).find((x) => x.id === c.id);
@@ -1082,6 +1121,58 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // Dragging an external operation or a legacy table onto a read model (or another
+    // context) declares a POLLING projection — the classic legacy integration.
+    const externalOp = this.model.externalSystems
+      .flatMap((x) => x.useCases ?? [])
+      .find((u) => u.id === sourceId);
+    const externalTable = this.model.externalSystems
+      .flatMap((x) => x.tables ?? [])
+      .find((t) => t.id === sourceId);
+    if (externalOp || externalTable) {
+      const sourceName = (externalOp ?? externalTable)!.name;
+      const sourceKey = externalOp
+        ? { externalUseCaseId: sourceId }
+        : { externalTableId: sourceId };
+      const alreadyFrom = (p: import('./model.js').ProjectionRef) =>
+        externalOp ? p.sourceExternalUseCaseId === sourceId : p.sourceExternalTableId === sourceId;
+      const targetReadModel = this.model.modules
+        .flatMap((m) => m.readModels ?? [])
+        .find((rm) => rm.id === targetId);
+      if (targetReadModel) {
+        const exists = (this.model.projections ?? []).some(
+          (p) => alreadyFrom(p) && p.readModelId === targetId,
+        );
+        if (!exists) {
+          this.command({
+            kind: 'add-projection',
+            id: `proj-${slug(sourceName)}-${slug(targetReadModel.name)}`,
+            name: `${targetReadModel.name}Projection`,
+            ...sourceKey,
+            targetId,
+          });
+        }
+        return;
+      }
+      const targetModule = this.model.modules.find((m) => m.id === targetId);
+      if (targetModule) {
+        const exists = (this.model.projections ?? []).some(
+          (p) => alreadyFrom(p) && p.moduleId === targetId,
+        );
+        if (!exists) {
+          this.command({
+            kind: 'add-projection',
+            id: `proj-${slug(sourceName)}-${slug(targetModule.name)}`,
+            name: `${sourceName}ViewProjection`,
+            ...sourceKey,
+            moduleId: targetId,
+            readModelName: `${sourceName}View`,
+          });
+        }
+        return;
+      }
+      return;
+    }
     // Dragging an aggregate onto a read model (or another context) declares a state
     // projection: the aggregate's state is materialized there. What that implies
     // (CDC, snapshots, replication…) is decided later — this only records the intent.
@@ -1319,6 +1410,42 @@ export class ModuxEditor extends LitElement {
 
   private onDeleteRequested(e: CustomEvent): void {
     const { elementType, id, kind } = e.detail;
+    // With a modux View active, deleting a member node is ambiguous: drop the element
+    // from the MODEL, or only take it out of this view? Ask before touching anything.
+    if (this._activeViewId && elementType === 'node') {
+      const memberId = this.memberIdOf(id, kind);
+      const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+      if (memberId && view?.memberIds.includes(memberId)) {
+        this._deletePicker = { elementType, id, kind, memberId };
+        return;
+      }
+    }
+    this.performDelete(elementType, id, kind);
+  }
+
+  /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
+  private memberIdOf(id: string, kind: string): string | null {
+    switch (kind) {
+      case 'module':
+      case 'external-system':
+        return id.replace(/^tgt:/, '');
+      case 'aggregate':
+      case 'entity':
+      case 'process':
+      case 'workflow':
+        return id;
+      case 'flow':
+        return id.replace(/^flow:/, '');
+      case 'process-step':
+        return this.owningProcessOf(id)?.id ?? null;
+      case 'workflow-step':
+        return this.owningWorkflowOf(id)?.id ?? null;
+      default:
+        return null;
+    }
+  }
+
+  private performDelete(elementType: string, id: string, kind: string): void {
     if (this._view === 'workflows' && elementType === 'edge' && kind === 'workflow-dependency') {
       const match = /^wfdep:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -1426,6 +1553,18 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'rag') {
       this._selectedId = null;
       this.command({ kind: 'remove-rag', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'rag-content-source') {
+      const match = /^ragcs:(.+?):(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-rag-content-source', sourceId: match[1], uri: match[2] });
+      return;
+    }
+    if (elementType === 'node' && kind === 'external-table') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-table', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
@@ -1540,6 +1679,7 @@ export class ModuxEditor extends LitElement {
       kind === 'query-service' ||
       kind === 'use-case' ||
       kind === 'external-use-case' ||
+      kind === 'external-table' ||
       kind === 'application-event' ||
       kind === 'external-system' ||
       kind === 'actor' ||
@@ -1607,6 +1747,45 @@ export class ModuxEditor extends LitElement {
       targetUseCaseId: this._editStepUseCase || undefined,
       completionEventName: this._editStepAwaits.trim() || undefined,
     });
+  }
+
+  private addRagContentSourceFromToolbar(): void {
+    const uri = this._newRagSourceUri.trim();
+    const ragId = this._selectedId;
+    if (!uri || !ragId || !(this.model.rags ?? []).some((r) => r.id === ragId)) return;
+    this.command({
+      kind: 'add-rag-content-source',
+      sourceId: ragId,
+      type: this._newRagSourceType,
+      uri,
+    });
+    this._newRagSourceUri = '';
+  }
+
+  /** Candidates for the add-to-view search: catalog elements not yet in the view. */
+  private viewMemberCandidates(): { id: string; name: string; kind: string }[] {
+    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    if (!view) return [];
+    const members = new Set(view.memberIds);
+    return [
+      ...this.model.modules.map((m) => ({ id: m.id, name: m.name, kind: 'contexto' })),
+      ...this.model.externalSystems.map((x) => ({ id: x.id, name: x.name, kind: 'externo' })),
+      ...(this.model.aggregates ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'agregado' })),
+      ...this.model.flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' })),
+      ...(this.model.processes ?? []).map((p) => ({ id: p.id, name: p.name, kind: 'proceso' })),
+      ...(this.model.workflows ?? []).map((w) => ({ id: w.id, name: w.name, kind: 'workflow' })),
+    ].filter((c) => !members.has(c.id));
+  }
+
+  private addMemberFromToolbar(): void {
+    const key = this._addMemberKey.trim();
+    if (!key || !this._activeViewId) return;
+    const candidate = this.viewMemberCandidates().find(
+      (c) => `${c.name} (${c.id})` === key || c.id === key || c.name === key,
+    );
+    if (!candidate) return;
+    this.command({ kind: 'add-view-member', id: this._activeViewId, targetId: candidate.id });
+    this._addMemberKey = '';
   }
 
   private onElementSelected(e: CustomEvent): void {
@@ -1819,6 +1998,16 @@ export class ModuxEditor extends LitElement {
           name,
           moduleId: externalId,
         });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'external-table') {
+        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
+        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
+        if (!externalId) return;
+        this.command({
+          kind: 'add-external-table',
+          id: `tbl-${slug(name)}`,
+          name,
+          moduleId: externalId,
+        });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'read-model') {
         // A read model is a view of an aggregate; a selected aggregate is the default.
         const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
@@ -1968,6 +2157,27 @@ export class ModuxEditor extends LitElement {
                 </option>`,
             )}
         </select>
+        ${this._activeViewId
+          ? html`
+              <input
+                class="new-name"
+                list="view-member-options"
+                placeholder="Añadir a la vista…"
+                title="Busca un elemento existente del catálogo y añádelo a la vista activa"
+                .value=${this._addMemberKey}
+                @input=${(e: Event) => (this._addMemberKey = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addMemberFromToolbar()}
+              />
+              <datalist id="view-member-options">
+                ${this.viewMemberCandidates().map(
+                  (c) => html`<option value="${c.name} (${c.id})">${c.kind}</option>`,
+                )}
+              </datalist>
+              <button class="tab" title="Añadir el elemento a la vista" @click=${this.addMemberFromToolbar}>
+                ＋ Añadir
+              </button>
+            `
+          : ''}
         <div class="spacer"></div>
         ${this._multi.length
           ? html`
@@ -2013,7 +2223,9 @@ export class ModuxEditor extends LitElement {
                                 ? 'Nuevo query service…'
                                 : this._newContextMapKind === 'external-use-case'
                                   ? 'Nuevo caso de uso externo…'
-                                  : 'Nuevo read model…',
+                                  : this._newContextMapKind === 'external-table'
+                                    ? 'Nueva tabla externa…'
+                                    : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -2093,13 +2305,20 @@ export class ModuxEditor extends LitElement {
                     >
                       Caso de uso externo
                     </option>
+                    <option
+                      value="external-table"
+                      ?selected=${this._newContextMapKind === 'external-table'}
+                    >
+                      Tabla externa (legacy)
+                    </option>
                   `
                 : ''}
             </select>`
           : ''}
         ${this._view === 'context-map' &&
         this._detail === 'detail' &&
-        this._newContextMapKind === 'external-use-case'
+        (this._newContextMapKind === 'external-use-case' ||
+          this._newContextMapKind === 'external-table')
           ? html`<select
               title="Sistema externo que ofrece el caso de uso"
               @change=${(e: Event) => (this._newExternalId = (e.target as HTMLSelectElement).value)}
@@ -2234,6 +2453,40 @@ export class ModuxEditor extends LitElement {
         >
           ＋ Crear
         </button>
+        ${this._view === 'context-map' &&
+        this._selectedId &&
+        (this.model.rags ?? []).some((r) => r.id === this._selectedId)
+          ? html`
+              <span class="sep"></span>
+              <select
+                title="Tipo de fuente de contenido del RAG"
+                @change=${(e: Event) =>
+                  (this._newRagSourceType = (e.target as HTMLSelectElement).value)}
+              >
+                ${['WEB', 'REPO', 'FTP'].map(
+                  (t) =>
+                    html`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`,
+                )}
+              </select>
+              <input
+                class="new-name"
+                placeholder="URI de la fuente…"
+                title="Repo, web o servidor FTP que alimenta el RAG"
+                .value=${this._newRagSourceUri}
+                @input=${(e: Event) =>
+                  (this._newRagSourceUri = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) =>
+                  e.key === 'Enter' && this.addRagContentSourceFromToolbar()}
+              />
+              <button
+                class="tab"
+                title="Añadir la fuente de contenido al RAG seleccionado"
+                @click=${this.addRagContentSourceFromToolbar}
+              >
+                ＋ Fuente
+              </button>
+            `
+          : ''}
         ${this._view === 'processes' &&
         this._selectedId &&
         ((this.model.processes ?? []).some((p) => p.id === this._selectedId) ||
@@ -2486,7 +2739,50 @@ export class ModuxEditor extends LitElement {
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
       </div>
-      ${this.renderRelationPicker()}
+      ${this.renderRelationPicker()} ${this.renderDeletePicker()}
+    `;
+  }
+
+  /** With a View active, Supr on a member asks: drop from the model, or only from the view? */
+  private renderDeletePicker() {
+    const p = this._deletePicker;
+    if (!p) return '';
+    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._deletePicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left: 50%; top: 120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">¿Eliminar, o solo quitar de la vista?</div>
+        <button
+          class="picker-item"
+          @click=${() => {
+            const picked = this._deletePicker!;
+            this._deletePicker = null;
+            this.command({
+              kind: 'remove-view-member',
+              id: this._activeViewId,
+              targetId: picked.memberId,
+            });
+          }}
+        >
+          <span class="abbr">👁</span>
+          <span class="name">Quitar de la vista «${view?.name ?? this._activeViewId}»</span>
+        </button>
+        <button
+          class="picker-item"
+          @click=${() => {
+            const picked = this._deletePicker!;
+            this._deletePicker = null;
+            this.performDelete(picked.elementType, picked.id, picked.kind);
+          }}
+        >
+          <span class="abbr">🗑</span>
+          <span class="name">Eliminar del modelo</span>
+        </button>
+      </div>
     `;
   }
 

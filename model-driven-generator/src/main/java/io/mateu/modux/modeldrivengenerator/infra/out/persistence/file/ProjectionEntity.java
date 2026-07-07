@@ -19,8 +19,22 @@ public record ProjectionEntity(
          * individual domain events (handlers). How the state travels (CDC, snapshot events,
          * replication…) is a later decision — this only declares the projection.
          */
-        String sourceAggregateId
+        String sourceAggregateId,
+        /** Alternative source: poll an external system's operation into the read model. */
+        String sourceExternalUseCaseId,
+        /** Alternative source: poll a legacy/external system's table into the read model. */
+        String sourceExternalTableId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-external-sources callers and stores). */
+    public ProjectionEntity(String id, String name, String readModelId,
+                            List<ProjectionEventHandlerEntity> handlers, String rebuildStrategy,
+                            String errorHandlingStrategy, Integer maxRetries,
+                            boolean snapshotEnabled, Integer snapshotFrequency,
+                            String sourceAggregateId) {
+        this(id, name, readModelId, handlers, rebuildStrategy, errorHandlingStrategy, maxRetries,
+                snapshotEnabled, snapshotFrequency, sourceAggregateId, null, null);
+    }
 
     /** Backward-compatible constructor (pre-sourceAggregateId callers and stores). */
     public ProjectionEntity(String id, String name, String readModelId,
@@ -28,6 +42,6 @@ public record ProjectionEntity(
                             String errorHandlingStrategy, Integer maxRetries,
                             boolean snapshotEnabled, Integer snapshotFrequency) {
         this(id, name, readModelId, handlers, rebuildStrategy, errorHandlingStrategy, maxRetries,
-                snapshotEnabled, snapshotFrequency, null);
+                snapshotEnabled, snapshotFrequency, null, null, null);
     }
 }

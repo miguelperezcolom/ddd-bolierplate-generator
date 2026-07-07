@@ -103,7 +103,8 @@ interface ChildDesc {
     | 'read-model'
     | 'domain-service'
     | 'query-service'
-    | 'external-use-case';
+    | 'external-use-case'
+    | 'external-table';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -119,6 +120,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
+  'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -130,6 +132,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'domain-service': 'Servicio de dominio',
   'query-service': 'Query service',
   'external-use-case': 'Caso de uso externo',
+  'external-table': 'Tabla (legacy)',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -267,11 +270,18 @@ export function contextMapScene(
         badge: 'EXTERNAL',
         tooltip: `${x.name} (sistema externo)`,
       };
-      if (detailed && (x.useCases ?? []).length > 0) {
+      if (detailed && ((x.useCases ?? []).length > 0 || (x.tables ?? []).length > 0)) {
         return detailedContainer(
           pos,
           base,
-          (x.useCases ?? []).map((u) => ({ id: u.id, name: u.name, kind: 'external-use-case' })),
+          [
+            ...(x.useCases ?? []).map(
+              (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
+            ),
+            ...(x.tables ?? []).map(
+              (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
+            ),
+          ],
           layout,
           sizes,
         );
@@ -335,6 +345,7 @@ export function contextMapScene(
       tooltip: `${a.name} (agente de IA — consume por MCP)`,
     });
   });
+  const ragContentEdges: SceneEdge[] = [];
   (model.rags ?? []).forEach((r, i) => {
     const pos =
       layout[r.id] ??
@@ -355,6 +366,35 @@ export function contextMapScene(
       stroke: '#0e7490',
       badge: 'RAG',
       tooltip: `${r.name} (base de conocimiento — retrieval para agentes)`,
+    });
+    // External content sources hang as small satellites (repo, web, ftp…).
+    (r.contentSources ?? []).forEach((s, si) => {
+      const satelliteId = `ragcs:${r.id}:${s.uri}`;
+      const satPos = layout[satelliteId] ?? { x: pos.x + 170, y: pos.y - 30 + si * 44 };
+      nodes.push({
+        id: satelliteId,
+        label: s.uri.replace(/^[a-z+]+:\/\//, '').slice(0, 24),
+        x: satPos.x,
+        y: satPos.y,
+        w: 150,
+        h: 34,
+        kind: 'rag-content-source',
+        fill: '#ffffff',
+        stroke: '#0e7490',
+        dashed: true,
+        badge: s.type,
+        tooltip: `${s.type}: ${s.uri}`,
+      });
+      ragContentEdges.push({
+        id: `ragcse:${r.id}:${s.uri}`,
+        sourceId: satelliteId,
+        targetId: r.id,
+        kind: 'rag-content',
+        color: '#0e7490',
+        dashed: true,
+        arrow: true,
+        tooltip: 'alimenta el índice',
+      });
     });
   });
   // Children must paint over every container, not just their own.
@@ -431,17 +471,23 @@ export function contextMapScene(
   // visible at the detail level where both render as children.
   const projectionEdges: SceneEdge[] = detailed
     ? (model.projections ?? [])
-        .filter((p) => p.sourceAggregateId && p.readModelId)
-        .filter((p) => nodeIds.has(p.sourceAggregateId!) && nodeIds.has(p.readModelId!))
         .map((p) => ({
+          p,
+          source: p.sourceAggregateId ?? p.sourceExternalUseCaseId ?? p.sourceExternalTableId,
+        }))
+        .filter(({ p, source }) => source && p.readModelId)
+        .filter(({ p, source }) => nodeIds.has(source!) && nodeIds.has(p.readModelId!))
+        .map(({ p, source }) => ({
           id: `proj:${p.id}`,
-          sourceId: p.sourceAggregateId!,
+          sourceId: source!,
           targetId: p.readModelId!,
           kind: 'projection',
           color: '#0d9488',
           dashed: true,
           arrow: true,
-          tooltip: `Proyección ${p.name}: el estado del agregado se materializa en ${p.readModelName ?? p.readModelId}`,
+          tooltip: p.sourceAggregateId
+            ? `Proyección ${p.name}: el estado del agregado se materializa en ${p.readModelName ?? p.readModelId}`
+            : `Proyección ${p.name}: polling hacia ${p.readModelName ?? p.readModelId}`,
         }))
     : [];
 
@@ -593,6 +639,7 @@ export function contextMapScene(
       ...agentExternalUseEdges,
       ...agentRagEdges,
       ...ragSourceEdges,
+      ...ragContentEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
     ],

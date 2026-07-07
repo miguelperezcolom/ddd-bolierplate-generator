@@ -515,6 +515,32 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
         tooltip: 'proyecta su estado',
       });
     }
+    // Externally-sourced projection: classic polling from an operation or legacy table.
+    const externalSourceId = projection.sourceExternalUseCaseId ?? projection.sourceExternalTableId;
+    if (externalSourceId) {
+      const owner = model.externalSystems.find(
+        (x) =>
+          (x.useCases ?? []).some((u) => u.id === externalSourceId) ||
+          (x.tables ?? []).some((t) => t.id === externalSourceId),
+      );
+      const ext = owner ? externalNode(owner.id) : null;
+      if (ext) {
+        const sourceName =
+          (owner!.useCases ?? []).find((u) => u.id === externalSourceId)?.name ??
+          (owner!.tables ?? []).find((t) => t.id === externalSourceId)?.name;
+        addEdge(b, {
+          id: `es-poll:${projection.id}`,
+          sourceId: ext,
+          targetId: id,
+          kind: 'es-projects-poll',
+          label: sourceName,
+          color: '#0d9488',
+          dashed: true,
+          arrow: true,
+          tooltip: sourceName ? `polling de ${sourceName}` : 'polling',
+        });
+      }
+    }
     const rm = readModelNodeFor({ id: projection.readModelId, name: projection.readModelName });
     if (rm) {
       addEdge(b, {

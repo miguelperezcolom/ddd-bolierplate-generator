@@ -20,7 +20,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNod
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagContentSourceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
@@ -88,7 +90,10 @@ public class EditorApiController {
     public record ReadModelDto(String id, String name, String aggregateId) {}
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
     public record EmissionDto(String sourceId, String domainEventId) {}
-    public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases) {}
+    public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases,
+                                    List<ExternalTableDto> tables) {}
+    /** A table/dataset owned by an external system — pollable into a read model. */
+    public record ExternalTableDto(String id, String name) {}
     public record ExternalUseCaseDto(String id, String name) {}
     /** An external system calls one of our use cases in through an INBOUND ACL. */
     public record ExternalCallDto(String externalSystemId, String useCaseId) {}
@@ -129,7 +134,8 @@ public class EditorApiController {
                                   List<SubscriptionActionDto> actions) {}
     public record ProjectionDto(String id, String name, String readModelId, String readModelName,
                                 List<String> handledEventIds, String sourceAggregateId,
-                                String moduleId) {}
+                                String moduleId, String sourceExternalUseCaseId,
+                                String sourceExternalTableId) {}
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
@@ -138,9 +144,11 @@ public class EditorApiController {
     public record AgentUseDto(String agentId, String useCaseId) {}
     /** An AI agent calls an operation offered by an external system. */
     public record AgentExternalUseDto(String agentId, String externalUseCaseId) {}
-    /** A RAG knowledge base, optionally fed from read models. */
+    /** A RAG knowledge base, optionally fed from read models and external content. */
     public record RagDto(String id, String name, String description,
-                         List<String> sourceReadModelIds) {}
+                         List<String> sourceReadModelIds,
+                         List<RagContentSourceDto> contentSources) {}
+    public record RagContentSourceDto(String type, String uri) {}
     /** An AI agent grounds its answers on a knowledge base. */
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
@@ -310,7 +318,10 @@ public class EditorApiController {
                 .flatMap(p -> p.externalSystems().stream())
                 .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
                         .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
-                        .toList()))
+                        .toList(),
+                        x.tables().stream()
+                                .map(t -> new ExternalTableDto(t.id(), t.name()))
+                                .toList()))
                 .toList();
         var flowEntities = repository.findAllOfType(FlowEntity.class);
         var flows = coherenceService.analyze().stream()
@@ -440,7 +451,10 @@ public class EditorApiController {
             agent.ragIds().forEach(id -> agentRags.add(new AgentRagDto(agent.id(), id)));
         }
         var rags = repository.findAllOfType(RagEntity.class).stream()
-                .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds()))
+                .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds(),
+                        r.contentSources().stream()
+                                .map(s -> new RagContentSourceDto(s.type(), s.uri()))
+                                .toList()))
                 .toList();
 
         var useCaseCalls = new ArrayList<UseCaseCallDto>();
@@ -493,7 +507,8 @@ public class EditorApiController {
                         repository.findAllOfType(ModuleEntity.class).stream()
                                 .filter(m -> m.projectionIds() != null
                                         && m.projectionIds().contains(p.id()))
-                                .map(ModuleEntity::id).findFirst().orElse(null)))
+                                .map(ModuleEntity::id).findFirst().orElse(null),
+                        p.sourceExternalUseCaseId(), p.sourceExternalTableId()))
                 .toList();
 
         var queryCalls = new ArrayList<QueryCallDto>();
@@ -625,7 +640,8 @@ public class EditorApiController {
                                 String completionEventName, String dependsOnStepId,
                                 List<String> dependsOnStepIds,
                                 List<WorkflowStepDto> workflowSteps,
-                                Boolean policy) {}
+                                Boolean policy,
+                                String uri, String externalUseCaseId, String externalTableId) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -650,6 +666,12 @@ public class EditorApiController {
             case "remove-agent-rag" -> removeAgentRag(command);
             case "add-rag-source" -> addRagSource(command);
             case "remove-rag-source" -> removeRagSource(command);
+            case "add-rag-content-source" -> addRagContentSource(command);
+            case "remove-rag-content-source" -> removeRagContentSource(command);
+            case "add-view-member" -> addViewMember(command);
+            case "remove-view-member" -> removeViewMember(command);
+            case "add-external-table" -> addExternalTable(command);
+            case "remove-external-table" -> removeExternalTable(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
@@ -1001,7 +1023,19 @@ public class EditorApiController {
                             a.allowedExternalUseCaseIds(), a.ragIds())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
                     .ifPresent(r -> repository.save(new RagEntity(
-                            r.id(), command.name(), r.description(), r.sourceReadModelIds())));
+                            r.id(), command.name(), r.description(), r.sourceReadModelIds(),
+                            r.contentSources())));
+            case "external-table" -> {
+                var project = owningProject();
+                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        .map(x -> withTables(x, x.tables().stream()
+                                .map(t -> t.id().equals(command.id())
+                                        ? new ExternalSystemTableEntity(
+                                                t.id(), command.name(), t.description())
+                                        : t)
+                                .toList()))
+                        .toList()));
+            }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(new RoleEntity(
                             r.id(), command.name(), r.allowedUseCaseIds(), r.allowedQueryServiceIds())));
@@ -1011,7 +1045,7 @@ public class EditorApiController {
                         .map(x -> x.id().equals(command.id())
                                 ? new ExternalSystemEntity(x.id(), command.name(), x.description(),
                                         x.protocol(), x.direction(), x.gatewayId(), x.owner(),
-                                        x.decisionIds())
+                                        x.decisionIds(), x.useCases(), x.tables())
                                 : x)
                         .toList()));
             }
@@ -1598,7 +1632,44 @@ public class EditorApiController {
     private static ExternalSystemEntity withUseCases(
             ExternalSystemEntity x, List<ExternalSystemUseCaseEntity> useCases) {
         return new ExternalSystemEntity(x.id(), x.name(), x.description(), x.protocol(),
-                x.direction(), x.gatewayId(), x.owner(), x.decisionIds(), useCases);
+                x.direction(), x.gatewayId(), x.owner(), x.decisionIds(), useCases, x.tables());
+    }
+
+    /** Record copy with only tables replaced — every other field preserved verbatim. */
+    private static ExternalSystemEntity withTables(
+            ExternalSystemEntity x, List<ExternalSystemTableEntity> tables) {
+        return new ExternalSystemEntity(x.id(), x.name(), x.description(), x.protocol(),
+                x.direction(), x.gatewayId(), x.owner(), x.decisionIds(), x.useCases(), tables);
+    }
+
+    /** A table offered by an external system (moduleId carries the external system id). */
+    private void addExternalTable(EditorCommand command) {
+        var project = owningProject();
+        var externalSystems = new ArrayList<>(project.externalSystems());
+        var external = externalSystems.stream()
+                .filter(x -> x.id().equals(command.moduleId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown external system: " + command.moduleId()));
+        if (external.tables().stream().anyMatch(t -> t.id().equals(command.id()))) return;
+        var tables = new ArrayList<>(external.tables());
+        tables.add(new ExternalSystemTableEntity(command.id(), command.name(), null));
+        externalSystems.set(externalSystems.indexOf(external), withTables(external, tables));
+        repository.save(withExternalSystems(project, externalSystems));
+    }
+
+    private void removeExternalTable(EditorCommand command) {
+        var polled = repository.findAllOfType(ProjectionEntity.class).stream()
+                .anyMatch(p -> command.id().equals(p.sourceExternalTableId()));
+        if (polled) {
+            throw new IllegalArgumentException("La tabla " + command.id()
+                    + " la proyectan proyecciones; bórralas primero");
+        }
+        var project = owningProject();
+        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                .map(x -> withTables(x, x.tables().stream()
+                        .filter(t -> !t.id().equals(command.id())).toList()))
+                .toList()));
     }
 
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
@@ -1754,9 +1825,33 @@ public class EditorApiController {
      */
     private void addProjection(EditorCommand command) {
         if (repository.findById(command.id(), ProjectionEntity.class).isPresent()) return;
-        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown aggregate: " + command.aggregateId()));
+        // Exactly one source: an aggregate's state, an external operation to poll, or a
+        // legacy table to poll.
+        AggregateEntity aggregate = null;
+        if (command.aggregateId() != null) {
+            aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown aggregate: " + command.aggregateId()));
+        } else if (command.externalUseCaseId() != null) {
+            var known = owningProject().externalSystems().stream()
+                    .flatMap(x -> x.useCases().stream())
+                    .anyMatch(u -> u.id().equals(command.externalUseCaseId()));
+            if (!known) {
+                throw new IllegalArgumentException(
+                        "Unknown external use case: " + command.externalUseCaseId());
+            }
+        } else if (command.externalTableId() != null) {
+            var known = owningProject().externalSystems().stream()
+                    .flatMap(x -> x.tables().stream())
+                    .anyMatch(t -> t.id().equals(command.externalTableId()));
+            if (!known) {
+                throw new IllegalArgumentException(
+                        "Unknown external table: " + command.externalTableId());
+            }
+        } else {
+            throw new IllegalArgumentException(
+                    "La proyección necesita una fuente: agregado, operación externa o tabla");
+        }
         String readModelId;
         ModuleEntity owner;
         if (command.targetId() != null
@@ -1775,8 +1870,11 @@ public class EditorApiController {
             if (repository.findById(readModelId, ReadModelEntity.class).isEmpty()) {
                 repository.save(new ReadModelEntity(readModelId,
                         command.readModelName() != null ? command.readModelName()
-                                : aggregate.name() + "View",
-                        owner.id(), null, aggregate.modelId(), null, null, aggregate.id()));
+                                : (aggregate != null ? aggregate.name() + "View" : command.name()),
+                        owner.id(), null,
+                        aggregate != null ? aggregate.modelId() : null,
+                        null, null,
+                        aggregate != null ? aggregate.id() : null));
                 var readModelIds = new ArrayList<>(
                         owner.readModelIds() == null ? List.of() : owner.readModelIds());
                 readModelIds.add(readModelId);
@@ -1785,7 +1883,9 @@ public class EditorApiController {
             }
         }
         repository.save(new ProjectionEntity(command.id(), command.name(), readModelId,
-                List.of(), null, null, null, false, null, aggregate.id()));
+                List.of(), null, null, null, false, null,
+                aggregate != null ? aggregate.id() : null,
+                command.externalUseCaseId(), command.externalTableId()));
         var projectionIds = new ArrayList<>(
                 owner.projectionIds() == null ? List.of() : owner.projectionIds());
         projectionIds.add(command.id());
@@ -2011,14 +2111,64 @@ public class EditorApiController {
         if (rag.sourceReadModelIds().contains(command.targetId())) return;
         var ids = new ArrayList<>(rag.sourceReadModelIds());
         ids.add(command.targetId());
-        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(), ids));
+        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(), ids,
+                rag.contentSources()));
     }
 
     private void removeRagSource(EditorCommand command) {
         repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
                 repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
                         rag.sourceReadModelIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList())));
+                                .filter(id -> !id.equals(command.targetId())).toList(),
+                        rag.contentSources())));
+    }
+
+    /** External content feeding the RAG: a repo, a web site, an FTP server… */
+    private void addRagContentSource(EditorCommand command) {
+        var rag = repository.findById(command.sourceId(), RagEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.sourceId()));
+        if (command.uri() == null || command.uri().isBlank()) {
+            throw new IllegalArgumentException("La fuente necesita una URI");
+        }
+        if (rag.contentSources().stream().anyMatch(s -> command.uri().equals(s.uri()))) return;
+        var sources = new ArrayList<>(rag.contentSources());
+        sources.add(new RagContentSourceEntity(
+                command.type() == null ? "WEB" : command.type(), command.uri()));
+        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
+                rag.sourceReadModelIds(), sources));
+    }
+
+    private void removeRagContentSource(EditorCommand command) {
+        repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
+                repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
+                        rag.sourceReadModelIds(),
+                        rag.contentSources().stream()
+                                .filter(s -> !s.uri().equals(command.uri())).toList())));
+    }
+
+    /** Adds a catalog element to a CURATED view (searchable from the toolbar). */
+    private void addViewMember(EditorCommand command) {
+        var view = repository.findById(command.id(), ViewEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown view: " + command.id()));
+        if (view.isComputed()) {
+            throw new IllegalArgumentException(
+                    "La vista " + view.name() + " es computada; sus miembros se derivan del seed");
+        }
+        if (view.memberIds().contains(command.targetId())) return;
+        var members = new ArrayList<>(view.memberIds());
+        members.add(command.targetId());
+        repository.save(new ViewEntity(view.id(), view.name(), view.description(), view.kind(),
+                members, view.seedId()));
+    }
+
+    /** Removes an element from the view WITHOUT touching the element itself. */
+    private void removeViewMember(EditorCommand command) {
+        repository.findById(command.id(), ViewEntity.class).ifPresent(view ->
+                repository.save(new ViewEntity(view.id(), view.name(), view.description(),
+                        view.kind(),
+                        view.memberIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList(),
+                        view.seedId())));
     }
 
     /** exposedAsMcp holds only while some agent consumes the use case. */

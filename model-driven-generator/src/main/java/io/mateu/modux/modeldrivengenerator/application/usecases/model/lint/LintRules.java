@@ -102,18 +102,24 @@ public final class LintRules {
         }
     }
 
-    /** A projection needs a source: event handlers, or an aggregate whose state it projects. */
+    /**
+     * A projection needs a source: event handlers, an aggregate's state, or something
+     * external to poll (an operation or a legacy table).
+     */
     static class ProjectionSource implements LintRule {
         public String id() { return "projection-source"; }
-        public String description() { return "A projection must fold events or project an aggregate"; }
+        public String description() { return "A projection must fold events or project some source"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.projections().stream()
                     .filter(p -> (p.handlers() == null || p.handlers().isEmpty())
-                            && p.sourceAggregateId() == null)
+                            && p.sourceAggregateId() == null
+                            && p.sourceExternalUseCaseId() == null
+                            && p.sourceExternalTableId() == null)
                     .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(),
                             p.name(),
-                            "Proyección sin fuente: ni maneja eventos ni proyecta un agregado —"
-                                    + " el read model nunca se alimentará."))
+                            "Proyección sin fuente: ni maneja eventos ni proyecta un agregado,"
+                                    + " operación o tabla externa — el read model nunca se"
+                                    + " alimentará."))
                     .toList();
         }
     }
