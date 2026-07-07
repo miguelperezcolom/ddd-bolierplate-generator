@@ -40,26 +40,29 @@ person / gear (human / automated steps), double circle (events), return arrow
   deleting a module with aggregates or an aggregate with entities (server-checked
   too, shown as a toast).
 - **F2** renames inline (modules, aggregates, entities, domain events, process steps).
-- **Toolbar creation** per view: contexts (with subdomain), aggregates (with owner
-  module, plus a stub state model), flows (archetype, trigger aggregate, event,
-  target) and processes; with a process or step selected you can append/insert steps
-  (AUTOMATED or HUMAN with role and deadline) and edit the selected step's role,
-  deadline and compensation. At the context map's detail level the toolbar can also
-  create **domain events** inside a bounded context (owner defaults to the selected
-  context); they render as children with the ArchiMate event glyph, and amber dashed
-  **emission arrows** connect each publisher to its event — aggregates whose
-  operations declare `emits`, and use cases with a `PublishDomainEvent` step.
-  Emissions are created on the canvas too: select an aggregate or use case and drag
-  from a blue handle onto a domain event (an aggregate records it in its first
-  operation's `emits`, creating a stub operation if it has none; a use case gains a
-  `PublishDomainEvent` step). Supr on the arrow removes the emission again.
+- **Toolbar creation** per view: contexts (with subdomain), **external systems** and
+  **actors** (roles, drawn with the person glyph outside every context), aggregates
+  (with owner module, plus a stub state model), flows (archetype, trigger aggregate,
+  event, target) and processes; with a process or step selected you can append/insert
+  steps (AUTOMATED or HUMAN with role and deadline) and edit the selected step's
+  role, deadline and compensation. At the context map's detail level the toolbar
+  also creates, inside a bounded context: **domain events** (amber event glyph),
+  **application events** (yellow), **read models** (born from an aggregate: they
+  live in its module and start with its state model) and **domain services**
+  (gear glyph).
+- **Emissions**: only aggregates and domain services emit DOMAIN events (their
+  operations declare `emits`); use cases publish APPLICATION events (a
+  `PublishApplicationEvent` step). Amber dashed arrows connect each emitter to its
+  event, and they are drawn on the canvas: select the emitter and drag from a blue
+  handle onto the event. Supr on the arrow removes the emission again.
 - **Materializations drawn on the canvas**: at the detail level read models render as
-  children too, and dragging a domain event onto another context (or one of its read
-  models) creates a **MATERIALIZES flow** — the projection/read model/subscription
-  triple stays derived at generation time, per the flows intent layer. The trigger
-  aggregate is taken from the event's emission (the editor asks you to declare it
-  first if missing), and the read model name defaults to `<Event>View` unless you
-  dropped on an existing read model. At the detail level flow arrows anchor on the
+  children too, and dragging a domain OR application event onto another context (or
+  one of its read models) creates a **MATERIALIZES flow** — the projection/read
+  model/subscription triple stays derived at generation time, per the flows intent
+  layer. The trigger (aggregate, domain service, or the publishing use case for
+  application events) is taken from the event's emission (the editor asks you to
+  declare it first if missing), and the read model name defaults to `<Event>View`
+  unless you dropped on an existing read model. At the detail level flow arrows anchor on the
   concrete pieces: the trigger event on the source side and the read model on the
   target side.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
