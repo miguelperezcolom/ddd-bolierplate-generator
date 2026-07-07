@@ -24,6 +24,7 @@ A **Use Case** is the primary unit of application behaviour in Modux. It sits in
 | **API version** | Version string for this use case's API contract |
 | **Timeout (ms)** | Maximum execution time before the use case is aborted |
 | **Transaction boundary** | `LOCAL` (single DB), `DISTRIBUTED` (2PC / XA), `SAGA` (compensating transactions) |
+| **Policy** | `policy: true` marks reaction/automation logic that has the *shape* of a use case but expresses no business case — the lilac sticky of an EventStorming. Policies stay out of business catalogs and UI derivations; they exist to be invoked by event reactions (subscriptions, flows, processes, workflows). The linter warns when a policy has no trigger (`policy-without-trigger`) or derives a UI (`policy-exposed-as-ui`) |
 
 ### Exposure
 

@@ -116,3 +116,13 @@ shift+click (or rubber-band) a set of elements on any diagram and press **⊞ Vi
 the selection becomes the view's members. The editor's **Vista:** selector then scopes
 the canvas to any curated view, which doubles as a quick visual check of what a slice
 contains before generating it.
+
+With a view active the canvas also **maintains** it:
+
+- the **«Añadir a la vista…»** search box offers every catalog element not yet in the
+  view (contexts, external systems, aggregates, flows, processes, workflows) — pick
+  one and **＋ Añadir** incorporates it;
+- pressing **Supr on a member** opens a picker: *¿Eliminar del modelo, o solo quitar
+  de la vista?* — the second option only edits the view's `memberIds`, never the
+  element itself. Computed views reject member edits (their members derive from the
+  seed).

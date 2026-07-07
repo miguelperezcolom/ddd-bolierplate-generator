@@ -189,6 +189,30 @@ A `process` declares a long-running business journey by intent — the rung abov
 
 ---
 
+## Workflows (cross-context orchestration)
+
+A [`workflow`](/manual/workflows/) orchestrates **between** bounded contexts, owned by none of them: started by an event, it advances a dependency **DAG** of steps, each starting a task (a use case) in some context — and all workflow↔context communication travels as events. Where a process is one context's procedure, a workflow is neutral ground. The linter guarantees the DAG (`workflow-dag`) and the wiring (`workflow-trigger`, `workflow-step-target`, `workflow-depends-scope`).
+
+---
+
+## Policies (the lilac sticky)
+
+A **policy** is reaction/automation logic with the *shape* of a use case (`policy: true`) that expresses no business case — EventStorming's lilac sticky as a first-class element. Policies keep the whole use-case machinery (steps, RBAC, idempotency) but stay out of business catalogs and UI derivations; they exist to be invoked by event reactions. Linted: a policy nothing triggers never runs (`policy-without-trigger`); a policy should not derive a UI (`policy-exposed-as-ui`).
+
+---
+
+## Projections from state and legacy sources
+
+Besides folding events, a [projection](/manual/projections/#alternative-sources) can declare an **alternative source**: an aggregate's whole state (`sourceAggregateId` — even cross-context), an **external operation to poll** (`sourceExternalUseCaseId`) or a **legacy table to poll** (`sourceExternalTableId` — external systems declare their tables). Four ways of saying *this materializes there* — event, state, operation, table — each awaiting its generation semantics. A projection with no source at all is linted (`projection-source`).
+
+---
+
+## AI agents and RAGs
+
+An [AI agent](/manual/ai-agents/) is an automated consumer at the level of the bounded contexts. Its **tools** are internal use cases (consumed through MCP — the context exposes them as MCP tools) and external-system operations; its **knowledge** is **RAGs** — knowledge bases fed from read models (the domain projecting itself into an index) and external content (repos, webs, FTP). Linted: agents without tools (`agent-without-tools`), knowledge bases nobody queries (`rag-orphan`).
+
+---
+
 ## Authorization: roles and access policies
 
 Use cases carry RBAC (`allowedRoles` / `allowedScopes`). For *data-scoped* authorization — which rows a subject may see — modules declare **access policies** (ABAC-lite): a boolean expression over `subject.*` (token claims) and `resource.*` (row fields), e.g. `subject.hotelId == resource.hotelId`. This is the row-level security that enterprise apps otherwise hand-roll.
@@ -218,6 +242,12 @@ Architecture decisions are first-class: a `Decision` records what was decided, w
 ## The design document, generated
 
 The HLA/design document the team receives is generated **from** the model (Organización › Design document): context and objective (`project.objective`), the ADR table, the structural view, one sequence diagram per business process, one state diagram per aggregate lifecycle (all mermaid), transversal concerns derived from the declared flags, exposed contracts, and open points. It cannot drift from the spec because it is a report of it.
+
+---
+
+## System and solutions (as-is / to-be)
+
+The store lives in its own git repo: `main` is the **system** (the as-is), each [solution](/manual/solutions/) a `solution/*` branch (a to-be proposal with its own identity, status and decisions). The editor switches between them, shows the **semantic diff** live (green = added, amber = modified, `＋n ～n −n`), and the solution's design document closes with a generated **«Qué cambia respecto al sistema»** section — the delta, justified by decisions. Approving merges the branch into main; the same change set will feed migrations (see `docs/design/system-and-solutions.md`).
 
 ---
 

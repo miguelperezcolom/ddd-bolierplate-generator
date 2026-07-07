@@ -1,6 +1,6 @@
 ---
 title: Graphical Editor
-description: Edit the model on a live canvas — context map, aggregates, flows and processes, with every change saved to the spec
+description: Edit the model on a live canvas — context map, aggregates, flows, processes, workflows and an EventStorming view, with every change saved to the spec
 ---
 
 The **Graphical editor** page is a fully editable canvas over the model. It is not a
@@ -21,6 +21,8 @@ migrates into `diagrams` on the first change made in the editor.
 | **Agregados** | Aggregates coloured by their module's subdomain, entities as satellites, cross-aggregate references | |
 | **Flows** | Each flow as a pipeline: trigger aggregate → flow (coloured by archetype) → target | |
 | **Procesos** | Each process as a chain of steps — HUMAN steps amber with role and deadline, compensations hanging in red, completion event in green | |
+| **Workflows** | Each [workflow](/manual/workflows/) as a dependency DAG: trigger source →(event)→ workflow → steps laid out by dependency depth → completion event | Steps badge their target use case; drag a handle from step A onto step B to declare "B waits for A" |
+| **EventStorming** | The whole causal narrative, derived from the model in classic sticky-note notation: actor → **command** (blue) → **aggregate** (yellow) → **event** (orange) → **policy** (lilac: subscription, flow, process, workflow or projection) → **read model** (green), external systems in pink, AI agents with their tools | A read-only *lens* — you edit from the other views or the forms. Events referenced by name but not declared in the catalog render dashed («EVENTO (sin declarar)»): a built-in gap detector. Auto-layout orders the narrative |
 
 Boxes carry an ArchiMate-inspired glyph for their kind: component (contexts, external
 systems), diamond (aggregates), class (entities), arrow (flows), chevron (processes),
@@ -96,6 +98,31 @@ person / gear (human / automated steps), double circle (events), return arrow
   unless you dropped on an existing read model. At the detail level flow arrows anchor on the
   concrete pieces: the trigger event on the source side and the read model on the
   target side.
+- **Policies**: the context-map toolbar (detail level) also creates a **Policy** — a
+  use case that expresses reaction/automation logic rather than a business case (see
+  [Use Cases](/manual/use-cases/)). Policies keep every use-case gesture but wear the
+  lilac chip on the map and the lilac POLICY sticky in the EventStorming view.
+- **Projections drawn on the canvas**: drag from an **aggregate** onto a read model
+  (or onto another context, where a stub read model is born) to declare a **state
+  projection** — the aggregate's whole state materializes there, even cross-context
+  (teal dashed arrow). The same gesture works from an **external system's operation**
+  or from an **external table** — the classic *polling* integrations. See
+  [Projections & Read Models](/manual/projections/#alternative-sources).
+- **External tables**: external systems can declare the **tables/datasets** they own
+  (amber chips inside the external container) — the pollable surface of a legacy
+  system.
+- **AI agents and RAGs**: drag an agent onto a use case (MCP consumption, flips
+  `exposedAsMcp`), onto an **external operation** (the other half of its tool
+  surface) or onto a **RAG** (the knowledge it grounds on). RAGs are created from
+  the toolbar (lens glyph, outside every context); drag a RAG onto a **read model**
+  to declare it indexes it, and use the **＋ Fuente** toolbar (with the RAG selected)
+  to add external content sources — a repo, a web site, an FTP server — drawn as
+  small satellites. See [AI Agents & RAGs](/manual/ai-agents/).
+- **Workflow editing**: create workflows from their tab (trigger aggregate + event);
+  with the workflow or a step selected the toolbar adds steps (name, target use
+  case, the event the workflow *emits* to start it and the one it *awaits*); drag a
+  handle from one step onto another to add a dependency — Supr on the dependency
+  arrow removes it, and undo/redo restore steps *with* their dependants' links.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
   history, with composite entries where one gesture caused both.
 
@@ -121,6 +148,24 @@ a rubber band. With elements selected, **⊞ Vista** creates a **CURATED view** 
 selected catalog elements. The **Vista:** selector scopes the canvas to one view's
 members — relations and flows appear when both endpoints are in, entities follow
 their aggregates.
+
+With a view active:
+
+- **«Añadir a la vista…»** searches the whole catalog (contexts, external systems,
+  aggregates, flows, processes, workflows) and adds an existing element to the view.
+- **Supr on a member asks**: *delete the element from the model, or only take it out
+  of this view?* — removing from the view never touches the element itself.
+
+## System and solutions
+
+The **Modelo:** bar above the canvas switches between the **system** (the as-is,
+badge AS-IS) and any open **solution** (a to-be proposal, badge TO-BE) — see
+[System & Solutions](/manual/solutions/). On a solution the canvas shows the
+**semantic diff** against the system live: a dashed **green ring** marks elements
+that only exist in the solution, a dashed **amber ring** the modified ones, and the
+`＋n ～n −n` badge summarizes the change set (removed elements are listed in its
+tooltip). «＋ Nueva solución…» branches from the system; «⏏ Descartar» archives the
+current one.
 
 ## Live updates
 

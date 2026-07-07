@@ -105,6 +105,27 @@ If the projection logic changes, you can rebuild the target ReadModel by replayi
 
 ---
 
+## Alternative sources
+
+Folding domain events (the `handlers` above) is the default source, but a projection
+can also declare that it materializes something else entirely. These are *declared
+now, implemented later*: the spec records the intent; how the data travels (CDC,
+snapshot events, polling schedule…) is a generation-time decision still open.
+
+| Source field | Meaning | Canvas gesture |
+|---|---|---|
+| `sourceAggregateId` | Project an **aggregate's whole state** into the read model — even into another bounded context | Drag the aggregate onto a read model or a context |
+| `sourceExternalUseCaseId` | **Poll an external system's operation** — the classic scheduled pull | Drag the external operation onto a read model or a context |
+| `sourceExternalTableId` | **Poll a legacy system's table** (external systems declare their [tables](/manual/graphical-editor/)) | Drag the external table onto a read model or a context |
+
+Exactly **one** source is allowed per projection (handlers, aggregate, operation or
+table). Dropping on a context (instead of an existing read model) creates a stub read
+model there — named `<Source>View`, shaped after the aggregate's state model when the
+source is an aggregate. The linter's `projection-source` rule warns when a projection
+has no source at all: its read model would never be fed.
+
+---
+
 ## Next steps
 
 - Use [Subscriptions](/manual/subscriptions/) when the destination is an aggregate (not a ReadModel)
