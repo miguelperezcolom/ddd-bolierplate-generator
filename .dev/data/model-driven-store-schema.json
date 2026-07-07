@@ -182,6 +182,14 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "ragIds" : {
+          "description" : "References to existing 'rag' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
         }
       },
       "required" : [ "id" ],
@@ -2457,6 +2465,32 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "RagEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "sourceReadModelIds" : {
+          "description" : "References to existing 'sourceReadModel' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "ReadModelConsistency" : {
       "type" : "string",
       "enum" : [ "Eventual", "Strong" ]
@@ -3598,6 +3632,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/QueryServiceEntity"
+      }
+    },
+    "rags" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/RagEntity"
       }
     },
     "readModels" : {

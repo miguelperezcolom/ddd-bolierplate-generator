@@ -293,9 +293,12 @@ export function contextMapScene(
     if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
     return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
-  // Business actors and AI agents live outside every bounded context.
+  // Business actors, AI agents and their knowledge bases live outside every context.
   const totalTop =
-    allNodes.length + (model.actors ?? []).length + (model.aiAgents ?? []).length;
+    allNodes.length +
+    (model.actors ?? []).length +
+    (model.aiAgents ?? []).length +
+    (model.rags ?? []).length;
   (model.actors ?? []).forEach((a, i) => {
     const pos = layout[a.id] ?? defaultPosition(allNodes.length + i, totalTop);
     nodes.push({
@@ -330,6 +333,28 @@ export function contextMapScene(
       stroke: '#9333ea',
       badge: 'AGENTE IA',
       tooltip: `${a.name} (agente de IA — consume por MCP)`,
+    });
+  });
+  (model.rags ?? []).forEach((r, i) => {
+    const pos =
+      layout[r.id] ??
+      defaultPosition(
+        allNodes.length + (model.actors ?? []).length + (model.aiAgents ?? []).length + i,
+        totalTop,
+      );
+    nodes.push({
+      id: r.id,
+      label: r.name,
+      x: pos.x,
+      y: pos.y,
+      w: 132,
+      h: 48,
+      kind: 'rag',
+      symbol: 'lens',
+      fill: '#ecfeff',
+      stroke: '#0e7490',
+      badge: 'RAG',
+      tooltip: `${r.name} (base de conocimiento — retrieval para agentes)`,
     });
   });
   // Children must paint over every container, not just their own.
@@ -479,6 +504,39 @@ export function contextMapScene(
           tooltip: 'consume por MCP (exposedAsMcp)',
         }))
     : [];
+  // Agent → knowledge base, and knowledge base → the read models it indexes.
+  // RAGs and agents are top-level, so these edges show at BOTH detail levels
+  // (the rag → read model one needs the chip, hence detailed only).
+  const agentRagEdges: SceneEdge[] = (model.agentRags ?? [])
+    .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.ragId))
+    .map((u) => ({
+      id: `agrag:${u.agentId}->${u.ragId}`,
+      sourceId: u.agentId,
+      targetId: u.ragId,
+      kind: 'agent-rag',
+      color: '#0e7490',
+      dashed: true,
+      arrow: true,
+      tooltip: 'consulta la base de conocimiento (retrieval)',
+    }));
+  const ragSourceEdges: SceneEdge[] = detailed
+    ? (model.rags ?? [])
+        .filter((r) => nodeIds.has(r.id))
+        .flatMap((r) =>
+          (r.sourceReadModelIds ?? [])
+            .filter((rmId) => nodeIds.has(rmId))
+            .map((rmId) => ({
+              id: `ragsrc:${r.id}->${rmId}`,
+              sourceId: r.id,
+              targetId: rmId,
+              kind: 'rag-source',
+              color: '#0e7490',
+              dashed: true,
+              arrow: true,
+              tooltip: `${r.name} indexa este read model`,
+            })),
+        )
+    : [];
   const agentExternalUseEdges: SceneEdge[] = detailed
     ? (model.agentExternalUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.externalUseCaseId))
@@ -533,6 +591,8 @@ export function contextMapScene(
       ...actorUseEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
+      ...agentRagEdges,
+      ...ragSourceEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
     ],

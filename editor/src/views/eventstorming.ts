@@ -194,7 +194,8 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
   for (const agent of model.aiAgents ?? []) {
     const uses = (model.agentUses ?? []).filter((u) => u.agentId === agent.id);
     const externalUses = (model.agentExternalUses ?? []).filter((u) => u.agentId === agent.id);
-    if (!uses.length && !externalUses.length) continue; // toolless agents belong to the context map
+    const ragLinks = (model.agentRags ?? []).filter((u) => u.agentId === agent.id);
+    if (!uses.length && !externalUses.length && !ragLinks.length) continue; // toolless agents belong to the context map
     addNode(b, {
       id: agent.id,
       label: agent.name,
@@ -253,6 +254,48 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
         arrow: true,
         tooltip: opName ? `Llama a ${opName} del sistema externo` : undefined,
       });
+    }
+    // Knowledge: the RAGs the agent grounds on, with the read models they index.
+    for (const link of ragLinks) {
+      const rag = (model.rags ?? []).find((r) => r.id === link.ragId);
+      if (!rag) continue;
+      addNode(b, {
+        id: rag.id,
+        label: rag.name,
+        x: 0,
+        y: 0,
+        w: STICKY.readModel.w,
+        h: STICKY.readModel.h,
+        kind: 'rag',
+        fill: '#ecfeff',
+        stroke: '#0e7490',
+        badge: 'RAG',
+        tooltip: `${rag.name} — base de conocimiento (retrieval)`,
+      });
+      addEdge(b, {
+        id: `es-agrag:${agent.id}->${rag.id}`,
+        sourceId: agent.id,
+        targetId: rag.id,
+        kind: 'es-agent-rag',
+        color: '#0e7490',
+        dashed: true,
+        arrow: true,
+        tooltip: 'consulta (retrieval)',
+      });
+      for (const rmId of rag.sourceReadModelIds ?? []) {
+        const rm = readModelNodeFor({ id: rmId });
+        if (!rm) continue;
+        addEdge(b, {
+          id: `es-ragsrc:${rag.id}->${rm}`,
+          sourceId: rm,
+          targetId: rag.id,
+          kind: 'es-rag-source',
+          color: '#0e7490',
+          dashed: true,
+          arrow: true,
+          tooltip: 'alimenta el índice',
+        });
+      }
     }
   }
 

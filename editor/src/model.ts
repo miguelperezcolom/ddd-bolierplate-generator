@@ -117,6 +117,20 @@ export interface AgentExternalUseRef {
   externalUseCaseId: string;
 }
 
+/** A RAG knowledge base, optionally fed from read models. */
+export interface RagRef {
+  id: string;
+  name: string;
+  description?: string;
+  sourceReadModelIds?: string[];
+}
+
+/** An AI agent grounds its answers on a knowledge base. */
+export interface AgentRagRef {
+  agentId: string;
+  ragId: string;
+}
+
 export interface ExternalUseCaseRef {
   id: string;
   name: string;
@@ -290,6 +304,8 @@ export interface ModuxModel {
   aiAgents?: AiAgentRef[];
   agentUses?: AgentUseRef[];
   agentExternalUses?: AgentExternalUseRef[];
+  rags?: RagRef[];
+  agentRags?: AgentRagRef[];
   workflows?: WorkflowRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */

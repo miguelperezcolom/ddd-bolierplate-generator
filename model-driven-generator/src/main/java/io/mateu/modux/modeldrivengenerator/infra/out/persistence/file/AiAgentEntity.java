@@ -19,13 +19,22 @@ public record AiAgentEntity(
          * they form the agent's whole tool surface; how the call is bridged (gateway, ACL…)
          * is a later decision — this only declares the consumption.
          */
-        List<String> allowedExternalUseCaseIds
+        List<String> allowedExternalUseCaseIds,
+        /** Knowledge bases ({@link RagEntity}) this agent queries for grounding. */
+        List<String> ragIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-rags callers and stores). */
+    public AiAgentEntity(String id, String name, String description,
+                         List<String> allowedUseCaseIds,
+                         List<String> allowedExternalUseCaseIds) {
+        this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, List.of());
+    }
 
     /** Backward-compatible constructor (pre-external-operations callers and stores). */
     public AiAgentEntity(String id, String name, String description,
                          List<String> allowedUseCaseIds) {
-        this(id, name, description, allowedUseCaseIds, List.of());
+        this(id, name, description, allowedUseCaseIds, List.of(), List.of());
     }
 
     public List<String> allowedUseCaseIds() {
@@ -34,5 +43,9 @@ public record AiAgentEntity(
 
     public List<String> allowedExternalUseCaseIds() {
         return allowedExternalUseCaseIds != null ? allowedExternalUseCaseIds : List.of();
+    }
+
+    public List<String> ragIds() {
+        return ragIds != null ? ragIds : List.of();
     }
 }

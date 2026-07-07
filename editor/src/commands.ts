@@ -97,6 +97,27 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** A RAG knowledge base an agent can ground its answers on. */
+      kind: 'add-rag';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-rag'; id: string }
+  | {
+      /** The agent queries the knowledge base (sourceId = agent, targetId = rag). */
+      kind: 'add-agent-rag';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-rag'; sourceId: string; targetId: string }
+  | {
+      /** The RAG indexes a read model's content (sourceId = rag, targetId = read model). */
+      kind: 'add-rag-source';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-rag-source'; sourceId: string; targetId: string }
+  | {
       /** A business actor (role). */
       kind: 'add-actor';
       id: string;

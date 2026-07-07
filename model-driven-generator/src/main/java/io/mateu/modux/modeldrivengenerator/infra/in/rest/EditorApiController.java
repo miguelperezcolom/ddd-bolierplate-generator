@@ -21,6 +21,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPoi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
@@ -137,6 +138,11 @@ public class EditorApiController {
     public record AgentUseDto(String agentId, String useCaseId) {}
     /** An AI agent calls an operation offered by an external system. */
     public record AgentExternalUseDto(String agentId, String externalUseCaseId) {}
+    /** A RAG knowledge base, optionally fed from read models. */
+    public record RagDto(String id, String name, String description,
+                         List<String> sourceReadModelIds) {}
+    /** An AI agent grounds its answers on a knowledge base. */
+    public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
     public record UseCaseCallDto(String sourceId, String targetId) {}
     public record QueryServiceDto(String id, String name) {}
@@ -169,7 +175,9 @@ public class EditorApiController {
             List<EmissionDto> useCaseEmissions,
             List<SubscriptionDto> subscriptions,
             List<ProjectionDto> projections,
-            List<AgentExternalUseDto> agentExternalUses) {}
+            List<AgentExternalUseDto> agentExternalUses,
+            List<RagDto> rags,
+            List<AgentRagDto> agentRags) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -424,11 +432,16 @@ public class EditorApiController {
                 .toList();
         var agentUses = new ArrayList<AgentUseDto>();
         var agentExternalUses = new ArrayList<AgentExternalUseDto>();
+        var agentRags = new ArrayList<AgentRagDto>();
         for (var agent : repository.findAllOfType(AiAgentEntity.class)) {
             agent.allowedUseCaseIds().forEach(id -> agentUses.add(new AgentUseDto(agent.id(), id)));
             agent.allowedExternalUseCaseIds().forEach(
                     id -> agentExternalUses.add(new AgentExternalUseDto(agent.id(), id)));
+            agent.ragIds().forEach(id -> agentRags.add(new AgentRagDto(agent.id(), id)));
         }
+        var rags = repository.findAllOfType(RagEntity.class).stream()
+                .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds()))
+                .toList();
 
         var useCaseCalls = new ArrayList<UseCaseCallDto>();
         for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
@@ -590,7 +603,9 @@ public class EditorApiController {
                 useCaseEmissions.stream().distinct().toList(),
                 subscriptions,
                 projectionDtos,
-                agentExternalUses.stream().distinct().toList());
+                agentExternalUses.stream().distinct().toList(),
+                rags,
+                agentRags.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -629,6 +644,12 @@ public class EditorApiController {
             case "remove-agent-use" -> removeAgentUse(command);
             case "add-agent-external-use" -> addAgentExternalUse(command);
             case "remove-agent-external-use" -> removeAgentExternalUse(command);
+            case "add-rag" -> addRag(command);
+            case "remove-rag" -> removeRag(command);
+            case "add-agent-rag" -> addAgentRag(command);
+            case "remove-agent-rag" -> removeAgentRag(command);
+            case "add-rag-source" -> addRagSource(command);
+            case "remove-rag-source" -> removeRagSource(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
@@ -977,7 +998,10 @@ public class EditorApiController {
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
                     .ifPresent(a -> repository.save(new AiAgentEntity(
                             a.id(), command.name(), a.description(), a.allowedUseCaseIds(),
-                            a.allowedExternalUseCaseIds())));
+                            a.allowedExternalUseCaseIds(), a.ragIds())));
+            case "rag" -> repository.findById(command.id(), RagEntity.class)
+                    .ifPresent(r -> repository.save(new RagEntity(
+                            r.id(), command.name(), r.description(), r.sourceReadModelIds())));
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(new RoleEntity(
                             r.id(), command.name(), r.allowedUseCaseIds(), r.allowedQueryServiceIds())));
@@ -1921,7 +1945,7 @@ public class EditorApiController {
         var ids = new ArrayList<>(agent.allowedExternalUseCaseIds());
         ids.add(command.targetId());
         repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(),
-                agent.allowedUseCaseIds(), ids));
+                agent.allowedUseCaseIds(), ids, agent.ragIds()));
     }
 
     private void removeAgentExternalUse(EditorCommand command) {
@@ -1929,13 +1953,72 @@ public class EditorApiController {
                 repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(),
                         agent.allowedUseCaseIds(),
                         agent.allowedExternalUseCaseIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList())));
+                                .filter(id -> !id.equals(command.targetId())).toList(),
+                        agent.ragIds())));
     }
 
     /** Record copy with only allowedUseCaseIds replaced — every other field preserved verbatim. */
     private static AiAgentEntity withAllowedUseCaseIds(AiAgentEntity a, List<String> ids) {
         return new AiAgentEntity(a.id(), a.name(), a.description(), ids,
-                a.allowedExternalUseCaseIds());
+                a.allowedExternalUseCaseIds(), a.ragIds());
+    }
+
+    /** Record copy with only ragIds replaced — every other field preserved verbatim. */
+    private static AiAgentEntity withRagIds(AiAgentEntity a, List<String> ragIds) {
+        return new AiAgentEntity(a.id(), a.name(), a.description(), a.allowedUseCaseIds(),
+                a.allowedExternalUseCaseIds(), ragIds);
+    }
+
+    private void addRag(EditorCommand command) {
+        if (repository.findById(command.id(), RagEntity.class).isPresent()) return;
+        repository.save(new RagEntity(command.id(), command.name(), null, List.of()));
+    }
+
+    /** Removing a knowledge base also unlinks it from every agent that queried it. */
+    private void removeRag(EditorCommand command) {
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.ragIds().contains(command.id()))
+                .forEach(a -> repository.save(withRagIds(a, a.ragIds().stream()
+                        .filter(id -> !id.equals(command.id())).toList())));
+        repository.deleteAllById(List.of(command.id()), RagEntity.class);
+    }
+
+    /** Agent → knowledge base: the agent grounds its answers on this RAG. */
+    private void addAgentRag(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        repository.findById(command.targetId(), RagEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.targetId()));
+        if (agent.ragIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(agent.ragIds());
+        ids.add(command.targetId());
+        repository.save(withRagIds(agent, ids));
+    }
+
+    private void removeAgentRag(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(withRagIds(agent, agent.ragIds().stream()
+                        .filter(id -> !id.equals(command.targetId())).toList())));
+    }
+
+    /** RAG → read model: the knowledge base indexes the read model's content. */
+    private void addRagSource(EditorCommand command) {
+        var rag = repository.findById(command.sourceId(), RagEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.sourceId()));
+        repository.findById(command.targetId(), ReadModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown read model: " + command.targetId()));
+        if (rag.sourceReadModelIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(rag.sourceReadModelIds());
+        ids.add(command.targetId());
+        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(), ids));
+    }
+
+    private void removeRagSource(EditorCommand command) {
+        repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
+                repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
+                        rag.sourceReadModelIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList())));
     }
 
     /** exposedAsMcp holds only while some agent consumes the use case. */

@@ -865,6 +865,7 @@ export class ModuxCanvas extends LitElement {
           : node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
+            node.kind === 'rag' ||
             node.kind === 'workflow-step')
           ? [
               [hw, 0],
@@ -880,8 +881,10 @@ export class ModuxCanvas extends LitElement {
                     ? node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado: el actor lo usará (deriva una UI)'
                       : node.kind === 'ai-agent'
-                        ? 'Arrastra hasta un caso de uso: el agente lo consumirá por MCP'
-                        : node.kind === 'workflow-step'
+                        ? 'Arrastra hasta un caso de uso, una operación externa o un RAG: el agente lo usará'
+                        : node.kind === 'rag'
+                          ? 'Arrastra hasta un read model: el RAG indexará su contenido'
+                          : node.kind === 'workflow-step'
                           ? 'Arrastra hasta otro paso: el destino esperará a que éste complete'
                           : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'domain-event' || node.kind === 'application-event'

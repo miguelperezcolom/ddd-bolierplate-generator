@@ -65,7 +65,25 @@ public final class LintRules {
                 new PolicyWithoutTrigger(),
                 new PolicyExposedAsUi(),
                 new ProjectionSource(),
-                new AgentWithoutTools());
+                new AgentWithoutTools(),
+                new RagOrphan());
+    }
+
+    /** A knowledge base nobody queries is dead weight — link it to an agent or drop it. */
+    static class RagOrphan implements LintRule {
+        public String id() { return "rag-orphan"; }
+        public String description() { return "A RAG should be queried by some AI agent"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var queried = new HashSet<String>();
+            m.aiAgents().forEach(a -> queried.addAll(a.ragIds()));
+            return m.rags().stream()
+                    .filter(r -> !queried.contains(r.id()))
+                    .map(r -> new LintFinding(id(), LintSeverity.INFO, "Rag", r.id(),
+                            r.name(),
+                            "RAG sin consumidor: ningún agente lo consulta — lígalo a un agente"
+                                    + " o elimínalo."))
+                    .toList();
+        }
     }
 
     /** An AI agent acts through its tools: MCP use cases or external-system operations. */

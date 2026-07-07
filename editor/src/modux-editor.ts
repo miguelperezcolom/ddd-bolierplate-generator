@@ -159,6 +159,7 @@ export class ModuxEditor extends LitElement {
     | 'external-system'
     | 'actor'
     | 'ai-agent'
+    | 'rag'
     | 'domain-event'
     | 'application-event'
     | 'read-model'
@@ -373,7 +374,8 @@ export class ModuxEditor extends LitElement {
       this._newContextMapKind !== 'module' &&
       this._newContextMapKind !== 'external-system' &&
       this._newContextMapKind !== 'actor' &&
-      this._newContextMapKind !== 'ai-agent'
+      this._newContextMapKind !== 'ai-agent' &&
+      this._newContextMapKind !== 'rag'
     ) {
       this._newContextMapKind = 'module';
     }
@@ -585,6 +587,36 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-external-use':
         return [{ kind: 'add-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-rag':
+        return [{ kind: 'remove-rag', id: c.id }];
+      case 'remove-rag': {
+        const r = (this.model.rags ?? []).find((x) => x.id === c.id);
+        if (!r) return null;
+        // Removing a rag also unlinks it everywhere; the inverse restores the links.
+        return [
+          { kind: 'add-rag', id: r.id, name: r.name },
+          ...(this.model.agentRags ?? [])
+            .filter((u) => u.ragId === c.id)
+            .map(
+              (u): ModuxCommand => ({
+                kind: 'add-agent-rag',
+                sourceId: u.agentId,
+                targetId: c.id,
+              }),
+            ),
+          ...(r.sourceReadModelIds ?? []).map(
+            (rmId): ModuxCommand => ({ kind: 'add-rag-source', sourceId: c.id, targetId: rmId }),
+          ),
+        ];
+      }
+      case 'add-agent-rag':
+        return [{ kind: 'remove-agent-rag', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-rag':
+        return [{ kind: 'add-agent-rag', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-rag-source':
+        return [{ kind: 'remove-rag-source', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-rag-source':
+        return [{ kind: 'add-rag-source', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-actor':
         return [{ kind: 'remove-actor', id: c.id }];
       case 'remove-actor': {
@@ -1005,9 +1037,29 @@ export class ModuxEditor extends LitElement {
           (u) => u.agentId === sourceId && u.externalUseCaseId === targetId,
         );
         if (!already) this.command({ kind: 'add-agent-external-use', sourceId, targetId });
+        return;
+      }
+      // Knowledge: the agent grounds its answers on the RAG.
+      if ((this.model.rags ?? []).some((r) => r.id === targetId)) {
+        const already = (this.model.agentRags ?? []).some(
+          (u) => u.agentId === sourceId && u.ragId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-rag', sourceId, targetId });
       }
       return;
     }
+    // Dragging a RAG onto a read model declares its source: the RAG indexes it.
+    const rag = (this.model.rags ?? []).find((r) => r.id === sourceId);
+    if (rag) {
+      const readModelIds = new Set(
+        this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
+      );
+      if (readModelIds.has(targetId) && !(rag.sourceReadModelIds ?? []).includes(targetId)) {
+        this.command({ kind: 'add-rag-source', sourceId, targetId });
+      }
+      return;
+    }
+    if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
     if (agentIds.has(targetId)) return;
     const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
     if (actorIds.has(sourceId)) {
@@ -1357,6 +1409,25 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-agent-external-use', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-rag') {
+      const match = /^agrag:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-rag', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'rag-source') {
+      const match = /^ragsrc:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-rag-source', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (elementType === 'node' && kind === 'rag') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-rag', id });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
       const match = /^use:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -1472,7 +1543,8 @@ export class ModuxEditor extends LitElement {
       kind === 'application-event' ||
       kind === 'external-system' ||
       kind === 'actor' ||
-      kind === 'ai-agent'
+      kind === 'ai-agent' ||
+      kind === 'rag'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1704,6 +1776,8 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-actor', id: slug(name), name });
       } else if (this._newContextMapKind === 'ai-agent') {
         this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name });
+      } else if (this._newContextMapKind === 'rag') {
+        this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
         // A selected context is the natural owner; the dropdown can override it.
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
@@ -1921,6 +1995,8 @@ export class ModuxEditor extends LitElement {
                   ? 'Nuevo actor…'
                   : this._newContextMapKind === 'ai-agent'
                     ? 'Nuevo agente de IA…'
+                    : this._newContextMapKind === 'rag'
+                      ? 'Nuevo RAG…'
                   : this._detail !== 'detail' || this._newContextMapKind === 'module'
                     ? 'Nuevo contexto…'
                     : this._newContextMapKind === 'domain-event'
@@ -1969,6 +2045,9 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="ai-agent" ?selected=${this._newContextMapKind === 'ai-agent'}>
                 Agente de IA
+              </option>
+              <option value="rag" ?selected=${this._newContextMapKind === 'rag'}>
+                RAG (base de conocimiento)
               </option>
               ${this._detail === 'detail'
                 ? html`
