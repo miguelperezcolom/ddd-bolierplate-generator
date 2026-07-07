@@ -108,6 +108,50 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** A query service owned by a bounded context. */
+      kind: 'add-query-service';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-query-service';
+      id: string;
+    }
+  | {
+      /** Use case A consumes query service B (a CallQueryService step in A). */
+      kind: 'add-query-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-query-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      /** An actor uses a use case or a query service directly (derives a UI). */
+      kind: 'add-actor-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-actor-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      /** An actor manages an aggregate through a CRUD UI (stub use cases appear). */
+      kind: 'add-actor-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-actor-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** Use case A invokes use case B (a CallUseCase step in A). */
       kind: 'add-use-case-call';
       sourceId: string;

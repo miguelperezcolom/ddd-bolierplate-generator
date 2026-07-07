@@ -58,7 +58,15 @@ person / gear (human / automated steps), double circle (events), return arrow
 - **Use case invocations**: drag from a use case onto another (in the same or another
   bounded context) to add a `CallUseCase` step to the caller — drawn as a cyan dashed
   arrow; Supr on the arrow removes the step. Cross-context calls are the seed for a
-  gateway/API at generation time.
+  gateway/API at generation time. Dragging onto a **query service** instead adds a
+  `CallQueryService` step (teal dashed arrow), also across contexts. Query services
+  are created from the toolbar like the other children (lens glyph).
+- **Actors use things**: drag from an actor onto a **use case** or a **query
+  service** to allow it (`Role.allowedUseCaseIds` / `allowedQueryServiceIds`, indigo
+  arrow) — the seed of a derived UI. Drag onto an **aggregate** and the editor
+  creates stub **CRUD use cases** (`Crear/Actualizar/Eliminar<Aggregate>`, with steps
+  anchored to the aggregate and `exposedAsUi`) and allows the actor on all three;
+  one undo reverts the whole thing.
 - **Materializations drawn on the canvas**: at the detail level read models render as
   children too, and dragging a domain OR application event onto another context (or
   one of its read models) creates a **MATERIALIZES flow** — the projection/read

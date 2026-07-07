@@ -57,6 +57,23 @@ export interface UseCaseCallRef {
   targetId: string;
 }
 
+export interface QueryServiceRef {
+  id: string;
+  name: string;
+}
+
+/** Use case A consumes query service B (a CallQueryService step in A). */
+export interface QueryCallRef {
+  sourceId: string;
+  targetId: string;
+}
+
+/** An actor uses a use case or query service directly (a UI is derived from it). */
+export interface ActorUseRef {
+  actorId: string;
+  targetId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -72,6 +89,8 @@ export interface ModuleRef {
   domainServices?: DomainServiceRef[];
   /** Application events owned by this bounded context (published by its use cases). */
   applicationEvents?: ApplicationEventRef[];
+  /** Query services owned by this bounded context. */
+  queryServices?: QueryServiceRef[];
 }
 
 export interface ActorRef {
@@ -165,4 +184,6 @@ export interface ModuxModel {
   /** Business actors (roles) shown on the context map. */
   actors?: ActorRef[];
   useCaseCalls?: UseCaseCallRef[];
+  queryCalls?: QueryCallRef[];
+  actorUses?: ActorUseRef[];
 }

@@ -27,6 +27,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseSte
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
@@ -72,7 +73,8 @@ public class EditorApiController {
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
                             List<ReadModelDto> readModels, List<DomainServiceDto> domainServices,
-                            List<ApplicationEventDto> applicationEvents) {}
+                            List<ApplicationEventDto> applicationEvents,
+                            List<QueryServiceDto> queryServices) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
@@ -98,6 +100,11 @@ public class EditorApiController {
     public record ActorDto(String id, String name) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
     public record UseCaseCallDto(String sourceId, String targetId) {}
+    public record QueryServiceDto(String id, String name) {}
+    /** Use case A consumes query service B (a CallQueryService step in A). */
+    public record QueryCallDto(String sourceId, String targetId) {}
+    /** An actor uses a use case or a query service directly (a UI is derived from it). */
+    public record ActorUseDto(String actorId, String targetId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -111,7 +118,9 @@ public class EditorApiController {
             List<ViewDto> views,
             List<EmissionDto> emissions,
             List<ActorDto> actors,
-            List<UseCaseCallDto> useCaseCalls) {}
+            List<UseCaseCallDto> useCaseCalls,
+            List<QueryCallDto> queryCalls,
+            List<ActorUseDto> actorUses) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -196,6 +205,9 @@ public class EditorApiController {
                 .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
         var applicationEventsById = repository.findAllOfType(ApplicationEventEntity.class).stream()
                 .collect(Collectors.toMap(ApplicationEventEntity::id, ev -> ev, (a, b) -> a));
+        var queryServicesByModule = repository.findAllOfType(QueryServiceEntity.class).stream()
+                .filter(qs -> qs.moduleId() != null)
+                .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -230,6 +242,9 @@ public class EditorApiController {
                                 .map(applicationEventsById::get)
                                 .filter(Objects::nonNull)
                                 .map(ev -> new ApplicationEventDto(ev.id(), ev.name()))
+                                .toList(),
+                        queryServicesByModule.getOrDefault(m.id(), List.of()).stream()
+                                .map(qs -> new QueryServiceDto(qs.id(), qs.name()))
                                 .toList()))
                 .toList();
 
@@ -358,10 +373,28 @@ public class EditorApiController {
             }
         }
 
+        var queryCalls = new ArrayList<QueryCallDto>();
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null) continue;
+            for (var step : uc.steps()) {
+                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService
+                        && step.queryServiceId() != null) {
+                    queryCalls.add(new QueryCallDto(uc.id(), step.queryServiceId()));
+                }
+            }
+        }
+        var actorUses = new ArrayList<ActorUseDto>();
+        for (var role : repository.findAllOfType(RoleEntity.class)) {
+            role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
+            role.allowedQueryServiceIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
+        }
+
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
                 views, emissions.stream().distinct().toList(), actors,
-                useCaseCalls.stream().distinct().toList());
+                useCaseCalls.stream().distinct().toList(),
+                queryCalls.stream().distinct().toList(),
+                actorUses.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -398,6 +431,14 @@ public class EditorApiController {
             case "add-emission" -> addEmission(command);
             case "add-use-case-call" -> addUseCaseCall(command);
             case "remove-use-case-call" -> removeUseCaseCall(command);
+            case "add-query-service" -> addQueryService(command);
+            case "remove-query-service" -> removeQueryService(command);
+            case "add-query-call" -> addQueryCall(command);
+            case "remove-query-call" -> removeQueryCall(command);
+            case "add-actor-use" -> addActorUse(command);
+            case "remove-actor-use" -> removeActorUse(command);
+            case "add-actor-crud" -> addActorCrud(command);
+            case "remove-actor-crud" -> removeActorCrud(command);
             case "add-read-model" -> addReadModel(command);
             case "remove-read-model" -> removeReadModel(command);
             case "remove-module" -> removeModule(command);
@@ -593,7 +634,7 @@ public class EditorApiController {
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(new RoleEntity(
-                            r.id(), command.name(), r.allowedUseCaseIds())));
+                            r.id(), command.name(), r.allowedUseCaseIds(), r.allowedQueryServiceIds())));
             case "external-system" -> {
                 var project = owningProject();
                 repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -610,6 +651,10 @@ public class EditorApiController {
             case "domain-service" -> repository.findById(command.id(), DomainServiceEntity.class)
                     .ifPresent(ds -> repository.save(new DomainServiceEntity(
                             ds.id(), command.name(), ds.description(), ds.operations())));
+            case "query-service" -> repository.findById(command.id(), QueryServiceEntity.class)
+                    .ifPresent(qs -> repository.save(new QueryServiceEntity(
+                            qs.id(), command.name(), qs.moduleId(), qs.description(),
+                            qs.operations(), qs.exposedAsGrpc())));
             case "read-model" -> repository.findById(command.id(), ReadModelEntity.class)
                     .ifPresent(rm -> repository.save(new ReadModelEntity(
                             rm.id(), command.name(), rm.moduleId(), rm.description(), rm.modelId(),
@@ -832,6 +877,170 @@ public class EditorApiController {
                         .filter(st -> !(st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
                                 && command.targetId().equals(st.useCaseId())))
                         .toList())));
+    }
+
+    private void addQueryService(EditorCommand command) {
+        if (repository.findById(command.id(), QueryServiceEntity.class).isPresent()) return;
+        repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new QueryServiceEntity(
+                command.id(), command.name(), command.moduleId(), null, List.of(), false));
+    }
+
+    private void removeQueryService(EditorCommand command) {
+        var consumed = repository.findAllOfType(UseCaseEntity.class).stream()
+                .anyMatch(uc -> uc.steps() != null && uc.steps().stream()
+                        .anyMatch(st -> command.id().equals(st.queryServiceId())));
+        if (consumed) {
+            throw new IllegalArgumentException(
+                    "El query service " + command.id() + " lo consumen casos de uso; quita esas llamadas primero");
+        }
+        repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> r.allowedQueryServiceIds().contains(command.id()))
+                .forEach(r -> repository.save(new RoleEntity(r.id(), r.name(), r.allowedUseCaseIds(),
+                        r.allowedQueryServiceIds().stream().filter(id -> !id.equals(command.id())).toList())));
+        repository.deleteAllById(List.of(command.id()), QueryServiceEntity.class);
+    }
+
+    /** Use case → query service: a CallQueryService step (works across bounded contexts). */
+    private void addQueryCall(EditorCommand command) {
+        var source = repository.findById(command.sourceId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
+        var target = repository.findById(command.targetId(), QueryServiceEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown query service: " + command.targetId()));
+        var steps = new ArrayList<>(source.steps() == null ? List.of() : source.steps());
+        var alreadyThere = steps.stream().anyMatch(st -> target.id().equals(st.queryServiceId()));
+        if (alreadyThere) return;
+        steps.add(new UseCaseStepEntity("step-query-" + target.id(), "query" + capitalize(target.name()),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService,
+                null, null, null, null, null, null, null, target.id(), null, null, null));
+        repository.save(withSteps(source, steps));
+    }
+
+    private void removeQueryCall(EditorCommand command) {
+        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(st -> !command.targetId().equals(st.queryServiceId()))
+                        .toList())));
+    }
+
+    /** An actor uses a use case or query service directly — the seed of a derived UI. */
+    private void addActorUse(EditorCommand command) {
+        var role = repository.findById(command.sourceId(), RoleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
+        if (repository.findById(command.targetId(), UseCaseEntity.class).isPresent()) {
+            if (role.allowedUseCaseIds().contains(command.targetId())) return;
+            var ids = new ArrayList<>(role.allowedUseCaseIds());
+            ids.add(command.targetId());
+            repository.save(new RoleEntity(role.id(), role.name(), ids, role.allowedQueryServiceIds()));
+            return;
+        }
+        if (repository.findById(command.targetId(), QueryServiceEntity.class).isPresent()) {
+            if (role.allowedQueryServiceIds().contains(command.targetId())) return;
+            var ids = new ArrayList<>(role.allowedQueryServiceIds());
+            ids.add(command.targetId());
+            repository.save(new RoleEntity(role.id(), role.name(), role.allowedUseCaseIds(), ids));
+            return;
+        }
+        throw new IllegalArgumentException(
+                "Un actor solo usa casos de uso o query services; destino desconocido: " + command.targetId());
+    }
+
+    private void removeActorUse(EditorCommand command) {
+        repository.findById(command.sourceId(), RoleEntity.class).ifPresent(r ->
+                repository.save(new RoleEntity(r.id(), r.name(),
+                        r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.targetId())).toList(),
+                        r.allowedQueryServiceIds().stream().filter(id -> !id.equals(command.targetId())).toList())));
+    }
+
+    /**
+     * An actor manages an aggregate through a CRUD UI: stub create/update/delete use
+     * cases appear in the aggregate's module (with steps anchored to the aggregate) and
+     * the actor is allowed on all three. The UI itself derives at generation time.
+     */
+    private void addActorCrud(EditorCommand command) {
+        var role = repository.findById(command.sourceId(), RoleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        var module = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El agregado " + aggregate.id() + " no pertenece a ningún módulo"));
+        var useCaseIds = new ArrayList<>(module.useCaseIds() == null ? List.of() : module.useCaseIds());
+        var allowed = new ArrayList<>(role.allowedUseCaseIds());
+        for (var uc : crudUseCases(aggregate)) {
+            if (repository.findById(uc.id(), UseCaseEntity.class).isEmpty()) {
+                repository.save(uc);
+            }
+            if (!useCaseIds.contains(uc.id())) useCaseIds.add(uc.id());
+            if (!allowed.contains(uc.id())) allowed.add(uc.id());
+        }
+        repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
+        repository.save(new RoleEntity(role.id(), role.name(), allowed, role.allowedQueryServiceIds()));
+    }
+
+    private void removeActorCrud(EditorCommand command) {
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        var crudIds = crudUseCases(aggregate).stream().map(UseCaseEntity::id).toList();
+        repository.findById(command.sourceId(), RoleEntity.class).ifPresent(r ->
+                repository.save(new RoleEntity(r.id(), r.name(),
+                        r.allowedUseCaseIds().stream().filter(id -> !crudIds.contains(id)).toList(),
+                        r.allowedQueryServiceIds())));
+        // The stub use cases leave too, unless something else references them by now.
+        var referenced = repository.findAllOfType(UseCaseEntity.class).stream()
+                .filter(uc -> uc.steps() != null)
+                .flatMap(uc -> uc.steps().stream())
+                .map(UseCaseStepEntity::useCaseId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        var otherActors = repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> !r.id().equals(command.sourceId()))
+                .flatMap(r -> r.allowedUseCaseIds().stream())
+                .collect(java.util.stream.Collectors.toSet());
+        var removable = crudIds.stream()
+                .filter(id -> !referenced.contains(id) && !otherActors.contains(id))
+                .toList();
+        if (!removable.isEmpty()) {
+            repository.findAllOfType(ModuleEntity.class).stream()
+                    .filter(m -> m.useCaseIds() != null && m.useCaseIds().stream().anyMatch(removable::contains))
+                    .forEach(m -> repository.save(m.toBuilder()
+                            .useCaseIds(m.useCaseIds().stream().filter(id -> !removable.contains(id)).toList())
+                            .build()));
+            repository.deleteAllById(removable, UseCaseEntity.class);
+        }
+    }
+
+    /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
+    private static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
+        var cap = capitalize(aggregate.name());
+        return List.of(
+                stubUseCase("uc-crear" + capitalize(aggregate.id()), "Crear" + cap, List.of(
+                        new UseCaseStepEntity("step-save", "save" + cap,
+                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
+                                aggregate.id(), null, null, null, null, null, null, null, null, null, null))),
+                stubUseCase("uc-actualizar" + capitalize(aggregate.id()), "Actualizar" + cap, List.of(
+                        new UseCaseStepEntity("step-read", "read" + cap,
+                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.ReadAggregate,
+                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
+                        new UseCaseStepEntity("step-save", "save" + cap,
+                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
+                                aggregate.id(), null, null, null, null, null, null, null, null, null, null))),
+                stubUseCase("uc-eliminar" + capitalize(aggregate.id()), "Eliminar" + cap, List.of(
+                        new UseCaseStepEntity("step-delete", "delete" + cap,
+                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom,
+                                aggregate.id(), null, null, null, null, null, null, null, null,
+                                "Elimina el agregado " + cap, null))));
+    }
+
+    /** A minimal, UI-exposed use case stub — fields get refined later through the CRUDs. */
+    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps) {
+        return new UseCaseEntity(id, name, false, false, false, false, true,
+                null, null, steps, List.of(), List.of(), null, null, null, null,
+                null, null, null, null, null, false, null, null, null, false, null,
+                false, null, null, null, List.of());
     }
 
     private static String capitalize(String s) {

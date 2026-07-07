@@ -85,7 +85,14 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
 interface ChildDesc {
   id: string;
   name: string;
-  kind: 'aggregate' | 'use-case' | 'domain-event' | 'application-event' | 'read-model' | 'domain-service';
+  kind:
+    | 'aggregate'
+    | 'use-case'
+    | 'domain-event'
+    | 'application-event'
+    | 'read-model'
+    | 'domain-service'
+    | 'query-service';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
@@ -95,6 +102,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
+  'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -104,6 +112,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'application-event': 'Evento de aplicación',
   'read-model': 'Read model',
   'domain-service': 'Servicio de dominio',
+  'query-service': 'Query service',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -154,6 +163,9 @@ function detailedContext(
     ),
     ...(module.applicationEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'application-event' }),
+    ),
+    ...(module.queryServices ?? []).map(
+      (qs): ChildDesc => ({ id: qs.id, name: qs.name, kind: 'query-service' }),
     ),
   ];
   if (!children.length) {
@@ -342,5 +354,44 @@ export function contextMapScene(
         }))
     : [];
 
-  return { nodes, edges: [...relationEdges, ...flowEdges, ...emissionEdges, ...callEdges] };
+  // Use case → query service consumption, and actor → use case/query service usage.
+  const queryEdges: SceneEdge[] = detailed
+    ? (model.queryCalls ?? [])
+        .filter((c) => nodeIds.has(c.sourceId) && nodeIds.has(c.targetId))
+        .map((c) => ({
+          id: `qscall:${c.sourceId}->${c.targetId}`,
+          sourceId: c.sourceId,
+          targetId: c.targetId,
+          kind: 'qs-call',
+          color: '#0d9488',
+          dashed: true,
+          arrow: true,
+          tooltip: 'consulta',
+        }))
+    : [];
+  const actorUseEdges: SceneEdge[] = detailed
+    ? (model.actorUses ?? [])
+        .filter((u) => nodeIds.has(u.actorId) && nodeIds.has(u.targetId))
+        .map((u) => ({
+          id: `use:${u.actorId}->${u.targetId}`,
+          sourceId: u.actorId,
+          targetId: u.targetId,
+          kind: 'actor-use',
+          color: '#6366f1',
+          arrow: true,
+          tooltip: 'usa (deriva una UI)',
+        }))
+    : [];
+
+  return {
+    nodes,
+    edges: [
+      ...relationEdges,
+      ...flowEdges,
+      ...emissionEdges,
+      ...callEdges,
+      ...queryEdges,
+      ...actorUseEdges,
+    ],
+  };
 }

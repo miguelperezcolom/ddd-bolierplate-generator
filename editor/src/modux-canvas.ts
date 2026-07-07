@@ -86,6 +86,8 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   event: svg`<circle cx="6" cy="6" r="5"></circle><circle cx="6" cy="6" r="2.6"></circle>`,
   readmodel: svg`<path d="M1.5 3 C1.5 1.2 10.5 1.2 10.5 3 V9 C10.5 10.8 1.5 10.8 1.5 9 Z"></path>
     <path d="M1.5 3 C1.5 4.8 10.5 4.8 10.5 3"></path>`,
+  lens: svg`<circle cx="5" cy="5" r="3.8"></circle>
+    <line x1="7.8" y1="7.8" x2="11.2" y2="11.2"></line>`,
   usecase: svg`<ellipse cx="6" cy="6" rx="5.5" ry="3.6"></ellipse>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
@@ -260,7 +262,8 @@ export class ModuxCanvas extends LitElement {
         node.kind !== 'domain-event' &&
         node.kind !== 'application-event' &&
         node.kind !== 'read-model' &&
-        node.kind !== 'domain-service'
+        node.kind !== 'domain-service' &&
+        node.kind !== 'query-service'
       )
         return;
       const el = edge ?? node;
@@ -865,7 +868,9 @@ export class ModuxCanvas extends LitElement {
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
                   <title>${!isChild
-                    ? 'Arrastra hasta otro nodo para crear una relación'
+                    ? node.kind === 'actor'
+                      ? 'Arrastra hasta un caso de uso, query service o agregado: el actor lo usará (deriva una UI)'
+                      : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'use-case'

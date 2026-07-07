@@ -28,10 +28,14 @@ public class RoleFileRepository implements RoleRepository {
 
     @Override
     public Role save(Role entity) {
+        // allowedQueryServiceIds is not modeled in the domain Role yet — carry it over from
+        // the stored entity so a UI save never wipes what was authored elsewhere.
+        var existing = repository.findById(entity.getId().id(), RoleEntity.class).orElse(null);
         repository.save(new RoleEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                entity.getAllowedUseCaseIds()));
+                entity.getAllowedUseCaseIds(),
+                existing != null ? existing.allowedQueryServiceIds() : List.of()));
         return entity;
     }
 

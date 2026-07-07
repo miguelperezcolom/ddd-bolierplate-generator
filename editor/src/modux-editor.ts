@@ -147,7 +147,8 @@ export class ModuxEditor extends LitElement {
     | 'domain-event'
     | 'application-event'
     | 'read-model'
-    | 'domain-service' = 'module';
+    | 'domain-service'
+    | 'query-service' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
   @state() private _newArchetype = 'TRIGGERS';
@@ -474,6 +475,27 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
+      case 'add-query-service':
+        return [{ kind: 'remove-query-service', id: c.id }];
+      case 'remove-query-service': {
+        for (const m of this.model.modules) {
+          const qs = (m.queryServices ?? []).find((x) => x.id === c.id);
+          if (qs) return [{ kind: 'add-query-service', id: qs.id, name: qs.name, moduleId: m.id }];
+        }
+        return null;
+      }
+      case 'add-query-call':
+        return [{ kind: 'remove-query-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-query-call':
+        return [{ kind: 'add-query-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-actor-use':
+        return [{ kind: 'remove-actor-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-actor-use':
+        return [{ kind: 'add-actor-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-actor-crud':
+        return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-actor-crud':
+        return [{ kind: 'add-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-call':
         return [{ kind: 'remove-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-use-case-call':
@@ -544,13 +566,15 @@ export class ModuxEditor extends LitElement {
                   ? this.model.modules.flatMap((m) => m.readModels ?? [])
                   : c.type === 'domain-service'
                     ? this.model.modules.flatMap((m) => m.domainServices ?? [])
-                    : c.type === 'application-event'
-                      ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
-                      : c.type === 'external-system'
-                        ? this.model.externalSystems
-                        : c.type === 'actor'
-                          ? this.model.actors ?? []
-                          : this.model.entities ?? [];
+                    : c.type === 'query-service'
+                      ? this.model.modules.flatMap((m) => m.queryServices ?? [])
+                      : c.type === 'application-event'
+                        ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
+                        : c.type === 'external-system'
+                          ? this.model.externalSystems
+                          : c.type === 'actor'
+                            ? this.model.actors ?? []
+                            : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -758,6 +782,29 @@ export class ModuxEditor extends LitElement {
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y } = e.detail;
     if (this._view !== 'context-map') return;
+    // An actor's drags come first: they may legally end on children (use cases,
+    // query services, aggregates) that other gestures treat as off-limits.
+    const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
+    if (actorIds.has(sourceId)) {
+      const actorUcIds = new Set(
+        this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      );
+      const actorQsIds = new Set(
+        this.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+      );
+      if (actorUcIds.has(targetId) || actorQsIds.has(targetId)) {
+        const already = (this.model.actorUses ?? []).some(
+          (u) => u.actorId === sourceId && u.targetId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-actor-use', sourceId, targetId });
+        return;
+      }
+      if ((this.model.aggregates ?? []).some((a) => a.id === targetId)) {
+        this.command({ kind: 'add-actor-crud', sourceId, targetId });
+        return;
+      }
+      return;
+    }
     // Dragging from an aggregate/use case onto a domain event declares an emission.
     const eventIds = new Set(
       this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
@@ -772,6 +819,16 @@ export class ModuxEditor extends LitElement {
       this.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
     );
     const ucIds = new Set(this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)));
+    const qsIds = new Set(
+      this.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+    );
+    if (ucIds.has(sourceId) && qsIds.has(targetId)) {
+      const already = (this.model.queryCalls ?? []).some(
+        (c) => c.sourceId === sourceId && c.targetId === targetId,
+      );
+      if (!already) this.command({ kind: 'add-query-call', sourceId, targetId });
+      return;
+    }
     if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
       const already = (this.model.useCaseCalls ?? []).some(
         (c) => c.sourceId === sourceId && c.targetId === targetId,
@@ -852,6 +909,7 @@ export class ModuxEditor extends LitElement {
     const childIds = new Set([
       ...emitterIds,
       ...ucIds,
+      ...qsIds,
       ...this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
     ]);
     if (
@@ -864,8 +922,7 @@ export class ModuxEditor extends LitElement {
     }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
     if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
-    const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
-    if (actorIds.has(sourceId) || actorIds.has(targetId)) return;
+    if (actorIds.has(targetId)) return;
     const exists = this.model.relations.some(
       (r) =>
         (r.sourceId === sourceId && r.targetId === targetId) ||
@@ -918,6 +975,20 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'qs-call') {
+      const match = /^qscall:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-query-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
+      const match = /^use:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-actor-use', sourceId: match[1], targetId: match[2] });
+      return;
+    }
     if (elementType === 'node' && kind === 'module') {
       const hasAggregates = (this.model.aggregates ?? []).some((a) => a.moduleId === id);
       if (hasAggregates) return; // integrity guard: empty the module first
@@ -945,6 +1016,11 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'domain-service') {
       this._selectedId = null;
       this.command({ kind: 'remove-domain-service', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'query-service') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-query-service', id });
       return;
     }
     if (elementType === 'node' && kind === 'application-event') {
@@ -994,6 +1070,7 @@ export class ModuxEditor extends LitElement {
       kind === 'domain-event' ||
       kind === 'read-model' ||
       kind === 'domain-service' ||
+      kind === 'query-service' ||
       kind === 'application-event' ||
       kind === 'external-system' ||
       kind === 'actor'
@@ -1187,6 +1264,11 @@ export class ModuxEditor extends LitElement {
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-domain-service', id: `ds-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'query-service') {
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-query-service', id: `qs-${slug(name)}`, name, moduleId });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'read-model') {
         // A read model is a view of an aggregate; a selected aggregate is the default.
         const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
@@ -1404,6 +1486,12 @@ export class ModuxEditor extends LitElement {
                     >
                       Servicio de dominio
                     </option>
+                    <option
+                      value="query-service"
+                      ?selected=${this._newContextMapKind === 'query-service'}
+                    >
+                      Query service
+                    </option>
                   `
                 : ''}
             </select>`
@@ -1443,7 +1531,8 @@ export class ModuxEditor extends LitElement {
           this._detail === 'detail' &&
           (this._newContextMapKind === 'domain-event' ||
             this._newContextMapKind === 'application-event' ||
-            this._newContextMapKind === 'domain-service'))
+            this._newContextMapKind === 'domain-service' ||
+            this._newContextMapKind === 'query-service'))
           ? html`<select
               title=${this._view === 'aggregates'
                 ? 'Módulo del nuevo agregado'
