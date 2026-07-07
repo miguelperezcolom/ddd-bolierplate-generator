@@ -139,6 +139,8 @@ export class ModuxEditor extends LitElement {
   @state() private _newName = '';
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
   @state() private _newModuleId = '';
+  /** What the context-map toolbar creates at detail level: a context, or a domain event inside one. */
+  @state() private _newContextMapKind: 'module' | 'domain-event' = 'module';
   @state() private _newArchetype = 'TRIGGERS';
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
@@ -453,13 +455,24 @@ export class ModuxEditor extends LitElement {
         const a = (this.model.aggregates ?? []).find((x) => x.id === c.id);
         return a ? [{ kind: 'add-aggregate', id: a.id, name: a.name, moduleId: a.moduleId }] : null;
       }
+      case 'add-domain-event':
+        return [{ kind: 'remove-domain-event', id: c.id }];
+      case 'remove-domain-event': {
+        for (const m of this.model.modules) {
+          const ev = (m.domainEvents ?? []).find((x) => x.id === c.id);
+          if (ev) return [{ kind: 'add-domain-event', id: ev.id, name: ev.name, moduleId: m.id }];
+        }
+        return null;
+      }
       case 'rename-element': {
         const list =
           c.type === 'module'
             ? this.model.modules
             : c.type === 'aggregate'
               ? this.model.aggregates ?? []
-              : this.model.entities ?? [];
+              : c.type === 'domain-event'
+                ? this.model.modules.flatMap((m) => m.domainEvents ?? [])
+                : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -721,6 +734,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-aggregate', id });
       return;
     }
+    if (elementType === 'node' && kind === 'domain-event') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-domain-event', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-flow', id: id.replace(/^flow:/, '') });
@@ -745,7 +763,13 @@ export class ModuxEditor extends LitElement {
 
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
-    if (kind === 'module' || kind === 'aggregate' || kind === 'entity' || kind === 'process-step') {
+    if (
+      kind === 'module' ||
+      kind === 'aggregate' ||
+      kind === 'entity' ||
+      kind === 'process-step' ||
+      kind === 'domain-event'
+    ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
   }
@@ -915,12 +939,20 @@ export class ModuxEditor extends LitElement {
     const name = this._newName.trim();
     if (!name) return;
     if (this._view === 'context-map') {
-      this.command({
-        kind: 'add-module',
-        id: `mod-${slug(name)}`,
-        name,
-        subdomainType: this._newSubdomain,
-      });
+      if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
+        // A selected context is the natural owner; the dropdown can override it.
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-domain-event', id: `ev-${slug(name)}`, name, moduleId });
+      } else {
+        this.command({
+          kind: 'add-module',
+          id: `mod-${slug(name)}`,
+          name,
+          subdomainType: this._newSubdomain,
+        });
+      }
     } else if (this._view === 'aggregates') {
       const moduleId = this._newModuleId || this.model.modules[0]?.id;
       if (!moduleId) return;
@@ -1057,7 +1089,10 @@ export class ModuxEditor extends LitElement {
         <input
           class="new-name"
           placeholder=${{
-            'context-map': 'Nuevo contexto…',
+            'context-map':
+              this._detail === 'detail' && this._newContextMapKind === 'domain-event'
+                ? 'Nuevo evento de dominio…'
+                : 'Nuevo contexto…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -1066,7 +1101,24 @@ export class ModuxEditor extends LitElement {
           @input=${(e: Event) => (this._newName = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createElementFromToolbar()}
         />
-        ${this._view === 'context-map'
+        ${this._view === 'context-map' && this._detail === 'detail'
+          ? html`<select
+              title="Qué crear: un contexto, o un evento de dominio dentro de uno"
+              @change=${(e: Event) =>
+                (this._newContextMapKind = (e.target as HTMLSelectElement).value as
+                  | 'module'
+                  | 'domain-event')}
+            >
+              <option value="module" ?selected=${this._newContextMapKind === 'module'}>
+                Contexto
+              </option>
+              <option value="domain-event" ?selected=${this._newContextMapKind === 'domain-event'}>
+                Evento de dominio
+              </option>
+            </select>`
+          : ''}
+        ${this._view === 'context-map' &&
+        (this._detail !== 'detail' || this._newContextMapKind === 'module')
           ? html`<select
               title="Subdominio del nuevo contexto"
               @change=${(e: Event) =>
@@ -1077,9 +1129,17 @@ export class ModuxEditor extends LitElement {
               )}
             </select>`
           : ''}
-        ${this._view === 'aggregates' || this._view === 'processes'
+        ${this._view === 'aggregates' ||
+        this._view === 'processes' ||
+        (this._view === 'context-map' &&
+          this._detail === 'detail' &&
+          this._newContextMapKind === 'domain-event')
           ? html`<select
-              title=${this._view === 'aggregates' ? 'Módulo del nuevo agregado' : 'Módulo dueño del proceso'}
+              title=${this._view === 'aggregates'
+                ? 'Módulo del nuevo agregado'
+                : this._view === 'processes'
+                  ? 'Módulo dueño del proceso'
+                  : 'Contexto dueño del nuevo evento'}
               @change=${(e: Event) => (this._newModuleId = (e.target as HTMLSelectElement).value)}
             >
               ${this.model.modules.map(

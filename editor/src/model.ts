@@ -23,6 +23,11 @@ export interface UseCaseRef {
   name: string;
 }
 
+export interface DomainEventRef {
+  id: string;
+  name: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -30,6 +35,8 @@ export interface ModuleRef {
   serviceId?: string;
   /** Use cases owned by this bounded context (populated for the detailed context map). */
   useCases?: UseCaseRef[];
+  /** Domain events owned by this bounded context (populated for the detailed context map). */
+  domainEvents?: DomainEventRef[];
 }
 
 export interface ExternalSystemRef {

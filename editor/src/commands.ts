@@ -37,6 +37,12 @@ export type ModuxCommand =
       moduleId: string;
     }
   | {
+      kind: 'add-domain-event';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
       kind: 'remove-module';
       id: string;
     }
@@ -45,7 +51,11 @@ export type ModuxCommand =
       id: string;
     }
   | {
-      /** `type` carries the elementType (module | aggregate | entity). */
+      kind: 'remove-domain-event';
+      id: string;
+    }
+  | {
+      /** `type` carries the elementType (module | aggregate | entity | domain-event). */
       kind: 'rename-element';
       type: string;
       id: string;

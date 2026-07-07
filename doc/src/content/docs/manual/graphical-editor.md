@@ -36,14 +36,17 @@ person / gear (human / automated steps), double circle (events), return arrow
 - **Blue handles** on a selected context: drag onto another context to create a
   relation of the type picked in the toolbar.
 - **Supr/Backspace** deletes the selection — relations, empty contexts, empty
-  aggregates, flows, processes and steps. Integrity guards reject deleting a module
-  with aggregates or an aggregate with entities (server-checked too, shown as a toast).
-- **F2** renames inline (modules, aggregates, entities, process steps).
+  aggregates, domain events, flows, processes and steps. Integrity guards reject
+  deleting a module with aggregates or an aggregate with entities (server-checked
+  too, shown as a toast).
+- **F2** renames inline (modules, aggregates, entities, domain events, process steps).
 - **Toolbar creation** per view: contexts (with subdomain), aggregates (with owner
   module, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert steps
   (AUTOMATED or HUMAN with role and deadline) and edit the selected step's role,
-  deadline and compensation.
+  deadline and compensation. At the context map's detail level the toolbar can also
+  create **domain events** inside a bounded context (owner defaults to the selected
+  context); they render as children with the ArchiMate event glyph.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
   history, with composite entries where one gesture caused both.
 

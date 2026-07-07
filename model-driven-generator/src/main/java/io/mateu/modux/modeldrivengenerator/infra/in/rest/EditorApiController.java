@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEdgeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
@@ -61,7 +62,8 @@ public class EditorApiController {
     // ---- projection -------------------------------------------------------
 
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
-                            List<UseCaseDto> useCases) {}
+                            List<UseCaseDto> useCases, List<DomainEventDto> domainEvents) {}
+    public record DomainEventDto(String id, String name) {}
     public record ExternalSystemDto(String id, String name) {}
     public record RelationDto(String sourceId, String targetId, String type) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
@@ -164,6 +166,8 @@ public class EditorApiController {
         var services = repository.findAllOfType(ServiceEntity.class);
         var useCasesById = repository.findAllOfType(UseCaseEntity.class).stream()
                 .collect(Collectors.toMap(UseCaseEntity::id, uc -> uc, (a, b) -> a));
+        var domainEventsById = repository.findAllOfType(DomainEventEntity.class).stream()
+                .collect(Collectors.toMap(DomainEventEntity::id, ev -> ev, (a, b) -> a));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -178,6 +182,11 @@ public class EditorApiController {
                                 .map(useCasesById::get)
                                 .filter(Objects::nonNull)
                                 .map(uc -> new UseCaseDto(uc.id(), uc.name()))
+                                .toList(),
+                        (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
+                                .map(domainEventsById::get)
+                                .filter(Objects::nonNull)
+                                .map(ev -> new DomainEventDto(ev.id(), ev.name()))
                                 .toList()))
                 .toList();
 
@@ -291,8 +300,10 @@ public class EditorApiController {
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
             case "add-aggregate" -> addAggregate(command);
+            case "add-domain-event" -> addDomainEvent(command);
             case "remove-module" -> removeModule(command);
             case "remove-aggregate" -> removeAggregate(command);
+            case "remove-domain-event" -> removeDomainEvent(command);
             case "rename-element" -> renameElement(command);
             case "add-flow" -> addFlow(command);
             case "remove-flow" -> removeFlow(command);
@@ -487,6 +498,13 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "domain-event" -> repository.findById(command.id(), DomainEventEntity.class)
+                    .ifPresent(ev -> repository.save(new DomainEventEntity(
+                            ev.id(), command.name(), ev.modelId(), ev.publishAsIntegrationEvent(),
+                            ev.integrationModelId(), ev.topicName(), ev.partitions(), ev.retentionMs(),
+                            ev.serializationFormat(), ev.compressionType(), ev.deadLetterQueueEnabled(),
+                            ev.deadLetterQueueName(), ev.maxDeliveryAttempts(), ev.schemaVersion(),
+                            ev.routingKeyField(), ev.replayable())));
             case "process-step" -> repository.findAllOfType(ProcessEntity.class).stream()
                     .filter(p -> p.steps().stream().anyMatch(s -> s.id().equals(command.id())))
                     .findFirst()
@@ -532,6 +550,31 @@ public class EditorApiController {
         var aggregateIds = new ArrayList<>(module.aggregateIds() == null ? List.of() : module.aggregateIds());
         aggregateIds.add(command.id());
         repository.save(withAggregateIds(module, aggregateIds));
+    }
+
+    private void addDomainEvent(EditorCommand command) {
+        if (repository.findById(command.id(), DomainEventEntity.class).isPresent()) return;
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new DomainEventEntity(
+                command.id(), command.name(), null,
+                false, null, null, null, null, null, null,
+                false, null, null, null, null, false));
+        // The event belongs to the bounded context through the module's id list.
+        var domainEventIds = new ArrayList<>(
+                module.domainEventIds() == null ? List.of() : module.domainEventIds());
+        domainEventIds.add(command.id());
+        repository.save(module.toBuilder().domainEventIds(domainEventIds).build());
+    }
+
+    private void removeDomainEvent(EditorCommand command) {
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.domainEventIds() != null && m.domainEventIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .domainEventIds(m.domainEventIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), DomainEventEntity.class);
     }
 
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */

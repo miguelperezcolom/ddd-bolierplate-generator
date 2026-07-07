@@ -85,12 +85,19 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
 interface ChildDesc {
   id: string;
   name: string;
-  kind: 'aggregate' | 'use-case';
+  kind: 'aggregate' | 'use-case' | 'domain-event';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
+  'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
+};
+
+const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
+  aggregate: 'Agregado',
+  'use-case': 'Caso de uso',
+  'domain-event': 'Evento de dominio',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -130,6 +137,9 @@ function detailedContext(
   const children: ChildDesc[] = [
     ...aggregates.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
     ...(module.useCases ?? []).map((u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case' })),
+    ...(module.domainEvents ?? []).map(
+      (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'domain-event' }),
+    ),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.
@@ -169,7 +179,7 @@ function detailedContext(
       fill: style.fill,
       stroke: style.stroke,
       parentId: module.id,
-      tooltip: c.kind === 'aggregate' ? `Agregado ${c.name}` : `Caso de uso ${c.name}`,
+      tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
     };
   });
   return [container, ...childNodes];
