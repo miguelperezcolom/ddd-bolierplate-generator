@@ -247,6 +247,25 @@ export function contextMapScene(
     if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
     return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
+  // Business actors live outside every bounded context.
+  const totalTop = allNodes.length + (model.actors ?? []).length;
+  (model.actors ?? []).forEach((a, i) => {
+    const pos = layout[a.id] ?? defaultPosition(allNodes.length + i, totalTop);
+    nodes.push({
+      id: a.id,
+      label: a.name,
+      x: pos.x,
+      y: pos.y,
+      w: 132,
+      h: 48,
+      kind: 'actor',
+      symbol: 'person',
+      fill: '#ffffff',
+      stroke: '#64748b',
+      badge: 'ACTOR',
+      tooltip: `${a.name} (actor)`,
+    });
+  });
   // Children must paint over every container, not just their own.
   nodes.sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 

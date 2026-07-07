@@ -17,6 +17,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
@@ -92,6 +94,8 @@ public class EditorApiController {
                              String ownerModuleId, String onCompletionEventName, String sla,
                              List<ProcessStepDto> steps) {}
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
+    /** A business actor (RoleEntity) shown on the context map. */
+    public record ActorDto(String id, String name) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -103,7 +107,8 @@ public class EditorApiController {
             List<AggregateReferenceDto> aggregateReferences,
             List<ProcessDto> processes,
             List<ViewDto> views,
-            List<EmissionDto> emissions) {}
+            List<EmissionDto> emissions,
+            List<ActorDto> actors) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -335,9 +340,13 @@ public class EditorApiController {
             }
         }
 
+        var actors = repository.findAllOfType(RoleEntity.class).stream()
+                .map(r -> new ActorDto(r.id(), r.name()))
+                .toList();
+
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
-                views, emissions.stream().distinct().toList());
+                views, emissions.stream().distinct().toList(), actors);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -361,6 +370,10 @@ public class EditorApiController {
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
+            case "add-external-system" -> addExternalSystem(command);
+            case "remove-external-system" -> removeExternalSystem(command);
+            case "add-actor" -> addActor(command);
+            case "remove-actor" -> removeActor(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
@@ -561,6 +574,19 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "actor" -> repository.findById(command.id(), RoleEntity.class)
+                    .ifPresent(r -> repository.save(new RoleEntity(
+                            r.id(), command.name(), r.allowedUseCaseIds())));
+            case "external-system" -> {
+                var project = owningProject();
+                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        .map(x -> x.id().equals(command.id())
+                                ? new ExternalSystemEntity(x.id(), command.name(), x.description(),
+                                        x.protocol(), x.direction(), x.gatewayId(), x.owner(),
+                                        x.decisionIds())
+                                : x)
+                        .toList()));
+            }
             case "application-event" -> repository.findById(command.id(), ApplicationEventEntity.class)
                     .ifPresent(ev -> repository.save(new ApplicationEventEntity(
                             ev.id(), command.name(), ev.modelId())));
@@ -912,6 +938,62 @@ public class EditorApiController {
                         : r)
                 .toList();
         repository.save(withContextMap(project, relations));
+    }
+
+    private void addExternalSystem(EditorCommand command) {
+        var project = owningProject();
+        if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
+        var externalSystems = new ArrayList<>(project.externalSystems());
+        externalSystems.add(new ExternalSystemEntity(
+                command.id(), command.name(), null, null, null, null, null, List.of()));
+        repository.save(withExternalSystems(project, externalSystems));
+    }
+
+    private void removeExternalSystem(EditorCommand command) {
+        var notifiedByFlow = repository.findAllOfType(FlowEntity.class).stream()
+                .anyMatch(f -> command.id().equals(f.targetModuleId()));
+        if (notifiedByFlow) {
+            throw new IllegalArgumentException(
+                    "El sistema externo " + command.id() + " es destino de flows; bórralos primero");
+        }
+        var project = owningProject();
+        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                .filter(x -> !x.id().equals(command.id())).toList()));
+    }
+
+    private void addActor(EditorCommand command) {
+        if (repository.findById(command.id(), RoleEntity.class).isPresent()) return;
+        repository.save(new RoleEntity(command.id(), command.name(), List.of()));
+    }
+
+    private void removeActor(EditorCommand command) {
+        var usedInProcesses = repository.findAllOfType(ProcessEntity.class).stream()
+                .flatMap(pr -> pr.steps().stream())
+                .anyMatch(st -> command.id().equals(st.roleId()) || command.id().equals(st.escalationRoleId()));
+        if (usedInProcesses) {
+            throw new IllegalArgumentException(
+                    "El actor " + command.id() + " participa en procesos; desasígnalo primero");
+        }
+        var allowedInUseCases = repository.findAllOfType(UseCaseEntity.class).stream()
+                .anyMatch(uc -> uc.allowedRoles() != null && uc.allowedRoles().contains(command.id()));
+        if (allowedInUseCases) {
+            throw new IllegalArgumentException(
+                    "El actor " + command.id() + " está permitido en casos de uso; desasígnalo primero");
+        }
+        repository.deleteAllById(List.of(command.id()), RoleEntity.class);
+    }
+
+    /** Record copy with only externalSystems replaced — every other field preserved verbatim. */
+    private static ProjectEntity withExternalSystems(
+            ProjectEntity p, List<ExternalSystemEntity> externalSystems) {
+        return new ProjectEntity(
+                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
+                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
+                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
+                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
+                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
+                p.environments(), p.serviceIds(), p.contextMap(), p.tenancyStrategy(),
+                externalSystems, p.objective());
     }
 
     private ProjectEntity owningProject() {

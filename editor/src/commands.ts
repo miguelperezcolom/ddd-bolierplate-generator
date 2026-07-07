@@ -55,6 +55,26 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** A system outside the bounded contexts (channel manager, ERP…). */
+      kind: 'add-external-system';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-external-system';
+      id: string;
+    }
+  | {
+      /** A business actor (role). */
+      kind: 'add-actor';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-actor';
+      id: string;
+    }
+  | {
       /** An application event: a fact published by a use case. */
       kind: 'add-application-event';
       id: string;

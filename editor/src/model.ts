@@ -68,6 +68,11 @@ export interface ModuleRef {
   applicationEvents?: ApplicationEventRef[];
 }
 
+export interface ActorRef {
+  id: string;
+  name: string;
+}
+
 export interface ExternalSystemRef {
   id: string;
   name: string;
@@ -151,4 +156,6 @@ export interface ModuxModel {
   processes?: ProcessRef[];
   views?: ViewRef[];
   emissions?: EmissionRef[];
+  /** Business actors (roles) shown on the context map. */
+  actors?: ActorRef[];
 }

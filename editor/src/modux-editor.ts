@@ -142,6 +142,8 @@ export class ModuxEditor extends LitElement {
   /** What the context-map toolbar creates at detail level: a context, or a child element. */
   @state() private _newContextMapKind:
     | 'module'
+    | 'external-system'
+    | 'actor'
     | 'domain-event'
     | 'application-event'
     | 'read-model'
@@ -340,6 +342,14 @@ export class ModuxEditor extends LitElement {
   /** Detail level changes persist with the layout, so they survive reloads. */
   private setDetail(detail: 'contexts' | 'detail'): void {
     this._detail = detail;
+    if (
+      detail !== 'detail' &&
+      this._newContextMapKind !== 'module' &&
+      this._newContextMapKind !== 'external-system' &&
+      this._newContextMapKind !== 'actor'
+    ) {
+      this._newContextMapKind = 'module';
+    }
     this.writeViewLayout('context-map', { ...this.viewLayout('context-map'), detail });
   }
 
@@ -468,6 +478,18 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-emission':
         return [{ kind: 'add-emission', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-system':
+        return [{ kind: 'remove-external-system', id: c.id }];
+      case 'remove-external-system': {
+        const x = this.model.externalSystems.find((e) => e.id === c.id);
+        return x ? [{ kind: 'add-external-system', id: x.id, name: x.name }] : null;
+      }
+      case 'add-actor':
+        return [{ kind: 'remove-actor', id: c.id }];
+      case 'remove-actor': {
+        const a = (this.model.actors ?? []).find((x) => x.id === c.id);
+        return a ? [{ kind: 'add-actor', id: a.id, name: a.name }] : null;
+      }
       case 'add-application-event':
         return [{ kind: 'remove-application-event', id: c.id }];
       case 'remove-application-event': {
@@ -520,7 +542,11 @@ export class ModuxEditor extends LitElement {
                     ? this.model.modules.flatMap((m) => m.domainServices ?? [])
                     : c.type === 'application-event'
                       ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
-                      : this.model.entities ?? [];
+                      : c.type === 'external-system'
+                        ? this.model.externalSystems
+                        : c.type === 'actor'
+                          ? this.model.actors ?? []
+                          : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -827,6 +853,8 @@ export class ModuxEditor extends LitElement {
     }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
     if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
+    const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
+    if (actorIds.has(sourceId) || actorIds.has(targetId)) return;
     const exists = this.model.relations.some(
       (r) =>
         (r.sourceId === sourceId && r.targetId === targetId) ||
@@ -906,6 +934,16 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-application-event', id });
       return;
     }
+    if (elementType === 'node' && kind === 'external-system') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-system', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'actor') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-actor', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-flow', id: id.replace(/^flow:/, '') });
@@ -938,7 +976,9 @@ export class ModuxEditor extends LitElement {
       kind === 'domain-event' ||
       kind === 'read-model' ||
       kind === 'domain-service' ||
-      kind === 'application-event'
+      kind === 'application-event' ||
+      kind === 'external-system' ||
+      kind === 'actor'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1109,7 +1149,11 @@ export class ModuxEditor extends LitElement {
     const name = this._newName.trim();
     if (!name) return;
     if (this._view === 'context-map') {
-      if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
+      if (this._newContextMapKind === 'external-system') {
+        this.command({ kind: 'add-external-system', id: `ext-${slug(name)}`, name });
+      } else if (this._newContextMapKind === 'actor') {
+        this.command({ kind: 'add-actor', id: slug(name), name });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
         // A selected context is the natural owner; the dropdown can override it.
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
@@ -1276,15 +1320,19 @@ export class ModuxEditor extends LitElement {
           class="new-name"
           placeholder=${{
             'context-map':
-              this._detail !== 'detail' || this._newContextMapKind === 'module'
-                ? 'Nuevo contexto…'
-                : this._newContextMapKind === 'domain-event'
+              this._newContextMapKind === 'external-system'
+                ? 'Nuevo sistema externo…'
+                : this._newContextMapKind === 'actor'
+                  ? 'Nuevo actor…'
+                  : this._detail !== 'detail' || this._newContextMapKind === 'module'
+                    ? 'Nuevo contexto…'
+                    : this._newContextMapKind === 'domain-event'
                   ? 'Nuevo evento de dominio…'
-                  : this._newContextMapKind === 'application-event'
-                    ? 'Nuevo evento de aplicación…'
-                    : this._newContextMapKind === 'domain-service'
-                      ? 'Nuevo servicio de dominio…'
-                      : 'Nuevo read model…',
+                      : this._newContextMapKind === 'application-event'
+                        ? 'Nuevo evento de aplicación…'
+                        : this._newContextMapKind === 'domain-service'
+                          ? 'Nuevo servicio de dominio…'
+                          : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -1293,35 +1341,53 @@ export class ModuxEditor extends LitElement {
           @input=${(e: Event) => (this._newName = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createElementFromToolbar()}
         />
-        ${this._view === 'context-map' && this._detail === 'detail'
+        ${this._view === 'context-map'
           ? html`<select
-              title="Qué crear: un contexto, o un evento de dominio dentro de uno"
+              title="Qué crear en el lienzo"
               @change=${(e: Event) =>
-                (this._newContextMapKind = (e.target as HTMLSelectElement).value as
-                  | 'module'
-                  | 'domain-event')}
+                (this._newContextMapKind = (e.target as HTMLSelectElement)
+                  .value as typeof this._newContextMapKind)}
             >
               <option value="module" ?selected=${this._newContextMapKind === 'module'}>
                 Contexto
               </option>
-              <option value="domain-event" ?selected=${this._newContextMapKind === 'domain-event'}>
-                Evento de dominio
-              </option>
               <option
-                value="application-event"
-                ?selected=${this._newContextMapKind === 'application-event'}
+                value="external-system"
+                ?selected=${this._newContextMapKind === 'external-system'}
               >
-                Evento de aplicación
+                Sistema externo
               </option>
-              <option value="read-model" ?selected=${this._newContextMapKind === 'read-model'}>
-                Read model
+              <option value="actor" ?selected=${this._newContextMapKind === 'actor'}>
+                Actor
               </option>
-              <option
-                value="domain-service"
-                ?selected=${this._newContextMapKind === 'domain-service'}
-              >
-                Servicio de dominio
-              </option>
+              ${this._detail === 'detail'
+                ? html`
+                    <option
+                      value="domain-event"
+                      ?selected=${this._newContextMapKind === 'domain-event'}
+                    >
+                      Evento de dominio
+                    </option>
+                    <option
+                      value="application-event"
+                      ?selected=${this._newContextMapKind === 'application-event'}
+                    >
+                      Evento de aplicación
+                    </option>
+                    <option
+                      value="read-model"
+                      ?selected=${this._newContextMapKind === 'read-model'}
+                    >
+                      Read model
+                    </option>
+                    <option
+                      value="domain-service"
+                      ?selected=${this._newContextMapKind === 'domain-service'}
+                    >
+                      Servicio de dominio
+                    </option>
+                  `
+                : ''}
             </select>`
           : ''}
         ${this._view === 'context-map' &&
@@ -1342,8 +1408,7 @@ export class ModuxEditor extends LitElement {
               )}
             </select>`
           : ''}
-        ${this._view === 'context-map' &&
-        (this._detail !== 'detail' || this._newContextMapKind === 'module')
+        ${this._view === 'context-map' && this._newContextMapKind === 'module'
           ? html`<select
               title="Subdominio del nuevo contexto"
               @change=${(e: Event) =>
