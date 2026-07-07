@@ -23,6 +23,8 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _toast: { message: string; kind: 'error' | 'info' } | null = null;
 
   private _layoutTimer: number | undefined;
+  /** A layout edit is waiting for the debounced PUT. */
+  private _layoutDirty = false;
   private _toastTimer: number | undefined;
   private _pollTimer: number | undefined;
   private _lastVersion: string | null = null;
@@ -88,6 +90,7 @@ export class ModuxEditorConnected extends LitElement {
     super.connectedCallback();
     this.addEventListener('pointerdown', this._onPointerDown, true);
     window.addEventListener('pointerup', this._onPointerUp, true);
+    window.addEventListener('pagehide', this._onPageHide);
     void this.reload();
     this.startLiveUpdates();
   }
@@ -98,8 +101,21 @@ export class ModuxEditorConnected extends LitElement {
     this._sse?.close();
     this.removeEventListener('pointerdown', this._onPointerDown, true);
     window.removeEventListener('pointerup', this._onPointerUp, true);
+    window.removeEventListener('pagehide', this._onPageHide);
+    this._onPageHide(); // navigating away inside the SPA also flushes
     super.disconnectedCallback();
   }
+
+  /** Closing/leaving inside the debounce window must not lose the last layout edit. */
+  private _onPageHide = (): void => {
+    if (!this._layoutDirty) return;
+    this._layoutDirty = false;
+    // sendBeacon survives unload where a plain fetch may be dropped (POST-only).
+    navigator.sendBeacon(
+      `${this.base}/layout`,
+      new Blob([JSON.stringify(this._layout)], { type: 'application/json' }),
+    );
+  };
 
   /**
    * Live refresh: the server pushes the store fingerprint over SSE; when it
@@ -221,8 +237,10 @@ export class ModuxEditorConnected extends LitElement {
 
   private onLayoutChanged(e: CustomEvent): void {
     this._layout = e.detail.layout;
+    this._layoutDirty = true;
     window.clearTimeout(this._layoutTimer);
     this._layoutTimer = window.setTimeout(() => {
+      this._layoutDirty = false;
       void fetch(`${this.base}/layout`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

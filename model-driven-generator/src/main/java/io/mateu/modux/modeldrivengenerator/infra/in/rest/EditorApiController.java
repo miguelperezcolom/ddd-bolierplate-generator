@@ -650,7 +650,11 @@ public class EditorApiController {
         return mapper.writeValueAsString(root);
     }
 
-    @PutMapping(value = "/layout", consumes = MediaType.APPLICATION_JSON_VALUE)
+    /** POST is accepted too: the editor flushes pending edits on page-hide via sendBeacon. */
+    @RequestMapping(value = "/layout",
+            method = {org.springframework.web.bind.annotation.RequestMethod.PUT,
+                      org.springframework.web.bind.annotation.RequestMethod.POST},
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     public void saveLayout(@RequestBody String layout) throws IOException {
         var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(layout);
         var kept = new ArrayList<String>();
