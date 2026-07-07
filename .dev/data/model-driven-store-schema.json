@@ -2917,6 +2917,35 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "SolutionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "decisionIds" : {
+          "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "status" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "SubdomainType" : {
       "type" : "string",
       "enum" : [ "CORE", "SUPPORTING", "GENERIC" ]
@@ -3724,6 +3753,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ServiceEntity"
+      }
+    },
+    "solutions" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/SolutionEntity"
       }
     },
     "subscriptions" : {

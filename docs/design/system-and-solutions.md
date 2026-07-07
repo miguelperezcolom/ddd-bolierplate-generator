@@ -108,12 +108,11 @@ to-be) sin que el diseño cambie.
    por elemento; estados de la solución.
 4. **F4 — Transición**: merge → migraciones/upcasters/rebuild (model-evolution F2).
 
-## 6. Preguntas abiertas
+## 6. Preguntas abiertas — RESUELTAS (Miguel, 2026-07-08)
 
-- ¿El store de un proyecto real vive en su propio repo o junto al código? (afecta a
-  permisos y a dónde nacen las ramas; propuesta: configurable, default repo propio).
-- ¿Hace falta comparar DOS soluciones entre sí, o siempre contra el sistema?
-  (worktrees lo permiten; pospuesto salvo necesidad real).
-- ¿Rebase de soluciones vivas cuando main avanza? (git lo da; la UX de conflictos por
-  elemento es la misma pieza que el merge).
-- ¿Se archivan las soluciones mergeadas/descartadas (tags) o se borran las ramas?
+- El store vive **en su propio repo** (modux lo inicializa si no existe).
+- Las soluciones se comparan **siempre contra el sistema** (nunca entre sí).
+- Cuando main avanza, las soluciones vivas se **rebasan** (la UX de conflictos por
+  elemento del merge sirve igual para el rebase).
+- Soluciones mergeadas/descartadas: **tag de archivo (`archive/solution-x`) + borrar
+  la rama** — historia accesible, lista de ramas limpia.

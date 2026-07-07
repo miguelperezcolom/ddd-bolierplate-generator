@@ -1,0 +1,140 @@
+package io.mateu.modux.modeldrivengenerator.infra.out.git;
+
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SolutionEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * The system/solutions machinery (docs/design/system-and-solutions.md): the store lives in
+ * its OWN git repo — main is the system (as-is), each {@code solution/*} branch a to-be.
+ * This service shells out to git in the store directory; the semantic layer (registering
+ * the {@link SolutionEntity}, reloading the in-memory catalog after a checkout) stays here
+ * so the REST controller reads as intent.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class SolutionGitService {
+
+    public static final String SYSTEM_BRANCH = "main";
+    public static final String SOLUTION_PREFIX = "solution/";
+
+    final CommonFileRepository repository;
+
+    /** The repo root: the store's directory (granular) or its parent (monolithic file). */
+    public Path repoDir() {
+        var store = repository.storePath();
+        return Files.isDirectory(store) ? store : store.getParent();
+    }
+
+    public boolean isRepo() {
+        return Files.isDirectory(repoDir().resolve(".git"));
+    }
+
+    /** Initialises the repo lazily: the current store becomes the system's baseline. */
+    public void ensureRepo() {
+        if (isRepo()) return;
+        git("init");
+        git("checkout", "-B", SYSTEM_BRANCH);
+        commitAll("sistema: línea base");
+        log.info("store git repo initialised at {}", repoDir());
+    }
+
+    public String currentBranch() {
+        return isRepo() ? git("rev-parse", "--abbrev-ref", "HEAD").trim() : SYSTEM_BRANCH;
+    }
+
+    public List<String> solutionBranches() {
+        if (!isRepo()) return List.of();
+        return git("branch", "--list", SOLUTION_PREFIX + "*", "--format=%(refname:short)")
+                .lines().map(String::trim).filter(s -> !s.isBlank()).toList();
+    }
+
+    /** Branches from the system, registers the self-describing SolutionEntity, commits. */
+    public String createSolution(String name) {
+        ensureRepo();
+        var slug = slug(name);
+        var branch = SOLUTION_PREFIX + slug;
+        if (solutionBranches().contains(branch)) {
+            throw new IllegalArgumentException("Ya existe la solución " + name);
+        }
+        commitAll("wip: " + currentBranch());
+        git("checkout", SYSTEM_BRANCH);
+        git("checkout", "-b", branch);
+        repository.loadFrom(repository.storePath().toString());
+        repository.save(new SolutionEntity("sol-" + slug, name, null, "EXPLORING", List.of()));
+        commitAll("solución " + name + ": creación");
+        return branch;
+    }
+
+    /** Checks out the branch and reloads the in-memory catalog from disk. */
+    public void switchTo(String branch) {
+        ensureRepo();
+        if (!SYSTEM_BRANCH.equals(branch) && !solutionBranches().contains(branch)) {
+            throw new IllegalArgumentException("Rama desconocida: " + branch);
+        }
+        commitAll("wip: " + currentBranch());
+        git("checkout", branch);
+        repository.loadFrom(repository.storePath().toString());
+    }
+
+    /** Abandona la solución: tag de archivo + borrado de la rama (historia accesible). */
+    public void discard(String branch) {
+        if (!branch.startsWith(SOLUTION_PREFIX)) {
+            throw new IllegalArgumentException("Solo se descartan ramas solution/*: " + branch);
+        }
+        if (branch.equals(currentBranch())) switchTo(SYSTEM_BRANCH);
+        git("tag", "-f", "archive/" + branch.replace('/', '-'), branch);
+        git("branch", "-D", branch);
+    }
+
+    private void commitAll(String message) {
+        if (git("status", "--porcelain").isBlank()) return;
+        git("add", "-A");
+        git("-c", "user.name=modux", "-c", "user.email=modux@modux.local",
+                "commit", "-m", message);
+    }
+
+    private static String slug(String name) {
+        var slug = name.toLowerCase()
+                .replaceAll("[áàä]", "a").replaceAll("[éèë]", "e").replaceAll("[íìï]", "i")
+                .replaceAll("[óòö]", "o").replaceAll("[úùü]", "u").replace("ñ", "n")
+                .replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+        if (slug.isBlank()) throw new IllegalArgumentException("Nombre de solución inválido");
+        return slug;
+    }
+
+    @SneakyThrows
+    private String git(String... args) {
+        var command = new java.util.ArrayList<String>();
+        command.add("git");
+        command.addAll(List.of(args));
+        var process = new ProcessBuilder(command)
+                .directory(repoDir().toFile())
+                .redirectErrorStream(true)
+                .start();
+        String output;
+        try (var in = process.getInputStream()) {
+            output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        if (!process.waitFor(30, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            throw new IOException("git " + String.join(" ", args) + " no terminó");
+        }
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException(
+                    "git " + String.join(" ", args) + " falló: " + output.trim());
+        }
+        return output;
+    }
+}

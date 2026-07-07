@@ -21,6 +21,14 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _error: string | null = null;
   @state() private _saving = false;
   @state() private _toast: { message: string; kind: 'error' | 'info' } | null = null;
+  /** System/solutions workspace: which branch of the store is checked out. */
+  @state() private _workspace: {
+    current: string;
+    system: boolean;
+    solutions: { branch: string; name: string; status?: string }[];
+  } | null = null;
+  @state() private _creatingSolution = false;
+  @state() private _newSolutionName = '';
 
   private _layoutTimer: number | undefined;
   /** A layout edit is waiting for the debounced PUT. */
@@ -44,14 +52,65 @@ export class ModuxEditorConnected extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       width: 100%;
       height: 100%;
       min-height: 480px;
     }
     modux-editor {
       width: 100%;
-      height: 100%;
+      flex: 1;
+      min-height: 0;
+    }
+    .workspace {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      color: #334155;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+    }
+    .workspace label {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .workspace select,
+    .workspace input {
+      font-size: 13px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+    }
+    .workspace button {
+      border: none;
+      background: transparent;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #334155;
+    }
+    .workspace button:hover {
+      background: #e2e8f0;
+    }
+    .workspace .badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .workspace .badge.solution {
+      background: #fef3c7;
+      color: #b45309;
     }
     .status {
       font-family: ui-sans-serif, system-ui, sans-serif;
@@ -92,6 +151,7 @@ export class ModuxEditorConnected extends LitElement {
     window.addEventListener('pointerup', this._onPointerUp, true);
     window.addEventListener('pagehide', this._onPageHide);
     void this.reload();
+    void this.loadWorkspace();
     this.startLiveUpdates();
   }
 
@@ -189,6 +249,65 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
+  private async loadWorkspace(): Promise<void> {
+    try {
+      const res = await fetch(`${this.base}/solutions`);
+      if (res.ok) this._workspace = await res.json();
+    } catch {
+      /* workspace bar simply stays hidden */
+    }
+  }
+
+  /** create / switch / discard against the solutions API, then full reload. */
+  private async solutionOp(op: string, body: Record<string, string>): Promise<void> {
+    this._saving = true;
+    try {
+      const res = await fetch(`${this.base}/solutions/${op}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        let message = `El servidor rechazó la operación (${res.status})`;
+        try {
+          const parsed = await res.json();
+          if (parsed?.message) message = parsed.message;
+        } catch {
+          /* not JSON */
+        }
+        this.showToast(message);
+        return;
+      }
+      this._workspace = await res.json();
+      await this.reload();
+      // A checkout replaces the model wholesale — local undo no longer applies.
+      (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
+    } catch (err) {
+      this.showToast(String(err));
+    } finally {
+      this._saving = false;
+    }
+  }
+
+  private onWorkspaceSelect(e: Event): void {
+    const value = (e.target as HTMLSelectElement).value;
+    if (value === '__new__') {
+      this._creatingSolution = true;
+      return;
+    }
+    if (this._workspace && value !== this._workspace.current) {
+      void this.solutionOp('switch', { branch: value });
+    }
+  }
+
+  private createSolution(): void {
+    const name = this._newSolutionName.trim();
+    if (!name) return;
+    this._creatingSolution = false;
+    this._newSolutionName = '';
+    void this.solutionOp('create', { name });
+  }
+
   private showToast(message: string, kind: 'error' | 'info' = 'error'): void {
     this._toast = { message, kind };
     window.clearTimeout(this._toastTimer);
@@ -257,6 +376,50 @@ export class ModuxEditorConnected extends LitElement {
       return html`<div class="status">Cargando el modelo…</div>`;
     }
     return html`
+      ${this._workspace
+        ? html`
+            <div class="workspace">
+              <label>Modelo:</label>
+              <select @change=${this.onWorkspaceSelect} title="Sistema (as-is) o una solución (to-be)">
+                <option value="main" ?selected=${this._workspace.system}>Sistema (as-is)</option>
+                ${this._workspace.solutions.map(
+                  (s) =>
+                    html`<option value=${s.branch} ?selected=${s.branch === this._workspace!.current}>
+                      Solución: ${s.name}${s.status ? ` · ${s.status}` : ''}
+                    </option>`,
+                )}
+                <option value="__new__">＋ Nueva solución…</option>
+              </select>
+              <span class="badge ${this._workspace.system ? '' : 'solution'}">
+                ${this._workspace.system ? 'AS-IS' : 'TO-BE'}
+              </span>
+              ${this._creatingSolution
+                ? html`
+                    <input
+                      placeholder="Nombre de la solución…"
+                      .value=${this._newSolutionName}
+                      @input=${(e: Event) =>
+                        (this._newSolutionName = (e.target as HTMLInputElement).value)}
+                      @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createSolution()}
+                    />
+                    <button @click=${this.createSolution}>Crear</button>
+                    <button @click=${() => (this._creatingSolution = false)}>Cancelar</button>
+                  `
+                : ''}
+              ${!this._workspace.system && !this._creatingSolution
+                ? html`
+                    <button
+                      title="Archiva la solución (tag) y borra su rama"
+                      @click=${() =>
+                        void this.solutionOp('discard', { branch: this._workspace!.current })}
+                    >
+                      ⏏ Descartar
+                    </button>
+                  `
+                : ''}
+            </div>
+          `
+        : ''}
       <modux-editor
         .model=${this._model}
         .layout=${this._layout}
