@@ -699,12 +699,61 @@ export class ModuxEditor extends LitElement {
       if (!already) this.command({ kind: 'add-emission', sourceId, targetId });
       return;
     }
+    // Dragging an event onto another context (or one of its read models) draws a
+    // materialization: a MATERIALIZES flow — the projection/read model/subscription
+    // triple stays derived at generation time (flows are the source of truth).
+    if (eventIds.has(sourceId)) {
+      const event = this.model.modules
+        .flatMap((m) => m.domainEvents ?? [])
+        .find((ev) => ev.id === sourceId);
+      const targetReadModel = this.model.modules
+        .flatMap((m) => (m.readModels ?? []).map((rm) => ({ rm, module: m })))
+        .find(({ rm }) => rm.id === targetId);
+      const targetModule =
+        this.model.modules.find((m) => m.id === targetId) ?? targetReadModel?.module;
+      if (!event || !targetModule) return;
+      const aggregateIds = new Set((this.model.aggregates ?? []).map((a) => a.id));
+      const emitter = (this.model.emissions ?? []).find(
+        (em) => em.domainEventId === sourceId && aggregateIds.has(em.sourceId),
+      );
+      if (!emitter) {
+        this.emit('modux-notice', {
+          message: `Declara primero qué agregado emite ${event.name} (arrastra desde el agregado hasta el evento) — el flow necesita su agregado disparador`,
+          kind: 'info',
+        });
+        return;
+      }
+      const readModelName = targetReadModel?.rm.name ?? `${event.name}View`;
+      const exists = this.model.flows.some(
+        (f) =>
+          f.archetype === 'MATERIALIZES' &&
+          f.triggerEvent === event.name &&
+          f.targetId === targetModule.id &&
+          f.readModelName === readModelName,
+      );
+      if (exists) return;
+      this.command({
+        kind: 'add-flow',
+        id: `flow-${slug(event.name)}-${slug(readModelName)}`,
+        name: readModelName,
+        archetype: 'MATERIALIZES',
+        triggerAggregateId: emitter.sourceId,
+        triggerEvent: event.name,
+        targetId: targetModule.id,
+        readModelName,
+      });
+      return;
+    }
     // Any other pair touching a nested child is not a strategic relation.
+    const readModelIds = new Set(
+      this.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
+    );
     if (
       emitterIds.has(sourceId) ||
       emitterIds.has(targetId) ||
-      eventIds.has(sourceId) ||
-      eventIds.has(targetId)
+      eventIds.has(targetId) ||
+      readModelIds.has(sourceId) ||
+      readModelIds.has(targetId)
     ) {
       return;
     }

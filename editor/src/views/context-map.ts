@@ -85,19 +85,21 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
 interface ChildDesc {
   id: string;
   name: string;
-  kind: 'aggregate' | 'use-case' | 'domain-event';
+  kind: 'aggregate' | 'use-case' | 'domain-event' | 'read-model';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
+  'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   aggregate: 'Agregado',
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
+  'read-model': 'Read model',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -139,6 +141,9 @@ function detailedContext(
     ...(module.useCases ?? []).map((u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case' })),
     ...(module.domainEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'domain-event' }),
+    ),
+    ...(module.readModels ?? []).map(
+      (rm): ChildDesc => ({ id: rm.id, name: rm.name, kind: 'read-model' }),
     ),
   ];
   if (!children.length) {
@@ -248,10 +253,24 @@ export function contextMapScene(
 
   const flowEdges: SceneEdge[] = model.flows.map((f) => {
     const coherence = flowCoherence(model, f);
+    // At the detail level a flow anchors on the concrete pieces when they are
+    // visible: the trigger event in the source context and (for MATERIALIZES)
+    // the read model in the target — the drawing mirrors the intent.
+    const sourceEvent = detailed
+      ? model.modules
+          .find((m) => m.id === f.sourceId)
+          ?.domainEvents?.find((ev) => ev.name === f.triggerEvent)
+      : undefined;
+    const targetReadModel =
+      detailed && f.readModelName
+        ? model.modules
+            .find((m) => m.id === f.targetId)
+            ?.readModels?.find((rm) => rm.name === f.readModelName)
+        : undefined;
     return {
       id: `flow:${f.id}`,
-      sourceId: f.sourceId,
-      targetId: f.targetId,
+      sourceId: sourceEvent?.id ?? f.sourceId,
+      targetId: targetReadModel?.id ?? f.targetId,
       kind: 'flow',
       label: f.name,
       color: FLOW_COLOR[coherence],

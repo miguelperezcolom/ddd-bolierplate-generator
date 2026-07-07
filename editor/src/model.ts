@@ -28,6 +28,11 @@ export interface DomainEventRef {
   name: string;
 }
 
+export interface ReadModelRef {
+  id: string;
+  name: string;
+}
+
 /** Who publishes a domain event: an aggregate (operation emits) or a use case (publish step). */
 export interface EmissionRef {
   sourceId: string;
@@ -43,6 +48,8 @@ export interface ModuleRef {
   useCases?: UseCaseRef[];
   /** Domain events owned by this bounded context (populated for the detailed context map). */
   domainEvents?: DomainEventRef[];
+  /** Read models owned by this bounded context (populated for the detailed context map). */
+  readModels?: ReadModelRef[];
 }
 
 export interface ExternalSystemRef {

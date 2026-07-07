@@ -262,6 +262,8 @@ export class ModuxEditorConnected extends LitElement {
         .layout=${this._layout}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
+        @modux-notice=${(e: CustomEvent) =>
+          this.showToast(e.detail.message, e.detail.kind ?? 'info')}
         style=${this._saving ? 'opacity: 0.7' : ''}
       ></modux-editor>
       ${this._toast

@@ -53,6 +53,15 @@ person / gear (human / automated steps), double circle (events), return arrow
   from a blue handle onto a domain event (an aggregate records it in its first
   operation's `emits`, creating a stub operation if it has none; a use case gains a
   `PublishDomainEvent` step). Supr on the arrow removes the emission again.
+- **Materializations drawn on the canvas**: at the detail level read models render as
+  children too, and dragging a domain event onto another context (or one of its read
+  models) creates a **MATERIALIZES flow** — the projection/read model/subscription
+  triple stays derived at generation time, per the flows intent layer. The trigger
+  aggregate is taken from the event's emission (the editor asks you to declare it
+  first if missing), and the read model name defaults to `<Event>View` unless you
+  dropped on an existing read model. At the detail level flow arrows anchor on the
+  concrete pieces: the trigger event on the source side and the read model on the
+  target side.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
   history, with composite entries where one gesture caused both.
 

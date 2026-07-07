@@ -84,6 +84,8 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <line x1="6" y1="0.5" x2="6" y2="2.6"></line><line x1="6" y1="9.4" x2="6" y2="11.5"></line>
     <line x1="0.5" y1="6" x2="2.6" y2="6"></line><line x1="9.4" y1="6" x2="11.5" y2="6"></line>`,
   event: svg`<circle cx="6" cy="6" r="5"></circle><circle cx="6" cy="6" r="2.6"></circle>`,
+  readmodel: svg`<path d="M1.5 3 C1.5 1.2 10.5 1.2 10.5 3 V9 C10.5 10.8 1.5 10.8 1.5 9 Z"></path>
+    <path d="M1.5 3 C1.5 4.8 10.5 4.8 10.5 3"></path>`,
   usecase: svg`<ellipse cx="6" cy="6" rx="5.5" ry="3.6"></ellipse>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
@@ -838,7 +840,10 @@ export class ModuxCanvas extends LitElement {
           : ''}
         ${selected &&
         this.connectable &&
-        (!isChild || node.kind === 'aggregate' || node.kind === 'use-case')
+        (!isChild ||
+          node.kind === 'aggregate' ||
+          node.kind === 'use-case' ||
+          node.kind === 'domain-event')
           ? [
               [hw, 0],
               [-hw, 0],
@@ -849,9 +854,11 @@ export class ModuxCanvas extends LitElement {
                 <circle data-handle cx=${cx} cy=${cy} r="6" fill="#2563eb" stroke="#ffffff"
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
-                  <title>${isChild
-                    ? 'Arrastra hasta un evento de dominio para declarar que lo emite'
-                    : 'Arrastra hasta otro nodo para crear una relación'}</title>
+                  <title>${!isChild
+                    ? 'Arrastra hasta otro nodo para crear una relación'
+                    : node.kind === 'domain-event'
+                      ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
+                      : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
                 </circle>`,
             )
           : ''}

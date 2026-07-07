@@ -22,6 +22,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import lombok.RequiredArgsConstructor;
@@ -64,8 +65,10 @@ public class EditorApiController {
     // ---- projection -------------------------------------------------------
 
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
-                            List<UseCaseDto> useCases, List<DomainEventDto> domainEvents) {}
+                            List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
+                            List<ReadModelDto> readModels) {}
     public record DomainEventDto(String id, String name) {}
+    public record ReadModelDto(String id, String name) {}
     /** Who publishes a domain event: an aggregate (operation `emits`) or a use case (PublishDomainEvent step). */
     public record EmissionDto(String sourceId, String domainEventId) {}
     public record ExternalSystemDto(String id, String name) {}
@@ -173,6 +176,8 @@ public class EditorApiController {
                 .collect(Collectors.toMap(UseCaseEntity::id, uc -> uc, (a, b) -> a));
         var domainEventsById = repository.findAllOfType(DomainEventEntity.class).stream()
                 .collect(Collectors.toMap(DomainEventEntity::id, ev -> ev, (a, b) -> a));
+        var readModelsById = repository.findAllOfType(ReadModelEntity.class).stream()
+                .collect(Collectors.toMap(ReadModelEntity::id, rm -> rm, (a, b) -> a));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -192,6 +197,11 @@ public class EditorApiController {
                                 .map(domainEventsById::get)
                                 .filter(Objects::nonNull)
                                 .map(ev -> new DomainEventDto(ev.id(), ev.name()))
+                                .toList(),
+                        (m.readModelIds() == null ? List.<String>of() : m.readModelIds()).stream()
+                                .map(readModelsById::get)
+                                .filter(Objects::nonNull)
+                                .map(rm -> new ReadModelDto(rm.id(), rm.name()))
                                 .toList()))
                 .toList();
 
