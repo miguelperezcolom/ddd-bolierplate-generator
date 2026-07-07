@@ -55,6 +55,17 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** A domain service: stateless domain logic owned by a bounded context. */
+      kind: 'add-domain-service';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-domain-service';
+      id: string;
+    }
+  | {
       /** A read model born from an aggregate (it lives in the aggregate's module). */
       kind: 'add-read-model';
       id: string;
@@ -90,6 +101,8 @@ export type ModuxCommand =
       archetype: string;
       triggerAggregateId: string;
       triggerEvent: string;
+      /** Alternative trigger: the domain service emitting the trigger event. */
+      triggerDomainServiceId?: string;
       /** Target module or external system. */
       targetId: string;
       readModelName?: string;

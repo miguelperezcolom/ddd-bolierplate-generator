@@ -50,8 +50,30 @@ public record ModuleEntity(
         /** "The read side lives elsewhere": external system that serves this module's reads. */
         String readSideExternalSystemId,
         /** How the delegated read side is fed from here (e.g. "CDC", "events", "API"); prose, feeds the HLA. */
-        String readSideVia
+        String readSideVia,
+        /** Domain services owned by this bounded context (stateless domain logic; they emit domain events). */
+        List<String> domainServiceIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-domainServiceIds callers and stores). */
+    public ModuleEntity(String id, String name, String gitRepository,
+                        List<String> aggregateIds, List<String> entityIds, List<String> valueObjectIds,
+                        List<String> useCaseIds, List<String> domainEventIds, List<String> projectionIds,
+                        List<String> readModelIds, List<String> subscriptionIds, List<String> sagaIds,
+                        List<String> scheduledTriggerIds, List<BddScenarioEntity> bddScenarios,
+                        String llmSystemPrompt, String tableNamePrefix, boolean autoTableNamePrefix,
+                        String version, List<BffEntity> bffs, List<AclEntity> acls,
+                        List<DomainPolicyEntity> domainPolicies, List<InvariantEntity> invariants,
+                        SubdomainType subdomainType, List<AccessPolicyEntity> accessPolicies,
+                        List<KpiEntity> kpis, List<String> decisionIds, String description,
+                        String readSideModuleId, String readSideExternalSystemId, String readSideVia) {
+        this(id, name, gitRepository, aggregateIds, entityIds, valueObjectIds, useCaseIds,
+                domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds,
+                scheduledTriggerIds, bddScenarios, llmSystemPrompt, tableNamePrefix,
+                autoTableNamePrefix, version, bffs, acls, domainPolicies, invariants,
+                subdomainType, accessPolicies, kpis, decisionIds, description,
+                readSideModuleId, readSideExternalSystemId, readSideVia, List.of());
+    }
 
     /** Backward-compatible constructor (pre subdomain/accessPolicies/kpis callers and stores). */
     public ModuleEntity(String id, String name, String gitRepository,
@@ -111,5 +133,9 @@ public record ModuleEntity(
 
     public List<KpiEntity> kpis() {
         return kpis != null ? kpis : List.of();
+    }
+
+    public List<String> domainServiceIds() {
+        return domainServiceIds != null ? domainServiceIds : List.of();
     }
 }

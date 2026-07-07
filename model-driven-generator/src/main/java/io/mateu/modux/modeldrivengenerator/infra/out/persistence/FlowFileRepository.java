@@ -44,7 +44,8 @@ public class FlowFileRepository implements FlowRepository {
                 entity.getTargetUseCaseId(),
                 entity.getInputMappings(),
                 entity.getOverrides(),
-                existing != null ? existing.decisionIds() : List.of()));
+                existing != null ? existing.decisionIds() : List.of(),
+                existing != null ? existing.triggerDomainServiceId() : null));
         return entity;
     }
 

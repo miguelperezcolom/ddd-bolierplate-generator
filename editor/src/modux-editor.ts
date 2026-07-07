@@ -140,7 +140,8 @@ export class ModuxEditor extends LitElement {
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
   @state() private _newModuleId = '';
   /** What the context-map toolbar creates at detail level: a context, or a child element. */
-  @state() private _newContextMapKind: 'module' | 'domain-event' | 'read-model' = 'module';
+  @state() private _newContextMapKind: 'module' | 'domain-event' | 'read-model' | 'domain-service' =
+    'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
   @state() private _newArchetype = 'TRIGGERS';
@@ -463,6 +464,15 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-emission':
         return [{ kind: 'add-emission', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-domain-service':
+        return [{ kind: 'remove-domain-service', id: c.id }];
+      case 'remove-domain-service': {
+        for (const m of this.model.modules) {
+          const ds = (m.domainServices ?? []).find((x) => x.id === c.id);
+          if (ds) return [{ kind: 'add-domain-service', id: ds.id, name: ds.name, moduleId: m.id }];
+        }
+        return null;
+      }
       case 'add-read-model':
         return [{ kind: 'remove-read-model', id: c.id }];
       case 'remove-read-model': {
@@ -489,7 +499,11 @@ export class ModuxEditor extends LitElement {
               ? this.model.aggregates ?? []
               : c.type === 'domain-event'
                 ? this.model.modules.flatMap((m) => m.domainEvents ?? [])
-                : this.model.entities ?? [];
+                : c.type === 'read-model'
+                  ? this.model.modules.flatMap((m) => m.readModels ?? [])
+                  : c.type === 'domain-service'
+                    ? this.model.modules.flatMap((m) => m.domainServices ?? [])
+                    : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -701,9 +715,12 @@ export class ModuxEditor extends LitElement {
     const eventIds = new Set(
       this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
     );
-    // Only aggregates (and, later, domain services) emit domain events; use cases
-    // emit application events instead.
-    const emitterIds = new Set((this.model.aggregates ?? []).map((a) => a.id));
+    // Only aggregates and domain services emit domain events; use cases emit
+    // application events instead.
+    const emitterIds = new Set([
+      ...(this.model.aggregates ?? []).map((a) => a.id),
+      ...this.model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
+    ]);
     if (emitterIds.has(sourceId) && eventIds.has(targetId)) {
       const already = (this.model.emissions ?? []).some(
         (em) => em.sourceId === sourceId && em.domainEventId === targetId,
@@ -725,16 +742,22 @@ export class ModuxEditor extends LitElement {
         this.model.modules.find((m) => m.id === targetId) ?? targetReadModel?.module;
       if (!event || !targetModule) return;
       const aggregateIds = new Set((this.model.aggregates ?? []).map((a) => a.id));
+      const domainServiceIds = new Set(
+        this.model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
+      );
       const emitter = (this.model.emissions ?? []).find(
-        (em) => em.domainEventId === sourceId && aggregateIds.has(em.sourceId),
+        (em) =>
+          em.domainEventId === sourceId &&
+          (aggregateIds.has(em.sourceId) || domainServiceIds.has(em.sourceId)),
       );
       if (!emitter) {
         this.emit('modux-notice', {
-          message: `Declara primero qué agregado emite ${event.name} (arrastra desde el agregado hasta el evento) — el flow necesita su agregado disparador`,
+          message: `Declara primero quién emite ${event.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
           kind: 'info',
         });
         return;
       }
+      const emitterIsAggregate = aggregateIds.has(emitter.sourceId);
       const readModelName = targetReadModel?.rm.name ?? `${event.name}View`;
       const exists = this.model.flows.some(
         (f) =>
@@ -749,7 +772,8 @@ export class ModuxEditor extends LitElement {
         id: `flow-${slug(event.name)}-${slug(readModelName)}`,
         name: readModelName,
         archetype: 'MATERIALIZES',
-        triggerAggregateId: emitter.sourceId,
+        triggerAggregateId: emitterIsAggregate ? emitter.sourceId : '',
+        triggerDomainServiceId: emitterIsAggregate ? undefined : emitter.sourceId,
         triggerEvent: event.name,
         targetId: targetModule.id,
         readModelName,
@@ -836,6 +860,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-read-model', id });
       return;
     }
+    if (elementType === 'node' && kind === 'domain-service') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-domain-service', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-flow', id: id.replace(/^flow:/, '') });
@@ -866,7 +895,8 @@ export class ModuxEditor extends LitElement {
       kind === 'entity' ||
       kind === 'process-step' ||
       kind === 'domain-event' ||
-      kind === 'read-model'
+      kind === 'read-model' ||
+      kind === 'domain-service'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1043,6 +1073,11 @@ export class ModuxEditor extends LitElement {
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-domain-event', id: `ev-${slug(name)}`, name, moduleId });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-service') {
+        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
+        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
+        if (!moduleId) return;
+        this.command({ kind: 'add-domain-service', id: `ds-${slug(name)}`, name, moduleId });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'read-model') {
         // A read model is a view of an aggregate; a selected aggregate is the default.
         const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
@@ -1198,7 +1233,9 @@ export class ModuxEditor extends LitElement {
                 ? 'Nuevo contexto…'
                 : this._newContextMapKind === 'domain-event'
                   ? 'Nuevo evento de dominio…'
-                  : 'Nuevo read model…',
+                  : this._newContextMapKind === 'domain-service'
+                    ? 'Nuevo servicio de dominio…'
+                    : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -1223,6 +1260,12 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="read-model" ?selected=${this._newContextMapKind === 'read-model'}>
                 Read model
+              </option>
+              <option
+                value="domain-service"
+                ?selected=${this._newContextMapKind === 'domain-service'}
+              >
+                Servicio de dominio
               </option>
             </select>`
           : ''}
@@ -1260,13 +1303,14 @@ export class ModuxEditor extends LitElement {
         this._view === 'processes' ||
         (this._view === 'context-map' &&
           this._detail === 'detail' &&
-          this._newContextMapKind === 'domain-event')
+          (this._newContextMapKind === 'domain-event' ||
+            this._newContextMapKind === 'domain-service'))
           ? html`<select
               title=${this._view === 'aggregates'
                 ? 'Módulo del nuevo agregado'
                 : this._view === 'processes'
                   ? 'Módulo dueño del proceso'
-                  : 'Contexto dueño del nuevo evento'}
+                  : 'Contexto dueño del nuevo elemento'}
               @change=${(e: Event) => (this._newModuleId = (e.target as HTMLSelectElement).value)}
             >
               ${this.model.modules.map(

@@ -30,7 +30,13 @@ public class FlowExpansionContextResolver {
     final CommonFileRepository repository;
 
     public FlowExpansionContext resolve(Flow flow) {
-        return resolve(flow,
+        // The domain Flow does not (yet) model the alternative domain-service trigger;
+        // read it from the stored entity.
+        var triggerDomainServiceId = repository
+                .findById(flow.getId().id(), io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity.class)
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity::triggerDomainServiceId)
+                .orElse(null);
+        return resolve(flow, triggerDomainServiceId,
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(ModuleEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
@@ -39,8 +45,20 @@ public class FlowExpansionContextResolver {
                 repository.findAllOfType(UseCaseEntity.class));
     }
 
+    /** Pre-domain-service-trigger overload, kept for existing tests. */
+    static FlowExpansionContext resolve(Flow flow,
+                                        List<AggregateEntity> aggregates,
+                                        List<ModuleEntity> modules,
+                                        List<ServiceEntity> services,
+                                        List<ProjectEntity> projects,
+                                        List<ModelEntity> models,
+                                        List<UseCaseEntity> useCases) {
+        return resolve(flow, null, aggregates, modules, services, projects, models, useCases);
+    }
+
     /** Pure resolution over the given model slices — unit-testable without Spring or files. */
     static FlowExpansionContext resolve(Flow flow,
+                                        String triggerDomainServiceId,
                                         List<AggregateEntity> aggregates,
                                         List<ModuleEntity> modules,
                                         List<ServiceEntity> services,
@@ -54,7 +72,11 @@ public class FlowExpansionContextResolver {
 
         var sourceModule = modules.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
-                .findFirst().orElse(null);
+                .findFirst()
+                // Alternative trigger: the module owning the emitting domain service.
+                .orElseGet(() -> triggerDomainServiceId == null ? null : modules.stream()
+                        .filter(m -> m.domainServiceIds().contains(triggerDomainServiceId))
+                        .findFirst().orElse(null));
 
         var sourceService = sourceModule == null ? null : services.stream()
                 .filter(s -> s.moduleIds().contains(sourceModule.id()))

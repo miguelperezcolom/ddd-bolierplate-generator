@@ -85,7 +85,7 @@ function defaultPosition(index: number, total: number): { x: number; y: number }
 interface ChildDesc {
   id: string;
   name: string;
-  kind: 'aggregate' | 'use-case' | 'domain-event' | 'read-model';
+  kind: 'aggregate' | 'use-case' | 'domain-event' | 'read-model' | 'domain-service';
 }
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
@@ -93,6 +93,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
+  'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -100,6 +101,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'read-model': 'Read model',
+  'domain-service': 'Servicio de dominio',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -144,6 +146,9 @@ function detailedContext(
     ),
     ...(module.readModels ?? []).map(
       (rm): ChildDesc => ({ id: rm.id, name: rm.name, kind: 'read-model' }),
+    ),
+    ...(module.domainServices ?? []).map(
+      (ds): ChildDesc => ({ id: ds.id, name: ds.name, kind: 'domain-service' }),
     ),
   ];
   if (!children.length) {

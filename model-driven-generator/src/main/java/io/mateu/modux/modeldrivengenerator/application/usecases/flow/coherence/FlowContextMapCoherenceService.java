@@ -57,7 +57,10 @@ public class FlowContextMapCoherenceService {
                                                     List<ModuleEntity> modules,
                                                     List<ContextMapRelationEntity> relations) {
         var archetype = flow.archetype();
-        var sourceModuleId = ownerModuleId(flow.triggerAggregateId(), modules);
+        var aggregateOwner = ownerModuleId(flow.triggerAggregateId(), modules);
+        var sourceModuleId = aggregateOwner != null
+                ? aggregateOwner
+                : domainServiceOwnerModuleId(flow.triggerDomainServiceId(), modules);
         var targetModuleId = flow.targetModuleId();
 
         // NOTIFIES targets an external system — it is not an edge of the bounded-context map.
@@ -105,6 +108,15 @@ public class FlowContextMapCoherenceService {
         if (aggregateId == null) return null;
         return modules.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
+                .map(ModuleEntity::id)
+                .findFirst().orElse(null);
+    }
+
+    /** Alternative trigger: the module owning the emitting domain service. */
+    private static String domainServiceOwnerModuleId(String domainServiceId, List<ModuleEntity> modules) {
+        if (domainServiceId == null) return null;
+        return modules.stream()
+                .filter(m -> m.domainServiceIds().contains(domainServiceId))
                 .map(ModuleEntity::id)
                 .findFirst().orElse(null);
     }

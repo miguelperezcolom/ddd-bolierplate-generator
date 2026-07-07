@@ -10,6 +10,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEdgeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
@@ -67,7 +68,8 @@ public class EditorApiController {
 
     public record ModuleDto(String id, String name, String subdomainType, String serviceId,
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
-                            List<ReadModelDto> readModels) {}
+                            List<ReadModelDto> readModels, List<DomainServiceDto> domainServices) {}
+    public record DomainServiceDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
     public record ReadModelDto(String id, String name, String aggregateId) {}
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
@@ -179,6 +181,8 @@ public class EditorApiController {
                 .collect(Collectors.toMap(DomainEventEntity::id, ev -> ev, (a, b) -> a));
         var readModelsById = repository.findAllOfType(ReadModelEntity.class).stream()
                 .collect(Collectors.toMap(ReadModelEntity::id, rm -> rm, (a, b) -> a));
+        var domainServicesById = repository.findAllOfType(DomainServiceEntity.class).stream()
+                .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
                 .map(m -> new ModuleDto(
                         m.id(),
@@ -203,6 +207,11 @@ public class EditorApiController {
                                 .map(readModelsById::get)
                                 .filter(Objects::nonNull)
                                 .map(rm -> new ReadModelDto(rm.id(), rm.name(), rm.aggregateId()))
+                                .toList(),
+                        m.domainServiceIds().stream()
+                                .map(domainServicesById::get)
+                                .filter(Objects::nonNull)
+                                .map(ds -> new DomainServiceDto(ds.id(), ds.name()))
                                 .toList()))
                 .toList();
 
@@ -301,13 +310,10 @@ public class EditorApiController {
                         DomainEventEntity::id, (a, b) -> a));
         var emissions = new ArrayList<EmissionDto>();
         for (var a : repository.findAllOfType(AggregateEntity.class)) {
-            for (var op : a.operations()) {
-                if (op.emits() == null || op.emits().isBlank()) continue;
-                for (var eventName : op.emits().split(",")) {
-                    var eventId = eventIdByName.get(eventName.trim().toLowerCase());
-                    if (eventId != null) emissions.add(new EmissionDto(a.id(), eventId));
-                }
-            }
+            collectEmissions(a.id(), a.operations(), eventIdByName, emissions);
+        }
+        for (var ds : repository.findAllOfType(DomainServiceEntity.class)) {
+            collectEmissions(ds.id(), ds.operations(), eventIdByName, emissions);
         }
 
         return new EditorModelDto(
@@ -321,6 +327,7 @@ public class EditorApiController {
                                 String id, String name, String subdomainType, String moduleId,
                                 String aggregateId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
+                                String triggerDomainServiceId,
                                 String readModelName, String targetUseCaseId,
                                 List<ProcessStepDto> steps,
                                 String processId, String afterStepId, String stepType,
@@ -337,6 +344,8 @@ public class EditorApiController {
             case "add-module" -> addModule(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
+            case "add-domain-service" -> addDomainService(command);
+            case "remove-domain-service" -> removeDomainService(command);
             case "add-emission" -> addEmission(command);
             case "add-read-model" -> addReadModel(command);
             case "remove-read-model" -> removeReadModel(command);
@@ -373,7 +382,7 @@ public class EditorApiController {
                 command.archetype() == null ? null : FlowArchetype.valueOf(command.archetype()),
                 command.triggerAggregateId(), command.triggerEvent(), command.targetId(),
                 command.readModelName(), List.of(), command.targetUseCaseId(),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), command.triggerDomainServiceId()));
     }
 
     private void removeFlow(EditorCommand command) {
@@ -519,15 +528,7 @@ public class EditorApiController {
     private void renameElement(EditorCommand command) {
         switch (Objects.requireNonNull(command.type(), "rename-element.type (elementType)")) {
             case "module" -> repository.findById(command.id(), ModuleEntity.class)
-                    .ifPresent(m -> repository.save(new ModuleEntity(
-                            m.id(), command.name(), m.gitRepository(), m.aggregateIds(), m.entityIds(),
-                            m.valueObjectIds(), m.useCaseIds(), m.domainEventIds(), m.projectionIds(),
-                            m.readModelIds(), m.subscriptionIds(), m.sagaIds(), m.scheduledTriggerIds(),
-                            m.bddScenarios(), m.llmSystemPrompt(), m.tableNamePrefix(),
-                            m.autoTableNamePrefix(), m.version(), m.bffs(), m.acls(), m.domainPolicies(),
-                            m.invariants(), m.subdomainType(), m.accessPolicies(), m.kpis(),
-                            m.decisionIds(), m.description(), m.readSideModuleId(),
-                            m.readSideExternalSystemId(), m.readSideVia())));
+                    .ifPresent(m -> repository.save(m.toBuilder().name(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
                     .ifPresent(a -> repository.save(new AggregateEntity(
                             a.id(), command.name(), a.modelId(), a.persistenceType(), a.idType(),
@@ -538,6 +539,9 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "domain-service" -> repository.findById(command.id(), DomainServiceEntity.class)
+                    .ifPresent(ds -> repository.save(new DomainServiceEntity(
+                            ds.id(), command.name(), ds.description(), ds.operations())));
             case "read-model" -> repository.findById(command.id(), ReadModelEntity.class)
                     .ifPresent(rm -> repository.save(new ReadModelEntity(
                             rm.id(), command.name(), rm.moduleId(), rm.description(), rm.modelId(),
@@ -612,19 +616,38 @@ public class EditorApiController {
     }
 
     /**
-     * Declares that the source aggregate emits the target domain event: the event NAME
-     * joins the `emits` CSV of its first operation (a stub operation is created when it
-     * has none). Refinable later through the CRUDs. Only aggregates (and, in the future,
-     * domain services) emit domain events — use cases emit application events instead.
+     * Declares that the source (aggregate or domain service) emits the target domain
+     * event: the event NAME joins the `emits` CSV of its first operation (a stub
+     * operation is created when it has none). Refinable later through the CRUDs.
+     * Use cases do not emit domain events — they emit application events.
      */
     private void addEmission(EditorCommand command) {
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
-        var a = repository.findById(command.sourceId(), AggregateEntity.class)
+        var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
+        if (aggregate.isPresent()) {
+            var a = aggregate.get();
+            var operations = withEmissionAdded(a.operations(), event);
+            if (operations != null) repository.save(withOperations(a, operations));
+            return;
+        }
+        var ds = repository.findById(command.sourceId(), DomainServiceEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Solo los agregados emiten eventos de dominio; emisor desconocido: " + command.sourceId()));
-        if (operationsEmitting(a, event.name()).findAny().isPresent()) return;
-        var operations = new ArrayList<>(a.operations());
+                        "Solo agregados y servicios de dominio emiten eventos de dominio; emisor desconocido: "
+                                + command.sourceId()));
+        var operations = withEmissionAdded(ds.operations(), event);
+        if (operations != null) {
+            repository.save(new DomainServiceEntity(ds.id(), ds.name(), ds.description(), operations));
+        }
+    }
+
+    /** The operations list with the emission appended, or null when it is already declared. */
+    private static List<OperationEntity> withEmissionAdded(List<OperationEntity> current, DomainEventEntity event) {
+        var alreadyThere = current.stream().anyMatch(op -> op.emits() != null
+                && java.util.Arrays.stream(op.emits().split(","))
+                        .anyMatch(n -> n.trim().equalsIgnoreCase(event.name().trim())));
+        if (alreadyThere) return null;
+        var operations = new ArrayList<>(current);
         if (operations.isEmpty()) {
             operations.add(new OperationEntity("op-emit-" + event.id(), "emit" + event.name(),
                     null, null, null, null, event.name(), "CUSTOM", false, null, null));
@@ -634,30 +657,55 @@ public class EditorApiController {
                     ? event.name() : first.emits() + "," + event.name();
             operations.set(0, withEmits(first, emits));
         }
-        repository.save(withOperations(a, operations));
+        return operations;
     }
 
     private void removeEmission(EditorCommand command) {
         var event = repository.findById(command.targetId(), DomainEventEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
-        repository.findById(command.sourceId(), AggregateEntity.class).ifPresent(a -> {
-            var operations = a.operations().stream()
-                    .map(op -> withEmits(op, java.util.Arrays.stream(
-                                    (op.emits() == null ? "" : op.emits()).split(","))
-                            .map(String::trim)
-                            .filter(n -> !n.isBlank() && !n.equalsIgnoreCase(event.name().trim()))
-                            .collect(Collectors.joining(","))))
-                    // A stub created just to carry this emission leaves with it.
-                    .filter(op -> !(op.id().startsWith("op-emit-") && op.emits() == null))
-                    .toList();
-            repository.save(withOperations(a, operations));
-        });
+        repository.findById(command.sourceId(), AggregateEntity.class).ifPresent(a ->
+                repository.save(withOperations(a, withEmissionRemoved(a.operations(), event))));
+        repository.findById(command.sourceId(), DomainServiceEntity.class).ifPresent(ds ->
+                repository.save(new DomainServiceEntity(ds.id(), ds.name(), ds.description(),
+                        withEmissionRemoved(ds.operations(), event))));
     }
 
-    private java.util.stream.Stream<OperationEntity> operationsEmitting(AggregateEntity a, String eventName) {
-        return a.operations().stream().filter(op -> op.emits() != null
-                && java.util.Arrays.stream(op.emits().split(","))
-                        .anyMatch(n -> n.trim().equalsIgnoreCase(eventName == null ? "" : eventName.trim())));
+    private static List<OperationEntity> withEmissionRemoved(List<OperationEntity> current, DomainEventEntity event) {
+        return current.stream()
+                .map(op -> withEmits(op, java.util.Arrays.stream(
+                                (op.emits() == null ? "" : op.emits()).split(","))
+                        .map(String::trim)
+                        .filter(n -> !n.isBlank() && !n.equalsIgnoreCase(event.name().trim()))
+                        .collect(Collectors.joining(","))))
+                // A stub created just to carry this emission leaves with it.
+                .filter(op -> !(op.id().startsWith("op-emit-") && op.emits() == null))
+                .toList();
+    }
+
+    private void addDomainService(EditorCommand command) {
+        if (repository.findById(command.id(), DomainServiceEntity.class).isPresent()) return;
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new DomainServiceEntity(command.id(), command.name(), null, List.of()));
+        var domainServiceIds = new ArrayList<>(module.domainServiceIds());
+        domainServiceIds.add(command.id());
+        repository.save(module.toBuilder().domainServiceIds(domainServiceIds).build());
+    }
+
+    private void removeDomainService(EditorCommand command) {
+        var triggersFlow = repository.findAllOfType(FlowEntity.class).stream()
+                .anyMatch(f -> command.id().equals(f.triggerDomainServiceId()));
+        if (triggersFlow) {
+            throw new IllegalArgumentException(
+                    "El servicio de dominio " + command.id() + " dispara flows; bórralos primero");
+        }
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.domainServiceIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .domainServiceIds(m.domainServiceIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), DomainServiceEntity.class);
     }
 
     /** Record copy with only emits replaced. */
@@ -746,14 +794,7 @@ public class EditorApiController {
 
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */
     private static ModuleEntity withAggregateIds(ModuleEntity m, List<String> aggregateIds) {
-        return new ModuleEntity(
-                m.id(), m.name(), m.gitRepository(), aggregateIds, m.entityIds(), m.valueObjectIds(),
-                m.useCaseIds(), m.domainEventIds(), m.projectionIds(), m.readModelIds(),
-                m.subscriptionIds(), m.sagaIds(), m.scheduledTriggerIds(), m.bddScenarios(),
-                m.llmSystemPrompt(), m.tableNamePrefix(), m.autoTableNamePrefix(), m.version(),
-                m.bffs(), m.acls(), m.domainPolicies(), m.invariants(), m.subdomainType(),
-                m.accessPolicies(), m.kpis(), m.decisionIds(), m.description(),
-                m.readSideModuleId(), m.readSideExternalSystemId(), m.readSideVia());
+        return m.toBuilder().aggregateIds(aggregateIds).build();
     }
 
     private void addRelation(EditorCommand command) {
@@ -911,6 +952,18 @@ public class EditorApiController {
         var detail = view.get("detail") != null && view.get("detail").isTextual()
                 ? view.get("detail").asText() : null;
         return new DiagramEntity(id, detail, nodes, edges);
+    }
+
+    /** Emissions declared by an emitter's operations (CSV of event names in emits). */
+    private static void collectEmissions(String emitterId, List<OperationEntity> operations,
+                                         Map<String, String> eventIdByName, List<EmissionDto> out) {
+        for (var op : operations) {
+            if (op.emits() == null || op.emits().isBlank()) continue;
+            for (var eventName : op.emits().split(",")) {
+                var eventId = eventIdByName.get(eventName.trim().toLowerCase());
+                if (eventId != null) out.add(new EmissionDto(emitterId, eventId));
+            }
+        }
     }
 
     /** Coordinates are kept to one decimal — plenty for pixels, and keeps the YAML readable. */
