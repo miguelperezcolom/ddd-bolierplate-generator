@@ -29,6 +29,7 @@ public class SolutionApiController {
 
     final SolutionGitService git;
     final CommonFileRepository repository;
+    final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
 
     public record SolutionRef(String branch, String name, String status) {}
     public record WorkspaceDto(String current, boolean system, List<SolutionRef> solutions) {}
@@ -51,6 +52,12 @@ public class SolutionApiController {
                 })
                 .toList();
         return new WorkspaceDto(current, SolutionGitService.SYSTEM_BRANCH.equals(current), solutions);
+    }
+
+    /** The semantic diff of the checked-out solution against the system (empty on main). */
+    @GetMapping("/diff")
+    public io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService.SolutionDiff diff() {
+        return diffService.diffAgainstSystem();
     }
 
     @PostMapping("/create")

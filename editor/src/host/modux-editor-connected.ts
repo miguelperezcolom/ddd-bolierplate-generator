@@ -29,6 +29,15 @@ export class ModuxEditorConnected extends LitElement {
   } | null = null;
   @state() private _creatingSolution = false;
   @state() private _newSolutionName = '';
+  /** Semantic diff of the checked-out solution vs the system (null on the system). */
+  @state() private _diff: {
+    branch: string;
+    system: boolean;
+    added: number;
+    modified: number;
+    removed: number;
+    changes: { type: string; id: string; name?: string; kind: string }[];
+  } | null = null;
 
   private _layoutTimer: number | undefined;
   /** A layout edit is waiting for the debounced PUT. */
@@ -253,8 +262,23 @@ export class ModuxEditorConnected extends LitElement {
     try {
       const res = await fetch(`${this.base}/solutions`);
       if (res.ok) this._workspace = await res.json();
+      await this.refreshDiff();
     } catch {
       /* workspace bar simply stays hidden */
+    }
+  }
+
+  /** The diff rings only make sense on a solution; on the system they clear. */
+  private async refreshDiff(): Promise<void> {
+    if (!this._workspace || this._workspace.system) {
+      this._diff = null;
+      return;
+    }
+    try {
+      const res = await fetch(`${this.base}/solutions/diff`);
+      this._diff = res.ok ? await res.json() : null;
+    } catch {
+      this._diff = null;
     }
   }
 
@@ -280,6 +304,7 @@ export class ModuxEditorConnected extends LitElement {
       }
       this._workspace = await res.json();
       await this.reload();
+      await this.refreshDiff();
       // A checkout replaces the model wholesale — local undo no longer applies.
       (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
     } catch (err) {
@@ -342,6 +367,7 @@ export class ModuxEditorConnected extends LitElement {
       ]);
       if (modelRes.ok) this._model = await modelRes.json();
       if (versionRes.ok) this._lastVersion = (await versionRes.json()).version;
+      await this.refreshDiff(); // to-be edits move the diff live
     } catch (err) {
       this.showToast(String(err));
     } finally {
@@ -393,6 +419,23 @@ export class ModuxEditorConnected extends LitElement {
               <span class="badge ${this._workspace.system ? '' : 'solution'}">
                 ${this._workspace.system ? 'AS-IS' : 'TO-BE'}
               </span>
+              ${this._diff && !this._workspace.system
+                ? (() => {
+                    const count = (kind: string) =>
+                      this._diff!.changes.filter((c) => c.kind === kind).length;
+                    const removedNames = this._diff!.changes
+                      .filter((c) => c.kind === 'REMOVED')
+                      .map((c) => c.name ?? c.id);
+                    return html`<span
+                      class="badge solution"
+                      title=${removedNames.length
+                        ? `Eliminados respecto al sistema: ${removedNames.join(', ')}`
+                        : 'Cambios respecto al sistema'}
+                    >
+                      ＋${count('ADDED')} ～${count('MODIFIED')} －${count('REMOVED')}
+                    </span>`;
+                  })()
+                : ''}
               ${this._creatingSolution
                 ? html`
                     <input
@@ -423,6 +466,13 @@ export class ModuxEditorConnected extends LitElement {
       <modux-editor
         .model=${this._model}
         .layout=${this._layout}
+        .diff=${this._diff && !this._workspace?.system
+          ? Object.fromEntries(
+              this._diff.changes
+                .filter((c) => c.kind !== 'REMOVED')
+                .map((c) => [c.id, c.kind as 'ADDED' | 'MODIFIED']),
+            )
+          : null}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
         @modux-notice=${(e: CustomEvent) =>

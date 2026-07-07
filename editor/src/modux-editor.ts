@@ -135,6 +135,8 @@ export class ModuxEditor extends LitElement {
     flows: [],
   };
   @property({ attribute: false }) layout: EditorLayout = {};
+  /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
+  @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
   @state() private _view: ViewId = 'context-map';
   /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
@@ -2071,17 +2073,26 @@ export class ModuxEditor extends LitElement {
   private sceneFor(view: ViewId) {
     const vl = this.viewLayout(view);
     const model = this.filteredModel();
-    return view === 'aggregates'
-      ? aggregatesScene(model, vl.nodes)
-      : view === 'flows'
-        ? flowsScene(model, vl.nodes)
-        : view === 'processes'
-          ? processesScene(model, vl.nodes)
-          : view === 'workflows'
-            ? workflowsScene(model, vl.nodes)
-            : view === 'eventstorming'
-              ? eventstormingScene(model, vl.nodes)
-              : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
+    const scene =
+      view === 'aggregates'
+        ? aggregatesScene(model, vl.nodes)
+        : view === 'flows'
+          ? flowsScene(model, vl.nodes)
+          : view === 'processes'
+            ? processesScene(model, vl.nodes)
+            : view === 'workflows'
+              ? workflowsScene(model, vl.nodes)
+              : view === 'eventstorming'
+                ? eventstormingScene(model, vl.nodes)
+                : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
+    // On a solution, ring what differs from the system (node ids carry view prefixes).
+    if (this.diff) {
+      for (const node of scene.nodes) {
+        const kind = this.diff[node.id] ?? this.diff[node.id.replace(/^(tgt:|flow:)/, '')];
+        if (kind) node.diffKind = kind;
+      }
+    }
+    return scene;
   }
 
   /** ELK layout for the current view, applied as ONE undoable composite move. */

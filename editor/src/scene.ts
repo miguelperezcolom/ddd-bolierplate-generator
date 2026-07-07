@@ -28,6 +28,8 @@ export interface SceneNode {
   parentId?: string;
   /** A container: renders with a top header instead of a centred label. */
   container?: boolean;
+  /** On a solution (to-be): how this element differs from the system (diff ring). */
+  diffKind?: 'ADDED' | 'MODIFIED';
 }
 
 /**

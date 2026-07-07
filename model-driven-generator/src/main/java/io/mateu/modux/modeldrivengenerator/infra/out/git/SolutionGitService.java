@@ -98,6 +98,25 @@ public class SolutionGitService {
         git("branch", "-D", branch);
     }
 
+    /**
+     * A read-only checkout of the SYSTEM at a temp path (git worktree) — how a solution
+     * reads the as-is to diff against without leaving its own branch. Pair with
+     * {@link #removeWorktree(Path)}.
+     */
+    @SneakyThrows
+    public Path addSystemWorktree() {
+        ensureRepo();
+        var tmp = Files.createTempDirectory("modux-system-");
+        // The directory must not exist for git; recreate it as git's own.
+        Files.delete(tmp);
+        git("worktree", "add", "--detach", tmp.toString(), SYSTEM_BRANCH);
+        return tmp;
+    }
+
+    public void removeWorktree(Path worktree) {
+        git("worktree", "remove", "--force", worktree.toString());
+    }
+
     private void commitAll(String message) {
         if (git("status", "--porcelain").isBlank()) return;
         git("add", "-A");

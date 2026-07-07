@@ -801,6 +801,16 @@ export class ModuxCanvas extends LitElement {
            e.stopPropagation();
            this.emit('element-activated', { elementType: 'node', id: node.id, kind: node.kind });
          }}>
+        ${node.diffKind
+          ? svg`<rect x=${-hw - 4} y=${-hh - 4} width=${rw + 8} height=${rh + 8}
+                  rx=${isChild ? 9 : 13} fill="none" pointer-events="none"
+                  stroke=${node.diffKind === 'ADDED' ? '#16a34a' : '#d97706'}
+                  stroke-width="2" stroke-dasharray="7 4" opacity="0.9">
+                <title>${node.diffKind === 'ADDED'
+                  ? 'Nuevo en esta solución (no existe en el sistema)'
+                  : 'Modificado respecto al sistema'}</title>
+              </rect>`
+          : ''}
         <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${isChild ? 6 : 10}
               fill=${node.fill ?? '#ffffff'}
               stroke=${hovered ? '#2563eb' : selected ? '#2563eb' : node.stroke ?? '#94a3b8'}

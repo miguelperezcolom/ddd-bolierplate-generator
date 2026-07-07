@@ -148,6 +148,11 @@ public class CommonFileRepository {
         }
     }
 
+    /** The loaded model as an {@link AllData} — a read-only snapshot of the catalog. */
+    public AllData snapshot() {
+        return buildAllData();
+    }
+
     /** Rebuild an {@link AllData} from the in-memory catalog (inverse of {@link #loadIntoStore}). */
     private AllData buildAllData() {
         var components = AllData.class.getRecordComponents();
