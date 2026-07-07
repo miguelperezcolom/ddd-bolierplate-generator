@@ -3481,7 +3481,7 @@ let R = class extends pt {
                   font-family="ui-sans-serif, system-ui" fill="#1e293b">${t.label}</text>`}
         ${o ? k`<line x1=${-c + 8} y1=${-d + 28} x2=${c - 8} y2=${-d + 28}
                 stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>` : ""}
-        ${i && this.connectable && !r ? [
+        ${i && this.connectable && (!r || t.kind === "aggregate" || t.kind === "use-case") ? [
       [c, 0],
       [-c, 0],
       [0, d],
@@ -3491,7 +3491,7 @@ let R = class extends pt {
                 <circle data-handle cx=${g} cy=${_} r="6" fill="#2563eb" stroke="#ffffff"
                         stroke-width="1.5"
                         @pointerdown=${(b) => this.onHandlePointerDown(b, t)}>
-                  <title>Arrastra hasta otro nodo para crear una relación</title>
+                  <title>${r ? "Arrastra hasta un evento de dominio para declarar que lo emite" : "Arrastra hasta otro nodo para crear una relación"}</title>
                 </circle>`
     ) : ""}
         ${o && i ? [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(
@@ -3641,8 +3641,9 @@ let R = class extends pt {
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
           ${s}
-          ${this.scene.nodes.map((r) => this.renderNode(r))}
+          ${this.scene.nodes.filter((r) => !r.parentId).map((r) => this.renderNode(r))}
           ${o}
+          ${this.scene.nodes.filter((r) => r.parentId).map((r) => this.renderNode(r))}
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>
@@ -3948,6 +3949,10 @@ let A = class extends pt {
       }
       case "add-domain-event":
         return [{ kind: "remove-domain-event", id: t.id }];
+      case "add-emission":
+        return [{ kind: "remove-emission", sourceId: t.sourceId, targetId: t.targetId }];
+      case "remove-emission":
+        return [{ kind: "add-emission", sourceId: t.sourceId, targetId: t.targetId }];
       case "remove-domain-event": {
         for (const e of this.model.modules) {
           const n = (e.domainEvents ?? []).find((i) => i.id === t.id);
@@ -4121,9 +4126,23 @@ let A = class extends pt {
   onConnectRequested(t) {
     const { sourceId: e, targetId: n, x: i, y: s } = t.detail;
     if (this._view !== "context-map") return;
-    const o = new Set(this.model.externalSystems.map((a) => a.id));
-    o.has(e) || o.has(n) || this.model.relations.some(
-      (a) => a.sourceId === e && a.targetId === n || a.sourceId === n && a.targetId === e
+    const o = new Set(
+      this.model.modules.flatMap((c) => (c.domainEvents ?? []).map((d) => d.id))
+    ), r = /* @__PURE__ */ new Set([
+      ...(this.model.aggregates ?? []).map((c) => c.id),
+      ...this.model.modules.flatMap((c) => (c.useCases ?? []).map((d) => d.id))
+    ]);
+    if (r.has(e) && o.has(n)) {
+      (this.model.emissions ?? []).some(
+        (d) => d.sourceId === e && d.domainEventId === n
+      ) || this.command({ kind: "add-emission", sourceId: e, targetId: n });
+      return;
+    }
+    if (r.has(e) || r.has(n) || o.has(e) || o.has(n))
+      return;
+    const a = new Set(this.model.externalSystems.map((c) => c.id));
+    a.has(e) || a.has(n) || this.model.relations.some(
+      (c) => c.sourceId === e && c.targetId === n || c.sourceId === n && c.targetId === e
     ) || (this._relationPicker = { sourceId: e, targetId: n, mode: "create", x: i ?? 0, y: s ?? 0 });
   }
   /** Apply the picker's choice: create the new relation or retype the existing one. */
@@ -4145,6 +4164,12 @@ let A = class extends pt {
       const s = /^rel:(.+)->(.+)$/.exec(n);
       if (!s) return;
       this._selectedId = null, this.command({ kind: "remove-relation", sourceId: s[1], targetId: s[2] });
+      return;
+    }
+    if (this._view === "context-map" && e === "edge" && i === "emission") {
+      const s = /^emit:(.+)->(.+)$/.exec(n);
+      if (!s) return;
+      this._selectedId = null, this.command({ kind: "remove-emission", sourceId: s[1], targetId: s[2] });
       return;
     }
     if (e === "node" && i === "module") {

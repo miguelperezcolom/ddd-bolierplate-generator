@@ -836,7 +836,9 @@ export class ModuxCanvas extends LitElement {
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
                 stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>`
           : ''}
-        ${selected && this.connectable && !isChild
+        ${selected &&
+        this.connectable &&
+        (!isChild || node.kind === 'aggregate' || node.kind === 'use-case')
           ? [
               [hw, 0],
               [-hw, 0],
@@ -847,7 +849,9 @@ export class ModuxCanvas extends LitElement {
                 <circle data-handle cx=${cx} cy=${cy} r="6" fill="#2563eb" stroke="#ffffff"
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
-                  <title>Arrastra hasta otro nodo para crear una relación</title>
+                  <title>${isChild
+                    ? 'Arrastra hasta un evento de dominio para declarar que lo emite'
+                    : 'Arrastra hasta otro nodo para crear una relación'}</title>
                 </circle>`,
             )
           : ''}
@@ -1053,8 +1057,9 @@ export class ModuxCanvas extends LitElement {
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
           ${underEdges}
-          ${this.scene.nodes.map((n) => this.renderNode(n))}
+          ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
           ${overEdges}
+          ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>

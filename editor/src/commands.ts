@@ -55,6 +55,17 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** Source (aggregate or use case) publishes the target domain event. */
+      kind: 'add-emission';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-emission';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** `type` carries the elementType (module | aggregate | entity | domain-event). */
       kind: 'rename-element';
       type: string;

@@ -49,6 +49,10 @@ person / gear (human / automated steps), double circle (events), return arrow
   context); they render as children with the ArchiMate event glyph, and amber dashed
   **emission arrows** connect each publisher to its event — aggregates whose
   operations declare `emits`, and use cases with a `PublishDomainEvent` step.
+  Emissions are created on the canvas too: select an aggregate or use case and drag
+  from a blue handle onto a domain event (an aggregate records it in its first
+  operation's `emits`, creating a stub operation if it has none; a use case gains a
+  `PublishDomainEvent` step). Supr on the arrow removes the emission again.
 - **Ctrl+Z / Ctrl+Shift+Z** undo and redo — model commands and node moves share one
   history, with composite entries where one gesture caused both.
 

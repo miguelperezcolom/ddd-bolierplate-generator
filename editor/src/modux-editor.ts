@@ -457,6 +457,10 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
+      case 'add-emission':
+        return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-emission':
+        return [{ kind: 'add-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-domain-event': {
         for (const m of this.model.modules) {
           const ev = (m.domainEvents ?? []).find((x) => x.id === c.id);
@@ -680,6 +684,30 @@ export class ModuxEditor extends LitElement {
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y } = e.detail;
     if (this._view !== 'context-map') return;
+    // Dragging from an aggregate/use case onto a domain event declares an emission.
+    const eventIds = new Set(
+      this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
+    );
+    const emitterIds = new Set([
+      ...(this.model.aggregates ?? []).map((a) => a.id),
+      ...this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+    ]);
+    if (emitterIds.has(sourceId) && eventIds.has(targetId)) {
+      const already = (this.model.emissions ?? []).some(
+        (em) => em.sourceId === sourceId && em.domainEventId === targetId,
+      );
+      if (!already) this.command({ kind: 'add-emission', sourceId, targetId });
+      return;
+    }
+    // Any other pair touching a nested child is not a strategic relation.
+    if (
+      emitterIds.has(sourceId) ||
+      emitterIds.has(targetId) ||
+      eventIds.has(sourceId) ||
+      eventIds.has(targetId)
+    ) {
+      return;
+    }
     const externalIds = new Set(this.model.externalSystems.map((s) => s.id));
     if (externalIds.has(sourceId) || externalIds.has(targetId)) return;
     const exists = this.model.relations.some(
@@ -718,6 +746,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-relation', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'emission') {
+      const match = /^emit:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-emission', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'module') {

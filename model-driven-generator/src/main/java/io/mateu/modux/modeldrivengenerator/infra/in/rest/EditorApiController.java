@@ -18,6 +18,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -330,9 +332,11 @@ public class EditorApiController {
             case "add-module" -> addModule(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
+            case "add-emission" -> addEmission(command);
             case "remove-module" -> removeModule(command);
             case "remove-aggregate" -> removeAggregate(command);
             case "remove-domain-event" -> removeDomainEvent(command);
+            case "remove-emission" -> removeEmission(command);
             case "rename-element" -> renameElement(command);
             case "add-flow" -> addFlow(command);
             case "remove-flow" -> removeFlow(command);
@@ -594,6 +598,105 @@ public class EditorApiController {
                 module.domainEventIds() == null ? List.of() : module.domainEventIds());
         domainEventIds.add(command.id());
         repository.save(module.toBuilder().domainEventIds(domainEventIds).build());
+    }
+
+    /**
+     * Declares that the source (aggregate or use case) publishes the target domain event.
+     * On an aggregate the event NAME joins the `emits` CSV of its first operation (a stub
+     * operation is created when it has none); on a use case a PublishDomainEvent step is
+     * appended. Both are refinable later through the CRUDs.
+     */
+    private void addEmission(EditorCommand command) {
+        var event = repository.findById(command.targetId(), DomainEventEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
+        var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
+        if (aggregate.isPresent()) {
+            var a = aggregate.get();
+            if (operationsEmitting(a, event.name()).findAny().isPresent()) return;
+            var operations = new ArrayList<>(a.operations());
+            if (operations.isEmpty()) {
+                operations.add(new OperationEntity("op-emit-" + event.id(), "emit" + event.name(),
+                        null, null, null, null, event.name(), "CUSTOM", false, null, null));
+            } else {
+                var first = operations.get(0);
+                var emits = first.emits() == null || first.emits().isBlank()
+                        ? event.name() : first.emits() + "," + event.name();
+                operations.set(0, withEmits(first, emits));
+            }
+            repository.save(withOperations(a, operations));
+            return;
+        }
+        var useCase = repository.findById(command.sourceId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown emitter: " + command.sourceId()));
+        var steps = new ArrayList<>(useCase.steps() == null ? List.of() : useCase.steps());
+        var alreadyPublishes = steps.stream().anyMatch(s ->
+                s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
+                        && event.id().equals(s.domainEventId()));
+        if (alreadyPublishes) return;
+        steps.add(new UseCaseStepEntity("step-emit-" + event.id(), "publish" + event.name(),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent,
+                null, null, null, null, event.id(), null, null, null, null, null));
+        repository.save(withSteps(useCase, steps));
+    }
+
+    private void removeEmission(EditorCommand command) {
+        var event = repository.findById(command.targetId(), DomainEventEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown domain event: " + command.targetId()));
+        var aggregate = repository.findById(command.sourceId(), AggregateEntity.class);
+        if (aggregate.isPresent()) {
+            var a = aggregate.get();
+            var operations = a.operations().stream()
+                    .map(op -> withEmits(op, java.util.Arrays.stream(
+                                    (op.emits() == null ? "" : op.emits()).split(","))
+                            .map(String::trim)
+                            .filter(n -> !n.isBlank() && !n.equalsIgnoreCase(event.name().trim()))
+                            .collect(Collectors.joining(","))))
+                    // A stub created just to carry this emission leaves with it.
+                    .filter(op -> !(op.id().startsWith("op-emit-") && op.emits() == null))
+                    .toList();
+            repository.save(withOperations(a, operations));
+            return;
+        }
+        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(s -> !(s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
+                                && event.id().equals(s.domainEventId())))
+                        .toList())));
+    }
+
+    private java.util.stream.Stream<OperationEntity> operationsEmitting(AggregateEntity a, String eventName) {
+        return a.operations().stream().filter(op -> op.emits() != null
+                && java.util.Arrays.stream(op.emits().split(","))
+                        .anyMatch(n -> n.trim().equalsIgnoreCase(eventName == null ? "" : eventName.trim())));
+    }
+
+    /** Record copy with only emits replaced. */
+    private static OperationEntity withEmits(OperationEntity op, String emits) {
+        return new OperationEntity(op.id(), op.name(), op.inputModelId(), op.outputModelId(),
+                op.preconditions(), op.sets(), emits == null || emits.isBlank() ? null : emits,
+                op.type(), op.paginated(), op.defaultPageSize(), op.intent());
+    }
+
+    /** Record copy with only operations replaced — every other field preserved verbatim. */
+    private static AggregateEntity withOperations(AggregateEntity a, List<OperationEntity> operations) {
+        return new AggregateEntity(
+                a.id(), a.name(), a.modelId(), a.persistenceType(), a.idType(),
+                a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
+                a.eventSourcingEnabled(), a.snapshotFrequency(), operations,
+                a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(), a.decisionIds());
+    }
+
+    /** Record copy with only steps replaced — every other field preserved verbatim. */
+    private static UseCaseEntity withSteps(UseCaseEntity uc, List<UseCaseStepEntity> steps) {
+        return new UseCaseEntity(
+                uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), uc.exposedAsMcp(),
+                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), steps,
+                uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
+                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
+                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
+                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
+                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds());
     }
 
     private void removeDomainEvent(EditorCommand command) {
