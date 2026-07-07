@@ -104,7 +104,8 @@ interface ChildDesc {
     | 'domain-service'
     | 'query-service'
     | 'external-use-case'
-    | 'external-table';
+    | 'external-table'
+    | 'api-operation';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -121,6 +122,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
+  'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -133,6 +135,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'query-service': 'Query service',
   'external-use-case': 'Caso de uso externo',
   'external-table': 'Tabla (legacy)',
+  'api-operation': 'Operación de API',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -251,12 +254,38 @@ export function contextMapScene(
   sizes: Record<string, { w: number; h: number }> = {},
 ): Scene {
   const allNodes = [
-    ...model.modules.map((m) => ({ ref: m, external: false })),
-    ...model.externalSystems.map((e) => ({ ref: e, external: true })),
+    ...model.modules.map((m) => ({ ref: m, external: false, api: false })),
+    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false })),
+    ...(model.apis ?? []).map((a) => ({ ref: a, external: false, api: true })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if (entry.api) {
+      const a = entry.ref as NonNullable<ModuxModel['apis']>[number];
+      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+        id: a.id,
+        label: a.name,
+        kind: 'api',
+        symbol: 'component',
+        fill: '#eef2ff',
+        stroke: '#4f46e5',
+        badge: 'API',
+        tooltip: `${a.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
+      };
+      if (detailed && a.operations.length > 0) {
+        return detailedContainer(
+          pos,
+          base,
+          a.operations.map(
+            (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),
+          ),
+          layout,
+          sizes,
+        );
+      }
+      return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
+    }
     if (entry.external) {
       const x = entry.ref as ModuxModel['externalSystems'][number];
       const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
@@ -491,6 +520,36 @@ export function contextMapScene(
         }))
     : [];
 
+  // API operations wired to their implementers: operation chip → use case/policy at
+  // the detail level; at the contexts level the API box points at the module.
+  const apiWireEdges: SceneEdge[] = (model.apis ?? []).flatMap((api) =>
+    api.operations.flatMap((op) => {
+      const source = detailed && nodeIds.has(op.id) ? op.id : api.id;
+      if (!nodeIds.has(source)) return [];
+      const target =
+        detailed && op.targetUseCaseId && nodeIds.has(op.targetUseCaseId)
+          ? op.targetUseCaseId
+          : op.targetModuleId && nodeIds.has(op.targetModuleId)
+            ? op.targetModuleId
+            : op.targetUseCaseId && !detailed
+              ? null // fine wiring is invisible at the contexts level unless a module is set
+              : null;
+      if (!target) return [];
+      return [
+        {
+          id: `apiwire:${op.id}`,
+          sourceId: source,
+          targetId: target,
+          kind: 'api-wire',
+          color: '#4f46e5',
+          dashed: true,
+          arrow: true,
+          tooltip: `${op.name} la implementa ${target}`,
+        },
+      ];
+    }),
+  );
+
   // Use case → use case invocations, visible when both render as children.
   const callEdges: SceneEdge[] = detailed
     ? (model.useCaseCalls ?? [])
@@ -632,6 +691,7 @@ export function contextMapScene(
       ...flowEdges,
       ...emissionEdges,
       ...projectionEdges,
+      ...apiWireEdges,
       ...callEdges,
       ...queryEdges,
       ...actorUseEdges,

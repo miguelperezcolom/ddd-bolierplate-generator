@@ -8,6 +8,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessSte
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -149,6 +151,10 @@ public class EditorApiController {
                          List<String> sourceReadModelIds,
                          List<RagContentSourceDto> contentSources) {}
     public record RagContentSourceDto(String type, String uri) {}
+    /** A published API as a first-class element; operations wire to their implementers. */
+    public record ApiDto(String id, String name, List<ApiOperationDto> operations) {}
+    public record ApiOperationDto(String id, String name, String httpMethod, String path,
+                                  String targetModuleId, String targetUseCaseId) {}
     /** An AI agent grounds its answers on a knowledge base. */
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
@@ -185,7 +191,8 @@ public class EditorApiController {
             List<ProjectionDto> projections,
             List<AgentExternalUseDto> agentExternalUses,
             List<RagDto> rags,
-            List<AgentRagDto> agentRags) {}
+            List<AgentRagDto> agentRags,
+            List<ApiDto> apis) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -456,6 +463,12 @@ public class EditorApiController {
                                 .map(s -> new RagContentSourceDto(s.type(), s.uri()))
                                 .toList()))
                 .toList();
+        var apis = repository.findAllOfType(ApiEntity.class).stream()
+                .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
+                        .map(op -> new ApiOperationDto(op.id(), op.name(), op.httpMethod(),
+                                op.path(), op.targetModuleId(), op.targetUseCaseId()))
+                        .toList()))
+                .toList();
 
         var useCaseCalls = new ArrayList<UseCaseCallDto>();
         for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
@@ -620,7 +633,8 @@ public class EditorApiController {
                 projectionDtos,
                 agentExternalUses.stream().distinct().toList(),
                 rags,
-                agentRags.stream().distinct().toList());
+                agentRags.stream().distinct().toList(),
+                apis);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -641,7 +655,8 @@ public class EditorApiController {
                                 List<String> dependsOnStepIds,
                                 List<WorkflowStepDto> workflowSteps,
                                 Boolean policy,
-                                String uri, String externalUseCaseId, String externalTableId) {}
+                                String uri, String externalUseCaseId, String externalTableId,
+                                String apiId, String httpMethod, String path) {}
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -672,6 +687,11 @@ public class EditorApiController {
             case "remove-view-member" -> removeViewMember(command);
             case "add-external-table" -> addExternalTable(command);
             case "remove-external-table" -> removeExternalTable(command);
+            case "add-api" -> addApi(command);
+            case "remove-api" -> removeApi(command);
+            case "add-api-operation" -> addApiOperation(command);
+            case "remove-api-operation" -> removeApiOperation(command);
+            case "set-api-operation-target" -> setApiOperationTarget(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
@@ -1025,6 +1045,19 @@ public class EditorApiController {
                     .ifPresent(r -> repository.save(new RagEntity(
                             r.id(), command.name(), r.description(), r.sourceReadModelIds(),
                             r.contentSources())));
+            case "api" -> repository.findById(command.id(), ApiEntity.class)
+                    .ifPresent(a -> repository.save(new ApiEntity(
+                            a.id(), command.name(), a.description(), a.operations())));
+            case "api-operation" -> repository.findAllOfType(ApiEntity.class).stream()
+                    .filter(a -> a.operations().stream().anyMatch(o -> o.id().equals(command.id())))
+                    .findFirst()
+                    .ifPresent(a -> repository.save(withApiOperations(a, a.operations().stream()
+                            .map(o -> o.id().equals(command.id())
+                                    ? new ApiOperationEntity(o.id(), command.name(), o.httpMethod(),
+                                            o.path(), o.description(), o.targetModuleId(),
+                                            o.targetUseCaseId())
+                                    : o)
+                            .toList())));
             case "external-table" -> {
                 var project = owningProject();
                 repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -1908,6 +1941,61 @@ public class EditorApiController {
                                 .filter(id -> !id.equals(command.id())).toList())
                         .build()));
         repository.deleteAllById(List.of(command.id()), ProjectionEntity.class);
+    }
+
+    /** A published API as a first-class element (usually born from an import). */
+    private void addApi(EditorCommand command) {
+        if (repository.findById(command.id(), ApiEntity.class).isPresent()) return;
+        repository.save(new ApiEntity(command.id(), command.name(), null, List.of()));
+    }
+
+    private void removeApi(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), ApiEntity.class);
+    }
+
+    private void addApiOperation(EditorCommand command) {
+        var api = requireApi(command.apiId());
+        if (api.operations().stream().anyMatch(o -> o.id().equals(command.id()))) return;
+        var operations = new ArrayList<>(api.operations());
+        operations.add(new ApiOperationEntity(command.id(), command.name(),
+                command.httpMethod(), command.path(), null,
+                command.moduleId(), command.targetUseCaseId()));
+        repository.save(withApiOperations(api, operations));
+    }
+
+    private void removeApiOperation(EditorCommand command) {
+        var api = requireApi(command.apiId());
+        repository.save(withApiOperations(api, api.operations().stream()
+                .filter(o -> !o.id().equals(command.id())).toList()));
+    }
+
+    /** Wires (or, with both targets null, unwires) the operation to its implementer. */
+    private void setApiOperationTarget(EditorCommand command) {
+        var api = requireApi(command.apiId());
+        if (command.targetUseCaseId() != null
+                && repository.findById(command.targetUseCaseId(), UseCaseEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown use case: " + command.targetUseCaseId());
+        }
+        if (command.moduleId() != null
+                && repository.findById(command.moduleId(), ModuleEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown module: " + command.moduleId());
+        }
+        repository.save(withApiOperations(api, api.operations().stream()
+                .map(o -> o.id().equals(command.id())
+                        ? new ApiOperationEntity(o.id(), o.name(), o.httpMethod(), o.path(),
+                                o.description(), command.moduleId(), command.targetUseCaseId())
+                        : o)
+                .toList()));
+    }
+
+    private ApiEntity requireApi(String apiId) {
+        return repository.findById(apiId, ApiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + apiId));
+    }
+
+    /** Record copy with only operations replaced — every other field preserved verbatim. */
+    private static ApiEntity withApiOperations(ApiEntity a, List<ApiOperationEntity> operations) {
+        return new ApiEntity(a.id(), a.name(), a.description(), operations);
     }
 
     private void removeDomainEvent(EditorCommand command) {

@@ -2,6 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
@@ -49,8 +50,29 @@ public record ModelSnapshot(
         List<EntityEntity> entities,
         List<WorkflowEntity> workflows,
         List<AiAgentEntity> aiAgents,
-        List<RagEntity> rags
+        List<RagEntity> rags,
+        List<ApiEntity> apis
 ) {
+
+    /** Backward-compatible constructor (pre-apis callers). */
+    public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
+                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<ModelEntity> models, List<UseCaseEntity> useCases,
+                         List<DomainEventEntity> domainEvents,
+                         List<IntegrationEventEntity> integrationEvents,
+                         List<SubscriptionEntity> subscriptions, List<ProjectionEntity> projections,
+                         List<ReadModelEntity> readModels, List<SagaEntity> sagas,
+                         List<FlowEntity> flows, List<ProcessEntity> processes,
+                         List<DecisionEntity> decisions, List<PageEntity> pages,
+                         List<QueryServiceEntity> queryServices,
+                         List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
+                         List<WorkflowEntity> workflows, List<AiAgentEntity> aiAgents,
+                         List<RagEntity> rags) {
+        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+                integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
+                decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
+                rags, null);
+    }
 
     /** Backward-compatible constructor (pre-rags callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
@@ -128,6 +150,7 @@ public record ModelSnapshot(
         workflows = nvl(workflows);
         aiAgents = nvl(aiAgents);
         rags = nvl(rags);
+        apis = nvl(apis);
     }
 
     public static ModelSnapshot from(CommonFileRepository repository) {
@@ -153,7 +176,8 @@ public record ModelSnapshot(
                 repository.findAllOfType(EntityEntity.class),
                 repository.findAllOfType(WorkflowEntity.class),
                 repository.findAllOfType(AiAgentEntity.class),
-                repository.findAllOfType(RagEntity.class));
+                repository.findAllOfType(RagEntity.class),
+                repository.findAllOfType(ApiEntity.class));
     }
 
     /** Snapshot with only the given slices — for tests. Everything else is empty. */

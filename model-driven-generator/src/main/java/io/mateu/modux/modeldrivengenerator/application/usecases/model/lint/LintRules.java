@@ -66,7 +66,24 @@ public final class LintRules {
                 new PolicyExposedAsUi(),
                 new ProjectionSource(),
                 new AgentWithoutTools(),
-                new RagOrphan());
+                new RagOrphan(),
+                new ApiOperationUnwired());
+    }
+
+    /** A published operation nobody implements is a broken promise. */
+    static class ApiOperationUnwired implements LintRule {
+        public String id() { return "api-operation-unwired"; }
+        public String description() { return "Every API operation should wire to a context or use case"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.apis().stream()
+                    .flatMap(api -> api.operations().stream()
+                            .filter(op -> op.targetModuleId() == null && op.targetUseCaseId() == null)
+                            .map(op -> new LintFinding(id(), LintSeverity.WARNING, "ApiOperation",
+                                    op.id(), api.name() + "." + op.name(),
+                                    "Operación publicada sin implementador: apúntala a un bounded"
+                                            + " context, un caso de uso o una policy.")))
+                    .toList();
+        }
     }
 
     /** A knowledge base nobody queries is dead weight — link it to an agent or drop it. */

@@ -35,6 +35,7 @@ public class ImportApiContractForm {
     final ImportOpenApiExternalUseCase openApiExternal;
     final ImportOpenApiInboundUseCase openApiInbound;
     final ImportWsdlUseCase wsdl;
+    final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase apiEntity;
 
     String filePath;
 
@@ -47,9 +48,16 @@ public class ImportApiContractForm {
     URI importContract() {
         var hasExternal = externalSystemId != null && !externalSystemId.isBlank();
         var hasModule = moduleId != null && !moduleId.isBlank();
-        if (hasExternal == hasModule) {
+        if (hasExternal && hasModule) {
             throw new IllegalArgumentException(
-                    "Elige UN destino: un sistema externo o un bounded context");
+                    "Elige UN destino como mucho: sistema externo, bounded context, o ninguno"
+                            + " (la API entra como elemento de primer nivel)");
+        }
+        if (!hasExternal && !hasModule) {
+            // No target: the contract IS the element — a first-class API on the map,
+            // its operations waiting to be wired to contexts / use cases / policies.
+            apiEntity.handle(filePath);
+            return URI.create("/graphicalEditor");
         }
         if (isWsdl(filePath)) {
             wsdl.handle(new ImportWsdlCommand(filePath,

@@ -146,6 +146,32 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** A published API as a first-class element (usually born from an import). */
+      kind: 'add-api';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-api'; id: string }
+  | {
+      kind: 'add-api-operation';
+      apiId: string;
+      id: string;
+      name: string;
+      httpMethod?: string;
+      path?: string;
+      moduleId?: string;
+      targetUseCaseId?: string;
+    }
+  | { kind: 'remove-api-operation'; apiId: string; id: string }
+  | {
+      /** Wires (or, with both omitted, unwires) the operation to its implementer. */
+      kind: 'set-api-operation-target';
+      apiId: string;
+      id: string;
+      moduleId?: string;
+      targetUseCaseId?: string;
+    }
+  | {
       /** A business actor (role). */
       kind: 'add-actor';
       id: string;

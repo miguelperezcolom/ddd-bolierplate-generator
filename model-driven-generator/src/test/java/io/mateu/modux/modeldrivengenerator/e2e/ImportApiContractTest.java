@@ -103,6 +103,41 @@ class ImportApiContractTest {
         assertTrue(module.useCaseIds().contains("uc-ObtenerReserva"));
     }
 
+    @Autowired
+    io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase apiEntity;
+
+    @Test
+    void no_target_imports_the_contract_as_a_first_class_api() throws Exception {
+        loadSampleCopy();
+        var contract = new java.io.File("src/test/resources/easytravel-mini.yaml").getAbsolutePath();
+
+        var apiId = apiEntity.handle(contract);
+        var api = repository.findById(apiId,
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity.class).orElseThrow();
+        assertTrue(api.operations().size() >= 2, "cada operación del contrato es una operación de la API");
+        var bookHotel = api.operations().stream()
+                .filter(o -> o.name().equals("bookHotel")).findFirst().orElseThrow();
+        assertEquals("POST", bookHotel.httpMethod());
+
+        // wire it, then re-import: the wiring survives the contract evolution
+        repository.save(new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity(
+                api.id(), api.name(), api.description(),
+                api.operations().stream()
+                        .map(o -> o.name().equals("bookHotel")
+                                ? new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity(
+                                        o.id(), o.name(), o.httpMethod(), o.path(), o.description(),
+                                        null, "uc-bookHotel")
+                                : o)
+                        .toList()));
+        apiEntity.handle(contract);
+        var after = repository.findById(apiId,
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity.class).orElseThrow();
+        assertEquals(api.operations().size(), after.operations().size(), "re-import no duplica");
+        assertEquals("uc-bookHotel", after.operations().stream()
+                .filter(o -> o.name().equals("bookHotel")).findFirst().orElseThrow().targetUseCaseId(),
+                "el cableado sobrevive al re-import");
+    }
+
     @Test
     void exactly_one_target_is_required() throws Exception {
         loadSampleCopy();

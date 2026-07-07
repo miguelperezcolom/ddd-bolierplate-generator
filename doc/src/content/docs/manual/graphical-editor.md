@@ -111,6 +111,13 @@ person / gear (human / automated steps), double circle (events), return arrow
 - **External tables**: external systems can declare the **tables/datasets** they own
   (amber chips inside the external container) — the pollable surface of a legacy
   system.
+- **Published APIs are first-class**: an **API** (usually born from
+  [importing a contract](/manual/importers/) with no target) is a top-level container
+  with its operations as indigo chips. **Drag an operation onto the use case or
+  policy that implements it** (fine wiring), or onto a **bounded context** (coarse) —
+  the indigo dashed wire is the published surface mapped onto the domain. Supr on a
+  wire unwires (the operation stays published, flagged by `api-operation-unwired`);
+  APIs and operations are also creatable from the toolbar, renamable and deletable.
 - **AI agents and RAGs**: drag an agent onto a use case (MCP consumption, flips
   `exposedAsMcp`), onto an **external operation** (the other half of its tool
   surface) or onto a **RAG** (the knowledge it grounds on). RAGs are created from

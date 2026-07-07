@@ -170,11 +170,15 @@ export class ModuxEditor extends LitElement {
     | 'use-case'
     | 'policy'
     | 'external-use-case'
-    | 'external-table' = 'module';
+    | 'external-table'
+    | 'api'
+    | 'api-operation' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
   /** Owner external system for a new external use case. */
   @state() private _newExternalId = '';
+  /** Owner API for a new operation. */
+  @state() private _newApiId = '';
   @state() private _newArchetype = 'TRIGGERS';
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
@@ -384,7 +388,8 @@ export class ModuxEditor extends LitElement {
       this._newContextMapKind !== 'external-system' &&
       this._newContextMapKind !== 'actor' &&
       this._newContextMapKind !== 'ai-agent' &&
-      this._newContextMapKind !== 'rag'
+      this._newContextMapKind !== 'rag' &&
+      this._newContextMapKind !== 'api'
     ) {
       this._newContextMapKind = 'module';
     }
@@ -705,6 +710,65 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-view-member', id: c.id, targetId: c.targetId }];
       case 'remove-view-member':
         return [{ kind: 'add-view-member', id: c.id, targetId: c.targetId }];
+      case 'add-api':
+        return [{ kind: 'remove-api', id: c.id }];
+      case 'remove-api': {
+        const api = (this.model.apis ?? []).find((x) => x.id === c.id);
+        return api
+          ? [
+              { kind: 'add-api', id: api.id, name: api.name },
+              ...api.operations.map(
+                (op): ModuxCommand => ({
+                  kind: 'add-api-operation',
+                  apiId: api.id,
+                  id: op.id,
+                  name: op.name,
+                  httpMethod: op.httpMethod,
+                  path: op.path,
+                  moduleId: op.targetModuleId,
+                  targetUseCaseId: op.targetUseCaseId,
+                }),
+              ),
+            ]
+          : null;
+      }
+      case 'add-api-operation':
+        return [{ kind: 'remove-api-operation', apiId: c.apiId, id: c.id }];
+      case 'remove-api-operation': {
+        const op = (this.model.apis ?? [])
+          .find((x) => x.id === c.apiId)
+          ?.operations.find((o) => o.id === c.id);
+        return op
+          ? [
+              {
+                kind: 'add-api-operation',
+                apiId: c.apiId,
+                id: op.id,
+                name: op.name,
+                httpMethod: op.httpMethod,
+                path: op.path,
+                moduleId: op.targetModuleId,
+                targetUseCaseId: op.targetUseCaseId,
+              },
+            ]
+          : null;
+      }
+      case 'set-api-operation-target': {
+        const op = (this.model.apis ?? [])
+          .find((x) => x.id === c.apiId)
+          ?.operations.find((o) => o.id === c.id);
+        return op
+          ? [
+              {
+                kind: 'set-api-operation-target',
+                apiId: c.apiId,
+                id: c.id,
+                moduleId: op.targetModuleId,
+                targetUseCaseId: op.targetUseCaseId,
+              },
+            ]
+          : null;
+      }
       case 'remove-read-model': {
         for (const m of this.model.modules) {
           const rm = (m.readModels ?? []).find((x) => x.id === c.id);
@@ -1119,6 +1183,33 @@ export class ModuxEditor extends LitElement {
       }
       if ((this.model.aggregates ?? []).some((a) => a.id === targetId)) {
         this.command({ kind: 'add-actor-crud', sourceId, targetId });
+        return;
+      }
+      return;
+    }
+    // Dragging an API operation onto its implementer wires the published contract to
+    // the domain: a use case (or policy) is the fine wiring, a context the coarse one.
+    const owningApi = this.owningApiOf(sourceId);
+    if (owningApi) {
+      const wireUcIds = new Set(
+        this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      );
+      if (wireUcIds.has(targetId)) {
+        this.command({
+          kind: 'set-api-operation-target',
+          apiId: owningApi.id,
+          id: sourceId,
+          targetUseCaseId: targetId,
+        });
+        return;
+      }
+      if (this.model.modules.some((m) => m.id === targetId)) {
+        this.command({
+          kind: 'set-api-operation-target',
+          apiId: owningApi.id,
+          id: sourceId,
+          moduleId: targetId,
+        });
         return;
       }
       return;
@@ -1569,6 +1660,27 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-external-table', id });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'api-wire') {
+      const match = /^apiwire:(.+)$/.exec(id);
+      const owner = match ? this.owningApiOf(match[1]) : null;
+      if (!match || !owner) return;
+      this._selectedId = null;
+      // Unwire: clearing both targets leaves the operation published but unimplemented.
+      this.command({ kind: 'set-api-operation-target', apiId: owner.id, id: match[1] });
+      return;
+    }
+    if (elementType === 'node' && kind === 'api') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-api', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'api-operation') {
+      const owner = this.owningApiOf(id);
+      if (!owner) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-api-operation', apiId: owner.id, id });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
       const match = /^use:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -1666,6 +1778,10 @@ export class ModuxEditor extends LitElement {
     return (this.model.workflows ?? []).find((w) => w.steps.some((s) => s.id === stepId));
   }
 
+  private owningApiOf(operationId: string) {
+    return (this.model.apis ?? []).find((a) => a.operations.some((o) => o.id === operationId));
+  }
+
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
     if (
@@ -1686,7 +1802,9 @@ export class ModuxEditor extends LitElement {
       kind === 'external-system' ||
       kind === 'actor' ||
       kind === 'ai-agent' ||
-      kind === 'rag'
+      kind === 'rag' ||
+      kind === 'api' ||
+      kind === 'api-operation'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1959,6 +2077,18 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'rag') {
         this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
+      } else if (this._newContextMapKind === 'api') {
+        this.command({ kind: 'add-api', id: `api-${slug(name)}`, name });
+      } else if (this._detail === 'detail' && this._newContextMapKind === 'api-operation') {
+        const selected = (this.model.apis ?? []).find((a) => a.id === this._selectedId)?.id;
+        const apiId = this._newApiId || selected || this.model.apis?.[0]?.id;
+        if (!apiId) return;
+        this.command({
+          kind: 'add-api-operation',
+          apiId,
+          id: `apiop-${apiId.replace(/^api-/, '')}-${slug(name)}`,
+          name,
+        });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
         // A selected context is the natural owner; the dropdown can override it.
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
@@ -2218,6 +2348,8 @@ export class ModuxEditor extends LitElement {
                     ? 'Nuevo agente de IA…'
                     : this._newContextMapKind === 'rag'
                       ? 'Nuevo RAG…'
+                      : this._newContextMapKind === 'api'
+                        ? 'Nueva API…'
                   : this._detail !== 'detail' || this._newContextMapKind === 'module'
                     ? 'Nuevo contexto…'
                     : this._newContextMapKind === 'domain-event'
@@ -2236,7 +2368,9 @@ export class ModuxEditor extends LitElement {
                                   ? 'Nuevo caso de uso externo…'
                                   : this._newContextMapKind === 'external-table'
                                     ? 'Nueva tabla externa…'
-                                    : 'Nuevo read model…',
+                                    : this._newContextMapKind === 'api-operation'
+                                      ? 'Nueva operación de API…'
+                                      : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
@@ -2271,6 +2405,9 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="rag" ?selected=${this._newContextMapKind === 'rag'}>
                 RAG (base de conocimiento)
+              </option>
+              <option value="api" ?selected=${this._newContextMapKind === 'api'}>
+                API publicada
               </option>
               ${this._detail === 'detail'
                 ? html`
@@ -2322,6 +2459,12 @@ export class ModuxEditor extends LitElement {
                     >
                       Tabla externa (legacy)
                     </option>
+                    <option
+                      value="api-operation"
+                      ?selected=${this._newContextMapKind === 'api-operation'}
+                    >
+                      Operación de API
+                    </option>
                   `
                 : ''}
             </select>`
@@ -2341,6 +2484,24 @@ export class ModuxEditor extends LitElement {
                     ?selected=${x.id === (this._newExternalId || this.model.externalSystems[0]?.id)}
                   >
                     ${x.name}
+                  </option>`,
+              )}
+            </select>`
+          : ''}
+        ${this._view === 'context-map' &&
+        this._detail === 'detail' &&
+        this._newContextMapKind === 'api-operation'
+          ? html`<select
+              title="API dueña de la nueva operación"
+              @change=${(e: Event) => (this._newApiId = (e.target as HTMLSelectElement).value)}
+            >
+              ${(this.model.apis ?? []).map(
+                (a) =>
+                  html`<option
+                    value=${a.id}
+                    ?selected=${a.id === (this._newApiId || this.model.apis?.[0]?.id)}
+                  >
+                    ${a.name}
                   </option>`,
               )}
             </select>`

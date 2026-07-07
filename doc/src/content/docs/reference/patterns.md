@@ -207,6 +207,12 @@ Besides folding events, a [projection](/manual/projections/#alternative-sources)
 
 ---
 
+## Published APIs (contract-first, wired to the domain)
+
+A published API is a **product**, often fronting several bounded contexts — so it lives on the map as a first-class element, not as an implementation detail of one module. Import its contract ([OpenAPI or WSDL](/manual/importers/), no target) and wire each operation to its implementer: a context (coarse) or a use case / policy (fine). The wiring is architecture information — the published surface mapped onto the domain — it survives re-imports of the evolving contract, and `api-operation-unwired` flags broken promises.
+
+---
+
 ## AI agents and RAGs
 
 An [AI agent](/manual/ai-agents/) is an automated consumer at the level of the bounded contexts. Its **tools** are internal use cases (consumed through MCP — the context exposes them as MCP tools) and external-system operations; its **knowledge** is **RAGs** — knowledge bases fed from read models (the domain projecting itself into an index) and external content (repos, webs, FTP). Linted: agents without tools (`agent-without-tools`), knowledge bases nobody queries (`rag-orphan`).

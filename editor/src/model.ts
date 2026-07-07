@@ -138,6 +138,24 @@ export interface AgentRagRef {
   ragId: string;
 }
 
+export interface ApiOperationRef {
+  id: string;
+  name: string;
+  httpMethod?: string;
+  path?: string;
+  /** Coarse wiring: the bounded context that implements it. */
+  targetModuleId?: string;
+  /** Fine wiring: the use case (or policy) that implements it. */
+  targetUseCaseId?: string;
+}
+
+/** A published API as a first-class element on the map. */
+export interface ApiRef {
+  id: string;
+  name: string;
+  operations: ApiOperationRef[];
+}
+
 export interface ExternalUseCaseRef {
   id: string;
   name: string;
@@ -324,6 +342,7 @@ export interface ModuxModel {
   agentExternalUses?: AgentExternalUseRef[];
   rags?: RagRef[];
   agentRags?: AgentRagRef[];
+  apis?: ApiRef[];
   workflows?: WorkflowRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */

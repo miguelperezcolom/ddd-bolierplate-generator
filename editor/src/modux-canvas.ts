@@ -873,7 +873,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
             node.kind === 'external-use-case' ||
-            node.kind === 'external-table'
+            node.kind === 'external-table' ||
+            node.kind === 'api-operation'
           : node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
@@ -903,7 +904,9 @@ export class ModuxCanvas extends LitElement {
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'external-use-case' || node.kind === 'external-table'
                         ? 'Arrastra hasta un read model o un contexto para proyectarlo (polling)'
-                        : node.kind === 'use-case'
+                        : node.kind === 'api-operation'
+                          ? 'Arrastra hasta el caso de uso, policy o contexto que la implementa'
+                          : node.kind === 'use-case'
                         ? 'Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo'
                         : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
                 </circle>`,

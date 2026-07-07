@@ -21,6 +21,12 @@ All importers use **upsert** semantics with deterministic ids: if an entity with
 directions with a single form: the file's format is detected, and the **target** decides
 the meaning —
 
+- **No target** — the contract **is** the element: it lands as a **first-class API**
+  on the map (named after the contract's title), its operations waiting to be **wired
+  to whoever implements them** — a bounded context (coarse), a use case or a policy
+  (fine). Drag each operation's handle on the canvas to wire it; re-importing an
+  evolved contract updates the operations and **preserves the wiring**. The
+  `api-operation-unwired` lint rule flags published operations nobody implements.
 - **External system id** — the contract describes what a *partner* offers: every
   operation lands as an operation of the external system (`xuc-<system>-<operation>`),
   ready to be called by use cases (`CallExternalUseCase`), consumed by
@@ -31,9 +37,9 @@ the meaning —
   REST-exposed use-case stubs (method, path, typed models); WSDL operations become
   plain use-case stubs (the exposure — SOAP shim, REST — is the developer's call).
 
-Exactly one target is required. Module-targeted imports never hijack a use-case id
-owned by another module: the id is scoped (`uc-<module>-<operation>`) instead of
-silently overwriting.
+At most one target. Module-targeted imports never hijack a use-case id owned by
+another module: the id is scoped (`uc-<module>-<operation>`) instead of silently
+overwriting.
 
 ## OpenAPI → Gateways
 
