@@ -30,6 +30,32 @@ export interface SceneNode {
   container?: boolean;
 }
 
+/**
+ * Inner margins of a container node, shared by the canvas (drag/resize clamps)
+ * and the view adapters (child placement, fit-to-children growth) so both
+ * agree on exactly where a child may sit.
+ */
+export const CONTAINER_HEADER = 34;
+export const CONTAINER_INSET = 10;
+
+/** The smallest width/height a child inside a container forces on it. */
+export function containerMinSize(
+  children: Array<{ dx: number; dy: number; w: number; h: number }>,
+  floor = { w: 160, h: 90 },
+): { w: number; h: number } {
+  let w = floor.w;
+  let h = floor.h;
+  for (const c of children) {
+    w = Math.max(w, 2 * (Math.abs(c.dx) + c.w / 2 + CONTAINER_INSET));
+    h = Math.max(
+      h,
+      2 * (CONTAINER_HEADER + c.h / 2 - c.dy), // child's top edge below the header band
+      2 * (CONTAINER_INSET + c.h / 2 + c.dy), // child's bottom edge above the inset
+    );
+  }
+  return { w, h };
+}
+
 export interface SceneEdge {
   id: string;
   sourceId: string;

@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { select } from 'd3-selection';
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
+import { CONTAINER_HEADER, CONTAINER_INSET, containerMinSize } from './scene.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
 function segIntersect(
@@ -88,10 +89,8 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
 };
 
-// Inner margins used to keep a dragged child inside its container (the top
-// margin clears the header). Mirrors context-map's C_HEADER.
-const CONTAINER_HEADER = 34;
-const CONTAINER_INSET = 10;
+// Container inner margins (CONTAINER_HEADER/CONTAINER_INSET) are shared with the
+// view adapters through scene.ts, so drag clamps and child placement agree.
 
 /**
  * Generic, fully editable diagram canvas. Semantics-free: renders a Scene and
@@ -425,14 +424,19 @@ export class ModuxCanvas extends LitElement {
     e.stopPropagation();
     this.focus();
     const center = this.nodePos(node);
-    const MIN_W = 160;
-    const MIN_H = 90;
+    // A container can never shrink past its children: every child keeps its
+    // offset from the centre, so each one demands enough room to stay inside.
+    const min = containerMinSize(
+      this.scene.nodes
+        .filter((n) => n.parentId === node.id)
+        .map((c) => ({ dx: c.x - node.x, dy: c.y - node.y, w: c.w, h: c.h })),
+    );
     const onMove = (ev: PointerEvent) => {
       const p = this.toScene(ev);
       this._resize = {
         id: node.id,
-        w: Math.max(MIN_W, 2 * Math.abs(p.x - center.x)),
-        h: Math.max(MIN_H, 2 * Math.abs(p.y - center.y)),
+        w: Math.max(min.w, 2 * Math.abs(p.x - center.x)),
+        h: Math.max(min.h, 2 * Math.abs(p.y - center.y)),
       };
     };
     const onUp = () => {
