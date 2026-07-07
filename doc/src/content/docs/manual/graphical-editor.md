@@ -66,6 +66,11 @@ person / gear (human / automated steps), double circle (events), return arrow
   them to record a `CallExternalUseCase` step (slate dashed arrow — the seed of a
   derived gateway/API). Drag from the external system onto one of OUR use cases and
   the call comes in through an **INBOUND ACL** in the target module (violet arrow).
+- **AI agents consume through MCP**: create an **AI agent** from the toolbar (robot
+  glyph, outside every context) and drag it onto a use case — the consumption is
+  recorded on the agent and the use case flips `exposedAsMcp: true` (the bounded
+  context will expose it as an MCP tool). Removing the arrow clears the exposure
+  when no other agent consumes it.
 - **Events trigger use cases**: dragging a domain or application event onto a use
   case creates a **TRIGGERS flow** (subscription + CallUseCase + mapping derive at
   generation time); the arrow anchors on the event and the use case at the detail

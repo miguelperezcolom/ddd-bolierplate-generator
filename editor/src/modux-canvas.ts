@@ -88,6 +88,9 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <path d="M1.5 3 C1.5 4.8 10.5 4.8 10.5 3"></path>`,
   lens: svg`<circle cx="5" cy="5" r="3.8"></circle>
     <line x1="7.8" y1="7.8" x2="11.2" y2="11.2"></line>`,
+  robot: svg`<rect x="2" y="4" width="8" height="6.5" rx="1.5"></rect>
+    <line x1="6" y1="4" x2="6" y2="1.5"></line><circle cx="6" cy="1.2" r="0.9"></circle>
+    <circle cx="4.4" cy="7" r="0.8"></circle><circle cx="7.6" cy="7" r="0.8"></circle>`,
   usecase: svg`<ellipse cx="6" cy="6" rx="5.5" ry="3.6"></ellipse>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
@@ -872,7 +875,9 @@ export class ModuxCanvas extends LitElement {
                   <title>${!isChild
                     ? node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado: el actor lo usará (deriva una UI)'
-                      : 'Arrastra hasta otro nodo para crear una relación'
+                      : node.kind === 'ai-agent'
+                        ? 'Arrastra hasta un caso de uso: el agente lo consumirá por MCP'
+                        : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'use-case'

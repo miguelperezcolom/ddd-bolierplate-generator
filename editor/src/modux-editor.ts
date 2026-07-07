@@ -144,6 +144,7 @@ export class ModuxEditor extends LitElement {
     | 'module'
     | 'external-system'
     | 'actor'
+    | 'ai-agent'
     | 'domain-event'
     | 'application-event'
     | 'read-model'
@@ -351,7 +352,8 @@ export class ModuxEditor extends LitElement {
       detail !== 'detail' &&
       this._newContextMapKind !== 'module' &&
       this._newContextMapKind !== 'external-system' &&
-      this._newContextMapKind !== 'actor'
+      this._newContextMapKind !== 'actor' &&
+      this._newContextMapKind !== 'ai-agent'
     ) {
       this._newContextMapKind = 'module';
     }
@@ -542,6 +544,16 @@ export class ModuxEditor extends LitElement {
         const x = this.model.externalSystems.find((e) => e.id === c.id);
         return x ? [{ kind: 'add-external-system', id: x.id, name: x.name }] : null;
       }
+      case 'add-ai-agent':
+        return [{ kind: 'remove-ai-agent', id: c.id }];
+      case 'remove-ai-agent': {
+        const a = (this.model.aiAgents ?? []).find((x) => x.id === c.id);
+        return a ? [{ kind: 'add-ai-agent', id: a.id, name: a.name }] : null;
+      }
+      case 'add-agent-use':
+        return [{ kind: 'remove-agent-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-use':
+        return [{ kind: 'add-agent-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-actor':
         return [{ kind: 'remove-actor', id: c.id }];
       case 'remove-actor': {
@@ -610,7 +622,9 @@ export class ModuxEditor extends LitElement {
                           ? this.model.externalSystems
                           : c.type === 'actor'
                             ? this.model.actors ?? []
-                            : this.model.entities ?? [];
+                            : c.type === 'ai-agent'
+                              ? this.model.aiAgents ?? []
+                              : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
       }
@@ -818,8 +832,22 @@ export class ModuxEditor extends LitElement {
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y } = e.detail;
     if (this._view !== 'context-map') return;
-    // An actor's drags come first: they may legally end on children (use cases,
-    // query services, aggregates) that other gestures treat as off-limits.
+    // Actor and AI-agent drags come first: they may legally end on children (use
+    // cases, query services, aggregates) that other gestures treat as off-limits.
+    const agentIds = new Set((this.model.aiAgents ?? []).map((a) => a.id));
+    if (agentIds.has(sourceId)) {
+      const agentUcIds = new Set(
+        this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      );
+      if (agentUcIds.has(targetId)) {
+        const already = (this.model.agentUses ?? []).some(
+          (u) => u.agentId === sourceId && u.useCaseId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-use', sourceId, targetId });
+      }
+      return;
+    }
+    if (agentIds.has(targetId)) return;
     const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
     if (actorIds.has(sourceId)) {
       const actorUcIds = new Set(
@@ -1083,6 +1111,13 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-external-uc-call', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-use') {
+      const match = /^mcp:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-use', sourceId: match[1], targetId: match[2] });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
       const match = /^use:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -1149,6 +1184,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-actor', id });
       return;
     }
+    if (elementType === 'node' && kind === 'ai-agent') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-ai-agent', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-flow', id: id.replace(/^flow:/, '') });
@@ -1186,7 +1226,8 @@ export class ModuxEditor extends LitElement {
       kind === 'external-use-case' ||
       kind === 'application-event' ||
       kind === 'external-system' ||
-      kind === 'actor'
+      kind === 'actor' ||
+      kind === 'ai-agent'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
@@ -1361,6 +1402,8 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-external-system', id: `ext-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'actor') {
         this.command({ kind: 'add-actor', id: slug(name), name });
+      } else if (this._newContextMapKind === 'ai-agent') {
+        this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
         // A selected context is the natural owner; the dropdown can override it.
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
@@ -1552,6 +1595,8 @@ export class ModuxEditor extends LitElement {
                 ? 'Nuevo sistema externo…'
                 : this._newContextMapKind === 'actor'
                   ? 'Nuevo actor…'
+                  : this._newContextMapKind === 'ai-agent'
+                    ? 'Nuevo agente de IA…'
                   : this._detail !== 'detail' || this._newContextMapKind === 'module'
                     ? 'Nuevo contexto…'
                     : this._newContextMapKind === 'domain-event'
@@ -1587,6 +1632,9 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="actor" ?selected=${this._newContextMapKind === 'actor'}>
                 Actor
+              </option>
+              <option value="ai-agent" ?selected=${this._newContextMapKind === 'ai-agent'}>
+                Agente de IA
               </option>
               ${this._detail === 'detail'
                 ? html`

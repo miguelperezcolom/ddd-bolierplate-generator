@@ -36,14 +36,15 @@ public record AllData(
         List<ViewEntity> views,
         List<DiagramEntity> diagrams,
         List<DomainServiceEntity> domainServices,
-        List<ApplicationEventEntity> applicationEvents
+        List<ApplicationEventEntity> applicationEvents,
+        List<AiAgentEntity> aiAgents
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
     public static AllData empty() {
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -81,5 +82,6 @@ public record AllData(
         diagrams = diagrams != null ? diagrams : List.of();
         domainServices = domainServices != null ? domainServices : List.of();
         applicationEvents = applicationEvents != null ? applicationEvents : List.of();
+        aiAgents = aiAgents != null ? aiAgents : List.of();
     }
 }

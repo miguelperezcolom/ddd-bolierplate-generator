@@ -98,6 +98,17 @@ export interface ActorRef {
   name: string;
 }
 
+export interface AiAgentRef {
+  id: string;
+  name: string;
+}
+
+/** An AI agent consumes a use case through MCP. */
+export interface AgentUseRef {
+  agentId: string;
+  useCaseId: string;
+}
+
 export interface ExternalUseCaseRef {
   id: string;
   name: string;
@@ -207,4 +218,6 @@ export interface ModuxModel {
   actorUses?: ActorUseRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
+  aiAgents?: AiAgentRef[];
+  agentUses?: AgentUseRef[];
 }

@@ -65,6 +65,27 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** An AI agent that consumes use cases through MCP. */
+      kind: 'add-ai-agent';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-ai-agent';
+      id: string;
+    }
+  | {
+      /** The agent consumes the use case through MCP (sets exposedAsMcp). */
+      kind: 'add-agent-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-agent-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** A business actor (role). */
       kind: 'add-actor';
       id: string;

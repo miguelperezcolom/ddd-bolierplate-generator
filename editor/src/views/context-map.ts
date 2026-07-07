@@ -277,8 +277,9 @@ export function contextMapScene(
     if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
     return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
-  // Business actors live outside every bounded context.
-  const totalTop = allNodes.length + (model.actors ?? []).length;
+  // Business actors and AI agents live outside every bounded context.
+  const totalTop =
+    allNodes.length + (model.actors ?? []).length + (model.aiAgents ?? []).length;
   (model.actors ?? []).forEach((a, i) => {
     const pos = layout[a.id] ?? defaultPosition(allNodes.length + i, totalTop);
     nodes.push({
@@ -294,6 +295,25 @@ export function contextMapScene(
       stroke: '#64748b',
       badge: 'ACTOR',
       tooltip: `${a.name} (actor)`,
+    });
+  });
+  (model.aiAgents ?? []).forEach((a, i) => {
+    const pos =
+      layout[a.id] ??
+      defaultPosition(allNodes.length + (model.actors ?? []).length + i, totalTop);
+    nodes.push({
+      id: a.id,
+      label: a.name,
+      x: pos.x,
+      y: pos.y,
+      w: 132,
+      h: 48,
+      kind: 'ai-agent',
+      symbol: 'robot',
+      fill: '#faf5ff',
+      stroke: '#9333ea',
+      badge: 'AGENTE IA',
+      tooltip: `${a.name} (agente de IA — consume por MCP)`,
     });
   });
   // Children must paint over every container, not just their own.
@@ -407,6 +427,20 @@ export function contextMapScene(
         }))
     : [];
 
+  const agentUseEdges: SceneEdge[] = detailed
+    ? (model.agentUses ?? [])
+        .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
+        .map((u) => ({
+          id: `mcp:${u.agentId}->${u.useCaseId}`,
+          sourceId: u.agentId,
+          targetId: u.useCaseId,
+          kind: 'agent-use',
+          color: '#9333ea',
+          dashed: true,
+          arrow: true,
+          tooltip: 'consume por MCP (exposedAsMcp)',
+        }))
+    : [];
   const externalCallEdges: SceneEdge[] = detailed
     ? (model.externalCalls ?? [])
         .filter((c) => nodeIds.has(c.externalSystemId) && nodeIds.has(c.useCaseId))
@@ -444,6 +478,7 @@ export function contextMapScene(
       ...callEdges,
       ...queryEdges,
       ...actorUseEdges,
+      ...agentUseEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
     ],

@@ -7,6 +7,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessS
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
@@ -105,6 +106,9 @@ public class EditorApiController {
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
+    /** An AI agent consuming use cases through MCP. */
+    public record AiAgentDto(String id, String name) {}
+    public record AgentUseDto(String agentId, String useCaseId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
     public record UseCaseCallDto(String sourceId, String targetId) {}
     public record QueryServiceDto(String id, String name) {}
@@ -129,7 +133,9 @@ public class EditorApiController {
             List<QueryCallDto> queryCalls,
             List<ActorUseDto> actorUses,
             List<ExternalCallDto> externalCalls,
-            List<ExternalUseCaseCallDto> externalUseCaseCalls) {}
+            List<ExternalUseCaseCallDto> externalUseCaseCalls,
+            List<AiAgentDto> aiAgents,
+            List<AgentUseDto> agentUses) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -372,6 +378,13 @@ public class EditorApiController {
         var actors = repository.findAllOfType(RoleEntity.class).stream()
                 .map(r -> new ActorDto(r.id(), r.name()))
                 .toList();
+        var aiAgents = repository.findAllOfType(AiAgentEntity.class).stream()
+                .map(a -> new AiAgentDto(a.id(), a.name()))
+                .toList();
+        var agentUses = new ArrayList<AgentUseDto>();
+        for (var agent : repository.findAllOfType(AiAgentEntity.class)) {
+            agent.allowedUseCaseIds().forEach(id -> agentUses.add(new AgentUseDto(agent.id(), id)));
+        }
 
         var useCaseCalls = new ArrayList<UseCaseCallDto>();
         for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
@@ -427,7 +440,9 @@ public class EditorApiController {
                 queryCalls.stream().distinct().toList(),
                 actorUses.stream().distinct().toList(),
                 externalCalls.stream().distinct().toList(),
-                externalUseCaseCalls.stream().distinct().toList());
+                externalUseCaseCalls.stream().distinct().toList(),
+                aiAgents,
+                agentUses.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -455,6 +470,10 @@ public class EditorApiController {
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
             case "remove-actor" -> removeActor(command);
+            case "add-ai-agent" -> addAiAgent(command);
+            case "remove-ai-agent" -> removeAiAgent(command);
+            case "add-agent-use" -> addAgentUse(command);
+            case "remove-agent-use" -> removeAgentUse(command);
             case "add-aggregate" -> addAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
@@ -673,6 +692,9 @@ public class EditorApiController {
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+            case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
+                    .ifPresent(a -> repository.save(new AiAgentEntity(
+                            a.id(), command.name(), a.description(), a.allowedUseCaseIds())));
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(new RoleEntity(
                             r.id(), command.name(), r.allowedUseCaseIds(), r.allowedQueryServiceIds())));
@@ -1099,6 +1121,10 @@ public class EditorApiController {
                 .forEach(r -> repository.save(new RoleEntity(r.id(), r.name(),
                         r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList(),
                         r.allowedQueryServiceIds())));
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.allowedUseCaseIds().contains(command.id()))
+                .forEach(a -> repository.save(new AiAgentEntity(a.id(), a.name(), a.description(),
+                        a.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList())));
         repository.findAllOfType(ModuleEntity.class).stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
@@ -1439,6 +1465,66 @@ public class EditorApiController {
         var project = owningProject();
         repository.save(withExternalSystems(project, project.externalSystems().stream()
                 .filter(x -> !x.id().equals(command.id())).toList()));
+    }
+
+    private void addAiAgent(EditorCommand command) {
+        if (repository.findById(command.id(), AiAgentEntity.class).isPresent()) return;
+        repository.save(new AiAgentEntity(command.id(), command.name(), null, List.of()));
+    }
+
+    private void removeAiAgent(EditorCommand command) {
+        repository.findById(command.id(), AiAgentEntity.class).ifPresent(agent -> {
+            repository.deleteAllById(List.of(agent.id()), AiAgentEntity.class);
+            // MCP exposure that only this agent justified goes with it.
+            agent.allowedUseCaseIds().forEach(this::clearMcpExposureIfUnused);
+        });
+    }
+
+    /** Agent → use case: record the consumption and expose the use case through MCP. */
+    private void addAgentUse(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        var useCase = repository.findById(command.targetId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetId()));
+        if (!agent.allowedUseCaseIds().contains(useCase.id())) {
+            var ids = new ArrayList<>(agent.allowedUseCaseIds());
+            ids.add(useCase.id());
+            repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(), ids));
+        }
+        if (!useCase.exposedAsMcp()) {
+            repository.save(withExposedAsMcp(useCase, true));
+        }
+    }
+
+    private void removeAgentUse(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(),
+                        agent.allowedUseCaseIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList())));
+        clearMcpExposureIfUnused(command.targetId());
+    }
+
+    /** exposedAsMcp holds only while some agent consumes the use case. */
+    private void clearMcpExposureIfUnused(String useCaseId) {
+        var stillUsed = repository.findAllOfType(AiAgentEntity.class).stream()
+                .anyMatch(a -> a.allowedUseCaseIds().contains(useCaseId));
+        if (stillUsed) return;
+        repository.findById(useCaseId, UseCaseEntity.class)
+                .filter(UseCaseEntity::exposedAsMcp)
+                .ifPresent(uc -> repository.save(withExposedAsMcp(uc, false)));
+    }
+
+    /** Record copy with only exposedAsMcp replaced — every other field preserved verbatim. */
+    private static UseCaseEntity withExposedAsMcp(UseCaseEntity uc, boolean exposedAsMcp) {
+        return new UseCaseEntity(
+                uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), exposedAsMcp,
+                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), uc.steps(),
+                uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
+                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
+                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
+                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
+                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds());
     }
 
     private void addActor(EditorCommand command) {
