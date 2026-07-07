@@ -156,6 +156,14 @@
     "AiAgentEntity" : {
       "type" : "object",
       "properties" : {
+        "allowedExternalUseCaseIds" : {
+          "description" : "References to existing 'allowedExternalUseCase' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "allowedUseCaseIds" : {
           "description" : "References to existing 'allowedUseCase' ids (referential integrity is checked by the linter).",
           "type" : "array",

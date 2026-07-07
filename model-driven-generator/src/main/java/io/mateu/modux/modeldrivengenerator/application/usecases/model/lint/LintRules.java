@@ -64,7 +64,24 @@ public final class LintRules {
                 new WorkflowDependsScope(),
                 new PolicyWithoutTrigger(),
                 new PolicyExposedAsUi(),
-                new ProjectionSource());
+                new ProjectionSource(),
+                new AgentWithoutTools());
+    }
+
+    /** An AI agent acts through its tools: MCP use cases or external-system operations. */
+    static class AgentWithoutTools implements LintRule {
+        public String id() { return "agent-without-tools"; }
+        public String description() { return "An AI agent needs use cases or external operations to act"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aiAgents().stream()
+                    .filter(a -> a.allowedUseCaseIds().isEmpty()
+                            && a.allowedExternalUseCaseIds().isEmpty())
+                    .map(a -> new LintFinding(id(), LintSeverity.INFO, "AiAgent", a.id(),
+                            a.name(),
+                            "Agente sin herramientas: no consume ningún caso de uso ni operación"
+                                    + " externa — no puede actuar sobre el sistema."))
+                    .toList();
+        }
     }
 
     /** A projection needs a source: event handlers, or an aggregate whose state it projects. */

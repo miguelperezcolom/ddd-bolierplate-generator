@@ -86,6 +86,17 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** The agent calls an external system's operation (the other half of its tools). */
+      kind: 'add-agent-external-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-agent-external-use';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** A business actor (role). */
       kind: 'add-actor';
       id: string;

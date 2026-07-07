@@ -111,6 +111,12 @@ export interface AgentUseRef {
   useCaseId: string;
 }
 
+/** An AI agent calls an operation offered by an external system. */
+export interface AgentExternalUseRef {
+  agentId: string;
+  externalUseCaseId: string;
+}
+
 export interface ExternalUseCaseRef {
   id: string;
   name: string;
@@ -283,6 +289,7 @@ export interface ModuxModel {
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];
   agentUses?: AgentUseRef[];
+  agentExternalUses?: AgentExternalUseRef[];
   workflows?: WorkflowRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */

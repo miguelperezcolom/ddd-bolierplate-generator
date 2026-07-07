@@ -190,6 +190,72 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
     });
   }
 
+  // ---- AI agents: automated actors whose tools are commands and external ops
+  for (const agent of model.aiAgents ?? []) {
+    const uses = (model.agentUses ?? []).filter((u) => u.agentId === agent.id);
+    const externalUses = (model.agentExternalUses ?? []).filter((u) => u.agentId === agent.id);
+    if (!uses.length && !externalUses.length) continue; // toolless agents belong to the context map
+    addNode(b, {
+      id: agent.id,
+      label: agent.name,
+      x: 0,
+      y: 0,
+      w: STICKY.actor.w,
+      h: STICKY.actor.h,
+      kind: 'ai-agent',
+      symbol: 'robot',
+      fill: '#faf5ff',
+      stroke: '#9333ea',
+      badge: 'AGENTE IA',
+      tooltip: `${agent.name} — agente de IA (consume por MCP)`,
+    });
+    for (const use of uses) {
+      if (!ucIds.has(use.useCaseId)) continue;
+      addEdge(b, {
+        id: `es-agent:${agent.id}->${use.useCaseId}`,
+        sourceId: agent.id,
+        targetId: use.useCaseId,
+        kind: 'es-agent-command',
+        color: '#9333ea',
+        dashed: true,
+        arrow: true,
+        tooltip: 'consume por MCP',
+      });
+    }
+    for (const use of externalUses) {
+      const owner = model.externalSystems.find((x) =>
+        (x.useCases ?? []).some((u) => u.id === use.externalUseCaseId),
+      );
+      if (!owner) continue;
+      const opName = (owner.useCases ?? []).find((u) => u.id === use.externalUseCaseId)?.name;
+      addNode(b, {
+        id: owner.id,
+        label: owner.name,
+        x: 0,
+        y: 0,
+        w: STICKY.external.w,
+        h: STICKY.external.h,
+        kind: 'external-system',
+        symbol: 'component',
+        fill: STICKY.external.fill,
+        stroke: STICKY.external.stroke,
+        dashed: true,
+        badge: 'EXTERNO',
+      });
+      addEdge(b, {
+        id: `es-agentx:${agent.id}->${use.externalUseCaseId}`,
+        sourceId: agent.id,
+        targetId: owner.id,
+        kind: 'es-agent-external',
+        label: opName,
+        color: '#9333ea',
+        dashed: true,
+        arrow: true,
+        tooltip: opName ? `Llama a ${opName} del sistema externo` : undefined,
+      });
+    }
+  }
+
   // ---- external systems calling in / being called --------------------------
   const externalNode = (id: string): string | null => {
     const ext = model.externalSystems.find((x) => x.id === id);

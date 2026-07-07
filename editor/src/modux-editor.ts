@@ -581,6 +581,10 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-agent-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-use':
         return [{ kind: 'add-agent-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-external-use':
+        return [{ kind: 'remove-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-external-use':
+        return [{ kind: 'add-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-actor':
         return [{ kind: 'remove-actor', id: c.id }];
       case 'remove-actor': {
@@ -990,6 +994,17 @@ export class ModuxEditor extends LitElement {
           (u) => u.agentId === sourceId && u.useCaseId === targetId,
         );
         if (!already) this.command({ kind: 'add-agent-use', sourceId, targetId });
+        return;
+      }
+      // The other half of the agent's tool surface: external-system operations.
+      const agentExtUcIds = new Set(
+        this.model.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
+      );
+      if (agentExtUcIds.has(targetId)) {
+        const already = (this.model.agentExternalUses ?? []).some(
+          (u) => u.agentId === sourceId && u.externalUseCaseId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-external-use', sourceId, targetId });
       }
       return;
     }
@@ -1333,6 +1348,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-agent-use', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-external-use') {
+      const match = /^mcpx:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-external-use', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-use') {
@@ -1909,7 +1931,13 @@ export class ModuxEditor extends LitElement {
                           ? 'Nuevo servicio de dominio…'
                           : this._newContextMapKind === 'policy'
                             ? 'Nueva policy…'
-                            : 'Nuevo read model…',
+                            : this._newContextMapKind === 'use-case'
+                              ? 'Nuevo caso de uso…'
+                              : this._newContextMapKind === 'query-service'
+                                ? 'Nuevo query service…'
+                                : this._newContextMapKind === 'external-use-case'
+                                  ? 'Nuevo caso de uso externo…'
+                                  : 'Nuevo read model…',
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',

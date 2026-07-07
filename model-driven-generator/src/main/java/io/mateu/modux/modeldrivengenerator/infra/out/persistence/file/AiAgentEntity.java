@@ -13,10 +13,26 @@ public record AiAgentEntity(
         String id,
         String name,
         String description,
-        List<String> allowedUseCaseIds
+        List<String> allowedUseCaseIds,
+        /**
+         * External-system operations this agent may call. Together with the MCP use cases
+         * they form the agent's whole tool surface; how the call is bridged (gateway, ACL…)
+         * is a later decision — this only declares the consumption.
+         */
+        List<String> allowedExternalUseCaseIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-external-operations callers and stores). */
+    public AiAgentEntity(String id, String name, String description,
+                         List<String> allowedUseCaseIds) {
+        this(id, name, description, allowedUseCaseIds, List.of());
+    }
 
     public List<String> allowedUseCaseIds() {
         return allowedUseCaseIds != null ? allowedUseCaseIds : List.of();
+    }
+
+    public List<String> allowedExternalUseCaseIds() {
+        return allowedExternalUseCaseIds != null ? allowedExternalUseCaseIds : List.of();
     }
 }

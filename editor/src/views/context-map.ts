@@ -479,6 +479,20 @@ export function contextMapScene(
           tooltip: 'consume por MCP (exposedAsMcp)',
         }))
     : [];
+  const agentExternalUseEdges: SceneEdge[] = detailed
+    ? (model.agentExternalUses ?? [])
+        .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.externalUseCaseId))
+        .map((u) => ({
+          id: `mcpx:${u.agentId}->${u.externalUseCaseId}`,
+          sourceId: u.agentId,
+          targetId: u.externalUseCaseId,
+          kind: 'agent-external-use',
+          color: '#9333ea',
+          dashed: true,
+          arrow: true,
+          tooltip: 'llama a la operación del sistema externo',
+        }))
+    : [];
   const externalCallEdges: SceneEdge[] = detailed
     ? (model.externalCalls ?? [])
         .filter((c) => nodeIds.has(c.externalSystemId) && nodeIds.has(c.useCaseId))
@@ -518,6 +532,7 @@ export function contextMapScene(
       ...queryEdges,
       ...actorUseEdges,
       ...agentUseEdges,
+      ...agentExternalUseEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
     ],
