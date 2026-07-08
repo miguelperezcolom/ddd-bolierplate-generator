@@ -1165,11 +1165,17 @@ export class ModuxEditor extends LitElement {
     this.pushUndoEntry(ops);
   }
 
-  /** The selected element, when it is a first-class API (the import lands on it). */
+  /**
+   * Where an imported contract lands: the selected API — or, with a proxy
+   * selected, the API it fronts (a proxy has no operations of its own).
+   */
   private selectedApiId(): string | null {
-    return this._selectedId && (this.model.apis ?? []).some((a) => a.id === this._selectedId)
-      ? this._selectedId
-      : null;
+    if (!this._selectedId) return null;
+    if ((this.model.apis ?? []).some((a) => a.id === this._selectedId)) {
+      return this._selectedId;
+    }
+    const proxy = (this.model.proxyApis ?? []).find((px) => px.id === this._selectedId);
+    return proxy?.targetApiId ?? null;
   }
 
   /** Reads the picked contract and hands it to the host (the import is a server call). */

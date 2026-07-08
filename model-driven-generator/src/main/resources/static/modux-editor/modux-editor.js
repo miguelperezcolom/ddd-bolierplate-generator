@@ -5662,9 +5662,16 @@ let L = class extends Se {
       nodes: { ...u.nodes, [d]: { x: n - f.x, y: s - f.y } }
     })), this.pushUndoEntry(y);
   }
-  /** The selected element, when it is a first-class API (the import lands on it). */
+  /**
+   * Where an imported contract lands: the selected API — or, with a proxy
+   * selected, the API it fronts (a proxy has no operations of its own).
+   */
   selectedApiId() {
-    return this._selectedId && (this.model.apis ?? []).some((e) => e.id === this._selectedId) ? this._selectedId : null;
+    if (!this._selectedId) return null;
+    if ((this.model.apis ?? []).some((t) => t.id === this._selectedId))
+      return this._selectedId;
+    const e = (this.model.proxyApis ?? []).find((t) => t.id === this._selectedId);
+    return (e == null ? void 0 : e.targetApiId) ?? null;
   }
   /** Reads the picked contract and hands it to the host (the import is a server call). */
   async onImportApiFile(e) {
