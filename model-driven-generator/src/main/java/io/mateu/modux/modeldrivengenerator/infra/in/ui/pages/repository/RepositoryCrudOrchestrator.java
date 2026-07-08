@@ -2,6 +2,8 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository;
 
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.RepositoryRow;
+import io.mateu.modux.modeldrivengenerator.application.usecases.repository.open.OpenRepositoryUseCase;
+import io.mateu.uidl.annotations.ListToolbarButton;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
@@ -27,6 +29,18 @@ public class RepositoryCrudOrchestrator extends Crud<
         > {
 
     final RepositoryCrudAdapter adapter;
+    final OpenRepositoryUseCase openUseCase;
+
+    /** The repository points at the project: opening loads its store as the working model. */
+    @ListToolbarButton(confirmationRequired = false, rowsSelectedRequired = true)
+    public String abrirProyecto(HttpRequest httpRequest) {
+        var rows = httpRequest.getSelectedRows(RepositoryRow.class);
+        if (rows == null || rows.isEmpty()) {
+            throw new IllegalArgumentException("Selecciona el repositorio que quieres abrir");
+        }
+        var storePath = openUseCase.handle(rows.get(0).id());
+        return "Proyecto abierto desde " + storePath;
+    }
 
     @Override
     public CrudAdapter<RepositoryViewModel, RepositoryViewModel,

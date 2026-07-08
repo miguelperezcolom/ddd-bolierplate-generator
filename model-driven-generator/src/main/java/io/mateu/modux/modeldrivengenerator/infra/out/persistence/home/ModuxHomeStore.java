@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The user's machine-local modux configuration, at ~/.modux (overridable with
@@ -48,6 +49,27 @@ public class ModuxHomeStore {
         var file = repositoriesFile();
         if (!Files.exists(file)) return List.of();
         return yaml.readValue(Files.readString(file), HomeRepositories.class).repositories();
+    }
+
+    private Path currentFile() {
+        return homeDir().resolve("current.yaml");
+    }
+
+    /** ~/.modux/current.yaml — which repository's project is open. */
+    record CurrentProject(String repositoryId) {}
+
+    @SneakyThrows
+    public synchronized Optional<String> loadCurrentRepositoryId() {
+        var file = currentFile();
+        if (!Files.exists(file)) return Optional.empty();
+        return Optional.ofNullable(
+                yaml.readValue(Files.readString(file), CurrentProject.class).repositoryId());
+    }
+
+    @SneakyThrows
+    public synchronized void saveCurrentRepositoryId(String repositoryId) {
+        Files.createDirectories(homeDir());
+        Files.writeString(currentFile(), yaml.writeValueAsString(new CurrentProject(repositoryId)));
     }
 
     @SneakyThrows

@@ -4,8 +4,10 @@ import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.RepositoryDto;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.create.CreateRepositoryCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.create.CreateRepositoryUseCase;
+import io.mateu.modux.modeldrivengenerator.application.usecases.repository.open.OpenRepositoryUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.save.SaveRepositoryCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.save.SaveRepositoryUseCase;
+import io.mateu.uidl.annotations.Action;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Help;
 import io.mateu.uidl.annotations.Hidden;
@@ -45,6 +47,7 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
 
     final CreateRepositoryUseCase createUseCase;
     final SaveRepositoryUseCase saveUseCase;
+    final OpenRepositoryUseCase openUseCase;
 
     @Override
     public String create(HttpRequest httpRequest) {
@@ -92,6 +95,13 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
         branch = model.branch();
         description = model.description();
         return this;
+    }
+
+    /** The repository points at the project: opening loads its store as the working model. */
+    @Action
+    public String abrirProyecto(HttpRequest httpRequest) {
+        var storePath = openUseCase.handle(id);
+        return "Proyecto abierto desde " + storePath;
     }
 
     @Override

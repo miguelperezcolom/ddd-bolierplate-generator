@@ -1,0 +1,81 @@
+package io.mateu.modux.modeldrivengenerator.infra.out.persistence.home;
+
+import io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.Repository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Opens the project a repository points at. A folder repository is used in place;
+ * a git repository gets a working checkout under ~/.modux/checkouts/&lt;id&gt; (cloned
+ * on first open). The store inside is the folder's model-driven-store.yaml when
+ * present, or the folder itself as a granular store (authoring from scratch).
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RepositoryStoreOpener implements ProjectStorePort {
+
+    final ModuxHomeStore home;
+    final CommonFileRepository repository;
+
+    @Override
+    @SneakyThrows
+    public Path open(Repository repo) {
+        var location = resolveLocation(repo);
+        Files.createDirectories(location);
+        var monolithic = location.resolve("model-driven-store.yaml");
+        var storePath = Files.exists(monolithic) ? monolithic : location;
+        repository.loadFrom(storePath.toString());
+        home.saveCurrentRepositoryId(repo.getId().id());
+        log.info("proyecto abierto desde el repositorio {} en {}", repo.getName().name(), storePath);
+        return storePath;
+    }
+
+    @Override
+    public Optional<String> currentRepositoryId() {
+        return home.loadCurrentRepositoryId();
+    }
+
+    private Path resolveLocation(Repository repo) {
+        if (repo.getFolder() != null && !repo.getFolder().isBlank()) {
+            return expandTilde(repo.getFolder());
+        }
+        return checkoutOf(repo);
+    }
+
+    @SneakyThrows
+    private Path checkoutOf(Repository repo) {
+        var dir = home.homeDir().resolve("checkouts").resolve(repo.getId().id());
+        if (Files.exists(dir.resolve(".git"))) return dir;
+        Files.createDirectories(dir.getParent());
+        var command = new java.util.ArrayList<>(java.util.List.of("git", "clone"));
+        if (repo.getBranch() != null && !repo.getBranch().isBlank()) {
+            command.addAll(java.util.List.of("--branch", repo.getBranch()));
+        }
+        command.addAll(java.util.List.of(repo.getGitUrl(), dir.toString()));
+        log.info("clonando {} en {}", repo.getGitUrl(), dir);
+        var process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        var output = new String(process.getInputStream().readAllBytes());
+        if (!process.waitFor(120, TimeUnit.SECONDS) || process.exitValue() != 0) {
+            throw new IllegalStateException("No se pudo clonar " + repo.getGitUrl() + ": " + output);
+        }
+        return dir;
+    }
+
+    private static Path expandTilde(String folder) {
+        var trimmed = folder.trim();
+        if (trimmed.startsWith("~")) {
+            return Path.of(System.getProperty("user.home") + trimmed.substring(1));
+        }
+        return Path.of(trimmed);
+    }
+}
