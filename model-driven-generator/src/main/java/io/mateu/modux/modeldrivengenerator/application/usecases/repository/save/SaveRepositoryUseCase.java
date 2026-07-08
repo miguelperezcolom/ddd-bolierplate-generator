@@ -14,7 +14,7 @@ public class SaveRepositoryUseCase {
 
     public void handle(SaveRepositoryCommand command) {
         var entity = repository.findById(new RepositoryId(command.id())).orElseThrow();
-        entity.update(new RepositoryName(command.name()), command.folder(),
+        entity.update(new RepositoryName(command.name()), command.type(), command.folder(),
                 command.gitUrl(), command.branch(), command.description());
         repository.save(entity);
     }

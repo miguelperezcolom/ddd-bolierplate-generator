@@ -29,10 +29,15 @@ public class RepositoryHomeQueryService implements RepositoryQueryService {
         var rows = matching.stream()
                 .skip((long) pageable.page() * pageable.size())
                 .limit(pageable.size())
-                .map(e -> new RepositoryRow(e.id(), e.name(), e.folder(), e.gitUrl()))
+                .map(e -> new RepositoryRow(e.id(), e.name(), inferredType(e), e.folder(), e.gitUrl()))
                 .toList();
         return new ListingData<>(new Page<>(searchText, pageable.size(), pageable.page(),
                 matching.size(), rows));
+    }
+
+    private static String inferredType(RepositoryEntity e) {
+        if (e.type() != null && !e.type().isBlank()) return e.type();
+        return e.gitUrl() != null && !e.gitUrl().isBlank() ? "GIT" : "LOCAL";
     }
 
     @Override
@@ -48,7 +53,7 @@ public class RepositoryHomeQueryService implements RepositoryQueryService {
         return store.loadRepositories().stream()
                 .filter(e -> e.id().equals(id))
                 .findFirst()
-                .map(e -> new RepositoryDto(e.id(), e.name(), e.folder(), e.gitUrl(),
+                .map(e -> new RepositoryDto(e.id(), e.name(), inferredType(e), e.folder(), e.gitUrl(),
                         e.branch(), e.description()));
     }
 }

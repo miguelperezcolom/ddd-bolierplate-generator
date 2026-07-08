@@ -50,10 +50,10 @@ public class RepositoryStoreOpener implements ProjectStorePort {
     }
 
     private Path resolveLocation(Repository repo) {
-        if (repo.getFolder() != null && !repo.getFolder().isBlank()) {
-            return expandTilde(repo.getFolder());
+        if (repo.getType() == io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.vo.RepositoryType.GIT) {
+            return checkoutOf(repo);
         }
-        return checkoutOf(repo);
+        return expandTilde(repo.getFolder());
     }
 
     @SneakyThrows

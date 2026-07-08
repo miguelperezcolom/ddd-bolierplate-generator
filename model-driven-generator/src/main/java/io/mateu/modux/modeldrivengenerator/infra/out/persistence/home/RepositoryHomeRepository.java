@@ -21,7 +21,7 @@ public class RepositoryHomeRepository implements RepositoryRepository {
         return store.loadRepositories().stream()
                 .filter(e -> e.id().equals(id.id()))
                 .findFirst()
-                .map(e -> Repository.load(e.id(), e.name(), e.folder(), e.gitUrl(),
+                .map(e -> Repository.load(e.id(), e.name(), e.type(), e.folder(), e.gitUrl(),
                         e.branch(), e.description()));
     }
 
@@ -29,6 +29,7 @@ public class RepositoryHomeRepository implements RepositoryRepository {
     public Repository save(Repository entity) {
         var repositories = new ArrayList<>(store.loadRepositories());
         var record = new RepositoryEntity(entity.getId().id(), entity.getName().name(),
+                entity.getType() != null ? entity.getType().name() : null,
                 entity.getFolder(), entity.getGitUrl(), entity.getBranch(), entity.getDescription());
         var existing = repositories.stream()
                 .filter(e -> e.id().equals(record.id()))

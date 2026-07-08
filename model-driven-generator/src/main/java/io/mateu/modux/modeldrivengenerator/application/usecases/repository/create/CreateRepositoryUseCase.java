@@ -17,6 +17,7 @@ public class CreateRepositoryUseCase {
         repository.save(Repository.of(
                 new RepositoryId(command.id()),
                 new RepositoryName(command.name()),
+                command.type(),
                 command.folder(),
                 command.gitUrl(),
                 command.branch(),

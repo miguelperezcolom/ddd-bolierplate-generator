@@ -7,6 +7,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.repository.creat
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.open.OpenRepositoryUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.save.SaveRepositoryCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.repository.save.SaveRepositoryUseCase;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.vo.RepositoryType;
 import io.mateu.uidl.annotations.Action;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Help;
@@ -33,13 +34,19 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
     @NotEmpty
     String name;
 
+    @Help("Dónde vive el proyecto: una carpeta de esta máquina, o un repositorio git remoto.")
+    RepositoryType type = RepositoryType.LOCAL;
+
+    @Hidden("state['type'] != 'LOCAL'")
     @Help("Carpeta local donde viven los ficheros (ruta absoluta, o ~ para tu home).")
     String folder;
 
-    @Help("URL del repositorio git (https o ssh). Basta con la carpeta O la URL.")
+    @Hidden("state['type'] != 'GIT'")
+    @Help("URL del repositorio git (https o ssh).")
     String gitUrl;
 
-    @Help("Rama de trabajo cuando hay URL git; en blanco usa la rama por defecto del remoto.")
+    @Hidden("state['type'] != 'GIT'")
+    @Help("Rama de trabajo; en blanco usa la rama por defecto del remoto.")
     String branch;
 
     @Multiline
@@ -53,18 +60,18 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
     public String create(HttpRequest httpRequest) {
         bind(httpRequest);
         if (id == null || id.isBlank()) id = java.util.UUID.randomUUID().toString();
-        createUseCase.handle(new CreateRepositoryCommand(id, name, folder, gitUrl, branch, description));
+        createUseCase.handle(new CreateRepositoryCommand(id, name, type, folder, gitUrl, branch, description));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
         bind(httpRequest);
-        saveUseCase.handle(new SaveRepositoryCommand(id, name, folder, gitUrl, branch, description));
+        saveUseCase.handle(new SaveRepositoryCommand(id, name, type, folder, gitUrl, branch, description));
     }
 
     /** The submitted form travels as the action's initiator state, not as bean fields. */
-    record FormState(String id, String name, String folder, String gitUrl,
+    record FormState(String id, String name, String type, String folder, String gitUrl,
                      String branch, String description) {}
 
     private void bind(HttpRequest httpRequest) {
@@ -72,6 +79,9 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
         if (state == null) return;
         id = firstNonBlank(state.id(), id);
         name = firstNonBlank(state.name(), name);
+        if (state.type() != null && !state.type().isBlank()) {
+            type = RepositoryType.valueOf(state.type());
+        }
         folder = firstNonBlank(state.folder(), folder);
         gitUrl = firstNonBlank(state.gitUrl(), gitUrl);
         branch = firstNonBlank(state.branch(), branch);
@@ -90,6 +100,7 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
     public RepositoryViewModel load(RepositoryDto model) {
         id = model.id();
         name = model.name();
+        type = model.type() != null ? RepositoryType.valueOf(model.type()) : RepositoryType.LOCAL;
         folder = model.folder();
         gitUrl = model.gitUrl();
         branch = model.branch();
