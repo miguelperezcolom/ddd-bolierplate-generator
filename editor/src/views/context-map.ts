@@ -309,26 +309,24 @@ export function contextMapScene(
         badge: 'EXTERNAL',
         tooltip: `${x.name} (sistema externo)`,
       };
+      // Published APIs are strategic-level elements: they nest visibly at EVERY
+      // detail level, while operations and tables only unfold in detailed mode.
       const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
-      if (
-        detailed &&
-        ((x.useCases ?? []).length > 0 || (x.tables ?? []).length > 0 || publishedApis.length > 0)
-      ) {
-        return detailedContainer(
-          pos,
-          base,
-          [
-            ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
-            ...(x.useCases ?? []).map(
-              (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
-            ),
-            ...(x.tables ?? []).map(
-              (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
-            ),
-          ],
-          layout,
-          sizes,
-        );
+      const children: ChildDesc[] = [
+        ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+        ...(detailed
+          ? [
+              ...(x.useCases ?? []).map(
+                (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
+              ),
+              ...(x.tables ?? []).map(
+                (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
+              ),
+            ]
+          : []),
+      ];
+      if (children.length > 0) {
+        return detailedContainer(pos, base, children, layout, sizes);
       }
       return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
     }
