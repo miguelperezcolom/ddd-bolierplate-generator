@@ -1076,6 +1076,38 @@ export class ModuxEditor extends LitElement {
     this.pushUndoEntry(inverseOps);
   }
 
+  /**
+   * A Shift/Ctrl-drag dropped an API chip on a new home: another external system
+   * re-homes the API; empty canvas un-nests it (back to a standalone contract).
+   * Publisher change and drop position travel in ONE undo entry.
+   */
+  private onNodeReparentRequested(e: CustomEvent): void {
+    const { id, targetId, x, y } = e.detail as {
+      id: string;
+      targetId: string | null;
+      x: number;
+      y: number;
+    };
+    const api = (this.model.apis ?? []).find((a) => a.id === id);
+    if (!api) return;
+    if (targetId && !this.model.externalSystems.some((s) => s.id === targetId)) return;
+    const current = api.publishedByExternalSystemId ?? '';
+    const next = targetId ?? '';
+    if (next === current) return;
+    const view = this._view;
+    const layout = this.viewLayout(view);
+    const scene = this.sceneFor(view);
+    const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+    const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+    const ops: EditOp[] = [
+      { kind: 'set-api-publisher', id, targetId: current },
+      { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+    ];
+    this.command({ kind: 'set-api-publisher', id, targetId: next }, false);
+    this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+    this.pushUndoEntry(ops);
+  }
+
   /** A multi-selection drag: every position lands in ONE layout write and ONE undo entry. */
   private onNodesMoved(e: CustomEvent): void {
     const { moves } = e.detail as { moves: { id: string; x: number; y: number }[] };
@@ -2981,6 +3013,7 @@ export class ModuxEditor extends LitElement {
         .connectable=${this._view === 'context-map' || this._view === 'workflows'}
         @node-moved=${this.onNodeMoved}
         @nodes-moved=${this.onNodesMoved}
+        @node-reparent-requested=${this.onNodeReparentRequested}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
@@ -3000,7 +3033,7 @@ export class ModuxEditor extends LitElement {
       ></modux-canvas>
       <div class="hint">
         ${this._view === 'context-map'
-          ? html`Arrastra para reordenar · asa azul → crear relación (elige el tipo) · doble click
+          ? html`Arrastra para reordenar · Shift/Ctrl+arrastrar mueve una API de sistema · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
             · rueda para zoom`

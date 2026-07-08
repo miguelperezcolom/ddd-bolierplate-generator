@@ -110,6 +110,7 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
  * Events (all CustomEvent, composed, bubbling):
  *  - node-moved        { id, x, y }             after a drag ends
  *  - nodes-moved       { moves: [{id, x, y}] }   multi-selection drag ended
+ *  - node-reparent-requested { id, targetId, x, y }  Shift/Ctrl-drag dropped an API on a new home
  *  - connect-requested { sourceId, targetId }   edge-drawing gesture completed
  *  - element-selected  { elementType, id, kind }  click on node or edge
  *  - element-activated { elementType, id, kind }  double click
@@ -421,6 +422,19 @@ export class ModuxCanvas extends LitElement {
     return { id: node.id, x, y };
   }
 
+  /**
+   * Topmost node under the pointer. elementFromPoint alone is not enough: an
+   * edge's fat invisible hit-line can sit on top of a node and swallow the hit.
+   */
+  private nodeIdAt(ev: PointerEvent): string | null {
+    const els = this.shadowRoot?.elementsFromPoint(ev.clientX, ev.clientY) ?? [];
+    for (const el of els) {
+      const g = el.closest?.('[data-node-id]');
+      if (g) return g.getAttribute('data-node-id');
+    }
+    return null;
+  }
+
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {
     if (e.button !== 0) return;
     if (this._spaceDown) return; // let the zoom behavior pan instead
@@ -441,6 +455,20 @@ export class ModuxCanvas extends LitElement {
         : null;
     const groupOrigins = group ? new Map(group.map((n) => [n.id, this.nodePos(n)])) : null;
 
+    // Shift/Ctrl while dragging an API chip frees it from its container: dropping it
+    // on another external system re-homes the API (the handle stays for relations).
+    const freeDrag = (ev: PointerEvent) =>
+      (ev.shiftKey || ev.ctrlKey) && node.kind === 'api' && !group;
+    const dropHome = (ev: PointerEvent): string | null => {
+      const targetId = this.nodeIdAt(ev);
+      const target =
+        targetId && targetId !== node.id
+          ? this.scene.nodes.find((n) => n.id === targetId)
+          : undefined;
+      if (!target) return null;
+      if (target.kind === 'external-system') return target.id;
+      return target.parentId ?? null;
+    };
     const onMove = (ev: PointerEvent) => {
       const p = this.toScene(ev);
       const dx = p.x - start.x;
@@ -455,11 +483,15 @@ export class ModuxCanvas extends LitElement {
           positions.set(n.id, { x: c.x, y: c.y });
         }
         this._dragGroup = positions;
+      } else if (freeDrag(ev)) {
+        this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
+        this._hoverNodeId = dropHome(ev);
       } else {
         this._dragPos = this.clampToParent(node, origin.x + dx, origin.y + dy);
+        this._hoverNodeId = null;
       }
     };
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       if (moved && this._dragGroup) {
@@ -467,12 +499,28 @@ export class ModuxCanvas extends LitElement {
           moves: [...this._dragGroup.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y })),
         });
       } else if (moved && this._dragPos) {
+        if (freeDrag(ev)) {
+          const home = dropHome(ev);
+          if (home !== (node.parentId ?? null)) {
+            this.emit('node-reparent-requested', {
+              id: node.id,
+              targetId: home,
+              x: this._dragPos.x,
+              y: this._dragPos.y,
+            });
+            this._hoverNodeId = null;
+            return;
+          }
+          // Same home after all — settle it back inside like a normal move.
+          this._dragPos = this.clampToParent(node, this._dragPos.x, this._dragPos.y);
+        }
         this.emit('node-moved', { id: node.id, x: this._dragPos.x, y: this._dragPos.y });
       } else if (e.shiftKey) {
         this.emit('element-multi-toggled', { id: node.id, kind: node.kind });
       } else {
         this.emit('element-selected', { elementType: 'node', id: node.id, kind: node.kind });
       }
+      this._hoverNodeId = null;
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -555,15 +603,12 @@ export class ModuxCanvas extends LitElement {
     const onMove = (ev: PointerEvent) => {
       const q = this.toScene(ev);
       this._pendingLink = { sourceId: node.id, x: q.x, y: q.y };
-      const el = this.shadowRoot?.elementFromPoint(ev.clientX, ev.clientY);
-      const g = el?.closest('[data-node-id]');
-      this._hoverNodeId = g ? g.getAttribute('data-node-id') : null;
+      this._hoverNodeId = this.nodeIdAt(ev);
     };
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      const el = this.shadowRoot?.elementFromPoint(ev.clientX, ev.clientY);
-      const targetId = el?.closest('[data-node-id]')?.getAttribute('data-node-id');
+      const targetId = this.nodeIdAt(ev);
       if (targetId && targetId !== node.id) {
         this.emit('connect-requested', {
           sourceId: node.id,
@@ -835,6 +880,10 @@ export class ModuxCanvas extends LitElement {
       isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
     return svg`
       <g data-node-id=${node.id} transform="translate(${x}, ${y})"
+         pointer-events=${(this._dragPos && this._dragPos.id === node.id) ||
+           this._dragGroup?.has(node.id)
+             ? 'none'
+             : 'auto'}
          @pointerdown=${(e: PointerEvent) => this.onNodePointerDown(e, node)}
          @dblclick=${(e: MouseEvent) => {
            e.stopPropagation();
