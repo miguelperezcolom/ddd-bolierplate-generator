@@ -68,6 +68,51 @@ type ResizeNodeOp = {
 };
 type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp | ResizeNodeOp;
 
+/**
+ * Minimal-displacement overlap resolution: iteratively push apart every pair of
+ * boxes that overlap (inflated by a margin), along the axis of least penetration.
+ * Returns ONLY the nodes that actually moved, with their new centres.
+ */
+function declump(
+  nodes: { id: string; x: number; y: number; w: number; h: number }[],
+  margin = 48,
+): Map<string, { x: number; y: number }> {
+  const pos = new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
+  for (let iter = 0; iter < 80; iter++) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const pa = pos.get(a.id)!;
+        const pb = pos.get(b.id)!;
+        const dx = pb.x - pa.x;
+        const dy = pb.y - pa.y;
+        const ox = (a.w + b.w) / 2 + margin - Math.abs(dx);
+        const oy = (a.h + b.h) / 2 + margin - Math.abs(dy);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        if (ox < oy) {
+          const shift = ((dx >= 0 ? 1 : -1) * ox) / 2;
+          pa.x -= shift;
+          pb.x += shift;
+        } else {
+          const shift = ((dy >= 0 ? 1 : -1) * oy) / 2;
+          pa.y -= shift;
+          pb.y += shift;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  const changed = new Map<string, { x: number; y: number }>();
+  for (const n of nodes) {
+    const p = pos.get(n.id)!;
+    if (Math.abs(p.x - n.x) > 0.5 || Math.abs(p.y - n.y) > 0.5) changed.set(n.id, p);
+  }
+  return changed;
+}
+
 const slug = (name: string) =>
   name
     .toLowerCase()
@@ -396,7 +441,31 @@ export class ModuxEditor extends LitElement {
     ) {
       this._newContextMapKind = 'module';
     }
-    this.writeViewLayout('context-map', { ...this.viewLayout('context-map'), detail });
+    // Positions persist per element across detail levels, but sizes don't: a
+    // container that unfolds at this level may now sit on top of its neighbours.
+    // Nudge the top-level nodes apart (one undoable step) so the map stays legible.
+    const current = this.viewLayout('context-map');
+    const top = this.sceneFor('context-map').nodes.filter((n) => !n.parentId);
+    const moves = declump(top);
+    const ops: EditOp[] = [...moves.keys()].map((id) => ({
+      kind: 'move-node',
+      view: 'context-map',
+      id,
+      pos: current.nodes[id] ?? null,
+    }));
+    const nodes = { ...current.nodes };
+    for (const [id, p] of moves) {
+      // Children hang off the STORED centre (a fitted container may render off it):
+      // apply the declump displacement as a delta, never the raw scene position.
+      const orig = top.find((n) => n.id === id)!;
+      const base = current.nodes[id] ?? { x: orig.x, y: orig.y };
+      nodes[id] = {
+        x: Math.round(base.x + (p.x - orig.x)),
+        y: Math.round(base.y + (p.y - orig.y)),
+      };
+    }
+    this.writeViewLayout('context-map', { ...current, nodes, detail });
+    if (ops.length) this.pushUndoEntry(ops);
   }
 
   private pushUndoEntry(ops: EditOp[]): void {
