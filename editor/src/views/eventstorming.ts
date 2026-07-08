@@ -190,12 +190,20 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
     });
   }
 
-  // ---- AI agents: automated actors whose tools are commands and external ops
+  // ---- AI agents: automated actors whose tools are commands, external ops and MCP servers
   for (const agent of model.aiAgents ?? []) {
     const uses = (model.agentUses ?? []).filter((u) => u.agentId === agent.id);
     const externalUses = (model.agentExternalUses ?? []).filter((u) => u.agentId === agent.id);
     const ragLinks = (model.agentRags ?? []).filter((u) => u.agentId === agent.id);
-    if (!uses.length && !externalUses.length && !ragLinks.length) continue; // toolless agents belong to the context map
+    const mcpUses = (model.agentMcpUses ?? []).filter((u) => u.agentId === agent.id);
+    const otherTools =
+      (model.agentGatewayUses ?? []).some((u) => u.agentId === agent.id) ||
+      (model.agentApiOpUses ?? []).some((u) => u.agentId === agent.id) ||
+      (model.agentQueryUses ?? []).some((u) => u.agentId === agent.id) ||
+      (model.agentDelegations ?? []).some((u) => u.agentId === agent.id) ||
+      (model.agentTriggers ?? []).some((u) => u.agentId === agent.id);
+    if (!uses.length && !externalUses.length && !ragLinks.length && !mcpUses.length && !otherTools)
+      continue; // toolless agents belong to the context map
     addNode(b, {
       id: agent.id,
       label: agent.name,
@@ -253,6 +261,40 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
         dashed: true,
         arrow: true,
         tooltip: opName ? `Llama a ${opName} del sistema externo` : undefined,
+      });
+    }
+    for (const use of mcpUses) {
+      const owner = model.externalSystems.find((x) =>
+        (x.mcpServers ?? []).some((s) => s.id === use.mcpServerId),
+      );
+      if (!owner) continue;
+      const serverName = (owner.mcpServers ?? []).find((s) => s.id === use.mcpServerId)?.name;
+      addNode(b, {
+        id: owner.id,
+        label: owner.name,
+        x: 0,
+        y: 0,
+        w: STICKY.external.w,
+        h: STICKY.external.h,
+        kind: 'external-system',
+        symbol: 'component',
+        fill: STICKY.external.fill,
+        stroke: STICKY.external.stroke,
+        dashed: true,
+        badge: 'EXTERNO',
+      });
+      addEdge(b, {
+        id: `es-agentmcp:${agent.id}->${use.mcpServerId}`,
+        sourceId: agent.id,
+        targetId: owner.id,
+        kind: 'es-agent-mcp',
+        label: serverName,
+        color: '#9333ea',
+        dashed: true,
+        arrow: true,
+        tooltip: serverName
+          ? `Consume las herramientas del servidor MCP ${serverName}`
+          : undefined,
       });
     }
     // Knowledge: the RAGs the agent grounds on, with the read models they index.

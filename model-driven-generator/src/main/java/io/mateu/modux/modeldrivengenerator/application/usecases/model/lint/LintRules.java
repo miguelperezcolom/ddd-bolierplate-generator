@@ -8,6 +8,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiMeasur
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 
@@ -66,6 +67,9 @@ public final class LintRules {
                 new PolicyExposedAsUi(),
                 new ProjectionSource(),
                 new AgentWithoutTools(),
+                new ExternalAgentDirectTools(),
+                new McpGatewayEmpty(),
+                new AgentDelegationCycle(),
                 new RagOrphan(),
                 new ApiOperationUnwired());
     }
@@ -103,19 +107,93 @@ public final class LintRules {
         }
     }
 
-    /** An AI agent acts through its tools: MCP use cases or external-system operations. */
+    /** An AI agent acts through its tools — any of them. */
     static class AgentWithoutTools implements LintRule {
         public String id() { return "agent-without-tools"; }
-        public String description() { return "An AI agent needs use cases or external operations to act"; }
+        public String description() { return "An AI agent needs at least one tool to act"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.aiAgents().stream()
                     .filter(a -> a.allowedUseCaseIds().isEmpty()
-                            && a.allowedExternalUseCaseIds().isEmpty())
+                            && a.allowedExternalUseCaseIds().isEmpty()
+                            && a.allowedMcpServerIds().isEmpty()
+                            && a.allowedApiOperationIds().isEmpty()
+                            && a.allowedQueryServiceIds().isEmpty()
+                            && a.delegateAgentIds().isEmpty()
+                            && a.mcpGatewayIds().isEmpty())
                     .map(a -> new LintFinding(id(), LintSeverity.INFO, "AiAgent", a.id(),
                             a.name(),
-                            "Agente sin herramientas: no consume ningún caso de uso ni operación"
-                                    + " externa — no puede actuar sobre el sistema."))
+                            "Agente sin herramientas: no consume casos de uso, query services,"
+                                    + " operaciones (de API o externas), servidores MCP, gateways"
+                                    + " ni delega en otros agentes — no puede actuar."))
                     .toList();
+        }
+    }
+
+    /** An external agent enters through MCP gateways — never touching internals directly. */
+    static class ExternalAgentDirectTools implements LintRule {
+        public String id() { return "external-agent-direct-tools"; }
+        public String description() { return "External agents should consume ONLY through MCP gateways"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.aiAgents().stream()
+                    .filter(AiAgentEntity::external)
+                    .filter(a -> !a.allowedUseCaseIds().isEmpty()
+                            || !a.allowedQueryServiceIds().isEmpty()
+                            || !a.allowedApiOperationIds().isEmpty()
+                            || !a.ragIds().isEmpty()
+                            || !a.reactsToEventIds().isEmpty())
+                    .map(a -> new LintFinding(id(), LintSeverity.WARNING, "AiAgent", a.id(),
+                            a.name(),
+                            "Agente EXTERNO con herramientas internas directas — debe entrar por"
+                                    + " un gateway MCP, que es quien cura y protege la superficie."))
+                    .toList();
+        }
+    }
+
+    /** A gateway that exposes nothing serves nothing. */
+    static class McpGatewayEmpty implements LintRule {
+        public String id() { return "mcp-gateway-empty"; }
+        public String description() { return "An MCP gateway should expose at least one tool surface"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            return m.mcpGateways().stream()
+                    .filter(g -> g.mcpServerIds().isEmpty() && g.apiIds().isEmpty()
+                            && g.apiOperationIds().isEmpty() && g.useCaseIds().isEmpty()
+                            && g.ragIds().isEmpty())
+                    .map(g -> new LintFinding(id(), LintSeverity.INFO, "McpGateway", g.id(),
+                            g.name(),
+                            "Gateway MCP vacío: no agrega ni expone nada — conéctale APIs,"
+                                    + " operaciones, casos de uso, servidores MCP o RAGs."))
+                    .toList();
+        }
+    }
+
+    /** A delegation cycle between agents loops forever. */
+    static class AgentDelegationCycle implements LintRule {
+        public String id() { return "agent-delegation-cycle"; }
+        public String description() { return "Agent delegation must not form cycles"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var delegates = new java.util.HashMap<String, List<String>>();
+            for (var agent : m.aiAgents()) {
+                delegates.put(agent.id(), agent.delegateAgentIds());
+            }
+            var findings = new ArrayList<LintFinding>();
+            for (var agent : m.aiAgents()) {
+                if (reaches(agent.id(), agent.id(), delegates, new HashSet<>())) {
+                    findings.add(new LintFinding(id(), LintSeverity.WARNING, "AiAgent",
+                            agent.id(), agent.name(),
+                            "Ciclo de delegación: este agente acaba delegándose a sí mismo."));
+                }
+            }
+            return findings;
+        }
+
+        private static boolean reaches(String from, String target,
+                                       java.util.Map<String, List<String>> delegates,
+                                       Set<String> visited) {
+            for (var next : delegates.getOrDefault(from, List.of())) {
+                if (next.equals(target)) return true;
+                if (visited.add(next) && reaches(next, target, delegates, visited)) return true;
+            }
+            return false;
         }
     }
 

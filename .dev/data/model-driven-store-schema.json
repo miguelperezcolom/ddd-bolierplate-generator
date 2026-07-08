@@ -156,8 +156,32 @@
     "AiAgentEntity" : {
       "type" : "object",
       "properties" : {
+        "allowedApiOperationIds" : {
+          "description" : "References to existing 'allowedApiOperation' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "allowedExternalUseCaseIds" : {
           "description" : "References to existing 'allowedExternalUseCase' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "allowedMcpServerIds" : {
+          "description" : "References to existing 'allowedMcpServer' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "allowedQueryServiceIds" : {
+          "description" : "References to existing 'allowedQueryService' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
             "type" : "string",
@@ -172,19 +196,46 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "delegateAgentIds" : {
+          "description" : "References to existing 'delegateAgent' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "description" : {
           "type" : "string"
+        },
+        "external" : {
+          "type" : "boolean"
         },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "mcpGatewayIds" : {
+          "description" : "References to existing 'mcpGateway' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "name" : {
           "type" : "string"
         },
         "ragIds" : {
           "description" : "References to existing 'rag' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "reactsToEventIds" : {
+          "description" : "References to existing 'reactsToEvent' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
             "type" : "string",
@@ -218,6 +269,11 @@
           "items" : {
             "$ref" : "#/$defs/ApiOperationEntity"
           }
+        },
+        "publishedByExternalSystemId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'publishedByExternalSystem' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -242,6 +298,16 @@
         },
         "path" : {
           "type" : "string"
+        },
+        "requestModelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'requestModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "responseModelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'responseModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetModuleId" : {
           "type" : "string",
@@ -817,8 +883,32 @@
     "ExternalSystemEntity" : {
       "type" : "object",
       "properties" : {
+        "cqrsExternalSystemIds" : {
+          "description" : "References to existing 'cqrsExternalSystem' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "decisionIds" : {
           "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "dependsOnApiIds" : {
+          "description" : "References to existing 'dependsOnApi' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "dependsOnExternalSystemIds" : {
+          "description" : "References to existing 'dependsOnExternalSystem' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
             "type" : "string",
@@ -840,6 +930,12 @@
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "mcpServers" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/McpServerEntity"
+          }
         },
         "name" : {
           "type" : "string"
@@ -1371,6 +1467,84 @@
     "LoggingProvider" : {
       "type" : "string",
       "enum" : [ "ELK", "Loki", "Splunk", "Datadog", "CloudWatch", "Custom" ]
+    },
+    "McpGatewayEntity" : {
+      "type" : "object",
+      "properties" : {
+        "apiIds" : {
+          "description" : "References to existing 'api' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "apiOperationIds" : {
+          "description" : "References to existing 'apiOperation' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "mcpServerIds" : {
+          "description" : "References to existing 'mcpServer' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "ragIds" : {
+          "description" : "References to existing 'rag' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "useCaseIds" : {
+          "description" : "References to existing 'useCase' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "McpServerEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "uri" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
     },
     "MessageBrokerType" : {
       "type" : "string",
@@ -2489,6 +2663,34 @@
       "type" : "string",
       "enum" : [ "Create", "Update", "Delete", "Upsert", "Custom" ]
     },
+    "ProxyApiEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "publishedByExternalSystemId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'publishedByExternalSystem' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetApiId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'targetApi' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "QueryCardinality" : {
       "type" : "string",
       "enum" : [ "Single", "List", "Page" ]
@@ -2649,6 +2851,14 @@
     "RoleEntity" : {
       "type" : "object",
       "properties" : {
+        "aiAgentIds" : {
+          "description" : "References to existing 'aiAgent' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "allowedQueryServiceIds" : {
           "description" : "References to existing 'allowedQueryService' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -2659,6 +2869,14 @@
         },
         "allowedUseCaseIds" : {
           "description" : "References to existing 'allowedUseCase' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "externalSystemIds" : {
+          "description" : "References to existing 'externalSystem' ids (referential integrity is checked by the linter).",
           "type" : "array",
           "items" : {
             "type" : "string",
@@ -3721,6 +3939,12 @@
         "$ref" : "#/$defs/InvariantEntity"
       }
     },
+    "mcpGateways" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/McpGatewayEntity"
+      }
+    },
     "modelMappings" : {
       "description" : "Field-level mappings between models (e.g. DTO ↔ domain).",
       "type" : "array",
@@ -3768,6 +3992,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ProjectEntity"
+      }
+    },
+    "proxyApis" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ProxyApiEntity"
       }
     },
     "queryServices" : {

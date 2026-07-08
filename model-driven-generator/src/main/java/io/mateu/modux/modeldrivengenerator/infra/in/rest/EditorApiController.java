@@ -25,6 +25,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.McpGatewayEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.McpServerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagContentSourceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
@@ -96,9 +98,12 @@ public class EditorApiController {
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
     public record EmissionDto(String sourceId, String domainEventId) {}
     public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases,
-                                    List<ExternalTableDto> tables) {}
+                                    List<ExternalTableDto> tables,
+                                    List<McpServerDto> mcpServers) {}
     /** A table/dataset owned by an external system — pollable into a read model. */
     public record ExternalTableDto(String id, String name) {}
+    /** An MCP server published by an external system — a tool surface for AI agents. */
+    public record McpServerDto(String id, String name, String uri) {}
     public record ExternalUseCaseDto(String id, String name) {}
     /** An external system calls one of our use cases in through an INBOUND ACL. */
     public record ExternalCallDto(String externalSystemId, String useCaseId) {}
@@ -144,11 +149,29 @@ public class EditorApiController {
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
     public record ActorDto(String id, String name) {}
-    /** An AI agent consuming use cases through MCP. */
-    public record AiAgentDto(String id, String name) {}
+    /** An AI agent; external = someone else's agent, entering through MCP gateways. */
+    public record AiAgentDto(String id, String name, boolean external) {}
     public record AgentUseDto(String agentId, String useCaseId) {}
     /** An AI agent calls an operation offered by an external system. */
     public record AgentExternalUseDto(String agentId, String externalUseCaseId) {}
+    /** An AI agent consumes an MCP server published by an external system. */
+    public record AgentMcpUseDto(String agentId, String mcpServerId) {}
+    /** Our MCP gateway: aggregates MCPs and exposes APIs/operations/use cases/RAGs as MCP. */
+    public record McpGatewayDto(String id, String name, List<String> mcpServerIds,
+                                List<String> apiIds, List<String> apiOperationIds,
+                                List<String> useCaseIds, List<String> ragIds) {}
+    /** An AI agent consumes an MCP gateway (one curated tool surface). */
+    public record AgentGatewayUseDto(String agentId, String gatewayId) {}
+    /** An AI agent calls an API operation as a tool. */
+    public record AgentApiOpUseDto(String agentId, String apiOperationId) {}
+    /** An AI agent consults a query service as a read tool. */
+    public record AgentQueryUseDto(String agentId, String queryServiceId) {}
+    /** An AI agent delegates work to another agent. */
+    public record AgentDelegationDto(String agentId, String delegateAgentId) {}
+    /** An actor talks to an AI agent (a chat/supervision UI derives from it). */
+    public record ActorAgentUseDto(String actorId, String agentId) {}
+    /** A domain/application event triggers a run of the agent (reactive agents). */
+    public record AgentTriggerDto(String eventId, String agentId) {}
     /** A RAG knowledge base, optionally fed from read models and external content. */
     public record RagDto(String id, String name, String description,
                          List<String> sourceReadModelIds,
@@ -207,7 +230,15 @@ public class EditorApiController {
             List<ApiDto> apis,
             List<ActorExternalDependencyDto> actorExternalDependencies,
             List<ExternalSystemDependencyDto> externalSystemDependencies,
-            List<ProxyApiDto> proxyApis) {}
+            List<ProxyApiDto> proxyApis,
+            List<AgentMcpUseDto> agentMcpUses,
+            List<McpGatewayDto> mcpGateways,
+            List<AgentGatewayUseDto> agentGatewayUses,
+            List<AgentApiOpUseDto> agentApiOpUses,
+            List<AgentQueryUseDto> agentQueryUses,
+            List<AgentDelegationDto> agentDelegations,
+            List<ActorAgentUseDto> actorAgentUses,
+            List<AgentTriggerDto> agentTriggers) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -354,6 +385,9 @@ public class EditorApiController {
                         .toList(),
                         x.tables().stream()
                                 .map(t -> new ExternalTableDto(t.id(), t.name()))
+                                .toList(),
+                        x.mcpServers().stream()
+                                .map(s -> new McpServerDto(s.id(), s.name(), s.uri()))
                                 .toList()))
                 .toList();
         var flowEntities = repository.findAllOfType(FlowEntity.class);
@@ -472,16 +506,42 @@ public class EditorApiController {
                 .map(r -> new ActorDto(r.id(), r.name()))
                 .toList();
         var aiAgents = repository.findAllOfType(AiAgentEntity.class).stream()
-                .map(a -> new AiAgentDto(a.id(), a.name()))
+                .map(a -> new AiAgentDto(a.id(), a.name(), a.external()))
                 .toList();
         var agentUses = new ArrayList<AgentUseDto>();
         var agentExternalUses = new ArrayList<AgentExternalUseDto>();
         var agentRags = new ArrayList<AgentRagDto>();
+        var agentMcpUses = new ArrayList<AgentMcpUseDto>();
+        var agentGatewayUses = new ArrayList<AgentGatewayUseDto>();
+        var agentApiOpUses = new ArrayList<AgentApiOpUseDto>();
+        var agentQueryUses = new ArrayList<AgentQueryUseDto>();
+        var agentDelegations = new ArrayList<AgentDelegationDto>();
+        var agentTriggers = new ArrayList<AgentTriggerDto>();
         for (var agent : repository.findAllOfType(AiAgentEntity.class)) {
             agent.allowedUseCaseIds().forEach(id -> agentUses.add(new AgentUseDto(agent.id(), id)));
             agent.allowedExternalUseCaseIds().forEach(
                     id -> agentExternalUses.add(new AgentExternalUseDto(agent.id(), id)));
             agent.ragIds().forEach(id -> agentRags.add(new AgentRagDto(agent.id(), id)));
+            agent.allowedMcpServerIds().forEach(
+                    id -> agentMcpUses.add(new AgentMcpUseDto(agent.id(), id)));
+            agent.mcpGatewayIds().forEach(
+                    id -> agentGatewayUses.add(new AgentGatewayUseDto(agent.id(), id)));
+            agent.allowedApiOperationIds().forEach(
+                    id -> agentApiOpUses.add(new AgentApiOpUseDto(agent.id(), id)));
+            agent.allowedQueryServiceIds().forEach(
+                    id -> agentQueryUses.add(new AgentQueryUseDto(agent.id(), id)));
+            agent.delegateAgentIds().forEach(
+                    id -> agentDelegations.add(new AgentDelegationDto(agent.id(), id)));
+            agent.reactsToEventIds().forEach(
+                    id -> agentTriggers.add(new AgentTriggerDto(id, agent.id())));
+        }
+        var mcpGateways = repository.findAllOfType(McpGatewayEntity.class).stream()
+                .map(g -> new McpGatewayDto(g.id(), g.name(), g.mcpServerIds(), g.apiIds(),
+                        g.apiOperationIds(), g.useCaseIds(), g.ragIds()))
+                .toList();
+        var actorAgentUses = new ArrayList<ActorAgentUseDto>();
+        for (var role : repository.findAllOfType(RoleEntity.class)) {
+            role.aiAgentIds().forEach(id -> actorAgentUses.add(new ActorAgentUseDto(role.id(), id)));
         }
         var rags = repository.findAllOfType(RagEntity.class).stream()
                 .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds(),
@@ -683,7 +743,15 @@ public class EditorApiController {
                 apis,
                 actorExternalDependencies.stream().distinct().toList(),
                 externalSystemDependencies.stream().distinct().toList(),
-                proxyApis);
+                proxyApis,
+                agentMcpUses.stream().distinct().toList(),
+                mcpGateways,
+                agentGatewayUses.stream().distinct().toList(),
+                agentApiOpUses.stream().distinct().toList(),
+                agentQueryUses.stream().distinct().toList(),
+                agentDelegations.stream().distinct().toList(),
+                actorAgentUses.stream().distinct().toList(),
+                agentTriggers.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -705,7 +773,8 @@ public class EditorApiController {
                                 List<WorkflowStepDto> workflowSteps,
                                 Boolean policy,
                                 String uri, String externalUseCaseId, String externalTableId,
-                                String apiId, String httpMethod, String path) {}
+                                String apiId, String httpMethod, String path,
+                                Boolean external) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -756,6 +825,26 @@ public class EditorApiController {
             case "remove-view-member" -> removeViewMember(command);
             case "add-external-table" -> addExternalTable(command);
             case "remove-external-table" -> removeExternalTable(command);
+            case "add-mcp-server" -> addMcpServer(command);
+            case "remove-mcp-server" -> removeMcpServer(command);
+            case "add-agent-mcp" -> addAgentMcp(command);
+            case "remove-agent-mcp" -> removeAgentMcp(command);
+            case "add-mcp-gateway" -> addMcpGateway(command);
+            case "remove-mcp-gateway" -> removeMcpGateway(command);
+            case "add-gateway-exposure" -> addGatewayExposure(command);
+            case "remove-gateway-exposure" -> removeGatewayExposure(command);
+            case "add-agent-gateway" -> addAgentGateway(command);
+            case "remove-agent-gateway" -> removeAgentGateway(command);
+            case "add-agent-api-operation" -> addAgentApiOperation(command);
+            case "remove-agent-api-operation" -> removeAgentApiOperation(command);
+            case "add-agent-query" -> addAgentQuery(command);
+            case "remove-agent-query" -> removeAgentQuery(command);
+            case "add-agent-delegate" -> addAgentDelegate(command);
+            case "remove-agent-delegate" -> removeAgentDelegate(command);
+            case "add-actor-agent" -> addActorAgent(command);
+            case "remove-actor-agent" -> removeActorAgent(command);
+            case "add-agent-trigger" -> addAgentTrigger(command);
+            case "remove-agent-trigger" -> removeAgentTrigger(command);
             case "add-api" -> addApi(command);
             case "remove-api" -> removeApi(command);
             case "add-api-operation" -> addApiOperation(command);
@@ -1138,13 +1227,13 @@ public class EditorApiController {
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
-                    .ifPresent(a -> repository.save(new AiAgentEntity(
-                            a.id(), command.name(), a.description(), a.allowedUseCaseIds(),
-                            a.allowedExternalUseCaseIds(), a.ragIds())));
+                    .ifPresent(a -> repository.save(a.withName(command.name())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
                     .ifPresent(r -> repository.save(new RagEntity(
                             r.id(), command.name(), r.description(), r.sourceReadModelIds(),
                             r.contentSources())));
+            case "mcp-gateway" -> repository.findById(command.id(), McpGatewayEntity.class)
+                    .ifPresent(g -> repository.save(g.withName(command.name())));
             case "api" -> repository.findById(command.id(), ApiEntity.class)
                     .ifPresent(a -> repository.save(a.withName(command.name())));
             case "proxy-api" -> repository.findById(command.id(), ProxyApiEntity.class)
@@ -1163,6 +1252,17 @@ public class EditorApiController {
                                         ? new ExternalSystemTableEntity(
                                                 t.id(), command.name(), t.description())
                                         : t)
+                                .toList()))
+                        .toList()));
+            }
+            case "mcp-server" -> {
+                var project = owningProject();
+                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        .map(x -> x.withMcpServers(x.mcpServers().stream()
+                                .map(s -> s.id().equals(command.id())
+                                        ? new McpServerEntity(
+                                                s.id(), command.name(), s.description(), s.uri())
+                                        : s)
                                 .toList()))
                         .toList()));
             }
@@ -1415,6 +1515,7 @@ public class EditorApiController {
                     .filter(st -> !command.id().equals(st.applicationEventId()))
                     .toList()));
         }
+        clearAgentTriggersFor(command.id());
         repository.deleteAllById(List.of(command.id()), ApplicationEventEntity.class);
     }
 
@@ -1469,6 +1570,10 @@ public class EditorApiController {
                 .filter(r -> r.allowedQueryServiceIds().contains(command.id()))
                 .forEach(r -> repository.save(r.withAllowedQueryServiceIds(
                         r.allowedQueryServiceIds().stream().filter(id -> !id.equals(command.id())).toList())));
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.allowedQueryServiceIds().contains(command.id()))
+                .forEach(a -> repository.save(a.withAllowedQueryServiceIds(
+                        without(a.allowedQueryServiceIds(), command.id()))));
         repository.deleteAllById(List.of(command.id()), QueryServiceEntity.class);
     }
 
@@ -1815,6 +1920,10 @@ public class EditorApiController {
                 .filter(a -> a.allowedUseCaseIds().contains(command.id()))
                 .forEach(a -> repository.save(withAllowedUseCaseIds(a,
                         a.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList())));
+        repository.findAllOfType(McpGatewayEntity.class).stream()
+                .filter(g -> g.useCaseIds().contains(command.id()))
+                .forEach(g -> repository.save(g.withUseCaseIds(
+                        without(g.useCaseIds(), command.id()))));
         repository.findAllOfType(ModuleEntity.class).stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
@@ -1945,6 +2054,40 @@ public class EditorApiController {
     private static ExternalSystemEntity withTables(
             ExternalSystemEntity x, List<ExternalSystemTableEntity> tables) {
         return x.withTables(tables);
+    }
+
+    /** An MCP server published by an external system (moduleId carries the external system id). */
+    private void addMcpServer(EditorCommand command) {
+        var project = owningProject();
+        var externalSystems = new ArrayList<>(project.externalSystems());
+        var external = externalSystems.stream()
+                .filter(x -> x.id().equals(command.moduleId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown external system: " + command.moduleId()));
+        if (external.mcpServers().stream().anyMatch(s -> s.id().equals(command.id()))) return;
+        var servers = new ArrayList<>(external.mcpServers());
+        servers.add(new McpServerEntity(command.id(), command.name(), null, command.uri()));
+        externalSystems.set(externalSystems.indexOf(external), external.withMcpServers(servers));
+        repository.save(withExternalSystems(project, externalSystems));
+    }
+
+    /** Removing an MCP server also unlinks it from agents and gateways that aggregated it. */
+    private void removeMcpServer(EditorCommand command) {
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.allowedMcpServerIds().contains(command.id()))
+                .forEach(a -> repository.save(a.withAllowedMcpServerIds(
+                        a.allowedMcpServerIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())));
+        repository.findAllOfType(McpGatewayEntity.class).stream()
+                .filter(g -> g.mcpServerIds().contains(command.id()))
+                .forEach(g -> repository.save(g.withMcpServerIds(
+                        without(g.mcpServerIds(), command.id()))));
+        var project = owningProject();
+        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                .map(x -> x.withMcpServers(x.mcpServers().stream()
+                        .filter(s -> !s.id().equals(command.id())).toList()))
+                .toList()));
     }
 
     /** A table offered by an external system (moduleId carries the external system id). */
@@ -2235,6 +2378,22 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "La API " + command.id() + " tiene proxies que apuntan a ella; quita esos proxies primero");
         }
+        // Gateways and agents let go of the API and its operations.
+        var leavingOpIds = repository.findById(command.id(), ApiEntity.class).stream()
+                .flatMap(a -> a.operations().stream()).map(ApiOperationEntity::id)
+                .collect(java.util.stream.Collectors.toSet());
+        repository.findAllOfType(McpGatewayEntity.class).stream()
+                .filter(g -> g.apiIds().contains(command.id())
+                        || g.apiOperationIds().stream().anyMatch(leavingOpIds::contains))
+                .forEach(g -> repository.save(g
+                        .withApiIds(without(g.apiIds(), command.id()))
+                        .withApiOperationIds(g.apiOperationIds().stream()
+                                .filter(id -> !leavingOpIds.contains(id)).toList())));
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.allowedApiOperationIds().stream().anyMatch(leavingOpIds::contains))
+                .forEach(a -> repository.save(a.withAllowedApiOperationIds(
+                        a.allowedApiOperationIds().stream()
+                                .filter(id -> !leavingOpIds.contains(id)).toList())));
         repository.deleteAllById(List.of(command.id()), ApiEntity.class);
     }
 
@@ -2250,6 +2409,15 @@ public class EditorApiController {
 
     private void removeApiOperation(EditorCommand command) {
         var api = requireApi(command.apiId());
+        // Gateways and agents let go of the operation before it disappears.
+        repository.findAllOfType(McpGatewayEntity.class).stream()
+                .filter(g -> g.apiOperationIds().contains(command.id()))
+                .forEach(g -> repository.save(g.withApiOperationIds(
+                        without(g.apiOperationIds(), command.id()))));
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.allowedApiOperationIds().contains(command.id()))
+                .forEach(a -> repository.save(a.withAllowedApiOperationIds(
+                        without(a.allowedApiOperationIds(), command.id()))));
         repository.save(withApiOperations(api, api.operations().stream()
                 .filter(o -> !o.id().equals(command.id())).toList()));
     }
@@ -2289,7 +2457,16 @@ public class EditorApiController {
                         .domainEventIds(m.domainEventIds().stream()
                                 .filter(id -> !id.equals(command.id())).toList())
                         .build()));
+        clearAgentTriggersFor(command.id());
         repository.deleteAllById(List.of(command.id()), DomainEventEntity.class);
+    }
+
+    /** Reactive agents let go of an event that is leaving the catalog. */
+    private void clearAgentTriggersFor(String eventId) {
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.reactsToEventIds().contains(eventId))
+                .forEach(a -> repository.save(a.withReactsToEventIds(
+                        without(a.reactsToEventIds(), eventId))));
     }
 
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */
@@ -2374,6 +2551,19 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " tiene sistemas externos que dependen de él; quita esas dependencias primero");
         }
+        // Agents lose their links to the MCP servers leaving with the system.
+        var leavingMcpIds = owningProject().externalSystems().stream()
+                .filter(x -> x.id().equals(command.id()))
+                .flatMap(x -> x.mcpServers().stream())
+                .map(McpServerEntity::id)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!leavingMcpIds.isEmpty()) {
+            repository.findAllOfType(AiAgentEntity.class).stream()
+                    .filter(a -> a.allowedMcpServerIds().stream().anyMatch(leavingMcpIds::contains))
+                    .forEach(a -> repository.save(a.withAllowedMcpServerIds(
+                            a.allowedMcpServerIds().stream()
+                                    .filter(id -> !leavingMcpIds.contains(id)).toList())));
+        }
         // The APIs and proxies it published survive as standalone contracts.
         repository.findAllOfType(ApiEntity.class).stream()
                 .filter(a -> command.id().equals(a.publishedByExternalSystemId()))
@@ -2388,15 +2578,218 @@ public class EditorApiController {
 
     private void addAiAgent(EditorCommand command) {
         if (repository.findById(command.id(), AiAgentEntity.class).isPresent()) return;
-        repository.save(new AiAgentEntity(command.id(), command.name(), null, List.of()));
+        repository.save(new AiAgentEntity(command.id(), command.name(), null,
+                List.of(), List.of(), List.of(), List.of(),
+                Boolean.TRUE.equals(command.external()),
+                List.of(), List.of(), List.of(), List.of(), List.of()));
     }
 
     private void removeAiAgent(EditorCommand command) {
         repository.findById(command.id(), AiAgentEntity.class).ifPresent(agent -> {
+            // Whoever pointed at this agent lets go: delegations and actor links.
+            repository.findAllOfType(AiAgentEntity.class).stream()
+                    .filter(a -> a.delegateAgentIds().contains(agent.id()))
+                    .forEach(a -> repository.save(a.withDelegateAgentIds(
+                            a.delegateAgentIds().stream()
+                                    .filter(id -> !id.equals(agent.id())).toList())));
+            repository.findAllOfType(RoleEntity.class).stream()
+                    .filter(r -> r.aiAgentIds().contains(agent.id()))
+                    .forEach(r -> repository.save(r.withAiAgentIds(
+                            r.aiAgentIds().stream()
+                                    .filter(id -> !id.equals(agent.id())).toList())));
             repository.deleteAllById(List.of(agent.id()), AiAgentEntity.class);
             // MCP exposure that only this agent justified goes with it.
             agent.allowedUseCaseIds().forEach(this::clearMcpExposureIfUnused);
         });
+    }
+
+    private void addMcpGateway(EditorCommand command) {
+        if (repository.findById(command.id(), McpGatewayEntity.class).isPresent()) return;
+        repository.save(new McpGatewayEntity(command.id(), command.name(), null,
+                List.of(), List.of(), List.of(), List.of(), List.of()));
+    }
+
+    /** Removing a gateway also unlinks it from every agent that consumed it. */
+    private void removeMcpGateway(EditorCommand command) {
+        repository.findAllOfType(AiAgentEntity.class).stream()
+                .filter(a -> a.mcpGatewayIds().contains(command.id()))
+                .forEach(a -> repository.save(a.withMcpGatewayIds(
+                        a.mcpGatewayIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())));
+        repository.deleteAllById(List.of(command.id()), McpGatewayEntity.class);
+    }
+
+    /**
+     * Gateway → element: the gateway aggregates/exposes it. The target's kind decides
+     * the slot: an external MCP server, a whole API, one API operation, a use case or
+     * a RAG (retrieval as a tool).
+     */
+    private void addGatewayExposure(EditorCommand command) {
+        var gateway = repository.findById(command.sourceId(), McpGatewayEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown MCP gateway: " + command.sourceId()));
+        var target = command.targetId();
+        if (owningProject().externalSystems().stream()
+                .flatMap(x -> x.mcpServers().stream()).anyMatch(s -> s.id().equals(target))) {
+            if (!gateway.mcpServerIds().contains(target)) {
+                repository.save(gateway.withMcpServerIds(appended(gateway.mcpServerIds(), target)));
+            }
+        } else if (repository.findById(target, ApiEntity.class).isPresent()) {
+            if (!gateway.apiIds().contains(target)) {
+                repository.save(gateway.withApiIds(appended(gateway.apiIds(), target)));
+            }
+        } else if (repository.findAllOfType(ApiEntity.class).stream()
+                .flatMap(a -> a.operations().stream()).anyMatch(o -> o.id().equals(target))) {
+            if (!gateway.apiOperationIds().contains(target)) {
+                repository.save(gateway.withApiOperationIds(
+                        appended(gateway.apiOperationIds(), target)));
+            }
+        } else if (repository.findById(target, UseCaseEntity.class).isPresent()) {
+            if (!gateway.useCaseIds().contains(target)) {
+                repository.save(gateway.withUseCaseIds(appended(gateway.useCaseIds(), target)));
+            }
+        } else if (repository.findById(target, RagEntity.class).isPresent()) {
+            if (!gateway.ragIds().contains(target)) {
+                repository.save(gateway.withRagIds(appended(gateway.ragIds(), target)));
+            }
+        } else {
+            throw new IllegalArgumentException(
+                    "Un gateway MCP expone servidores MCP, APIs, operaciones, casos de uso o RAGs;"
+                            + " destino desconocido: " + target);
+        }
+    }
+
+    private void removeGatewayExposure(EditorCommand command) {
+        repository.findById(command.sourceId(), McpGatewayEntity.class).ifPresent(g ->
+                repository.save(g
+                        .withMcpServerIds(without(g.mcpServerIds(), command.targetId()))
+                        .withApiIds(without(g.apiIds(), command.targetId()))
+                        .withApiOperationIds(without(g.apiOperationIds(), command.targetId()))
+                        .withUseCaseIds(without(g.useCaseIds(), command.targetId()))
+                        .withRagIds(without(g.ragIds(), command.targetId()))));
+    }
+
+    /** Agent → gateway: the agent consumes the gateway's curated tool surface. */
+    private void addAgentGateway(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        repository.findById(command.targetId(), McpGatewayEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown MCP gateway: " + command.targetId()));
+        if (agent.mcpGatewayIds().contains(command.targetId())) return;
+        repository.save(agent.withMcpGatewayIds(appended(agent.mcpGatewayIds(), command.targetId())));
+    }
+
+    private void removeAgentGateway(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withMcpGatewayIds(
+                        without(agent.mcpGatewayIds(), command.targetId()))));
+    }
+
+    /** Agent → API operation: the operation joins the agent's tool surface. */
+    private void addAgentApiOperation(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        var known = repository.findAllOfType(ApiEntity.class).stream()
+                .flatMap(a -> a.operations().stream())
+                .anyMatch(o -> o.id().equals(command.targetId()));
+        if (!known) {
+            throw new IllegalArgumentException("Unknown API operation: " + command.targetId());
+        }
+        if (agent.allowedApiOperationIds().contains(command.targetId())) return;
+        repository.save(agent.withAllowedApiOperationIds(
+                appended(agent.allowedApiOperationIds(), command.targetId())));
+    }
+
+    private void removeAgentApiOperation(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withAllowedApiOperationIds(
+                        without(agent.allowedApiOperationIds(), command.targetId()))));
+    }
+
+    /** Agent → query service: a read tool. */
+    private void addAgentQuery(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        repository.findById(command.targetId(), QueryServiceEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown query service: " + command.targetId()));
+        if (agent.allowedQueryServiceIds().contains(command.targetId())) return;
+        repository.save(agent.withAllowedQueryServiceIds(
+                appended(agent.allowedQueryServiceIds(), command.targetId())));
+    }
+
+    private void removeAgentQuery(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withAllowedQueryServiceIds(
+                        without(agent.allowedQueryServiceIds(), command.targetId()))));
+    }
+
+    /** Agent → agent: delegation. Self-delegation is rejected; cycles are the linter's job. */
+    private void addAgentDelegate(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        repository.findById(command.targetId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
+        if (command.sourceId().equals(command.targetId())) {
+            throw new IllegalArgumentException("Un agente no puede delegar en sí mismo");
+        }
+        if (agent.delegateAgentIds().contains(command.targetId())) return;
+        repository.save(agent.withDelegateAgentIds(
+                appended(agent.delegateAgentIds(), command.targetId())));
+    }
+
+    private void removeAgentDelegate(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withDelegateAgentIds(
+                        without(agent.delegateAgentIds(), command.targetId()))));
+    }
+
+    /** Actor → agent: the person talks to the agent (a chat/supervision UI derives). */
+    private void addActorAgent(EditorCommand command) {
+        var role = repository.findById(command.sourceId(), RoleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
+        repository.findById(command.targetId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
+        if (role.aiAgentIds().contains(command.targetId())) return;
+        repository.save(role.withAiAgentIds(appended(role.aiAgentIds(), command.targetId())));
+    }
+
+    private void removeActorAgent(EditorCommand command) {
+        repository.findById(command.sourceId(), RoleEntity.class).ifPresent(role ->
+                repository.save(role.withAiAgentIds(
+                        without(role.aiAgentIds(), command.targetId()))));
+    }
+
+    /** Event → agent: the event triggers a run of the agent (reactive agents). */
+    private void addAgentTrigger(EditorCommand command) {
+        var agent = repository.findById(command.targetId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
+        var eventExists = repository.findById(command.sourceId(), DomainEventEntity.class).isPresent()
+                || repository.findById(command.sourceId(), ApplicationEventEntity.class).isPresent();
+        if (!eventExists) {
+            throw new IllegalArgumentException(
+                    "Unknown domain/application event: " + command.sourceId());
+        }
+        if (agent.reactsToEventIds().contains(command.sourceId())) return;
+        repository.save(agent.withReactsToEventIds(
+                appended(agent.reactsToEventIds(), command.sourceId())));
+    }
+
+    private void removeAgentTrigger(EditorCommand command) {
+        repository.findById(command.targetId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withReactsToEventIds(
+                        without(agent.reactsToEventIds(), command.sourceId()))));
+    }
+
+    private static List<String> appended(List<String> ids, String id) {
+        var copy = new ArrayList<>(ids);
+        copy.add(id);
+        return copy;
+    }
+
+    private static List<String> without(List<String> ids, String id) {
+        return ids.stream().filter(x -> !x.equals(id)).toList();
     }
 
     /** Agent → use case: record the consumption and expose the use case through MCP. */
@@ -2436,29 +2829,47 @@ public class EditorApiController {
         if (agent.allowedExternalUseCaseIds().contains(command.targetId())) return;
         var ids = new ArrayList<>(agent.allowedExternalUseCaseIds());
         ids.add(command.targetId());
-        repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(),
-                agent.allowedUseCaseIds(), ids, agent.ragIds()));
+        repository.save(agent.withAllowedExternalUseCaseIds(ids));
     }
 
     private void removeAgentExternalUse(EditorCommand command) {
         repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(new AiAgentEntity(agent.id(), agent.name(), agent.description(),
-                        agent.allowedUseCaseIds(),
+                repository.save(agent.withAllowedExternalUseCaseIds(
                         agent.allowedExternalUseCaseIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList(),
-                        agent.ragIds())));
+                                .filter(id -> !id.equals(command.targetId())).toList())));
+    }
+
+    /** Agent → MCP server published by an external system: another tool surface. */
+    private void addAgentMcp(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
+        var known = owningProject().externalSystems().stream()
+                .flatMap(x -> x.mcpServers().stream())
+                .anyMatch(s -> s.id().equals(command.targetId()));
+        if (!known) {
+            throw new IllegalArgumentException("Unknown MCP server: " + command.targetId());
+        }
+        if (agent.allowedMcpServerIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(agent.allowedMcpServerIds());
+        ids.add(command.targetId());
+        repository.save(agent.withAllowedMcpServerIds(ids));
+    }
+
+    private void removeAgentMcp(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
+                repository.save(agent.withAllowedMcpServerIds(
+                        agent.allowedMcpServerIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList())));
     }
 
     /** Record copy with only allowedUseCaseIds replaced — every other field preserved verbatim. */
     private static AiAgentEntity withAllowedUseCaseIds(AiAgentEntity a, List<String> ids) {
-        return new AiAgentEntity(a.id(), a.name(), a.description(), ids,
-                a.allowedExternalUseCaseIds(), a.ragIds());
+        return a.withAllowedUseCaseIds(ids);
     }
 
     /** Record copy with only ragIds replaced — every other field preserved verbatim. */
     private static AiAgentEntity withRagIds(AiAgentEntity a, List<String> ragIds) {
-        return new AiAgentEntity(a.id(), a.name(), a.description(), a.allowedUseCaseIds(),
-                a.allowedExternalUseCaseIds(), ragIds);
+        return a.withRagIds(ragIds);
     }
 
     private void addRag(EditorCommand command) {
@@ -2466,12 +2877,15 @@ public class EditorApiController {
         repository.save(new RagEntity(command.id(), command.name(), null, List.of()));
     }
 
-    /** Removing a knowledge base also unlinks it from every agent that queried it. */
+    /** Removing a knowledge base also unlinks it from agents and gateways that exposed it. */
     private void removeRag(EditorCommand command) {
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.ragIds().contains(command.id()))
                 .forEach(a -> repository.save(withRagIds(a, a.ragIds().stream()
                         .filter(id -> !id.equals(command.id())).toList())));
+        repository.findAllOfType(McpGatewayEntity.class).stream()
+                .filter(g -> g.ragIds().contains(command.id()))
+                .forEach(g -> repository.save(g.withRagIds(without(g.ragIds(), command.id()))));
         repository.deleteAllById(List.of(command.id()), RagEntity.class);
     }
 

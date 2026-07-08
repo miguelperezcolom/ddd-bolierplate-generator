@@ -97,6 +97,10 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <circle cx="8.9" cy="6" r="2.8"></circle>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
+  // An MCP gateway: a plug — many things connect behind one socket.
+  plug: svg`<path d="M4 0.5 V3.5"></path><path d="M8 0.5 V3.5"></path>
+    <path d="M2.5 3.5 H9.5 V6 A3.5 3.5 0 0 1 2.5 6 Z"></path>
+    <path d="M6 9.5 V11.5"></path>`,
 };
 
 // Container inner margins (CONTAINER_HEADER/CONTAINER_INSET) are shared with the
@@ -314,6 +318,8 @@ export class ModuxCanvas extends LitElement {
         node.kind !== 'query-service' &&
         node.kind !== 'use-case' &&
         node.kind !== 'external-use-case' &&
+        node.kind !== 'external-table' &&
+        node.kind !== 'mcp-server' &&
         node.kind !== 'api' &&
         node.kind !== 'proxy-api' &&
         node.kind !== 'api-operation'
@@ -1052,6 +1058,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
             node.kind === 'rag' ||
+            node.kind === 'mcp-gateway' ||
             node.kind === 'api' ||
             node.kind === 'proxy-api' ||
             node.kind === 'workflow-step')
@@ -1069,7 +1076,9 @@ export class ModuxCanvas extends LitElement {
                     ? node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
                       : node.kind === 'ai-agent'
-                        ? 'Arrastra hasta un caso de uso, una operación externa o un RAG: el agente lo usará'
+                        ? 'Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG'
+                        : node.kind === 'mcp-gateway'
+                          ? 'Arrastra hasta lo que expone: un servidor MCP, una API, una operación, un caso de uso o un RAG'
                         : node.kind === 'rag'
                           ? 'Arrastra hasta un read model: el RAG indexará su contenido'
                           : node.kind === 'workflow-step'

@@ -105,6 +105,7 @@ interface ChildDesc {
     | 'query-service'
     | 'external-use-case'
     | 'external-table'
+    | 'mcp-server'
     | 'api-operation'
     | 'api'
     | 'proxy-api';
@@ -124,6 +125,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
+  'mcp-server': { symbol: 'robot', fill: '#faf5ff', stroke: '#9333ea' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
   api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
@@ -139,6 +141,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'query-service': 'Query service',
   'external-use-case': 'Caso de uso externo',
   'external-table': 'Tabla (legacy)',
+  'mcp-server': 'Servidor MCP',
   'api-operation': 'Operación de API',
   api: 'API publicada por este sistema',
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
@@ -480,6 +483,9 @@ export function contextMapScene(
               ...(x.tables ?? []).map(
                 (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
               ),
+              ...(x.mcpServers ?? []).map(
+                (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
+              ),
             ]
           : []),
       ];
@@ -514,12 +520,13 @@ export function contextMapScene(
     if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
     return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
-  // Business actors, AI agents and their knowledge bases live outside every context.
+  // Business actors, AI agents, knowledge bases and MCP gateways live outside every context.
   const totalTop =
     allNodes.length +
     (model.actors ?? []).length +
     (model.aiAgents ?? []).length +
-    (model.rags ?? []).length;
+    (model.rags ?? []).length +
+    (model.mcpGateways ?? []).length;
   (model.actors ?? []).forEach((a, i) => {
     const pos = layout[a.id] ?? defaultPosition(allNodes.length + i, totalTop);
     nodes.push({
@@ -550,10 +557,39 @@ export function contextMapScene(
       h: 48,
       kind: 'ai-agent',
       symbol: 'robot',
-      fill: '#faf5ff',
+      fill: a.external ? '#ffffff' : '#faf5ff',
       stroke: '#9333ea',
-      badge: 'AGENTE IA',
-      tooltip: `${a.name} (agente de IA — consume por MCP)`,
+      dashed: !!a.external,
+      badge: a.external ? 'AGENTE IA EXT.' : 'AGENTE IA',
+      tooltip: a.external
+        ? `${a.name} (agente de IA externo — entra por un gateway MCP)`
+        : `${a.name} (agente de IA — consume por MCP)`,
+    });
+  });
+  (model.mcpGateways ?? []).forEach((g, i) => {
+    const pos =
+      layout[g.id] ??
+      defaultPosition(
+        allNodes.length +
+          (model.actors ?? []).length +
+          (model.aiAgents ?? []).length +
+          (model.rags ?? []).length +
+          i,
+        totalTop,
+      );
+    nodes.push({
+      id: g.id,
+      label: g.name,
+      x: pos.x,
+      y: pos.y,
+      w: 148,
+      h: 48,
+      kind: 'mcp-gateway',
+      symbol: 'plug',
+      fill: '#f5f3ff',
+      stroke: '#7c3aed',
+      badge: 'GATEWAY MCP',
+      tooltip: `${g.name} — agrega MCPs y expone APIs, operaciones, casos de uso y RAGs como MCP`,
     });
   });
   const ragContentEdges: SceneEdge[] = [];
@@ -914,6 +950,117 @@ export function contextMapScene(
           tooltip: 'llama a la operación del sistema externo',
         }))
     : [];
+  const agentMcpEdges: SceneEdge[] = detailed
+    ? (model.agentMcpUses ?? [])
+        .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.mcpServerId))
+        .map((u) => ({
+          id: `mcpsv:${u.agentId}->${u.mcpServerId}`,
+          sourceId: u.agentId,
+          targetId: u.mcpServerId,
+          kind: 'agent-mcp',
+          color: '#9333ea',
+          dashed: true,
+          arrow: true,
+          tooltip: 'consume las herramientas del servidor MCP',
+        }))
+    : [];
+  // Gateway exposures: whatever the gateway aggregates/exposes, when visible.
+  const gatewayExposureEdges: SceneEdge[] = (model.mcpGateways ?? []).flatMap((g) =>
+    [
+      ...(g.mcpServerIds ?? []),
+      ...(g.apiIds ?? []),
+      ...(g.apiOperationIds ?? []),
+      ...(g.useCaseIds ?? []),
+      ...(g.ragIds ?? []),
+    ]
+      .filter((target) => nodeIds.has(g.id) && nodeIds.has(target))
+      .map((target) => ({
+        id: `gwx:${g.id}->${target}`,
+        sourceId: g.id,
+        targetId: target,
+        kind: 'gateway-exposure',
+        color: '#7c3aed',
+        dashed: true,
+        arrow: true,
+        tooltip: 'lo agrega/expone como herramienta MCP',
+      })),
+  );
+  const agentGatewayEdges: SceneEdge[] = (model.agentGatewayUses ?? [])
+    .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.gatewayId))
+    .map((u) => ({
+      id: `aggw:${u.agentId}->${u.gatewayId}`,
+      sourceId: u.agentId,
+      targetId: u.gatewayId,
+      kind: 'agent-gateway',
+      color: '#9333ea',
+      dashed: true,
+      arrow: true,
+      tooltip: 'consume la superficie de herramientas del gateway MCP',
+    }));
+  const agentApiOpEdges: SceneEdge[] = detailed
+    ? (model.agentApiOpUses ?? [])
+        .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.apiOperationId))
+        .map((u) => ({
+          id: `agapi:${u.agentId}->${u.apiOperationId}`,
+          sourceId: u.agentId,
+          targetId: u.apiOperationId,
+          kind: 'agent-api-op',
+          color: '#9333ea',
+          dashed: true,
+          arrow: true,
+          tooltip: 'llama a la operación de API como herramienta',
+        }))
+    : [];
+  const agentQueryEdges: SceneEdge[] = detailed
+    ? (model.agentQueryUses ?? [])
+        .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.queryServiceId))
+        .map((u) => ({
+          id: `agqs:${u.agentId}->${u.queryServiceId}`,
+          sourceId: u.agentId,
+          targetId: u.queryServiceId,
+          kind: 'agent-query',
+          color: '#0d9488',
+          dashed: true,
+          arrow: true,
+          tooltip: 'consulta el query service (herramienta de lectura)',
+        }))
+    : [];
+  const agentDelegationEdges: SceneEdge[] = (model.agentDelegations ?? [])
+    .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.delegateAgentId))
+    .map((u) => ({
+      id: `agag:${u.agentId}->${u.delegateAgentId}`,
+      sourceId: u.agentId,
+      targetId: u.delegateAgentId,
+      kind: 'agent-delegate',
+      color: '#9333ea',
+      arrow: true,
+      tooltip: 'delega trabajo en el otro agente',
+    }));
+  const actorAgentEdges: SceneEdge[] = (model.actorAgentUses ?? [])
+    .filter((u) => nodeIds.has(u.actorId) && nodeIds.has(u.agentId))
+    .map((u) => ({
+      id: `useag:${u.actorId}->${u.agentId}`,
+      sourceId: u.actorId,
+      targetId: u.agentId,
+      kind: 'actor-agent',
+      color: '#6366f1',
+      arrow: true,
+      tooltip: 'habla con el agente (deriva una UI de chat/supervisión)',
+    }));
+  const agentTriggerEdges: SceneEdge[] = detailed
+    ? (model.agentTriggers ?? [])
+        .filter((u) => nodeIds.has(u.eventId) && nodeIds.has(u.agentId))
+        .map((u) => ({
+          id: `evag:${u.eventId}->${u.agentId}`,
+          sourceId: u.eventId,
+          targetId: u.agentId,
+          kind: 'agent-trigger',
+          color: '#f59e0b',
+          dashed: true,
+          arrow: true,
+          tooltip: 'el evento dispara una ejecución del agente (agente reactivo)',
+        }))
+    : [];
   const externalCallEdges: SceneEdge[] = detailed
     ? (model.externalCalls ?? [])
         .filter((c) => nodeIds.has(c.externalSystemId) && nodeIds.has(c.useCaseId))
@@ -958,6 +1105,14 @@ export function contextMapScene(
       ...proxyTargetEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
+      ...agentMcpEdges,
+      ...gatewayExposureEdges,
+      ...agentGatewayEdges,
+      ...agentApiOpEdges,
+      ...agentQueryEdges,
+      ...agentDelegationEdges,
+      ...actorAgentEdges,
+      ...agentTriggerEdges,
       ...agentRagEdges,
       ...ragSourceEdges,
       ...ragContentEdges,

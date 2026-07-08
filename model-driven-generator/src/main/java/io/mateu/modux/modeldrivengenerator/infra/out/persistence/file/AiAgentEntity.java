@@ -5,9 +5,11 @@ import io.mateu.uidl.interfaces.Identifiable;
 import java.util.List;
 
 /**
- * An AI agent that consumes the system through MCP. Drawing agent → use case on the context
- * map records the consumption here AND flips {@code UseCaseEntity.exposedAsMcp} on — the
- * bounded context will expose that use case as an MCP tool.
+ * An AI agent. INTERNAL agents (ours) act through tools — use cases (drawing agent → use case
+ * flips {@code UseCaseEntity.exposedAsMcp} on), query services, API operations, external-system
+ * operations, external MCP servers, MCP gateways — ground on RAGs, may delegate to other agents,
+ * and may react to domain/application events. EXTERNAL agents (someone else's) enter the system
+ * through an {@link McpGatewayEntity MCP gateway} instead of touching internal elements directly.
  */
 public record AiAgentEntity(
         String id,
@@ -21,20 +23,54 @@ public record AiAgentEntity(
          */
         List<String> allowedExternalUseCaseIds,
         /** Knowledge bases ({@link RagEntity}) this agent queries for grounding. */
-        List<String> ragIds
+        List<String> ragIds,
+        /** MCP servers published by external systems ({@link McpServerEntity}) this agent consumes. */
+        List<String> allowedMcpServerIds,
+        /** Someone else's agent: it enters through MCP gateways, never touching internals directly. */
+        boolean external,
+        /** API operations this agent may call as tools. */
+        List<String> allowedApiOperationIds,
+        /** Query services this agent may consult as read tools. */
+        List<String> allowedQueryServiceIds,
+        /** Agents this one delegates work to (agent-to-agent). */
+        List<String> delegateAgentIds,
+        /** MCP gateways this agent consumes (one curated tool surface). */
+        List<String> mcpGatewayIds,
+        /** Domain/application events that trigger a run of this agent (reactive agents). */
+        List<String> reactsToEventIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-gateway callers and stores). */
+    public AiAgentEntity(String id, String name, String description,
+                         List<String> allowedUseCaseIds,
+                         List<String> allowedExternalUseCaseIds,
+                         List<String> ragIds,
+                         List<String> allowedMcpServerIds) {
+        this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, ragIds,
+                allowedMcpServerIds, false, List.of(), List.of(), List.of(), List.of(), List.of());
+    }
+
+    /** Backward-compatible constructor (pre-mcp-servers callers and stores). */
+    public AiAgentEntity(String id, String name, String description,
+                         List<String> allowedUseCaseIds,
+                         List<String> allowedExternalUseCaseIds,
+                         List<String> ragIds) {
+        this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, ragIds,
+                List.of());
+    }
 
     /** Backward-compatible constructor (pre-rags callers and stores). */
     public AiAgentEntity(String id, String name, String description,
                          List<String> allowedUseCaseIds,
                          List<String> allowedExternalUseCaseIds) {
-        this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, List.of());
+        this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, List.of(),
+                List.of());
     }
 
     /** Backward-compatible constructor (pre-external-operations callers and stores). */
     public AiAgentEntity(String id, String name, String description,
                          List<String> allowedUseCaseIds) {
-        this(id, name, description, allowedUseCaseIds, List.of(), List.of());
+        this(id, name, description, allowedUseCaseIds, List.of(), List.of(), List.of());
     }
 
     public List<String> allowedUseCaseIds() {
@@ -47,5 +83,100 @@ public record AiAgentEntity(
 
     public List<String> ragIds() {
         return ragIds != null ? ragIds : List.of();
+    }
+
+    public List<String> allowedMcpServerIds() {
+        return allowedMcpServerIds != null ? allowedMcpServerIds : List.of();
+    }
+
+    public List<String> allowedApiOperationIds() {
+        return allowedApiOperationIds != null ? allowedApiOperationIds : List.of();
+    }
+
+    public List<String> allowedQueryServiceIds() {
+        return allowedQueryServiceIds != null ? allowedQueryServiceIds : List.of();
+    }
+
+    public List<String> delegateAgentIds() {
+        return delegateAgentIds != null ? delegateAgentIds : List.of();
+    }
+
+    public List<String> mcpGatewayIds() {
+        return mcpGatewayIds != null ? mcpGatewayIds : List.of();
+    }
+
+    public List<String> reactsToEventIds() {
+        return reactsToEventIds != null ? reactsToEventIds : List.of();
+    }
+
+    // Single-field copies: unlike the positional constructor, these can never silently
+    // drop a field added to the record after the calling code was written.
+
+    public AiAgentEntity withName(String name) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withAllowedUseCaseIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, ids,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withAllowedExternalUseCaseIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                ids, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withRagIds(List<String> ragIds) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withAllowedMcpServerIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, ids, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withAllowedApiOperationIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                ids, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds, reactsToEventIds);
+    }
+
+    public AiAgentEntity withAllowedQueryServiceIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, ids, delegateAgentIds, mcpGatewayIds, reactsToEventIds);
+    }
+
+    public AiAgentEntity withDelegateAgentIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, ids, mcpGatewayIds,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withMcpGatewayIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, ids,
+                reactsToEventIds);
+    }
+
+    public AiAgentEntity withReactsToEventIds(List<String> ids) {
+        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
+                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
+                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
+                ids);
     }
 }

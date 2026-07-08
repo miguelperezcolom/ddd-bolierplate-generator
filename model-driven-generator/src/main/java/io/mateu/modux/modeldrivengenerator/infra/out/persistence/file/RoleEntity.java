@@ -11,18 +11,26 @@ public record RoleEntity(
         /** Query services this actor consumes directly (a UI is derived from them). */
         List<String> allowedQueryServiceIds,
         /** External systems this actor depends on (a strategic context-map dependency). */
-        List<String> externalSystemIds
+        List<String> externalSystemIds,
+        /** AI agents this actor talks to (a chat/supervision UI is derived from them). */
+        List<String> aiAgentIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-aiAgentIds callers and stores). */
+    public RoleEntity(String id, String name, List<String> allowedUseCaseIds,
+                      List<String> allowedQueryServiceIds, List<String> externalSystemIds) {
+        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds, List.of());
+    }
 
     /** Backward-compatible constructor (pre-allowedQueryServiceIds callers and stores). */
     public RoleEntity(String id, String name, List<String> allowedUseCaseIds) {
-        this(id, name, allowedUseCaseIds, List.of(), List.of());
+        this(id, name, allowedUseCaseIds, List.of(), List.of(), List.of());
     }
 
     /** Backward-compatible constructor (pre-externalSystemIds callers and stores). */
     public RoleEntity(String id, String name, List<String> allowedUseCaseIds,
                       List<String> allowedQueryServiceIds) {
-        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, List.of());
+        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, List.of(), List.of());
     }
 
     public List<String> allowedUseCaseIds() {
@@ -37,22 +45,32 @@ public record RoleEntity(
         return externalSystemIds != null ? externalSystemIds : List.of();
     }
 
+    public List<String> aiAgentIds() {
+        return aiAgentIds != null ? aiAgentIds : List.of();
+    }
+
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
     public RoleEntity withName(String name) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds);
+        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
+                externalSystemIds, aiAgentIds);
     }
 
     public RoleEntity withAllowedUseCaseIds(List<String> ids) {
-        return new RoleEntity(id, name, ids, allowedQueryServiceIds, externalSystemIds);
+        return new RoleEntity(id, name, ids, allowedQueryServiceIds, externalSystemIds, aiAgentIds);
     }
 
     public RoleEntity withAllowedQueryServiceIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, ids, externalSystemIds);
+        return new RoleEntity(id, name, allowedUseCaseIds, ids, externalSystemIds, aiAgentIds);
     }
 
     public RoleEntity withExternalSystemIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, ids);
+        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, ids, aiAgentIds);
+    }
+
+    public RoleEntity withAiAgentIds(List<String> ids) {
+        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
+                externalSystemIds, ids);
     }
 }

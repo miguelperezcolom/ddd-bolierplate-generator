@@ -301,6 +301,8 @@ export class ModuxEditor extends LitElement {
     | 'external-system'
     | 'actor'
     | 'ai-agent'
+    | 'external-ai-agent'
+    | 'mcp-gateway'
     | 'rag'
     | 'domain-event'
     | 'application-event'
@@ -311,6 +313,7 @@ export class ModuxEditor extends LitElement {
     | 'policy'
     | 'external-use-case'
     | 'external-table'
+    | 'mcp-server'
     | 'api'
     | 'proxy-api'
     | 'api-operation' = 'module';
@@ -556,6 +559,8 @@ export class ModuxEditor extends LitElement {
       this._newContextMapKind !== 'external-system' &&
       this._newContextMapKind !== 'actor' &&
       this._newContextMapKind !== 'ai-agent' &&
+      this._newContextMapKind !== 'external-ai-agent' &&
+      this._newContextMapKind !== 'mcp-gateway' &&
       this._newContextMapKind !== 'rag' &&
       this._newContextMapKind !== 'api'
     ) {
@@ -848,8 +853,102 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-ai-agent', id: c.id }];
       case 'remove-ai-agent': {
         const a = (this.model.aiAgents ?? []).find((x) => x.id === c.id);
-        return a ? [{ kind: 'add-ai-agent', id: a.id, name: a.name }] : null;
+        if (!a) return null;
+        // Removing an agent unlinks it everywhere; the inverse restores every link.
+        return [
+          { kind: 'add-ai-agent', id: a.id, name: a.name, external: a.external },
+          ...(this.model.agentUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-use', sourceId: c.id, targetId: u.useCaseId })),
+          ...(this.model.agentExternalUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({
+              kind: 'add-agent-external-use',
+              sourceId: c.id,
+              targetId: u.externalUseCaseId,
+            })),
+          ...(this.model.agentMcpUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-mcp', sourceId: c.id, targetId: u.mcpServerId })),
+          ...(this.model.agentGatewayUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-gateway', sourceId: c.id, targetId: u.gatewayId })),
+          ...(this.model.agentApiOpUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({
+              kind: 'add-agent-api-operation',
+              sourceId: c.id,
+              targetId: u.apiOperationId,
+            })),
+          ...(this.model.agentQueryUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-query', sourceId: c.id, targetId: u.queryServiceId })),
+          ...(this.model.agentRags ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-rag', sourceId: c.id, targetId: u.ragId })),
+          ...(this.model.agentDelegations ?? [])
+            .filter((u) => u.agentId === c.id || u.delegateAgentId === c.id)
+            .map((u): ModuxCommand => ({
+              kind: 'add-agent-delegate',
+              sourceId: u.agentId,
+              targetId: u.delegateAgentId,
+            })),
+          ...(this.model.actorAgentUses ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-actor-agent', sourceId: u.actorId, targetId: c.id })),
+          ...(this.model.agentTriggers ?? [])
+            .filter((u) => u.agentId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-trigger', sourceId: u.eventId, targetId: c.id })),
+        ];
       }
+      case 'add-mcp-gateway':
+        return [{ kind: 'remove-mcp-gateway', id: c.id }];
+      case 'remove-mcp-gateway': {
+        const g = (this.model.mcpGateways ?? []).find((x) => x.id === c.id);
+        if (!g) return null;
+        // The inverse restores the gateway, its exposures and its agent links.
+        return [
+          { kind: 'add-mcp-gateway', id: g.id, name: g.name },
+          ...[
+            ...(g.mcpServerIds ?? []),
+            ...(g.apiIds ?? []),
+            ...(g.apiOperationIds ?? []),
+            ...(g.useCaseIds ?? []),
+            ...(g.ragIds ?? []),
+          ].map((t): ModuxCommand => ({ kind: 'add-gateway-exposure', sourceId: c.id, targetId: t })),
+          ...(this.model.agentGatewayUses ?? [])
+            .filter((u) => u.gatewayId === c.id)
+            .map((u): ModuxCommand => ({ kind: 'add-agent-gateway', sourceId: u.agentId, targetId: c.id })),
+        ];
+      }
+      case 'add-gateway-exposure':
+        return [{ kind: 'remove-gateway-exposure', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-gateway-exposure':
+        return [{ kind: 'add-gateway-exposure', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-gateway':
+        return [{ kind: 'remove-agent-gateway', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-gateway':
+        return [{ kind: 'add-agent-gateway', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-api-operation':
+        return [{ kind: 'remove-agent-api-operation', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-api-operation':
+        return [{ kind: 'add-agent-api-operation', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-query':
+        return [{ kind: 'remove-agent-query', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-query':
+        return [{ kind: 'add-agent-query', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-delegate':
+        return [{ kind: 'remove-agent-delegate', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-delegate':
+        return [{ kind: 'add-agent-delegate', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-actor-agent':
+        return [{ kind: 'remove-actor-agent', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-actor-agent':
+        return [{ kind: 'add-actor-agent', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-trigger':
+        return [{ kind: 'remove-agent-trigger', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-trigger':
+        return [{ kind: 'add-agent-trigger', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-agent-use':
         return [{ kind: 'remove-agent-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-use':
@@ -858,6 +957,33 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-external-use':
         return [{ kind: 'add-agent-external-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-mcp':
+        return [{ kind: 'remove-agent-mcp', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-mcp':
+        return [{ kind: 'add-agent-mcp', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-mcp-server':
+        return [{ kind: 'remove-mcp-server', id: c.id }];
+      case 'remove-mcp-server': {
+        for (const x of this.model.externalSystems) {
+          const s = (x.mcpServers ?? []).find((e) => e.id === c.id);
+          if (s) {
+            // Removing the server also unlinks agents; the inverse restores the links.
+            return [
+              { kind: 'add-mcp-server', id: s.id, name: s.name, moduleId: x.id, uri: s.uri },
+              ...(this.model.agentMcpUses ?? [])
+                .filter((u) => u.mcpServerId === c.id)
+                .map(
+                  (u): ModuxCommand => ({
+                    kind: 'add-agent-mcp',
+                    sourceId: u.agentId,
+                    targetId: c.id,
+                  }),
+                ),
+            ];
+          }
+        }
+        return null;
+      }
       case 'add-rag':
         return [{ kind: 'remove-rag', id: c.id }];
       case 'remove-rag': {
@@ -1060,6 +1186,8 @@ export class ModuxEditor extends LitElement {
                         ? this.model.modules.flatMap((m) => m.useCases ?? [])
                         : c.type === 'external-use-case'
                           ? this.model.externalSystems.flatMap((x) => x.useCases ?? [])
+                          : c.type === 'mcp-server'
+                            ? this.model.externalSystems.flatMap((x) => x.mcpServers ?? [])
                       : c.type === 'application-event'
                         ? this.model.modules.flatMap((m) => m.applicationEvents ?? [])
                         : c.type === 'external-system'
@@ -1068,6 +1196,8 @@ export class ModuxEditor extends LitElement {
                             ? this.model.actors ?? []
                             : c.type === 'ai-agent'
                               ? this.model.aiAgents ?? []
+                              : c.type === 'mcp-gateway'
+                                ? this.model.mcpGateways ?? []
                               : this.model.entities ?? [];
         const el = (list as { id: string; name: string }[]).find((x) => x.id === c.id);
         return el ? [{ kind: 'rename-element', type: c.type, id: c.id, name: el.name }] : null;
@@ -1540,6 +1670,55 @@ export class ModuxEditor extends LitElement {
         if (!already) this.command({ kind: 'add-agent-external-use', sourceId, targetId });
         return;
       }
+      // Or a whole MCP server published by an external system.
+      const agentMcpIds = new Set(
+        this.model.externalSystems.flatMap((x) => (x.mcpServers ?? []).map((s) => s.id)),
+      );
+      if (agentMcpIds.has(targetId)) {
+        const already = (this.model.agentMcpUses ?? []).some(
+          (u) => u.agentId === sourceId && u.mcpServerId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-mcp', sourceId, targetId });
+        return;
+      }
+      // Or one of our MCP gateways (a curated tool surface).
+      if ((this.model.mcpGateways ?? []).some((g) => g.id === targetId)) {
+        const already = (this.model.agentGatewayUses ?? []).some(
+          (u) => u.agentId === sourceId && u.gatewayId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-gateway', sourceId, targetId });
+        return;
+      }
+      // Or an API operation as a tool.
+      const agentApiOpIds = new Set(
+        (this.model.apis ?? []).flatMap((a) => a.operations.map((o) => o.id)),
+      );
+      if (agentApiOpIds.has(targetId)) {
+        const already = (this.model.agentApiOpUses ?? []).some(
+          (u) => u.agentId === sourceId && u.apiOperationId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-api-operation', sourceId, targetId });
+        return;
+      }
+      // Or a query service as a read tool.
+      const agentQsIds = new Set(
+        this.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+      );
+      if (agentQsIds.has(targetId)) {
+        const already = (this.model.agentQueryUses ?? []).some(
+          (u) => u.agentId === sourceId && u.queryServiceId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-query', sourceId, targetId });
+        return;
+      }
+      // Or another agent: delegation.
+      if (agentIds.has(targetId) && targetId !== sourceId) {
+        const already = (this.model.agentDelegations ?? []).some(
+          (u) => u.agentId === sourceId && u.delegateAgentId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-delegate', sourceId, targetId });
+        return;
+      }
       // Knowledge: the agent grounds its answers on the RAG.
       if ((this.model.rags ?? []).some((r) => r.id === targetId)) {
         const already = (this.model.agentRags ?? []).some(
@@ -1549,6 +1728,28 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // The MCP gateway aggregates/exposes whatever it is dragged onto.
+    if ((this.model.mcpGateways ?? []).some((g) => g.id === sourceId)) {
+      const gw = (this.model.mcpGateways ?? []).find((g) => g.id === sourceId)!;
+      const exposable =
+        this.model.externalSystems.some((x) => (x.mcpServers ?? []).some((s) => s.id === targetId)) ||
+        (this.model.apis ?? []).some((a) => a.id === targetId) ||
+        (this.model.apis ?? []).some((a) => a.operations.some((o) => o.id === targetId)) ||
+        this.model.modules.some((m) => (m.useCases ?? []).some((u) => u.id === targetId)) ||
+        (this.model.rags ?? []).some((r) => r.id === targetId);
+      const already = [
+        ...(gw.mcpServerIds ?? []),
+        ...(gw.apiIds ?? []),
+        ...(gw.apiOperationIds ?? []),
+        ...(gw.useCaseIds ?? []),
+        ...(gw.ragIds ?? []),
+      ].includes(targetId);
+      if (exposable && !already) {
+        this.command({ kind: 'add-gateway-exposure', sourceId, targetId });
+      }
+      return;
+    }
+    if ((this.model.mcpGateways ?? []).some((g) => g.id === targetId)) return; // gateways only take agents/exposures
     // Dragging a RAG onto a read model declares its source: the RAG indexes it.
     const rag = (this.model.rags ?? []).find((r) => r.id === sourceId);
     if (rag) {
@@ -1587,8 +1788,24 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
-    if (agentIds.has(targetId)) return;
+    // Agents as target: legal from an actor (talks to it) or from an event (triggers
+    // it — reactive agents); the event branch lives further down, past the emission
+    // sets it reuses. Anything else pointing at an agent is not a gesture.
     const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
+    if (agentIds.has(targetId)) {
+      const eventSourceIds = new Set([
+        ...this.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
+        ...this.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
+      ]);
+      if (eventSourceIds.has(sourceId)) {
+        const already = (this.model.agentTriggers ?? []).some(
+          (t) => t.eventId === sourceId && t.agentId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-trigger', sourceId, targetId });
+        return;
+      }
+      if (!actorIds.has(sourceId)) return;
+    }
     if (actorIds.has(sourceId)) {
       const actorUcIds = new Set(
         this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
@@ -1612,6 +1829,14 @@ export class ModuxEditor extends LitElement {
           (d) => d.actorId === sourceId && d.externalSystemId === targetId,
         );
         if (!exists) this.command({ kind: 'add-actor-external', sourceId, targetId });
+        return;
+      }
+      // The person talks to the agent (a chat/supervision UI derives from it).
+      if ((this.model.aiAgents ?? []).some((a) => a.id === targetId)) {
+        const exists = (this.model.actorAgentUses ?? []).some(
+          (u) => u.actorId === sourceId && u.agentId === targetId,
+        );
+        if (!exists) this.command({ kind: 'add-actor-agent', sourceId, targetId });
         return;
       }
       return;
@@ -1791,6 +2016,8 @@ export class ModuxEditor extends LitElement {
     // Dragging an event onto another context (or one of its read models) draws a
     // materialization: a MATERIALIZES flow — the projection/read model/subscription
     // triple stays derived at generation time (flows are the source of truth).
+    // (An event onto an AGENT — the reactive-agent gesture — resolved earlier,
+    // in the agents-as-target guard.)
     if (eventIds.has(sourceId) || appEventIds.has(sourceId)) {
       const isApplicationEvent = appEventIds.has(sourceId);
       const event = this.model.modules
@@ -2087,6 +2314,67 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-agent-external-use', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-mcp') {
+      const match = /^mcpsv:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-mcp', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'gateway-exposure') {
+      const match = /^gwx:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-gateway-exposure', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-gateway') {
+      const match = /^aggw:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-gateway', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-api-op') {
+      const match = /^agapi:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-api-operation', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-query') {
+      const match = /^agqs:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-query', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-delegate') {
+      const match = /^agag:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-delegate', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-agent') {
+      const match = /^useag:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-actor-agent', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-trigger') {
+      const match = /^evag:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-trigger', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (elementType === 'node' && kind === 'mcp-gateway') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-mcp-gateway', id });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-rag') {
       const match = /^agrag:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -2116,6 +2404,11 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'external-table') {
       this._selectedId = null;
       this.command({ kind: 'remove-external-table', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'mcp-server') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-mcp-server', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'api-wire') {
@@ -2284,6 +2577,8 @@ export class ModuxEditor extends LitElement {
       kind === 'use-case' ||
       kind === 'external-use-case' ||
       kind === 'external-table' ||
+      kind === 'mcp-server' ||
+      kind === 'mcp-gateway' ||
       kind === 'application-event' ||
       kind === 'external-system' ||
       kind === 'actor' ||
@@ -2565,6 +2860,10 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-actor', id: slug(name), name });
       } else if (this._newContextMapKind === 'ai-agent') {
         this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name });
+      } else if (this._newContextMapKind === 'external-ai-agent') {
+        this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name, external: true });
+      } else if (this._newContextMapKind === 'mcp-gateway') {
+        this.command({ kind: 'add-mcp-gateway', id: `mcpgw-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'rag') {
         this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'api') {
@@ -2629,6 +2928,16 @@ export class ModuxEditor extends LitElement {
         this.command({
           kind: 'add-external-table',
           id: `tbl-${slug(name)}`,
+          name,
+          moduleId: externalId,
+        });
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'mcp-server') {
+        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
+        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
+        if (!externalId) return;
+        this.command({
+          kind: 'add-mcp-server',
+          id: `mcpsrv-${slug(name)}`,
           name,
           moduleId: externalId,
         });
@@ -2854,6 +3163,10 @@ export class ModuxEditor extends LitElement {
                   ? 'Nuevo actor…'
                   : this._newContextMapKind === 'ai-agent'
                     ? 'Nuevo agente de IA…'
+                    : this._newContextMapKind === 'external-ai-agent'
+                      ? 'Nuevo agente IA externo…'
+                      : this._newContextMapKind === 'mcp-gateway'
+                        ? 'Nuevo gateway MCP…'
                     : this._newContextMapKind === 'rag'
                       ? 'Nuevo RAG…'
                       : this._newContextMapKind === 'api'
@@ -2878,6 +3191,8 @@ export class ModuxEditor extends LitElement {
                                   ? 'Nuevo caso de uso externo…'
                                   : this._newContextMapKind === 'external-table'
                                     ? 'Nueva tabla externa…'
+                                    : this._newContextMapKind === 'mcp-server'
+                                      ? 'Nuevo servidor MCP…'
                                     : this._newContextMapKind === 'api-operation'
                                       ? 'Nueva operación de API…'
                                       : 'Nuevo read model…',
@@ -2912,6 +3227,15 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="ai-agent" ?selected=${this._newContextMapKind === 'ai-agent'}>
                 Agente de IA
+              </option>
+              <option
+                value="external-ai-agent"
+                ?selected=${this._newContextMapKind === 'external-ai-agent'}
+              >
+                Agente IA externo
+              </option>
+              <option value="mcp-gateway" ?selected=${this._newContextMapKind === 'mcp-gateway'}>
+                Gateway MCP
               </option>
               <option value="rag" ?selected=${this._newContextMapKind === 'rag'}>
                 RAG (base de conocimiento)
@@ -2973,6 +3297,12 @@ export class ModuxEditor extends LitElement {
                       Tabla externa (legacy)
                     </option>
                     <option
+                      value="mcp-server"
+                      ?selected=${this._newContextMapKind === 'mcp-server'}
+                    >
+                      Servidor MCP (externo)
+                    </option>
+                    <option
                       value="api-operation"
                       ?selected=${this._newContextMapKind === 'api-operation'}
                     >
@@ -2985,9 +3315,10 @@ export class ModuxEditor extends LitElement {
         ${this._view === 'context-map' &&
         this._detail !== 'contexts' &&
         (this._newContextMapKind === 'external-use-case' ||
-          this._newContextMapKind === 'external-table')
+          this._newContextMapKind === 'external-table' ||
+          this._newContextMapKind === 'mcp-server')
           ? html`<select
-              title="Sistema externo que ofrece el caso de uso"
+              title="Sistema externo dueño del nuevo elemento"
               @change=${(e: Event) => (this._newExternalId = (e.target as HTMLSelectElement).value)}
             >
               ${this.model.externalSystems.map(

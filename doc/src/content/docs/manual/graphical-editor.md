@@ -77,7 +77,8 @@ person / gear (human / automated steps), double circle (events), return arrow
   glyph, outside every context) and drag it onto a use case — the consumption is
   recorded on the agent and the use case flips `exposedAsMcp: true` (the bounded
   context will expose it as an MCP tool). Removing the arrow clears the exposure
-  when no other agent consumes it.
+  when no other agent consumes it. An **Agente IA externo** (dashed) is someone
+  else's agent: it enters through an **MCP gateway** instead (lint warns otherwise).
 - **Events trigger use cases**: dragging a domain or application event onto a use
   case creates a **TRIGGERS flow** (subscription + CallUseCase + mapping derive at
   generation time); the arrow anchors on the event and the use case at the detail
@@ -111,6 +112,9 @@ person / gear (human / automated steps), double circle (events), return arrow
 - **External tables**: external systems can declare the **tables/datasets** they own
   (amber chips inside the external container) — the pollable surface of a legacy
   system.
+- **External MCP servers**: an external system can also publish an **MCP server**
+  (lilac robot chip, created from the toolbar with its owner system) — a whole tool
+  surface agents consume directly (drag agent → chip) or through a gateway.
 - **Published APIs are first-class**: an **API** (usually born from
   [importing a contract](/manual/importers/) with no target) is a top-level container
   with its operations as indigo chips. **Drag an operation onto the use case or
@@ -118,13 +122,24 @@ person / gear (human / automated steps), double circle (events), return arrow
   the indigo dashed wire is the published surface mapped onto the domain. Supr on a
   wire unwires (the operation stays published, flagged by `api-operation-unwired`);
   APIs and operations are also creatable from the toolbar, renamable and deletable.
-- **AI agents and RAGs**: drag an agent onto a use case (MCP consumption, flips
-  `exposedAsMcp`), onto an **external operation** (the other half of its tool
-  surface) or onto a **RAG** (the knowledge it grounds on). RAGs are created from
-  the toolbar (lens glyph, outside every context); drag a RAG onto a **read model**
+- **The agent's whole tool surface is drawn**: drag an agent onto a use case (MCP),
+  a **query service** (read tool), an **API operation**, an **external operation**,
+  an **external MCP server**, an **MCP gateway** or **another agent** (delegation) —
+  each arrow is one entry in the [connection matrix](/manual/ai-agents/#the-connection-matrix).
+  Drag a **domain or application event onto an agent** and the event *triggers* it
+  (a **reactive agent**, amber dashed arrow); drag an **actor onto an agent** and
+  the person talks to it (a chat/supervision UI derives). Deleting an agent unlinks
+  it everywhere, and one undo restores the agent *with* every link.
+- **MCP gateways**: created from the toolbar (plug glyph, outside every context) —
+  our component that aggregates external MCP servers and exposes APIs, single
+  operations, use cases and RAGs as one MCP endpoint. Drag the gateway's handle onto
+  whatever it exposes (violet dashed arrows); external agents consume the gateway,
+  not the internals. See [AI Agents, MCP Gateways & RAGs](/manual/ai-agents/).
+- **RAGs**: created from the toolbar (lens glyph, outside every context); drag an
+  agent onto a RAG (the knowledge it grounds on), drag a RAG onto a **read model**
   to declare it indexes it, and use the **＋ Fuente** toolbar (with the RAG selected)
   to add external content sources — a repo, a web site, an FTP server — drawn as
-  small satellites. See [AI Agents & RAGs](/manual/ai-agents/).
+  small satellites.
 - **Workflow editing**: create workflows from their tab (trigger aggregate + event);
   with the workflow or a step selected the toolbar adds steps (name, target use
   case, the event the workflow *emits* to start it and the one it *awaits*); drag a

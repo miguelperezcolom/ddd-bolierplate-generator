@@ -123,6 +123,55 @@ export interface ActorRef {
 export interface AiAgentRef {
   id: string;
   name: string;
+  /** Someone else's agent: it enters through MCP gateways, never touching internals. */
+  external?: boolean;
+}
+
+/** Our MCP gateway: aggregates MCPs and exposes APIs/operations/use cases/RAGs as MCP. */
+export interface McpGatewayRef {
+  id: string;
+  name: string;
+  mcpServerIds?: string[];
+  apiIds?: string[];
+  apiOperationIds?: string[];
+  useCaseIds?: string[];
+  ragIds?: string[];
+}
+
+/** An AI agent consumes an MCP gateway (one curated tool surface). */
+export interface AgentGatewayUseRef {
+  agentId: string;
+  gatewayId: string;
+}
+
+/** An AI agent calls an API operation as a tool. */
+export interface AgentApiOpUseRef {
+  agentId: string;
+  apiOperationId: string;
+}
+
+/** An AI agent consults a query service as a read tool. */
+export interface AgentQueryUseRef {
+  agentId: string;
+  queryServiceId: string;
+}
+
+/** An AI agent delegates work to another agent. */
+export interface AgentDelegationRef {
+  agentId: string;
+  delegateAgentId: string;
+}
+
+/** An actor talks to an AI agent (a chat/supervision UI derives from it). */
+export interface ActorAgentUseRef {
+  actorId: string;
+  agentId: string;
+}
+
+/** A domain/application event triggers a run of the agent (reactive agents). */
+export interface AgentTriggerRef {
+  eventId: string;
+  agentId: string;
 }
 
 /** An AI agent consumes a use case through MCP. */
@@ -135,6 +184,12 @@ export interface AgentUseRef {
 export interface AgentExternalUseRef {
   agentId: string;
   externalUseCaseId: string;
+}
+
+/** An AI agent consumes an MCP server published by an external system. */
+export interface AgentMcpUseRef {
+  agentId: string;
+  mcpServerId: string;
 }
 
 export interface RagContentSourceRef {
@@ -188,6 +243,13 @@ export interface ExternalTableRef {
   name: string;
 }
 
+/** An MCP server published by an external system — a tool surface for AI agents. */
+export interface McpServerRef {
+  id: string;
+  name: string;
+  uri?: string;
+}
+
 export interface ExternalSystemRef {
   id: string;
   name: string;
@@ -195,6 +257,8 @@ export interface ExternalSystemRef {
   useCases?: ExternalUseCaseRef[];
   /** Tables/datasets it owns — pollable into read models (legacy integration). */
   tables?: ExternalTableRef[];
+  /** MCP servers it publishes — consumable by AI agents. */
+  mcpServers?: McpServerRef[];
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */
@@ -367,6 +431,14 @@ export interface ModuxModel {
   aiAgents?: AiAgentRef[];
   agentUses?: AgentUseRef[];
   agentExternalUses?: AgentExternalUseRef[];
+  agentMcpUses?: AgentMcpUseRef[];
+  mcpGateways?: McpGatewayRef[];
+  agentGatewayUses?: AgentGatewayUseRef[];
+  agentApiOpUses?: AgentApiOpUseRef[];
+  agentQueryUses?: AgentQueryUseRef[];
+  agentDelegations?: AgentDelegationRef[];
+  actorAgentUses?: ActorAgentUseRef[];
+  agentTriggers?: AgentTriggerRef[];
   rags?: RagRef[];
   agentRags?: AgentRagRef[];
   apis?: ApiRef[];

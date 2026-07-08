@@ -65,10 +65,11 @@ export type ModuxCommand =
       id: string;
     }
   | {
-      /** An AI agent that consumes use cases through MCP. */
+      /** An AI agent; external = someone else's, entering only through MCP gateways. */
       kind: 'add-ai-agent';
       id: string;
       name: string;
+      external?: boolean;
     }
   | {
       kind: 'remove-ai-agent';
@@ -133,6 +134,78 @@ export type ModuxCommand =
       moduleId: string;
     }
   | { kind: 'remove-external-table'; id: string }
+  | {
+      /** An MCP server published by an external system (moduleId = external system id). */
+      kind: 'add-mcp-server';
+      id: string;
+      name: string;
+      moduleId: string;
+      uri?: string;
+    }
+  | { kind: 'remove-mcp-server'; id: string }
+  | {
+      /** The agent consumes the MCP server's tools (sourceId = agent, targetId = server). */
+      kind: 'add-agent-mcp';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-mcp'; sourceId: string; targetId: string }
+  | {
+      /** Our MCP gateway: aggregates MCPs and exposes APIs/operations/use cases/RAGs. */
+      kind: 'add-mcp-gateway';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-mcp-gateway'; id: string }
+  | {
+      /** The gateway exposes the target (MCP server, API, operation, use case or RAG). */
+      kind: 'add-gateway-exposure';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-gateway-exposure'; sourceId: string; targetId: string }
+  | {
+      /** The agent consumes the gateway's curated tool surface. */
+      kind: 'add-agent-gateway';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-gateway'; sourceId: string; targetId: string }
+  | {
+      /** The agent calls an API operation as a tool. */
+      kind: 'add-agent-api-operation';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-api-operation'; sourceId: string; targetId: string }
+  | {
+      /** The agent consults a query service as a read tool. */
+      kind: 'add-agent-query';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-query'; sourceId: string; targetId: string }
+  | {
+      /** The agent delegates work to another agent. */
+      kind: 'add-agent-delegate';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-delegate'; sourceId: string; targetId: string }
+  | {
+      /** The actor talks to the agent (a chat/supervision UI derives from it). */
+      kind: 'add-actor-agent';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-actor-agent'; sourceId: string; targetId: string }
+  | {
+      /** The event triggers a run of the agent (sourceId = event, targetId = agent). */
+      kind: 'add-agent-trigger';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-trigger'; sourceId: string; targetId: string }
   | {
       /** Adds an existing catalog element to a CURATED view. */
       kind: 'add-view-member';

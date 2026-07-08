@@ -215,7 +215,19 @@ A published API is a **product**, often fronting several bounded contexts — so
 
 ## AI agents and RAGs
 
-An [AI agent](/manual/ai-agents/) is an automated consumer at the level of the bounded contexts. Its **tools** are internal use cases (consumed through MCP — the context exposes them as MCP tools) and external-system operations; its **knowledge** is **RAGs** — knowledge bases fed from read models (the domain projecting itself into an index) and external content (repos, webs, FTP). Linted: agents without tools (`agent-without-tools`), knowledge bases nobody queries (`rag-orphan`).
+An [AI agent](/manual/ai-agents/) is an automated consumer at the level of the bounded contexts. Its **tools** are use cases (consumed through MCP — the context exposes them as MCP tools), query services (read tools), API operations, external-system operations and external MCP servers; it **delegates** to other agents, **grounds** on **RAGs** — knowledge bases fed from read models (the domain projecting itself into an index) and external content (repos, webs, FTP) — and actors talk to it (a chat/supervision UI derives). Linted: agents without tools (`agent-without-tools`), delegation loops (`agent-delegation-cycle`), knowledge bases nobody queries (`rag-orphan`).
+
+---
+
+## MCP gateways (the front door for external agents)
+
+Agents are two-sided: ours consume the world, and the world's agents consume US. An **external AI agent** (someone else's copilot) never touches internal elements: it enters through an [MCP gateway](/manual/ai-agents/#mcp-gateways) — our platform component that **aggregates** external MCP servers and **exposes** published APIs, single operations, use cases and RAGs as one curated MCP endpoint. The gateway is where the exposed surface is decided, secured and audited. Linted: external agents wired to internals directly (`external-agent-direct-tools`), gateways that expose nothing (`mcp-gateway-empty`).
+
+---
+
+## Reactive agents (event → agent)
+
+Beyond answering when called, an agent can **react**: dragging a domain or application event onto it declares that the event triggers a run (`reactsToEventIds`) — triage the incident when `PagoRechazado` arrives, draft the reply when `ReclamacionCreada` lands. The same event-driven backbone that feeds projections and sagas now feeds agents; identity and guardrails of the run are a generation-time decision.
 
 ---
 
