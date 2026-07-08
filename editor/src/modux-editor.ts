@@ -537,6 +537,10 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-actor-use', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-use':
         return [{ kind: 'add-actor-use', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-actor-external':
+        return [{ kind: 'remove-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-actor-external':
+        return [{ kind: 'add-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-actor-crud':
         return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-crud':
@@ -1185,6 +1189,13 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-actor-crud', sourceId, targetId });
         return;
       }
+      if (this.model.externalSystems.some((x) => x.id === targetId)) {
+        const exists = (this.model.actorExternalDependencies ?? []).some(
+          (d) => d.actorId === sourceId && d.externalSystemId === targetId,
+        );
+        if (!exists) this.command({ kind: 'add-actor-external', sourceId, targetId });
+        return;
+      }
       return;
     }
     // Dragging an API operation onto its implementer wires the published contract to
@@ -1686,6 +1697,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-actor-use', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'actor-ext') {
+      const match = /^extdep:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-actor-external', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'module') {

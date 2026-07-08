@@ -76,6 +76,11 @@ export interface ActorUseRef {
   targetId: string;
 }
 
+export interface ActorExternalDependencyRef {
+  actorId: string;
+  externalSystemId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -335,6 +340,8 @@ export interface ModuxModel {
   useCaseCalls?: UseCaseCallRef[];
   queryCalls?: QueryCallRef[];
   actorUses?: ActorUseRef[];
+  /** Actor → external system dependencies (strategic context-map edges). */
+  actorExternalDependencies?: ActorExternalDependencyRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

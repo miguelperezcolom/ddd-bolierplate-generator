@@ -892,7 +892,7 @@ export class ModuxCanvas extends LitElement {
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
                   <title>${!isChild
                     ? node.kind === 'actor'
-                      ? 'Arrastra hasta un caso de uso, query service o agregado: el actor lo usará (deriva una UI)'
+                      ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
                       : node.kind === 'ai-agent'
                         ? 'Arrastra hasta un caso de uso, una operación externa o un RAG: el agente lo usará'
                         : node.kind === 'rag'

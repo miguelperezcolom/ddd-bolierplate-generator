@@ -165,6 +165,8 @@ public class EditorApiController {
     public record QueryCallDto(String sourceId, String targetId) {}
     /** An actor uses a use case or a query service directly (a UI is derived from it). */
     public record ActorUseDto(String actorId, String targetId) {}
+    /** An actor depends on an external system (strategic context-map dependency). */
+    public record ActorExternalDependencyDto(String actorId, String externalSystemId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -193,7 +195,8 @@ public class EditorApiController {
             List<AgentExternalUseDto> agentExternalUses,
             List<RagDto> rags,
             List<AgentRagDto> agentRags,
-            List<ApiDto> apis) {}
+            List<ApiDto> apis,
+            List<ActorExternalDependencyDto> actorExternalDependencies) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -567,9 +570,12 @@ public class EditorApiController {
             }
         }
         var actorUses = new ArrayList<ActorUseDto>();
+        var actorExternalDependencies = new ArrayList<ActorExternalDependencyDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
             role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
             role.allowedQueryServiceIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
+            role.externalSystemIds().forEach(id ->
+                    actorExternalDependencies.add(new ActorExternalDependencyDto(role.id(), id)));
         }
 
         // The strategic map is a projection of the concrete dependency graph:
@@ -647,7 +653,8 @@ public class EditorApiController {
                 agentExternalUses.stream().distinct().toList(),
                 rags,
                 agentRags.stream().distinct().toList(),
-                apis);
+                apis,
+                actorExternalDependencies.stream().distinct().toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -721,6 +728,8 @@ public class EditorApiController {
             case "add-actor-use" -> addActorUse(command);
             case "remove-actor-use" -> removeActorUse(command);
             case "add-actor-crud" -> addActorCrud(command);
+            case "add-actor-external" -> addActorExternalDependency(command);
+            case "remove-actor-external" -> removeActorExternalDependency(command);
             case "remove-actor-crud" -> removeActorCrud(command);
             case "add-use-case" -> addUseCase(command);
             case "remove-use-case" -> removeUseCase(command);
@@ -1106,8 +1115,7 @@ public class EditorApiController {
                         .toList()));
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
-                    .ifPresent(r -> repository.save(new RoleEntity(
-                            r.id(), command.name(), r.allowedUseCaseIds(), r.allowedQueryServiceIds())));
+                    .ifPresent(r -> repository.save(r.withName(command.name())));
             case "external-system" -> {
                 var project = owningProject();
                 repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -1411,7 +1419,7 @@ public class EditorApiController {
         }
         repository.findAllOfType(RoleEntity.class).stream()
                 .filter(r -> r.allowedQueryServiceIds().contains(command.id()))
-                .forEach(r -> repository.save(new RoleEntity(r.id(), r.name(), r.allowedUseCaseIds(),
+                .forEach(r -> repository.save(r.withAllowedQueryServiceIds(
                         r.allowedQueryServiceIds().stream().filter(id -> !id.equals(command.id())).toList())));
         repository.deleteAllById(List.of(command.id()), QueryServiceEntity.class);
     }
@@ -1446,14 +1454,14 @@ public class EditorApiController {
             if (role.allowedUseCaseIds().contains(command.targetId())) return;
             var ids = new ArrayList<>(role.allowedUseCaseIds());
             ids.add(command.targetId());
-            repository.save(new RoleEntity(role.id(), role.name(), ids, role.allowedQueryServiceIds()));
+            repository.save(role.withAllowedUseCaseIds(ids));
             return;
         }
         if (repository.findById(command.targetId(), QueryServiceEntity.class).isPresent()) {
             if (role.allowedQueryServiceIds().contains(command.targetId())) return;
             var ids = new ArrayList<>(role.allowedQueryServiceIds());
             ids.add(command.targetId());
-            repository.save(new RoleEntity(role.id(), role.name(), role.allowedUseCaseIds(), ids));
+            repository.save(role.withAllowedQueryServiceIds(ids));
             return;
         }
         throw new IllegalArgumentException(
@@ -1462,9 +1470,32 @@ public class EditorApiController {
 
     private void removeActorUse(EditorCommand command) {
         repository.findById(command.sourceId(), RoleEntity.class).ifPresent(r ->
-                repository.save(new RoleEntity(r.id(), r.name(),
-                        r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.targetId())).toList(),
-                        r.allowedQueryServiceIds().stream().filter(id -> !id.equals(command.targetId())).toList())));
+                repository.save(r
+                        .withAllowedUseCaseIds(r.allowedUseCaseIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList())
+                        .withAllowedQueryServiceIds(r.allowedQueryServiceIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList())));
+    }
+
+    /** An actor depends on an external system — drawn on the context map as a dependency. */
+    private void addActorExternalDependency(EditorCommand command) {
+        var role = repository.findById(command.sourceId(), RoleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
+        var known = owningProject().externalSystems().stream()
+                .anyMatch(x -> x.id().equals(command.targetId()));
+        if (!known) {
+            throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
+        }
+        if (role.externalSystemIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(role.externalSystemIds());
+        ids.add(command.targetId());
+        repository.save(role.withExternalSystemIds(ids));
+    }
+
+    private void removeActorExternalDependency(EditorCommand command) {
+        repository.findById(command.sourceId(), RoleEntity.class).ifPresent(r ->
+                repository.save(r.withExternalSystemIds(r.externalSystemIds().stream()
+                        .filter(id -> !id.equals(command.targetId())).toList())));
     }
 
     /**
@@ -1492,7 +1523,7 @@ public class EditorApiController {
             if (!allowed.contains(uc.id())) allowed.add(uc.id());
         }
         repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
-        repository.save(new RoleEntity(role.id(), role.name(), allowed, role.allowedQueryServiceIds()));
+        repository.save(role.withAllowedUseCaseIds(allowed));
     }
 
     private void removeActorCrud(EditorCommand command) {
@@ -1500,9 +1531,8 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
         var crudIds = crudUseCases(aggregate).stream().map(UseCaseEntity::id).toList();
         repository.findById(command.sourceId(), RoleEntity.class).ifPresent(r ->
-                repository.save(new RoleEntity(r.id(), r.name(),
-                        r.allowedUseCaseIds().stream().filter(id -> !crudIds.contains(id)).toList(),
-                        r.allowedQueryServiceIds())));
+                repository.save(r.withAllowedUseCaseIds(
+                        r.allowedUseCaseIds().stream().filter(id -> !crudIds.contains(id)).toList())));
         // The stub use cases leave too, unless something else references them by now.
         var referenced = repository.findAllOfType(UseCaseEntity.class).stream()
                 .filter(uc -> uc.steps() != null)
@@ -1571,9 +1601,8 @@ public class EditorApiController {
         }
         repository.findAllOfType(RoleEntity.class).stream()
                 .filter(r -> r.allowedUseCaseIds().contains(command.id()))
-                .forEach(r -> repository.save(new RoleEntity(r.id(), r.name(),
-                        r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList(),
-                        r.allowedQueryServiceIds())));
+                .forEach(r -> repository.save(r.withAllowedUseCaseIds(
+                        r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList())));
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.allowedUseCaseIds().contains(command.id()))
                 .forEach(a -> repository.save(withAllowedUseCaseIds(a,
@@ -2113,6 +2142,12 @@ public class EditorApiController {
         if (notifiedByFlow) {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " es destino de flows; bórralos primero");
+        }
+        var dependedOnByActors = repository.findAllOfType(RoleEntity.class).stream()
+                .anyMatch(r -> r.externalSystemIds().contains(command.id()));
+        if (dependedOnByActors) {
+            throw new IllegalArgumentException(
+                    "El sistema externo " + command.id() + " tiene actores que dependen de él; quita esas dependencias primero");
         }
         var project = owningProject();
         repository.save(withExternalSystems(project, project.externalSystems().stream()

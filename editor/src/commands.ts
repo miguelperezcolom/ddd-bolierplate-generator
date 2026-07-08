@@ -269,6 +269,17 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** An actor depends on an external system (a context-map dependency edge). */
+      kind: 'add-actor-external';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-actor-external';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** An actor manages an aggregate through a CRUD UI (stub use cases appear). */
       kind: 'add-actor-crud';
       sourceId: string;
