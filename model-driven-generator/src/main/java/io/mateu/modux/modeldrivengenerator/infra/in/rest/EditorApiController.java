@@ -168,8 +168,8 @@ public class EditorApiController {
     public record ActorUseDto(String actorId, String targetId) {}
     /** An actor depends on an external system (strategic context-map dependency). */
     public record ActorExternalDependencyDto(String actorId, String externalSystemId) {}
-    /** An external system depends on another external system. */
-    public record ExternalSystemDependencyDto(String sourceId, String targetId) {}
+    /** An external system depends on (or proxies, per type) another system or a published API. */
+    public record ExternalSystemDependencyDto(String sourceId, String targetId, String type) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -585,10 +585,12 @@ public class EditorApiController {
         var externalSystemDependencies = new ArrayList<ExternalSystemDependencyDto>();
         if (currentProject != null) {
             for (var x : currentProject.externalSystems()) {
-                x.dependsOnExternalSystemIds().forEach(id ->
-                        externalSystemDependencies.add(new ExternalSystemDependencyDto(x.id(), id)));
-                x.dependsOnApiIds().forEach(id ->
-                        externalSystemDependencies.add(new ExternalSystemDependencyDto(x.id(), id)));
+                x.dependsOnExternalSystemIds().forEach(id -> externalSystemDependencies.add(
+                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
+                x.dependsOnApiIds().forEach(id -> externalSystemDependencies.add(
+                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
+                x.proxiedApiIds().forEach(id -> externalSystemDependencies.add(
+                        new ExternalSystemDependencyDto(x.id(), id, "PROXIES")));
             }
         }
 
@@ -1524,14 +1526,31 @@ public class EditorApiController {
                 .filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Sistema externo desconocido: " + command.sourceId()));
+        var proxies = "PROXIES".equals(command.type());
         if (repository.findById(command.targetId(), ApiEntity.class).isPresent()) {
-            if (source.dependsOnApiIds().contains(command.targetId())) return;
-            var ids = new ArrayList<>(source.dependsOnApiIds());
-            ids.add(command.targetId());
+            // The two flavours are exclusive: re-drawing with the other type retypes the edge.
             repository.save(withExternalSystems(project, project.externalSystems().stream()
-                    .map(x -> x.id().equals(command.sourceId()) ? x.withDependsOnApiIds(ids) : x)
+                    .map(x -> {
+                        if (!x.id().equals(command.sourceId())) return x;
+                        var without = (List<String>) x.dependsOnApiIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList();
+                        var proxiedWithout = (List<String>) x.proxiedApiIds().stream()
+                                .filter(id -> !id.equals(command.targetId())).toList();
+                        if (proxies) {
+                            var ids = new ArrayList<>(proxiedWithout);
+                            ids.add(command.targetId());
+                            return x.withDependsOnApiIds(without).withProxiedApiIds(ids);
+                        }
+                        var ids = new ArrayList<>(without);
+                        ids.add(command.targetId());
+                        return x.withDependsOnApiIds(ids).withProxiedApiIds(proxiedWithout);
+                    })
                     .toList()));
             return;
+        }
+        if (proxies) {
+            throw new IllegalArgumentException(
+                    "Solo se puede hacer proxy/cache de una API publicada");
         }
         if (project.externalSystems().stream().noneMatch(x -> x.id().equals(command.targetId()))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
@@ -1545,7 +1564,7 @@ public class EditorApiController {
                 .toList()));
     }
 
-    /** The target may live in either list (external system or API): clear it from both. */
+    /** The target may live in any of the lists (system, API, proxied API): clear it everywhere. */
     private void removeExternalSystemDependency(EditorCommand command) {
         var project = owningProject();
         repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -1553,6 +1572,8 @@ public class EditorApiController {
                         ? x.withDependsOnExternalSystemIds(x.dependsOnExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
                                 .withDependsOnApiIds(x.dependsOnApiIds().stream()
+                                        .filter(id -> !id.equals(command.targetId())).toList())
+                                .withProxiedApiIds(x.proxiedApiIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
                         : x)
                 .toList()));
@@ -2092,7 +2113,8 @@ public class EditorApiController {
     private void removeApi(EditorCommand command) {
         var dependedOn = currentProject().stream()
                 .flatMap(p -> p.externalSystems().stream())
-                .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
+                .anyMatch(x -> x.dependsOnApiIds().contains(command.id())
+                        || x.proxiedApiIds().contains(command.id()));
         if (dependedOn) {
             throw new IllegalArgumentException(
                     "La API " + command.id() + " tiene sistemas externos que dependen de ella; quita esas dependencias primero");

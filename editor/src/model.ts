@@ -84,6 +84,8 @@ export interface ActorExternalDependencyRef {
 export interface ExternalSystemDependencyRef {
   sourceId: string;
   targetId: string;
+  /** DEPENDS (default) or PROXIES — the source fronts the target API as a proxy/cache. */
+  type?: string;
 }
 
 export interface ModuleRef {

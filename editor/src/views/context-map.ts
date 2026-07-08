@@ -298,6 +298,9 @@ export function contextMapScene(
     }
     if (entry.external) {
       const x = entry.ref as ModuxModel['externalSystems'][number];
+      const proxies = (model.externalSystemDependencies ?? []).some(
+        (d) => d.sourceId === x.id && d.type === 'PROXIES',
+      );
       const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
         id: x.id,
         label: x.name,
@@ -306,8 +309,10 @@ export function contextMapScene(
         fill: '#ffffff',
         stroke: '#64748b',
         dashed: true,
-        badge: 'EXTERNAL',
-        tooltip: `${x.name} (sistema externo)`,
+        badge: proxies ? 'PROXY/CACHE' : 'EXTERNAL',
+        tooltip: proxies
+          ? `${x.name} (sistema externo — proxy/cache de APIs)`
+          : `${x.name} (sistema externo)`,
       };
       // Published APIs are strategic-level elements: they nest visibly at EVERY
       // detail level, while operations and tables only unfold in detailed mode.
@@ -636,6 +641,7 @@ export function contextMapScene(
           targetId: nodeIds.has(d.targetId)
             ? d.targetId
             : (apiPublisher.get(d.targetId) ?? d.targetId),
+          proxies: d.type === 'PROXIES',
         }))
         .filter(
           (d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId) && d.sourceId !== d.targetId,
@@ -647,10 +653,10 @@ export function contextMapScene(
             sourceId: d.sourceId,
             targetId: d.targetId,
             kind: 'ext-dep',
-            color: '#64748b',
+            color: d.proxies ? '#0e7490' : '#64748b',
             dashed: true,
             arrow: true,
-            tooltip: 'depende de',
+            tooltip: d.proxies ? 'proxy/cache de' : 'depende de',
           },
         ]),
     ).values(),

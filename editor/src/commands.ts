@@ -290,6 +290,8 @@ export type ModuxCommand =
       kind: 'add-external-dependency';
       sourceId: string;
       targetId: string;
+      /** DEPENDS (default) or PROXIES (the source is a proxy/cache of the target API). */
+      type?: string;
     }
   | {
       kind: 'remove-external-dependency';
