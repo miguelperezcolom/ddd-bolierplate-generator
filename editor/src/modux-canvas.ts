@@ -205,14 +205,41 @@ export class ModuxCanvas extends LitElement {
     this.addEventListener('keydown', this._onKeyDown);
     this.addEventListener('keyup', this._onKeyUp);
     this.addEventListener('blur', this._onBlur);
+    // Space-to-pan must work WITHOUT clicking the canvas first: listen at the
+    // window (nothing to focus), but never steal the key from a control the
+    // user is typing in or operating.
+    window.addEventListener('keydown', this._onWindowSpace, true);
+    window.addEventListener('keyup', this._onWindowSpaceUp, true);
   }
 
   disconnectedCallback(): void {
     this.removeEventListener('keydown', this._onKeyDown);
     this.removeEventListener('keyup', this._onKeyUp);
     this.removeEventListener('blur', this._onBlur);
+    window.removeEventListener('keydown', this._onWindowSpace, true);
+    window.removeEventListener('keyup', this._onWindowSpaceUp, true);
     super.disconnectedCallback();
   }
+
+  private _onWindowSpace = (e: KeyboardEvent): void => {
+    if (e.key !== ' ') return;
+    const target = e.composedPath()[0];
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target instanceof HTMLButtonElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return;
+    }
+    e.preventDefault();
+    this._spaceDown = true;
+  };
+
+  private _onWindowSpaceUp = (e: KeyboardEvent): void => {
+    if (e.key === ' ') this._spaceDown = false;
+  };
 
   private _onKeyUp = (e: KeyboardEvent): void => {
     if (e.key === ' ') this._spaceDown = false;
