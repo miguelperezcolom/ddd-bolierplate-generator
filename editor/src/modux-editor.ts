@@ -541,6 +541,10 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-external':
         return [{ kind: 'add-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-dependency':
+        return [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-external-dependency':
+        return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-actor-crud':
         return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-crud':
@@ -1483,6 +1487,14 @@ export class ModuxEditor extends LitElement {
           (c) => c.externalSystemId === sourceId && c.useCaseId === targetId,
         );
         if (!already) this.command({ kind: 'add-external-call', sourceId, targetId });
+        return;
+      }
+      if (relationExternalIds.has(targetId) && targetId !== sourceId) {
+        const exists = (this.model.externalSystemDependencies ?? []).some(
+          (d) => d.sourceId === sourceId && d.targetId === targetId,
+        );
+        if (!exists) this.command({ kind: 'add-external-dependency', sourceId, targetId });
+        return;
       }
       return;
     }
@@ -1704,6 +1716,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-actor-external', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'ext-dep') {
+      const match = /^xdep:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-external-dependency', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'module') {

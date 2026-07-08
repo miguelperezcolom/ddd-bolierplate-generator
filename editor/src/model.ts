@@ -81,6 +81,11 @@ export interface ActorExternalDependencyRef {
   externalSystemId: string;
 }
 
+export interface ExternalSystemDependencyRef {
+  sourceId: string;
+  targetId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -342,6 +347,8 @@ export interface ModuxModel {
   actorUses?: ActorUseRef[];
   /** Actor → external system dependencies (strategic context-map edges). */
   actorExternalDependencies?: ActorExternalDependencyRef[];
+  /** External system → external system dependencies. */
+  externalSystemDependencies?: ExternalSystemDependencyRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

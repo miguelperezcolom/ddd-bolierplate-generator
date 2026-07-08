@@ -87,8 +87,7 @@ public class ImportOpenApiExternalUseCase {
     /** Record copy with only useCases replaced — every other field preserved verbatim. */
     public static ExternalSystemEntity withUseCases(
             ExternalSystemEntity x, List<ExternalSystemUseCaseEntity> useCases) {
-        return new ExternalSystemEntity(x.id(), x.name(), x.description(), x.protocol(),
-                x.direction(), x.gatewayId(), x.owner(), x.decisionIds(), useCases, x.tables());
+        return x.withUseCases(useCases);
     }
 
     /** Record copy with only externalSystems replaced — every other field preserved verbatim. */

@@ -608,6 +608,19 @@ export function contextMapScene(
       tooltip: 'depende de',
     }));
 
+  const externalDependencyEdges: SceneEdge[] = (model.externalSystemDependencies ?? [])
+    .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+    .map((d) => ({
+      id: `xdep:${d.sourceId}->${d.targetId}`,
+      sourceId: d.sourceId,
+      targetId: d.targetId,
+      kind: 'ext-dep',
+      color: '#64748b',
+      dashed: true,
+      arrow: true,
+      tooltip: 'depende de',
+    }));
+
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
@@ -709,6 +722,7 @@ export function contextMapScene(
       ...queryEdges,
       ...actorUseEdges,
       ...actorExternalEdges,
+      ...externalDependencyEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentRagEdges,
