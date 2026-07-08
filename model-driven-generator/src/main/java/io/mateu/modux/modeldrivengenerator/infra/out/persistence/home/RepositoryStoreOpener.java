@@ -1,8 +1,11 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.home;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.Repository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         var monolithic = location.resolve("model-driven-store.yaml");
         var storePath = Files.exists(monolithic) ? monolithic : location;
         repository.loadFrom(storePath.toString());
+        bootstrapIfEmpty(repo, location);
         home.saveCurrentRepositoryId(repo.getId().id());
         log.info("proyecto abierto desde el repositorio {} en {}", repo.getName().name(), storePath);
         return storePath;
@@ -69,6 +73,38 @@ public class RepositoryStoreOpener implements ProjectStorePort {
             throw new IllegalStateException("No se pudo clonar " + repo.getGitUrl() + ": " + output);
         }
         return dir;
+    }
+
+    /**
+     * A store with no project is a brand-new one: seed the minimal wired topology
+     * (project + service, named after the repository) so modelling can start right
+     * away. Everything is refinable later through the CRUDs.
+     */
+    private void bootstrapIfEmpty(Repository repo, Path location) {
+        if (!repository.findAllOfType(ProjectEntity.class).isEmpty()) return;
+        var mapper = new ObjectMapper();
+        var projectId = slug(repo.getName().name());
+        var serviceId = projectId + "-svc";
+        var project = mapper.convertValue(java.util.Map.of(
+                "id", projectId,
+                "name", repo.getName().name(),
+                "packageName", "com." + projectId.replace("-", ""),
+                "outputPath", location.toString(),
+                "gitRepository", repo.getGitUrl() == null ? "" : repo.getGitUrl(),
+                "serviceIds", java.util.List.of(serviceId)), ProjectEntity.class);
+        var service = mapper.convertValue(java.util.Map.of(
+                "id", serviceId,
+                "name", repo.getName().name(),
+                "moduleIds", java.util.List.of()), ServiceEntity.class);
+        repository.save(project);
+        repository.save(service);
+        log.info("store vacío: creado el proyecto inicial {} con el servicio {}", projectId, serviceId);
+    }
+
+    private static String slug(String name) {
+        var normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return normalized.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
     }
 
     private static Path expandTilde(String folder) {
