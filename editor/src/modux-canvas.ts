@@ -106,6 +106,7 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
  *
  * Events (all CustomEvent, composed, bubbling):
  *  - node-moved        { id, x, y }             after a drag ends
+ *  - nodes-moved       { moves: [{id, x, y}] }   multi-selection drag ended
  *  - connect-requested { sourceId, targetId }   edge-drawing gesture completed
  *  - element-selected  { elementType, id, kind }  click on node or edge
  *  - element-activated { elementType, id, kind }  double click
@@ -124,6 +125,8 @@ export class ModuxCanvas extends LitElement {
 
   @state() private _t: ZoomTransform = zoomIdentity;
   @state() private _dragPos: { id: string; x: number; y: number } | null = null;
+  /** Live positions of every node in a multi-selection drag. */
+  @state() private _dragGroup: Map<string, { x: number; y: number }> | null = null;
   @state() private _pendingLink: { sourceId: string; x: number; y: number } | null = null;
   @state() private _hoverNodeId: string | null = null;
   @state() private _editingId: string | null = null;
@@ -314,6 +317,7 @@ export class ModuxCanvas extends LitElement {
     if (changed.has('scene')) {
       // The host is the source of truth for geometry once it re-emits the scene.
       this._dragPos = null;
+      this._dragGroup = null;
     }
     // A waypoint only stays selected while its edge is the selected element and
     // it still exists; otherwise drop the sub-selection so Supr targets the edge.
@@ -370,6 +374,8 @@ export class ModuxCanvas extends LitElement {
     if (this._dragPos && this._dragPos.id === node.id) {
       return { x: this._dragPos.x, y: this._dragPos.y };
     }
+    const grouped = this._dragGroup?.get(node.id);
+    if (grouped) return grouped;
     // An anchored resize moves the centre; children stay put (they are absolute here).
     if (this._resize && this._resize.id === node.id) {
       return { x: this._resize.x, y: this._resize.y };
@@ -380,6 +386,11 @@ export class ModuxCanvas extends LitElement {
       if (parent) {
         return { x: node.x + (this._dragPos.x - parent.x), y: node.y + (this._dragPos.y - parent.y) };
       }
+    }
+    if (node.parentId && this._dragGroup?.has(node.parentId)) {
+      const parent = this.scene.nodes.find((n) => n.id === node.parentId);
+      const pp = this._dragGroup.get(node.parentId)!;
+      if (parent) return { x: node.x + (pp.x - parent.x), y: node.y + (pp.y - parent.y) };
     }
     return { x: node.x, y: node.y };
   }
@@ -416,18 +427,43 @@ export class ModuxCanvas extends LitElement {
     const origin = this.nodePos(node);
     let moved = false;
 
+    // Grabbing a node of the multi-selection drags the whole selection. Nodes whose
+    // container is also selected are left out: they follow their container anyway.
+    const selectedSet = new Set(this.selectedIds);
+    const group =
+      selectedSet.has(node.id) && this.selectedIds.length > 1
+        ? this.scene.nodes.filter(
+            (n) => selectedSet.has(n.id) && !(n.parentId && selectedSet.has(n.parentId)),
+          )
+        : null;
+    const groupOrigins = group ? new Map(group.map((n) => [n.id, this.nodePos(n)])) : null;
+
     const onMove = (ev: PointerEvent) => {
       const p = this.toScene(ev);
       const dx = p.x - start.x;
       const dy = p.y - start.y;
       if (!moved && Math.hypot(dx, dy) < 3 / this._t.k) return;
       moved = true;
-      this._dragPos = this.clampToParent(node, origin.x + dx, origin.y + dy);
+      if (group && groupOrigins) {
+        const positions = new Map<string, { x: number; y: number }>();
+        for (const n of group) {
+          const o = groupOrigins.get(n.id)!;
+          const c = this.clampToParent(n, o.x + dx, o.y + dy);
+          positions.set(n.id, { x: c.x, y: c.y });
+        }
+        this._dragGroup = positions;
+      } else {
+        this._dragPos = this.clampToParent(node, origin.x + dx, origin.y + dy);
+      }
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
-      if (moved && this._dragPos) {
+      if (moved && this._dragGroup) {
+        this.emit('nodes-moved', {
+          moves: [...this._dragGroup.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y })),
+        });
+      } else if (moved && this._dragPos) {
         this.emit('node-moved', { id: node.id, x: this._dragPos.x, y: this._dragPos.y });
       } else if (e.shiftKey) {
         this.emit('element-multi-toggled', { id: node.id, kind: node.kind });

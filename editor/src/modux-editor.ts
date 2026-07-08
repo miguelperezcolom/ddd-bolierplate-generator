@@ -1056,6 +1056,38 @@ export class ModuxEditor extends LitElement {
     this.pushUndoEntry(inverseOps);
   }
 
+  /** A multi-selection drag: every position lands in ONE layout write and ONE undo entry. */
+  private onNodesMoved(e: CustomEvent): void {
+    const { moves } = e.detail as { moves: { id: string; x: number; y: number }[] };
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const scene = this.sceneFor(view);
+    const nodes = { ...current.nodes };
+    const inverseOps: EditOp[] = [];
+    for (const { id, x, y } of moves) {
+      inverseOps.push({ kind: 'move-node', view, id, pos: current.nodes[id] ?? null });
+      let pos = { x, y };
+      const node = scene.nodes.find((n) => n.id === id);
+      if (node?.parentId) {
+        const parent = scene.nodes.find((n) => n.id === node.parentId);
+        if (parent) pos = { x: x - parent.x, y: y - parent.y };
+      }
+      nodes[id] = pos;
+    }
+    this.writeViewLayout(view, { ...current, nodes });
+    if (view === 'processes') {
+      for (const { id } of moves) {
+        const reorder = this.stepReorderCommand(id);
+        if (reorder) {
+          const inverse = this.inverseOf(reorder);
+          if (inverse) inverseOps.unshift(...inverse);
+          this.command(reorder, false);
+        }
+      }
+    }
+    this.pushUndoEntry(inverseOps);
+  }
+
   private onNodeResized(e: CustomEvent): void {
     const { id, x, y, w, h } = e.detail as { id: string; x: number; y: number; w: number; h: number };
     const view = this._view;
@@ -2913,6 +2945,7 @@ export class ModuxEditor extends LitElement {
         .selectedIds=${this._multi}
         .connectable=${this._view === 'context-map' || this._view === 'workflows'}
         @node-moved=${this.onNodeMoved}
+        @nodes-moved=${this.onNodesMoved}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
