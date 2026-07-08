@@ -2517,10 +2517,26 @@ export class ModuxEditor extends LitElement {
     this.renderRoot.querySelector('modux-canvas')?.fit();
   }
 
+  /**
+   * Toolbar controls keep keyboard focus after use, so the next space bar
+   * reopens the select (or re-fires the button) instead of panning the canvas.
+   * Once a select changes or a button is clicked, the keyboard belongs to the
+   * canvas again; text inputs keep focus (the user is typing).
+   */
+  private refocusCanvasAfterControl(e: Event): void {
+    const target = e.target as HTMLElement;
+    const isSelectChange = e.type === 'change' && target instanceof HTMLSelectElement;
+    const isButtonClick = e.type === 'click' && !!target.closest('button');
+    if (!isSelectChange && !isButtonClick) return;
+    (this.renderRoot.querySelector('modux-canvas') as HTMLElement | null)?.focus();
+  }
+
   render() {
     const scene = this.sceneFor(this._view);
     return html`
-      <div class="toolbar">
+      <div class="toolbar"
+           @change=${this.refocusCanvasAfterControl}
+           @click=${this.refocusCanvasAfterControl}>
         <div class="tabs">
           ${VIEWS.map(
             (v) => html`

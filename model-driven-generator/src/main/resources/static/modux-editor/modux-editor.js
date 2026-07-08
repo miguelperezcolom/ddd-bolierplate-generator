@@ -6649,10 +6649,23 @@ let L = class extends Se {
       }))
     ]), this.writeViewLayout(e, { nodes: r, edges: {}, sizes: a.sizes }), await this.updateComplete, (d = this.renderRoot.querySelector("modux-canvas")) == null || d.fit();
   }
+  /**
+   * Toolbar controls keep keyboard focus after use, so the next space bar
+   * reopens the select (or re-fires the button) instead of panning the canvas.
+   * Once a select changes or a button is clicked, the keyboard belongs to the
+   * canvas again; text inputs keep focus (the user is typing).
+   */
+  refocusCanvasAfterControl(e) {
+    var s;
+    const t = e.target, i = e.type === "change" && t instanceof HTMLSelectElement, n = e.type === "click" && !!t.closest("button");
+    !i && !n || (s = this.renderRoot.querySelector("modux-canvas")) == null || s.focus();
+  }
   render() {
     const e = this.sceneFor(this._view);
     return C`
-      <div class="toolbar">
+      <div class="toolbar"
+           @change=${this.refocusCanvasAfterControl}
+           @click=${this.refocusCanvasAfterControl}>
         <div class="tabs">
           ${_d.map(
       (t) => C`
