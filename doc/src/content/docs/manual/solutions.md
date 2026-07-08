@@ -34,6 +34,29 @@ system's baseline. **Point `modux.model-file` at a directory outside your code
 repository** — the store deserves its own repo (nesting it inside another git repo
 creates a gitlink).
 
+## The working method: where does each change go?
+
+The branches only stay meaningful if each one holds what it claims to hold:
+
+- **Everything that exists in reality goes to the system** (`main`). Modelling the
+  existing landscape — a context that was never drawn, a legacy external system, an
+  API that was already deployed — is *as-is documentation*, not a proposal, even if
+  you only discovered the gap while designing something new.
+- **A solution branch holds ONLY the proposed changes.** That is what makes its
+  [semantic diff](#the-semantic-diff) and the «Qué cambia» section of its HLA
+  trustworthy: everything green or amber there *is* the proposal.
+- **When the solution is implemented**, walk it through
+  [Proponer → Aprobar → Mergear](#approval-and-merge): the merge makes it the new
+  as-is.
+
+The corollary — the one habit worth drilling: **if while designing a solution you
+need elements that already exist but were never modelled, do NOT add them to the
+solution branch.** Switch to **Sistema (as-is)**, add them there, switch back to the
+solution and press **⟳ Actualizar del sistema**: the rebase brings them in, and they
+correctly show as *unchanged* in the diff instead of polluting the proposal. Adding
+them to the solution would present the already-existing world as if it were part of
+the to-be — and the HLA would lie.
+
 ## The semantic diff
 
 On a solution, the canvas shows *what the proposal changes* live:

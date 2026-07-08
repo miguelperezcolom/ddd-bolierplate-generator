@@ -265,7 +265,7 @@ The HLA/design document the team receives is generated **from** the model (Organ
 
 ## System and solutions (as-is / to-be)
 
-The store lives in its own git repo: `main` is the **system** (the as-is), each [solution](/manual/solutions/) a `solution/*` branch (a to-be proposal with its own identity, status and decisions). The editor switches between them, shows the **semantic diff** live (green = added, amber = modified, `＋n ～n −n`), and the solution's design document closes with a generated **«Qué cambia respecto al sistema»** section — the delta, justified by decisions. Approving merges the branch into main; the same change set will feed migrations (see `docs/design/system-and-solutions.md`).
+The store lives in its own git repo: `main` is the **system** (the as-is), each [solution](/manual/solutions/) a `solution/*` branch (a to-be proposal with its own identity, status and decisions). The editor switches between them, shows the **semantic diff** live (green = added, amber = modified, `＋n ～n −n`), and the solution's design document closes with a generated **«Qué cambia respecto al sistema»** section — the delta, justified by decisions. Approving merges the branch into main; the same change set will feed migrations (see `docs/design/system-and-solutions.md`). The discipline that keeps it honest: **what exists goes to `main`, a solution holds only its proposal** — pre-existing elements discovered mid-design are added to the system and brought in with «⟳ Actualizar del sistema» (see [the working method](/manual/solutions/#the-working-method-where-does-each-change-go)).
 
 ---
 
