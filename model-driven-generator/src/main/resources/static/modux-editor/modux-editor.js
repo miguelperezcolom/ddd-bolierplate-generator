@@ -3478,7 +3478,7 @@ let X = class extends ke {
           }
           if (!this.selectedId) return;
           const t = this.scene.edges.find((s) => s.id === this.selectedId), i = this.scene.nodes.find((s) => s.id === this.selectedId);
-          if (i != null && i.parentId && !t && i.kind !== "domain-event" && i.kind !== "application-event" && i.kind !== "read-model" && i.kind !== "domain-service" && i.kind !== "query-service" && i.kind !== "use-case" && i.kind !== "external-use-case")
+          if (i != null && i.parentId && !t && i.kind !== "domain-event" && i.kind !== "application-event" && i.kind !== "read-model" && i.kind !== "domain-service" && i.kind !== "query-service" && i.kind !== "use-case" && i.kind !== "external-use-case" && i.kind !== "api" && i.kind !== "proxy-api")
             return;
           const n = t ?? i;
           n && (e.preventDefault(), this.emit("delete-requested", {
@@ -6127,6 +6127,12 @@ let R = class extends ke {
       const n = /^xdep:(.+)->(.+)$/.exec(t);
       if (!n) return;
       this._selectedId = null, this.command({ kind: "remove-external-dependency", sourceId: n[1], targetId: n[2] });
+      return;
+    }
+    if (this._view === "context-map" && e === "edge" && i === "proxy-target") {
+      const n = /^pxt:(.+)->(.+)$/.exec(t);
+      if (!n || !(this.model.proxyApis ?? []).some((s) => s.id === n[1])) return;
+      this._selectedId = null, this.command({ kind: "set-proxy-target", id: n[1], targetId: "" });
       return;
     }
     if (e === "node" && i === "module") {

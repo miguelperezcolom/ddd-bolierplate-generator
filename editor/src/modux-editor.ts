@@ -1851,6 +1851,15 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-external-dependency', sourceId: match[1], targetId: match[2] });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'proxy-target') {
+      const match = /^pxt:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      // Only the real wiring is deletable — a rolled-up summary edge (host → host) is not.
+      if (!(this.model.proxyApis ?? []).some((px) => px.id === match[1])) return;
+      this._selectedId = null;
+      this.command({ kind: 'set-proxy-target', id: match[1], targetId: '' });
+      return;
+    }
     if (elementType === 'node' && kind === 'module') {
       const hasAggregates = (this.model.aggregates ?? []).some((a) => a.moduleId === id);
       if (hasAggregates) return; // integrity guard: empty the module first

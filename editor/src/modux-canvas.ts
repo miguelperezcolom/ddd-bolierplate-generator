@@ -275,7 +275,9 @@ export class ModuxCanvas extends LitElement {
         node.kind !== 'domain-service' &&
         node.kind !== 'query-service' &&
         node.kind !== 'use-case' &&
-        node.kind !== 'external-use-case'
+        node.kind !== 'external-use-case' &&
+        node.kind !== 'api' &&
+        node.kind !== 'proxy-api'
       )
         return;
       const el = edge ?? node;
