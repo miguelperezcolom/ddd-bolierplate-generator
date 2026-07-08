@@ -70,26 +70,8 @@ public class RepositoryViewModel implements Identifiable, CrudEditorForm<String>
         saveUseCase.handle(new SaveRepositoryCommand(id, name, type, folder, gitUrl, branch, description));
     }
 
-    /** The submitted form travels as the action's initiator state, not as bean fields. */
-    record FormState(String id, String name, String type, String folder, String gitUrl,
-                     String branch, String description) {}
-
     private void bind(HttpRequest httpRequest) {
-        var state = httpRequest.getInitiatorState(FormState.class);
-        if (state == null) return;
-        id = firstNonBlank(state.id(), id);
-        name = firstNonBlank(state.name(), name);
-        if (state.type() != null && !state.type().isBlank()) {
-            type = RepositoryType.valueOf(state.type());
-        }
-        folder = firstNonBlank(state.folder(), folder);
-        gitUrl = firstNonBlank(state.gitUrl(), gitUrl);
-        branch = firstNonBlank(state.branch(), branch);
-        description = firstNonBlank(state.description(), description);
-    }
-
-    private static String firstNonBlank(String value, String fallback) {
-        return value != null && !value.isBlank() ? value : fallback;
+        io.mateu.modux.modeldrivengenerator.infra.in.ui.InitiatorStateBinder.bind(this, httpRequest);
     }
 
     @Override

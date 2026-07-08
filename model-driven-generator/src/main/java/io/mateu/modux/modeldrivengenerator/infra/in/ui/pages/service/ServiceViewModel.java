@@ -93,6 +93,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
+        io.mateu.modux.modeldrivengenerator.infra.in.ui.InitiatorStateBinder.bind(this, httpRequest);
         createUseCase.handle(new CreateServiceCommand(id, name, gitRepository, dockerImageRegistry, dockerImageName, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,
@@ -109,6 +110,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
+        io.mateu.modux.modeldrivengenerator.infra.in.ui.InitiatorStateBinder.bind(this, httpRequest);
         saveUseCase.handle(new SaveServiceCommand(id, name, gitRepository, dockerImageRegistry, dockerImageName, port, contextPath, database,
                 dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest, kubernetesCpuLimit,
                 kubernetesMemoryRequest, kubernetesMemoryLimit,

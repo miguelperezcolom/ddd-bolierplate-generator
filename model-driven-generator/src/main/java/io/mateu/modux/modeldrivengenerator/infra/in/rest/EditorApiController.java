@@ -283,8 +283,8 @@ public class EditorApiController {
                 .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
         // The editor works on the current project: its services' modules, plus any
         // module not wired to a service yet (legacy orphans stay visible).
-        var currentProject = owningProject();
-        var projectServiceIds = currentProject.serviceIds() == null
+        var currentProject = currentProject().orElse(null);
+        var projectServiceIds = currentProject == null || currentProject.serviceIds() == null
                 ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
         var wiredElsewhere = services.stream()
                 .filter(s2 -> !projectServiceIds.contains(s2.id()))
@@ -333,7 +333,7 @@ public class EditorApiController {
                 .toList();
 
         var projects = repository.findAllOfType(ProjectEntity.class);
-        var externalSystems = java.util.stream.Stream.of(currentProject)
+        var externalSystems = java.util.stream.Stream.ofNullable(currentProject)
                 .flatMap(p -> p.externalSystems().stream())
                 .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
                         .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
@@ -613,7 +613,8 @@ public class EditorApiController {
                     Objects.toString(moduleOfAggregate.apply(ref.sourceAggregateId()), "")),
                     "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
         }
-        var annotations = currentProject.contextMap();
+        var annotations = currentProject == null
+                ? List.<ContextMapRelationEntity>of() : currentProject.contextMap();
         var relations = dependencyReasons.entrySet().stream()
                 .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
                 .map(e -> {
@@ -1004,8 +1005,8 @@ public class EditorApiController {
 
     /** A new module belongs to the working project: it joins its first service's moduleIds. */
     private void wireModuleIntoCurrentProject(String moduleId) {
-        var project = owningProject();
-        var serviceId = project.serviceIds() == null ? null
+        var project = currentProject().orElse(null);
+        var serviceId = project == null || project.serviceIds() == null ? null
                 : project.serviceIds().stream().findFirst().orElse(null);
         if (serviceId == null) return;
         repository.findById(serviceId, ServiceEntity.class).ifPresent(service -> {
@@ -2354,11 +2355,15 @@ public class EditorApiController {
     }
 
     private ProjectEntity owningProject() {
+        return currentProject().orElseThrow(() -> new IllegalStateException(
+                "No hay ningún proyecto en el store — crea uno en Organización → Projects"));
+    }
+
+    private Optional<ProjectEntity> currentProject() {
         var projects = repository.findAllOfType(ProjectEntity.class);
         return projectStore.currentProjectId()
                 .flatMap(id -> projects.stream().filter(p -> p.id().equals(id)).findFirst())
-                .or(() -> projects.stream().findFirst())
-                .orElseThrow(() -> new IllegalStateException("No project in the model store"));
+                .or(() -> projects.stream().findFirst());
     }
 
     /** Record copy with only contextMap replaced — every other field is preserved verbatim. */

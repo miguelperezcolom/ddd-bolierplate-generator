@@ -105,6 +105,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
+        io.mateu.modux.modeldrivengenerator.infra.in.ui.InitiatorStateBinder.bind(this, httpRequest);
         createUseCase.handle(new CreateProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database, dbMigrationTool,
                 terraformProvider, terraformProviderVersion,
@@ -128,6 +129,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public void save(HttpRequest httpRequest) {
+        io.mateu.modux.modeldrivengenerator.infra.in.ui.InitiatorStateBinder.bind(this, httpRequest);
         saveUseCase.handle(new SaveProjectCommand(id, name, outputPath, packageName,
                 gitRepository, database, dbMigrationTool,
                 terraformProvider, terraformProviderVersion,
