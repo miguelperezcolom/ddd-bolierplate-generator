@@ -20,6 +20,8 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _layout: EditorLayout = {};
   @state() private _error: string | null = null;
   @state() private _saving = false;
+  /** In-flight writes of our own (commands, layout, solution ops) — see trackWrite. */
+  private _writes = 0;
   @state() private _toast: { message: string; kind: 'error' | 'info' } | null = null;
   /** System/solutions workspace: which branch of the store is checked out. */
   @state() private _workspace: {
@@ -267,10 +269,42 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
+  /**
+   * Every write WE make (command, layout save, solution op) bumps the store
+   * fingerprint, and the SSE echo of that bump must not read as an external
+   * change (it reloaded the model and wiped the undo history mid-session).
+   * All own writes funnel through here: while any is in flight the signals are
+   * deferred, and once the last one settles we adopt the resulting version
+   * BEFORE processing the deferred signal — our own echo compares equal.
+   */
+  private async trackWrite<T>(work: () => Promise<T>): Promise<T> {
+    this._writes++;
+    this._saving = true;
+    try {
+      return await work();
+    } finally {
+      this._writes--;
+      if (this._writes === 0) {
+        try {
+          const res = await fetch(`${this.base}/version`);
+          if (res.ok) this._lastVersion = (await res.json()).version;
+        } catch {
+          /* transient — the next signal will sort it out */
+        }
+        this._saving = false;
+        if (this._pendingVersion) {
+          const version = this._pendingVersion;
+          this._pendingVersion = null;
+          void this.onVersionSignal(version);
+        }
+      }
+    }
+  }
+
   private async onVersionSignal(version: string): Promise<void> {
     if (!this._model) return;
-    if (this._saving || this._interacting) {
-      this._pendingVersion = version; // processed on pointerup / after the command
+    if (this._writes > 0 || this._interacting) {
+      this._pendingVersion = version; // processed on pointerup / after the last write
       return;
     }
     const external = this._lastVersion !== null && version !== this._lastVersion;
@@ -330,34 +364,33 @@ export class ModuxEditorConnected extends LitElement {
 
   /** create / switch / discard / status / merge against the solutions API, then reload. */
   private async solutionOp(op: string, body: unknown): Promise<void> {
-    this._saving = true;
-    try {
-      const res = await fetch(`${this.base}/solutions/${op}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        let message = `El servidor rechazó la operación (${res.status})`;
-        try {
-          const parsed = await res.json();
-          if (parsed?.message) message = parsed.message;
-        } catch {
-          /* not JSON */
+    await this.trackWrite(async () => {
+      try {
+        const res = await fetch(`${this.base}/solutions/${op}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          let message = `El servidor rechazó la operación (${res.status})`;
+          try {
+            const parsed = await res.json();
+            if (parsed?.message) message = parsed.message;
+          } catch {
+            /* not JSON */
+          }
+          this.showToast(message);
+          return;
         }
-        this.showToast(message);
-        return;
+        this._workspace = await res.json();
+        await this.reload();
+        await this.refreshDiff();
+        // A checkout replaces the model wholesale — local undo no longer applies.
+        (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
+      } catch (err) {
+        this.showToast(String(err));
       }
-      this._workspace = await res.json();
-      await this.reload();
-      await this.refreshDiff();
-      // A checkout replaces the model wholesale — local undo no longer applies.
-      (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
-    } catch (err) {
-      this.showToast(String(err));
-    } finally {
-      this._saving = false;
-    }
+    });
   }
 
   private onWorkspaceSelect(e: Event): void {
@@ -425,43 +458,33 @@ export class ModuxEditorConnected extends LitElement {
 
   private async onCommand(e: CustomEvent): Promise<void> {
     const { command } = e.detail;
-    this._saving = true;
-    try {
-      const res = await fetch(`${this.base}/commands`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(command),
-      });
-      if (!res.ok) {
-        // Rejections arrive as 400 + {message}; anything else gets a generic line.
-        let message = `El servidor rechazó el comando (${res.status})`;
-        try {
-          const body = await res.json();
-          if (body?.message) message = body.message;
-        } catch {
-          /* not JSON */
+    await this.trackWrite(async () => {
+      try {
+        const res = await fetch(`${this.base}/commands`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(command),
+        });
+        if (!res.ok) {
+          // Rejections arrive as 400 + {message}; anything else gets a generic line.
+          let message = `El servidor rechazó el comando (${res.status})`;
+          try {
+            const body = await res.json();
+            if (body?.message) message = body.message;
+          } catch {
+            /* not JSON */
+          }
+          this.showToast(message);
+          return;
         }
-        this.showToast(message);
-        return;
+        // The server is the source of truth: re-read the projection.
+        const modelRes = await fetch(`${this.base}/model`);
+        if (modelRes.ok) this._model = await modelRes.json();
+        await this.refreshDiff(); // to-be edits move the diff live
+      } catch (err) {
+        this.showToast(String(err));
       }
-      // The server is the source of truth: re-read the projection.
-      const [modelRes, versionRes] = await Promise.all([
-        fetch(`${this.base}/model`),
-        fetch(`${this.base}/version`),
-      ]);
-      if (modelRes.ok) this._model = await modelRes.json();
-      if (versionRes.ok) this._lastVersion = (await versionRes.json()).version;
-      await this.refreshDiff(); // to-be edits move the diff live
-    } catch (err) {
-      this.showToast(String(err));
-    } finally {
-      this._saving = false;
-      if (this._pendingVersion) {
-        const version = this._pendingVersion;
-        this._pendingVersion = null;
-        void this.onVersionSignal(version);
-      }
-    }
+    });
   }
 
   private onLayoutChanged(e: CustomEvent): void {
@@ -470,11 +493,13 @@ export class ModuxEditorConnected extends LitElement {
     window.clearTimeout(this._layoutTimer);
     this._layoutTimer = window.setTimeout(() => {
       this._layoutDirty = false;
-      void fetch(`${this.base}/layout`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this._layout),
-      });
+      void this.trackWrite(() =>
+        fetch(`${this.base}/layout`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this._layout),
+        }),
+      );
     }, 600);
   }
 

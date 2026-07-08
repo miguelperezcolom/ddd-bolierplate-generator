@@ -7412,7 +7412,7 @@ var xd = Object.defineProperty, Id = Object.getOwnPropertyDescriptor, ne = (e, t
 };
 let ee = class extends be {
   constructor() {
-    super(...arguments), this.base = "/modux/editor", this._model = null, this._layout = {}, this._error = null, this._saving = !1, this._toast = null, this._workspace = null, this._creatingSolution = !1, this._newSolutionName = "", this._diff = null, this._mergeFlow = null, this._layoutDirty = !1, this._lastVersion = null, this._pendingVersion = null, this._interacting = !1, this._onPointerDown = () => this._interacting = !0, this._onPointerUp = () => {
+    super(...arguments), this.base = "/modux/editor", this._model = null, this._layout = {}, this._error = null, this._saving = !1, this._writes = 0, this._toast = null, this._workspace = null, this._creatingSolution = !1, this._newSolutionName = "", this._diff = null, this._mergeFlow = null, this._layoutDirty = !1, this._lastVersion = null, this._pendingVersion = null, this._interacting = !1, this._onPointerDown = () => this._interacting = !0, this._onPointerUp = () => {
       if (this._interacting = !1, this._pendingVersion) {
         const e = this._pendingVersion;
         this._pendingVersion = null, this.onVersionSignal(e);
@@ -7459,10 +7459,36 @@ let ee = class extends be {
     } catch {
     }
   }
+  /**
+   * Every write WE make (command, layout save, solution op) bumps the store
+   * fingerprint, and the SSE echo of that bump must not read as an external
+   * change (it reloaded the model and wiped the undo history mid-session).
+   * All own writes funnel through here: while any is in flight the signals are
+   * deferred, and once the last one settles we adopt the resulting version
+   * BEFORE processing the deferred signal — our own echo compares equal.
+   */
+  async trackWrite(e) {
+    this._writes++, this._saving = !0;
+    try {
+      return await e();
+    } finally {
+      if (this._writes--, this._writes === 0) {
+        try {
+          const t = await fetch(`${this.base}/version`);
+          t.ok && (this._lastVersion = (await t.json()).version);
+        } catch {
+        }
+        if (this._saving = !1, this._pendingVersion) {
+          const t = this._pendingVersion;
+          this._pendingVersion = null, this.onVersionSignal(t);
+        }
+      }
+    }
+  }
   async onVersionSignal(e) {
     var i;
     if (!this._model) return;
-    if (this._saving || this._interacting) {
+    if (this._writes > 0 || this._interacting) {
       this._pendingVersion = e;
       return;
     }
@@ -7507,30 +7533,29 @@ let ee = class extends be {
   }
   /** create / switch / discard / status / merge against the solutions API, then reload. */
   async solutionOp(e, t) {
-    var i;
-    this._saving = !0;
-    try {
-      const n = await fetch(`${this.base}/solutions/${e}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(t)
-      });
-      if (!n.ok) {
-        let s = `El servidor rechazó la operación (${n.status})`;
-        try {
-          const r = await n.json();
-          r != null && r.message && (s = r.message);
-        } catch {
+    await this.trackWrite(async () => {
+      var i;
+      try {
+        const n = await fetch(`${this.base}/solutions/${e}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t)
+        });
+        if (!n.ok) {
+          let s = `El servidor rechazó la operación (${n.status})`;
+          try {
+            const r = await n.json();
+            r != null && r.message && (s = r.message);
+          } catch {
+          }
+          this.showToast(s);
+          return;
         }
-        this.showToast(s);
-        return;
+        this._workspace = await n.json(), await this.reload(), await this.refreshDiff(), (i = this.renderRoot.querySelector("modux-editor")) == null || i.clearHistory();
+      } catch (n) {
+        this.showToast(String(n));
       }
-      this._workspace = await n.json(), await this.reload(), await this.refreshDiff(), (i = this.renderRoot.querySelector("modux-editor")) == null || i.clearHistory();
-    } catch (n) {
-      this.showToast(String(n));
-    } finally {
-      this._saving = !1;
-    }
+    });
   }
   onWorkspaceSelect(e) {
     const t = e.target.value;
@@ -7578,44 +7603,39 @@ let ee = class extends be {
   }
   async onCommand(e) {
     const { command: t } = e.detail;
-    this._saving = !0;
-    try {
-      const i = await fetch(`${this.base}/commands`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(t)
-      });
-      if (!i.ok) {
-        let r = `El servidor rechazó el comando (${i.status})`;
-        try {
-          const o = await i.json();
-          o != null && o.message && (r = o.message);
-        } catch {
+    await this.trackWrite(async () => {
+      try {
+        const i = await fetch(`${this.base}/commands`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t)
+        });
+        if (!i.ok) {
+          let s = `El servidor rechazó el comando (${i.status})`;
+          try {
+            const r = await i.json();
+            r != null && r.message && (s = r.message);
+          } catch {
+          }
+          this.showToast(s);
+          return;
         }
-        this.showToast(r);
-        return;
+        const n = await fetch(`${this.base}/model`);
+        n.ok && (this._model = await n.json()), await this.refreshDiff();
+      } catch (i) {
+        this.showToast(String(i));
       }
-      const [n, s] = await Promise.all([
-        fetch(`${this.base}/model`),
-        fetch(`${this.base}/version`)
-      ]);
-      n.ok && (this._model = await n.json()), s.ok && (this._lastVersion = (await s.json()).version), await this.refreshDiff();
-    } catch (i) {
-      this.showToast(String(i));
-    } finally {
-      if (this._saving = !1, this._pendingVersion) {
-        const i = this._pendingVersion;
-        this._pendingVersion = null, this.onVersionSignal(i);
-      }
-    }
+    });
   }
   onLayoutChanged(e) {
     this._layout = e.detail.layout, this._layoutDirty = !0, window.clearTimeout(this._layoutTimer), this._layoutTimer = window.setTimeout(() => {
-      this._layoutDirty = !1, fetch(`${this.base}/layout`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(this._layout)
-      });
+      this._layoutDirty = !1, this.trackWrite(
+        () => fetch(`${this.base}/layout`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this._layout)
+        })
+      );
     }, 600);
   }
   render() {
