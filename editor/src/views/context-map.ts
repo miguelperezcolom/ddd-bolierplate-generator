@@ -106,7 +106,8 @@ interface ChildDesc {
     | 'external-use-case'
     | 'external-table'
     | 'api-operation'
-    | 'api';
+    | 'api'
+    | 'proxy-api';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -125,6 +126,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
   api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
+  'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -139,6 +141,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'external-table': 'Tabla (legacy)',
   'api-operation': 'Operación de API',
   api: 'API publicada por este sistema',
+  'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -261,16 +264,40 @@ export function contextMapScene(
     (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
   );
   const nestedApiIds = new Set(nestedApis.map((a) => a.id));
+  const nestedProxies = (model.proxyApis ?? []).filter(
+    (px) => px.publishedByExternalSystemId && externalIds.has(px.publishedByExternalSystemId),
+  );
+  const nestedProxyIds = new Set(nestedProxies.map((px) => px.id));
   const allNodes = [
-    ...model.modules.map((m) => ({ ref: m, external: false, api: false })),
-    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false })),
+    ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
+    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
-      .map((a) => ({ ref: a, external: false, api: true })),
+      .map((a) => ({ ref: a, external: false, api: true, proxy: false })),
+    ...(model.proxyApis ?? [])
+      .filter((px) => !nestedProxyIds.has(px.id))
+      .map((px) => ({ ref: px, external: false, api: false, proxy: true })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if (entry.proxy) {
+      const px = entry.ref as NonNullable<ModuxModel['proxyApis']>[number];
+      return [{
+        id: px.id,
+        label: px.name,
+        kind: 'proxy-api',
+        symbol: 'interface',
+        fill: '#ecfeff',
+        stroke: '#0e7490',
+        badge: 'PROXY API',
+        tooltip: `${px.name} — proxy/cache de una API, consumible como ella`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
+    }
     if (entry.api) {
       const a = entry.ref as NonNullable<ModuxModel['apis']>[number];
       const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
@@ -298,9 +325,6 @@ export function contextMapScene(
     }
     if (entry.external) {
       const x = entry.ref as ModuxModel['externalSystems'][number];
-      const proxies = (model.externalSystemDependencies ?? []).some(
-        (d) => d.sourceId === x.id && d.type === 'PROXIES',
-      );
       const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
         id: x.id,
         label: x.name,
@@ -309,16 +333,16 @@ export function contextMapScene(
         fill: '#ffffff',
         stroke: '#64748b',
         dashed: true,
-        badge: proxies ? 'PROXY/CACHE' : 'EXTERNAL',
-        tooltip: proxies
-          ? `${x.name} (sistema externo — proxy/cache de APIs)`
-          : `${x.name} (sistema externo)`,
+        badge: 'EXTERNAL',
+        tooltip: `${x.name} (sistema externo)`,
       };
       // Published APIs are strategic-level elements: they nest visibly at EVERY
       // detail level, while operations and tables only unfold in detailed mode.
       const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
+      const hostedProxies = nestedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
       const children: ChildDesc[] = [
         ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+        ...hostedProxies.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
         ...(detailed
           ? [
               ...(x.useCases ?? []).map(
@@ -626,23 +650,21 @@ export function contextMapScene(
       tooltip: 'depende de',
     }));
 
-  // A dependency on a nested API that is hidden at this detail level rolls up
-  // to the system publishing it (depending on the API implies depending on it).
-  const apiPublisher = new Map(
-    (model.apis ?? [])
+  // A dependency on a nested API/proxy that is hidden at this detail level rolls
+  // up to the system hosting it (depending on it implies depending on the host).
+  const apiPublisher = new Map([
+    ...(model.apis ?? [])
       .filter((a) => a.publishedByExternalSystemId)
-      .map((a) => [a.id, a.publishedByExternalSystemId!]),
-  );
+      .map((a): [string, string] => [a.id, a.publishedByExternalSystemId!]),
+    ...(model.proxyApis ?? [])
+      .filter((px) => px.publishedByExternalSystemId)
+      .map((px): [string, string] => [px.id, px.publishedByExternalSystemId!]),
+  ]);
+  const rollUp = (id: string) => (nodeIds.has(id) ? id : (apiPublisher.get(id) ?? id));
   const externalDependencyEdges: SceneEdge[] = [
     ...new Map(
       (model.externalSystemDependencies ?? [])
-        .map((d) => ({
-          sourceId: d.sourceId,
-          targetId: nodeIds.has(d.targetId)
-            ? d.targetId
-            : (apiPublisher.get(d.targetId) ?? d.targetId),
-          proxies: d.type === 'PROXIES',
-        }))
+        .map((d) => ({ sourceId: d.sourceId, targetId: rollUp(d.targetId) }))
         .filter(
           (d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId) && d.sourceId !== d.targetId,
         )
@@ -653,10 +675,34 @@ export function contextMapScene(
             sourceId: d.sourceId,
             targetId: d.targetId,
             kind: 'ext-dep',
-            color: d.proxies ? '#0e7490' : '#64748b',
+            color: '#64748b',
             dashed: true,
             arrow: true,
-            tooltip: d.proxies ? 'proxy/cache de' : 'depende de',
+            tooltip: 'depende de',
+          },
+        ]),
+    ).values(),
+  ];
+  // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
+  const proxyTargetEdges: SceneEdge[] = [
+    ...new Map(
+      (model.proxyApis ?? [])
+        .filter((px) => px.targetApiId)
+        .map((px) => ({ sourceId: rollUp(px.id), targetId: rollUp(px.targetApiId!) }))
+        .filter(
+          (d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId) && d.sourceId !== d.targetId,
+        )
+        .map((d): [string, SceneEdge] => [
+          `pxt:${d.sourceId}->${d.targetId}`,
+          {
+            id: `pxt:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'proxy-target',
+            color: '#0e7490',
+            dashed: true,
+            arrow: true,
+            tooltip: 'proxy/cache de',
           },
         ]),
     ).values(),
@@ -764,6 +810,7 @@ export function contextMapScene(
       ...actorUseEdges,
       ...actorExternalEdges,
       ...externalDependencyEdges,
+      ...proxyTargetEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentRagEdges,

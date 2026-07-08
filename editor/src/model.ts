@@ -84,8 +84,14 @@ export interface ActorExternalDependencyRef {
 export interface ExternalSystemDependencyRef {
   sourceId: string;
   targetId: string;
-  /** DEPENDS (default) or PROXIES — the source fronts the target API as a proxy/cache. */
-  type?: string;
+}
+
+/** An API proxy/cache: fronts a published API, consumable exactly like it. */
+export interface ProxyApiRef {
+  id: string;
+  name: string;
+  targetApiId?: string;
+  publishedByExternalSystemId?: string;
 }
 
 export interface ModuleRef {
@@ -353,6 +359,7 @@ export interface ModuxModel {
   actorExternalDependencies?: ActorExternalDependencyRef[];
   /** External system → external system dependencies. */
   externalSystemDependencies?: ExternalSystemDependencyRef[];
+  proxyApis?: ProxyApiRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

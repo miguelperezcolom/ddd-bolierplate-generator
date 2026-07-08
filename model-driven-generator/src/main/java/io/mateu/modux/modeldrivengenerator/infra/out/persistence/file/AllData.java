@@ -41,7 +41,8 @@ public record AllData(
         List<WorkflowEntity> workflows,
         List<RagEntity> rags,
         List<SolutionEntity> solutions,
-        List<ApiEntity> apis
+        List<ApiEntity> apis,
+        List<ProxyApiEntity> proxyApis
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -49,7 +50,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null);
     }
 
     public AllData {
@@ -92,5 +93,6 @@ public record AllData(
         rags = rags != null ? rags : List.of();
         solutions = solutions != null ? solutions : List.of();
         apis = apis != null ? apis : List.of();
+        proxyApis = proxyApis != null ? proxyApis : List.of();
     }
 }

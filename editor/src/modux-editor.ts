@@ -151,9 +151,6 @@ export class ModuxEditor extends LitElement {
     x: number;
     y: number;
   } | null = null;
-  /** Type picker for an external-system → API drag: dependency or proxy/cache. */
-  @state() private _extDepPicker: { sourceId: string; targetId: string; x: number; y: number } | null =
-    null;
   @state() private _selectedId: string | null = null;
   @state() private _newName = '';
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
@@ -175,6 +172,7 @@ export class ModuxEditor extends LitElement {
     | 'external-use-case'
     | 'external-table'
     | 'api'
+    | 'proxy-api'
     | 'api-operation' = 'module';
   /** Owner aggregate for a new read model. */
   @state() private _newAggregateId = '';
@@ -544,25 +542,26 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-external':
         return [{ kind: 'add-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
-      case 'add-external-dependency': {
-        // Re-drawing with the other type RETYPES the edge — the inverse restores it.
-        const prev = (this.model.externalSystemDependencies ?? []).find(
-          (d) => d.sourceId === c.sourceId && d.targetId === c.targetId,
-        );
-        return prev
-          ? [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId, type: prev.type }]
-          : [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-dependency':
+        return [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-external-dependency':
+        return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-proxy-api':
+        return [{ kind: 'remove-proxy-api', id: c.id }];
+      case 'remove-proxy-api': {
+        const px = (this.model.proxyApis ?? []).find((x) => x.id === c.id);
+        return px ? [{ kind: 'add-proxy-api', id: px.id, name: px.name }] : null;
       }
-      case 'remove-external-dependency': {
-        const prev = (this.model.externalSystemDependencies ?? []).find(
-          (d) => d.sourceId === c.sourceId && d.targetId === c.targetId,
-        );
-        return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId, type: prev?.type }];
+      case 'set-proxy-target': {
+        const px = (this.model.proxyApis ?? []).find((x) => x.id === c.id);
+        return px ? [{ kind: 'set-proxy-target', id: c.id, targetId: px.targetApiId ?? '' }] : null;
       }
       case 'set-api-publisher': {
-        const api = (this.model.apis ?? []).find((a) => a.id === c.id);
-        return api
-          ? [{ kind: 'set-api-publisher', id: c.id, targetId: api.publishedByExternalSystemId ?? '' }]
+        const el =
+          (this.model.apis ?? []).find((a) => a.id === c.id) ??
+          (this.model.proxyApis ?? []).find((px) => px.id === c.id);
+        return el
+          ? [{ kind: 'set-api-publisher', id: c.id, targetId: el.publishedByExternalSystemId ?? '' }]
           : null;
       }
       case 'add-actor-crud':
@@ -1088,7 +1087,9 @@ export class ModuxEditor extends LitElement {
       x: number;
       y: number;
     };
-    const api = (this.model.apis ?? []).find((a) => a.id === id);
+    const api =
+      (this.model.apis ?? []).find((a) => a.id === id) ??
+      (this.model.proxyApis ?? []).find((px) => px.id === id);
     if (!api) return;
     if (targetId && !this.model.externalSystems.some((s) => s.id === targetId)) return;
     const current = api.publishedByExternalSystemId ?? '';
@@ -1257,6 +1258,22 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
+    // Dragging a proxy onto an API wires what it fronts; onto an external system, its host.
+    if ((this.model.proxyApis ?? []).some((px) => px.id === sourceId)) {
+      const px = (this.model.proxyApis ?? []).find((x) => x.id === sourceId)!;
+      if ((this.model.apis ?? []).some((a) => a.id === targetId)) {
+        if (px.targetApiId !== targetId) {
+          this.command({ kind: 'set-proxy-target', id: sourceId, targetId });
+        }
+        return;
+      }
+      if (this.model.externalSystems.some((x) => x.id === targetId)) {
+        if (px.publishedByExternalSystemId !== targetId) {
+          this.command({ kind: 'set-api-publisher', id: sourceId, targetId });
+        }
+      }
+      return;
+    }
     // Dragging an API onto an external system declares its publisher (it nests inside).
     if ((this.model.apis ?? []).some((a) => a.id === sourceId)) {
       if (this.model.externalSystems.some((x) => x.id === targetId)) {
@@ -1590,9 +1607,14 @@ export class ModuxEditor extends LitElement {
         if (!exists) this.command({ kind: 'add-external-dependency', sourceId, targetId });
         return;
       }
-      if ((this.model.apis ?? []).some((a) => a.id === targetId)) {
-        // Two flavours are possible here — ask which one (drawing again retypes).
-        this._extDepPicker = { sourceId, targetId, x: x ?? 0, y: y ?? 0 };
+      if (
+        (this.model.apis ?? []).some((a) => a.id === targetId) ||
+        (this.model.proxyApis ?? []).some((px) => px.id === targetId)
+      ) {
+        const exists = (this.model.externalSystemDependencies ?? []).some(
+          (d) => d.sourceId === sourceId && d.targetId === targetId,
+        );
+        if (!exists) this.command({ kind: 'add-external-dependency', sourceId, targetId });
         return;
       }
       return;
@@ -1796,6 +1818,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-api', id });
       return;
     }
+    if (elementType === 'node' && kind === 'proxy-api') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-proxy-api', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'api-operation') {
       const owner = this.owningApiOf(id);
       if (!owner) return;
@@ -1940,6 +1967,7 @@ export class ModuxEditor extends LitElement {
       kind === 'ai-agent' ||
       kind === 'rag' ||
       kind === 'api' ||
+      kind === 'proxy-api' ||
       kind === 'api-operation'
     ) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
@@ -2215,6 +2243,8 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'api') {
         this.command({ kind: 'add-api', id: `api-${slug(name)}`, name });
+      } else if (this._newContextMapKind === 'proxy-api') {
+        this.command({ kind: 'add-proxy-api', id: `proxy-${slug(name)}`, name });
       } else if (this._detail === 'detail' && this._newContextMapKind === 'api-operation') {
         const selected = (this.model.apis ?? []).find((a) => a.id === this._selectedId)?.id;
         const apiId = this._newApiId || selected || this.model.apis?.[0]?.id;
@@ -2486,6 +2516,8 @@ export class ModuxEditor extends LitElement {
                       ? 'Nuevo RAG…'
                       : this._newContextMapKind === 'api'
                         ? 'Nueva API…'
+                        : this._newContextMapKind === 'proxy-api'
+                          ? 'Nuevo proxy API…'
                   : this._detail !== 'detail' || this._newContextMapKind === 'module'
                     ? 'Nuevo contexto…'
                     : this._newContextMapKind === 'domain-event'
@@ -2544,6 +2576,9 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="api" ?selected=${this._newContextMapKind === 'api'}>
                 API publicada
+              </option>
+              <option value="proxy-api" ?selected=${this._newContextMapKind === 'proxy-api'}>
+                Proxy API
               </option>
               ${this._detail === 'detail'
                 ? html`
@@ -3049,7 +3084,7 @@ export class ModuxEditor extends LitElement {
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
       </div>
-      ${this.renderRelationPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderDeletePicker()}
     `;
   }
 
@@ -3092,51 +3127,6 @@ export class ModuxEditor extends LitElement {
           <span class="abbr">🗑</span>
           <span class="name">Eliminar del modelo</span>
         </button>
-      </div>
-    `;
-  }
-
-  private pickExtDepType(type: 'DEPENDS' | 'PROXIES'): void {
-    const p = this._extDepPicker;
-    this._extDepPicker = null;
-    if (!p) return;
-    const current = (this.model.externalSystemDependencies ?? []).find(
-      (d) => d.sourceId === p.sourceId && d.targetId === p.targetId,
-    );
-    if (current && (current.type ?? 'DEPENDS') === type) return;
-    this.command({ kind: 'add-external-dependency', sourceId: p.sourceId, targetId: p.targetId, type });
-  }
-
-  private renderExtDepPicker() {
-    const p = this._extDepPicker;
-    if (!p) return '';
-    const current = (this.model.externalSystemDependencies ?? []).find(
-      (d) => d.sourceId === p.sourceId && d.targetId === p.targetId,
-    )?.type;
-    const options = [
-      { type: 'DEPENDS' as const, abbr: 'DEP', name: 'Depende de la API' },
-      { type: 'PROXIES' as const, abbr: 'PRX', name: 'Proxy/cache de la API' },
-    ];
-    return html`
-      <div class="picker-backdrop" @pointerdown=${() => (this._extDepPicker = null)}></div>
-      <div
-        class="relation-picker"
-        style="left:${p.x}px; top:${p.y}px"
-        @pointerdown=${(e: Event) => e.stopPropagation()}
-      >
-        <div class="picker-title">Tipo de dependencia</div>
-        ${options.map(
-          (o) => html`
-            <button
-              class="picker-item ${o.type === (current ?? '') ? 'current' : ''}"
-              title=${o.name}
-              @click=${() => this.pickExtDepType(o.type)}
-            >
-              <span class="abbr">${o.abbr}</span>
-              <span class="name">${o.name}</span>
-            </button>
-          `,
-        )}
       </div>
     `;
   }

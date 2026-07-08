@@ -13,7 +13,14 @@ public final class ModelYaml {
     }
 
     public static YAMLMapper reader() {
-        return new YAMLMapper();
+        var mapper = new YAMLMapper();
+        // A store written by a newer (or older) modux may carry fields this build does not
+        // know: ignore them instead of refusing to open the model. The generated JSON
+        // schema remains the strict guard for hand-edited files.
+        mapper.configure(
+                com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false);
+        return mapper;
     }
 
     public static YAMLMapper writer() {

@@ -458,7 +458,7 @@ export class ModuxCanvas extends LitElement {
     // Shift/Ctrl while dragging an API chip frees it from its container: dropping it
     // on another external system re-homes the API (the handle stays for relations).
     const freeDrag = (ev: PointerEvent) =>
-      (ev.shiftKey || ev.ctrlKey) && node.kind === 'api' && !group;
+      (ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group;
     const dropHome = (ev: PointerEvent): string | null => {
       const targetId = this.nodeIdAt(ev);
       const target =
@@ -963,12 +963,14 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'external-use-case' ||
             node.kind === 'external-table' ||
             node.kind === 'api-operation' ||
-            node.kind === 'api'
+            node.kind === 'api' ||
+            node.kind === 'proxy-api'
           : node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
             node.kind === 'rag' ||
             node.kind === 'api' ||
+            node.kind === 'proxy-api' ||
             node.kind === 'workflow-step')
           ? [
               [hw, 0],
@@ -990,12 +992,16 @@ export class ModuxCanvas extends LitElement {
                           : node.kind === 'workflow-step'
                           ? 'Arrastra hasta otro paso: el destino esperará a que éste complete'
                           : node.kind === 'external-system'
-                            ? 'Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo o una API (dependencia)'
+                            ? 'Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo, una API o un proxy (dependencia)'
                             : node.kind === 'api'
                               ? 'Arrastra hasta el sistema externo que la publica: la API se anida en él'
-                              : 'Arrastra hasta otro nodo para crear una relación'
+                              : node.kind === 'proxy-api'
+                                ? 'Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja'
+                                : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'api'
                       ? 'Arrastra hasta otro sistema externo: la API se moverá a ese publicador'
+                      : node.kind === 'proxy-api'
+                      ? 'Arrastra hasta la API que proxea, o a otro sistema externo para moverlo'
                       : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'external-use-case' || node.kind === 'external-table'

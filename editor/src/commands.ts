@@ -286,12 +286,26 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
-      /** An external system depends on another one (a context-map dependency edge). */
+      /** An external system depends on another one, an API or an API proxy. */
       kind: 'add-external-dependency';
       sourceId: string;
       targetId: string;
-      /** DEPENDS (default) or PROXIES (the source is a proxy/cache of the target API). */
-      type?: string;
+    }
+  | {
+      /** An API proxy/cache — fronts a published API, consumable exactly like it. */
+      kind: 'add-proxy-api';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-proxy-api';
+      id: string;
+    }
+  | {
+      /** Point the proxy at the published API it fronts; empty target clears it. */
+      kind: 'set-proxy-target';
+      id: string;
+      targetId: string;
     }
   | {
       kind: 'remove-external-dependency';
