@@ -492,8 +492,16 @@ export class ModuxEditorConnected extends LitElement {
     });
   }
 
-  private async onCommand(e: CustomEvent): Promise<void> {
+  /** Commands run strictly in order: two concurrent edits of the same entity
+   * would read-modify-write against each other and lose one of them. */
+  private _commandChain: Promise<void> = Promise.resolve();
+
+  private onCommand(e: CustomEvent): void {
     const { command } = e.detail;
+    this._commandChain = this._commandChain.then(() => this.postCommand(command));
+  }
+
+  private async postCommand(command: unknown): Promise<void> {
     await this.trackWrite(async () => {
       try {
         const res = await fetch(`${this.base}/commands`, {

@@ -2,7 +2,7 @@ import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType, SubdomainType } from './model.js';
 import { normalizeViewLayout } from './scene.js';
-import type { EditorLayout, Point, ViewLayout } from './scene.js';
+import type { EditorLayout, Point, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
@@ -111,6 +111,139 @@ function declump(
     if (Math.abs(p.x - n.x) > 0.5 || Math.abs(p.y - n.y) > 0.5) changed.set(n.id, p);
   }
   return changed;
+}
+
+/** Does the segment a→b pass through the axis-aligned box? (Liang–Barsky clip) */
+function segmentCrossesBox(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  box: { x: number; y: number; w: number; h: number },
+): boolean {
+  const minX = box.x - box.w / 2;
+  const maxX = box.x + box.w / 2;
+  const minY = box.y - box.h / 2;
+  const maxY = box.y + box.h / 2;
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  for (const [p, q] of [
+    [-dx, a.x - minX],
+    [dx, maxX - a.x],
+    [-dy, a.y - minY],
+    [dy, maxY - a.y],
+  ] as [number, number][]) {
+    if (p === 0) {
+      if (q < 0) return false;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+  }
+  return t1 - t0 > 0.02; // a mere corner graze does not count
+}
+
+/**
+ * Splits every straight edge that runs over a node it is not attached to: the
+ * offending segment detours around the obstacle via one corner or a full side
+ * (two corners) — whichever clears the box at the least added length. Only
+ * edges without hand-placed bends are touched, against top-level boxes.
+ */
+function routeEdgesAroundNodes(
+  scene: { nodes: SceneNode[]; edges: { id: string; sourceId: string; targetId: string }[] },
+  existing: Record<string, { x: number; y: number }[]>,
+  margin = 28,
+): Map<string, { x: number; y: number }[]> {
+  type Pt = { x: number; y: number };
+  const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+  const ancestorsOf = (id: string | undefined): Set<string> => {
+    const out = new Set<string>();
+    for (let cur = id; cur; cur = byId.get(cur)?.parentId) out.add(cur);
+    return out;
+  };
+  const obstacles = scene.nodes.filter((n) => !n.parentId);
+  const routed = new Map<string, Pt[]>();
+
+  /** Corner/side detours for segment a→b around o; corners sit strictly outside the test box. */
+  const detoursAround = (a: Pt, b: Pt, o: SceneNode): Pt[][] => {
+    const test = { x: o.x, y: o.y, w: o.w + 2 * margin, h: o.h + 2 * margin };
+    const px = o.w / 2 + margin * 1.5;
+    const py = o.h / 2 + margin * 1.5;
+    const tl = { x: o.x - px, y: o.y - py };
+    const tr = { x: o.x + px, y: o.y - py };
+    const bl = { x: o.x - px, y: o.y + py };
+    const br = { x: o.x + px, y: o.y + py };
+    const options: Pt[][] = [];
+    for (const c of [tl, tr, bl, br]) {
+      if (!segmentCrossesBox(a, c, test) && !segmentCrossesBox(c, b, test)) options.push([c]);
+    }
+    for (const [c1, c2] of [
+      [tl, tr], [tr, tl], [tr, br], [br, tr], [br, bl], [bl, br], [bl, tl], [tl, bl],
+    ] as [Pt, Pt][]) {
+      if (!segmentCrossesBox(a, c1, test) && !segmentCrossesBox(c2, b, test)) {
+        options.push([c1, c2]);
+      }
+    }
+    return options;
+  };
+
+  for (const edge of scene.edges) {
+    if (existing[edge.id]?.length) continue; // hand-placed bends win
+    const src = byId.get(edge.sourceId);
+    const tgt = byId.get(edge.targetId);
+    if (!src || !tgt) continue;
+    const skip = new Set([...ancestorsOf(src.id), ...ancestorsOf(tgt.id)]);
+    const path: Pt[] = [
+      { x: src.x, y: src.y },
+      { x: tgt.x, y: tgt.y },
+    ];
+    for (let guard = 0; guard < 12; guard++) {
+      let detoured = false;
+      outer: for (let i = 0; i < path.length - 1; i++) {
+        for (const o of obstacles) {
+          if (skip.has(o.id)) continue;
+          const test = { x: o.x, y: o.y, w: o.w + 2 * margin, h: o.h + 2 * margin };
+          if (!segmentCrossesBox(path[i], path[i + 1], test)) continue;
+          const options = detoursAround(path[i], path[i + 1], o);
+          if (!options.length) continue; // endpoints boxed in — leave this one be
+          const insideOther = (c: Pt) =>
+            obstacles.some(
+              (other) =>
+                other !== o &&
+                !skip.has(other.id) &&
+                Math.abs(c.x - other.x) < other.w / 2 + margin / 2 &&
+                Math.abs(c.y - other.y) < other.h / 2 + margin / 2,
+            );
+          const cost = (pts: Pt[]) => {
+            let total = 0;
+            const seq = [path[i], ...pts, path[i + 1]];
+            for (let k = 0; k < seq.length - 1; k++) {
+              total += Math.hypot(seq[k + 1].x - seq[k].x, seq[k + 1].y - seq[k].y);
+            }
+            return total + (pts.some(insideOther) ? 10000 : 0);
+          };
+          options.sort((o1, o2) => cost(o1) - cost(o2));
+          path.splice(i + 1, 0, ...options[0]);
+          detoured = true;
+          break outer;
+        }
+      }
+      if (!detoured) break;
+    }
+    if (path.length > 2) {
+      routed.set(
+        edge.id,
+        path.slice(1, -1).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+      );
+    }
+  }
+  return routed;
 }
 
 const slug = (name: string) =>
@@ -466,6 +599,22 @@ export class ModuxEditor extends LitElement {
     }
     this.writeViewLayout('context-map', { ...current, nodes, detail });
     if (ops.length) this.pushUndoEntry(ops);
+  }
+
+  /**
+   * Display-time edge routing: straight edges that run over a foreign node get
+   * detour bends, recomputed with every scene (no persistence, so they follow
+   * every level change and drag). Hand-placed bends always win.
+   */
+  private routedEdgePoints(scene: {
+    nodes: SceneNode[];
+    edges: { id: string; sourceId: string; targetId: string }[];
+  }): Record<string, Point[]> {
+    const stored = this.viewLayout(this._view).edges;
+    if (this._view !== 'context-map') return stored;
+    const routed = routeEdgesAroundNodes(scene, stored);
+    if (!routed.size) return stored;
+    return { ...Object.fromEntries(routed), ...stored };
   }
 
   private pushUndoEntry(ops: EditOp[]): void {
@@ -1797,6 +1946,19 @@ export class ModuxEditor extends LitElement {
     }
   }
 
+  /** Supr with a multi-selection: every selected node goes through the per-kind logic. */
+  private onDeleteSelectionRequested(e: CustomEvent): void {
+    const { items } = e.detail as { items: { id: string; kind: string }[] };
+    for (const item of items) {
+      this.onDeleteRequested(
+        new CustomEvent('delete-requested', {
+          detail: { elementType: 'node', id: item.id, kind: item.kind },
+        }),
+      );
+    }
+    this._multi = [];
+  }
+
   private onDeleteRequested(e: CustomEvent): void {
     const { elementType, id, kind } = e.detail;
     // With a modux View active, deleting a member node is ambiguous: drop the element
@@ -2253,6 +2415,9 @@ export class ModuxEditor extends LitElement {
 
   private onMultiToggled(e: CustomEvent): void {
     const { id } = e.detail;
+    // The multi-selection REPLACES the single one: otherwise Supr would act on a
+    // stale element (e.g. the container selected before shift-clicking children).
+    this._selectedId = null;
     this._multi = this._multi.includes(id)
       ? this._multi.filter((x) => x !== id)
       : [...this._multi, id];
@@ -3241,7 +3406,7 @@ export class ModuxEditor extends LitElement {
       </div>
       <modux-canvas
         .scene=${scene}
-        .edgePoints=${this.viewLayout(this._view).edges}
+        .edgePoints=${this.routedEdgePoints(scene)}
         .selectedId=${this._selectedId}
         .selectedIds=${this._multi}
         .connectable=${this._view === 'context-map' || this._view === 'workflows'}
@@ -3252,6 +3417,7 @@ export class ModuxEditor extends LitElement {
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
+        @delete-selection-requested=${this.onDeleteSelectionRequested}
         @node-renamed=${this.onNodeRenamed}
         @edge-points-changed=${this.onEdgePointsChanged}
         @element-multi-toggled=${this.onMultiToggled}

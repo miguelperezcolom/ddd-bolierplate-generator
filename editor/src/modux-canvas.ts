@@ -251,6 +251,16 @@ export class ModuxCanvas extends LitElement {
       return;
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
+      // A live multi-selection takes over: delete every selected node (each goes
+      // through the host's per-kind rules), never a stale single selection.
+      if (this.selectedIds.length > 0) {
+        e.preventDefault();
+        const items = this.scene.nodes
+          .filter((n) => this.selectedIds.includes(n.id))
+          .map((n) => ({ id: n.id, kind: n.kind }));
+        if (items.length) this.emit('delete-selection-requested', { items });
+        return;
+      }
       // A selected waypoint takes precedence: remove the bend, keep the edge.
       if (this._selectedWaypoint) {
         const edge = this.scene.edges.find((x) => x.id === this._selectedWaypoint!.edgeId);
