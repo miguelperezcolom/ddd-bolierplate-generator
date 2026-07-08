@@ -347,6 +347,8 @@ export class ModuxEditor extends LitElement {
   @state() private _newRagSourceType = 'WEB';
   @state() private _newRagSourceUri = '';
   @state() private _addMemberKey = '';
+  /** Catalog tree panel: curate the active view's members with checkboxes. */
+  @state() private _treeOpen = false;
   /** Pending node deletion while the user picks: delete from model, or only from the view. */
   @state() private _deletePicker: { elementType: string; id: string; kind: string; memberId: string } | null =
     null;
@@ -491,6 +493,56 @@ export class ModuxEditor extends LitElement {
     modux-canvas {
       flex: 1;
       min-height: 0;
+    }
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+    }
+    .view-tree {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      bottom: 8px;
+      width: 264px;
+      overflow: auto;
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      padding: 8px 12px 12px;
+      z-index: 15;
+    }
+    .view-tree h4 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      margin: 10px 0 4px;
+    }
+    .view-tree label {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      padding: 2px 0;
+      font-size: 13px;
+      color: #1e293b;
+      cursor: pointer;
+    }
+    .view-tree label.child {
+      margin-left: 18px;
+      color: #475569;
+    }
+    .view-tree label.implicit {
+      color: #94a3b8;
+    }
+    .view-tree .tree-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+      padding: 2px 0 4px;
     }
   `;
 
@@ -2676,6 +2728,11 @@ export class ModuxEditor extends LitElement {
       ...this.model.flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' })),
       ...(this.model.processes ?? []).map((p) => ({ id: p.id, name: p.name, kind: 'proceso' })),
       ...(this.model.workflows ?? []).map((w) => ({ id: w.id, name: w.name, kind: 'workflow' })),
+      ...(this.model.actors ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'actor' })),
+      ...(this.model.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'agente' })),
+      ...(this.model.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name, kind: 'gateway' })),
+      ...(this.model.rags ?? []).map((r) => ({ id: r.id, name: r.name, kind: 'rag' })),
+      ...(this.model.apis ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'api' })),
     ].filter((c) => !members.has(c.id));
   }
 
@@ -2688,6 +2745,70 @@ export class ModuxEditor extends LitElement {
     if (!candidate) return;
     this.command({ kind: 'add-view-member', id: this._activeViewId, targetId: candidate.id });
     this._addMemberKey = '';
+  }
+
+  /** Check/uncheck in the catalog tree: view membership only — never touches the element. */
+  private toggleViewMember(targetId: string, checked: boolean): void {
+    if (!this._activeViewId) return;
+    this.command(
+      checked
+        ? { kind: 'add-view-member', id: this._activeViewId, targetId }
+        : { kind: 'remove-view-member', id: this._activeViewId, targetId },
+    );
+  }
+
+  /**
+   * The catalog as a tree with membership checkboxes: what belongs to the active
+   * view. Aggregates nest under their context; one greyed "(por su contexto)" row
+   * means the element rides in implicitly because its container is a member.
+   */
+  private renderViewTree() {
+    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    if (!view) return '';
+    const members = new Set(view.memberIds);
+    const row = (id: string, name: string, opts: { child?: boolean; implicit?: boolean } = {}) => html`
+      <label
+        class="${opts.child ? 'child' : ''} ${opts.implicit && !members.has(id) ? 'implicit' : ''}"
+        title=${opts.implicit && !members.has(id)
+          ? 'Ya se ve por su contenedor; márcalo para que sea miembro explícito'
+          : 'Miembro de la vista — desmarcar lo quita de la vista, NO del proyecto'}
+      >
+        <input
+          type="checkbox"
+          .checked=${members.has(id)}
+          @change=${(e: Event) => this.toggleViewMember(id, (e.target as HTMLInputElement).checked)}
+        />
+        ${name}
+      </label>
+    `;
+    const group = (title: string, rows: unknown[]) =>
+      rows.length ? html`<h4>${title}</h4>${rows}` : '';
+    return html`
+      <aside class="view-tree" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <div class="tree-title">Vista: ${view.name}</div>
+        ${group(
+          'Contextos',
+          this.model.modules.flatMap((m) => [
+            row(m.id, m.name),
+            ...(this.model.aggregates ?? [])
+              .filter((a) => a.moduleId === m.id)
+              .map((a) => row(a.id, a.name, { child: true, implicit: members.has(m.id) })),
+          ]),
+        )}
+        ${group(
+          'Sistemas externos',
+          this.model.externalSystems.map((x) => row(x.id, x.name)),
+        )}
+        ${group('APIs', (this.model.apis ?? []).map((a) => row(a.id, a.name)))}
+        ${group('Actores', (this.model.actors ?? []).map((a) => row(a.id, a.name)))}
+        ${group('Agentes IA', (this.model.aiAgents ?? []).map((a) => row(a.id, a.name)))}
+        ${group('Gateways MCP', (this.model.mcpGateways ?? []).map((g) => row(g.id, g.name)))}
+        ${group('RAGs', (this.model.rags ?? []).map((r) => row(r.id, r.name)))}
+        ${group('Flows', this.model.flows.map((f) => row(f.id, f.name)))}
+        ${group('Procesos', (this.model.processes ?? []).map((p) => row(p.id, p.name)))}
+        ${group('Workflows', (this.model.workflows ?? []).map((w) => row(w.id, w.name)))}
+      </aside>
+    `;
   }
 
   private onElementSelected(e: CustomEvent): void {
@@ -2738,6 +2859,11 @@ export class ModuxEditor extends LitElement {
         case 'entity':
         case 'process':
         case 'workflow':
+        case 'actor':
+        case 'ai-agent':
+        case 'rag':
+        case 'mcp-gateway':
+        case 'api':
           members.add(id);
           break;
         case 'flow':
@@ -2806,6 +2932,22 @@ export class ModuxEditor extends LitElement {
       ),
       // Workflows have no owner module (they live outside the contexts): member-only.
       workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
+      // Top-level AI/strategic pieces scope by membership too — a curated view
+      // about one subdomain should not drag every agent and gateway along.
+      actors: (this.model.actors ?? []).filter((a) => members.has(a.id)),
+      aiAgents: (this.model.aiAgents ?? []).filter((a) => members.has(a.id)),
+      rags: (this.model.rags ?? []).filter((r) => members.has(r.id)),
+      mcpGateways: (this.model.mcpGateways ?? []).filter((g) => members.has(g.id)),
+      apis: (this.model.apis ?? []).filter(
+        (a) =>
+          members.has(a.id) ||
+          (a.publishedByExternalSystemId ? externalIds.has(a.publishedByExternalSystemId) : false),
+      ),
+      proxyApis: (this.model.proxyApis ?? []).filter(
+        (px) =>
+          members.has(px.id) ||
+          (px.publishedByExternalSystemId ? externalIds.has(px.publishedByExternalSystemId) : false),
+      ),
     };
   }
 
@@ -3133,6 +3275,14 @@ export class ModuxEditor extends LitElement {
               </datalist>
               <button class="tab" title="Añadir el elemento a la vista" @click=${this.addMemberFromToolbar}>
                 ＋ Añadir
+              </button>
+              <button
+                class="tab"
+                ?data-active=${this._treeOpen}
+                title="Árbol del catálogo: marca qué elementos pertenecen a la vista (sin borrar nada del proyecto)"
+                @click=${() => (this._treeOpen = !this._treeOpen)}
+              >
+                ☰ Árbol
               </button>
             `
           : ''}
@@ -3735,6 +3885,8 @@ export class ModuxEditor extends LitElement {
           ✨ Auto-layout
         </button>
       </div>
+      <div class="canvas-wrap">
+      ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
       <modux-canvas
         .scene=${scene}
         .edgePoints=${this.routedEdgePoints(scene)}
@@ -3763,6 +3915,7 @@ export class ModuxEditor extends LitElement {
           this.emit('modux-select', null);
         }}
       ></modux-canvas>
+      </div>
       <div class="hint">
         ${this._view === 'context-map'
           ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click

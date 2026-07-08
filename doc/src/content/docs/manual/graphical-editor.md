@@ -171,10 +171,17 @@ selected catalog elements. The **Vista:** selector scopes the canvas to one view
 members — relations and flows appear when both endpoints are in, entities follow
 their aggregates.
 
-With a view active:
+With a view active, the canvas scopes to the view's members — contexts, external
+systems, aggregates, flows, processes, workflows, **and the strategic/AI pieces too**
+(actors, AI agents, MCP gateways, RAGs, APIs), so a curated slice does not drag every
+agent along. Three ways to maintain the membership, none of which ever deletes the
+element from the project:
 
-- **«Añadir a la vista…»** searches the whole catalog (contexts, external systems,
-  aggregates, flows, processes, workflows) and adds an existing element to the view.
+- **«☰ Árbol»** opens the **catalog tree**: every element of the project grouped by
+  kind (aggregates nested under their context), with a **membership checkbox** —
+  check to include it in the view, uncheck to take it out. Greyed rows ride in
+  implicitly because their container is a member. Membership changes are undoable.
+- **«Añadir a la vista…»** searches the same catalog by name and adds one element.
 - **Supr on a member asks**: *delete the element from the model, or only take it out
   of this view?* — removing from the view never touches the element itself.
 
