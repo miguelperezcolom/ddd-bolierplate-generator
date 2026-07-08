@@ -110,7 +110,8 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
  * Events (all CustomEvent, composed, bubbling):
  *  - node-moved        { id, x, y }             after a drag ends
  *  - nodes-moved       { moves: [{id, x, y}] }   multi-selection drag ended
- *  - node-reparent-requested { id, targetId, x, y }  Shift/Ctrl-drag dropped an API on a new home
+ *  - node-reparent-requested { id, targetId, x, y }  Shift-drag dropped an API on a new home
+ *  - node-proxy-requested { id, targetId, x, y }  Ctrl-drag: create a proxy of the API there
  *  - connect-requested { sourceId, targetId }   edge-drawing gesture completed
  *  - element-selected  { elementType, id, kind }  click on node or edge
  *  - element-activated { elementType, id, kind }  double click
@@ -503,6 +504,21 @@ export class ModuxCanvas extends LitElement {
       } else if (moved && this._dragPos) {
         if (freeDrag(ev)) {
           const home = dropHome(ev);
+          // Ctrl over a system CREATES A PROXY of the API there (the API stays put);
+          // Shift moves the API itself.
+          if (ev.ctrlKey && node.kind === 'api') {
+            if (home && home !== (node.parentId ?? null)) {
+              this.emit('node-proxy-requested', {
+                id: node.id,
+                targetId: home,
+                x: this._dragPos.x,
+                y: this._dragPos.y,
+              });
+            }
+            this._dragPos = null;
+            this._hoverNodeId = null;
+            return;
+          }
           if (home !== (node.parentId ?? null)) {
             this.emit('node-reparent-requested', {
               id: node.id,

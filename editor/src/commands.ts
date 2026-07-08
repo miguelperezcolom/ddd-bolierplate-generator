@@ -296,6 +296,10 @@ export type ModuxCommand =
       kind: 'add-proxy-api';
       id: string;
       name: string;
+      /** The API it fronts (optional at birth). */
+      targetId?: string;
+      /** Host external system (optional at birth) — moduleId carries it, as elsewhere. */
+      moduleId?: string;
     }
   | {
       kind: 'remove-proxy-api';

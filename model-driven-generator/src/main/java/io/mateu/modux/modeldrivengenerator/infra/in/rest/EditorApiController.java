@@ -1595,9 +1595,22 @@ public class EditorApiController {
         repository.save(proxy.withPublishedByExternalSystemId(home));
     }
 
+    /** Optionally born wired: targetId = the API it fronts, moduleId = the host system. */
     private void addProxyApi(EditorCommand command) {
         if (repository.findById(command.id(), ProxyApiEntity.class).isPresent()) return;
-        repository.save(new ProxyApiEntity(command.id(), command.name(), null, null, null));
+        var target = command.targetId();
+        if (target != null && !target.isBlank()
+                && repository.findById(target, ApiEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("API desconocida: " + target);
+        }
+        var host = command.moduleId();
+        if (host != null && !host.isBlank()
+                && owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
+            throw new IllegalArgumentException("Sistema externo desconocido: " + host);
+        }
+        repository.save(new ProxyApiEntity(command.id(), command.name(), null,
+                target == null || target.isBlank() ? null : target,
+                host == null || host.isBlank() ? null : host));
     }
 
     private void removeProxyApi(EditorCommand command) {

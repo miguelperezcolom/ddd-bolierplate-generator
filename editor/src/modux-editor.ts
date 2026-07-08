@@ -550,7 +550,15 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-proxy-api', id: c.id }];
       case 'remove-proxy-api': {
         const px = (this.model.proxyApis ?? []).find((x) => x.id === c.id);
-        return px ? [{ kind: 'add-proxy-api', id: px.id, name: px.name }] : null;
+        return px
+          ? [{
+              kind: 'add-proxy-api',
+              id: px.id,
+              name: px.name,
+              targetId: px.targetApiId,
+              moduleId: px.publishedByExternalSystemId,
+            }]
+          : null;
       }
       case 'set-proxy-target': {
         const px = (this.model.proxyApis ?? []).find((x) => x.id === c.id);
@@ -1106,6 +1114,52 @@ export class ModuxEditor extends LitElement {
     ];
     this.command({ kind: 'set-api-publisher', id, targetId: next }, false);
     this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+    this.pushUndoEntry(ops);
+  }
+
+  /**
+   * Ctrl-drag dropped an API on an external system: a proxy of that API is born
+   * there — named api@host, wired to the API and nested in the host — while the
+   * API itself stays where it was. One undo entry removes the whole thing.
+   */
+  private onNodeProxyRequested(e: CustomEvent): void {
+    const { id, targetId, x, y } = e.detail as {
+      id: string;
+      targetId: string;
+      x: number;
+      y: number;
+    };
+    const api = (this.model.apis ?? []).find((a) => a.id === id);
+    const host = this.model.externalSystems.find((s) => s.id === targetId);
+    if (!api || !host) return;
+    const duplicated = (this.model.proxyApis ?? []).some(
+      (px) => px.targetApiId === id && px.publishedByExternalSystemId === targetId,
+    );
+    if (duplicated) return;
+    const proxyId = `proxy-${slug(api.name)}-${slug(host.name)}`;
+    if ((this.model.proxyApis ?? []).some((px) => px.id === proxyId)) return;
+    const view = this._view;
+    const layout = this.viewLayout(view);
+    const scene = this.sceneFor(view);
+    const parent = scene.nodes.find((n) => n.id === targetId);
+    this.command(
+      {
+        kind: 'add-proxy-api',
+        id: proxyId,
+        name: `${api.name}@${host.name}`,
+        targetId: id,
+        moduleId: targetId,
+      },
+      false,
+    );
+    const ops: EditOp[] = [{ kind: 'remove-proxy-api', id: proxyId }];
+    if (parent) {
+      ops.push({ kind: 'move-node', view, id: proxyId, pos: layout.nodes[proxyId] ?? null });
+      this.writeViewLayout(view, {
+        ...layout,
+        nodes: { ...layout.nodes, [proxyId]: { x: x - parent.x, y: y - parent.y } },
+      });
+    }
     this.pushUndoEntry(ops);
   }
 
@@ -3058,6 +3112,7 @@ export class ModuxEditor extends LitElement {
         @node-moved=${this.onNodeMoved}
         @nodes-moved=${this.onNodesMoved}
         @node-reparent-requested=${this.onNodeReparentRequested}
+        @node-proxy-requested=${this.onNodeProxyRequested}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}
         @delete-requested=${this.onDeleteRequested}
@@ -3077,7 +3132,7 @@ export class ModuxEditor extends LitElement {
       ></modux-canvas>
       <div class="hint">
         ${this._view === 'context-map'
-          ? html`Arrastra para reordenar · Shift/Ctrl+arrastrar mueve una API de sistema · asa azul → crear relación (elige el tipo) · doble click
+          ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
             · rueda para zoom`
