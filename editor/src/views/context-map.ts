@@ -206,6 +206,97 @@ function detailedContext(
   return detailedContainer(center, base, children, layout, sizes);
 }
 
+/**
+ * The operations level of an external system: each published API is a SUB-CONTAINER
+ * with its operation chips, and the system's box grows (per side) to hold the fitted
+ * API boxes plus its plain children. Offsets follow the usual convention: children
+ * hang off their parent's STORED centre, even when the painted (fitted) one shifts.
+ */
+function externalSystemWithApiContainers(
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  apis: NonNullable<ModuxModel['apis']>,
+  plainChildren: ChildDesc[],
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const sysSize = sizes[base.id] ?? defaultContainerSize(apis.length + plainChildren.length);
+  const apiBoxes = apis.map((a, i) => {
+    const off = layout[a.id] ?? defaultChildOffset(i, sysSize);
+    const ops = a.operations ?? [];
+    const apiSize = sizes[a.id] ?? defaultContainerSize(ops.length);
+    const opOffs = ops.map((op, j) => layout[op.id] ?? defaultChildOffset(j, apiSize));
+    const fit = containerFit(
+      { x: off.x, y: off.y },
+      apiSize,
+      opOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
+    );
+    return { a, off, ops, opOffs, fit };
+  });
+  const plainOffs = plainChildren.map(
+    (c, i) => layout[c.id] ?? defaultChildOffset(apis.length + i, sysSize),
+  );
+  const sysFit = containerFit(center, sysSize, [
+    ...apiBoxes.map((b) => ({ dx: b.fit.x, dy: b.fit.y, w: b.fit.w, h: b.fit.h })),
+    ...plainOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
+  ]);
+  const nodes: SceneNode[] = [
+    { ...base, x: sysFit.x, y: sysFit.y, w: sysFit.w, h: sysFit.h, container: true },
+  ];
+  for (const b of apiBoxes) {
+    nodes.push({
+      id: b.a.id,
+      label: b.a.name,
+      kind: 'api',
+      symbol: 'interface',
+      fill: '#eef2ff',
+      stroke: '#4f46e5',
+      badge: 'API',
+      container: true,
+      parentId: base.id,
+      x: center.x + b.fit.x,
+      y: center.y + b.fit.y,
+      w: b.fit.w,
+      h: b.fit.h,
+      tooltip: `${b.a.name} — API publicada por ${base.label}`,
+    });
+    b.ops.forEach((op, j) => {
+      nodes.push({
+        id: op.id,
+        label: op.name,
+        kind: 'api-operation',
+        symbol: 'usecase',
+        fill: '#eef2ff',
+        stroke: '#4f46e5',
+        parentId: b.a.id,
+        x: center.x + b.off.x + b.opOffs[j].x,
+        y: center.y + b.off.y + b.opOffs[j].y,
+        w: CHILD_W,
+        h: CHILD_H,
+        tooltip: `Operación de API ${op.name}`,
+      });
+    });
+  }
+  plainChildren.forEach((c, i) => {
+    const style = CHILD_STYLE[c.kind];
+    nodes.push({
+      id: c.id,
+      label: c.name,
+      kind: c.kind,
+      x: center.x + plainOffs[i].x,
+      y: center.y + plainOffs[i].y,
+      w: CHILD_W,
+      h: CHILD_H,
+      symbol: style.symbol,
+      fill: style.fill,
+      stroke: style.stroke,
+      parentId: base.id,
+      tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
+    });
+  });
+  return nodes;
+}
+
 /** A resizable container with child boxes — shared by contexts and external systems. */
 function detailedContainer(
   center: { x: number; y: number },
@@ -264,11 +355,9 @@ export function contextMapScene(
   // and its containment in the host system becomes a "publicada por" edge.
   const operationsLevel = detail === 'operations';
   const externalIds = new Set(model.externalSystems.map((x) => x.id));
-  const nestedApis = operationsLevel
-    ? []
-    : (model.apis ?? []).filter(
-        (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
-      );
+  const nestedApis = (model.apis ?? []).filter(
+    (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
+  );
   const nestedApiIds = new Set(nestedApis.map((a) => a.id));
   const nestedProxies = (model.proxyApis ?? []).filter(
     (px) => px.publishedByExternalSystemId && externalIds.has(px.publishedByExternalSystemId),
@@ -346,8 +435,7 @@ export function contextMapScene(
       // detail level, while operations and tables only unfold in detailed mode.
       const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
       const hostedProxies = nestedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
-      const children: ChildDesc[] = [
-        ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+      const plainChildren: ChildDesc[] = [
         ...hostedProxies.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
         ...(detailed
           ? [
@@ -359,6 +447,17 @@ export function contextMapScene(
               ),
             ]
           : []),
+      ];
+      if (operationsLevel && publishedApis.length > 0) {
+        // The deepest level nests twice: the system wraps each API's own container,
+        // which in turn wraps its operations — the host resizes to accommodate.
+        return externalSystemWithApiContainers(
+          pos, base, publishedApis, plainChildren, layout, sizes,
+        );
+      }
+      const children: ChildDesc[] = [
+        ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+        ...plainChildren,
       ];
       if (children.length > 0) {
         return detailedContainer(pos, base, children, layout, sizes);
@@ -689,27 +788,6 @@ export function contextMapScene(
         ]),
     ).values(),
   ];
-  // At the operations level the containment API → host is an explicit edge.
-  const publishedByEdges: SceneEdge[] = operationsLevel
-    ? (model.apis ?? [])
-        .filter(
-          (a) =>
-            a.publishedByExternalSystemId &&
-            nodeIds.has(a.publishedByExternalSystemId) &&
-            nodeIds.has(a.id),
-        )
-        .map((a) => ({
-          id: `pub:${a.id}->${a.publishedByExternalSystemId}`,
-          sourceId: a.id,
-          targetId: a.publishedByExternalSystemId!,
-          kind: 'published-by',
-          color: '#94a3b8',
-          dashed: true,
-          arrow: true,
-          tooltip: 'publicada por',
-        }))
-    : [];
-
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -837,7 +915,6 @@ export function contextMapScene(
       ...actorUseEdges,
       ...actorExternalEdges,
       ...externalDependencyEdges,
-      ...publishedByEdges,
       ...proxyTargetEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,

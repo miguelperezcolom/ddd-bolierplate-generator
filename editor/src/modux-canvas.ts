@@ -278,7 +278,8 @@ export class ModuxCanvas extends LitElement {
         node.kind !== 'use-case' &&
         node.kind !== 'external-use-case' &&
         node.kind !== 'api' &&
-        node.kind !== 'proxy-api'
+        node.kind !== 'proxy-api' &&
+        node.kind !== 'api-operation'
       )
         return;
       const el = edge ?? node;
@@ -387,17 +388,22 @@ export class ModuxCanvas extends LitElement {
     if (this._resize && this._resize.id === node.id) {
       return { x: this._resize.x, y: this._resize.y };
     }
-    // A child follows its container live while the container is being dragged.
-    if (node.parentId && this._dragPos && this._dragPos.id === node.parentId) {
-      const parent = this.scene.nodes.find((n) => n.id === node.parentId);
-      if (parent) {
-        return { x: node.x + (this._dragPos.x - parent.x), y: node.y + (this._dragPos.y - parent.y) };
+    // A child follows live while any of its ancestors is being dragged (an API's
+    // operations must track both the API and the system containing it).
+    for (
+      let ancestorId = node.parentId;
+      ancestorId;
+      ancestorId = this.scene.nodes.find((n) => n.id === ancestorId)?.parentId
+    ) {
+      const ancestor = this.scene.nodes.find((n) => n.id === ancestorId);
+      if (!ancestor) break;
+      if (this._dragPos && this._dragPos.id === ancestorId) {
+        return { x: node.x + (this._dragPos.x - ancestor.x), y: node.y + (this._dragPos.y - ancestor.y) };
       }
-    }
-    if (node.parentId && this._dragGroup?.has(node.parentId)) {
-      const parent = this.scene.nodes.find((n) => n.id === node.parentId);
-      const pp = this._dragGroup.get(node.parentId)!;
-      if (parent) return { x: node.x + (pp.x - parent.x), y: node.y + (pp.y - parent.y) };
+      const grouped = this._dragGroup?.get(ancestorId);
+      if (grouped) {
+        return { x: node.x + (grouped.x - ancestor.x), y: node.y + (grouped.y - ancestor.y) };
+      }
     }
     return { x: node.x, y: node.y };
   }
