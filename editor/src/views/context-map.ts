@@ -820,7 +820,7 @@ export function contextMapScene(
             targetId: d.targetId,
             kind: 'ext-dep',
             color: d.cqrs ? '#7c3aed' : '#64748b',
-            label: d.cqrs ? 'CQRS' : undefined,
+            label: d.cqrs ? 'CQRS' : 'dep',
             dashed: true,
             arrow: true,
             tooltip: d.cqrs ? 'CQRS — consulta sobre sus datos' : 'depende de',

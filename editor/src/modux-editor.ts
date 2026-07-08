@@ -503,19 +503,31 @@ export class ModuxEditor extends LitElement {
     this.emit('modux-command', { command });
   }
 
+  /**
+   * Every detail level of the context map keeps ITS OWN geometry: coming back
+   * to a level must look exactly as it was left there, untouched by whatever
+   * the auto-separation did at the other levels. The legacy 'context-map'
+   * entry doubles as the Contextos level.
+   */
+  private layoutKey(view: ViewId): string {
+    return view === 'context-map' && this._detail !== 'contexts'
+      ? `context-map@${this._detail}`
+      : view;
+  }
+
   private viewLayout(view: ViewId): ViewLayout {
-    return normalizeViewLayout(this.layout[view]);
+    return normalizeViewLayout(this.layout[this.layoutKey(view)]);
   }
 
   private writeViewLayout(view: ViewId, next: ViewLayout): void {
-    this.layout = { ...this.layout, [view]: next };
+    this.layout = { ...this.layout, [this.layoutKey(view)]: next };
     this.emit('layout-changed', { layout: this.layout });
   }
 
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('layout')) {
-      const detail = this.viewLayout('context-map').detail;
+      const detail = normalizeViewLayout(this.layout['context-map']).detail;
       if (detail === 'contexts' || detail === 'detail' || detail === 'operations') {
         this._detail = detail;
       }
@@ -524,7 +536,20 @@ export class ModuxEditor extends LitElement {
 
   /** Detail level changes persist with the layout, so they survive reloads. */
   private setDetail(detail: 'contexts' | 'detail' | 'operations'): void {
+    if (detail === this._detail) return;
+    // First visit to a level: it starts as a copy of what the user is looking
+    // at; from then on each level's geometry lives its own life.
+    const seed = this.viewLayout('context-map');
+    const targetKey = detail === 'contexts' ? 'context-map' : `context-map@${detail}`;
+    const raw = normalizeViewLayout(this.layout[targetKey]);
     this._detail = detail;
+    if (!Object.keys(raw.nodes).length && !Object.keys(raw.sizes ?? {}).length) {
+      this.writeViewLayout('context-map', {
+        nodes: { ...seed.nodes },
+        edges: { ...seed.edges },
+        sizes: { ...(seed.sizes ?? {}) },
+      });
+    }
     if (
       detail === 'contexts' &&
       this._newContextMapKind !== 'module' &&
@@ -536,6 +561,10 @@ export class ModuxEditor extends LitElement {
     ) {
       this._newContextMapKind = 'module';
     }
+    // The chosen level persists on the BASE entry — where load-time adoption looks.
+    const base = normalizeViewLayout(this.layout['context-map']);
+    this.layout = { ...this.layout, 'context-map': { ...base, detail } };
+    this.emit('layout-changed', { layout: this.layout });
     // Positions persist per element across detail levels, but sizes don't: a
     // container that unfolds at this level may now sit on top of its neighbours.
     // Nudge the top-level nodes apart (one undoable step) so the map stays legible.
@@ -559,7 +588,7 @@ export class ModuxEditor extends LitElement {
         y: Math.round(base.y + (p.y - orig.y)),
       };
     }
-    this.writeViewLayout('context-map', { ...current, nodes, detail });
+    this.writeViewLayout('context-map', { ...current, nodes });
     if (ops.length) this.pushUndoEntry(ops);
   }
 
