@@ -804,7 +804,11 @@ export function contextMapScene(
   const externalDependencyEdges: SceneEdge[] = [
     ...new Map(
       (model.externalSystemDependencies ?? [])
-        .map((d) => ({ sourceId: d.sourceId, targetId: rollUp(d.targetId) }))
+        .map((d) => ({
+          sourceId: d.sourceId,
+          targetId: rollUp(d.targetId),
+          cqrs: d.type === 'CQRS',
+        }))
         .filter(
           (d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId) && d.sourceId !== d.targetId,
         )
@@ -815,10 +819,11 @@ export function contextMapScene(
             sourceId: d.sourceId,
             targetId: d.targetId,
             kind: 'ext-dep',
-            color: '#64748b',
+            color: d.cqrs ? '#7c3aed' : '#64748b',
+            label: d.cqrs ? 'CQRS' : undefined,
             dashed: true,
             arrow: true,
-            tooltip: 'depende de',
+            tooltip: d.cqrs ? 'CQRS — consulta sobre sus datos' : 'depende de',
           },
         ]),
     ).values(),

@@ -284,6 +284,13 @@ export class ModuxEditor extends LitElement {
     x: number;
     y: number;
   } | null = null;
+  /** Type picker for an external-system → external-system drag: plain or CQRS. */
+  @state() private _extDepPicker: {
+    sourceId: string;
+    targetId: string;
+    x: number;
+    y: number;
+  } | null = null;
   @state() private _selectedId: string | null = null;
   @state() private _newName = '';
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
@@ -717,10 +724,21 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-external':
         return [{ kind: 'add-actor-external', sourceId: c.sourceId, targetId: c.targetId }];
-      case 'add-external-dependency':
-        return [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
-      case 'remove-external-dependency':
-        return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-dependency': {
+        // Re-drawing with the other type RETYPES the edge — the inverse restores it.
+        const prev = (this.model.externalSystemDependencies ?? []).find(
+          (d) => d.sourceId === c.sourceId && d.targetId === c.targetId,
+        );
+        return prev
+          ? [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId, type: prev.type }]
+          : [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      }
+      case 'remove-external-dependency': {
+        const prev = (this.model.externalSystemDependencies ?? []).find(
+          (d) => d.sourceId === c.sourceId && d.targetId === c.targetId,
+        );
+        return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId, type: prev?.type }];
+      }
       case 'add-proxy-api':
         return [{ kind: 'remove-proxy-api', id: c.id }];
       case 'remove-proxy-api': {
@@ -1857,10 +1875,8 @@ export class ModuxEditor extends LitElement {
         return;
       }
       if (relationExternalIds.has(targetId) && targetId !== sourceId) {
-        const exists = (this.model.externalSystemDependencies ?? []).some(
-          (d) => d.sourceId === sourceId && d.targetId === targetId,
-        );
-        if (!exists) this.command({ kind: 'add-external-dependency', sourceId, targetId });
+        // Between systems the relation has flavours — ask (drawing again retypes).
+        this._extDepPicker = { sourceId, targetId, x: x ?? 0, y: y ?? 0 };
         return;
       }
       if (
@@ -3405,7 +3421,7 @@ export class ModuxEditor extends LitElement {
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
       </div>
-      ${this.renderRelationPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
     `;
   }
 
@@ -3448,6 +3464,56 @@ export class ModuxEditor extends LitElement {
           <span class="abbr">🗑</span>
           <span class="name">Eliminar del modelo</span>
         </button>
+      </div>
+    `;
+  }
+
+  private pickExtDepType(type: 'DEPENDS' | 'CQRS'): void {
+    const p = this._extDepPicker;
+    this._extDepPicker = null;
+    if (!p) return;
+    const current = (this.model.externalSystemDependencies ?? []).find(
+      (d) => d.sourceId === p.sourceId && d.targetId === p.targetId,
+    );
+    if (current && (current.type ?? 'DEPENDS') === type) return;
+    this.command({
+      kind: 'add-external-dependency',
+      sourceId: p.sourceId,
+      targetId: p.targetId,
+      type,
+    });
+  }
+
+  private renderExtDepPicker() {
+    const p = this._extDepPicker;
+    if (!p) return '';
+    const current = (this.model.externalSystemDependencies ?? []).find(
+      (d) => d.sourceId === p.sourceId && d.targetId === p.targetId,
+    )?.type;
+    const options = [
+      { type: 'DEPENDS' as const, abbr: 'DEP', name: 'Dependencia simple' },
+      { type: 'CQRS' as const, abbr: 'CQRS', name: 'CQRS — consulta sobre sus datos' },
+    ];
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._extDepPicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${p.x}px; top:${p.y}px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">Tipo de dependencia</div>
+        ${options.map(
+          (o) => html`
+            <button
+              class="picker-item ${o.type === (current ?? '') ? 'current' : ''}"
+              title=${o.name}
+              @click=${() => this.pickExtDepType(o.type)}
+            >
+              <span class="abbr">${o.abbr}</span>
+              <span class="name">${o.name}</span>
+            </button>
+          `,
+        )}
       </div>
     `;
   }

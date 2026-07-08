@@ -290,6 +290,8 @@ export type ModuxCommand =
       kind: 'add-external-dependency';
       sourceId: string;
       targetId: string;
+      /** DEPENDS (default) or CQRS (only between external systems). */
+      type?: string;
     }
   | {
       /** An API proxy/cache — fronts a published API, consumable exactly like it. */

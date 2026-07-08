@@ -170,8 +170,9 @@ public class EditorApiController {
     public record ActorUseDto(String actorId, String targetId) {}
     /** An actor depends on an external system (strategic context-map dependency). */
     public record ActorExternalDependencyDto(String actorId, String externalSystemId) {}
-    /** An external system depends on another system, a published API or an API proxy. */
-    public record ExternalSystemDependencyDto(String sourceId, String targetId) {}
+    /** An external system depends on another system, a published API or an API proxy.
+     * Between systems the relation may be typed: DEPENDS (plain) or CQRS. */
+    public record ExternalSystemDependencyDto(String sourceId, String targetId, String type) {}
     /** An API proxy/cache: fronts a published API, consumable exactly like it. */
     public record ProxyApiDto(String id, String name, String targetApiId,
                               String publishedByExternalSystemId) {}
@@ -592,9 +593,11 @@ public class EditorApiController {
         if (currentProject != null) {
             for (var x : currentProject.externalSystems()) {
                 x.dependsOnExternalSystemIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id)));
+                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
                 x.dependsOnApiIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id)));
+                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
+                x.cqrsExternalSystemIds().forEach(id -> externalSystemDependencies.add(
+                        new ExternalSystemDependencyDto(x.id(), id, "CQRS")));
             }
         }
         var proxyApis = repository.findAllOfType(ProxyApiEntity.class).stream()
@@ -1556,8 +1559,13 @@ public class EditorApiController {
                 .filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Sistema externo desconocido: " + command.sourceId()));
+        var cqrs = "CQRS".equals(command.type());
         if (repository.findById(command.targetId(), ApiEntity.class).isPresent()
                 || repository.findById(command.targetId(), ProxyApiEntity.class).isPresent()) {
+            if (cqrs) {
+                throw new IllegalArgumentException(
+                        "La relación CQRS se establece entre sistemas externos");
+            }
             if (source.dependsOnApiIds().contains(command.targetId())) return;
             var ids = new ArrayList<>(source.dependsOnApiIds());
             ids.add(command.targetId());
@@ -1569,16 +1577,29 @@ public class EditorApiController {
         if (project.externalSystems().stream().noneMatch(x -> x.id().equals(command.targetId()))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
         }
-        if (source.dependsOnExternalSystemIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(source.dependsOnExternalSystemIds());
-        ids.add(command.targetId());
+        // The two flavours are exclusive: re-drawing with the other type retypes the edge.
         repository.save(withExternalSystems(project, project.externalSystems().stream()
-                .map(x -> x.id().equals(command.sourceId())
-                        ? x.withDependsOnExternalSystemIds(ids) : x)
+                .map(x -> {
+                    if (!x.id().equals(command.sourceId())) return x;
+                    var plainWithout = (List<String>) x.dependsOnExternalSystemIds().stream()
+                            .filter(id -> !id.equals(command.targetId())).toList();
+                    var cqrsWithout = (List<String>) x.cqrsExternalSystemIds().stream()
+                            .filter(id -> !id.equals(command.targetId())).toList();
+                    if (cqrs) {
+                        var ids = new ArrayList<>(cqrsWithout);
+                        ids.add(command.targetId());
+                        return x.withDependsOnExternalSystemIds(plainWithout)
+                                .withCqrsExternalSystemIds(ids);
+                    }
+                    var ids = new ArrayList<>(plainWithout);
+                    ids.add(command.targetId());
+                    return x.withDependsOnExternalSystemIds(ids)
+                            .withCqrsExternalSystemIds(cqrsWithout);
+                })
                 .toList()));
     }
 
-    /** The target may live in either list (external system or API/proxy): clear it from both. */
+    /** The target may live in any list (system, CQRS, API/proxy): clear it everywhere. */
     private void removeExternalSystemDependency(EditorCommand command) {
         var project = owningProject();
         repository.save(withExternalSystems(project, project.externalSystems().stream()
@@ -1586,6 +1607,8 @@ public class EditorApiController {
                         ? x.withDependsOnExternalSystemIds(x.dependsOnExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
                                 .withDependsOnApiIds(x.dependsOnApiIds().stream()
+                                        .filter(id -> !id.equals(command.targetId())).toList())
+                                .withCqrsExternalSystemIds(x.cqrsExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
                         : x)
                 .toList()));
@@ -2345,7 +2368,8 @@ public class EditorApiController {
                     "El sistema externo " + command.id() + " tiene actores que dependen de él; quita esas dependencias primero");
         }
         var dependedOnByExternals = owningProject().externalSystems().stream()
-                .anyMatch(x -> x.dependsOnExternalSystemIds().contains(command.id()));
+                .anyMatch(x -> x.dependsOnExternalSystemIds().contains(command.id())
+                        || x.cqrsExternalSystemIds().contains(command.id()));
         if (dependedOnByExternals) {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " tiene sistemas externos que dependen de él; quita esas dependencias primero");
