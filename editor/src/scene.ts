@@ -123,8 +123,8 @@ export interface ViewLayout {
   edges: Record<string, Point[]>;
   /** Node id → explicit size, for resizable containers. */
   sizes?: Record<string, { w: number; h: number }>;
-  /** Persisted detail level (context-map only): plain contexts, or their contents. */
-  detail?: 'contexts' | 'detail';
+  /** Persisted detail level (context-map only): contexts, their contents, or API operations. */
+  detail?: 'contexts' | 'detail' | 'operations';
 }
 
 /**

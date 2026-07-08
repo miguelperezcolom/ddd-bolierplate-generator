@@ -140,7 +140,7 @@ export class ModuxEditor extends LitElement {
 
   @state() private _view: ViewId = 'context-map';
   /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
-  @state() private _detail: 'contexts' | 'detail' = 'contexts';
+  @state() private _detail: 'contexts' | 'detail' | 'operations' = 'contexts';
   /** Last chosen relation type — the default pre-selection in the picker. */
   @state() private _relationType: ContextMapRelationType = 'CUSTOMER_SUPPLIER';
   /** Open type picker: creating a new relation, or editing an existing one. */
@@ -376,15 +376,17 @@ export class ModuxEditor extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('layout')) {
       const detail = this.viewLayout('context-map').detail;
-      if (detail === 'contexts' || detail === 'detail') this._detail = detail;
+      if (detail === 'contexts' || detail === 'detail' || detail === 'operations') {
+        this._detail = detail;
+      }
     }
   }
 
   /** Detail level changes persist with the layout, so they survive reloads. */
-  private setDetail(detail: 'contexts' | 'detail'): void {
+  private setDetail(detail: 'contexts' | 'detail' | 'operations'): void {
     this._detail = detail;
     if (
-      detail !== 'detail' &&
+      detail === 'contexts' &&
       this._newContextMapKind !== 'module' &&
       this._newContextMapKind !== 'external-system' &&
       this._newContextMapKind !== 'actor' &&
@@ -2308,7 +2310,7 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-api', id: `api-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'proxy-api') {
         this.command({ kind: 'add-proxy-api', id: `proxy-${slug(name)}`, name });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'api-operation') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'api-operation') {
         const selected = (this.model.apis ?? []).find((a) => a.id === this._selectedId)?.id;
         const apiId = this._newApiId || selected || this.model.apis?.[0]?.id;
         if (!apiId) return;
@@ -2318,38 +2320,38 @@ export class ModuxEditor extends LitElement {
           id: `apiop-${apiId.replace(/^api-/, '')}-${slug(name)}`,
           name,
         });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-event') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'domain-event') {
         // A selected context is the natural owner; the dropdown can override it.
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-domain-event', id: `ev-${slug(name)}`, name, moduleId });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'application-event') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'application-event') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-application-event', id: `aev-${slug(name)}`, name, moduleId });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'domain-service') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'domain-service') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-domain-service', id: `ds-${slug(name)}`, name, moduleId });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'query-service') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'query-service') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-query-service', id: `qs-${slug(name)}`, name, moduleId });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'use-case') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'use-case') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'policy') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'policy') {
         const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
         const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
         if (!moduleId) return;
         this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId, policy: true });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'external-use-case') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'external-use-case') {
         const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
         const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
         if (!externalId) return;
@@ -2359,7 +2361,7 @@ export class ModuxEditor extends LitElement {
           name,
           moduleId: externalId,
         });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'external-table') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'external-table') {
         const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
         const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
         if (!externalId) return;
@@ -2369,7 +2371,7 @@ export class ModuxEditor extends LitElement {
           name,
           moduleId: externalId,
         });
-      } else if (this._detail === 'detail' && this._newContextMapKind === 'read-model') {
+      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'read-model') {
         // A read model is a view of an aggregate; a selected aggregate is the default.
         const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
         const aggregateId = this._newAggregateId || selected || this.model.aggregates?.[0]?.id;
@@ -2443,7 +2445,7 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes)
               : view === 'eventstorming'
                 ? eventstormingScene(model, vl.nodes)
-                : contextMapScene(model, vl.nodes, this._detail === 'detail', vl.sizes ?? {});
+                : contextMapScene(model, vl.nodes, this._detail, vl.sizes ?? {});
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
       for (const node of scene.nodes) {
@@ -2581,7 +2583,7 @@ export class ModuxEditor extends LitElement {
                         ? 'Nueva API…'
                         : this._newContextMapKind === 'proxy-api'
                           ? 'Nuevo proxy API…'
-                  : this._detail !== 'detail' || this._newContextMapKind === 'module'
+                  : this._detail === 'contexts' || this._newContextMapKind === 'module'
                     ? 'Nuevo contexto…'
                     : this._newContextMapKind === 'domain-event'
                   ? 'Nuevo evento de dominio…'
@@ -2643,7 +2645,7 @@ export class ModuxEditor extends LitElement {
               <option value="proxy-api" ?selected=${this._newContextMapKind === 'proxy-api'}>
                 Proxy API
               </option>
-              ${this._detail === 'detail'
+              ${this._detail !== 'contexts'
                 ? html`
                     <option
                       value="domain-event"
@@ -2704,7 +2706,7 @@ export class ModuxEditor extends LitElement {
             </select>`
           : ''}
         ${this._view === 'context-map' &&
-        this._detail === 'detail' &&
+        this._detail !== 'contexts' &&
         (this._newContextMapKind === 'external-use-case' ||
           this._newContextMapKind === 'external-table')
           ? html`<select
@@ -2723,7 +2725,7 @@ export class ModuxEditor extends LitElement {
             </select>`
           : ''}
         ${this._view === 'context-map' &&
-        this._detail === 'detail' &&
+        this._detail !== 'contexts' &&
         this._newContextMapKind === 'api-operation'
           ? html`<select
               title="API dueña de la nueva operación"
@@ -2741,7 +2743,7 @@ export class ModuxEditor extends LitElement {
             </select>`
           : ''}
         ${this._view === 'context-map' &&
-        this._detail === 'detail' &&
+        this._detail !== 'contexts' &&
         this._newContextMapKind === 'read-model'
           ? html`<select
               title="Agregado del que es vista el read model"
@@ -2772,7 +2774,7 @@ export class ModuxEditor extends LitElement {
         ${this._view === 'aggregates' ||
         this._view === 'processes' ||
         (this._view === 'context-map' &&
-          this._detail === 'detail' &&
+          this._detail !== 'contexts' &&
           (this._newContextMapKind === 'domain-event' ||
             this._newContextMapKind === 'application-event' ||
             this._newContextMapKind === 'domain-service' ||
@@ -3078,14 +3080,19 @@ export class ModuxEditor extends LitElement {
         <label ?hidden=${this._view !== 'context-map'}>Detalle:</label>
         <select
           ?hidden=${this._view !== 'context-map'}
-          title="Nivel de detalle: contextos, o sus agregados y casos de uso"
+          title="Nivel de detalle: contextos, sus agregados y casos de uso, o las operaciones de las APIs"
           .value=${this._detail}
           @change=${(e: Event) =>
-            this.setDetail((e.target as HTMLSelectElement).value as 'contexts' | 'detail')}
+            this.setDetail(
+              (e.target as HTMLSelectElement).value as 'contexts' | 'detail' | 'operations',
+            )}
         >
           <option value="contexts" ?selected=${this._detail === 'contexts'}>Contextos</option>
           <option value="detail" ?selected=${this._detail === 'detail'}>
             Agregados y casos de uso
+          </option>
+          <option value="operations" ?selected=${this._detail === 'operations'}>
+            APIs y operaciones
           </option>
         </select>
         <button

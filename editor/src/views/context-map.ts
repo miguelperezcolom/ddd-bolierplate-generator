@@ -256,13 +256,19 @@ function detailedContainer(
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
-  detailed = false,
+  detail: 'contexts' | 'detail' | 'operations' = 'contexts',
   sizes: Record<string, { w: number; h: number }> = {},
 ): Scene {
+  const detailed = detail !== 'contexts';
+  // The deepest level: every API surfaces as a container with its operations,
+  // and its containment in the host system becomes a "publicada por" edge.
+  const operationsLevel = detail === 'operations';
   const externalIds = new Set(model.externalSystems.map((x) => x.id));
-  const nestedApis = (model.apis ?? []).filter(
-    (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
-  );
+  const nestedApis = operationsLevel
+    ? []
+    : (model.apis ?? []).filter(
+        (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
+      );
   const nestedApiIds = new Set(nestedApis.map((a) => a.id));
   const nestedProxies = (model.proxyApis ?? []).filter(
     (px) => px.publishedByExternalSystemId && externalIds.has(px.publishedByExternalSystemId),
@@ -683,6 +689,27 @@ export function contextMapScene(
         ]),
     ).values(),
   ];
+  // At the operations level the containment API → host is an explicit edge.
+  const publishedByEdges: SceneEdge[] = operationsLevel
+    ? (model.apis ?? [])
+        .filter(
+          (a) =>
+            a.publishedByExternalSystemId &&
+            nodeIds.has(a.publishedByExternalSystemId) &&
+            nodeIds.has(a.id),
+        )
+        .map((a) => ({
+          id: `pub:${a.id}->${a.publishedByExternalSystemId}`,
+          sourceId: a.id,
+          targetId: a.publishedByExternalSystemId!,
+          kind: 'published-by',
+          color: '#94a3b8',
+          dashed: true,
+          arrow: true,
+          tooltip: 'publicada por',
+        }))
+    : [];
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -810,6 +837,7 @@ export function contextMapScene(
       ...actorUseEdges,
       ...actorExternalEdges,
       ...externalDependencyEdges,
+      ...publishedByEdges,
       ...proxyTargetEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
