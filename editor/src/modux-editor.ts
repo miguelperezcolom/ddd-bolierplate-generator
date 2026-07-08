@@ -545,6 +545,12 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-external-dependency':
         return [{ kind: 'add-external-dependency', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'set-api-publisher': {
+        const api = (this.model.apis ?? []).find((a) => a.id === c.id);
+        return api
+          ? [{ kind: 'set-api-publisher', id: c.id, targetId: api.publishedByExternalSystemId ?? '' }]
+          : null;
+      }
       case 'add-actor-crud':
         return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-crud':
@@ -1205,6 +1211,16 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
+    // Dragging an API onto an external system declares its publisher (it nests inside).
+    if ((this.model.apis ?? []).some((a) => a.id === sourceId)) {
+      if (this.model.externalSystems.some((x) => x.id === targetId)) {
+        const api = (this.model.apis ?? []).find((a) => a.id === sourceId)!;
+        if (api.publishedByExternalSystemId !== targetId) {
+          this.command({ kind: 'set-api-publisher', id: sourceId, targetId });
+        }
+      }
+      return;
+    }
     if (agentIds.has(targetId)) return;
     const actorIds = new Set((this.model.actors ?? []).map((a) => a.id));
     if (actorIds.has(sourceId)) {
@@ -1522,6 +1538,13 @@ export class ModuxEditor extends LitElement {
         return;
       }
       if (relationExternalIds.has(targetId) && targetId !== sourceId) {
+        const exists = (this.model.externalSystemDependencies ?? []).some(
+          (d) => d.sourceId === sourceId && d.targetId === targetId,
+        );
+        if (!exists) this.command({ kind: 'add-external-dependency', sourceId, targetId });
+        return;
+      }
+      if ((this.model.apis ?? []).some((a) => a.id === targetId)) {
         const exists = (this.model.externalSystemDependencies ?? []).some(
           (d) => d.sourceId === sourceId && d.targetId === targetId,
         );

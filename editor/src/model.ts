@@ -164,6 +164,8 @@ export interface ApiRef {
   id: string;
   name: string;
   operations: ApiOperationRef[];
+  /** External system publishing this API (nests inside it on the map). */
+  publishedByExternalSystemId?: string;
 }
 
 export interface ExternalUseCaseRef {

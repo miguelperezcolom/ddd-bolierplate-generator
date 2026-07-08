@@ -28,8 +28,21 @@ public record ExternalSystemEntity(
         /** Tables/datasets it owns — pollable into read models (legacy integration). */
         List<ExternalSystemTableEntity> tables,
         /** Other external systems this one depends on (strategic context-map dependency). */
-        List<String> dependsOnExternalSystemIds
+        List<String> dependsOnExternalSystemIds,
+        /** Published APIs this system depends on (finer-grained than the whole system). */
+        List<String> dependsOnApiIds
 ) {
+
+    /** Backward-compatible constructor (pre-dependsOnApiIds callers and stores). */
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases,
+                                List<ExternalSystemTableEntity> tables,
+                                List<String> dependsOnExternalSystemIds) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                tables, dependsOnExternalSystemIds, List.of());
+    }
 
     /** Backward-compatible constructor (pre-dependsOnExternalSystemIds callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,
@@ -38,7 +51,7 @@ public record ExternalSystemEntity(
                                 List<ExternalSystemUseCaseEntity> useCases,
                                 List<ExternalSystemTableEntity> tables) {
         this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
-                tables, List.of());
+                tables, List.of(), List.of());
     }
 
     /** Backward-compatible constructor (pre-tables callers and stores). */
@@ -70,26 +83,35 @@ public record ExternalSystemEntity(
         return dependsOnExternalSystemIds != null ? dependsOnExternalSystemIds : List.of();
     }
 
+    public List<String> dependsOnApiIds() {
+        return dependsOnApiIds != null ? dependsOnApiIds : List.of();
+    }
+
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
     public ExternalSystemEntity withName(String name) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds);
+                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds);
     }
 
     public ExternalSystemEntity withUseCases(List<ExternalSystemUseCaseEntity> useCases) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds);
+                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds);
     }
 
     public ExternalSystemEntity withTables(List<ExternalSystemTableEntity> tables) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds);
+                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds);
     }
 
     public ExternalSystemEntity withDependsOnExternalSystemIds(List<String> ids) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, ids);
+                owner, decisionIds, useCases, tables, ids, dependsOnApiIds);
+    }
+
+    public ExternalSystemEntity withDependsOnApiIds(List<String> ids) {
+        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
+                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, ids);
     }
 }

@@ -105,7 +105,8 @@ interface ChildDesc {
     | 'query-service'
     | 'external-use-case'
     | 'external-table'
-    | 'api-operation';
+    | 'api-operation'
+    | 'api';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -123,6 +124,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
+  api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -136,6 +138,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'external-use-case': 'Caso de uso externo',
   'external-table': 'Tabla (legacy)',
   'api-operation': 'Operación de API',
+  api: 'API publicada por este sistema',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -253,10 +256,17 @@ export function contextMapScene(
   detailed = false,
   sizes: Record<string, { w: number; h: number }> = {},
 ): Scene {
+  const externalIds = new Set(model.externalSystems.map((x) => x.id));
+  const nestedApis = (model.apis ?? []).filter(
+    (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
+  );
+  const nestedApiIds = new Set(nestedApis.map((a) => a.id));
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false, api: false })),
     ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false })),
-    ...(model.apis ?? []).map((a) => ({ ref: a, external: false, api: true })),
+    ...(model.apis ?? [])
+      .filter((a) => !nestedApiIds.has(a.id))
+      .map((a) => ({ ref: a, external: false, api: true })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
@@ -267,7 +277,7 @@ export function contextMapScene(
         id: a.id,
         label: a.name,
         kind: 'api',
-        symbol: 'component',
+        symbol: 'interface',
         fill: '#eef2ff',
         stroke: '#4f46e5',
         badge: 'API',
@@ -299,11 +309,16 @@ export function contextMapScene(
         badge: 'EXTERNAL',
         tooltip: `${x.name} (sistema externo)`,
       };
-      if (detailed && ((x.useCases ?? []).length > 0 || (x.tables ?? []).length > 0)) {
+      const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
+      if (
+        detailed &&
+        ((x.useCases ?? []).length > 0 || (x.tables ?? []).length > 0 || publishedApis.length > 0)
+      ) {
         return detailedContainer(
           pos,
           base,
           [
+            ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
             ...(x.useCases ?? []).map(
               (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
             ),
@@ -608,18 +623,40 @@ export function contextMapScene(
       tooltip: 'depende de',
     }));
 
-  const externalDependencyEdges: SceneEdge[] = (model.externalSystemDependencies ?? [])
-    .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
-    .map((d) => ({
-      id: `xdep:${d.sourceId}->${d.targetId}`,
-      sourceId: d.sourceId,
-      targetId: d.targetId,
-      kind: 'ext-dep',
-      color: '#64748b',
-      dashed: true,
-      arrow: true,
-      tooltip: 'depende de',
-    }));
+  // A dependency on a nested API that is hidden at this detail level rolls up
+  // to the system publishing it (depending on the API implies depending on it).
+  const apiPublisher = new Map(
+    (model.apis ?? [])
+      .filter((a) => a.publishedByExternalSystemId)
+      .map((a) => [a.id, a.publishedByExternalSystemId!]),
+  );
+  const externalDependencyEdges: SceneEdge[] = [
+    ...new Map(
+      (model.externalSystemDependencies ?? [])
+        .map((d) => ({
+          sourceId: d.sourceId,
+          targetId: nodeIds.has(d.targetId)
+            ? d.targetId
+            : (apiPublisher.get(d.targetId) ?? d.targetId),
+        }))
+        .filter(
+          (d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId) && d.sourceId !== d.targetId,
+        )
+        .map((d): [string, SceneEdge] => [
+          `xdep:${d.sourceId}->${d.targetId}`,
+          {
+            id: `xdep:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'ext-dep',
+            color: '#64748b',
+            dashed: true,
+            arrow: true,
+            tooltip: 'depende de',
+          },
+        ]),
+    ).values(),
+  ];
 
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])

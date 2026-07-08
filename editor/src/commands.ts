@@ -280,6 +280,12 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** Nest an API inside the external system publishing it; empty target un-nests. */
+      kind: 'set-api-publisher';
+      id: string;
+      targetId: string;
+    }
+  | {
       /** An external system depends on another one (a context-map dependency edge). */
       kind: 'add-external-dependency';
       sourceId: string;

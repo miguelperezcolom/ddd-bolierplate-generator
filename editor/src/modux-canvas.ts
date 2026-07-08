@@ -92,6 +92,9 @@ const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <line x1="6" y1="4" x2="6" y2="1.5"></line><circle cx="6" cy="1.2" r="0.9"></circle>
     <circle cx="4.4" cy="7" r="0.8"></circle><circle cx="7.6" cy="7" r="0.8"></circle>`,
   usecase: svg`<ellipse cx="6" cy="6" rx="5.5" ry="3.6"></ellipse>`,
+  // ArchiMate application interface: the lollipop (a line ending in a circle).
+  interface: svg`<line x1="0.5" y1="6" x2="5.6" y2="6"></line>
+    <circle cx="8.9" cy="6" r="2.8"></circle>`,
   undo: svg`<path d="M10.5 8.5 A4.7 4.7 0 1 0 9.4 2.7"></path>
     <path d="M9.6 0.5 L9.4 3.2 L6.8 2.6"></path>`,
 };
@@ -915,6 +918,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
             node.kind === 'rag' ||
+            node.kind === 'api' ||
             node.kind === 'workflow-step')
           ? [
               [hw, 0],
@@ -936,8 +940,10 @@ export class ModuxCanvas extends LitElement {
                           : node.kind === 'workflow-step'
                           ? 'Arrastra hasta otro paso: el destino esperará a que éste complete'
                           : node.kind === 'external-system'
-                            ? 'Arrastra hasta un caso de uso (lo llamará vía ACL) o hasta otro sistema externo (dependencia)'
-                            : 'Arrastra hasta otro nodo para crear una relación'
+                            ? 'Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo o una API (dependencia)'
+                            : node.kind === 'api'
+                              ? 'Arrastra hasta el sistema externo que la publica: la API se anida en él'
+                              : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'external-use-case' || node.kind === 'external-table'
