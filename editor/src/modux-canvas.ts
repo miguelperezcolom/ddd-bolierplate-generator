@@ -439,7 +439,7 @@ export class ModuxCanvas extends LitElement {
   }
 
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || (e.buttons & 1) === 0) return;
     if (this._spaceDown) return; // let the zoom behavior pan instead
     e.stopPropagation();
     this.focus();
@@ -473,6 +473,11 @@ export class ModuxCanvas extends LitElement {
       return target.parentId ?? null;
     };
     const onMove = (ev: PointerEvent) => {
+      // Lost pointerup (native popup, window switch): settle the drag where it is.
+      if ((ev.buttons & 1) === 0) {
+        onUp(ev);
+        return;
+      }
       const p = this.toScene(ev);
       const dx = p.x - start.x;
       const dy = p.y - start.y;
@@ -553,7 +558,7 @@ export class ModuxCanvas extends LitElement {
    * keep their absolute position, so each edge stops at the outermost child.
    */
   private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: 1 | -1, sy: 1 | -1): void {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     this.focus();
     const MIN_W = 160;
@@ -569,6 +574,10 @@ export class ModuxCanvas extends LitElement {
       { w: MIN_W, h: MIN_H },
     );
     const onMove = (ev: PointerEvent) => {
+      if ((ev.buttons & 1) === 0) {
+        onUp();
+        return;
+      }
       const p = this.toScene(ev);
       if (ev.shiftKey) {
         this._resize = {
@@ -613,12 +622,21 @@ export class ModuxCanvas extends LitElement {
   // ---- edge drawing (connect gesture) -------------------------------------
 
   private onHandlePointerDown(e: PointerEvent, node: SceneNode): void {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     const p = this.toScene(e);
     this._pendingLink = { sourceId: node.id, x: p.x, y: p.y };
 
     const onMove = (ev: PointerEvent) => {
+      // Lost pointerup: connecting to whatever is under a ghost pointer would be
+      // wrong — drop the pending link instead.
+      if ((ev.buttons & 1) === 0) {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        this._pendingLink = null;
+        this._hoverNodeId = null;
+        return;
+      }
       const q = this.toScene(ev);
       this._pendingLink = { sourceId: node.id, x: q.x, y: q.y };
       this._hoverNodeId = this.nodeIdAt(ev);
@@ -749,12 +767,16 @@ export class ModuxCanvas extends LitElement {
    * the line alone so it just selects — and so a double-click can add a point.
    */
   private onEdgeHitPointerDown(e: PointerEvent, edge: SceneEdge, pts: Point[]): void {
-    if (e.button !== 0 || this.selectedId !== edge.id) return;
+    if (e.button !== 0 || (e.buttons & 1) === 0 || this.selectedId !== edge.id) return;
     e.stopPropagation();
     const start = this.toScene(e);
     const seg = this.nearestSegment(pts, start);
     let created = false;
     const onMove = (ev: PointerEvent) => {
+      if ((ev.buttons & 1) === 0) {
+        onUp();
+        return;
+      }
       const p = this.toScene(ev);
       if (!created) {
         if (Math.hypot(p.x - start.x, p.y - start.y) < 4 / this._t.k) return;
@@ -1064,7 +1086,19 @@ export class ModuxCanvas extends LitElement {
     const origin = this.toScene(e);
     this._rubber = { a: origin, b: origin };
     let moved = false;
+    const cancel = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', cancel);
+      this._rubber = null;
+    };
     const onMove = (ev: PointerEvent) => {
+      // The button is no longer held: the pointerup was swallowed (a native popup,
+      // window switch). End the gesture instead of chasing the mouse forever.
+      if ((ev.buttons & 1) === 0) {
+        cancel();
+        return;
+      }
       const p = this.toScene(ev);
       if (!moved && Math.hypot(p.x - origin.x, p.y - origin.y) < 4 / this._t.k) return;
       moved = true;
@@ -1073,6 +1107,7 @@ export class ModuxCanvas extends LitElement {
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', cancel);
       if (moved && this._rubber) {
         const { a, b } = this._rubber;
         const minX = Math.min(a.x, b.x);
@@ -1094,6 +1129,7 @@ export class ModuxCanvas extends LitElement {
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', cancel);
   }
 
   private renderRubber(): TemplateResult | typeof svg.prototype {
@@ -1215,6 +1251,9 @@ export class ModuxCanvas extends LitElement {
           const target = e.target as Element;
           if (target.closest('[data-node-id]') || target.closest('[data-edge-id]')) return;
           if (this._spaceDown || e.button !== 0) return; // space+drag pans (d3-zoom)
+          // A native <select> popup over the canvas can leak a ghost pointerdown with
+          // no button actually held — it must not start a gesture that never ends.
+          if ((e.buttons & 1) === 0) return;
           this.startRubberBand(e);
         }}
       >
