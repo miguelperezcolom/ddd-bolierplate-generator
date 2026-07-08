@@ -1,7 +1,7 @@
 import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType, SubdomainType } from './model.js';
-import { normalizeViewLayout } from './scene.js';
+import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { EditorLayout, Point, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene } from './views/context-map.js';
@@ -67,51 +67,6 @@ type ResizeNodeOp = {
   size: { w: number; h: number } | null;
 };
 type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp | ResizeNodeOp;
-
-/**
- * Minimal-displacement overlap resolution: iteratively push apart every pair of
- * boxes that overlap (inflated by a margin), along the axis of least penetration.
- * Returns ONLY the nodes that actually moved, with their new centres.
- */
-function declump(
-  nodes: { id: string; x: number; y: number; w: number; h: number }[],
-  margin = 48,
-): Map<string, { x: number; y: number }> {
-  const pos = new Map(nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
-  for (let iter = 0; iter < 80; iter++) {
-    let moved = false;
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        const a = nodes[i];
-        const b = nodes[j];
-        const pa = pos.get(a.id)!;
-        const pb = pos.get(b.id)!;
-        const dx = pb.x - pa.x;
-        const dy = pb.y - pa.y;
-        const ox = (a.w + b.w) / 2 + margin - Math.abs(dx);
-        const oy = (a.h + b.h) / 2 + margin - Math.abs(dy);
-        if (ox <= 0 || oy <= 0) continue;
-        moved = true;
-        if (ox < oy) {
-          const shift = ((dx >= 0 ? 1 : -1) * ox) / 2;
-          pa.x -= shift;
-          pb.x += shift;
-        } else {
-          const shift = ((dy >= 0 ? 1 : -1) * oy) / 2;
-          pa.y -= shift;
-          pb.y += shift;
-        }
-      }
-    }
-    if (!moved) break;
-  }
-  const changed = new Map<string, { x: number; y: number }>();
-  for (const n of nodes) {
-    const p = pos.get(n.id)!;
-    if (Math.abs(p.x - n.x) > 0.5 || Math.abs(p.y - n.y) > 0.5) changed.set(n.id, p);
-  }
-  return changed;
-}
 
 /** Does the segment a→b pass through the axis-aligned box? (Liang–Barsky clip) */
 function segmentCrossesBox(

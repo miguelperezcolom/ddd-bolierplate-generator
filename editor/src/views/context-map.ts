@@ -1,6 +1,6 @@
 import type { ModuxModel, ContextMapRelationType, FlowRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
-import { containerFit } from '../scene.js';
+import { containerFit, resolveOverlaps } from '../scene.js';
 
 /**
  * Context-map view adapter: projects the modux model into a generic Scene.
@@ -236,6 +236,32 @@ function externalSystemWithApiContainers(
   const plainOffs = plainChildren.map(
     (c, i) => layout[c.id] ?? defaultChildOffset(apis.length + i, sysSize),
   );
+  // Siblings NEVER overlap: separate the (large) API boxes and the plain chips
+  // before the system fits around them — display-time, so it always holds.
+  const separated = resolveOverlaps(
+    [
+      ...apiBoxes.map((b) => ({ id: b.a.id, x: b.fit.x, y: b.fit.y, w: b.fit.w, h: b.fit.h })),
+      ...plainChildren.map((c, i) => ({
+        id: c.id,
+        x: plainOffs[i].x,
+        y: plainOffs[i].y,
+        w: CHILD_W,
+        h: CHILD_H,
+      })),
+    ],
+    24,
+  );
+  for (const b of apiBoxes) {
+    const moved = separated.get(b.a.id);
+    if (moved) {
+      b.off = { x: b.off.x + (moved.x - b.fit.x), y: b.off.y + (moved.y - b.fit.y) };
+      b.fit = { ...b.fit, x: moved.x, y: moved.y };
+    }
+  }
+  plainChildren.forEach((c, i) => {
+    const moved = separated.get(c.id);
+    if (moved) plainOffs[i] = { x: moved.x, y: moved.y };
+  });
   const sysFit = containerFit(center, sysSize, [
     ...apiBoxes.map((b) => ({ dx: b.fit.x, dy: b.fit.y, w: b.fit.w, h: b.fit.h })),
     ...plainOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
@@ -307,6 +333,15 @@ function detailedContainer(
 ): SceneNode[] {
   const size = sizes[base.id] ?? defaultContainerSize(children.length);
   const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
+  // Siblings never overlap: nudge the chips apart before fitting the box.
+  const separated = resolveOverlaps(
+    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, w: CHILD_W, h: CHILD_H })),
+    10,
+  );
+  children.forEach((c, i) => {
+    const moved = separated.get(c.id);
+    if (moved) offsets[i] = { x: moved.x, y: moved.y };
+  });
   // Children must always fit inside the box: a stored size that no longer holds
   // them (new elements, legacy layouts) grows per side instead of letting them
   // spill. Children keep their absolute spot (offsets are from `center`).
