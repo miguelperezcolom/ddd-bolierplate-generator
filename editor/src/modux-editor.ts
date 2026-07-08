@@ -1165,6 +1165,27 @@ export class ModuxEditor extends LitElement {
     this.pushUndoEntry(ops);
   }
 
+  /** The selected element, when it is a first-class API (the import lands on it). */
+  private selectedApiId(): string | null {
+    return this._selectedId && (this.model.apis ?? []).some((a) => a.id === this._selectedId)
+      ? this._selectedId
+      : null;
+  }
+
+  /** Reads the picked contract and hands it to the host (the import is a server call). */
+  private async onImportApiFile(e: Event): Promise<void> {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const content = await file.text();
+    this.emit('modux-import-api', {
+      content,
+      fileName: file.name,
+      apiId: this.selectedApiId(),
+    });
+  }
+
   /** A multi-selection drag: every position lands in ONE layout write and ONE undo entry. */
   private onNodesMoved(e: CustomEvent): void {
     const { moves } = e.detail as { moves: { id: string; x: number; y: number }[] };
@@ -2860,6 +2881,23 @@ export class ModuxEditor extends LitElement {
           @click=${this.createElementFromToolbar}
         >
           ＋ Crear
+        </button>
+        <input
+          type="file"
+          hidden
+          accept=".json,.yaml,.yml,.wsdl,.xml"
+          @change=${this.onImportApiFile}
+        />
+        <button
+          class="tab"
+          ?hidden=${this._view !== 'context-map'}
+          title=${this.selectedApiId()
+            ? 'Importa un OpenAPI/WSDL sobre la API seleccionada (operaciones y modelos rq/rs)'
+            : 'Importa un OpenAPI/WSDL como una nueva API del diagrama'}
+          @click=${(e: Event) =>
+            ((e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement).click()}
+        >
+          ⇪ Importar API${this.selectedApiId() ? ' aquí' : '…'}
         </button>
         ${this._view === 'context-map' &&
         this._selectedId &&

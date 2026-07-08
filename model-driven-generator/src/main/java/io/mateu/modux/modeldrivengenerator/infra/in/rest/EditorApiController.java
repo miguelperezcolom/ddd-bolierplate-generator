@@ -80,6 +80,7 @@ public class EditorApiController {
     private final CommonFileRepository repository;
     private final FlowContextMapCoherenceService coherenceService;
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;
 
     // ---- projection -------------------------------------------------------
 
@@ -703,6 +704,26 @@ public class EditorApiController {
                                 String uri, String externalUseCaseId, String externalTableId,
                                 String apiId, String httpMethod, String path) {}
 
+    public record ImportApiRq(String apiId, String fileName, String content) {}
+
+    /**
+     * Imports an OpenAPI/WSDL contract as (or into) a first-class API: with apiId the
+     * operations and rq/rs data models land on that node; without it, the node is
+     * created from the contract's title.
+     */
+    @PostMapping("/import-api")
+    public java.util.Map<String, String> importApi(@RequestBody ImportApiRq rq) {
+        if (rq.content() == null || rq.content().isBlank()) {
+            throw new IllegalArgumentException("El contrato está vacío");
+        }
+        var name = rq.fileName() == null ? "" : rq.fileName().toLowerCase();
+        var wsdl = name.endsWith(".wsdl") || name.endsWith(".xml")
+                || (!rq.content().contains("openapi") && !rq.content().contains("swagger")
+                        && rq.content().contains("definitions"));
+        var apiId = importApiEntityUseCase.handle(rq.content(), wsdl, rq.apiId());
+        return java.util.Map.of("apiId", apiId);
+    }
+
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
         switch (Objects.requireNonNull(command.kind(), "command.kind")) {
@@ -1129,11 +1150,7 @@ public class EditorApiController {
                     .filter(a -> a.operations().stream().anyMatch(o -> o.id().equals(command.id())))
                     .findFirst()
                     .ifPresent(a -> repository.save(withApiOperations(a, a.operations().stream()
-                            .map(o -> o.id().equals(command.id())
-                                    ? new ApiOperationEntity(o.id(), command.name(), o.httpMethod(),
-                                            o.path(), o.description(), o.targetModuleId(),
-                                            o.targetUseCaseId())
-                                    : o)
+                            .map(o -> o.id().equals(command.id()) ? o.withName(command.name()) : o)
                             .toList())));
             case "external-table" -> {
                 var project = owningProject();
@@ -2227,8 +2244,7 @@ public class EditorApiController {
         }
         repository.save(withApiOperations(api, api.operations().stream()
                 .map(o -> o.id().equals(command.id())
-                        ? new ApiOperationEntity(o.id(), o.name(), o.httpMethod(), o.path(),
-                                o.description(), command.moduleId(), command.targetUseCaseId())
+                        ? o.withTargets(command.moduleId(), command.targetUseCaseId())
                         : o)
                 .toList()));
     }

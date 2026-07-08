@@ -456,6 +456,42 @@ export class ModuxEditorConnected extends LitElement {
     this._toastTimer = window.setTimeout(() => (this._toast = null), 5000);
   }
 
+  /** An OpenAPI/WSDL upload from the editor: operations (and rq/rs models) land in the store. */
+  private async onImportApi(e: CustomEvent): Promise<void> {
+    const { content, fileName, apiId } = e.detail as {
+      content: string;
+      fileName: string;
+      apiId: string | null;
+    };
+    await this.trackWrite(async () => {
+      try {
+        const res = await fetch(`${this.base}/import-api`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, fileName, apiId }),
+        });
+        if (!res.ok) {
+          let message = `El servidor rechazó el contrato (${res.status})`;
+          try {
+            const body = await res.json();
+            if (body?.message) message = body.message;
+          } catch {
+            /* not JSON */
+          }
+          this.showToast(message);
+          return;
+        }
+        const { apiId: landed } = await res.json();
+        const modelRes = await fetch(`${this.base}/model`);
+        if (modelRes.ok) this._model = await modelRes.json();
+        await this.refreshDiff();
+        this.showToast(`Contrato importado en ${landed}`, 'info');
+      } catch (err) {
+        this.showToast(String(err));
+      }
+    });
+  }
+
   private async onCommand(e: CustomEvent): Promise<void> {
     const { command } = e.detail;
     await this.trackWrite(async () => {
@@ -672,6 +708,7 @@ export class ModuxEditorConnected extends LitElement {
             )
           : null}
         @modux-command=${this.onCommand}
+        @modux-import-api=${this.onImportApi}
         @layout-changed=${this.onLayoutChanged}
         @modux-notice=${(e: CustomEvent) =>
           this.showToast(e.detail.message, e.detail.kind ?? 'info')}
