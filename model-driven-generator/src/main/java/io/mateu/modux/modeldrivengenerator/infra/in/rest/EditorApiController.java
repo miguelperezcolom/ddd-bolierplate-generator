@@ -1608,18 +1608,44 @@ public class EditorApiController {
                 && owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + host);
         }
-        repository.save(new ProxyApiEntity(command.id(), command.name(), null,
-                target == null || target.isBlank() ? null : target,
-                host == null || host.isBlank() ? null : host));
+        var targetApi = target == null || target.isBlank() ? null : target;
+        var hostId = host == null || host.isBlank() ? null : host;
+        repository.save(new ProxyApiEntity(command.id(), command.name(), null, targetApi, hostId));
+        if (targetApi != null) {
+            repointApiDependencies(targetApi, command.id(), hostId);
+        }
+    }
+
+    /**
+     * A proxy in front of an API takes over its consumers: whoever depended on the
+     * API now depends on the proxy (the host itself keeps its direct dependency —
+     * that is the proxy's own upstream call). Deleting a wired proxy hands them back.
+     */
+    private void repointApiDependencies(String fromId, String toId, String exceptSystemId) {
+        var project = owningProject();
+        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                .map(x -> x.dependsOnApiIds().contains(fromId) && !x.id().equals(exceptSystemId)
+                        ? x.withDependsOnApiIds(x.dependsOnApiIds().stream()
+                                .map(i -> i.equals(fromId) ? toId : i)
+                                .distinct()
+                                .toList())
+                        : x)
+                .toList()));
     }
 
     private void removeProxyApi(EditorCommand command) {
+        var proxy = repository.findById(command.id(), ProxyApiEntity.class).orElse(null);
+        if (proxy == null) return;
         var dependedOn = currentProject().stream()
                 .flatMap(p -> p.externalSystems().stream())
                 .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
-        if (dependedOn) {
+        if (dependedOn && proxy.targetApiId() == null) {
             throw new IllegalArgumentException(
                     "El proxy " + command.id() + " tiene sistemas externos que dependen de él; quita esas dependencias primero");
+        }
+        if (dependedOn) {
+            // Hand the consumers back to the API the proxy was fronting.
+            repointApiDependencies(command.id(), proxy.targetApiId(), null);
         }
         repository.deleteAllById(List.of(command.id()), ProxyApiEntity.class);
     }
@@ -1634,6 +1660,7 @@ public class EditorApiController {
                 throw new IllegalArgumentException("API desconocida: " + target);
             }
             repository.save(proxy.withTargetApiId(target));
+            repointApiDependencies(target, proxy.id(), proxy.publishedByExternalSystemId());
         } else {
             repository.save(proxy.withTargetApiId(null));
         }
