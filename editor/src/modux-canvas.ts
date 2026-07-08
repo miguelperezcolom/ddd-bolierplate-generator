@@ -913,7 +913,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'application-event' ||
             node.kind === 'external-use-case' ||
             node.kind === 'external-table' ||
-            node.kind === 'api-operation'
+            node.kind === 'api-operation' ||
+            node.kind === 'api'
           : node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
@@ -944,7 +945,9 @@ export class ModuxCanvas extends LitElement {
                             : node.kind === 'api'
                               ? 'Arrastra hasta el sistema externo que la publica: la API se anida en él'
                               : 'Arrastra hasta otro nodo para crear una relación'
-                    : node.kind === 'domain-event' || node.kind === 'application-event'
+                    : node.kind === 'api'
+                      ? 'Arrastra hasta otro sistema externo: la API se moverá a ese publicador'
+                      : node.kind === 'domain-event' || node.kind === 'application-event'
                       ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
                       : node.kind === 'external-use-case' || node.kind === 'external-table'
                         ? 'Arrastra hasta un read model o un contexto para proyectarlo (polling)'
