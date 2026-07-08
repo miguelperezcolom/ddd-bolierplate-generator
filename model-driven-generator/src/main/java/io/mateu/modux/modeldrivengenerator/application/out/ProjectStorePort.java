@@ -16,4 +16,10 @@ public interface ProjectStorePort {
     Path open(Repository repository);
 
     Optional<String> currentRepositoryId();
+
+    /** Which of the open store's projects is being worked on. */
+    Optional<String> currentProjectId();
+
+    /** Selects the working project; unknown ids fall back to the store's first project. */
+    void selectProject(String projectId);
 }

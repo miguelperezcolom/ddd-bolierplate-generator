@@ -47,6 +47,11 @@ public class RepositoryContextSwitchFilter extends OncePerRequestFilter {
                     && !selected.equals(projectStore.currentRepositoryId().orElse(null))) {
                 openUseCase.handle(selected);
             }
+            var selectedProject = appState.path("project").asText(null);
+            if (selectedProject != null && !selectedProject.isBlank()
+                    && !selectedProject.equals(projectStore.currentProjectId().orElse(null))) {
+                projectStore.selectProject(selectedProject);
+            }
         } catch (RuntimeException | IOException e) {
             log.debug("app-context no procesable en {}: {}", request.getRequestURI(), e.getMessage());
         }

@@ -78,6 +78,7 @@ public class EditorApiController {
 
     private final CommonFileRepository repository;
     private final FlowContextMapCoherenceService coherenceService;
+    private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
 
     // ---- projection -------------------------------------------------------
 
@@ -280,7 +281,18 @@ public class EditorApiController {
         var queryServicesByModule = repository.findAllOfType(QueryServiceEntity.class).stream()
                 .filter(qs -> qs.moduleId() != null)
                 .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
+        // The editor works on the current project: its services' modules, plus any
+        // module not wired to a service yet (legacy orphans stay visible).
+        var currentProject = owningProject();
+        var projectServiceIds = currentProject.serviceIds() == null
+                ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
+        var wiredElsewhere = services.stream()
+                .filter(s2 -> !projectServiceIds.contains(s2.id()))
+                .flatMap(s2 -> s2.moduleIds() == null ? java.util.stream.Stream.<String>empty()
+                        : s2.moduleIds().stream())
+                .collect(java.util.stream.Collectors.toSet());
         var modules = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> !wiredElsewhere.contains(m.id()))
                 .map(m -> new ModuleDto(
                         m.id(),
                         m.name(),
@@ -321,7 +333,7 @@ public class EditorApiController {
                 .toList();
 
         var projects = repository.findAllOfType(ProjectEntity.class);
-        var externalSystems = projects.stream()
+        var externalSystems = java.util.stream.Stream.of(currentProject)
                 .flatMap(p -> p.externalSystems().stream())
                 .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
                         .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
@@ -601,7 +613,7 @@ public class EditorApiController {
                     Objects.toString(moduleOfAggregate.apply(ref.sourceAggregateId()), "")),
                     "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
         }
-        var annotations = projects.stream().flatMap(p -> p.contextMap().stream()).toList();
+        var annotations = currentProject.contextMap();
         var relations = dependencyReasons.entrySet().stream()
                 .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
                 .map(e -> {
@@ -990,6 +1002,29 @@ public class EditorApiController {
                 s.completionEventName(), dependsOnStepIds, s.description());
     }
 
+    /** A new module belongs to the working project: it joins its first service's moduleIds. */
+    private void wireModuleIntoCurrentProject(String moduleId) {
+        var project = owningProject();
+        var serviceId = project.serviceIds() == null ? null
+                : project.serviceIds().stream().findFirst().orElse(null);
+        if (serviceId == null) return;
+        repository.findById(serviceId, ServiceEntity.class).ifPresent(service -> {
+            var moduleIds = new ArrayList<>(service.moduleIds() == null ? List.of() : service.moduleIds());
+            if (moduleIds.contains(moduleId)) return;
+            moduleIds.add(moduleId);
+            // ServiceEntity is huge; a Jackson round-trip copies it safely field-by-field.
+            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            var node = mapper.valueToTree(service);
+            ((com.fasterxml.jackson.databind.node.ObjectNode) node)
+                    .set("moduleIds", mapper.valueToTree(moduleIds));
+            try {
+                repository.save(mapper.treeToValue(node, ServiceEntity.class));
+            } catch (com.fasterxml.jackson.core.JacksonException e) {
+                throw new IllegalStateException("No se pudo cablear el módulo al servicio", e);
+            }
+        });
+    }
+
     private void removeModule(EditorCommand command) {
         var module = repository.findById(command.id(), ModuleEntity.class).orElse(null);
         if (module == null) return;
@@ -1161,6 +1196,7 @@ public class EditorApiController {
 
     private void addModule(EditorCommand command) {
         if (repository.findById(command.id(), ModuleEntity.class).isPresent()) return;
+        wireModuleIntoCurrentProject(command.id());
         repository.save(new ModuleEntity(
                 command.id(), command.name(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
@@ -2318,8 +2354,10 @@ public class EditorApiController {
     }
 
     private ProjectEntity owningProject() {
-        return repository.findAllOfType(ProjectEntity.class).stream()
-                .findFirst()
+        var projects = repository.findAllOfType(ProjectEntity.class);
+        return projectStore.currentProjectId()
+                .flatMap(id -> projects.stream().filter(p -> p.id().equals(id)).findFirst())
+                .or(() -> projects.stream().findFirst())
                 .orElseThrow(() -> new IllegalStateException("No project in the model store"));
     }
 

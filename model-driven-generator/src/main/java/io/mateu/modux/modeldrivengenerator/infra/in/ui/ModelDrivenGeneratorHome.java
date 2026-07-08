@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.menu.*;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.editor.GraphicalEditorPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.modelhealth.ModelHealthPage;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.ProjectContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.specsearch.SpecSearchCrudOrchestrator;
@@ -16,9 +17,12 @@ import io.mateu.uidl.annotations.UI;
 @Title("Modux")
 public class ModelDrivenGeneratorHome {
 
-    /** Modux works on ONE repository at a time — the active one is app-level context. */
+    /** Modux works on ONE repository + ONE project at a time — both are app-level context. */
     @AppContext(label = "Repositorio")
     RepositoryContextSelector repository;
+
+    @AppContext(label = "Proyecto")
+    ProjectContextSelector project;
 
     @Menu
     WorkspaceCrudOrchestrator workspace;

@@ -40,6 +40,8 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         repository.loadFrom(storePath.toString());
         bootstrapIfEmpty(repo, location);
         home.saveCurrentRepositoryId(repo.getId().id());
+        // A project selection from another repository does not survive the switch.
+        selectProject(home.loadCurrentProjectId().orElse(null));
         log.info("proyecto abierto desde el repositorio {} en {}", repo.getName().name(), storePath);
         return storePath;
     }
@@ -47,6 +49,24 @@ public class RepositoryStoreOpener implements ProjectStorePort {
     @Override
     public Optional<String> currentRepositoryId() {
         return home.loadCurrentRepositoryId();
+    }
+
+    @Override
+    public Optional<String> currentProjectId() {
+        return home.loadCurrentProjectId();
+    }
+
+    @Override
+    public void selectProject(String projectId) {
+        var projects = repository.findAllOfType(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class);
+        var resolved = projects.stream()
+                .filter(pr -> pr.id().equals(projectId))
+                .findFirst()
+                .or(() -> projects.stream().findFirst())
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::id)
+                .orElse(null);
+        home.saveCurrentProjectId(resolved);
     }
 
     private Path resolveLocation(Repository repo) {

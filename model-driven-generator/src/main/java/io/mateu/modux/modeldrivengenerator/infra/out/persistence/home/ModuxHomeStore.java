@@ -55,21 +55,36 @@ public class ModuxHomeStore {
         return homeDir().resolve("current.yaml");
     }
 
-    /** ~/.modux/current.yaml — which repository's project is open. */
-    record CurrentProject(String repositoryId) {}
+    /** ~/.modux/current.yaml — which repository is open, and which of its projects. */
+    record CurrentProject(String repositoryId, String projectId) {}
 
     @SneakyThrows
-    public synchronized Optional<String> loadCurrentRepositoryId() {
+    private CurrentProject loadCurrent() {
         var file = currentFile();
-        if (!Files.exists(file)) return Optional.empty();
-        return Optional.ofNullable(
-                yaml.readValue(Files.readString(file), CurrentProject.class).repositoryId());
+        if (!Files.exists(file)) return new CurrentProject(null, null);
+        return yaml.readValue(Files.readString(file), CurrentProject.class);
     }
 
     @SneakyThrows
-    public synchronized void saveCurrentRepositoryId(String repositoryId) {
+    private synchronized void saveCurrent(CurrentProject current) {
         Files.createDirectories(homeDir());
-        Files.writeString(currentFile(), yaml.writeValueAsString(new CurrentProject(repositoryId)));
+        Files.writeString(currentFile(), yaml.writeValueAsString(current));
+    }
+
+    public synchronized Optional<String> loadCurrentRepositoryId() {
+        return Optional.ofNullable(loadCurrent().repositoryId());
+    }
+
+    public synchronized void saveCurrentRepositoryId(String repositoryId) {
+        saveCurrent(new CurrentProject(repositoryId, loadCurrent().projectId()));
+    }
+
+    public synchronized Optional<String> loadCurrentProjectId() {
+        return Optional.ofNullable(loadCurrent().projectId());
+    }
+
+    public synchronized void saveCurrentProjectId(String projectId) {
+        saveCurrent(new CurrentProject(loadCurrent().repositoryId(), projectId));
     }
 
     @SneakyThrows
