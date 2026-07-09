@@ -1723,10 +1723,29 @@ export class ModuxEditor extends LitElement {
     input.value = '';
     if (!file) return;
     const content = await file.text();
+    const apiId = this.selectedApiId();
+    // An API never floats: without an API selected, the selected external system
+    // or context becomes the home of the imported contract.
+    const homeExternalId = apiId
+      ? null
+      : (this.model.externalSystems.find((x) => x.id === this._selectedId)?.id ?? null);
+    const homeModuleId =
+      apiId || homeExternalId
+        ? null
+        : (this.model.modules.find((mo) => mo.id === this._selectedId)?.id ?? null);
+    if (!apiId && !homeExternalId && !homeModuleId) {
+      this.emit('modux-notice', {
+        message:
+          'Selecciona la API destino, o el sistema externo o contexto que la publicará, antes de importar',
+      });
+      return;
+    }
     this.emit('modux-import-api', {
       content,
       fileName: file.name,
-      apiId: this.selectedApiId(),
+      apiId,
+      homeExternalId,
+      homeModuleId,
     });
   }
 
@@ -2045,6 +2064,21 @@ export class ModuxEditor extends LitElement {
         ((this.model.apis ?? []).some((a) => a.id === targetId) ||
           (this.model.proxyApis ?? []).some((px) => px.id === targetId)) &&
         !(rag.sourceApiIds ?? []).includes(targetId)
+      ) {
+        this.command({ kind: 'add-rag-source', sourceId, targetId });
+        return;
+      }
+      // Coarse sources: a whole external system, or a whole bounded context.
+      if (
+        this.model.externalSystems.some((x) => x.id === targetId) &&
+        !(rag.sourceExternalSystemIds ?? []).includes(targetId)
+      ) {
+        this.command({ kind: 'add-rag-source', sourceId, targetId });
+        return;
+      }
+      if (
+        this.model.modules.some((mo) => mo.id === targetId) &&
+        !(rag.sourceModuleIds ?? []).includes(targetId)
       ) {
         this.command({ kind: 'add-rag-source', sourceId, targetId });
       }
@@ -2768,10 +2802,10 @@ export class ModuxEditor extends LitElement {
     if (
       this._view === 'context-map' &&
       elementType === 'edge' &&
-      (kind === 'rag-table' || kind === 'rag-api')
+      (kind === 'rag-table' || kind === 'rag-api' || kind === 'rag-coarse')
     ) {
-      // ragtbl/ragapi run source→rag; the command speaks rag→source.
-      const match = /^rag(?:tbl|api):(.+)->(.+)$/.exec(id);
+      // ragtbl/ragapi/ragcoarse run source→rag; the command speaks rag→source.
+      const match = /^rag(?:tbl|api|coarse):(.+)->(.+)$/.exec(id);
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-rag-source', sourceId: match[2], targetId: match[1] });
@@ -3359,7 +3393,7 @@ export class ModuxEditor extends LitElement {
     { type: 'external-ai-agent', label: 'Agente IA externo' },
     { type: 'mcp-gateway', label: 'Gateway MCP' },
     { type: 'rag', label: 'RAG' },
-    { type: 'api', label: 'API' },
+    { type: 'api', label: 'API', child: true },
     { type: 'proxy-api', label: 'Proxy API' },
     { type: 'workflow', label: 'Workflow' },
     { type: 'aggregate', label: 'Agregado', child: true },
@@ -3508,6 +3542,13 @@ export class ModuxEditor extends LitElement {
     if (type === 'api-operation') {
       return chain.find((id) => (this.model.apis ?? []).some((a) => a.id === id)) ?? null;
     }
+    if (type === 'api') {
+      return (
+        chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ??
+        chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ??
+        null
+      );
+    }
     return null;
   }
 
@@ -3564,6 +3605,34 @@ export class ModuxEditor extends LitElement {
                               completionEventName: `${name.replace(/\s+/g, '')}Completado`,
                             };
       issue(cmd, id);
+      return;
+    }
+    if (type === 'api') {
+      // An API never floats: it is published by an external system or
+      // implemented by one of our bounded contexts.
+      const home = this.dropContainerFor('api', targetId);
+      if (!home) {
+        this.emit('modux-notice', {
+          message: 'Una API vive en un sistema externo o en un contexto: suéltala sobre uno',
+        });
+        return;
+      }
+      const { id, name } = this.uniquePaletteName('API', 'api-');
+      const addCmd: ModuxCommand = { kind: 'add-api', id, name };
+      const inverse = this.inverseOf(addCmd) ?? [];
+      this.command(addCmd, false);
+      if (this.model.externalSystems.some((x) => x.id === home)) {
+        this.command({ kind: 'set-api-publisher', id, targetId: home }, false);
+      } else {
+        this.command({ kind: 'add-api-implementation', apiId: id, moduleId: home }, false);
+      }
+      const current = this.viewLayout(this._view);
+      const parent = this.sceneFor(this._view).nodes.find((n) => n.id === home);
+      const p = parent
+        ? { x: Math.round(pos.x - parent.x), y: Math.round(pos.y - parent.y) }
+        : { x: Math.round(pos.x), y: Math.round(pos.y) };
+      this.writeViewLayout(this._view, { ...current, nodes: { ...current.nodes, [id]: p } });
+      this.pushUndoEntry([...inverse, { kind: 'move-node', view: this._view, id, pos: null }]);
       return;
     }
     const container = this.dropContainerFor(type, targetId);
@@ -3727,7 +3796,24 @@ export class ModuxEditor extends LitElement {
       } else if (this._newContextMapKind === 'rag') {
         this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
       } else if (this._newContextMapKind === 'api') {
-        this.command({ kind: 'add-api', id: `api-${slug(name)}`, name });
+        // An API never floats: the selected external system or context is its home.
+        const home =
+          this.model.externalSystems.find((x) => x.id === this._selectedId)?.id ??
+          this.model.modules.find((mo) => mo.id === this._selectedId)?.id;
+        if (!home) {
+          this.emit('modux-notice', {
+            message:
+              'Selecciona el sistema externo o el contexto que publica la API antes de crearla',
+          });
+          return;
+        }
+        const id = `api-${slug(name)}`;
+        this.command({ kind: 'add-api', id, name });
+        if (this.model.externalSystems.some((x) => x.id === home)) {
+          this.command({ kind: 'set-api-publisher', id, targetId: home }, false);
+        } else {
+          this.command({ kind: 'add-api-implementation', apiId: id, moduleId: home }, false);
+        }
       } else if (this._newContextMapKind === 'proxy-api') {
         this.command({ kind: 'add-proxy-api', id: `proxy-${slug(name)}`, name });
       } else if (this._detail !== 'contexts' && this._newContextMapKind === 'api-operation') {

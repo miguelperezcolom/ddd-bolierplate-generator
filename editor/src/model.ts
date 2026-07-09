@@ -263,6 +263,10 @@ export interface RagRef {
   sourceExternalTableIds?: string[];
   /** APIs (or proxies) whose content it indexes by calling them. */
   sourceApiIds?: string[];
+  /** Whole external systems it indexes (coarse). */
+  sourceExternalSystemIds?: string[];
+  /** Whole bounded contexts it indexes (coarse). */
+  sourceModuleIds?: string[];
 }
 
 /** An AI agent grounds its answers on a knowledge base. */

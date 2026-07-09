@@ -1167,6 +1167,31 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // RAG → coarse sources: a whole external system or a whole context.
+  const ragCoarseEdges: SceneEdge[] = [
+    ...new Map(
+      (model.rags ?? [])
+        .flatMap((r) => [
+          ...(r.sourceExternalSystemIds ?? []).map((xid) => ({ sourceId: xid, targetId: r.id, name: r.name })),
+          ...(r.sourceModuleIds ?? []).map((mid) => ({ sourceId: mid, targetId: r.id, name: r.name })),
+        ])
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `ragcoarse:${d.sourceId}->${d.targetId}`,
+          {
+            id: `ragcoarse:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'rag-coarse',
+            color: '#0e7490',
+            dashed: true,
+            arrow: true,
+            tooltip: `${d.name} indexa su contenido`,
+          },
+        ]),
+    ).values(),
+  ];
+
   // Agent → whole API (or proxy): its full tool surface, at every detail level.
   const agentApiEdges: SceneEdge[] = [
     ...new Map(
@@ -1558,6 +1583,7 @@ export function contextMapScene(
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
+      ...ragCoarseEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentMcpEdges,

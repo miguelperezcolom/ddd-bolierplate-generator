@@ -182,7 +182,9 @@ public class EditorApiController {
                          List<String> sourceReadModelIds,
                          List<RagContentSourceDto> contentSources,
                          List<String> sourceExternalTableIds,
-                         List<String> sourceApiIds) {}
+                         List<String> sourceApiIds,
+                         List<String> sourceExternalSystemIds,
+                         List<String> sourceModuleIds) {}
     public record RagContentSourceDto(String type, String uri) {}
     /** A published API as a first-class element; operations wire to their implementers. */
     public record ApiDto(String id, String name, List<ApiOperationDto> operations,
@@ -571,7 +573,8 @@ public class EditorApiController {
                         r.contentSources().stream()
                                 .map(s -> new RagContentSourceDto(s.type(), s.uri()))
                                 .toList(),
-                        r.sourceExternalTableIds(), r.sourceApiIds()))
+                        r.sourceExternalTableIds(), r.sourceApiIds(),
+                        r.sourceExternalSystemIds(), r.sourceModuleIds()))
                 .toList();
         var apis = repository.findAllOfType(ApiEntity.class).stream()
                 .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
@@ -2623,6 +2626,10 @@ public class EditorApiController {
                             a.allowedMcpServerIds().stream()
                                     .filter(id -> !leavingMcpIds.contains(id)).toList())));
         }
+        repository.findAllOfType(RagEntity.class).stream()
+                .filter(r -> r.sourceExternalSystemIds().contains(command.id()))
+                .forEach(r -> repository.save(r.withSourceExternalSystemIds(
+                        without(r.sourceExternalSystemIds(), command.id()))));
         // The APIs and proxies it published survive as standalone contracts.
         repository.findAllOfType(ApiEntity.class).stream()
                 .filter(a -> command.id().equals(a.publishedByExternalSystemId()))
@@ -3109,8 +3116,21 @@ public class EditorApiController {
             repository.save(rag.withSourceApiIds(appended(rag.sourceApiIds(), target)));
             return;
         }
+        if (currentProject().stream().flatMap(pr -> pr.externalSystems().stream())
+                .anyMatch(x -> x.id().equals(target))) {
+            if (rag.sourceExternalSystemIds().contains(target)) return;
+            repository.save(rag.withSourceExternalSystemIds(
+                    appended(rag.sourceExternalSystemIds(), target)));
+            return;
+        }
+        if (repository.findById(target, ModuleEntity.class).isPresent()) {
+            if (rag.sourceModuleIds().contains(target)) return;
+            repository.save(rag.withSourceModuleIds(appended(rag.sourceModuleIds(), target)));
+            return;
+        }
         throw new IllegalArgumentException(
-                "El RAG indexa read models, tablas externas o APIs; destino desconocido: " + target);
+                "El RAG indexa read models, tablas externas, APIs, sistemas externos o contextos; destino desconocido: "
+                        + target);
     }
 
     private void removeRagSource(EditorCommand command) {
@@ -3119,7 +3139,10 @@ public class EditorApiController {
                         .withSourceReadModelIds(without(rag.sourceReadModelIds(), command.targetId()))
                         .withSourceExternalTableIds(
                                 without(rag.sourceExternalTableIds(), command.targetId()))
-                        .withSourceApiIds(without(rag.sourceApiIds(), command.targetId()))));
+                        .withSourceApiIds(without(rag.sourceApiIds(), command.targetId()))
+                        .withSourceExternalSystemIds(
+                                without(rag.sourceExternalSystemIds(), command.targetId()))
+                        .withSourceModuleIds(without(rag.sourceModuleIds(), command.targetId()))));
     }
 
     /** External content feeding the RAG: a repo, a web site, an FTP server… */

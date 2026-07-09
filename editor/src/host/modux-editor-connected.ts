@@ -478,10 +478,12 @@ export class ModuxEditorConnected extends LitElement {
 
   /** An OpenAPI/WSDL upload from the editor: operations (and rq/rs models) land in the store. */
   private async onImportApi(e: CustomEvent): Promise<void> {
-    const { content, fileName, apiId } = e.detail as {
+    const { content, fileName, apiId, homeExternalId, homeModuleId } = e.detail as {
       content: string;
       fileName: string;
       apiId: string | null;
+      homeExternalId?: string | null;
+      homeModuleId?: string | null;
     };
     await this.trackWrite(async () => {
       try {
@@ -502,6 +504,19 @@ export class ModuxEditorConnected extends LitElement {
           return;
         }
         const { apiId: landed } = await res.json();
+        // A freshly imported API never floats: it lands on the selected home.
+        const homeCommand = homeExternalId
+          ? { kind: 'set-api-publisher', id: landed, targetId: homeExternalId }
+          : homeModuleId
+            ? { kind: 'add-api-implementation', apiId: landed, moduleId: homeModuleId }
+            : null;
+        if (homeCommand) {
+          await fetch(`${this.base}/commands`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(homeCommand),
+          });
+        }
         const modelRes = await fetch(`${this.base}/model`);
         if (modelRes.ok) this._model = await modelRes.json();
         await this.refreshDiff();
