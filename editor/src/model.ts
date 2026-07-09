@@ -131,13 +131,15 @@ export interface ExternalOperationUseRef {
 }
 
 /**
- * The use case implementing ONE operation AT one implementation site (a bounded context
- * implementing the API). Per-site: during a strangler migration the same operation may be
- * implemented differently at each site, and the use case may live in ANOTHER context.
+ * The use case serving ONE operation AT one site — a bounded context implementing the
+ * API, or a proxy fronting it (moduleId holds either id). Per-site: during a strangler
+ * migration the same operation may be served differently at each site, and the use case
+ * may live in ANOTHER context.
  */
 export interface ApiOperationImplementationRef {
   apiId: string;
   operationId: string;
+  /** The site: a bounded-context id or a proxy id. */
   moduleId: string;
   useCaseId: string;
 }

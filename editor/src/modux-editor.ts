@@ -1785,24 +1785,17 @@ export class ModuxEditor extends LitElement {
         this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (occUcIds.has(targetId)) {
-        if (this.model.modules.some((m) => m.id === siteId)) {
-          // From an implementation site: per-site wiring — the use case implementing the
-          // operation THERE (it may live in any bounded context).
-          this.command({
-            kind: 'set-api-operation-implementation',
-            apiId: occApiId,
-            operationId,
-            moduleId: siteId,
-            targetUseCaseId: targetId,
-          });
-        } else {
-          this.command({
-            kind: 'set-api-operation-target',
-            apiId: occApiId,
-            id: operationId,
-            targetUseCaseId: targetId,
-          });
-        }
+        // From an occurrence, the wiring is ALWAYS per-site: the site is the bounded
+        // context implementing the API, or the proxy fronting it — the use case serving
+        // the operation there may live in any context. (The published chip keeps the
+        // global targetUseCaseId wiring.)
+        this.command({
+          kind: 'set-api-operation-implementation',
+          apiId: occApiId,
+          operationId,
+          moduleId: siteId,
+          targetUseCaseId: targetId,
+        });
         return;
       }
       // The routing gestures below only make sense from a PROXY's occurrence.

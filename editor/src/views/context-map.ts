@@ -1226,9 +1226,10 @@ export function contextMapScene(
     ).values(),
   ];
 
-  // Per-site wiring: the operation AT an implementation site → the use case implementing
-  // it there (which may live in any context). Source: the occurrence chip when unfolded,
-  // else the implementation chip.
+  // Per-site wiring: the operation AT a site (a bounded-context implementation, or a
+  // proxy) → the use case serving it there (which may live in any context). Source: the
+  // occurrence chip when unfolded, else the site's own node (impl chip / proxy, rolled
+  // up to its host when folded away).
   const apiOpImplWireEdges: SceneEdge[] = detailed
     ? (model.apiOperationImplementations ?? []).flatMap((w) => {
         if (!nodeIds.has(w.useCaseId)) return [];
@@ -1236,7 +1237,9 @@ export function contextMapScene(
           ? apiOpOccurrenceId(w.operationId, w.moduleId)
           : nodeIds.has(apiImplNodeId(w.apiId, w.moduleId))
             ? apiImplNodeId(w.apiId, w.moduleId)
-            : null;
+            : nodeIds.has(rollUp(w.moduleId))
+              ? rollUp(w.moduleId)
+              : null;
         if (!source) return [];
         return [{
           id: `apiimplwire:${w.operationId}@${w.moduleId}`,

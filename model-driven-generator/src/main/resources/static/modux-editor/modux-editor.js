@@ -856,7 +856,7 @@ function ys(e, t, i = "contexts", s = {}) {
     ).values()
   ], J = n ? (e.apiOperationImplementations ?? []).flatMap((d) => {
     if (!k.has(d.useCaseId)) return [];
-    const M = k.has(Le(d.operationId, d.moduleId)) ? Le(d.operationId, d.moduleId) : k.has(ze(d.apiId, d.moduleId)) ? ze(d.apiId, d.moduleId) : null;
+    const M = k.has(Le(d.operationId, d.moduleId)) ? Le(d.operationId, d.moduleId) : k.has(ze(d.apiId, d.moduleId)) ? ze(d.apiId, d.moduleId) : k.has(B(d.moduleId)) ? B(d.moduleId) : null;
     return M ? [{
       id: `apiimplwire:${d.operationId}@${d.moduleId}`,
       sourceId: M,
@@ -6596,16 +6596,11 @@ let V = class extends He {
       if (new Set(
         this.model.modules.flatMap((B) => (B.useCases ?? []).map((u) => u.id))
       ).has(i)) {
-        this.model.modules.some((B) => B.id === _) ? this.command({
+        this.command({
           kind: "set-api-operation-implementation",
           apiId: N,
           operationId: x,
           moduleId: _,
-          targetUseCaseId: i
-        }) : this.command({
-          kind: "set-api-operation-target",
-          apiId: N,
-          id: x,
           targetUseCaseId: i
         });
         return;
