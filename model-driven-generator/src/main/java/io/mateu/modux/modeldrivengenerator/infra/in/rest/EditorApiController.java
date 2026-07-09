@@ -167,6 +167,8 @@ public class EditorApiController {
     public record AgentGatewayUseDto(String agentId, String gatewayId) {}
     /** An AI agent calls an API operation as a tool. */
     public record AgentApiOpUseDto(String agentId, String apiOperationId) {}
+    /** An agent may call a whole API — or an API proxy — as a tool (every operation). */
+    public record AgentApiUseDto(String agentId, String apiId) {}
     /** An AI agent consults a query service as a read tool. */
     public record AgentQueryUseDto(String agentId, String queryServiceId) {}
     /** An AI agent delegates work to another agent. */
@@ -246,6 +248,7 @@ public class EditorApiController {
             List<McpGatewayDto> mcpGateways,
             List<AgentGatewayUseDto> agentGatewayUses,
             List<AgentApiOpUseDto> agentApiOpUses,
+            List<AgentApiUseDto> agentApiUses,
             List<AgentQueryUseDto> agentQueryUses,
             List<AgentDelegationDto> agentDelegations,
             List<ActorAgentUseDto> actorAgentUses,
@@ -529,6 +532,7 @@ public class EditorApiController {
         var agentMcpUses = new ArrayList<AgentMcpUseDto>();
         var agentGatewayUses = new ArrayList<AgentGatewayUseDto>();
         var agentApiOpUses = new ArrayList<AgentApiOpUseDto>();
+        var agentApiUses = new ArrayList<AgentApiUseDto>();
         var agentQueryUses = new ArrayList<AgentQueryUseDto>();
         var agentDelegations = new ArrayList<AgentDelegationDto>();
         var agentTriggers = new ArrayList<AgentTriggerDto>();
@@ -543,6 +547,8 @@ public class EditorApiController {
                     id -> agentGatewayUses.add(new AgentGatewayUseDto(agent.id(), id)));
             agent.allowedApiOperationIds().forEach(
                     id -> agentApiOpUses.add(new AgentApiOpUseDto(agent.id(), id)));
+            agent.allowedApiIds().forEach(
+                    id -> agentApiUses.add(new AgentApiUseDto(agent.id(), id)));
             agent.allowedQueryServiceIds().forEach(
                     id -> agentQueryUses.add(new AgentQueryUseDto(agent.id(), id)));
             agent.delegateAgentIds().forEach(
@@ -780,6 +786,7 @@ public class EditorApiController {
                 mcpGateways,
                 agentGatewayUses.stream().distinct().toList(),
                 agentApiOpUses.stream().distinct().toList(),
+                agentApiUses.stream().distinct().toList(),
                 agentQueryUses.stream().distinct().toList(),
                 agentDelegations.stream().distinct().toList(),
                 actorAgentUses.stream().distinct().toList(),
@@ -874,6 +881,8 @@ public class EditorApiController {
             case "remove-agent-gateway" -> removeAgentGateway(command);
             case "add-agent-api-operation" -> addAgentApiOperation(command);
             case "remove-agent-api-operation" -> removeAgentApiOperation(command);
+            case "add-agent-api" -> addAgentApi(command);
+            case "remove-agent-api" -> removeAgentApi(command);
             case "add-agent-query" -> addAgentQuery(command);
             case "remove-agent-query" -> removeAgentQuery(command);
             case "add-agent-delegate" -> addAgentDelegate(command);
@@ -2732,6 +2741,26 @@ public class EditorApiController {
     }
 
     /** Agent → API operation: the operation joins the agent's tool surface. */
+    /** The whole API (or proxy) as a tool: every operation of it, present and future. */
+    private void addAgentApi(EditorCommand command) {
+        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown AI agent: " + command.sourceId()));
+        if (repository.findById(command.targetId(), ApiEntity.class).isEmpty()
+                && repository.findById(command.targetId(), ProxyApiEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("API desconocida: " + command.targetId());
+        }
+        if (agent.allowedApiIds().contains(command.targetId())) return;
+        repository.save(agent.withAllowedApiIds(
+                appended(agent.allowedApiIds(), command.targetId())));
+    }
+
+    private void removeAgentApi(EditorCommand command) {
+        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(a ->
+                repository.save(a.withAllowedApiIds(
+                        without(a.allowedApiIds(), command.targetId()))));
+    }
+
     private void addAgentApiOperation(EditorCommand command) {
         var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));

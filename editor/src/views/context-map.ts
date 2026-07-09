@@ -1108,6 +1108,28 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // Agent → whole API (or proxy): its full tool surface, at every detail level.
+  const agentApiEdges: SceneEdge[] = [
+    ...new Map(
+      (model.agentApiUses ?? [])
+        .map((u) => ({ sourceId: u.agentId, targetId: rollUp(u.apiId) }))
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `agapi:${d.sourceId}->${d.targetId}`,
+          {
+            id: `agapi:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'agent-api',
+            color: '#9333ea',
+            dashed: true,
+            arrow: true,
+            tooltip: 'consume la API entera como herramienta',
+          },
+        ]),
+    ).values(),
+  ];
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -1474,6 +1496,7 @@ export function contextMapScene(
       ...apiOpImplWireEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
+      ...agentApiEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentMcpEdges,

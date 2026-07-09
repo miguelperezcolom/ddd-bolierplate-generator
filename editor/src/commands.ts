@@ -179,6 +179,13 @@ export type ModuxCommand =
     }
   | { kind: 'remove-agent-api-operation'; sourceId: string; targetId: string }
   | {
+      /** An agent may call a whole API — or an API proxy — as a tool. */
+      kind: 'add-agent-api';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-agent-api'; sourceId: string; targetId: string }
+  | {
       /** The agent consults a query service as a read tool. */
       kind: 'add-agent-query';
       sourceId: string;

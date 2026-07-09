@@ -198,6 +198,12 @@ export interface AgentApiOpUseRef {
   apiOperationId: string;
 }
 
+/** An agent may call a whole API — or an API proxy — as a tool. */
+export interface AgentApiUseRef {
+  agentId: string;
+  apiId: string;
+}
+
 /** An AI agent consults a query service as a read tool. */
 export interface AgentQueryUseRef {
   agentId: string;
@@ -491,6 +497,7 @@ export interface ModuxModel {
   mcpGateways?: McpGatewayRef[];
   agentGatewayUses?: AgentGatewayUseRef[];
   agentApiOpUses?: AgentApiOpUseRef[];
+  agentApiUses?: AgentApiUseRef[];
   agentQueryUses?: AgentQueryUseRef[];
   agentDelegations?: AgentDelegationRef[];
   actorAgentUses?: ActorAgentUseRef[];

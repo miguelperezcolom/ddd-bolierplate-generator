@@ -1046,6 +1046,10 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-agent-gateway', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-gateway':
         return [{ kind: 'add-agent-gateway', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-agent-api':
+        return [{ kind: 'remove-agent-api', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-agent-api':
+        return [{ kind: 'add-agent-api', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-agent-api-operation':
         return [{ kind: 'remove-agent-api-operation', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-agent-api-operation':
@@ -1883,6 +1887,17 @@ export class ModuxEditor extends LitElement {
           (u) => u.agentId === sourceId && u.apiOperationId === targetId,
         );
         if (!already) this.command({ kind: 'add-agent-api-operation', sourceId, targetId });
+        return;
+      }
+      // Or a WHOLE API — real or proxy — as a tool (every operation of it).
+      if (
+        (this.model.apis ?? []).some((a) => a.id === targetId) ||
+        (this.model.proxyApis ?? []).some((px) => px.id === targetId)
+      ) {
+        const already = (this.model.agentApiUses ?? []).some(
+          (u) => u.agentId === sourceId && u.apiId === targetId,
+        );
+        if (!already) this.command({ kind: 'add-agent-api', sourceId, targetId });
         return;
       }
       // Or a query service as a read tool.
@@ -2742,6 +2757,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-external-dependency', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-api') {
+      const match = /^agapi:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-agent-api', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'proxy-target') {
