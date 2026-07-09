@@ -1052,7 +1052,9 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'external-use-case' ||
             node.kind === 'external-table' ||
             node.kind === 'api-operation' ||
+            node.kind === 'api-op-occurrence' ||
             node.kind === 'api' ||
+            node.kind === 'api-impl' ||
             node.kind === 'proxy-api'
           : node.kind === 'external-system' ||
             node.kind === 'actor' ||
@@ -1100,6 +1102,8 @@ export class ModuxCanvas extends LitElement {
                         ? 'Arrastra hasta un read model o un contexto para proyectarlo (polling)'
                         : node.kind === 'api-operation'
                           ? 'Arrastra hasta el caso de uso, policy o contexto que la implementa'
+                          : node.kind === 'api-op-occurrence'
+                          ? 'Arrastra hasta la implementación que sirve esta operación (la API publicada o la de un bounded context)'
                           : node.kind === 'use-case'
                         ? 'Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo'
                         : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>

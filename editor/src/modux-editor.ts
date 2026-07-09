@@ -1722,6 +1722,31 @@ export class ModuxEditor extends LitElement {
     if (opOcc) {
       const [, operationId, siteId] = opOcc;
       const px = (this.model.proxyApis ?? []).find((p) => p.id === siteId);
+      // The occurrence's API: through the proxy's target, or the site module's implementation.
+      const occApiId =
+        px?.targetApiId ??
+        (this.model.apiImplementations ?? []).find(
+          (impl) =>
+            impl.moduleId === siteId &&
+            (this.model.apis ?? []).some(
+              (a) => a.id === impl.apiId && a.operations.some((o) => o.id === operationId),
+            ),
+        )?.apiId;
+      if (!occApiId) return;
+      // Occurrence → use case: the fine wiring of the OPERATION itself (any site, same op).
+      const occUcIds = new Set(
+        this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+      );
+      if (occUcIds.has(targetId)) {
+        this.command({
+          kind: 'set-api-operation-target',
+          apiId: occApiId,
+          id: operationId,
+          targetUseCaseId: targetId,
+        });
+        return;
+      }
+      // The routing gestures below only make sense from a PROXY's occurrence.
       if (!px?.targetApiId) return;
       let targetSiteId: string | null = null;
       if (targetId === px.targetApiId) {
