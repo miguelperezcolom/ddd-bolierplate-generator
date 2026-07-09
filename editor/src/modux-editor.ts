@@ -12,6 +12,7 @@ import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
+import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
 const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string }> = {
@@ -436,6 +437,25 @@ export class ModuxEditor extends LitElement {
       cursor: grab;
       background: #f8fafc;
       user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .pal-ico {
+      flex: 0 0 13px;
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      overflow: visible;
+    }
+    .pal-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .palette-item:hover {
       background: #eef2ff;
@@ -3637,86 +3657,162 @@ export class ModuxEditor extends LitElement {
 
   // ── palette (drag to create / drag to place) ────────────────────────────
 
-  private static readonly PALETTE_NEW: { type: string; label: string; child?: boolean }[] = [
-    { type: 'module', label: 'Contexto' },
-    { type: 'actor', label: 'Actor' },
-    { type: 'external-system', label: 'Sistema externo' },
-    { type: 'ai-agent', label: 'Agente IA' },
-    { type: 'external-ai-agent', label: 'Agente IA externo' },
-    { type: 'mcp-gateway', label: 'Gateway MCP' },
-    { type: 'rag', label: 'RAG' },
-    { type: 'api', label: 'API', child: true },
-    { type: 'proxy-api', label: 'Proxy API' },
-    { type: 'workflow', label: 'Workflow' },
-    { type: 'workflow-step', label: 'Paso de workflow', child: true },
-    { type: 'aggregate', label: 'Agregado', child: true },
-    { type: 'use-case', label: 'Caso de uso', child: true },
-    { type: 'use-case-step', label: 'Paso de caso de uso', child: true },
-    { type: 'policy', label: 'Policy', child: true },
-    { type: 'domain-event', label: 'Evento de dominio', child: true },
-    { type: 'application-event', label: 'Evento de aplicación', child: true },
-    { type: 'read-model', label: 'Read model', child: true },
-    { type: 'domain-service', label: 'Servicio de dominio', child: true },
-    { type: 'query-service', label: 'Query service', child: true },
-    { type: 'api-operation', label: 'Operación de API', child: true },
-    { type: 'external-use-case', label: 'Operación externa', child: true },
-    { type: 'external-table', label: 'Tabla externa', child: true },
-    { type: 'mcp-server', label: 'Servidor MCP', child: true },
+  /** Palette entries carry the SAME glyph and stroke colour their node wears on the canvas. */
+  private static readonly PALETTE_NEW: {
+    type: string;
+    label: string;
+    child?: boolean;
+    symbol: string;
+    color: string;
+  }[] = [
+    { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8' },
+    { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b' },
+    { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b' },
+    { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea' },
+    { type: 'external-ai-agent', label: 'Agente IA externo', symbol: 'robot', color: '#9333ea' },
+    { type: 'mcp-gateway', label: 'Gateway MCP', symbol: 'plug', color: '#7c3aed' },
+    { type: 'rag', label: 'RAG', symbol: 'lens', color: '#0e7490' },
+    { type: 'api', label: 'API', child: true, symbol: 'interface', color: '#4f46e5' },
+    { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490' },
+    { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9' },
+    { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9' },
+    { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6' },
+    { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4' },
+    { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4' },
+    { type: 'policy', label: 'Policy', child: true, symbol: 'usecase', color: '#a855f7' },
+    { type: 'domain-event', label: 'Evento de dominio', child: true, symbol: 'event', color: '#f59e0b' },
+    { type: 'application-event', label: 'Evento de aplicación', child: true, symbol: 'event', color: '#eab308' },
+    { type: 'read-model', label: 'Read model', child: true, symbol: 'readmodel', color: '#10b981' },
+    { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e' },
+    { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7' },
+    { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5' },
+    { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b' },
+    { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207' },
+    { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea' },
   ];
 
-  /** Every element of the model, grouped for the palette's «Existentes» section. */
-  private paletteCatalog(): { label: string; items: { id: string; name: string }[] }[] {
+  /** Every element of the model, grouped for the palette's «Catálogo» tab. */
+  private paletteCatalog(): {
+    label: string;
+    symbol: string;
+    color: string;
+    items: { id: string; name: string }[];
+  }[] {
     const m = this.model;
-    const groups: { label: string; items: { id: string; name: string }[] }[] = [
-      { label: 'Contextos', items: m.modules.map((x) => ({ id: x.id, name: x.name })) },
+    const groups: {
+      label: string;
+      symbol: string;
+      color: string;
+      items: { id: string; name: string }[];
+    }[] = [
+      {
+        label: 'Contextos',
+        symbol: 'component',
+        color: '#94a3b8',
+        items: m.modules.map((x) => ({ id: x.id, name: x.name })),
+      },
       {
         label: 'Casos de uso',
+        symbol: 'usecase',
+        color: '#06b6d4',
         items: m.modules.flatMap((mod) => (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name }))),
       },
       {
         label: 'Eventos',
+        symbol: 'event',
+        color: '#f59e0b',
         items: m.modules.flatMap((mod) => [
           ...(mod.domainEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
           ...(mod.applicationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
         ]),
       },
-      { label: 'Agregados', items: (m.aggregates ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'Agregados',
+        symbol: 'aggregate',
+        color: '#8b5cf6',
+        items: (m.aggregates ?? []).map((a) => ({ id: a.id, name: a.name })),
+      },
       {
         label: 'Read models',
+        symbol: 'readmodel',
+        color: '#10b981',
         items: m.modules.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
       },
       {
         label: 'Query services',
+        symbol: 'lens',
+        color: '#0284c7',
         items: m.modules.flatMap((mod) => (mod.queryServices ?? []).map((q) => ({ id: q.id, name: q.name }))),
       },
-      { label: 'Actores', items: (m.actors ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'Actores',
+        symbol: 'person',
+        color: '#64748b',
+        items: (m.actors ?? []).map((a) => ({ id: a.id, name: a.name })),
+      },
       {
         label: 'Sistemas externos',
+        symbol: 'component',
+        color: '#64748b',
         items: m.externalSystems.map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Operaciones y tablas externas',
+        symbol: 'usecase',
+        color: '#64748b',
         items: m.externalSystems.flatMap((x) => [
           ...(x.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
           ...(x.tables ?? []).map((t) => ({ id: t.id, name: t.name })),
           ...(x.mcpServers ?? []).map((sv) => ({ id: sv.id, name: sv.name })),
         ]),
       },
-      { label: 'APIs', items: (m.apis ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'APIs',
+        symbol: 'interface',
+        color: '#4f46e5',
+        items: (m.apis ?? []).map((a) => ({ id: a.id, name: a.name })),
+      },
       {
         label: 'Operaciones de API',
+        symbol: 'usecase',
+        color: '#4f46e5',
         items: (m.apis ?? []).flatMap((a) => a.operations.map((o) => ({ id: o.id, name: o.name }))),
       },
-      { label: 'Proxies API', items: (m.proxyApis ?? []).map((px) => ({ id: px.id, name: px.name })) },
-      { label: 'Agentes IA', items: (m.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name })) },
-      { label: 'Gateways MCP', items: (m.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name })) },
-      { label: 'RAGs', items: (m.rags ?? []).map((r) => ({ id: r.id, name: r.name })) },
-      { label: 'Workflows', items: (m.workflows ?? []).map((w) => ({ id: w.id, name: w.name })) },
+      {
+        label: 'Proxies API',
+        symbol: 'interface',
+        color: '#0e7490',
+        items: (m.proxyApis ?? []).map((px) => ({ id: px.id, name: px.name })),
+      },
+      {
+        label: 'Agentes IA',
+        symbol: 'robot',
+        color: '#9333ea',
+        items: (m.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name })),
+      },
+      {
+        label: 'Gateways MCP',
+        symbol: 'plug',
+        color: '#7c3aed',
+        items: (m.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name })),
+      },
+      {
+        label: 'RAGs',
+        symbol: 'lens',
+        color: '#0e7490',
+        items: (m.rags ?? []).map((r) => ({ id: r.id, name: r.name })),
+      },
+      {
+        label: 'Workflows',
+        symbol: 'process',
+        color: '#6d28d9',
+        items: (m.workflows ?? []).map((w) => ({ id: w.id, name: w.name })),
+      },
     ];
     const needle = this._paletteFilter.trim().toLowerCase();
     return groups
       .map((g) => ({
-        label: g.label,
+        ...g,
         items: needle ? g.items.filter((it) => it.name.toLowerCase().includes(needle)) : g.items,
       }))
       .filter((g) => g.items.length > 0);
@@ -4115,7 +4211,10 @@ export class ModuxEditor extends LitElement {
                           : 'Suéltalo en el lienzo'}
                       @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
                     >
-                      ＋ ${k.label}
+                      <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${k.color}">
+                        ${SYMBOLS[k.symbol]}
+                      </svg>
+                      <span class="pal-label">${k.label}</span>
                     </div>
                   `,
                 )}
@@ -4133,7 +4232,10 @@ export class ModuxEditor extends LitElement {
                           title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
                           @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { existing: it.id })}
                         >
-                          ${it.name}
+                          <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${g.color}">
+                            ${SYMBOLS[g.symbol]}
+                          </svg>
+                          <span class="pal-label">${it.name}</span>
                         </div>
                       `,
                     )}

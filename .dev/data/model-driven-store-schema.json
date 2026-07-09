@@ -156,6 +156,14 @@
     "AiAgentEntity" : {
       "type" : "object",
       "properties" : {
+        "allowedApiIds" : {
+          "description" : "References to existing 'allowedApi' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "allowedApiOperationIds" : {
           "description" : "References to existing 'allowedApiOperation' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -657,6 +665,12 @@
     "DiagramEntity" : {
       "type" : "object",
       "properties" : {
+        "collapsed" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "detail" : {
           "type" : "string"
         },
@@ -2867,6 +2881,38 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "sourceApiIds" : {
+          "description" : "References to existing 'sourceApi' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "sourceExternalSystemIds" : {
+          "description" : "References to existing 'sourceExternalSystem' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "sourceExternalTableIds" : {
+          "description" : "References to existing 'sourceExternalTable' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "sourceModuleIds" : {
+          "description" : "References to existing 'sourceModule' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
         },
         "sourceReadModelIds" : {
           "description" : "References to existing 'sourceReadModel' ids (referential integrity is checked by the linter).",

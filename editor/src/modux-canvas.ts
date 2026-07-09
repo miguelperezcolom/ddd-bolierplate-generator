@@ -67,9 +67,10 @@ function pathWithBridges(pts: Point[], priorSegments: [Point, Point][], radius =
 
 /**
  * ArchiMate-inspired glyphs drawn in the node's top-right corner, keyed by
- * SceneNode.symbol. Each fits a 12×12 box, stroke-only.
+ * SceneNode.symbol. Each fits a 12×12 box, stroke-only. Exported so the
+ * palette (and future legends) can speak the same visual language.
  */
-const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
+export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   component: svg`<rect x="3.5" y="0.5" width="8" height="11" rx="1"></rect>
     <rect x="0.5" y="2.5" width="6" height="2.6"></rect>
     <rect x="0.5" y="6.9" width="6" height="2.6"></rect>`,
