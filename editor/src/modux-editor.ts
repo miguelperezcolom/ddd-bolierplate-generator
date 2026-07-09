@@ -4908,6 +4908,8 @@ export class ModuxEditor extends LitElement {
         ? html`<modux-tilt
             .scene=${scene}
             .selectedId=${this._selectedId}
+            .connectable=${this._view === 'context-map' || this._view === 'workflows'}
+            @connect-requested=${this.onConnectRequested}
             @element-selected=${this.onElementSelected}
             @element-activated=${this.onElementActivated}
             @node-moved=${this.onNodeMoved}

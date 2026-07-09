@@ -12,11 +12,21 @@ import type { Scene, SceneNode } from './scene.js';
  * A read-only lens: drag orbits, shift+drag pans, wheel zooms, double click
  * resets the camera. Editing stays in <modux-canvas>.
  */
+/** Node kinds whose selected plate offers connect handles (mirror of the 2D canvas). */
+const HANDLE_KINDS = new Set([
+  'external-system', 'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'proxy-api',
+  'workflow-step', 'aggregate', 'domain-service', 'use-case', 'domain-event',
+  'application-event', 'external-use-case', 'external-table', 'mcp-server',
+  'api-operation',
+]);
+
 @customElement('modux-tilt')
 export class ModuxTilt extends LitElement {
   @property({ attribute: false }) scene: Scene = { nodes: [], edges: [] };
   /** Selection, owned by the shell (same contract as <modux-canvas>). */
   @property({ attribute: false }) selectedId: string | null = null;
+  /** Whether connect gestures are legal on the current view (same flag as the canvas). */
+  @property({ attribute: false }) connectable = false;
 
   /** Camera: orbit angles (deg), zoom and screen-space pan. */
   @state() private _rx = 55;
@@ -25,10 +35,14 @@ export class ModuxTilt extends LitElement {
   @state() private _pan = { x: 0, y: 0 };
   /** A plate being dragged: its live scene-space offset until the drop commits. */
   @state() private _liveMove: { id: string; dx: number; dy: number } | null = null;
+  /** A relation being traced: rubber line in screen space + the reacting target. */
+  @state() private _connect: { sourceId: string; x1: number; y1: number; x2: number; y2: number } | null =
+    null;
+  @state() private _hoverTargetId: string | null = null;
 
   private _drag:
     | {
-        mode: 'orbit' | 'pan' | 'node';
+        mode: 'orbit' | 'pan' | 'node' | 'connect';
         x: number;
         y: number;
         rx: number;
@@ -107,6 +121,30 @@ export class ModuxTilt extends LitElement {
     .n3.selected3 {
       outline: 2.5px solid #38bdf8;
       outline-offset: 2px;
+    }
+    .n3 {
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .n3.hover3 {
+      outline: 2.5px solid #34d399;
+      outline-offset: 2px;
+      z-index: 5;
+    }
+    .h3 {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      margin: -6px 0 0 -6px;
+      border-radius: 999px;
+      background: #2563eb;
+      border: 1.5px solid #ffffff;
+      cursor: crosshair;
+    }
+    .rubber {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
     }
     .n3.container3 {
       align-items: flex-start;
@@ -187,6 +225,20 @@ export class ModuxTilt extends LitElement {
     if (e.button !== 0) return;
     this.focus();
     this.setPointerCapture?.(e.pointerId);
+    const el = e.composedPath()[0] as HTMLElement | undefined;
+    const handle = el?.closest?.('.h3') as HTMLElement | null;
+    if (handle?.dataset.sourceId) {
+      const rect = this.getBoundingClientRect();
+      this._connect = {
+        sourceId: handle.dataset.sourceId,
+        x1: e.clientX - rect.left,
+        y1: e.clientY - rect.top,
+        x2: e.clientX - rect.left,
+        y2: e.clientY - rect.top,
+      };
+      this._drag = { mode: 'connect', x: e.clientX, y: e.clientY, rx: this._rx, rz: this._rz, pan: { ...this._pan } };
+      return;
+    }
     const plate = this.plateAt(e);
     this._drag = {
       mode: plate ? 'node' : e.shiftKey ? 'pan' : 'orbit',
@@ -205,6 +257,16 @@ export class ModuxTilt extends LitElement {
     if (!this._drag) return;
     const dx = e.clientX - this._drag.x;
     const dy = e.clientY - this._drag.y;
+    if (this._drag.mode === 'connect' && this._connect) {
+      const rect = this.getBoundingClientRect();
+      this._connect = { ...this._connect, x2: e.clientX - rect.left, y2: e.clientY - rect.top };
+      // The plate under the pointer REACTS: it grows and lifts a little.
+      const under = this.shadowRoot?.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      const target = under?.closest?.('.n3') as HTMLElement | null;
+      const targetId = target?.dataset.nodeId ?? null;
+      this._hoverTargetId = targetId !== this._connect.sourceId ? targetId : null;
+      return;
+    }
     if (this._drag.mode === 'node') {
       if (Math.hypot(dx, dy) > 3) this._drag.moved = true;
       if (this._drag.moved && this._drag.nodeId) {
@@ -227,6 +289,17 @@ export class ModuxTilt extends LitElement {
     const drag = this._drag;
     this._drag = null;
     if (!drag) return;
+    if (drag.mode === 'connect') {
+      const source = this._connect?.sourceId;
+      const target = this._hoverTargetId;
+      this._connect = null;
+      this._hoverTargetId = null;
+      if (source && target && target !== source) {
+        // Same contract as the canvas: the shell decides what the pair means.
+        this.emit('connect-requested', { sourceId: source, targetId: target });
+      }
+      return;
+    }
     if (drag.mode === 'node' && drag.nodeId) {
       const node = this.scene.nodes.find((n) => n.id === drag.nodeId);
       if (drag.moved && node && this._liveMove) {
@@ -395,18 +468,21 @@ export class ModuxTilt extends LitElement {
           ${nodes.map((n) => {
             const d = depth.get(n.id) ?? 0;
             const isPlate = n.container || d === 0;
+            const hovered = this._hoverTargetId === n.id;
             return html`
               <div
                 class="n3 ${n.container ? 'container3' : ''} ${this.selectedId === n.id
                   ? 'selected3'
-                  : ''}"
+                  : ''} ${hovered ? 'hover3' : ''}"
                 data-node-id=${n.id}
                 data-kind=${n.kind}
                 title=${n.tooltip ?? n.label}
                 style="
                   left: ${lx(n) - n.w / 2}px; top: ${ly(n) - n.h / 2}px;
                   width: ${n.w}px; height: ${n.h}px;
-                  transform: translateZ(${d * STOREY}px);
+                  transform: translateZ(${d * STOREY + (hovered ? 8 : 0)}px)${hovered
+                    ? ' scale(1.06)'
+                    : ''};
                   background: ${n.container
                     ? 'color-mix(in srgb, ' + (n.fill ?? '#ffffff') + ' 82%, transparent)'
                     : (n.fill ?? '#ffffff')};
@@ -423,8 +499,41 @@ export class ModuxTilt extends LitElement {
               </div>
             `;
           })}
+          ${(() => {
+            // Connect handles on the SELECTED plate (same kinds as the 2D canvas).
+            const sel = this.connectable && this.selectedId ? byId.get(this.selectedId) : undefined;
+            if (!sel || !HANDLE_KINDS.has(sel.kind)) return '';
+            const z = (depth.get(sel.id) ?? 0) * STOREY + 4;
+            const spots = [
+              [lx(sel) + sel.w / 2, ly(sel)],
+              [lx(sel) - sel.w / 2, ly(sel)],
+              [lx(sel), ly(sel) + sel.h / 2],
+              [lx(sel), ly(sel) - sel.h / 2],
+            ];
+            return spots.map(
+              ([hx, hy]) => html`<div
+                class="h3"
+                data-source-id=${sel.id}
+                title="Arrastra hasta otro nodo para conectar"
+                style="left: ${hx}px; top: ${hy}px; transform: translateZ(${z}px)"
+              ></div>`,
+            );
+          })()}
         </div>
       </div>
+      ${this._connect
+        ? html`<svg class="rubber">
+            <line
+              x1=${this._connect.x1}
+              y1=${this._connect.y1}
+              x2=${this._connect.x2}
+              y2=${this._connect.y2}
+              stroke="#38bdf8"
+              stroke-width="2"
+              stroke-dasharray="7 5"
+            ></line>
+          </svg>`
+        : ''}
       <div class="hud">
         click selecciona · doble click abre · arrastra una placa para moverla · arrastra el fondo
         para orbitar · shift+arrastra panea · rueda para zoom · Supr borra · doble click en el

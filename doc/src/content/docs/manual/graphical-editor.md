@@ -175,7 +175,12 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   depth cue. And it is **interactive**: click selects (same selection as the canvas),
   **double click opens the element's editor**, **dragging a plate moves it** (the
   pointer delta is unprojected onto the floor plane; persisted and undoable), and
-  **Supr deletes** with the usual integrity guards. Dragging the background orbits,
+  **Supr deletes** with the usual integrity guards. The **connect gesture works in 3D
+  too**: the selected plate offers the same blue handles as the canvas — drag one onto
+  another plate (a screen-space rubber line follows) and the shell applies the same
+  gesture vocabulary; while tracing, the plate under the pointer **reacts**: it grows,
+  lifts a storey and rings green (the 2D canvas nodes grow on hover during tracing as
+  well). Dragging the background orbits,
   shift+drag pans, wheel zooms, double click on the background resets the camera.
   Press V again to come back to the 2D canvas. Pure CSS 3D, works on any view and
   detail level.

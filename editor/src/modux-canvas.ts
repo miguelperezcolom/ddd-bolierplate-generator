@@ -1024,7 +1024,8 @@ export class ModuxCanvas extends LitElement {
     const childLabel =
       isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
     return svg`
-      <g data-node-id=${node.id} transform="translate(${x}, ${y})"
+      <g data-node-id=${node.id}
+         transform="translate(${x}, ${y})${hovered ? ' scale(1.06)' : ''}"
          pointer-events=${(this._dragPos && this._dragPos.id === node.id) ||
            this._dragGroup?.has(node.id)
              ? 'none'
