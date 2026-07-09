@@ -412,6 +412,13 @@ export class ModuxCanvas extends LitElement {
     select(svgEl).call(this._zoomBehavior.transform, t);
   }
 
+  /** Zoom in/out around the viewport centre (keyboard shortcuts, external buttons). */
+  zoomBy(factor: number): void {
+    const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
+    if (!svgEl || !this._zoomBehavior) return;
+    this._zoomBehavior.scaleBy(select(svgEl), factor);
+  }
+
   /** Client coordinates → scene coordinates (undo pan/zoom). */
   private toScene(e: PointerEvent | MouseEvent): { x: number; y: number } {
     const rect = this.getBoundingClientRect();

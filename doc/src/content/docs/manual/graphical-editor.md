@@ -47,13 +47,15 @@ person / gear (human / automated steps), double circle (events), return arrow
   deleting a module with aggregates or an aggregate with entities (server-checked
   too, shown as a toast).
 - **F2** renames inline (modules, aggregates, entities, domain events, process steps).
-- **Creation lives in the palette (🧰)** on the context map and the Workflows view:
-  one button opens a panel with every creatable type — drag a new element onto the
-  canvas, or onto its container for child kinds (an aggregate into its context, an
-  operation onto its API, a step onto its workflow or use case). The panel also
-  lists every EXISTING element: drop one on empty canvas to place it, or on a node
-  to connect them (the same gesture vocabulary as the handles). The specialized
-  views without a palette keep their toolbar creation: aggregates (with owner
+- **Creation lives in the palette (☰, leftmost on the toolbar)** on the context map
+  and the Workflows view — also toggled with **P**. The panel has two **vertical
+  tabs on its right edge**: **Nuevos** (every creatable type — drag a new element
+  onto the canvas, or onto its container for child kinds: an aggregate into its
+  context, an operation onto its API, a step onto its workflow or use case) and
+  **Catálogo** (every EXISTING element of the model, grouped by kind: drop one on
+  empty canvas to place it, or on a node to connect them — the same gesture
+  vocabulary as the handles). The specialized views without a palette keep their
+  toolbar creation: aggregates (with owner
   module, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert
   steps (AUTOMATED or HUMAN with role and deadline) and edit the selected step's
@@ -163,6 +165,18 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.
+- **⛶ (or F) takes the diagram fullscreen** — the whole editor, toolbar and palette
+  included, via the browser's Fullscreen API; **Esc** (or F again) comes back.
+
+## Keyboard shortcuts
+
+Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·
+**F** fullscreen · **0** fit · **+/−** zoom · **1/2/3** context-map levels (contexts /
+aggregates & use cases / APIs & operations) · **4/5/6/7** the specialized views
+(aggregates · flows · processes · workflows) · **E/D** EventStorming / back to the
+diagram · **T** the view's catalog tree · plus the editing keys (Supr, F2, Ctrl+Z /
+Ctrl+Y, space+drag, shift for multi-selection). Shortcuts never fire while typing in
+a field.
 
 ## Selections and views
 

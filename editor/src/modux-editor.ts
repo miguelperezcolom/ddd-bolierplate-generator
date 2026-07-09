@@ -289,6 +289,12 @@ export class ModuxEditor extends LitElement {
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = false;
   @state() private _paletteFilter = '';
+  /** Palette tab: brand-new elements, or the model's existing catalog. */
+  @state() private _paletteTab: 'new' | 'catalog' = 'new';
+  /** Mirrors document.fullscreenElement — the editor host in fullscreen. */
+  @state() private _fullscreen = false;
+  /** Keyboard-shortcuts help popover (toggled with ?). */
+  @state() private _helpOpen = false;
   @state() private _newName = '';
   @state() private _newModuleId = '';
   @state() private _newArchetype = 'TRIGGERS';
@@ -330,14 +336,71 @@ export class ModuxEditor extends LitElement {
       left: 8px;
       top: 8px;
       bottom: 8px;
-      width: 218px;
-      overflow-y: auto;
+      width: 244px;
       z-index: 15;
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      display: flex;
+      overflow: hidden;
+    }
+    .palette.shifted {
+      left: 280px;
+    }
+    .palette-body {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
       padding: 8px;
+    }
+    .palette-side {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 4px;
+      background: #f8fafc;
+      border-left: 1px solid #e2e8f0;
+    }
+    .palette-vtab {
+      writing-mode: vertical-rl;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      padding: 10px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .palette-vtab[data-active] {
+      background: #1e293b;
+      color: #ffffff;
+    }
+    .tab.hamburger {
+      font-size: 16px;
+      line-height: 1;
+      padding: 4px 10px;
+    }
+    .help-pop {
+      max-width: 420px;
+    }
+    .help-row {
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 12px;
+      color: #1e293b;
+      padding: 3px 8px;
+    }
+    .help-keys {
+      flex: 0 0 150px;
+      font-weight: 700;
+      color: #2563eb;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
     }
     .palette-filter {
       width: 100%;
@@ -577,6 +640,112 @@ export class ModuxEditor extends LitElement {
   private emit(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.addEventListener('keydown', this.hostKeydown);
+    this.ownerDocument.addEventListener('fullscreenchange', this.onFullscreenChange);
+  }
+
+  disconnectedCallback(): void {
+    this.removeEventListener('keydown', this.hostKeydown);
+    this.ownerDocument.removeEventListener('fullscreenchange', this.onFullscreenChange);
+    super.disconnectedCallback();
+  }
+
+  private onFullscreenChange = (): void => {
+    // document.fullscreenElement retargets to the outermost shadow host, so
+    // compare with :fullscreen, which matches through shadow boundaries.
+    this._fullscreen = this.matches(':fullscreen');
+  };
+
+  /** The diagram takes the whole screen (host element fullscreen), F toggles back. */
+  private async toggleFullscreen(): Promise<void> {
+    try {
+      if (this.ownerDocument.fullscreenElement) await this.ownerDocument.exitFullscreen();
+      else await this.requestFullscreen();
+    } catch {
+      // Fullscreen can be denied (no user gesture, iframe policy) — nothing to do.
+    }
+  }
+
+  /**
+   * Editor-level shortcuts. They never fire while typing (inputs, selects, the
+   * inline rename editor); the canvas keeps its own keys (Supr, F2, Ctrl+Z…).
+   */
+  private hostKeydown = (e: KeyboardEvent): void => {
+    const target = e.composedPath()[0] as HTMLElement | undefined;
+    const tag = (target?.tagName ?? '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const canvas = this.renderRoot.querySelector('modux-canvas');
+    const scope = (value: string) => {
+      e.preventDefault();
+      this.onDiagramScopeChange(value);
+    };
+    switch (e.key) {
+      case 'p':
+      case 'P':
+        if (this._view === 'context-map' || this._view === 'workflows') {
+          e.preventDefault();
+          this._paletteOpen = !this._paletteOpen;
+        }
+        break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        void this.toggleFullscreen();
+        break;
+      case '0':
+        e.preventDefault();
+        canvas?.fit();
+        break;
+      case '+':
+      case '=':
+        e.preventDefault();
+        canvas?.zoomBy(1.25);
+        break;
+      case '-':
+        e.preventDefault();
+        canvas?.zoomBy(0.8);
+        break;
+      case 't':
+      case 'T':
+        if (this._activeViewId) {
+          e.preventDefault();
+          this._treeOpen = !this._treeOpen;
+        }
+        break;
+      case 'e':
+      case 'E':
+        e.preventDefault();
+        this._view = 'eventstorming';
+        break;
+      case 'd':
+      case 'D':
+        if (this._view === 'eventstorming') {
+          e.preventDefault();
+          this._view = 'context-map';
+        }
+        break;
+      case '1': scope('level:contexts'); break;
+      case '2': scope('level:detail'); break;
+      case '3': scope('level:operations'); break;
+      case '4': scope('view:aggregates'); break;
+      case '5': scope('view:flows'); break;
+      case '6': scope('view:processes'); break;
+      case '7': scope('view:workflows'); break;
+      case '?':
+        e.preventDefault();
+        this._helpOpen = !this._helpOpen;
+        break;
+      case 'Escape':
+        if (this._helpOpen) this._helpOpen = false;
+        break;
+      default:
+        break;
+    }
+  };
 
   private command(command: ModuxCommand, pushUndo = true): void {
     if (pushUndo) {
@@ -3920,51 +4089,80 @@ export class ModuxEditor extends LitElement {
         (this._view !== 'workflows' || ['workflow', 'workflow-step'].includes(k.type)) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
+    // The workflows view has no catalog section: it always shows the new elements.
+    const tab = this._view === 'workflows' ? 'new' : this._paletteTab;
     return html`
-      <div class="palette">
-        <input
-          class="palette-filter"
-          placeholder="Filtrar…"
-          .value=${this._paletteFilter}
-          @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
-        />
-        <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
-        ${news.map(
-          (k) => html`
-            <div
-              class="palette-item ${k.child ? 'palette-child' : ''}"
-              draggable="true"
-              title=${k.type === 'workflow-step'
-                ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
-                : k.child
-                  ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
-                  : 'Suéltalo en el lienzo'}
-              @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
-            >
-              ＋ ${k.label}
-            </div>
-          `,
-        )}
+      <div class="palette ${this._treeOpen && this._activeViewId ? 'shifted' : ''}">
+        <div class="palette-body">
+          <input
+            class="palette-filter"
+            placeholder="Filtrar…"
+            .value=${this._paletteFilter}
+            @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
+          />
+          ${tab === 'new'
+            ? html`
+                <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
+                ${news.map(
+                  (k) => html`
+                    <div
+                      class="palette-item ${k.child ? 'palette-child' : ''}"
+                      draggable="true"
+                      title=${k.type === 'workflow-step'
+                        ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
+                        : k.child
+                          ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
+                          : 'Suéltalo en el lienzo'}
+                      @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
+                    >
+                      ＋ ${k.label}
+                    </div>
+                  `,
+                )}
+              `
+            : html`
+                <div class="palette-h">Catálogo — arrastra para colocar o conectar</div>
+                ${this.paletteCatalog().map(
+                  (g) => html`
+                    <div class="palette-g">${g.label}</div>
+                    ${g.items.map(
+                      (it) => html`
+                        <div
+                          class="palette-item"
+                          draggable="true"
+                          title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
+                          @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { existing: it.id })}
+                        >
+                          ${it.name}
+                        </div>
+                      `,
+                    )}
+                  `,
+                )}
+              `}
+        </div>
         ${this._view === 'workflows'
           ? ''
-          : html`<div class="palette-h">Existentes — arrastra para colocar o conectar</div>`}
-        ${(this._view === 'workflows' ? [] : this.paletteCatalog()).map(
-          (g) => html`
-            <div class="palette-g">${g.label}</div>
-            ${g.items.map(
-              (it) => html`
-                <div
-                  class="palette-item"
-                  draggable="true"
-                  title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
-                  @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { existing: it.id })}
+          : html`
+              <div class="palette-side">
+                <button
+                  class="palette-vtab"
+                  ?data-active=${tab === 'new'}
+                  title="Elementos nuevos para arrastrar al lienzo"
+                  @click=${() => (this._paletteTab = 'new')}
                 >
-                  ${it.name}
-                </div>
-              `,
-            )}
-          `,
-        )}
+                  Nuevos
+                </button>
+                <button
+                  class="palette-vtab"
+                  ?data-active=${tab === 'catalog'}
+                  title="El catálogo del modelo: colocar o conectar elementos existentes"
+                  @click=${() => (this._paletteTab = 'catalog')}
+                >
+                  Catálogo
+                </button>
+              </div>
+            `}
       </div>
     `;
   }
@@ -4098,6 +4296,15 @@ export class ModuxEditor extends LitElement {
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
+        <button
+          class="tab hamburger"
+          ?hidden=${this._view !== 'context-map' && this._view !== 'workflows'}
+          ?data-active=${this._paletteOpen}
+          title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
+          @click=${() => (this._paletteOpen = !this._paletteOpen)}
+        >
+          ☰
+        </button>
         <div class="tabs">
           <button
             class="tab"
@@ -4306,15 +4513,6 @@ export class ModuxEditor extends LitElement {
           accept=".json,.yaml,.yml,.wsdl,.xml"
           @change=${this.onImportApiFile}
         />
-        <button
-          class="tab"
-          ?hidden=${this._view !== 'context-map' && this._view !== 'workflows'}
-          ?data-active=${this._paletteOpen}
-          title="Paleta de elementos: arrastra nuevos o existentes al lienzo"
-          @click=${() => (this._paletteOpen = !this._paletteOpen)}
-        >
-          🧰 Paleta
-        </button>
         <button
           class="tab"
           ?hidden=${this._view !== 'context-map'}
@@ -4557,10 +4755,19 @@ export class ModuxEditor extends LitElement {
         >
           ✨ Auto-layout
         </button>
+        <button
+          class="tab"
+          ?data-active=${this._fullscreen}
+          title=${this._fullscreen
+            ? 'Salir de pantalla completa (F o Esc)'
+            : 'El diagrama a pantalla completa (F)'}
+          @click=${() => void this.toggleFullscreen()}
+        >
+          ⛶
+        </button>
       </div>
       <div class="canvas-wrap">
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
-      <div class="canvas-wrap">
       ${this.renderPalette()}
       <modux-canvas
         @dragover=${(e: DragEvent) => e.preventDefault()}
@@ -4594,7 +4801,6 @@ export class ModuxEditor extends LitElement {
         }}
       ></modux-canvas>
       </div>
-      </div>
       <div class="hint">
         ${this._view === 'context-map'
           ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
@@ -4612,8 +4818,46 @@ export class ModuxEditor extends LitElement {
               : html`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
+        · pulsa <b>?</b> para los atajos
       </div>
       ${this.renderRelationPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderHelpPopover()}
+    `;
+  }
+
+  /** The keyboard cheatsheet (toggled with ? and closed with Esc or a click outside). */
+  private renderHelpPopover() {
+    if (!this._helpOpen) return '';
+    const rows: [string, string][] = [
+      ['P', 'Mostrar/ocultar la paleta'],
+      ['F', 'Pantalla completa (Esc sale)'],
+      ['0', 'Ajustar el diagrama a la ventana'],
+      ['+ / −', 'Zoom (también con la rueda)'],
+      ['1 · 2 · 3', 'Context map: contextos · agregados y casos de uso · APIs y operaciones'],
+      ['4 · 5 · 6 · 7', 'Agregados · Flows · Procesos · Workflows'],
+      ['E / D', 'EventStorming / volver al diagrama'],
+      ['T', 'Árbol del catálogo (con una vista activa)'],
+      ['Supr', 'Borrar la selección'],
+      ['F2', 'Renombrar el nodo seleccionado'],
+      ['Ctrl+Z / Ctrl+Y', 'Deshacer / rehacer'],
+      ['Espacio+arrastrar', 'Mover el lienzo'],
+      ['Shift+click / arrastrar', 'Multi-selección / banda elástica'],
+      ['?', 'Esta ayuda'],
+    ];
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._helpOpen = false)}></div>
+      <div
+        class="relation-picker help-pop"
+        style="left: 50%; top: 90px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">Atajos de teclado</div>
+        ${rows.map(
+          ([keys, what]) => html`
+            <div class="help-row"><span class="help-keys">${keys}</span><span>${what}</span></div>
+          `,
+        )}
+      </div>
     `;
   }
 
