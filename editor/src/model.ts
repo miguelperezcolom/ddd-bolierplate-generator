@@ -130,6 +130,18 @@ export interface ExternalOperationUseRef {
   siteId: string;
 }
 
+/**
+ * The use case implementing ONE operation AT one implementation site (a bounded context
+ * implementing the API). Per-site: during a strangler migration the same operation may be
+ * implemented differently at each site, and the use case may live in ANOTHER context.
+ */
+export interface ApiOperationImplementationRef {
+  apiId: string;
+  operationId: string;
+  moduleId: string;
+  useCaseId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -466,6 +478,8 @@ export interface ModuxModel {
   proxyOperationRoutes?: ProxyOperationRouteRef[];
   /** External systems calling specific API operations (at a published API, proxy or implementation). */
   externalOperationUses?: ExternalOperationUseRef[];
+  /** Per-site wiring: the use case implementing an operation at a given implementation site. */
+  apiOperationImplementations?: ApiOperationImplementationRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

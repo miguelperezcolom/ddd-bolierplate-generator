@@ -875,6 +875,39 @@ export class ModuxEditor extends LitElement {
           operationId: c.operationId,
           targetSiteId: c.targetSiteId,
         }];
+      case 'set-api-operation-implementation': {
+        const prev = (this.model.apiOperationImplementations ?? []).find(
+          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.moduleId === c.moduleId,
+        );
+        return prev
+          ? [{
+              kind: 'set-api-operation-implementation',
+              apiId: c.apiId,
+              operationId: c.operationId,
+              moduleId: c.moduleId,
+              targetUseCaseId: prev.useCaseId,
+            }]
+          : [{
+              kind: 'remove-api-operation-implementation',
+              apiId: c.apiId,
+              operationId: c.operationId,
+              moduleId: c.moduleId,
+            }];
+      }
+      case 'remove-api-operation-implementation': {
+        const prev = (this.model.apiOperationImplementations ?? []).find(
+          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.moduleId === c.moduleId,
+        );
+        return prev
+          ? [{
+              kind: 'set-api-operation-implementation',
+              apiId: c.apiId,
+              operationId: c.operationId,
+              moduleId: c.moduleId,
+              targetUseCaseId: prev.useCaseId,
+            }]
+          : null;
+      }
       case 'set-api-publisher': {
         const el =
           (this.model.apis ?? []).find((a) => a.id === c.id) ??
@@ -1752,12 +1785,24 @@ export class ModuxEditor extends LitElement {
         this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (occUcIds.has(targetId)) {
-        this.command({
-          kind: 'set-api-operation-target',
-          apiId: occApiId,
-          id: operationId,
-          targetUseCaseId: targetId,
-        });
+        if (this.model.modules.some((m) => m.id === siteId)) {
+          // From an implementation site: per-site wiring — the use case implementing the
+          // operation THERE (it may live in any bounded context).
+          this.command({
+            kind: 'set-api-operation-implementation',
+            apiId: occApiId,
+            operationId,
+            moduleId: siteId,
+            targetUseCaseId: targetId,
+          });
+        } else {
+          this.command({
+            kind: 'set-api-operation-target',
+            apiId: occApiId,
+            id: operationId,
+            targetUseCaseId: targetId,
+          });
+        }
         return;
       }
       // The routing gestures below only make sense from a PROXY's occurrence.
@@ -2445,6 +2490,19 @@ export class ModuxEditor extends LitElement {
       if (!owner) return;
       this._selectedId = null;
       this.command({ kind: 'remove-workflow-step', workflowId: owner.id, id });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'api-impl-wire') {
+      // Edge ids are `apiimplwire:<operationId>@<moduleId>` (see context-map.ts).
+      const match = /^apiimplwire:(.+)@(.+)$/.exec(id);
+      if (!match) return;
+      const [, operationId, moduleId] = match;
+      const apiId = (this.model.apis ?? []).find((a) =>
+        a.operations.some((o) => o.id === operationId),
+      )?.id;
+      if (!apiId) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-api-operation-implementation', apiId, operationId, moduleId });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'ext-op-use') {

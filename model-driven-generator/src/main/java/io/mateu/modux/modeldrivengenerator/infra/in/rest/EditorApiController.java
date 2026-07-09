@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyOperationRouteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
@@ -207,6 +208,8 @@ public class EditorApiController {
     public record ProxyOperationRouteDto(String proxyId, String operationId, String targetSiteId) {}
     /** An external system calls one API operation at a site (published API, proxy or implementation). */
     public record ExternalOperationUseDto(String externalSystemId, String operationId, String siteId) {}
+    /** The use case implementing one operation at one implementation site. */
+    public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -249,7 +252,8 @@ public class EditorApiController {
             List<AgentTriggerDto> agentTriggers,
             List<ApiImplementationDto> apiImplementations,
             List<ProxyOperationRouteDto> proxyOperationRoutes,
-            List<ExternalOperationUseDto> externalOperationUses) {}
+            List<ExternalOperationUseDto> externalOperationUses,
+            List<ApiOperationImplementationDto> apiOperationImplementations) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -688,6 +692,10 @@ public class EditorApiController {
                 .flatMap(x -> x.apiOperationUses().stream()
                         .map(u -> new ExternalOperationUseDto(x.id(), u.operationId(), u.siteId())))
                 .toList();
+        var apiOperationImplementations = repository.findAllOfType(ApiEntity.class).stream()
+                .flatMap(a -> a.operationImplementations().stream()
+                        .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.moduleId(), w.useCaseId())))
+                .toList();
 
         // The strategic map is a projection of the concrete dependency graph:
         // upstream (provider) → downstream (consumer). contextMap entries only
@@ -778,7 +786,8 @@ public class EditorApiController {
                 agentTriggers.stream().distinct().toList(),
                 apiImplementations,
                 proxyOperationRoutes,
-                externalOperationUses);
+                externalOperationUses,
+                apiOperationImplementations);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -879,6 +888,8 @@ public class EditorApiController {
             case "remove-proxy-operation-route" -> removeProxyOperationRoute(command);
             case "add-external-operation-use" -> addExternalOperationUse(command);
             case "remove-external-operation-use" -> removeExternalOperationUse(command);
+            case "set-api-operation-implementation" -> setApiOperationImplementation(command);
+            case "remove-api-operation-implementation" -> removeApiOperationImplementation(command);
             case "add-api" -> addApi(command);
             case "remove-api" -> removeApi(command);
             case "add-api-operation" -> addApiOperation(command);
@@ -2853,6 +2864,28 @@ public class EditorApiController {
                     .toList();
             repository.save(proxy.withOperationRoutes(routes));
         });
+    }
+
+    /** Per-site wiring: the use case implementing an operation AT an implementation site. */
+    private void setApiOperationImplementation(EditorCommand command) {
+        var api = repository.findById(command.apiId(), ApiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
+        var wires = new java.util.ArrayList<>(api.operationImplementations().stream()
+                .filter(w -> !(w.operationId().equals(command.operationId())
+                        && w.moduleId().equals(command.moduleId())))
+                .toList());
+        wires.add(new ApiOperationImplementationEntity(
+                command.operationId(), command.moduleId(), command.targetUseCaseId()));
+        repository.save(api.withOperationImplementations(java.util.List.copyOf(wires)));
+    }
+
+    private void removeApiOperationImplementation(EditorCommand command) {
+        repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
+                repository.save(api.withOperationImplementations(
+                        api.operationImplementations().stream()
+                                .filter(w -> !(w.operationId().equals(command.operationId())
+                                        && w.moduleId().equals(command.moduleId())))
+                                .toList())));
     }
 
     /** An external system calls one API operation at a site (published API, proxy or implementation). */

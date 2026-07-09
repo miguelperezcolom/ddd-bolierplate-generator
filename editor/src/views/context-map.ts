@@ -1245,6 +1245,31 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // Per-site wiring: the operation AT an implementation site → the use case implementing
+  // it there (which may live in any context). Source: the occurrence chip when unfolded,
+  // else the implementation chip.
+  const apiOpImplWireEdges: SceneEdge[] = detailed
+    ? (model.apiOperationImplementations ?? []).flatMap((w) => {
+        if (!nodeIds.has(w.useCaseId)) return [];
+        const source = nodeIds.has(apiOpOccurrenceId(w.operationId, w.moduleId))
+          ? apiOpOccurrenceId(w.operationId, w.moduleId)
+          : nodeIds.has(apiImplNodeId(w.apiId, w.moduleId))
+            ? apiImplNodeId(w.apiId, w.moduleId)
+            : null;
+        if (!source) return [];
+        return [{
+          id: `apiimplwire:${w.operationId}@${w.moduleId}`,
+          sourceId: source,
+          targetId: w.useCaseId,
+          kind: 'api-impl-wire',
+          color: '#4f46e5',
+          dashed: true,
+          arrow: true,
+          tooltip: 'implementada aquí por',
+        }];
+      })
+    : [];
+
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
@@ -1462,6 +1487,7 @@ export function contextMapScene(
       ...apiImplEdges,
       ...opRouteEdges,
       ...extOpUseEdges,
+      ...apiOpImplWireEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...agentUseEdges,

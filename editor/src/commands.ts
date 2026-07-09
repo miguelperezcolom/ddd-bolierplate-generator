@@ -427,6 +427,21 @@ export type ModuxCommand =
       targetSiteId: string;
     }
   | {
+      /** Wires the operation AT an implementation site to the use case implementing it
+       *  there (the use case may live in any bounded context). */
+      kind: 'set-api-operation-implementation';
+      apiId: string;
+      operationId: string;
+      moduleId: string;
+      targetUseCaseId: string;
+    }
+  | {
+      kind: 'remove-api-operation-implementation';
+      apiId: string;
+      operationId: string;
+      moduleId: string;
+    }
+  | {
       kind: 'remove-external-dependency';
       sourceId: string;
       targetId: string;

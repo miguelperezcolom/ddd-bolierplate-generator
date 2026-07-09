@@ -272,6 +272,12 @@
         "name" : {
           "type" : "string"
         },
+        "operationImplementations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ApiOperationImplementationEntity"
+          }
+        },
         "operations" : {
           "type" : "array",
           "items" : {
@@ -325,6 +331,27 @@
         "targetUseCaseId" : {
           "type" : "string",
           "description" : "Reference to an existing 'targetUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "ApiOperationImplementationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "moduleId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'module' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "useCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
