@@ -399,6 +399,20 @@ export type ModuxCommand =
       moduleId: string;
     }
   | {
+      /** Route ONE proxy operation to an implementation site of the fronted API
+       *  (a bounded context, or the apiId itself for "as published"). */
+      kind: 'add-proxy-operation-route';
+      proxyId: string;
+      operationId: string;
+      targetSiteId: string;
+    }
+  | {
+      kind: 'remove-proxy-operation-route';
+      proxyId: string;
+      operationId: string;
+      targetSiteId: string;
+    }
+  | {
       kind: 'remove-external-dependency';
       sourceId: string;
       targetId: string;

@@ -2685,6 +2685,12 @@
         "name" : {
           "type" : "string"
         },
+        "operationRoutes" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ProxyOperationRouteEntity"
+          }
+        },
         "publishedByExternalSystemId" : {
           "type" : "string",
           "description" : "Reference to an existing 'publishedByExternalSystem' id (referential integrity is checked by the linter).",
@@ -2697,6 +2703,22 @@
         }
       },
       "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "ProxyOperationRouteEntity" : {
+      "type" : "object",
+      "properties" : {
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetSiteId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'targetSite' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
       "additionalProperties" : false
     },
     "QueryCardinality" : {

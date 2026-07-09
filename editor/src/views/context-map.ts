@@ -256,6 +256,8 @@ function detailedContext(
           name: api.name,
           kind: 'api-impl' as const,
           badge: 'API',
+          fill: '#eef2ff',
+          stroke: '#4f46e5',
           tooltip: `${api.name} — la misma API, implementada en ${module.name}`,
           opKind: 'api-op-occurrence' as const,
           ops: (api.operations ?? []).map((op) => ({
@@ -282,8 +284,10 @@ function detailedContext(
 interface ApiBoxDesc {
   id: string;
   name: string;
-  kind: 'api' | 'api-impl';
+  kind: 'api' | 'api-impl' | 'proxy-api';
   badge: string;
+  fill: string;
+  stroke: string;
   tooltip: string;
   /** Kind of the operation chips inside (real operations vs per-site occurrences). */
   opKind: 'api-operation' | 'api-op-occurrence';
@@ -354,8 +358,8 @@ function containerWithApiBoxes(
       label: b.a.name,
       kind: b.a.kind,
       symbol: 'interface',
-      fill: '#eef2ff',
-      stroke: '#4f46e5',
+      fill: b.a.fill,
+      stroke: b.a.stroke,
       badge: b.a.badge,
       container: true,
       parentId: base.id,
@@ -400,26 +404,6 @@ function containerWithApiBoxes(
     });
   });
   return nodes;
-}
-
-function externalSystemWithApiContainers(
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  apis: NonNullable<ModuxModel['apis']>,
-  plainChildren: ChildDesc[],
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-): SceneNode[] {
-  const boxes: ApiBoxDesc[] = apis.map((a) => ({
-    id: a.id,
-    name: a.name,
-    kind: 'api',
-    badge: 'API',
-    tooltip: `${a.name} — API publicada por ${base.label}`,
-    opKind: 'api-operation',
-    ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
-  }));
-  return containerWithApiBoxes(center, base, boxes, plainChildren, layout, sizes);
 }
 
 /** A resizable container with child boxes — shared by contexts and external systems. */
@@ -627,11 +611,51 @@ export function contextMapScene(
             ]
           : []),
       ];
-      if (operationsLevel && publishedApis.length > 0) {
-        // The deepest level nests twice: the system wraps each API's own container,
-        // which in turn wraps its operations — the host resizes to accommodate.
-        return externalSystemWithApiContainers(
-          pos, base, publishedApis, plainChildren, layout, sizes,
+      const unfoldableProxies = operationsLevel
+        ? hostedProxies.filter((px) => {
+            const target = px.targetApiId
+              ? (model.apis ?? []).find((a) => a.id === px.targetApiId)
+              : undefined;
+            return (target?.operations ?? []).length > 0;
+          })
+        : [];
+      if (operationsLevel && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
+        // The deepest level nests twice: the system wraps each API's (and hosted
+        // proxy's) own container, which in turn wraps its operations. A hosted
+        // proxy's surface IS its fronted API, so it unfolds operation OCCURRENCES.
+        const boxes: ApiBoxDesc[] = [
+          ...publishedApis.map((a): ApiBoxDesc => ({
+            id: a.id,
+            name: a.name,
+            kind: 'api',
+            badge: 'API',
+            fill: '#eef2ff',
+            stroke: '#4f46e5',
+            tooltip: `${a.name} — API publicada por ${x.name}`,
+            opKind: 'api-operation',
+            ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
+          })),
+          ...unfoldableProxies.map((px): ApiBoxDesc => {
+            const target = (model.apis ?? []).find((a) => a.id === px.targetApiId)!;
+            return {
+              id: px.id,
+              name: px.name,
+              kind: 'proxy-api',
+              badge: 'PROXY API',
+              fill: '#ecfeff',
+              stroke: '#0e7490',
+              tooltip: `${px.name} — proxy/cache de ${target.name}`,
+              opKind: 'api-op-occurrence',
+              ops: (target.operations ?? []).map((op) => ({
+                id: apiOpOccurrenceId(op.id, px.id),
+                name: op.name,
+              })),
+            };
+          }),
+        ];
+        const unfoldedIds = new Set(unfoldableProxies.map((px) => px.id));
+        return containerWithApiBoxes(
+          pos, base, boxes, plainChildren.filter((c) => !unfoldedIds.has(c.id)), layout, sizes,
         );
       }
       const children: ChildDesc[] = [
@@ -1132,6 +1156,29 @@ export function contextMapScene(
     return edges;
   });
 
+  // Per-operation routing: a proxy operation occurrence → the implementation SITE it is
+  // served from (the published API node, or the api-impl occurrence in a context). Only
+  // paintable at the operations level, where the source chips exist.
+  const opRouteEdges: SceneEdge[] = (model.proxyOperationRoutes ?? []).flatMap((r) => {
+    const px = (model.proxyApis ?? []).find((p) => p.id === r.proxyId);
+    if (!px?.targetApiId) return [];
+    const sourceId = apiOpOccurrenceId(r.operationId, r.proxyId);
+    const targetNodeId =
+      r.targetSiteId === px.targetApiId
+        ? px.targetApiId
+        : apiImplNodeId(px.targetApiId, r.targetSiteId);
+    if (!nodeIds.has(sourceId) || !nodeIds.has(targetNodeId)) return [];
+    return [{
+      id: `oproute:${sourceId}->${targetNodeId}`,
+      sourceId,
+      targetId: targetNodeId,
+      kind: 'op-route',
+      color: '#0e7490',
+      arrow: true,
+      tooltip: 'enruta esta operación a',
+    }];
+  });
+
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
@@ -1347,6 +1394,7 @@ export function contextMapScene(
       ...externalDependencyEdges,
       ...proxyTargetEdges,
       ...apiImplEdges,
+      ...opRouteEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...agentUseEdges,

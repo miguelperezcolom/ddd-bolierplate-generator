@@ -107,6 +107,19 @@ export interface ApiImplementationRef {
   moduleId: string;
 }
 
+/**
+ * One proxy OPERATION routed to an implementation SITE of the API the proxy fronts:
+ * a bounded context implementing it, or the API itself as published by its external
+ * system. The per-operation strangler wiring — some operations go to the new context,
+ * the rest to the origin.
+ */
+export interface ProxyOperationRouteRef {
+  proxyId: string;
+  operationId: string;
+  /** moduleId of the implementing context, or the apiId for "as published". */
+  targetSiteId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -439,6 +452,8 @@ export interface ModuxModel {
   proxyApis?: ProxyApiRef[];
   /** APIs (also) implemented in our bounded contexts — same ApiRef, several sites. */
   apiImplementations?: ApiImplementationRef[];
+  /** Per-operation routing of proxies to the API's implementation sites. */
+  proxyOperationRoutes?: ProxyOperationRouteRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

@@ -10,6 +10,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyOperationRouteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -201,6 +202,8 @@ public class EditorApiController {
                               String publishedByExternalSystemId) {}
     /** The SAME published API, (also) implemented in one of our bounded contexts. */
     public record ApiImplementationDto(String apiId, String moduleId) {}
+    /** One proxy operation routed to an implementation site of the fronted API. */
+    public record ProxyOperationRouteDto(String proxyId, String operationId, String targetSiteId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -241,7 +244,8 @@ public class EditorApiController {
             List<AgentDelegationDto> agentDelegations,
             List<ActorAgentUseDto> actorAgentUses,
             List<AgentTriggerDto> agentTriggers,
-            List<ApiImplementationDto> apiImplementations) {}
+            List<ApiImplementationDto> apiImplementations,
+            List<ProxyOperationRouteDto> proxyOperationRoutes) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -671,6 +675,10 @@ public class EditorApiController {
                 .flatMap(a -> a.implementedByModuleIds().stream()
                         .map(mid -> new ApiImplementationDto(a.id(), mid)))
                 .toList();
+        var proxyOperationRoutes = repository.findAllOfType(ProxyApiEntity.class).stream()
+                .flatMap(px -> px.operationRoutes().stream()
+                        .map(r -> new ProxyOperationRouteDto(px.id(), r.operationId(), r.targetSiteId())))
+                .toList();
 
         // The strategic map is a projection of the concrete dependency graph:
         // upstream (provider) → downstream (consumer). contextMap entries only
@@ -759,7 +767,8 @@ public class EditorApiController {
                 agentDelegations.stream().distinct().toList(),
                 actorAgentUses.stream().distinct().toList(),
                 agentTriggers.stream().distinct().toList(),
-                apiImplementations);
+                apiImplementations,
+                proxyOperationRoutes);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -782,7 +791,8 @@ public class EditorApiController {
                                 Boolean policy,
                                 String uri, String externalUseCaseId, String externalTableId,
                                 String apiId, String httpMethod, String path,
-                                Boolean external) {}
+                                Boolean external,
+                                String proxyId, String operationId, String targetSiteId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -855,6 +865,8 @@ public class EditorApiController {
             case "remove-agent-trigger" -> removeAgentTrigger(command);
             case "add-api-implementation" -> addApiImplementation(command);
             case "remove-api-implementation" -> removeApiImplementation(command);
+            case "add-proxy-operation-route" -> addProxyOperationRoute(command);
+            case "remove-proxy-operation-route" -> removeProxyOperationRoute(command);
             case "add-api" -> addApi(command);
             case "remove-api" -> removeApi(command);
             case "add-api-operation" -> addApiOperation(command);
@@ -2808,6 +2820,27 @@ public class EditorApiController {
         repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
                 repository.save(api.withImplementedByModuleIds(
                         without(api.implementedByModuleIds(), command.moduleId()))));
+    }
+
+    /** Route ONE proxy operation to an implementation site of the API the proxy fronts. */
+    private void addProxyOperationRoute(EditorCommand command) {
+        var proxy = repository.findById(command.proxyId(), ProxyApiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown proxy: " + command.proxyId()));
+        var route = new ProxyOperationRouteEntity(command.operationId(), command.targetSiteId());
+        if (proxy.operationRoutes().contains(route)) return;
+        var routes = new java.util.ArrayList<>(proxy.operationRoutes());
+        routes.add(route);
+        repository.save(proxy.withOperationRoutes(java.util.List.copyOf(routes)));
+    }
+
+    private void removeProxyOperationRoute(EditorCommand command) {
+        repository.findById(command.proxyId(), ProxyApiEntity.class).ifPresent(proxy -> {
+            var routes = proxy.operationRoutes().stream()
+                    .filter(r -> !(r.operationId().equals(command.operationId())
+                            && r.targetSiteId().equals(command.targetSiteId())))
+                    .toList();
+            repository.save(proxy.withOperationRoutes(routes));
+        });
     }
 
     private static List<String> appended(List<String> ids, String id) {

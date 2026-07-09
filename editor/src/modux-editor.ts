@@ -847,6 +847,20 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
       case 'remove-api-implementation':
         return [{ kind: 'add-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
+      case 'add-proxy-operation-route':
+        return [{
+          kind: 'remove-proxy-operation-route',
+          proxyId: c.proxyId,
+          operationId: c.operationId,
+          targetSiteId: c.targetSiteId,
+        }];
+      case 'remove-proxy-operation-route':
+        return [{
+          kind: 'add-proxy-operation-route',
+          proxyId: c.proxyId,
+          operationId: c.operationId,
+          targetSiteId: c.targetSiteId,
+        }];
       case 'set-api-publisher': {
         const el =
           (this.model.apis ?? []).find((a) => a.id === c.id) ??
@@ -1701,6 +1715,44 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (this._view !== 'context-map') return;
+    // A proxy's operation occurrence → an implementation SITE of the fronted API: the
+    // published API node (in its external system) or an api-impl occurrence (in a
+    // bounded context; the bare context also counts when it implements the API).
+    const opOcc = /^apiop:(.+)@(.+)$/.exec(sourceId);
+    if (opOcc) {
+      const [, operationId, siteId] = opOcc;
+      const px = (this.model.proxyApis ?? []).find((p) => p.id === siteId);
+      if (!px?.targetApiId) return;
+      let targetSiteId: string | null = null;
+      if (targetId === px.targetApiId) {
+        targetSiteId = px.targetApiId; // as published
+      } else {
+        const implTarget = /^apiimpl:(.+)@(.+)$/.exec(targetId);
+        if (implTarget && implTarget[1] === px.targetApiId) {
+          targetSiteId = implTarget[2];
+        } else if (
+          this.model.modules.some((m) => m.id === targetId) &&
+          (this.model.apiImplementations ?? []).some(
+            (impl) => impl.apiId === px.targetApiId && impl.moduleId === targetId,
+          )
+        ) {
+          targetSiteId = targetId;
+        }
+      }
+      if (!targetSiteId) return;
+      const already = (this.model.proxyOperationRoutes ?? []).some(
+        (r) => r.proxyId === px.id && r.operationId === operationId && r.targetSiteId === targetSiteId,
+      );
+      if (!already) {
+        this.command({
+          kind: 'add-proxy-operation-route',
+          proxyId: px.id,
+          operationId,
+          targetSiteId,
+        });
+      }
+      return;
+    }
     // Actor and AI-agent drags come first: they may legally end on children (use
     // cases, query services, aggregates) that other gestures treat as off-limits.
     const agentIds = new Set((this.model.aiAgents ?? []).map((a) => a.id));
@@ -2326,6 +2378,17 @@ export class ModuxEditor extends LitElement {
       if (!owner) return;
       this._selectedId = null;
       this.command({ kind: 'remove-workflow-step', workflowId: owner.id, id });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'op-route') {
+      // Edge ids are `oproute:apiop:<opId>@<proxyId>-><targetNodeId>` (see context-map.ts).
+      const match = /^oproute:apiop:(.+)@(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      const [, operationId, proxyId, targetNodeId] = match;
+      const implTarget = /^apiimpl:.+@(.+)$/.exec(targetNodeId);
+      const targetSiteId = implTarget ? implTarget[1] : targetNodeId;
+      this._selectedId = null;
+      this.command({ kind: 'remove-proxy-operation-route', proxyId, operationId, targetSiteId });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'relation') {
