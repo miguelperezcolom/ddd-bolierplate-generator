@@ -1532,15 +1532,48 @@ flows:
 diagrams:
 - id: "context-map@detail"
   nodes:
-  - ref: "actor"
-    x: -96.0
-    "y": 130.0
-  - ref: "mod-reservas"
-    x: 1007.8
-    "y": 224.4
+  - ref: "mod-housekeeping"
+    x: 380.0
+    "y": 535.9
   - ref: "mod-servicio-tecnico"
-    x: 634.4
-    "y": 206.7
+    x: 706.0
+    "y": 535.9
+  - ref: "mod-reservas"
+    x: 504.0
+    "y": 856.9
+  - ref: "mod-cardex"
+    x: 1032.0
+    "y": 535.9
+  - ref: "mod-facturacion"
+    x: 178.0
+    "y": 685.9
+  - ref: "mod-master-data"
+    x: 830.0
+    "y": 961.9
+  - ref: "mod-pagos"
+    x: 504.0
+    "y": 685.9
+  - ref: "mod-rack"
+    x: 830.0
+    "y": 685.9
+  - ref: "mod-frontoffice"
+    x: 617.7
+    "y": 301.9
+  - ref: "mod-folios"
+    x: 178.0
+    "y": 90.0
+  - ref: "mod-produccion"
+    x: 178.0
+    "y": 835.9
+  - ref: "recepcionista"
+    x: 881.7
+    "y": 74.0
+  - ref: "jefeRecepcion"
+    x: 1083.7
+    "y": 74.0
+  - ref: "actor"
+    x: 116.0
+    "y": 519.9
 - id: "context-map"
   detail: "detail"
   nodes:

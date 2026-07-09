@@ -4889,7 +4889,21 @@ export class ModuxEditor extends LitElement {
       </div>
       <div class="canvas-wrap">
       ${this._tilt
-        ? html`<modux-tilt .scene=${scene}></modux-tilt>`
+        ? html`<modux-tilt
+            .scene=${scene}
+            .selectedId=${this._selectedId}
+            @element-selected=${this.onElementSelected}
+            @element-activated=${this.onElementActivated}
+            @node-moved=${this.onNodeMoved}
+            @delete-requested=${this.onDeleteRequested}
+            @undo-requested=${this.undo}
+            @redo-requested=${this.redo}
+            @selection-cleared=${() => {
+              this._selectedId = null;
+              this._multi = [];
+              this.emit('modux-select', null);
+            }}
+          ></modux-tilt>`
         : html`
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
       ${this.renderPalette()}

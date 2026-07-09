@@ -172,9 +172,13 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   bounded context is the base plate, its aggregates, use cases and events float one
   storey above, an API's operations one more). Edges fly **at their nodes' heights**
   — a line between storeys climbs in 3D — with a faint shadow on the floor as the
-  depth cue. Drag orbits, shift+drag pans, wheel zooms, double click resets the camera.
-  A read-only lens — press V again to come back and edit. Pure CSS 3D, works on any
-  view and detail level.
+  depth cue. And it is **interactive**: click selects (same selection as the canvas),
+  **double click opens the element's editor**, **dragging a plate moves it** (the
+  pointer delta is unprojected onto the floor plane; persisted and undoable), and
+  **Supr deletes** with the usual integrity guards. Dragging the background orbits,
+  shift+drag pans, wheel zooms, double click on the background resets the camera.
+  Press V again to come back to the 2D canvas. Pure CSS 3D, works on any view and
+  detail level.
 
 ## Keyboard shortcuts
 
