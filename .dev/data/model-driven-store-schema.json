@@ -3562,6 +3562,11 @@
           "type" : "string",
           "description" : "Reference to an existing 'uiAdapter' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "useCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false

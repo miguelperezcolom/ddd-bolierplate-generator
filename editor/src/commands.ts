@@ -696,6 +696,13 @@ export type ModuxCommand =
   | { kind: 'move-menu-item'; appId: string; toAppId: string; itemId?: string; label?: string }
   | { kind: 'set-menu-app'; appId: string; toAppId: string | null; itemId?: string; label?: string }
   | {
+      kind: 'set-menu-use-case';
+      appId: string;
+      useCaseId: string | null;
+      itemId?: string;
+      label?: string;
+    }
+  | {
       kind: 'set-menu-page';
       appId: string;
       pageId: string | null;

@@ -991,7 +991,8 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-menu-item', appId: c.appId, itemId: c.itemId, label: c.label }];
       case 'remove-menu-item':
       case 'set-menu-page':
-      case 'set-menu-app': {
+      case 'set-menu-app':
+      case 'set-menu-use-case': {
         const app = (this.model.uiApps ?? []).find((a) => a.id === c.appId);
         const find = (items: UiMenuEntryRef[] | undefined): UiMenuEntryRef | null => {
           for (const it of items ?? []) {
@@ -1017,6 +1018,15 @@ export class ModuxEditor extends LitElement {
             kind: 'set-menu-app',
             appId: c.appId,
             toAppId: entry.uiAdapterId ?? null,
+            itemId: c.itemId,
+            label: c.label,
+          }];
+        }
+        if (c.kind === 'set-menu-use-case') {
+          return [{
+            kind: 'set-menu-use-case',
+            appId: c.appId,
+            useCaseId: entry.useCaseId ?? null,
             itemId: c.itemId,
             label: c.label,
           }];
@@ -2161,11 +2171,21 @@ export class ModuxEditor extends LitElement {
       // another component, like a page) — same gesture, both directions
       const menuRef = parseMenuNodeId(sourceId) ?? parseMenuNodeId(targetId);
       if (menuRef) {
+        const menuNodeIdStr = parseMenuNodeId(sourceId) ? sourceId : targetId;
         const other = parseMenuNodeId(sourceId) ? targetId : sourceId;
+        if (this.sceneFor('ui').nodes.find((n) => n.id === menuNodeIdStr)?.kind === 'menu-group') {
+          this.emit('modux-notice', { message: 'Un agrupador (con submenú) no puede abrir nada' });
+          return;
+        }
+        const isUseCase = this.model.modules.some((mod) =>
+          (mod.useCases ?? []).some((u) => u.id === other),
+        );
         if (isPage(other)) {
           this.command({ kind: 'set-menu-page', pageId: other, ...menuRef });
         } else if (isApp(other) && other !== menuRef.appId) {
           this.command({ kind: 'set-menu-app', toAppId: other, ...menuRef });
+        } else if (isUseCase) {
+          this.command({ kind: 'set-menu-use-case', useCaseId: other, ...menuRef });
         }
         return;
       }
@@ -3038,6 +3058,9 @@ export class ModuxEditor extends LitElement {
         } else if ((m = /^menuapp:(.+)->[^>]+$/.exec(id))) {
           const ref = parseMenuNodeId(m[1]);
           if (ref) this.command({ kind: 'set-menu-app', toAppId: null, ...ref });
+        } else if ((m = /^menuuc:(.+)->[^>]+$/.exec(id))) {
+          const ref = parseMenuNodeId(m[1]);
+          if (ref) this.command({ kind: 'set-menu-use-case', useCaseId: null, ...ref });
         }
         return;
       }
@@ -3049,7 +3072,7 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'delete-ui-page', id });
         return;
       }
-      if (kind === 'menu-item') {
+      if (kind === 'menu-item' || kind === 'menu-group') {
         const ref = parseMenuNodeId(id);
         if (ref) this.command({ kind: 'remove-menu-item', ...ref });
         return;

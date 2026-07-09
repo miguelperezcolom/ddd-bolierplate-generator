@@ -60,6 +60,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const queryName = (id: string) =>
     model.modules.flatMap((m) => m.queryServices ?? []).find((q) => q.id === id)?.name ?? id;
 
+  const chipMeta = new Map<string, { label: string; kind: string; symbol: string; stroke: string }>();
+
   // ---- apps: containers with their menu tree stacked inside ---------------
   let appY = 160;
   for (const app of apps) {
@@ -95,16 +97,21 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         y: entryY,
         w: APP_W - CONTAINER_INSET * 2 - indent,
         h: ENTRY_H,
-        kind: 'menu-item',
+        // a parent entry is a pure grouper: it offers no handles and takes no target
+        kind: entry.children?.length ? 'menu-group' : 'menu-item',
         symbol: 'process',
-        fill: '#ffffff',
+        fill: entry.children?.length ? '#f0f9ff' : '#ffffff',
         stroke: '#7dd3fc',
         parentId: app.id,
-        tooltip: entry.pageId
-          ? `Abre ${entry.pageId}`
-          : entry.uiAdapterId
-            ? `Abre la app ${entry.uiAdapterId}`
-            : 'Entrada de menú sin destino',
+        tooltip: entry.children?.length
+          ? 'Agrupador (con submenú): no puede abrir nada'
+          : entry.pageId
+            ? `Abre ${entry.pageId}`
+            : entry.uiAdapterId
+              ? `Abre la app ${entry.uiAdapterId}`
+              : entry.useCaseId
+                ? `Lanza ${entry.useCaseId}`
+                : 'Entrada de menú sin destino',
       });
       entryY += ENTRY_H + ENTRY_GAP;
       if (entry.uiAdapterId && apps.some((a) => a.id === entry.uiAdapterId)) {
@@ -116,6 +123,26 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
           color: '#64748b',
           arrow: true,
         });
+      }
+      if (entry.useCaseId) {
+        const known = model.modules.some((mod) => (mod.useCases ?? []).some((u) => u.id === entry.useCaseId));
+        if (known) {
+          chipMeta.set(entry.useCaseId, {
+            label: useCaseName(entry.useCaseId),
+            kind: 'use-case',
+            symbol: 'usecase',
+            stroke: '#06b6d4',
+          });
+          edges.push({
+            id: `menuuc:${id}->${entry.useCaseId}`,
+            sourceId: id,
+            targetId: entry.useCaseId,
+            kind: 'menu-use-case',
+            color: '#06b6d4',
+            dashed: true,
+            arrow: true,
+          });
+        }
       }
       if (entry.pageId && pages.some((p) => p.id === entry.pageId)) {
         edges.push({
@@ -131,7 +158,6 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
   }
 
   // ---- pages, each with its MVVM satellites -------------------------------
-  const chipMeta = new Map<string, { label: string; kind: string; symbol: string; stroke: string }>();
   let pageY = 160;
   for (const page of pages) {
     const pos = layout[page.id] ?? { x: 640, y: pageY };

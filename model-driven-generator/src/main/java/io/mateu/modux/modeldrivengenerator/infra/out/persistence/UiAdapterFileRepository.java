@@ -47,7 +47,8 @@ public class UiAdapterFileRepository implements UiAdapterRepository {
                 : stored != null && stored.children() != null ? stored.children() : List.<UiMenuItemEntity>of();
         return new UiMenuItemEntity(m.label(), m.icon(), m.description(), m.route(), m.pageId(),
                 children, stored != null ? stored.id() : null,
-                stored != null ? stored.uiAdapterId() : null);
+                stored != null ? stored.uiAdapterId() : null,
+                stored != null ? stored.useCaseId() : null);
     }
 
     @Override

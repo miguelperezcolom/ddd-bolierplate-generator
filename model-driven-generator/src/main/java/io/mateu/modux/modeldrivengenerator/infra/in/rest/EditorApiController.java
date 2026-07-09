@@ -225,7 +225,7 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
-    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId) {}
+    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId) {}
     /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
@@ -870,7 +870,7 @@ public class EditorApiController {
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
                         .map(EditorApiController::toMenuEntry)
                         .toList(),
-                item.id(), item.uiAdapterId());
+                item.id(), item.uiAdapterId(), item.useCaseId());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -1059,6 +1059,7 @@ public class EditorApiController {
             case "set-menu-page" -> setMenuPage(command);
             case "move-menu-item" -> moveMenuItem(command);
             case "set-menu-app" -> setMenuApp(command);
+            case "set-menu-use-case" -> setMenuUseCase(command);
             case "add-page-button" -> addPageButton(command);
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
@@ -3434,7 +3435,7 @@ public class EditorApiController {
                     item.route(), item.pageId(),
                     clearedChildren != null ? clearedChildren
                             : item.children() == null ? List.of() : item.children(),
-                    item.id(), hit ? null : item.uiAdapterId()));
+                    item.id(), hit ? null : item.uiAdapterId(), item.useCaseId()));
         }
         return changed ? copy : null;
     }
@@ -3510,7 +3511,7 @@ public class EditorApiController {
             repository.findById(command.toAppId(), UiAdapterEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
         }
-        var updated = withMenuApp(app.menuItems(), command.itemId(), command.label(), command.toAppId());
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(), "app", command.toAppId());
         if (updated == null) {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
@@ -3518,27 +3519,24 @@ public class EditorApiController {
         repository.save(withMenuItems(app, updated));
     }
 
-    /** The tree with the FIRST matching item's uiAdapterId replaced, or null when nothing matches. */
-    private static List<UiMenuItemEntity> withMenuApp(List<UiMenuItemEntity> items,
-                                                      String itemId, String label, String toAppId) {
-        if (items == null) return null;
-        for (var i = 0; i < items.size(); i++) {
-            var item = items.get(i);
-            if (menuItemMatches(item, itemId, label)) {
-                var copy = new ArrayList<>(items);
-                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), toAppId != null ? null : item.pageId(), item.children(),
-                        item.id(), toAppId));
-                return copy;
-            }
-            var newChildren = withMenuApp(item.children(), itemId, label, toAppId);
-            if (newChildren != null) {
-                var copy = new ArrayList<>(items);
-                copy.set(i, withChildren(item, newChildren));
-                return copy;
-            }
+
+
+    /** Points a menu entry at a USE CASE — third kind of target, same exclusivity. */
+    private void setMenuUseCase(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.useCaseId() != null) {
+            repository.findById(command.useCaseId(), UseCaseEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown use case: " + command.useCaseId()));
         }
-        return null;
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
+                "useCase", command.useCaseId());
+        if (updated == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        repository.save(withMenuItems(app, updated));
     }
 
     /** Moves a menu entry (subtree included) to another app's menu root. */
@@ -3579,7 +3577,7 @@ public class EditorApiController {
             repository.findById(command.pageId(), PageEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
         }
-        var updated = withMenuPage(app.menuItems(), command.itemId(), command.label(), command.pageId());
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(), "page", command.pageId());
         if (updated == null) {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
@@ -3782,11 +3780,15 @@ public class EditorApiController {
             used.add(id);
             var healedChildren = withMenuItemIds(item.children(), used);
             if (healedChildren != null) changed = true;
+            var isGroup = item.children() != null && !item.children().isEmpty();
+            if (isGroup && (item.pageId() != null || item.uiAdapterId() != null || item.useCaseId() != null)) {
+                changed = true; // a parent is a pure grouper — legacy targets are dropped
+            }
             copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                    item.route(), item.pageId(),
+                    item.route(), isGroup ? null : item.pageId(),
                     healedChildren != null ? healedChildren
                             : item.children() == null ? List.of() : item.children(),
-                    id, item.uiAdapterId()));
+                    id, isGroup ? null : item.uiAdapterId(), isGroup ? null : item.useCaseId()));
         }
         return changed ? copy : null;
     }
@@ -3819,7 +3821,7 @@ public class EditorApiController {
     private static UiMenuItemEntity withChildren(UiMenuItemEntity item,
                                                  List<UiMenuItemEntity> children) {
         return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
-                item.pageId(), children, item.id(), item.uiAdapterId());
+                item.pageId(), children, item.id(), item.uiAdapterId(), item.useCaseId());
     }
 
     /**
@@ -3837,6 +3839,11 @@ public class EditorApiController {
             if (menuItemMatches(item, parentId, parentLabel)) {
                 newChildren = new ArrayList<>(children);
                 newChildren.add(entry);
+                // a parent is a pure grouper: gaining a submenu clears any target it had
+                var copy = new ArrayList<>(items);
+                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                        item.route(), null, newChildren, item.id(), null, null));
+                return copy;
             } else {
                 newChildren = insertedUnderParent(children, parentId, parentLabel, entry);
             }
@@ -3873,20 +3880,32 @@ public class EditorApiController {
         return null;
     }
 
-    /** The tree with the FIRST matching item's pageId replaced, or null when nothing matches. */
-    private static List<UiMenuItemEntity> withMenuPage(List<UiMenuItemEntity> items,
-                                                       String itemId, String label, String pageId) {
+    /**
+     * The tree with the FIRST matching item's target replaced — an entry opens/fires
+     * exactly ONE thing, so setting a target clears the other two; null when nothing
+     * matches. Entries with a submenu are pure groupers: linking them is rejected.
+     */
+    private static List<UiMenuItemEntity> withMenuTarget(List<UiMenuItemEntity> items,
+                                                         String itemId, String label,
+                                                         String kind, String targetId) {
         if (items == null) return null;
         for (var i = 0; i < items.size(); i++) {
             var item = items.get(i);
             if (menuItemMatches(item, itemId, label)) {
+                if (targetId != null && item.children() != null && !item.children().isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "La entrada «" + item.label() + "» tiene submenú: no puede abrir nada");
+                }
                 var copy = new ArrayList<>(items);
                 copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), pageId, item.children(), item.id(),
-                        pageId != null ? null : item.uiAdapterId()));
+                        item.route(),
+                        "page".equals(kind) ? targetId : null,
+                        item.children(), item.id(),
+                        "app".equals(kind) ? targetId : null,
+                        "useCase".equals(kind) ? targetId : null));
                 return copy;
             }
-            var newChildren = withMenuPage(item.children(), itemId, label, pageId);
+            var newChildren = withMenuTarget(item.children(), itemId, label, kind, targetId);
             if (newChildren != null) {
                 var copy = new ArrayList<>(items);
                 copy.set(i, withChildren(item, newChildren));

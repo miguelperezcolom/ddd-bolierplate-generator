@@ -478,6 +478,8 @@ export interface UiMenuEntryRef {
   id?: string;
   /** The app this entry opens — an app is just another UI component, like a page. */
   uiAdapterId?: string;
+  /** The use case this entry fires. An entry opens/fires exactly ONE thing. */
+  useCaseId?: string;
 }
 
 export interface UiAppRef {
