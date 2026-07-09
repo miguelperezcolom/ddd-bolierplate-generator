@@ -859,24 +859,8 @@ export class ModuxCanvas extends LitElement {
     this.emit('edge-points-changed', { id: edge.id, points });
   }
 
-  private renderEdge(
-    edge: SceneEdge,
-    pts: Point[],
-    priorSegments: [Point, Point][],
-  ): TemplateResult | typeof svg.prototype {
-    const color = edge.color ?? '#64748b';
-    const selected = this.selectedId === edge.id;
-    // A line belongs to a rubber-band selection when both its endpoints do, so
-    // boxing a region highlights the sub-graph, not just its nodes.
-    const highlighted =
-      selected ||
-      (this.selectedIds.includes(edge.sourceId) && this.selectedIds.includes(edge.targetId));
-    const midIndex = Math.floor((pts.length - 1) / 2);
-    const mid = {
-      x: (pts[midIndex].x + pts[midIndex + 1].x) / 2,
-      y: (pts[midIndex].y + pts[midIndex + 1].y) / 2,
-    };
-    const waypoints = pts.slice(1, -1);
+  /** The interactive half of an edge: the fat invisible hit line (select, bend, drag). */
+  private renderEdgeHit(edge: SceneEdge, pts: Point[]): TemplateResult | typeof svg.prototype {
     const hitPoints = pts.map((p) => `${p.x},${p.y}`).join(' ');
     return svg`
       <g data-edge-id=${edge.id}>
@@ -895,14 +879,43 @@ export class ModuxCanvas extends LitElement {
               @pointerdown=${(e: PointerEvent) => this.onEdgeHitPointerDown(e, edge, pts)}>
           ${edge.tooltip ? svg`<title>${edge.tooltip}</title>` : ''}
         </polyline>
+      </g>`;
+  }
+
+  /**
+   * The visible half (stroke, arrow, label, waypoint handles), painted in a layer
+   * ABOVE every node so a line is never hidden — without stealing the nodes'
+   * pointer events: only the label and the waypoint handles are interactive.
+   */
+  private renderEdgeInk(
+    edge: SceneEdge,
+    pts: Point[],
+    priorSegments: [Point, Point][],
+  ): TemplateResult | typeof svg.prototype {
+    const color = edge.color ?? '#64748b';
+    const selected = this.selectedId === edge.id;
+    // A line belongs to a rubber-band selection when both its endpoints do, so
+    // boxing a region highlights the sub-graph, not just its nodes.
+    const highlighted =
+      selected ||
+      (this.selectedIds.includes(edge.sourceId) && this.selectedIds.includes(edge.targetId));
+    const midIndex = Math.floor((pts.length - 1) / 2);
+    const mid = {
+      x: (pts[midIndex].x + pts[midIndex + 1].x) / 2,
+      y: (pts[midIndex].y + pts[midIndex + 1].y) / 2,
+    };
+    const waypoints = pts.slice(1, -1);
+    return svg`
+      <g data-edge-ink=${edge.id} pointer-events="none">
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
               stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashed ? '6 4' : ''}
-              marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}
-              pointer-events="none"></path>
+              opacity="0.92"
+              marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
         ${edge.label
-          ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle" style="cursor: pointer"
+          ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
+                  style="cursor: pointer" pointer-events="all"
                   font-size="11" font-family="ui-sans-serif, system-ui" fill=${color}
                   paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3"
                   @click=${(e: MouseEvent) => {
@@ -930,7 +943,8 @@ export class ModuxCanvas extends LitElement {
               return svg`
                 <circle data-waypoint cx=${p.x} cy=${p.y} r=${wpSelected ? 6 : 5}
                         fill=${wpSelected ? '#2563eb' : '#ffffff'}
-                        stroke="#2563eb" stroke-width="1.6" style="cursor: move"
+                        stroke="#2563eb" stroke-width="1.6" pointer-events="all"
+                        style="cursor: move"
                         @pointerdown=${(e: PointerEvent) => {
                           if (e.button !== 0) return;
                           e.stopPropagation();
@@ -1283,22 +1297,14 @@ export class ModuxCanvas extends LitElement {
     const colors = [...new Set(this.scene.edges.map((e) => e.color ?? '#64748b'))];
     // Edges render in order; each one bridges over the segments drawn before it.
     const priorSegments: [Point, Point][] = [];
-    const edgeTemplates = this.scene.edges.map((edge) => {
+    const edgeHits: (TemplateResult | typeof svg.prototype)[] = [];
+    const edgeInks: (TemplateResult | typeof svg.prototype)[] = [];
+    this.scene.edges.forEach((edge) => {
       const pts = this.edgePolyline(edge);
-      if (!pts) return svg``;
-      const template = this.renderEdge(edge, pts, [...priorSegments]);
+      if (!pts) return;
+      edgeHits.push(this.renderEdgeHit(edge, pts));
+      edgeInks.push(this.renderEdgeInk(edge, pts, [...priorSegments]));
       for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
-      return template;
-    });
-    // Edges touching a nested child (e.g. emissions inside a container) must paint
-    // ABOVE the nodes — the container's opaque body would hide them otherwise.
-    const childIds = new Set(this.scene.nodes.filter((n) => n.parentId).map((n) => n.id));
-    const underEdges: typeof edgeTemplates = [];
-    const overEdges: typeof edgeTemplates = [];
-    this.scene.edges.forEach((edge, i) => {
-      (childIds.has(edge.sourceId) || childIds.has(edge.targetId) ? overEdges : underEdges).push(
-        edgeTemplates[i],
-      );
     });
     return html`
       <svg
@@ -1328,10 +1334,10 @@ export class ModuxCanvas extends LitElement {
         <g transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
-          ${underEdges}
+          ${edgeHits}
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
-          ${overEdges}
           ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
+          ${edgeInks}
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>

@@ -122,14 +122,17 @@ function routeEdgesAroundNodes(
     for (let cur = id; cur; cur = byId.get(cur)?.parentId) out.add(cur);
     return out;
   };
-  const obstacles = scene.nodes.filter((n) => !n.parentId);
+  // Children count as obstacles too (with a tighter margin — grids are dense).
+  const obstacles = scene.nodes;
+  const marginOf = (o: SceneNode) => (o.parentId ? Math.min(margin, 6) : margin);
   const routed = new Map<string, Pt[]>();
 
   /** Corner/side detours for segment a→b around o; corners sit strictly outside the test box. */
   const detoursAround = (a: Pt, b: Pt, o: SceneNode): Pt[][] => {
-    const test = { x: o.x, y: o.y, w: o.w + 2 * margin, h: o.h + 2 * margin };
-    const px = o.w / 2 + margin * 1.5;
-    const py = o.h / 2 + margin * 1.5;
+    const m = marginOf(o);
+    const test = { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m };
+    const px = o.w / 2 + m * 1.5;
+    const py = o.h / 2 + m * 1.5;
     const tl = { x: o.x - px, y: o.y - py };
     const tr = { x: o.x + px, y: o.y - py };
     const bl = { x: o.x - px, y: o.y + py };
@@ -163,7 +166,8 @@ function routeEdgesAroundNodes(
       outer: for (let i = 0; i < path.length - 1; i++) {
         for (const o of obstacles) {
           if (skip.has(o.id)) continue;
-          const test = { x: o.x, y: o.y, w: o.w + 2 * margin, h: o.h + 2 * margin };
+          const m = marginOf(o);
+          const test = { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m };
           if (!segmentCrossesBox(path[i], path[i + 1], test)) continue;
           const options = detoursAround(path[i], path[i + 1], o);
           if (!options.length) continue; // endpoints boxed in — leave this one be
@@ -172,8 +176,8 @@ function routeEdgesAroundNodes(
               (other) =>
                 other !== o &&
                 !skip.has(other.id) &&
-                Math.abs(c.x - other.x) < other.w / 2 + margin / 2 &&
-                Math.abs(c.y - other.y) < other.h / 2 + margin / 2,
+                Math.abs(c.x - other.x) < other.w / 2 + marginOf(other) / 2 &&
+                Math.abs(c.y - other.y) < other.h / 2 + marginOf(other) / 2,
             );
           const cost = (pts: Pt[]) => {
             let total = 0;
