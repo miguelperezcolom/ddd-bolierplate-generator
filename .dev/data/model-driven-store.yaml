@@ -1356,6 +1356,8 @@ roles:
   name: "Recepcionista"
 - id: "jefeRecepcion"
   name: "JefeRecepcion"
+- id: "actor"
+  name: "Actor"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1523,6 +1525,11 @@ flows:
   targetModuleId: "mod-folios"
   readModelName: "EstanciaActualizadaView"
 diagrams:
+- id: "context-map@detail"
+  nodes:
+  - ref: "actor"
+    x: -96.0
+    "y": 130.0
 - id: "context-map"
   detail: "detail"
   nodes:

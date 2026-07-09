@@ -167,6 +167,13 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   space** to pan from anywhere.
 - **⛶ (or F) takes the diagram fullscreen** — the whole editor, toolbar and palette
   included, via the browser's Fullscreen API; **Esc** (or F again) comes back.
+- **⬦ 3D (or V) tilts the diagram** — the Firefox-Tilt view of the model: the same
+  scene rendered as stacked plates where **containment depth becomes height** (a
+  bounded context is the base plate, its aggregates, use cases and events float one
+  storey above, an API's operations one more), with the edges lying on the floor
+  plane. Drag orbits, shift+drag pans, wheel zooms, double click resets the camera.
+  A read-only lens — press V again to come back and edit. Pure CSS 3D, works on any
+  view and detail level.
 
 ## Keyboard shortcuts
 
@@ -174,7 +181,7 @@ Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** pal
 **F** fullscreen · **0** fit · **+/−** zoom · **1/2/3** context-map levels (contexts /
 aggregates & use cases / APIs & operations) · **4/5/6/7** the specialized views
 (aggregates · flows · processes · workflows) · **E/D** EventStorming / back to the
-diagram · **T** the view's catalog tree · plus the editing keys (Supr, F2, Ctrl+Z /
+diagram · **V** the 3D tilt view · **T** the view's catalog tree · plus the editing keys (Supr, F2, Ctrl+Z /
 Ctrl+Y, space+drag, shift for multi-selection). Shortcuts never fire while typing in
 a field.
 

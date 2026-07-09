@@ -12,6 +12,7 @@ import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
+import './modux-tilt.js';
 import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
@@ -294,6 +295,8 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
   /** Mirrors document.fullscreenElement — the editor host in fullscreen. */
   @state() private _fullscreen = false;
+  /** Tilt mode: the diagram as stacked 3D plates (a read-only lens). */
+  @state() private _tilt = false;
   /** Keyboard-shortcuts help popover (toggled with ?). */
   @state() private _helpOpen = false;
   @state() private _newName = '';
@@ -601,7 +604,8 @@ export class ModuxEditor extends LitElement {
       padding: 4px 12px;
       border-top: 1px solid #f1f5f9;
     }
-    modux-canvas {
+    modux-canvas,
+    modux-tilt {
       flex: 1;
       min-height: 0;
     }
@@ -735,6 +739,11 @@ export class ModuxEditor extends LitElement {
           e.preventDefault();
           this._treeOpen = !this._treeOpen;
         }
+        break;
+      case 'v':
+      case 'V':
+        e.preventDefault();
+        this._tilt = !this._tilt;
         break;
       case 'e':
       case 'E':
@@ -4859,6 +4868,16 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
+          ?data-active=${this._tilt}
+          title=${this._tilt
+            ? 'Volver al lienzo editable (V)'
+            : 'Vista 3D: el diagrama como placas apiladas por contención (V)'}
+          @click=${() => (this._tilt = !this._tilt)}
+        >
+          ⬦ 3D
+        </button>
+        <button
+          class="tab"
           ?data-active=${this._fullscreen}
           title=${this._fullscreen
             ? 'Salir de pantalla completa (F o Esc)'
@@ -4869,6 +4888,9 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
+      ${this._tilt
+        ? html`<modux-tilt .scene=${scene}></modux-tilt>`
+        : html`
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
       ${this.renderPalette()}
       <modux-canvas
@@ -4902,6 +4924,7 @@ export class ModuxEditor extends LitElement {
           this.emit('modux-select', null);
         }}
       ></modux-canvas>
+      `}
       </div>
       <div class="hint">
         ${this._view === 'context-map'
@@ -4938,6 +4961,7 @@ export class ModuxEditor extends LitElement {
       ['1 · 2 · 3', 'Context map: contextos · agregados y casos de uso · APIs y operaciones'],
       ['4 · 5 · 6 · 7', 'Agregados · Flows · Procesos · Workflows'],
       ['E / D', 'EventStorming / volver al diagrama'],
+      ['V', 'Vista 3D (placas apiladas, tipo Firefox Tilt)'],
       ['T', 'Árbol del catálogo (con una vista activa)'],
       ['Supr', 'Borrar la selección'],
       ['F2', 'Renombrar el nodo seleccionado'],
