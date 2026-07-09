@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.model.check;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.CatalogReflection;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CheckModelUseCase {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
 
     public record Violation(String elementType, String elementId, String field, String missingId) {
         @Override

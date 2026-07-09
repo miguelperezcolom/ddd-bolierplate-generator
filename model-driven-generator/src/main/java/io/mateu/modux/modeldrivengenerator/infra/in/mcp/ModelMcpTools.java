@@ -14,7 +14,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.generate
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.recipes.ApplyRecipeUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelJsonSchemaGenerator;
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ModelMcpTools {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final ElementTypeRegistry registry;
     private final ModelJsonSchemaGenerator schemaGenerator;
     private final CheckModelUseCase checkModelUseCase;

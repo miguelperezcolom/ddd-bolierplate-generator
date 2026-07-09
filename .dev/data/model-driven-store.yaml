@@ -35,6 +35,10 @@ modules:
   name: "ServicioTecnico"
   aggregateIds:
   - "habitacion-st"
+  projectionIds:
+  - "proj-habitacionhousekeeping-serviciotecnico"
+  readModelIds:
+  - "rm-habitacionhousekeeping-serviciotecnico"
   subscriptionIds:
   - "sub-servicio-tecnico-habitacionCreada"
 - id: "mod-reservas"
@@ -1294,6 +1298,10 @@ projections:
   rebuildStrategy: "REPLAY"
   errorHandlingStrategy: "RETRY"
   maxRetries: 3
+- id: "proj-habitacionhousekeeping-serviciotecnico"
+  name: "HabitacionHousekeepingViewProjection"
+  readModelId: "rm-habitacionhousekeeping-serviciotecnico"
+  sourceAggregateId: "habitacion-hk"
 subscriptions:
 - id: "sub-servicio-tecnico-habitacionCreada"
   name: "ServicioTecnicoHabitacionCreada"
@@ -1514,6 +1522,11 @@ integrationEvents:
   compressionType: "NONE"
   replayable: true
 readModels:
+- id: "rm-habitacionhousekeeping-serviciotecnico"
+  name: "HabitacionHousekeepingView"
+  moduleId: "mod-servicio-tecnico"
+  modelId: "habitacion-hk"
+  aggregateId: "habitacion-hk"
 - id: "rm-llegadas"
   name: "LlegadasReadModel"
   moduleId: "mod-frontoffice"
@@ -1545,11 +1558,13 @@ diagrams:
 - id: "context-map@detail"
   nodes:
   - ref: "mod-housekeeping"
-    x: 380.0
-    "y": 535.9
+    x: 377.0
+    "y": 478.8
   - ref: "mod-servicio-tecnico"
     x: 706.0
-    "y": 535.9
+    "y": 577.4
+    w: 256.0
+    h: 163.1
   - ref: "mod-reservas"
     x: 504.0
     "y": 856.9
@@ -1589,6 +1604,12 @@ diagrams:
   - ref: "cardex"
     x: 25.8
     "y": 9.6
+  - ref: "rm-habitacionhousekeeping-serviciotecnico"
+    x: -43.9
+    "y": -18.4
+  - ref: "habitacion-st"
+    x: -33.0
+    "y": 45.3
 - id: "context-map"
   detail: "detail"
   nodes:

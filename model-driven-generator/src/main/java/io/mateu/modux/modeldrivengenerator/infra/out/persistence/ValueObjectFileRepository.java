@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ValueObjectRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObject;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.vo.ValueObjectId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ import static io.mateu.core.infra.JsonSerializer.toJson;
 @RequiredArgsConstructor
 public class ValueObjectFileRepository implements ValueObjectRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<ValueObject> findById(ValueObjectId id) {

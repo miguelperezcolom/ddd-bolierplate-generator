@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.EntityRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.entity.Entity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.entity.vo.EntityId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EntityFileRepository implements EntityRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Entity> findById(EntityId id) {

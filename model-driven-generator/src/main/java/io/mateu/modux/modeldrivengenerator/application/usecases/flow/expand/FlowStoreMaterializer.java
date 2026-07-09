@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
@@ -35,7 +35,7 @@ import java.util.function.Function;
 @Slf4j
 public class FlowStoreMaterializer {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final FlowExpander expander;
     final FlowExpansionContextResolver resolver;
 
@@ -102,7 +102,7 @@ public class FlowStoreMaterializer {
 
     /** Restores the store from disk, discarding the transient flow-derived pieces. */
     public void restore() {
-        repository.init();
+        repository.reload();
     }
 
     private <T extends Identifiable> boolean saveIfNew(T entity, Set<String> seen, Function<T, String> key) {

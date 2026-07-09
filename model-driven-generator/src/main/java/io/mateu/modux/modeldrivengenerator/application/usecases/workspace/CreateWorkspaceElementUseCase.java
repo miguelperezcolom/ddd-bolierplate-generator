@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.workspace;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.uidl.interfaces.Identifiable;
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CreateWorkspaceElementUseCase {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final ElementTypeRegistry registry;
     private final GlobalIdPolicy idPolicy;
 

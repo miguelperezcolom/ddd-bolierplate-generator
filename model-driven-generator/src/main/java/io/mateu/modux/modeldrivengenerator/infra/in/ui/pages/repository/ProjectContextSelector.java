@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Option;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ProjectContextSelector implements LookupOptionsSupplier {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<Option> search(String fieldName, String searchText,

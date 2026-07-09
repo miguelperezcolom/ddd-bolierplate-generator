@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.IntegrationEventRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.IntegrationEvent;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo.IntegrationEventId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IntegrationEventFileRepository implements IntegrationEventRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<IntegrationEvent> findById(IntegrationEventId id) {

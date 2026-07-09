@@ -15,7 +15,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.ModuleId;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BddScenarioEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BffEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainPolicyEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
@@ -30,7 +30,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModuleFileRepository implements ModuleRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Module> findById(ModuleId id) {

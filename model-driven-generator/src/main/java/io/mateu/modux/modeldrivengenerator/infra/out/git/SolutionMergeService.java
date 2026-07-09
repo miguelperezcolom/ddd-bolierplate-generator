@@ -5,19 +5,16 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.LintSeverity;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelLintService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.application.out.store.WorkspaceStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AllData;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SolutionEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -42,10 +39,8 @@ public class SolutionMergeService {
 
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
 
-    final SolutionGitService git;
-    final CommonFileRepository repository;
-    final GranularYamlStorageFormat granularFormat;
-    final MonolithicYamlStorageFormat monolithicFormat;
+    final WorkspaceStore workspace;
+    final ModelStore repository;
     final ModelLintService lintService;
 
     // ---- approval gate -----------------------------------------------------
@@ -91,7 +86,7 @@ public class SolutionMergeService {
     /** Dry run: the conflicts a merge (either direction) would need resolved. */
     public MergeCheck check() {
         var sides = loadSides();
-        return new MergeCheck(git.currentBranch(),
+        return new MergeCheck(workspace.currentBranch(),
                 threeWay(sides, Map.of(), null).conflicts);
     }
 
@@ -106,40 +101,25 @@ public class SolutionMergeService {
             throw new IllegalStateException(
                     "Solo se mergea una solución APPROVED (estado actual: " + solution.status() + ")");
         }
-        var branch = git.currentBranch();
         var sides = loadSides();
         var merged = threeWay(sides, resolutions, "solución " + solution.name());
-        // A real merge commit: take main's tree with -s ours, then write the semantic
-        // result over it — git keeps both parents, modux decides the content.
-        git.commitAllPublic("wip: " + branch);
-        git.raw("checkout", SolutionGitService.SYSTEM_BRANCH);
-        git.raw("merge", "--no-ff", "--no-commit", "-s", "ours", branch);
-        repository.loadFrom(repository.storePath().toString());
-        repository.replaceWith(withoutSolutions(merged.result));
-        git.commitMerge("solución " + solution.name() + ": mergeada al sistema");
-        git.raw("tag", "-f", "archive/" + branch.replace('/', '-'), branch);
-        git.raw("branch", "-D", branch);
-        repository.loadFrom(repository.storePath().toString());
+        workspace.landOnSystem(withoutSolutions(merged.result),
+                "solución " + solution.name() + ": mergeada al sistema");
     }
 
     /** Brings the system's advances INTO the living solution (the semantic rebase). */
     public void updateFromSystem(Map<String, String> resolutions) {
         var solution = currentSolution();
-        var branch = git.currentBranch();
         var sides = loadSides();
         var merged = threeWay(sides, resolutions, "solución " + solution.name());
-        git.commitAllPublic("wip: " + branch);
-        git.raw("merge", "--no-ff", "--no-commit", "-s", "ours",
-                SolutionGitService.SYSTEM_BRANCH);
-        repository.replaceWith(merged.result);
-        git.commitMerge("solución " + solution.name() + ": actualizada desde el sistema");
-        repository.loadFrom(repository.storePath().toString());
+        workspace.landOnCurrent(merged.result,
+                "solución " + solution.name() + ": actualizada desde el sistema");
     }
 
     // ---- internals ----------------------------------------------------------
 
     private SolutionEntity currentSolution() {
-        if (!git.currentBranch().startsWith(SolutionGitService.SOLUTION_PREFIX)) {
+        if (!workspace.currentBranch().startsWith(WorkspaceStore.SOLUTION_PREFIX)) {
             throw new IllegalStateException("El sistema no se aprueba ni se mergea consigo mismo");
         }
         return repository.findAllOfType(SolutionEntity.class).stream().findFirst()
@@ -149,26 +129,8 @@ public class SolutionMergeService {
 
     private record Sides(AllData base, AllData system, AllData solution) {}
 
-    @SneakyThrows
     private Sides loadSides() {
-        var branch = git.currentBranch();
-        var baseSha = git.raw("merge-base", SolutionGitService.SYSTEM_BRANCH, branch).trim();
-        var base = loadAt(baseSha);
-        var system = loadAt(SolutionGitService.SYSTEM_BRANCH);
-        return new Sides(base, system, repository.snapshot());
-    }
-
-    @SneakyThrows
-    private AllData loadAt(String ref) {
-        var worktree = git.addWorktree(ref);
-        try {
-            var store = worktree.resolve(git.repoDir().relativize(repository.storePath()));
-            return Files.isDirectory(store)
-                    ? granularFormat.load(store)
-                    : monolithicFormat.load(store);
-        } finally {
-            git.removeWorktree(worktree);
-        }
+        return new Sides(workspace.mergeBase(), workspace.systemModel(), repository.snapshot());
     }
 
     private record MergeOutcome(AllData result, List<ElementConflict> conflicts) {}

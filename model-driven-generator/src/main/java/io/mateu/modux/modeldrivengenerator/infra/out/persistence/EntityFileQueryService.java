@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.query.EntityQueryService;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.EntityDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.EntityRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EntityFileQueryService implements EntityQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<EntityRow> findAll(String searchText, Object filters, Pageable pageable) {

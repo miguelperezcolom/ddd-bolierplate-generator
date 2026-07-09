@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.ProjectionQuery
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectionDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectionEventHandlerDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectionRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProjectionFileQueryService implements ProjectionQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ProjectionRow> findAll(String searchText, Object filters, Pageable pageable) {

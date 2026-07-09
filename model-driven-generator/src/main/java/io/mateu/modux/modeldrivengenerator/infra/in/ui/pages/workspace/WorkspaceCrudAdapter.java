@@ -8,7 +8,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectDto
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ServiceDto;
 import io.mateu.modux.modeldrivengenerator.application.usecases.workspace.DeleteWorkspaceElementsUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
@@ -54,7 +54,7 @@ public class WorkspaceCrudAdapter
   private final ServiceQueryService serviceQueryService;
   private final ModuleQueryService moduleQueryService;
 
-  private final CommonFileRepository repository;
+  private final ModelStore repository;
   private final ElementTypeRegistry registry;
   private final DeleteWorkspaceElementsUseCase deleteElementsUseCase;
   private final WorkspaceCreationForm creationForm;

@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.UiShellR
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uishell.UiShell;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uishell.vo.UiShellId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uishell.vo.UiShellDesignSystem;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiShellEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UiShellFileRepository implements UiShellRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<UiShell> findById(UiShellId id) {

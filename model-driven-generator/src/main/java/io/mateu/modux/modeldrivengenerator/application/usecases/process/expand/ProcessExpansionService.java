@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.process.expand;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProcessExpansionService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final ProcessExpander expander;
 
     public List<ProcessExpansion> expandAll() {

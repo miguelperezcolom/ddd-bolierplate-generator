@@ -7,7 +7,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextM
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ProjectEnvironment;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ProjectId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
@@ -21,7 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProjectFileRepository implements ProjectRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Project> findById(ProjectId id) {

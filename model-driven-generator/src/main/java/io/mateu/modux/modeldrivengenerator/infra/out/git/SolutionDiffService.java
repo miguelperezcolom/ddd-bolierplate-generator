@@ -1,15 +1,12 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.git;
 
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.application.out.store.WorkspaceStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AllData;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,10 +27,8 @@ public class SolutionDiffService {
     /** Layout geometry and the solution's own registry are meta, not model changes. */
     private static final Set<String> EXCLUDED = Set.of("diagrams", "solutions");
 
-    final SolutionGitService git;
-    final CommonFileRepository repository;
-    final GranularYamlStorageFormat granularFormat;
-    final MonolithicYamlStorageFormat monolithicFormat;
+    final WorkspaceStore workspace;
+    final ModelStore repository;
 
     public record ElementChange(String type, String id, String name, String kind,
                                 List<String> decisionIds) {}
@@ -49,11 +44,11 @@ public class SolutionDiffService {
 
     /** Empty diff on the system itself (or when the store has no repo yet). */
     public SolutionDiff diffAgainstSystem() {
-        var branch = git.isRepo() ? git.currentBranch() : SolutionGitService.SYSTEM_BRANCH;
-        if (SolutionGitService.SYSTEM_BRANCH.equals(branch)) {
+        var branch = workspace.currentBranch();
+        if (WorkspaceStore.SYSTEM_BRANCH.equals(branch)) {
             return new SolutionDiff(branch, true, List.of());
         }
-        var base = loadSystemModel();
+        var base = workspace.systemModel();
         var current = repository.snapshot();
         var changes = new ArrayList<ElementChange>();
         for (var component : AllData.class.getRecordComponents()) {
@@ -77,19 +72,6 @@ public class SolutionDiffService {
         return new SolutionDiff(branch, false, List.copyOf(changes));
     }
 
-    @lombok.SneakyThrows
-    private AllData loadSystemModel() {
-        var worktree = git.addSystemWorktree();
-        try {
-            var relative = git.repoDir().relativize(repository.storePath());
-            var systemStore = worktree.resolve(relative);
-            return Files.isDirectory(systemStore)
-                    ? granularFormat.load(systemStore)
-                    : monolithicFormat.load(systemStore);
-        } finally {
-            git.removeWorktree(worktree);
-        }
-    }
 
     private static Map<String, Object> elementsById(AllData data, String componentName) {
         try {

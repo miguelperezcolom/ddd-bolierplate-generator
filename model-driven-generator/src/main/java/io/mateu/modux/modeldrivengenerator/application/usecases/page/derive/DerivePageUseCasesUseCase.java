@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.page.derive;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
@@ -23,7 +23,7 @@ import java.util.List;
 @Slf4j
 public class DerivePageUseCasesUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     /** Returns a human summary of what was derived. */
     public String handle() {

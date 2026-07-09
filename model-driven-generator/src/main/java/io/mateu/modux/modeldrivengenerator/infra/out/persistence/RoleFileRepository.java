@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.RoleRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.role.Role;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.role.vo.RoleId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class RoleFileRepository implements RoleRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Role> findById(RoleId id) {

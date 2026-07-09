@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.swagger.parser.OpenAPIParser;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Slf4j
 public class ImportOpenApiUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @SneakyThrows
     public void handle(ImportOpenApiCommand command) {

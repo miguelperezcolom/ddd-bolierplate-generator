@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.importop
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importwsdl.WsdlParser;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.swagger.parser.OpenAPIParser;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -30,7 +30,7 @@ import java.util.List;
 @Slf4j
 public class ImportApiEntityUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     /** Returns the api id, so callers can navigate to it. */
     @SneakyThrows

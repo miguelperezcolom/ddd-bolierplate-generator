@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelField
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidation;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelValidation;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity;
@@ -21,7 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModelFileRepository implements ModelRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Model> findById(ModelId id) {

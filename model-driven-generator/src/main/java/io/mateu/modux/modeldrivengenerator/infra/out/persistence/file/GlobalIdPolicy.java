@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GlobalIdPolicy {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final ElementTypeRegistry registry;
 
     /**

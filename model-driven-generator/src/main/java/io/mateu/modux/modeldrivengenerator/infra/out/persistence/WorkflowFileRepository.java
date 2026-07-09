@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.Workflow
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.Workflow;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.vo.WorkflowId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.workflow.vo.WorkflowStep;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class WorkflowFileRepository implements WorkflowRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Workflow> findById(WorkflowId id) {

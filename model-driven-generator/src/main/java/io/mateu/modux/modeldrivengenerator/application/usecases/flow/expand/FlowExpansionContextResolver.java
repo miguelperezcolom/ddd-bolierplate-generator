@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.Flow;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
@@ -27,7 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FlowExpansionContextResolver {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     public FlowExpansionContext resolve(Flow flow) {
         // The domain Flow does not (yet) model the alternative domain-service trigger;

@@ -9,7 +9,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.businessrule.vo.Bus
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BusinessRuleFileRepository implements BusinessRuleRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<BusinessRule> findById(BusinessRuleId id) {

@@ -20,7 +20,7 @@ import java.util.Optional;
 
 @Service
 @Slf4j
-public class CommonFileRepository {
+public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore {
 
     private final Map<String, Object> store = new HashMap<>();
 
@@ -110,6 +110,12 @@ public class CommonFileRepository {
     /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
     public void loadFrom(String modelFilePath) {
         this.overrideModelFile = modelFilePath;
+        init();
+    }
+
+    /** Re-read the catalog from the underlying persistence (file formats today). */
+    @Override
+    public void reload() {
         init();
     }
 

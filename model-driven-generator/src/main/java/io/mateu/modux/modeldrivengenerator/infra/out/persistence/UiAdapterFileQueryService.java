@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.UiAdapterQueryS
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.UiAdapterDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.UiAdapterRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.UiMenuItemDto;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UiAdapterFileQueryService implements UiAdapterQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<UiAdapterRow> findAll(String searchText, Object filters, Pageable pageable) {

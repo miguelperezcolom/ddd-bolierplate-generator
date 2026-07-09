@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.QueryServi
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.QueryServiceRow;
 
 import java.util.List;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -20,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class QueryServiceFileQueryService implements QueryServiceQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<QueryServiceRow> findAll(String searchText, Object filters, Pageable pageable) {

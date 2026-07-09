@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.modelmapping.ModelM
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.modelmapping.vo.ModelMappingExpression;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.modelmapping.vo.ModelMappingId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.modelmapping.vo.ModelMappingRule;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingExpressionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModelMappingFileRepository implements ModelMappingRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<ModelMapping> findById(ModelMappingId id) {

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionGitService;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.application.out.store.WorkspaceStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SolutionEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +27,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SolutionApiController {
 
-    final SolutionGitService git;
-    final CommonFileRepository repository;
+    final WorkspaceStore workspace;
+    final ModelStore repository;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService mergeService;
 
@@ -44,13 +44,13 @@ public class SolutionApiController {
             // A git hiccup must not hide the whole workspace bar — report the system.
             org.slf4j.LoggerFactory.getLogger(getClass())
                     .warn("workspace no legible: {}", e.getMessage());
-            return new WorkspaceDto(SolutionGitService.SYSTEM_BRANCH, true, List.of());
+            return new WorkspaceDto(WorkspaceStore.SYSTEM_BRANCH, true, List.of());
         }
     }
 
     private WorkspaceDto readWorkspace() {
-        var current = git.currentBranch();
-        var solutions = git.solutionBranches().stream()
+        var current = workspace.currentBranch();
+        var solutions = workspace.solutionBranches().stream()
                 .map(branch -> {
                     // The entity self-describes the CURRENT branch only; others show the slug.
                     var entity = branch.equals(current)
@@ -59,11 +59,11 @@ public class SolutionApiController {
                             : null;
                     return new SolutionRef(branch,
                             entity != null ? entity.name()
-                                    : branch.substring(SolutionGitService.SOLUTION_PREFIX.length()),
+                                    : branch.substring(WorkspaceStore.SOLUTION_PREFIX.length()),
                             entity != null ? entity.status() : null);
                 })
                 .toList();
-        return new WorkspaceDto(current, SolutionGitService.SYSTEM_BRANCH.equals(current), solutions);
+        return new WorkspaceDto(current, WorkspaceStore.SYSTEM_BRANCH.equals(current), solutions);
     }
 
     /** The semantic diff of the checked-out solution against the system (empty on main). */
@@ -77,19 +77,19 @@ public class SolutionApiController {
         if (command.name() == null || command.name().isBlank()) {
             throw new IllegalArgumentException("La solución necesita un nombre");
         }
-        git.createSolution(command.name().trim());
+        workspace.createSolution(command.name().trim());
         return workspace();
     }
 
     @PostMapping("/switch")
     public WorkspaceDto switchTo(@RequestBody SolutionCommand command) {
-        git.switchTo(command.branch());
+        workspace.switchTo(command.branch());
         return workspace();
     }
 
     @PostMapping("/discard")
     public WorkspaceDto discard(@RequestBody SolutionCommand command) {
-        git.discard(command.branch());
+        workspace.discard(command.branch());
         return workspace();
     }
 

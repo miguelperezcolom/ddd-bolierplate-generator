@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
@@ -176,7 +176,7 @@ public record ModelSnapshot(
         mcpGateways = nvl(mcpGateways);
     }
 
-    public static ModelSnapshot from(CommonFileRepository repository) {
+    public static ModelSnapshot from(ModelStore repository) {
         return new ModelSnapshot(
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(ServiceEntity.class),

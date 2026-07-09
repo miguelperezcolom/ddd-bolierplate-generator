@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.IntegrationEven
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.IntegrationEventDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.IntegrationEventRow;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -18,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IntegrationEventFileQueryService implements IntegrationEventQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<IntegrationEventRow> findAll(String searchText, Object filters, Pageable pageable) {

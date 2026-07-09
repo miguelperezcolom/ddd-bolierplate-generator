@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.WorkflowQuerySe
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.WorkflowDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.WorkflowRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.WorkflowStepDto;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
 import io.mateu.uidl.data.ListingData;
@@ -20,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class WorkflowFileQueryService implements WorkflowQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<WorkflowRow> findAll(String searchText, Object filters, Pageable pageable) {

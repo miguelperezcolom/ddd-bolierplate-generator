@@ -8,7 +8,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.Operat
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ComponentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
@@ -65,7 +65,7 @@ import static io.mateu.core.infra.JsonSerializer.*;
 @Slf4j
 public class GenerateCodeUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final FlowStoreMaterializer flowStoreMaterializer;
     final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
 

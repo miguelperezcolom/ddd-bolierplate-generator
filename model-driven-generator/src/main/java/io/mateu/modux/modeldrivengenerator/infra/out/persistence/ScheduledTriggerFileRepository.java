@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ScheduledTriggerRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.scheduledtrigger.ScheduledTrigger;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.scheduledtrigger.vo.ScheduledTriggerId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ScheduledTriggerFileRepository implements ScheduledTriggerRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<ScheduledTrigger> findById(ScheduledTriggerId id) {

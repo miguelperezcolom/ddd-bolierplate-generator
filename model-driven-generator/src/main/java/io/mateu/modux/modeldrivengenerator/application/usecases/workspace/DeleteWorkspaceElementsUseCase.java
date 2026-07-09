@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DeleteWorkspaceElementsUseCase {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final ElementTypeRegistry registry;
 
     private final ObjectMapper mapper = new ObjectMapper();

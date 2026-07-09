@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.query.DomainEventQueryService;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.DomainEventDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.DomainEventRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DomainEventFileQueryService implements DomainEventQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<DomainEventRow> findAll(String searchText, Object filters, Pageable pageable) {

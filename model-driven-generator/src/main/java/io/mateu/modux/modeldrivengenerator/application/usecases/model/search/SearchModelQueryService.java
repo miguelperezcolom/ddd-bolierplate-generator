@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.model.search;
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelYaml;
 import io.mateu.uidl.interfaces.Identifiable;
@@ -31,7 +31,7 @@ public class SearchModelQueryService {
     /** Length each reported line is truncated to. */
     private static final int MAX_SNIPPET_LINE_LENGTH = 160;
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final ElementTypeRegistry registry;
 
     private final YAMLMapper yaml = ModelYaml.writer();

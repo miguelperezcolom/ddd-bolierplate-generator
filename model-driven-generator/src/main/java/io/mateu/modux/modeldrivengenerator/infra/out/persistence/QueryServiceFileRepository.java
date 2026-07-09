@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.QuerySer
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.QueryService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryOperation;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryServiceId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 
@@ -18,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class QueryServiceFileRepository implements QueryServiceRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<QueryService> findById(QueryServiceId id) {

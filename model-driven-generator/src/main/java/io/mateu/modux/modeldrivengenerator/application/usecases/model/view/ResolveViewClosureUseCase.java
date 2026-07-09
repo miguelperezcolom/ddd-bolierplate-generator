@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.model.view;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.CatalogReflection;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ResolveViewClosureUseCase {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
 
     public record Closure(String viewId, List<String> memberIds,
                           List<String> closureIds, List<String> missingMembers) {

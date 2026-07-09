@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.ProjectQuerySer
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ContextMapRelationDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProjectFileQueryService implements ProjectQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ProjectRow> findAll(String searchText, Object filters, Pageable pageable) {

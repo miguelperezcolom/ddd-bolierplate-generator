@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.recipes;
 import io.mateu.modux.modeldrivengenerator.application.usecases.recipes.Recipe.RecipeParam;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GlobalIdPolicy;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
@@ -26,7 +26,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ApplyRecipeUseCase {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final GlobalIdPolicy idPolicy;
 
     public List<Recipe> catalog() {

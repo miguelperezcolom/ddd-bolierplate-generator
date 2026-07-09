@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelField
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelFieldValidationDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelValidationDto;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelValidationEntity;
@@ -23,7 +23,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModelFileQueryService implements ModelQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ModelRow> findAll(String searchText, Object filters, Pageable pageable) {

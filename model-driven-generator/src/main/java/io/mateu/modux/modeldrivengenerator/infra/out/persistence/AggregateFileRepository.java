@@ -11,7 +11,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.Domain
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationPrecondition;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
@@ -29,7 +29,7 @@ import static io.mateu.core.infra.JsonSerializer.toJson;
 @RequiredArgsConstructor
 public class AggregateFileRepository implements AggregateRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Aggregate> findById(AggregateId id) {

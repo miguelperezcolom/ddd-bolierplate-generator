@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.ProcessR
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.Process;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStep;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProcessFileRepository implements ProcessRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Process> findById(ProcessId id) {

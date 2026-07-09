@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume;
 
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class DeriveConsumptionApisUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     public String handle() {
         var result = ConsumptionApiDerivation.derive(

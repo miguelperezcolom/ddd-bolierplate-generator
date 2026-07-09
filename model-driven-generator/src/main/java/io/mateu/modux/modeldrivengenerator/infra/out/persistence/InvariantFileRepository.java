@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.Invarian
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.invariant.Invariant;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.invariant.vo.InvariantCondition;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.invariant.vo.InvariantId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class InvariantFileRepository implements InvariantRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Invariant> findById(InvariantId id) {

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.check.CheckModelUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ModelLintService {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final CheckModelUseCase checkModelUseCase;
 
     public List<LintFinding> lint() {

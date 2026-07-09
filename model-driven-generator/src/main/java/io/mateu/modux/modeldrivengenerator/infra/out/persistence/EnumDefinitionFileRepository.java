@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.EnumDefi
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.enumdefinition.EnumDefinition;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.enumdefinition.EnumDefinitionValue;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.enumdefinition.vo.EnumDefinitionId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumValueEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EnumDefinitionFileRepository implements EnumDefinitionRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<EnumDefinition> findById(EnumDefinitionId id) {

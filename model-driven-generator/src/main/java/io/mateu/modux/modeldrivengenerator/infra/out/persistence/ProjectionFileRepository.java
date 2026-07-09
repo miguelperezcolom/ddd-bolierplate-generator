@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.Projecti
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.Projection;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ProjectionEventHandler;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.ProjectionId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEventHandlerEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProjectionFileRepository implements ProjectionRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Projection> findById(ProjectionId id) {

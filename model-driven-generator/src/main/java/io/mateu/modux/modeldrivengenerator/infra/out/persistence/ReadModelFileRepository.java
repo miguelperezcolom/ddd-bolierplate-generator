@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ReadModelRepository;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.ReadModel;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadModelId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ReadModelFileRepository implements ReadModelRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<ReadModel> findById(ReadModelId id) {

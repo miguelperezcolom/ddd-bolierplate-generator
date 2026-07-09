@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.InvariantQueryS
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.InvariantConditionDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.InvariantDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.InvariantRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class InvariantFileQueryService implements InvariantQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<InvariantRow> findAll(String searchText, Object filters, Pageable pageable) {

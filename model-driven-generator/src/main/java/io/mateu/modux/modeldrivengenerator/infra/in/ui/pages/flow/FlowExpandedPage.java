@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.Flow
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowExpansionContextResolver;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.Flow;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.WhenExpression;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.uidl.annotations.Title;
@@ -33,7 +33,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FlowExpandedPage implements ComponentTreeSupplier {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final FlowExpander expander;
     final FlowExpansionContextResolver resolver;
 

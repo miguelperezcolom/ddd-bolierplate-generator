@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
@@ -27,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FlowContextMapCoherenceService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     public List<FlowContextMapFinding> analyze() {
         return analyze(

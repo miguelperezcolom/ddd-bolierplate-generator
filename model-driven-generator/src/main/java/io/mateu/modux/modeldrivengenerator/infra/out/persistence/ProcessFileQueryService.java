@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.ProcessQuerySer
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProcessDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProcessRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProcessStepDto;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.uidl.data.ListingData;
@@ -20,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProcessFileQueryService implements ProcessQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ProcessRow> findAll(String searchText, Object filters, Pageable pageable) {

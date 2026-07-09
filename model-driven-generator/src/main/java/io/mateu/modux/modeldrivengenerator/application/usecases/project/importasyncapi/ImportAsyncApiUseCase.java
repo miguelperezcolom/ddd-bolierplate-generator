@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.importasyncapi;
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.UUID;
 @Slf4j
 public class ImportAsyncApiUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @SneakyThrows
     @SuppressWarnings("unchecked")

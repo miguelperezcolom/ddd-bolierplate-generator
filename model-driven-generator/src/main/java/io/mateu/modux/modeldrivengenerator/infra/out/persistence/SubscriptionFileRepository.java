@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.Subscrip
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.Subscription;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionAction;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SubscriptionFileRepository implements SubscriptionRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Subscription> findById(SubscriptionId id) {

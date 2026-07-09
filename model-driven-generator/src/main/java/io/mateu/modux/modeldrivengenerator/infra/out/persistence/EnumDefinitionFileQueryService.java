@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.EnumDefinitionQ
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.EnumDefinitionDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.EnumDefinitionRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.EnumDefinitionValueDto;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EnumDefinitionFileQueryService implements EnumDefinitionQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<EnumDefinitionRow> findAll(String searchText, Object filters, Pageable pageable) {

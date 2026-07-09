@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.PageQueryServic
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.PageDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.PageRow;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -18,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PageFileQueryService implements PageQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<PageRow> findAll(String searchText, Object filters, Pageable pageable) {

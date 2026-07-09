@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.journey.ModelJourneyRenderer;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelSnapshot;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.Markdown;
 import io.mateu.uidl.fluent.Component;
@@ -26,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ModelJourneyPage implements ComponentTreeSupplier {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Component component(HttpRequest httpRequest) {

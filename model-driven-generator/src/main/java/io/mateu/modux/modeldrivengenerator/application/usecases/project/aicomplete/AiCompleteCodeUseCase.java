@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete;
 
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.ai.ClaudeApiClient;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.*;
 import io.mateu.uidl.data.FieldDataType;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AiCompleteCodeUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final ClaudeApiClient claude;
 
     private static final String BASE_SYSTEM = """

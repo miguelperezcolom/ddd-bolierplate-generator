@@ -14,7 +14,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleAct
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleFieldAttribute;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleResult;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageTriggerType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
@@ -32,7 +32,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PageFileRepository implements PageRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Page> findById(PageId id) {

@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrat
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.Service;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.ServiceId;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnvVarEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ServiceFileRepository implements ServiceRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Service> findById(ServiceId id) {

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.importwsdl;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiExternalUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
@@ -25,7 +25,7 @@ import java.util.List;
 @Slf4j
 public class ImportWsdlUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     public void handle(ImportWsdlCommand command) {
         var hasExternal = command.externalSystemId() != null && !command.externalSystemId().isBlank();

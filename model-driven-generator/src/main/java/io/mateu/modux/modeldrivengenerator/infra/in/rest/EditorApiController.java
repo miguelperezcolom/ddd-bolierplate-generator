@@ -15,7 +15,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyOpera
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainServiceEntity;
@@ -82,7 +82,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EditorApiController {
 
-    private final CommonFileRepository repository;
+    private final ModelStore repository;
     private final FlowContextMapCoherenceService coherenceService;
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;

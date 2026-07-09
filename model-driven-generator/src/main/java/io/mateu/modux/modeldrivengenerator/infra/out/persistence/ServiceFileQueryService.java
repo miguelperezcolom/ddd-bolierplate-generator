@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ServiceDto
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ServiceRow;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.EnvVar;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ServiceFileQueryService implements ServiceQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ServiceRow> findAll(String searchText, Object filters, Pageable pageable) {

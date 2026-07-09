@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.SagaRepo
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.Saga;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStep;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SagaFileRepository implements SagaRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Saga> findById(SagaId id) {

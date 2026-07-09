@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.F
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.Element;
@@ -35,7 +35,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ContextMapDiagramPage implements ComponentTreeSupplier {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final FlowContextMapCoherenceService coherenceService;
 
     @Override

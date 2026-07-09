@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.SubscriptionQue
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.SubscriptionActionDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.SubscriptionDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.SubscriptionRow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SubscriptionFileQueryService implements SubscriptionQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<SubscriptionRow> findAll(String searchText, Object filters, Pageable pageable) {

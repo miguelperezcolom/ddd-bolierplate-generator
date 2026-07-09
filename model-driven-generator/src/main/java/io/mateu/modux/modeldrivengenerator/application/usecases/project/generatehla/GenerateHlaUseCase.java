@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.generatehla;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelSnapshot;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.nio.file.Path;
 @Slf4j
 public class GenerateHlaUseCase {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
 
     /**

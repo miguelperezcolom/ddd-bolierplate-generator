@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ValueObjec
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ValueObjectFieldDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ValueObjectRow;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import io.mateu.uidl.data.FieldDataType;
 import io.mateu.uidl.data.ListingData;
@@ -23,7 +23,7 @@ import static io.mateu.core.infra.JsonSerializer.listFromJson;
 @RequiredArgsConstructor
 public class ValueObjectFileQueryService implements ValueObjectQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ValueObjectRow> findAll(String searchText, Object filters, Pageable pageable) {

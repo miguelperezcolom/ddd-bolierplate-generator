@@ -7,7 +7,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelMappi
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModelMappingRuleDto;
 
 import java.util.List;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -21,7 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModelMappingFileQueryService implements ModelMappingQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<ModelMappingRow> findAll(String searchText, Object filters, Pageable pageable) {

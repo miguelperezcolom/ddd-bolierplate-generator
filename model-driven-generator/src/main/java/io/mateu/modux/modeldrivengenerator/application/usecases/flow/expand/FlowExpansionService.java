@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.Flow;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
@@ -31,7 +31,7 @@ import java.util.function.Function;
 @Slf4j
 public class FlowExpansionService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
     final FlowExpander expander;
     final FlowExpansionContextResolver resolver;
 

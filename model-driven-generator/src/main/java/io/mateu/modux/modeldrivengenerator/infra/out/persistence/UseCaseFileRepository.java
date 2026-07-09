@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.UseCase;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.HttpMethod;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStep;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UseCaseFileRepository implements UseCaseRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<UseCase> findById(UseCaseId id) {

@@ -8,7 +8,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.BusinessRu
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
@@ -22,7 +22,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BusinessRuleFileQueryService implements BusinessRuleQueryService {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public ListingData<BusinessRuleRow> findAll(String searchText, Object filters, Pageable pageable) {

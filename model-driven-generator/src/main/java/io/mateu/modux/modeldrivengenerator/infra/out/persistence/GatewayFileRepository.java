@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.repositories.GatewayR
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.Gateway;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayOperation;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayParameterEntity;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GatewayFileRepository implements GatewayRepository {
 
-    final CommonFileRepository repository;
+    final ModelStore repository;
 
     @Override
     public Optional<Gateway> findById(GatewayId id) {
