@@ -27,6 +27,8 @@ export class ModuxFigma extends LitElement {
   /** Frame positions (page id → top-left corner), owned by the shell's view layout. */
   @property({ attribute: false }) layout: Record<string, Point> = {};
   @property({ attribute: false }) selectedId: string | null = null;
+  /** Multi-selection (shift-click on titles), owned by the shell like selectedId. */
+  @property({ attribute: false }) selectedIds: string[] = [];
 
   /** Camera: screen-space pan + zoom. */
   @state() private _t = { x: 40, y: 40, k: 0.85 };
@@ -140,6 +142,12 @@ export class ModuxFigma extends LitElement {
     if (title) {
       const frame = title.closest('.frame') as HTMLElement;
       const id = frame.dataset.pageId!;
+      if (e.shiftKey) {
+        // shift-click gathers frames for «crear vista con la selección»
+        this.emit('element-multi-toggled', { id });
+        e.preventDefault();
+        return;
+      }
       const index = this.pages.findIndex((p) => p.id === id);
       const at = this.posOf(id, index);
       this.setPointerCapture(e.pointerId);
@@ -205,7 +213,9 @@ export class ModuxFigma extends LitElement {
           const at = this.posOf(page.id, i);
           return html`
             <div
-              class="frame ${this.selectedId === page.id ? 'selected' : ''}"
+              class="frame ${this.selectedId === page.id || this.selectedIds.includes(page.id)
+                ? 'selected'
+                : ''}"
               data-page-id=${page.id}
               style="left: ${at.x}px; top: ${at.y}px"
             >

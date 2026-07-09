@@ -3776,10 +3776,25 @@ export class ModuxEditor extends LitElement {
   }
 
   /** Canvas node ids → catalog element ids (view members). */
+  /** What «crear vista» works on: the multi-selection, or — on the UI and Diseño
+   * views, where one page or app is a perfectly good seed — the single selection. */
+  private viewSelection(): string[] {
+    if (this._multi.length) return this._multi;
+    if (this._selectedId && (this._view === 'ui' || this._view === 'design')) {
+      return [this._selectedId];
+    }
+    return [];
+  }
+
   private memberIdsFromSelection(): string[] {
+    // On Diseño the scene is not a Scene: frames ARE pages, ids map directly.
+    if (this._view === 'design') {
+      const pages = new Set((this.model.pages ?? []).map((x) => x.id));
+      return this.viewSelection().filter((id) => pages.has(id));
+    }
     const scene = this.sceneFor(this._view);
     const members = new Set<string>();
-    for (const id of this._multi) {
+    for (const id of this.viewSelection()) {
       const node = scene.nodes.find((n) => n.id === id);
       if (!node) continue;
       switch (node.kind) {
@@ -3980,8 +3995,10 @@ export class ModuxEditor extends LitElement {
       .pages=${this.filteredModel().pages ?? []}
       .layout=${vl.nodes}
       .selectedId=${this._selectedId}
+      .selectedIds=${this._multi}
       @node-moved=${this.onNodeMoved}
       @element-selected=${this.onElementSelected}
+      @element-multi-toggled=${this.onMultiToggled}
       @page-open-crud=${(e: CustomEvent) => {
         this.emit('modux-activate', { elementType: 'page', id: e.detail.pageId });
       }}
@@ -4957,7 +4974,7 @@ export class ModuxEditor extends LitElement {
             `
           : ''}
         <div class="spacer"></div>
-        ${this._multi.length
+        ${this.viewSelection().length
           ? html`
               <input
                 class="new-name"
@@ -4967,7 +4984,7 @@ export class ModuxEditor extends LitElement {
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
               />
               <button class="tab" title="Crear una vista modux con la selección" @click=${this.createViewFromSelection}>
-                ⊞ Vista (${this._multi.length})
+                ⊞ Vista (${this.viewSelection().length})
               </button>
               <span class="sep"></span>
             `
