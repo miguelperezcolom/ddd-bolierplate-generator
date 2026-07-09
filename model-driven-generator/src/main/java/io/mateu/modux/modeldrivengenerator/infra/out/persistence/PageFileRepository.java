@@ -88,6 +88,9 @@ public class PageFileRepository implements PageRepository {
 
     @Override
     public Page save(Page entity) {
+        // content (the page's component tree) is not modeled in the domain Page yet — carry it
+        // over from the stored entity so a domain save never wipes what the editor authored.
+        var stored = repository.findById(entity.getId().id(), PageEntity.class).orElse(null);
         repository.save(new PageEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -134,7 +137,8 @@ public class PageFileRepository implements PageRepository {
                 entity.getCompletionActions().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
                         .toList(),
-                entity.getListingQueryServiceId()));
+                entity.getListingQueryServiceId(),
+                stored != null && stored.content() != null ? stored.content() : List.of()));
         return entity;
     }
 

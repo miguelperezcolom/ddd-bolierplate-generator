@@ -44,6 +44,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOpera
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
@@ -234,7 +235,14 @@ public class EditorApiController {
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
                             List<UiPageButtonDto> buttons,
-                            List<UiFieldDto> viewmodelFields) {}
+                            List<UiFieldDto> viewmodelFields,
+                            List<UiComponentNodeDto> content) {}
+    /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
+    public record UiComponentNodeDto(String id, String kind, String title, String text, String label,
+                                     String useCaseId, String mappingId, String modelId,
+                                     String queryServiceId, String queryOperationId,
+                                     String fieldId, String stereotype, Integer colspan,
+                                     List<UiComponentNodeDto> children) {}
     /** A viewmodel field as the page designer sees it: model field + its PageFieldConfig. */
     public record UiFieldDto(String fieldId, String name, String type, String stereotype,
                              Integer colspan, String label, String help) {}
@@ -772,7 +780,10 @@ public class EditorApiController {
                                         (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream())
                                 .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId()))
                                 .toList(),
-                        uiFields(p)))
+                        uiFields(p),
+                        (p.content() == null ? List.<UiComponentNodeEntity>of() : p.content()).stream()
+                                .map(EditorApiController::toComponentNode)
+                                .toList()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
@@ -880,6 +891,16 @@ public class EditorApiController {
                         .map(x -> new NamedRefDto(x.id(), x.name())).toList());
     }
 
+    private static UiComponentNodeDto toComponentNode(UiComponentNodeEntity node) {
+        return new UiComponentNodeDto(node.id(), node.kind(), node.title(), node.text(), node.label(),
+                node.useCaseId(), node.mappingId(), node.modelId(),
+                node.queryServiceId(), node.queryOperationId(),
+                node.fieldId(), node.stereotype(), node.colspan(),
+                (node.children() == null ? List.<UiComponentNodeEntity>of() : node.children()).stream()
+                        .map(EditorApiController::toComponentNode)
+                        .toList());
+    }
+
     private static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
         return new UiMenuEntryDto(item.label(), item.icon(), item.pageId(),
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
@@ -917,7 +938,9 @@ public class EditorApiController {
                                 String fieldId, String stereotype, Integer colspan,
                                 List<String> fieldIds,
                                 String itemId, String parentId, String toAppId,
-                                String queryOperationId, String mappingId) {}
+                                String queryOperationId, String mappingId,
+                                String componentId, String parentComponentId, String componentKind,
+                                String beforeComponentId, String title, String text) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1089,6 +1112,10 @@ public class EditorApiController {
             case "set-page-button" -> setPageButton(command);
             case "set-page-field-config" -> setPageFieldConfig(command);
             case "set-page-field-order" -> setPageFieldOrder(command);
+            case "add-page-component" -> addPageComponent(command);
+            case "remove-page-component" -> removePageComponent(command);
+            case "set-page-component" -> setPageComponent(command);
+            case "move-page-component" -> movePageComponent(command);
             case "add-actor-app" -> addActorApp(command);
             case "remove-actor-app" -> removeActorApp(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
@@ -3470,7 +3497,7 @@ public class EditorApiController {
                 ? "FORM" : command.pageType();
         repository.save(new PageEntity(command.id(), command.name(), "/" + command.id(), type,
                 null, null, List.of(), null, null, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null));
+                List.of(), List.of(), List.of(), List.of(), null, List.of()));
         if (command.appId() == null || command.appId().isBlank()) return;
         // Born reachable: the page hangs from the app's menu right away.
         var app = repository.findById(command.appId(), UiAdapterEntity.class)
@@ -3778,6 +3805,227 @@ public class EditorApiController {
         repository.save(withFieldConfigs(page, configs));
     }
 
+    // ---- page content tree -------------------------------------------------
+
+    /**
+     * Adds a node to the page's content tree: at the root, or appended to the children of
+     * parentComponentId. A new tabLayout is seeded with two tabs so it is usable right away.
+     */
+    private void addPageComponent(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var kind = command.componentKind();
+        if (!UiComponentNodeEntity.KINDS.contains(kind)) {
+            throw new IllegalArgumentException("Unknown component kind: " + kind);
+        }
+        var node = newComponentNode(command.componentId(), kind);
+        var content = page.content() == null
+                ? List.<UiComponentNodeEntity>of() : page.content();
+        if (command.parentComponentId() == null || command.parentComponentId().isBlank()) {
+            requireTabRules(kind, null);
+            repository.save(withContent(page, inserted(content, node, null)));
+            return;
+        }
+        var parent = findComponent(content, command.parentComponentId());
+        if (parent == null) {
+            throw new IllegalArgumentException("Unknown component: " + command.parentComponentId());
+        }
+        requireTabRules(kind, parent.kind());
+        repository.save(withContent(page,
+                withChildInserted(content, command.parentComponentId(), node, null)));
+    }
+
+    /** A fresh node: everything null but id+kind — except tabLayouts, born with two tabs. */
+    private static UiComponentNodeEntity newComponentNode(String id, String kind) {
+        var children = "tabLayout".equals(kind)
+                ? List.of(
+                        new UiComponentNodeEntity(id + "-tab-1", "tab", "Pestaña 1", null, null,
+                                null, null, null, null, null, null, null, null, List.of()),
+                        new UiComponentNodeEntity(id + "-tab-2", "tab", "Pestaña 2", null, null,
+                                null, null, null, null, null, null, null, null, List.of()))
+                : List.<UiComponentNodeEntity>of();
+        return new UiComponentNodeEntity(id, kind, null, null, null,
+                null, null, null, null, null, null, null, null, children);
+    }
+
+    /** tab ↔ tabLayout go together: a tabLayout only holds tabs, a tab only hangs from one. */
+    private static void requireTabRules(String kind, String parentKind) {
+        if ("tabLayout".equals(parentKind) && !"tab".equals(kind)) {
+            throw new IllegalArgumentException("A tabLayout only admits tab children");
+        }
+        if ("tab".equals(kind) && !"tabLayout".equals(parentKind)) {
+            throw new IllegalArgumentException("A tab can only hang from a tabLayout");
+        }
+    }
+
+    /** Prunes the node — subtree included — from the page's content tree. */
+    private void removePageComponent(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var pruned = withoutComponent(page.content(), command.componentId());
+        if (pruned == null) {
+            throw new IllegalArgumentException("Unknown component: " + command.componentId());
+        }
+        repository.save(withContent(page, pruned));
+    }
+
+    /**
+     * Replaces the node's configuration with the given values (null clears), keeping
+     * id, kind and children. References are validated when present.
+     */
+    private void setPageComponent(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (command.useCaseId() != null) {
+            repository.findById(command.useCaseId(), UseCaseEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown use case: " + command.useCaseId()));
+        }
+        if (command.modelId() != null) {
+            repository.findById(command.modelId(), ModelEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown model: " + command.modelId()));
+        }
+        if (command.mappingId() != null) {
+            repository.findById(command.mappingId(), ModelMappingEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown mapping: " + command.mappingId()));
+        }
+        if (command.queryServiceId() != null) {
+            repository.findById(command.queryServiceId(), QueryServiceEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown query service: " + command.queryServiceId()));
+        }
+        var updated = withComponentReplaced(page.content(), command.componentId(),
+                node -> new UiComponentNodeEntity(node.id(), node.kind(),
+                        command.title(), command.text(), command.label(),
+                        command.useCaseId(), command.mappingId(), command.modelId(),
+                        command.queryServiceId(), command.queryOperationId(),
+                        command.fieldId(), command.stereotype(), command.colspan(),
+                        node.children()));
+        if (updated == null) {
+            throw new IllegalArgumentException("Unknown component: " + command.componentId());
+        }
+        repository.save(withContent(page, updated));
+    }
+
+    /**
+     * Moves a node (subtree included) under toParentId — or to the root — before
+     * beforeComponentId, or to the end. A node never moves into its own subtree.
+     */
+    private void movePageComponent(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var node = findComponent(page.content(), command.componentId());
+        if (node == null) {
+            throw new IllegalArgumentException("Unknown component: " + command.componentId());
+        }
+        var toParentId = command.parentComponentId();
+        var toRoot = toParentId == null || toParentId.isBlank();
+        if (!toRoot && findComponent(List.of(node), toParentId) != null) {
+            throw new IllegalArgumentException(
+                    "A component cannot move into its own subtree: " + command.componentId());
+        }
+        var pruned = withoutComponent(page.content(), command.componentId());
+        if (toRoot) {
+            requireTabRules(node.kind(), null);
+            repository.save(withContent(page,
+                    inserted(pruned, node, command.beforeComponentId())));
+            return;
+        }
+        var parent = findComponent(pruned, toParentId);
+        if (parent == null) {
+            throw new IllegalArgumentException("Unknown component: " + toParentId);
+        }
+        requireTabRules(node.kind(), parent.kind());
+        repository.save(withContent(page,
+                withChildInserted(pruned, toParentId, node, command.beforeComponentId())));
+    }
+
+    private static UiComponentNodeEntity findComponent(List<UiComponentNodeEntity> nodes, String id) {
+        for (var node : nodes == null ? List.<UiComponentNodeEntity>of() : nodes) {
+            if (id.equals(node.id())) return node;
+            var hit = findComponent(node.children(), id);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    /** The siblings with the node inserted before beforeId (or at the end when null/absent). */
+    private static List<UiComponentNodeEntity> inserted(List<UiComponentNodeEntity> siblings,
+                                                        UiComponentNodeEntity node, String beforeId) {
+        var copy = new ArrayList<>(siblings == null ? List.<UiComponentNodeEntity>of() : siblings);
+        var at = copy.size();
+        if (beforeId != null) {
+            for (int i = 0; i < copy.size(); i++) {
+                if (beforeId.equals(copy.get(i).id())) { at = i; break; }
+            }
+        }
+        copy.add(at, node);
+        return copy;
+    }
+
+    /** The tree with the child inserted into the given parent's children, or null when not found. */
+    private static List<UiComponentNodeEntity> withChildInserted(List<UiComponentNodeEntity> nodes,
+                                                                 String parentId,
+                                                                 UiComponentNodeEntity child,
+                                                                 String beforeId) {
+        return withComponentReplaced(nodes, parentId,
+                parent -> withNodeChildren(parent, inserted(parent.children(), child, beforeId)));
+    }
+
+    /** The tree without the given node (subtree included), or null when it was not found. */
+    private static List<UiComponentNodeEntity> withoutComponent(List<UiComponentNodeEntity> nodes,
+                                                                String id) {
+        if (nodes == null) return null;
+        for (int i = 0; i < nodes.size(); i++) {
+            var node = nodes.get(i);
+            if (id.equals(node.id())) {
+                var copy = new ArrayList<>(nodes);
+                copy.remove(i);
+                return copy;
+            }
+            var prunedChildren = withoutComponent(node.children(), id);
+            if (prunedChildren != null) {
+                var copy = new ArrayList<>(nodes);
+                copy.set(i, withNodeChildren(node, prunedChildren));
+                return copy;
+            }
+        }
+        return null;
+    }
+
+    /** The tree with the given node replaced by edit(node), or null when it was not found. */
+    private static List<UiComponentNodeEntity> withComponentReplaced(
+            List<UiComponentNodeEntity> nodes, String id,
+            java.util.function.UnaryOperator<UiComponentNodeEntity> edit) {
+        if (nodes == null) return null;
+        for (int i = 0; i < nodes.size(); i++) {
+            var node = nodes.get(i);
+            if (id.equals(node.id())) {
+                var copy = new ArrayList<>(nodes);
+                copy.set(i, edit.apply(node));
+                return copy;
+            }
+            var editedChildren = withComponentReplaced(node.children(), id, edit);
+            if (editedChildren != null) {
+                var copy = new ArrayList<>(nodes);
+                copy.set(i, withNodeChildren(node, editedChildren));
+                return copy;
+            }
+        }
+        return null;
+    }
+
+    /** Record copy with only children replaced — every other field preserved verbatim. */
+    private static UiComponentNodeEntity withNodeChildren(UiComponentNodeEntity node,
+                                                          List<UiComponentNodeEntity> children) {
+        return new UiComponentNodeEntity(node.id(), node.kind(), node.title(), node.text(),
+                node.label(), node.useCaseId(), node.mappingId(), node.modelId(),
+                node.queryServiceId(), node.queryOperationId(),
+                node.fieldId(), node.stereotype(), node.colspan(), children);
+    }
+
     private void renameUiPage(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
@@ -3785,7 +4033,7 @@ public class EditorApiController {
                 page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
                 page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
                 page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId()));
+                page.listingQueryServiceId(), page.content()));
     }
 
     private void setPageType(EditorCommand command) {
@@ -3795,7 +4043,7 @@ public class EditorApiController {
                 page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
                 page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
                 page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId()));
+                page.listingQueryServiceId(), page.content()));
     }
 
     private void setPageRoute(EditorCommand command) {
@@ -3805,7 +4053,7 @@ public class EditorApiController {
                 page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
                 page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
                 page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId()));
+                page.listingQueryServiceId(), page.content()));
     }
 
     /** Edits an existing toolbar/bottomBar button (matched by useCaseId): label and mapping. */
@@ -3834,7 +4082,7 @@ public class EditorApiController {
         return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
                 p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
                 p.bottomBar(), p.triggers(), p.rules(), p.validations(), fieldConfigs,
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
     }
 
     private static PageEntity withButtons(PageEntity p, List<PageButtonEntity> toolbar,
@@ -3842,7 +4090,7 @@ public class EditorApiController {
         return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
                 p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), toolbar,
                 bottomBar, p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
     }
 
     /** Record copy with only listingQueryServiceId replaced — every other field preserved verbatim. */
@@ -3850,7 +4098,7 @@ public class EditorApiController {
         return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
                 p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
                 p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), listingQueryServiceId);
+                p.wizardSteps(), p.completionActions(), listingQueryServiceId, p.content());
     }
 
     /** Record copy with only modelId replaced — every other field preserved verbatim. */
@@ -3858,7 +4106,15 @@ public class EditorApiController {
         return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), modelId,
                 p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
                 p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
+    }
+
+    /** Record copy with only content replaced — every other field preserved verbatim. */
+    private static PageEntity withContent(PageEntity p, List<UiComponentNodeEntity> content) {
+        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
+                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
+                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), content);
     }
 
     private static List<PageButtonEntity> withoutUseCaseButtons(List<PageButtonEntity> buttons,

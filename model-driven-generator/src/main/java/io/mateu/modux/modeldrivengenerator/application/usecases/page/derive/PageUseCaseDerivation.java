@@ -79,7 +79,7 @@ public final class PageUseCaseDerivation {
                 page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
                 page.listingGatewayId(), toolbar.buttons, bottomBar.buttons, page.triggers(),
                 page.rules(), page.validations(), page.fieldConfigs(), page.wizardSteps(),
-                completion.buttons, listingQueryServiceId);
+                completion.buttons, listingQueryServiceId, page.content());
 
         return new Result(newUseCases, newQueryService, rewired, changed || !newUseCases.isEmpty());
     }

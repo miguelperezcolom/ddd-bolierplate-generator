@@ -511,6 +511,23 @@ export interface UiFieldRef {
   help?: string;
 }
 
+export interface UiComponentNodeRef {
+  id: string;
+  kind: string;
+  title?: string;
+  text?: string;
+  label?: string;
+  useCaseId?: string;
+  mappingId?: string;
+  modelId?: string;
+  queryServiceId?: string;
+  queryOperationId?: string;
+  fieldId?: string;
+  stereotype?: string;
+  colspan?: number;
+  children?: UiComponentNodeRef[];
+}
+
 export interface UiPageRef {
   id: string;
   name: string;
@@ -523,6 +540,8 @@ export interface UiPageRef {
   buttons?: UiPageButtonRef[];
   /** The viewmodel Model's fields merged with the page's fieldConfigs (designer order). */
   viewmodelFields?: UiFieldRef[];
+  /** UI-first composition: Mateu layouts with components inside. Empty = fully inferred. */
+  content?: UiComponentNodeRef[];
 }
 
 export interface ActorAppUseRef {

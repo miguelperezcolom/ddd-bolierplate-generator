@@ -736,6 +736,37 @@ export type ModuxCommand =
       label: string | null;
       mappingId: string | null;
     }
+  | {
+      kind: 'add-page-component';
+      pageId: string;
+      componentId: string;
+      componentKind: string;
+      parentComponentId?: string;
+    }
+  | { kind: 'remove-page-component'; pageId: string; componentId: string }
+  | {
+      kind: 'set-page-component';
+      pageId: string;
+      componentId: string;
+      title?: string | null;
+      text?: string | null;
+      label?: string | null;
+      useCaseId?: string | null;
+      mappingId?: string | null;
+      modelId?: string | null;
+      queryServiceId?: string | null;
+      queryOperationId?: string | null;
+      fieldId?: string | null;
+      stereotype?: string | null;
+      colspan?: number | null;
+    }
+  | {
+      kind: 'move-page-component';
+      pageId: string;
+      componentId: string;
+      parentComponentId?: string | null;
+      beforeComponentId?: string | null;
+    }
   | { kind: 'set-page-listing'; pageId: string; queryServiceId: string | null }
   | { kind: 'set-page-model'; pageId: string; modelId: string | null }
   | {

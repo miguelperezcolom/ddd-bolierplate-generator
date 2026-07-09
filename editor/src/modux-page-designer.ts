@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { UiPageRef, UiFieldRef } from './model.js';
+import type { UiPageRef, UiFieldRef, UiComponentNodeRef } from './model.js';
 
 /**
  * The page designer: a live MOCKUP of a page, inferred the way Mateu infers
@@ -30,6 +30,7 @@ export class ModuxPageDesigner extends LitElement {
   @property({ attribute: false }) models: { id: string; name: string }[] = [];
   @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
   @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
+  @property({ attribute: false }) queryOps: { id: string; name: string; queryServiceId: string }[] = [];
 
   /** The field whose declaration is being edited, with the draft values. */
   @state() private _editing: {
@@ -45,6 +46,10 @@ export class ModuxPageDesigner extends LitElement {
   @state() private _route: string | null = null;
   /** The button being edited ('' useCaseId = adding a new one). */
   @state() private _btn: { useCaseId: string; label: string; mappingId: string } | null = null;
+  /** The content-tree node whose declaration is being edited (draft copy). */
+  @state() private _cmp: UiComponentNodeRef | null = null;
+  @state() private _dragCmpId: string | null = null;
+  @state() private _overCmpId: string | null = null;
 
   private emitEvent(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -286,6 +291,160 @@ export class ModuxPageDesigner extends LitElement {
       padding: 40px 20px;
       line-height: 1.6;
     }
+    .cmp {
+      position: relative;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 18px 8px 8px;
+      min-height: 34px;
+      margin: 2px 0;
+    }
+    .cmp:hover {
+      border-color: #38bdf8;
+    }
+    .cmp.overcmp {
+      border-color: #0284c7;
+      background: #f0f9ff;
+    }
+    .cmp .kindchip {
+      position: absolute;
+      top: 2px;
+      left: 6px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #0ea5e9;
+      text-transform: uppercase;
+      cursor: grab;
+      user-select: none;
+    }
+    .cmp.leafcmp {
+      border-style: solid;
+      border-color: #e2e8f0;
+    }
+    .row-lay {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .row-lay > * {
+      flex: 1;
+      min-width: 0;
+    }
+    .col-lay {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .grid-lay {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .grid3-lay {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .split-divider {
+      width: 4px;
+      flex: none;
+      border-radius: 2px;
+      background: #e2e8f0;
+    }
+    .tabbar {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1.5px solid #cbd5e1;
+      margin-bottom: 8px;
+    }
+    .tabbar span {
+      padding: 3px 10px;
+      font-size: 11px;
+      color: #64748b;
+      border-radius: 6px 6px 0 0;
+    }
+    .tabbar span.on {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .acc-bar {
+      display: flex;
+      justify-content: space-between;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 11px;
+      color: #334155;
+      background: #f8fafc;
+    }
+    .card-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgb(2 6 23 / 0.06);
+      padding: 8px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .metric {
+      text-align: center;
+      padding: 6px;
+    }
+    .metric .num {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .metric .cap {
+      font-size: 10px;
+      color: #64748b;
+    }
+    .menubar-stub {
+      display: flex;
+      gap: 14px;
+      background: #0f172a;
+      color: #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .text-stub {
+      color: #334155;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .board-col {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 6px;
+      min-height: 60px;
+    }
+    .dots-nav {
+      text-align: center;
+      color: #cbd5e1;
+      letter-spacing: 4px;
+    }
+    .appbar {
+      background: #0f172a;
+      border-radius: 6px 6px 0 0;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: #94a3b8;
+      font-size: 10px;
+    }
+    .placeholder {
+      color: #94a3b8;
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+    }
     .pop {
       position: absolute;
       left: 12px;
@@ -403,6 +562,370 @@ export class ModuxPageDesigner extends LitElement {
         });
       }
     }
+  }
+
+  /** Human labels for the kind chips. */
+  private static readonly KIND_LABELS: Record<string, string> = {
+    verticalLayout: 'Vertical', horizontalLayout: 'Horizontal', formLayout: 'Form layout',
+    splitLayout: 'Split', tabLayout: 'Tabs', tab: 'Pestaña', accordionLayout: 'Acordeón',
+    card: 'Card', gridLayout: 'Grid', boardLayout: 'Board', dashboardLayout: 'Dashboard',
+    masterDetailLayout: 'Master-detail', foldoutLayout: 'Foldout', carouselLayout: 'Carrusel',
+    appLayout: 'App layout', form: 'Formulario', listing: 'Listado', button: 'Botón',
+    field: 'Campo', text: 'Texto', metricCard: 'Métrica', menuBar: 'Menú',
+  };
+
+  private static readonly LEAF_KINDS = new Set([
+    'form', 'listing', 'button', 'field', 'text', 'metricCard', 'menuBar',
+  ]);
+
+  /** The parent of each node in the content tree (null at the root). */
+  private parentOf(componentId: string): UiComponentNodeRef | null {
+    let found: UiComponentNodeRef | null = null;
+    const walk = (items: UiComponentNodeRef[] | undefined, parent: UiComponentNodeRef | null) => {
+      for (const it of items ?? []) {
+        if (it.id === componentId) found = parent;
+        walk(it.children, it);
+      }
+    };
+    walk(this.page?.content, null);
+    return found;
+  }
+
+  private onCmpDrop(target: UiComponentNodeRef): void {
+    const source = this._dragCmpId;
+    this._dragCmpId = null;
+    this._overCmpId = null;
+    if (!source || source === target.id) return;
+    if (target.kind === 'tabLayout' && (target.children ?? [])[0]) {
+      target = (target.children ?? [])[0]; // tabs hold the content — land in the active one
+    }
+    if (!ModuxPageDesigner.LEAF_KINDS.has(target.kind)) {
+      // dropped on a layout: the node moves inside it
+      this.emitEvent('component-moved', { componentId: source, toParentId: target.id, beforeComponentId: null });
+    } else {
+      // dropped on a sibling-ish component: the node slots in before it
+      const parent = this.parentOf(target.id);
+      this.emitEvent('component-moved', {
+        componentId: source,
+        toParentId: parent?.id ?? null,
+        beforeComponentId: target.id,
+      });
+    }
+  }
+
+  /** One node of the composed page: a labeled, droppable, clickable mockup. */
+  private renderComponent(node: UiComponentNodeRef): unknown {
+    const children = node.children ?? [];
+    const kids = (items: UiComponentNodeRef[]) => items.map((c) => this.renderComponent(c));
+    const empty = html`<div class="placeholder">suelta componentes aquí</div>`;
+    let body;
+    switch (node.kind) {
+      case 'horizontalLayout':
+        body = html`<div class="row-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'splitLayout': {
+        const left = children.slice(0, Math.ceil(children.length / 2));
+        const right = children.slice(Math.ceil(children.length / 2));
+        body = html`<div class="row-lay">
+          <div class="col-lay">${left.length ? kids(left) : empty}</div>
+          <div class="split-divider"></div>
+          <div class="col-lay">${right.length ? kids(right) : empty}</div>
+        </div>`;
+        break;
+      }
+      case 'formLayout':
+        body = html`<div class="grid-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'gridLayout':
+      case 'dashboardLayout':
+        body = html`<div class="grid3-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'tabLayout': {
+        const tabs = children.filter((c) => c.kind === 'tab');
+        const active = tabs[0];
+        body = html`
+          <div class="tabbar">
+            ${tabs.map((t, i) => html`<span class=${i === 0 ? 'on' : ''}>${t.title ?? 'Pestaña'}</span>`)}
+          </div>
+          ${active ? this.renderComponent(active) : empty}`;
+        break;
+      }
+      case 'tab':
+        body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'accordionLayout':
+        body = html`<div class="col-lay">
+          ${children.length
+            ? children.map(
+                (c, i) => html`
+                  <div class="acc-bar"><span>${c.title ?? c.label ?? 'Sección'}</span><span>${i === 0 ? '▾' : '▸'}</span></div>
+                  ${i === 0 ? this.renderComponent(c) : nothing}
+                `,
+              )
+            : empty}
+        </div>`;
+        break;
+      case 'card':
+        body = html`<div class="card-box">
+          ${node.title ? html`<div class="card-title">${node.title}</div>` : nothing}
+          <div class="col-lay">${children.length ? kids(children) : empty}</div>
+        </div>`;
+        break;
+      case 'boardLayout':
+        body = html`<div class="grid3-lay">
+          ${children.length
+            ? children.map((c) => html`<div class="board-col">${this.renderComponent(c)}</div>`)
+            : empty}
+        </div>`;
+        break;
+      case 'masterDetailLayout': {
+        const [master, ...detail] = children;
+        body = html`<div class="row-lay">
+          <div class="col-lay" style="flex:0 0 38%">
+            ${master ? this.renderComponent(master) : html`<div class="placeholder">maestro</div>`}
+          </div>
+          <div class="split-divider"></div>
+          <div class="col-lay">${detail.length ? kids(detail) : html`<div class="placeholder">detalle</div>`}</div>
+        </div>`;
+        break;
+      }
+      case 'foldoutLayout':
+        body = html`<div class="acc-bar"><span>${node.title ?? 'Foldout'}</span><span>▸</span></div>
+          <div class="col-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'carouselLayout':
+        body = html`<div class="row-lay">${children.length ? kids(children) : empty}</div>
+          <div class="dots-nav">●○○</div>`;
+        break;
+      case 'appLayout':
+        body = html`<div class="appbar">⛭ app</div>
+          <div class="col-lay" style="padding-top:6px">${children.length ? kids(children) : empty}</div>`;
+        break;
+      // ---- leaf components: inference works INSIDE the structure ----
+      case 'form': {
+        const own = node.modelId && node.modelId === this.page?.modelId;
+        const fields = own ? (this.page?.viewmodelFields ?? []) : [];
+        body = fields.length
+          ? html`<div class="grid-lay">
+              ${fields.slice(0, 6).map(
+                (f) => html`<div><label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${f.label ?? f.name}</label>${this.control(f)}</div>`,
+              )}
+            </div>`
+          : html`<div class="grid-lay">
+              <div class="control">Texto…</div>
+              <div class="control">Texto…</div>
+            </div>
+            <div class="placeholder">${node.modelId ? `formulario de ${node.modelId}` : 'sin model — click para asignar'}</div>`;
+        break;
+      }
+      case 'listing': {
+        const cols = (this.page?.viewmodelFields ?? []).slice(0, 4);
+        body = html`<table>
+            <tr>${cols.length ? cols.map((f) => html`<th>${f.label ?? f.name}</th>`) : html`<th>col 1</th><th>col 2</th><th>col 3</th>`}</tr>
+            ${[1, 2].map(() => html`<tr>${(cols.length ? cols : [1, 2, 3]).map(() => html`<td>···</td>`)}</tr>`)}
+          </table>
+          ${node.queryOperationId ? nothing : html`<div class="placeholder">sin operación de consulta — click para asignar</div>`}`;
+        break;
+      }
+      case 'button':
+        body = html`<span class="btn" style="display:inline-block">${node.label ?? 'Botón'}</span>`;
+        break;
+      case 'field': {
+        const mock = { fieldId: node.fieldId ?? '', name: node.label ?? 'campo', stereotype: node.stereotype ?? undefined } as UiFieldRef;
+        body = html`<label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${node.label ?? 'Campo'}</label>${this.control(mock)}`;
+        break;
+      }
+      case 'text':
+        body = html`<div class="text-stub">${node.text ?? 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'}</div>`;
+        break;
+      case 'metricCard':
+        body = html`<div class="card-box metric"><div class="num">123</div><div class="cap">${node.title ?? 'Métrica'}</div></div>`;
+        break;
+      case 'menuBar':
+        body = html`<div class="menubar-stub"><span>Inicio</span><span>Reservas</span><span>⋯</span></div>`;
+        break;
+      default:
+        body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;
+    }
+    const leaf = ModuxPageDesigner.LEAF_KINDS.has(node.kind);
+    return html`<div
+      class="cmp ${leaf ? 'leafcmp' : ''} ${this._overCmpId === node.id ? 'overcmp' : ''}"
+      data-cmp-id=${node.id}
+      @click=${(e: Event) => {
+        e.stopPropagation();
+        this._cmp = { ...node };
+      }}
+      @dragover=${(e: DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this._overCmpId = node.id;
+      }}
+      @dragleave=${() => (this._overCmpId = null)}
+      @drop=${(e: DragEvent) => {
+        if (!this._dragCmpId) return; // palette drops bubble up to the surface
+        e.preventDefault();
+        e.stopPropagation();
+        this.onCmpDrop(node);
+      }}
+    >
+      <span
+        class="kindchip"
+        draggable="true"
+        title="Arrastra para mover · click para configurar"
+        @dragstart=${(e: DragEvent) => {
+          e.stopPropagation();
+          this._dragCmpId = node.id;
+        }}
+        >${ModuxPageDesigner.KIND_LABELS[node.kind] ?? node.kind}${node.title ? ` · ${node.title}` : ''}</span
+      >
+      ${body}
+    </div>`;
+  }
+
+  /** The fully inferred body (no content tree): listing stub + viewmodel grid. */
+  private renderInferredBody(_page: UiPageRef, fields: UiFieldRef[], listing: boolean) {
+    return html`
+        ${listing
+          ? html`<table>
+              <tr>${fields.slice(0, 4).map((f) => html`<th>${f.label ?? f.name}</th>`)}</tr>
+              ${[1, 2, 3].map(() => html`<tr>${fields.slice(0, 4).map(() => html`<td>···</td>`)}</tr>`)}
+            </table>`
+          : nothing}
+        ${fields.length
+          ? html`<div class="grid">
+              ${fields.map(
+                (f) => html`
+                  <div
+                    class="field ${f.colspan === 2 ? 'span2' : ''} ${this._overId === f.fieldId ? 'dropping' : ''}"
+                    draggable="true"
+                    data-field-id=${f.fieldId}
+                    title="Click: editar declaración · arrastra para reordenar"
+                    @click=${() => this.onFieldClick(f)}
+                    @dragstart=${() => (this._dragId = f.fieldId)}
+                    @dragover=${(e: DragEvent) => {
+                      e.preventDefault();
+                      this._overId = f.fieldId;
+                    }}
+                    @dragleave=${() => (this._overId = null)}
+                    @drop=${(e: DragEvent) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      this.onDrop(f.fieldId);
+                    }}
+                  >
+                    <label>${f.label ?? f.name}</label>
+                    ${this.control(f)}
+                  </div>
+                `,
+              )}
+            </div>`
+          : html`<div class="empty">
+              Esta página aún no tiene viewmodel.<br />
+              Asigna un <b>Model</b> en su ficha y el formulario se inferirá solo, al estilo Mateu.
+            </div>`}
+    `;
+  }
+
+  /** The content-node declaration editor. */
+  private renderCmpPop() {
+    const draft = this._cmp;
+    if (!draft) return nothing;
+    const set = (patch: Partial<UiComponentNodeRef>) => (this._cmp = { ...this._cmp!, ...patch });
+    const kind = draft.kind;
+    const titled = ['tab', 'card', 'accordionLayout', 'foldoutLayout', 'metricCard', 'appLayout',
+      'verticalLayout', 'horizontalLayout', 'formLayout', 'splitLayout', 'tabLayout', 'gridLayout',
+      'boardLayout', 'dashboardLayout', 'masterDetailLayout', 'carouselLayout'].includes(kind);
+    return html`<div class="pop">
+      ${titled
+        ? html`<label>Título</label>
+            <input .value=${draft.title ?? ''} @input=${(e: Event) => set({ title: (e.target as HTMLInputElement).value })} />`
+        : nothing}
+      ${kind === 'text'
+        ? html`<label>Texto</label>
+            <input style="grid-column: 2 / -1" .value=${draft.text ?? ''} @input=${(e: Event) => set({ text: (e.target as HTMLInputElement).value })} />`
+        : nothing}
+      ${kind === 'button' || kind === 'field'
+        ? html`<label>Etiqueta</label>
+            <input .value=${draft.label ?? ''} @input=${(e: Event) => set({ label: (e.target as HTMLInputElement).value })} />`
+        : nothing}
+      ${kind === 'button'
+        ? html`<label>Caso de uso</label>
+            <select @change=${(e: Event) => set({ useCaseId: (e.target as HTMLSelectElement).value || undefined })}>
+              <option value="" ?selected=${!draft.useCaseId}>—</option>
+              ${this.useCases.map((u) => html`<option value=${u.id} ?selected=${u.id === draft.useCaseId}>${u.name}</option>`)}
+            </select>
+            <label>Mapping</label>
+            <select style="grid-column: 2 / -1" @change=${(e: Event) => set({ mappingId: (e.target as HTMLSelectElement).value || undefined })}>
+              <option value="" ?selected=${!draft.mappingId}>(el viewmodel viaja tal cual)</option>
+              ${this.mappings.map((mm) => html`<option value=${mm.id} ?selected=${mm.id === draft.mappingId}>${mm.name}</option>`)}
+            </select>`
+        : nothing}
+      ${kind === 'form'
+        ? html`<label>Model</label>
+            <select style="grid-column: 2 / -1" @change=${(e: Event) => set({ modelId: (e.target as HTMLSelectElement).value || undefined })}>
+              <option value="" ?selected=${!draft.modelId}>—</option>
+              ${this.models.map((m) => html`<option value=${m.id} ?selected=${m.id === draft.modelId}>${m.name}</option>`)}
+            </select>`
+        : nothing}
+      ${kind === 'listing'
+        ? html`<label>Consulta</label>
+            <select
+              style="grid-column: 2 / -1"
+              @change=${(e: Event) => {
+                const id = (e.target as HTMLSelectElement).value;
+                const op = this.queryOps.find((o) => o.id === id);
+                set({ queryOperationId: op?.id, queryServiceId: op?.queryServiceId });
+              }}
+            >
+              <option value="" ?selected=${!draft.queryOperationId}>—</option>
+              ${this.queryOps.map((o) => html`<option value=${o.id} ?selected=${o.id === draft.queryOperationId}>${o.name}</option>`)}
+            </select>`
+        : nothing}
+      ${kind === 'field'
+        ? html`<label>Estereotipo</label>
+            <select @change=${(e: Event) => set({ stereotype: (e.target as HTMLSelectElement).value || undefined })}>
+              ${STEREOTYPES.map((st) => html`<option value=${st} ?selected=${st === (draft.stereotype ?? 'regular')}>${st}</option>`)}
+            </select>`
+        : nothing}
+      ${kind === 'tabLayout'
+        ? html`<label style="grid-column: 1 / -1; color:#94a3b8">Las pestañas son hijos «tab»: configura su título clicándolas</label>`
+        : nothing}
+      <div class="actions">
+        <button
+          @click=${() => {
+            const componentId = this._cmp!.id;
+            this._cmp = null;
+            this.emitEvent('component-removed', { componentId });
+          }}
+        >
+          Quitar
+        </button>
+        <button @click=${() => (this._cmp = null)}>Cancelar</button>
+        <button
+          class="ok"
+          @click=${() => {
+            const d = this._cmp!;
+            this._cmp = null;
+            this.emitEvent('component-config-changed', {
+              componentId: d.id,
+              title: d.title ?? null,
+              text: d.text ?? null,
+              label: d.label ?? null,
+              useCaseId: d.useCaseId ?? null,
+              mappingId: d.mappingId ?? null,
+              modelId: d.modelId ?? null,
+              queryServiceId: d.queryServiceId ?? null,
+              queryOperationId: d.queryOperationId ?? null,
+              fieldId: d.fieldId ?? null,
+              stereotype: d.stereotype ?? null,
+              colspan: d.colspan ?? null,
+            });
+          }}
+        >
+          Aplicar
+        </button>
+      </div>
+    </div>`;
   }
 
   private onFieldClick(field: UiFieldRef): void {
@@ -527,45 +1050,11 @@ export class ModuxPageDesigner extends LitElement {
         </select>
       </div>
       <div class="body">
-        ${listing
-          ? html`<table>
-              <tr>${fields.slice(0, 4).map((f) => html`<th>${f.label ?? f.name}</th>`)}</tr>
-              ${[1, 2, 3].map(() => html`<tr>${fields.slice(0, 4).map(() => html`<td>···</td>`)}</tr>`)}
-            </table>`
-          : nothing}
-        ${fields.length
-          ? html`<div class="grid">
-              ${fields.map(
-                (f) => html`
-                  <div
-                    class="field ${f.colspan === 2 ? 'span2' : ''} ${this._overId === f.fieldId ? 'dropping' : ''}"
-                    draggable="true"
-                    data-field-id=${f.fieldId}
-                    title="Click: editar declaración · arrastra para reordenar"
-                    @click=${() => this.onFieldClick(f)}
-                    @dragstart=${() => (this._dragId = f.fieldId)}
-                    @dragover=${(e: DragEvent) => {
-                      e.preventDefault();
-                      this._overId = f.fieldId;
-                    }}
-                    @dragleave=${() => (this._overId = null)}
-                    @drop=${(e: DragEvent) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      this.onDrop(f.fieldId);
-                    }}
-                  >
-                    <label>${f.label ?? f.name}</label>
-                    ${this.control(f)}
-                  </div>
-                `,
-              )}
-            </div>`
-          : html`<div class="empty">
-              Esta página aún no tiene viewmodel.<br />
-              Asigna un <b>Model</b> en su ficha y el formulario se inferirá solo, al estilo Mateu.
-            </div>`}
+        ${(page.content ?? []).length
+          ? html`<div class="col-lay">${(page.content ?? []).map((n) => this.renderComponent(n))}</div>`
+          : this.renderInferredBody(page, fields, listing)}
       </div>
+      ${this.renderCmpPop()}
       ${this._btn
         ? (() => {
             const existing = (this.page?.buttons ?? []).some((b) => b.useCaseId === this._btn!.useCaseId);

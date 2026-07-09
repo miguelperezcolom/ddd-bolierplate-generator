@@ -11,7 +11,7 @@ import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { uiScene, parseMenuNodeId } from './views/ui.js';
-import type { UiMenuEntryRef } from './model.js';
+import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
@@ -1093,6 +1093,83 @@ export class ModuxEditor extends LitElement {
               mappingId: button.mappingId ?? null,
             }]
           : null;
+      }
+      case 'add-page-component':
+        return [{ kind: 'remove-page-component', pageId: c.pageId, componentId: c.componentId }];
+      case 'set-page-component':
+      case 'remove-page-component':
+      case 'move-page-component': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        let node: UiComponentNodeRef | null = null;
+        let parent: UiComponentNodeRef | null = null;
+        let before: string | null = null;
+        const walk = (items: UiComponentNodeRef[] | undefined, up: UiComponentNodeRef | null) => {
+          const list = items ?? [];
+          for (let i = 0; i < list.length; i++) {
+            if (list[i].id === c.componentId) {
+              node = list[i];
+              parent = up;
+              before = list[i + 1]?.id ?? null;
+            }
+            walk(list[i].children, list[i]);
+          }
+        };
+        walk(page?.content, null);
+        if (!node) return null;
+        const found: UiComponentNodeRef = node;
+        if (c.kind === 'set-page-component') {
+          return [{
+            kind: 'set-page-component',
+            pageId: c.pageId,
+            componentId: c.componentId,
+            title: found.title ?? null,
+            text: found.text ?? null,
+            label: found.label ?? null,
+            useCaseId: found.useCaseId ?? null,
+            mappingId: found.mappingId ?? null,
+            modelId: found.modelId ?? null,
+            queryServiceId: found.queryServiceId ?? null,
+            queryOperationId: found.queryOperationId ?? null,
+            fieldId: found.fieldId ?? null,
+            stereotype: found.stereotype ?? null,
+            colspan: found.colspan ?? null,
+          }];
+        }
+        if (c.kind === 'move-page-component') {
+          return [{
+            kind: 'move-page-component',
+            pageId: c.pageId,
+            componentId: c.componentId,
+            parentComponentId: parent === null ? null : (parent as UiComponentNodeRef).id,
+            beforeComponentId: before,
+          }];
+        }
+        // remove: recreate the node (its config, not its subtree) where it was
+        return [
+          {
+            kind: 'add-page-component',
+            pageId: c.pageId,
+            componentId: c.componentId,
+            componentKind: found.kind,
+            parentComponentId: parent === null ? undefined : (parent as UiComponentNodeRef).id,
+          },
+          {
+            kind: 'set-page-component',
+            pageId: c.pageId,
+            componentId: c.componentId,
+            title: found.title ?? null,
+            text: found.text ?? null,
+            label: found.label ?? null,
+            useCaseId: found.useCaseId ?? null,
+            mappingId: found.mappingId ?? null,
+            modelId: found.modelId ?? null,
+            queryServiceId: found.queryServiceId ?? null,
+            queryOperationId: found.queryOperationId ?? null,
+            fieldId: found.fieldId ?? null,
+            stereotype: found.stereotype ?? null,
+            colspan: found.colspan ?? null,
+          },
+        ];
       }
       case 'set-page-listing': {
         const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
@@ -4013,6 +4090,22 @@ export class ModuxEditor extends LitElement {
     return id;
   }
 
+  /** A fresh content-node id, unique across every page's tree (client-generated). */
+  private newComponentId(kind: string): string {
+    const used = new Set<string>();
+    const walk = (items?: { id: string; children?: [] }[]) => {
+      for (const it of items ?? []) {
+        used.add(it.id);
+        walk((it as { children?: [] }).children);
+      }
+    };
+    (this.model.pages ?? []).forEach((x) => walk(x.content as never));
+    const base = `cmp-${slug(kind)}`;
+    let id = base;
+    for (let n = 2; used.has(id) || used.has(`${id}-tab-1`); n++) id = `${base}-${n}`;
+    return id;
+  }
+
   /** The «Diseño» surface: every page as a frame, edited in place (Figma-style). */
   private renderFigma() {
     const vl = this.viewLayout('design');
@@ -4025,6 +4118,15 @@ export class ModuxEditor extends LitElement {
       .mappings=${this.model.modelMappings ?? []}
       .useCases=${this.model.modules.flatMap((mod) =>
         (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
+      )}
+      .queryOps=${this.model.modules.flatMap((mod) =>
+        (mod.queryServices ?? []).flatMap((qs) =>
+          (qs.operations ?? []).map((op) => ({
+            id: op.id,
+            name: `${op.name} (${qs.name})`,
+            queryServiceId: qs.id,
+          })),
+        ),
       )}
       @dragover=${(e: DragEvent) => e.preventDefault()}
       @drop=${this.onPaletteDrop}
@@ -4053,6 +4155,24 @@ export class ModuxEditor extends LitElement {
           useCaseId: e.detail.useCaseId,
           label: e.detail.label,
           mappingId: e.detail.mappingId,
+        })}
+      @page-component-config-changed=${(e: CustomEvent) => {
+        const { pageId, componentId, ...config } = e.detail;
+        this.command({ kind: 'set-page-component', pageId, componentId, ...config });
+      }}
+      @page-component-removed=${(e: CustomEvent) =>
+        this.command({
+          kind: 'remove-page-component',
+          pageId: e.detail.pageId,
+          componentId: e.detail.componentId,
+        })}
+      @page-component-moved=${(e: CustomEvent) =>
+        this.command({
+          kind: 'move-page-component',
+          pageId: e.detail.pageId,
+          componentId: e.detail.componentId,
+          parentComponentId: e.detail.toParentId,
+          beforeComponentId: e.detail.beforeComponentId,
         })}
       @page-button-removed=${(e: CustomEvent) =>
         this.command({
@@ -4110,6 +4230,29 @@ export class ModuxEditor extends LitElement {
     { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9' },
     { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7' },
     { type: 'menu-item', label: 'Entrada de menú', child: true, symbol: 'process', color: '#0ea5e9' },
+    // Diseño: the Mateu layout vocabulary…
+    { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:formLayout', label: 'Layout · Form', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:splitLayout', label: 'Layout · Split', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:tabLayout', label: 'Layout · Tabs', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:accordionLayout', label: 'Layout · Acordeón', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:card', label: 'Layout · Card', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:gridLayout', label: 'Layout · Grid', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:boardLayout', label: 'Layout · Board', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:dashboardLayout', label: 'Layout · Dashboard', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:masterDetailLayout', label: 'Layout · Master-detail', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:foldoutLayout', label: 'Layout · Foldout', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:carouselLayout', label: 'Layout · Carrusel', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:appLayout', label: 'Layout · App', symbol: 'component', color: '#0ea5e9' },
+    // …and the components that live inside those layouts.
+    { type: 'cmp:form', label: 'Componente · Formulario', symbol: 'interface', color: '#0284c7' },
+    { type: 'cmp:listing', label: 'Componente · Listado', symbol: 'lens', color: '#0284c7' },
+    { type: 'cmp:button', label: 'Componente · Botón', symbol: 'usecase', color: '#0284c7' },
+    { type: 'cmp:field', label: 'Componente · Campo', symbol: 'gear', color: '#0284c7' },
+    { type: 'cmp:text', label: 'Componente · Texto', symbol: 'readmodel', color: '#0284c7' },
+    { type: 'cmp:metricCard', label: 'Componente · Métrica', symbol: 'event', color: '#0284c7' },
+    { type: 'cmp:menuBar', label: 'Componente · Menú', symbol: 'process', color: '#0284c7' },
   ];
 
   /** Every element of the model, grouped for the palette's «Catálogo» tab. */
@@ -4373,6 +4516,40 @@ export class ModuxEditor extends LitElement {
   private createFromPalette(type: string, pos: Point, targetId: string | null): void {
     const def = ModuxEditor.PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
+    if (type.startsWith('cmp:')) {
+      const componentKind = type.slice(4);
+      const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
+      const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
+      if (!pageId) {
+        this.emit('modux-notice', { message: 'Suelta el layout/componente sobre una página' });
+        return;
+      }
+      let parentComponentId = m ? m[2] : undefined;
+      if (parentComponentId) {
+        // a tabLayout holds only tabs: dropping on it lands in its active (first) tab
+        let parentNode: UiComponentNodeRef | null = null;
+        const walk = (items?: UiComponentNodeRef[]) => {
+          for (const it of items ?? []) {
+            if (it.id === parentComponentId) parentNode = it;
+            walk(it.children);
+          }
+        };
+        walk((this.model.pages ?? []).find((x) => x.id === pageId)?.content);
+        const found = parentNode as UiComponentNodeRef | null;
+        if (found?.kind === 'tabLayout' && (found.children ?? [])[0]) {
+          parentComponentId = (found.children ?? [])[0].id;
+        }
+      }
+      this.command({
+        kind: 'add-page-component',
+        pageId,
+        componentId: this.newComponentId(componentKind),
+        componentKind,
+        parentComponentId,
+      });
+      return;
+    }
+
     const view = this._view;
     const scene = this.sceneFor(view);
     const place = (id: string, container?: string) => {
@@ -4699,8 +4876,8 @@ export class ModuxEditor extends LitElement {
           : this._view === 'ui'
             ? ['ui-app', 'page', 'menu-item'].includes(k.type)
             : this._view === 'design'
-              ? k.type === 'page'
-              : !['ui-app', 'page', 'menu-item'].includes(k.type)) &&
+              ? k.type === 'page' || k.type.startsWith('cmp:')
+              : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.

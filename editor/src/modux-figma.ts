@@ -33,6 +33,7 @@ export class ModuxFigma extends LitElement {
   @property({ attribute: false }) models: { id: string; name: string }[] = [];
   @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
   @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
+  @property({ attribute: false }) queryOps: { id: string; name: string; queryServiceId: string }[] = [];
 
   /** Camera: screen-space pan + zoom. */
   @state() private _t = { x: 40, y: 40, k: 0.85 };
@@ -141,10 +142,19 @@ export class ModuxFigma extends LitElement {
     };
   }
 
-  /** The frame under a client point, if any (same contract as the canvas). */
+  /**
+   * The frame under a client point — and, when the point sits on a node of the
+   * frame's content tree, `cmp:<pageId>:<componentId>` so palette drops can nest.
+   */
   nodeIdAtClient(clientX: number, clientY: number): string | null {
     const el = this.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
-    return (el?.closest?.('.frame') as HTMLElement | null)?.dataset.pageId ?? null;
+    const frame = el?.closest?.('.frame') as HTMLElement | null;
+    if (!frame) return null;
+    const pageId = frame.dataset.pageId!;
+    const designer = frame.querySelector('modux-page-designer');
+    const inner = designer?.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const cmp = inner?.closest?.('[data-cmp-id]') as HTMLElement | null;
+    return cmp ? `cmp:${pageId}:${cmp.dataset.cmpId}` : pageId;
   }
 
   /** The frame's top-left in surface coordinates (layout, live drag, or default grid). */
@@ -248,6 +258,19 @@ export class ModuxFigma extends LitElement {
                 .models=${this.models}
                 .mappings=${this.mappings}
                 .useCases=${this.useCases}
+                .queryOps=${this.queryOps}
+                @component-config-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-component-config-changed', { pageId: page.id, ...e.detail });
+                }}
+                @component-removed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-component-removed', { pageId: page.id, ...e.detail });
+                }}
+                @component-moved=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-component-moved', { pageId: page.id, ...e.detail });
+                }}
                 @page-renamed=${(e: CustomEvent) => {
                   e.stopPropagation();
                   this.emit('page-renamed', { pageId: page.id, ...e.detail });

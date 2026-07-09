@@ -2114,6 +2114,12 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "content" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/UiComponentNodeEntity"
+          }
+        },
         "fieldConfigs" : {
           "type" : "array",
           "items" : {
@@ -3526,6 +3532,71 @@
     "UiAppVariant" : {
       "type" : "string",
       "enum" : [ "HAMBURGUER_MENU", "MENU_ON_LEFT", "MENU_ON_TOP", "TABS", "AUTO" ]
+    },
+    "UiComponentNodeEntity" : {
+      "type" : "object",
+      "properties" : {
+        "children" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/UiComponentNodeEntity"
+          }
+        },
+        "colspan" : {
+          "type" : "integer"
+        },
+        "fieldId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'field' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "mappingId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'mapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "modelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "stereotype" : {
+          "type" : "string"
+        },
+        "text" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "useCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "additionalProperties" : false
     },
     "UiMenuItemEntity" : {
       "type" : "object",
