@@ -126,10 +126,10 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         createUseCase.handle(new CreatePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
                 listingDataSourceType, listingGatewayId,
                 toolbar != null ? toolbar.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 bottomBar != null ? bottomBar.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 triggers != null ? triggers.stream()
                         .map(v -> new PageTriggerEntity(
@@ -158,7 +158,7 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .map(v -> new PageWizardStepEntity(v.pageId(), v.label()))
                         .toList() : List.of(),
                 completionActions != null ? completionActions.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 listingQueryServiceId));
         return id;
@@ -169,10 +169,10 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         saveUseCase.handle(new SavePageCommand(id, name, route, type, aggregateId, modelId, componentIds,
                 listingDataSourceType, listingGatewayId,
                 toolbar != null ? toolbar.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 bottomBar != null ? bottomBar.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 triggers != null ? triggers.stream()
                         .map(v -> new PageTriggerEntity(
@@ -201,7 +201,7 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                         .map(v -> new PageWizardStepEntity(v.pageId(), v.label()))
                         .toList() : List.of(),
                 completionActions != null ? completionActions.stream()
-                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId()))
+                        .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
                 listingQueryServiceId));
     }
@@ -224,10 +224,10 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
         listingGatewayId = model.listingGatewayId();
         listingQueryServiceId = model.listingQueryServiceId();
         toolbar = model.toolbar() != null ? new ArrayList<>(model.toolbar().stream()
-                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                 .toList()) : new ArrayList<>();
         bottomBar = model.bottomBar() != null ? new ArrayList<>(model.bottomBar().stream()
-                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                 .toList()) : new ArrayList<>();
         triggers = model.triggers() != null ? new ArrayList<>(model.triggers().stream()
                 .map(e -> new PageTriggerViewModel(
@@ -256,7 +256,7 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 .map(e -> new PageWizardStepViewModel(e.pageId(), e.label()))
                 .toList()) : new ArrayList<>();
         completionActions = model.completionActions() != null ? new ArrayList<>(model.completionActions().stream()
-                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                 .toList()) : new ArrayList<>();
         return this;
     }

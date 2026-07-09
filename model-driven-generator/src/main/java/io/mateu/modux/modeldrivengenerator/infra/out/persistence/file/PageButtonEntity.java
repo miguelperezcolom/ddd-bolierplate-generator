@@ -4,6 +4,13 @@ public record PageButtonEntity(
         String label,
         String icon,
         String useCaseId,
-        String actionId
+        String actionId,
+        /** ModelMapping applied to the viewmodel to build the use case request. */
+        String mappingId
 ) {
+
+    /** Backward-compatible constructor (pre-mappingId callers and stores). */
+    public PageButtonEntity(String label, String icon, String useCaseId, String actionId) {
+        this(label, icon, useCaseId, actionId, null);
+    }
 }

@@ -104,7 +104,7 @@ public final class PageUseCaseDerivation {
                         page.modelId(), null));
                 existingIds.add(useCaseId);
             }
-            rewired.add(new PageButtonEntity(button.label(), button.icon(), useCaseId, button.actionId()));
+            rewired.add(new PageButtonEntity(button.label(), button.icon(), useCaseId, button.actionId(), button.mappingId()));
         }
         return new Buttons(rewired, changed);
     }

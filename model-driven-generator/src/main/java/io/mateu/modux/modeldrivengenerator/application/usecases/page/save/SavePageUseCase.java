@@ -35,10 +35,10 @@ public class SavePageUseCase {
                 command.listingDataSourceType(),
                 command.listingGatewayId(),
                 command.toolbar().stream()
-                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                         .toList(),
                 command.bottomBar().stream()
-                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                         .toList(),
                 command.triggers().stream()
                         .map(e -> new PageTrigger(
@@ -68,7 +68,7 @@ public class SavePageUseCase {
                         .map(e -> new PageWizardStep(e.pageId(), e.label()))
                         .toList(),
                 command.completionActions().stream()
-                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                        .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                         .toList(),
                 command.listingQueryServiceId());
         repository.save(page);

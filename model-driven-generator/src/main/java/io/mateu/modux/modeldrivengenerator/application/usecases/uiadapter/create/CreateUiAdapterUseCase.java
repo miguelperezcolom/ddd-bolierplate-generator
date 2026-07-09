@@ -24,7 +24,7 @@ public class CreateUiAdapterUseCase {
                 command.appVariant(),
                 command.menuItems() == null ? java.util.List.of() :
                         command.menuItems().stream()
-                                .map(m -> new UiMenuItem(m.label(), m.icon(), m.description(), m.route()))
+                                .map(m -> new UiMenuItem(m.label(), m.icon(), m.description(), m.route(), m.pageId(), null))
                                 .toList());
         repository.save(uiAdapter);
     }

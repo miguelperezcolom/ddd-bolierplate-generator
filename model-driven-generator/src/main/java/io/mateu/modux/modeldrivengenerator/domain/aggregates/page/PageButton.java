@@ -4,6 +4,11 @@ public record PageButton(
         String label,
         String icon,
         String useCaseId,
-        String actionId
+        String actionId,
+        String mappingId
 ) {
+
+    public PageButton(String label, String icon, String useCaseId, String actionId) {
+        this(label, icon, useCaseId, actionId, null);
+    }
 }

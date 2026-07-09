@@ -48,10 +48,10 @@ public class PageFileRepository implements PageRepository {
                         entity.listingDataSourceType(),
                         entity.listingGatewayId(),
                         entity.toolbar() != null ? entity.toolbar().stream()
-                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                                 .toList() : List.of(),
                         entity.bottomBar() != null ? entity.bottomBar().stream()
-                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                                 .toList() : List.of(),
                         entity.triggers() != null ? entity.triggers().stream()
                                 .map(e -> new PageTrigger(
@@ -81,7 +81,7 @@ public class PageFileRepository implements PageRepository {
                                 .map(e -> new PageWizardStep(e.pageId(), e.label()))
                                 .toList() : List.of(),
                         entity.completionActions() != null ? entity.completionActions().stream()
-                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId()))
+                                .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                                 .toList() : List.of(),
                         entity.listingQueryServiceId()));
     }
@@ -99,10 +99,10 @@ public class PageFileRepository implements PageRepository {
                 entity.getListingDataSourceType() != null ? entity.getListingDataSourceType().name() : null,
                 entity.getListingGatewayId(),
                 entity.getToolbar().stream()
-                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
+                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
                         .toList(),
                 entity.getBottomBar().stream()
-                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
+                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
                         .toList(),
                 entity.getTriggers().stream()
                         .map(t -> new PageTriggerEntity(
@@ -132,7 +132,7 @@ public class PageFileRepository implements PageRepository {
                         .map(s -> new PageWizardStepEntity(s.pageId(), s.label()))
                         .toList(),
                 entity.getCompletionActions().stream()
-                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId()))
+                        .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
                         .toList(),
                 entity.getListingQueryServiceId()));
         return entity;

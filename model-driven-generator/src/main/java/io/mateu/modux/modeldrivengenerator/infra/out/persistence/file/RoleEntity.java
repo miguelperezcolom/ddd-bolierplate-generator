@@ -13,8 +13,17 @@ public record RoleEntity(
         /** External systems this actor depends on (a strategic context-map dependency). */
         List<String> externalSystemIds,
         /** AI agents this actor talks to (a chat/supervision UI is derived from them). */
-        List<String> aiAgentIds
+        List<String> aiAgentIds,
+        /** UI apps (UiAdapter) this actor uses — the actor→app link of the UI map. */
+        List<String> uiAdapterIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-uiAdapterIds callers and stores). */
+    public RoleEntity(String id, String name, List<String> allowedUseCaseIds,
+                      List<String> allowedQueryServiceIds, List<String> externalSystemIds,
+                      List<String> aiAgentIds) {
+        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds, aiAgentIds, List.of());
+    }
 
     /** Backward-compatible constructor (pre-aiAgentIds callers and stores). */
     public RoleEntity(String id, String name, List<String> allowedUseCaseIds,

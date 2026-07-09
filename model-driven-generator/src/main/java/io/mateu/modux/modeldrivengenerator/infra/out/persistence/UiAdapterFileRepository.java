@@ -30,16 +30,33 @@ public class UiAdapterFileRepository implements UiAdapterRepository {
                         entity.path(),
                         entity.appVariant(),
                         entity.menuItems() == null ? List.of() :
-                                entity.menuItems().stream()
-                                        .map(m -> new UiMenuItem(m.label(), m.icon(), m.description(), m.route()))
-                                        .toList()));
+                                entity.menuItems().stream().map(UiAdapterFileRepository::toDomain).toList()));
+    }
+
+    private static UiMenuItem toDomain(UiMenuItemEntity m) {
+        return new UiMenuItem(m.label(), m.icon(), m.description(), m.route(), m.pageId(),
+                m.children() == null ? List.of() :
+                        m.children().stream().map(UiAdapterFileRepository::toDomain).toList());
+    }
+
+    private static UiMenuItemEntity toEntity(UiMenuItem m, UiMenuItemEntity stored) {
+        // children == null means the caller (the flat Mateu form) did not edit the tree:
+        // keep whatever the store already has for this entry, so a save never prunes it.
+        var children = m.children() != null
+                ? m.children().stream().map(c -> UiAdapterFileRepository.toEntity(c, null)).toList()
+                : stored != null && stored.children() != null ? stored.children() : List.<UiMenuItemEntity>of();
+        return new UiMenuItemEntity(m.label(), m.icon(), m.description(), m.route(), m.pageId(), children);
     }
 
     @Override
     public UiAdapter save(UiAdapter entity) {
+        var stored = repository.findById(entity.getId().id(), UiAdapterEntity.class)
+                .map(UiAdapterEntity::menuItems).orElse(List.of());
         var menuItemEntities = entity.getMenuItems() == null ? List.<UiMenuItemEntity>of() :
                 entity.getMenuItems().stream()
-                        .map(m -> new UiMenuItemEntity(m.label(), m.icon(), m.description(), m.route()))
+                        .map(m -> toEntity(m, stored == null ? null :
+                                stored.stream().filter(e -> java.util.Objects.equals(e.label(), m.label()))
+                                        .findFirst().orElse(null)))
                         .toList();
         repository.save(new UiAdapterEntity(
                 entity.getId().id(),

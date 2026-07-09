@@ -28,7 +28,7 @@ public class RoleFileRepository implements RoleRepository {
 
     @Override
     public Role save(Role entity) {
-        // allowedQueryServiceIds, externalSystemIds and aiAgentIds are not modeled in the domain
+        // allowedQueryServiceIds, externalSystemIds, aiAgentIds and uiAdapterIds are not modeled in the domain
         // Role yet — carry them over from the stored entity so a UI save never wipes what was
         // authored elsewhere.
         var existing = repository.findById(entity.getId().id(), RoleEntity.class).orElse(null);
@@ -38,7 +38,8 @@ public class RoleFileRepository implements RoleRepository {
                 entity.getAllowedUseCaseIds(),
                 existing != null ? existing.allowedQueryServiceIds() : List.of(),
                 existing != null ? existing.externalSystemIds() : List.of(),
-                existing != null ? existing.aiAgentIds() : List.of()));
+                existing != null ? existing.aiAgentIds() : List.of(),
+                existing != null ? existing.uiAdapterIds() : List.of()));
         return entity;
     }
 

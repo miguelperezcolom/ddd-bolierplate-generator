@@ -4,6 +4,7 @@ public record UiMenuItemData(
         String label,
         String icon,
         String description,
-        String route
+        String route,
+        String pageId
 ) {
 }

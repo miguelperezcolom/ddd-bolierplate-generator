@@ -82,7 +82,7 @@ public class UiAdapterViewModel implements Identifiable, CrudEditorForm<String>,
         appVariant = model.appVariant();
         menuItems = model.menuItems() == null ? new ArrayList<>() :
                 model.menuItems().stream()
-                        .map(m -> new UiMenuItemViewModel(m.label(), m.icon(), m.description(), m.route()))
+                        .map(m -> new UiMenuItemViewModel(m.label(), m.icon(), m.description(), m.route(), m.pageId()))
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
     }
@@ -90,7 +90,7 @@ public class UiAdapterViewModel implements Identifiable, CrudEditorForm<String>,
     private List<UiMenuItemData> toMenuItemData(List<UiMenuItemViewModel> items) {
         if (items == null) return List.of();
         return items.stream()
-                .map(m -> new UiMenuItemData(m.label(), m.icon(), m.description(), m.route()))
+                .map(m -> new UiMenuItemData(m.label(), m.icon(), m.description(), m.route(), m.pageId()))
                 .toList();
     }
 

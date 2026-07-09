@@ -50,8 +50,12 @@ public class UiAdapterFileQueryService implements UiAdapterQueryService {
                         entity.path(),
                         entity.appVariant(),
                         entity.menuItems() == null ? List.of() :
-                                entity.menuItems().stream()
-                                        .map(m -> new UiMenuItemDto(m.label(), m.icon(), m.description(), m.route()))
-                                        .toList()));
+                                entity.menuItems().stream().map(UiAdapterFileQueryService::toDto).toList()));
+    }
+
+    private static UiMenuItemDto toDto(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity m) {
+        return new UiMenuItemDto(m.label(), m.icon(), m.description(), m.route(), m.pageId(),
+                m.children() == null ? List.of() :
+                        m.children().stream().map(UiAdapterFileQueryService::toDto).toList());
     }
 }
