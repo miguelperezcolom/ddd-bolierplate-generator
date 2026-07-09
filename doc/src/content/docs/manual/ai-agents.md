@@ -17,10 +17,11 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
                                │
         ┌── tools ────────────┼──────────────────────────────────────┐
         ▼                     ▼                                      ▼
-   use case (MCP)   query service · API operation        external operation · MCP server
-                              │
+   use case (MCP)   query service · API u operación       external operation · MCP server
+                    (real o proxy)                                   │
                               ├── delegates ──▶ another agent
-                              └── knowledge ──▶ RAG ◀── read models, repos, webs, FTP…
+                              └── knowledge ──▶ RAG ◀── read models · tablas externas ·
+                                                        APIs · repos, webs, SharePoint…
 
   external AI agent ───▶ MCP gateway ───▶ MCP servers · APIs · operations · use cases · RAGs
 ```
@@ -34,6 +35,7 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
 | AI agent | Use case | `allowedUseCaseIds` (flips `exposedAsMcp`) | Action tool, consumed through MCP |
 | AI agent | Query service | `allowedQueryServiceIds` | Read tool |
 | AI agent | API operation | `allowedApiOperationIds` | A published operation as a tool |
+| AI agent | **Whole API — real or [proxy](/manual/graphical-editor/)** | `allowedApiIds` | Every operation of it, present and future, as tools |
 | AI agent | External operation | `allowedExternalUseCaseIds` | Partner functionality as a tool |
 | AI agent | External MCP server | `allowedMcpServerIds` | A whole external tool surface |
 | AI agent | MCP gateway | `mcpGatewayIds` | One curated tool surface |
@@ -41,14 +43,21 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
 | AI agent | RAG | `ragIds` | Knowledge: grounding before acting |
 | MCP gateway | MCP server / API / operation / use case / RAG | `mcpServerIds` / `apiIds` / `apiOperationIds` / `useCaseIds` / `ragIds` | What the gateway aggregates and exposes |
 | RAG | Read model | `sourceReadModelIds` | The domain projecting itself into an index |
-| RAG | External content | `contentSources` (REPO/WEB/FTP + URI) | Content the RAG crawls |
+| RAG | External system's table | `sourceExternalTableIds` | Structured legacy content, indexed in place |
+| RAG | API — real or proxy | `sourceApiIds` | Content obtained by calling the contract |
+| RAG | External content | `contentSources` (type + URI) | Unstructured content the RAG crawls |
 
 ## Agents
 
 Create an agent from the context-map toolbar — **Agente de IA** (internal) or
 **Agente IA externo** (external, drawn dashed). Then drag its handle onto any tool,
 another agent (delegation) or a RAG; every arrow above is a gesture, and Supr on the
-arrow removes the link.
+arrow removes the link. API **proxies** count as APIs everywhere: dragging the agent
+onto a proxy declares the same consumption, through the fronting system.
+
+Deletion is symmetric by policy: **deleting an agent takes its links with it**, and
+**deleting a tool** (an API, a proxy, an operation) **unlinks the agents** that
+consumed it — never a dangling reference, never a blocked delete.
 
 Lint keeps the layer honest:
 
@@ -83,17 +92,31 @@ guardrails are a later decision; the model declares the reaction.
 ## RAGs
 
 A **RAG** is a knowledge base an agent retrieves from. It declares *what it indexes*;
-the pipeline (embeddings, chunking, refresh) is a later decision:
+the pipeline (embeddings, chunking, refresh) is a later decision. Sources come in two
+families — **structured** (elements of the map, declared as relations) and
+**unstructured** (typed URIs):
 
 | Source | Declared as | Gesture |
 |---|---|---|
 | **Read models** | `sourceReadModelIds` — the domain projecting itself into an index | Drag the RAG onto a read model |
-| **External content** | `contentSources` — typed URIs: `REPO`, `WEB` or `FTP` | Select the RAG and use the **＋ Fuente** toolbar (type + URI) |
+| **External systems' tables** | `sourceExternalTableIds` — structured legacy content | Drag the RAG onto the table chip |
+| **APIs (real or proxy)** | `sourceApiIds` — content obtained by calling the contract | Drag the RAG onto the API or proxy |
+| **External content** | `contentSources` — a typed URI | Select the RAG and use the **＋ Fuente** toolbar (type + URI) |
 
-Content sources hang from the RAG as small dashed satellites on the context map; Supr
-removes one. Because read models are kept fresh by [projections](/manual/projections/),
-a RAG fed from read models knows exactly which events should refresh its index.
-A RAG exposed through an MCP gateway serves retrieval to external agents too.
+The curated type catalog for external content: `WEB`, `REPO`, `FTP`, `DATABASE`,
+`BUCKET`, `SHAREPOINT`, `CONFLUENCE`, `DRIVE`, `FILESYSTEM`, `TICKETING`, `CRM` — the
+field stays free-form in the meta-model on purpose, so an unforeseen kind can be
+declared through REST/MCP without waiting for a release. Prefer the structured
+relation over a URI whenever the source already exists on the map: the relation
+survives renames, feeds the diff, and says *what* is indexed, not just *where*.
+
+Content sources hang from the RAG as small dashed satellites on the context map;
+structured sources draw teal «indexa» edges (a table hidden at the coarse level rolls
+up to its system). Supr on a satellite or an edge removes that source; deleting the
+read model, table, API or proxy unlinks the RAG automatically. Because read models
+are kept fresh by [projections](/manual/projections/), a RAG fed from read models
+knows exactly which events should refresh its index. A RAG exposed through an MCP
+gateway serves retrieval to external agents too.
 
 The `rag-orphan` lint rule flags a knowledge base no agent queries.
 
