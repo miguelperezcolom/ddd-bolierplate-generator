@@ -24,6 +24,8 @@ const STEREOTYPES = [
 @customElement('modux-page-designer')
 export class ModuxPageDesigner extends LitElement {
   @property({ attribute: false }) page: UiPageRef | null = null;
+  /** Rendered as a frame on the Diseño surface (relative, fixed size, no close). */
+  @property({ type: Boolean, reflect: true }) framed = false;
 
   /** The field whose declaration is being edited, with the draft values. */
   @state() private _editing: {
@@ -40,6 +42,17 @@ export class ModuxPageDesigner extends LitElement {
   }
 
   static styles = css`
+    :host([framed]) {
+      position: relative;
+      top: auto;
+      right: auto;
+      bottom: auto;
+      height: 560px;
+      box-shadow: 0 8px 26px rgb(2 6 23 / 0.14);
+    }
+    :host([framed]) button.close {
+      display: none;
+    }
     :host {
       position: absolute;
       top: 54px;
@@ -343,7 +356,7 @@ export class ModuxPageDesigner extends LitElement {
         <span class="type">${page.type ?? 'FORM'}</span>
         ${page.route ? html`<span class="route">${page.route}</span>` : nothing}
         <button @click=${() => this.emitEvent('open-crud')} title="Abrir la ficha completa de la página">Ficha</button>
-        <button @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
+        <button class="close" @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
       </div>
       <div class="toolbar">
         ${(page.buttons ?? []).map(

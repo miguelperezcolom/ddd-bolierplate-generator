@@ -15,7 +15,7 @@ import type { UiMenuEntryRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
-import './modux-page-designer.js';
+import './modux-figma.js';
 import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
@@ -32,7 +32,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'eventstorming';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'eventstorming';
 
 
 /**
@@ -304,8 +304,6 @@ export class ModuxEditor extends LitElement {
   @state() private _fullscreen = false;
   /** Tilt mode: the diagram as stacked 3D plates (a read-only lens). */
   @state() private _tilt = false;
-  /** The page open in the designer (the inferred-mockup «Figma» panel). */
-  @state() private _designer: string | null = null;
   /** Keyboard-shortcuts help popover (toggled with ?). */
   @state() private _helpOpen = false;
   @state() private _newName = '';
@@ -614,7 +612,8 @@ export class ModuxEditor extends LitElement {
       border-top: 1px solid #f1f5f9;
     }
     modux-canvas,
-    modux-tilt {
+    modux-tilt,
+    modux-figma {
       flex: 1;
       min-height: 0;
     }
@@ -774,6 +773,7 @@ export class ModuxEditor extends LitElement {
       case '6': scope('view:processes'); break;
       case '7': scope('view:workflows'); break;
       case '8': scope('view:ui'); break;
+      case '9': scope('view:design'); break;
       case '?':
         e.preventDefault();
         this._helpOpen = !this._helpOpen;
@@ -3901,7 +3901,8 @@ export class ModuxEditor extends LitElement {
 
   private onElementActivated(e: CustomEvent): void {
     if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
-      this._designer = e.detail.id;
+      this._view = 'design';
+      this._selectedId = e.detail.id;
       return;
     }
     // Double-clicking a relation's label edits its type rather than opening a CRUD.
@@ -3946,25 +3947,26 @@ export class ModuxEditor extends LitElement {
     return id;
   }
 
-  /** The «Figma» panel: a page's mockup inferred from its declaration. */
-  private renderDesigner() {
-    if (!this._designer || this._view !== 'ui') return '';
-    const page = (this.model.pages ?? []).find((x) => x.id === this._designer);
-    if (!page) return '';
-    return html`<modux-page-designer
-      .page=${page}
-      @designer-closed=${() => (this._designer = null)}
-      @open-crud=${() => {
-        this.emit('modux-activate', { elementType: 'page', id: page.id });
+  /** The «Diseño» surface: every page as a frame, edited in place (Figma-style). */
+  private renderFigma() {
+    const vl = this.viewLayout('design');
+    return html`<modux-figma
+      .pages=${this.model.pages ?? []}
+      .layout=${vl.nodes}
+      .selectedId=${this._selectedId}
+      @node-moved=${this.onNodeMoved}
+      @element-selected=${this.onElementSelected}
+      @page-open-crud=${(e: CustomEvent) => {
+        this.emit('modux-activate', { elementType: 'page', id: e.detail.pageId });
       }}
-      @field-config-changed=${(e: CustomEvent) => {
-        const { fieldId, stereotype, colspan, label } = e.detail;
-        this.command({ kind: 'set-page-field-config', pageId: page.id, fieldId, stereotype, colspan, label });
+      @page-field-config-changed=${(e: CustomEvent) => {
+        const { pageId, fieldId, stereotype, colspan, label } = e.detail;
+        this.command({ kind: 'set-page-field-config', pageId, fieldId, stereotype, colspan, label });
       }}
-      @fields-reordered=${(e: CustomEvent) => {
-        this.command({ kind: 'set-page-field-order', pageId: page.id, fieldIds: e.detail.fieldIds });
+      @page-fields-reordered=${(e: CustomEvent) => {
+        this.command({ kind: 'set-page-field-order', pageId: e.detail.pageId, fieldIds: e.detail.fieldIds });
       }}
-    ></modux-page-designer>`;
+    ></modux-figma>`;
   }
 
   // ── palette (drag to create / drag to place) ────────────────────────────
@@ -4728,6 +4730,8 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes)
               : view === 'ui'
                 ? uiScene(model, vl.nodes)
+                : view === 'design'
+                  ? { nodes: [], edges: [] }
               : view === 'eventstorming'
                 ? eventstormingScene(model, vl.nodes)
                 : contextMapScene(
@@ -4877,6 +4881,9 @@ export class ModuxEditor extends LitElement {
                 Workflows
               </option>
               <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
+              <option value="view:design" ?selected=${this._view === 'design'}>
+                Diseño (páginas)
+              </option>
             </optgroup>
           </select>
         </div>
@@ -5301,8 +5308,7 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this.renderDesigner()}
-      ${this._tilt
+      ${this._view === 'design' ? this.renderFigma() : this._tilt
         ? html`
       ${this.renderPalette()}
       <modux-tilt
