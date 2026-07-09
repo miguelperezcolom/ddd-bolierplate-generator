@@ -1139,7 +1139,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'proxy-api' ||
             node.kind === 'workflow' ||
             node.kind === 'workflow-step' ||
-            node.kind === 'page')
+            node.kind === 'page' ||
+            node.kind === 'menu-item')
           ? [
               [hw, 0],
               [-hw, 0],

@@ -225,7 +225,7 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
-    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children) {}
+    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id) {}
     /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
@@ -861,7 +861,8 @@ public class EditorApiController {
         return new UiMenuEntryDto(item.label(), item.icon(), item.pageId(),
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
                         .map(EditorApiController::toMenuEntry)
-                        .toList());
+                        .toList(),
+                item.id());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -890,7 +891,8 @@ public class EditorApiController {
                                 String pageId, String parentLabel, String queryServiceId,
                                 String modelId, String actorId,
                                 String fieldId, String stereotype, Integer colspan,
-                                List<String> fieldIds) {}
+                                List<String> fieldIds,
+                                String itemId, String parentId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1046,6 +1048,7 @@ public class EditorApiController {
             case "delete-ui-page" -> deleteUiPage(command);
             case "add-menu-item" -> addMenuItem(command);
             case "remove-menu-item" -> removeMenuItem(command);
+            case "set-menu-page" -> setMenuPage(command);
             case "add-page-button" -> addPageButton(command);
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
@@ -3435,29 +3438,49 @@ public class EditorApiController {
     private void addMenuItem(EditorCommand command) {
         var app = repository.findById(command.appId(), UiAdapterEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        var entry = new UiMenuItemEntity(command.label(), null, null, null,
-                command.pageId(), List.of());
         var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
-        if (command.parentLabel() == null || command.parentLabel().isBlank()) {
+        var entry = new UiMenuItemEntity(command.label(), null, null, null,
+                command.pageId(), List.of(),
+                command.itemId() != null ? command.itemId() : newMenuItemId(items, command.label()));
+        var hasParent = (command.parentId() != null && !command.parentId().isBlank())
+                || (command.parentLabel() != null && !command.parentLabel().isBlank());
+        if (!hasParent) {
             var copy = new ArrayList<>(items);
             copy.add(entry);
             repository.save(withMenuItems(app, copy));
             return;
         }
-        var inserted = insertedUnderParent(items, command.parentLabel(), entry);
+        var inserted = insertedUnderParent(items, command.parentId(), command.parentLabel(), entry);
         if (inserted == null) {
-            throw new IllegalArgumentException("Unknown menu item: " + command.parentLabel());
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.parentId() != null ? command.parentId() : command.parentLabel()));
         }
         repository.save(withMenuItems(app, inserted));
     }
 
     private void removeMenuItem(EditorCommand command) {
         repository.findById(command.appId(), UiAdapterEntity.class).ifPresent(app -> {
-            var pruned = withoutFirstLabelled(app.menuItems(), command.label());
+            var pruned = withoutFirstMatching(app.menuItems(), command.itemId(), command.label());
             if (pruned != null) {
                 repository.save(withMenuItems(app, pruned));
             }
         });
+    }
+
+    /** Points a menu entry (by stable id, or by label on pre-id entries) at a page. */
+    private void setMenuPage(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.pageId() != null) {
+            repository.findById(command.pageId(), PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        }
+        var updated = withMenuPage(app.menuItems(), command.itemId(), command.label(), command.pageId());
+        if (updated == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        repository.save(withMenuItems(app, updated));
     }
 
     private void addPageButton(EditorCommand command) {
@@ -3627,33 +3650,62 @@ public class EditorApiController {
         if (items == null) return List.of();
         return items.stream()
                 .filter(i -> !pageId.equals(i.pageId()))
-                .map(i -> new UiMenuItemEntity(i.label(), i.icon(), i.description(), i.route(),
-                        i.pageId(), withoutMenuEntriesFor(i.children(), pageId)))
+                .map(i -> withChildren(i, withoutMenuEntriesFor(i.children(), pageId)))
                 .toList();
     }
 
+    /** Entry identity: the stable id when both sides have one, the label for pre-id entries. */
+    private static boolean menuItemMatches(UiMenuItemEntity item, String itemId, String label) {
+        if (itemId != null && !itemId.isBlank()) return itemId.equals(item.id());
+        return label != null && label.equals(item.label());
+    }
+
+    /** A fresh stable id for a new entry: mi-<slug(label)>, uniquified within the app's tree. */
+    private static String newMenuItemId(List<UiMenuItemEntity> items, String label) {
+        var used = new java.util.HashSet<String>();
+        collectMenuItemIds(items, used);
+        var base = "mi-" + (label == null ? "entrada" : label).toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+        var id = base;
+        for (var n = 2; used.contains(id); n++) id = base + "-" + n;
+        return id;
+    }
+
+    private static void collectMenuItemIds(List<UiMenuItemEntity> items, java.util.Set<String> out) {
+        for (var item : items == null ? List.<UiMenuItemEntity>of() : items) {
+            if (item.id() != null) out.add(item.id());
+            collectMenuItemIds(item.children(), out);
+        }
+    }
+
+    /** Record copy with only children replaced — id and the rest preserved verbatim. */
+    private static UiMenuItemEntity withChildren(UiMenuItemEntity item,
+                                                 List<UiMenuItemEntity> children) {
+        return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
+                item.pageId(), children, item.id());
+    }
+
     /**
-     * The menu tree with the entry appended under the FIRST item (depth-first) labelled
-     * {@code parentLabel}, or null when no item carries that label.
+     * The menu tree with the entry appended under the FIRST matching item (depth-first),
+     * or null when nothing matches.
      */
     private static List<UiMenuItemEntity> insertedUnderParent(List<UiMenuItemEntity> items,
-                                                              String parentLabel,
+                                                              String parentId, String parentLabel,
                                                               UiMenuItemEntity entry) {
         if (items == null) return null;
         for (var i = 0; i < items.size(); i++) {
             var item = items.get(i);
             var children = item.children() == null ? List.<UiMenuItemEntity>of() : item.children();
             List<UiMenuItemEntity> newChildren;
-            if (parentLabel.equals(item.label())) {
+            if (menuItemMatches(item, parentId, parentLabel)) {
                 newChildren = new ArrayList<>(children);
                 newChildren.add(entry);
             } else {
-                newChildren = insertedUnderParent(children, parentLabel, entry);
+                newChildren = insertedUnderParent(children, parentId, parentLabel, entry);
             }
             if (newChildren != null) {
                 var copy = new ArrayList<>(items);
-                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), item.pageId(), newChildren));
+                copy.set(i, withChildren(item, newChildren));
                 return copy;
             }
         }
@@ -3661,24 +3713,45 @@ public class EditorApiController {
     }
 
     /**
-     * The menu tree without the FIRST item (depth-first) carrying the given label, or
-     * null when no item carries it (nothing to save then).
+     * The menu tree without the FIRST matching item (depth-first), or null when nothing
+     * matches (nothing to save then).
      */
-    private static List<UiMenuItemEntity> withoutFirstLabelled(List<UiMenuItemEntity> items,
-                                                               String label) {
+    private static List<UiMenuItemEntity> withoutFirstMatching(List<UiMenuItemEntity> items,
+                                                               String itemId, String label) {
         if (items == null) return null;
         for (var i = 0; i < items.size(); i++) {
             var item = items.get(i);
-            if (label.equals(item.label())) {
+            if (menuItemMatches(item, itemId, label)) {
                 var copy = new ArrayList<>(items);
                 copy.remove(i);
                 return copy;
             }
-            var newChildren = withoutFirstLabelled(item.children(), label);
+            var newChildren = withoutFirstMatching(item.children(), itemId, label);
             if (newChildren != null) {
                 var copy = new ArrayList<>(items);
+                copy.set(i, withChildren(item, newChildren));
+                return copy;
+            }
+        }
+        return null;
+    }
+
+    /** The tree with the FIRST matching item's pageId replaced, or null when nothing matches. */
+    private static List<UiMenuItemEntity> withMenuPage(List<UiMenuItemEntity> items,
+                                                       String itemId, String label, String pageId) {
+        if (items == null) return null;
+        for (var i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            if (menuItemMatches(item, itemId, label)) {
+                var copy = new ArrayList<>(items);
                 copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), item.pageId(), newChildren));
+                        item.route(), pageId, item.children(), item.id()));
+                return copy;
+            }
+            var newChildren = withMenuPage(item.children(), itemId, label, pageId);
+            if (newChildren != null) {
+                var copy = new ArrayList<>(items);
+                copy.set(i, withChildren(item, newChildren));
                 return copy;
             }
         }

@@ -10,11 +10,19 @@ public record UiMenuItemEntity(
         /** The page this entry opens (referential integrity via the *Id convention). */
         String pageId,
         /** Nested submenu — Mateu menus are trees. */
-        List<UiMenuItemEntity> children
+        List<UiMenuItemEntity> children,
+        /** Stable identity (labels repeat and rename); null on pre-id stores. */
+        String id
 ) {
 
     /** Backward-compatible constructor (pre-pageId/children callers and stores). */
     public UiMenuItemEntity(String label, String icon, String description, String route) {
-        this(label, icon, description, route, null, List.of());
+        this(label, icon, description, route, null, List.of(), null);
+    }
+
+    /** Backward-compatible constructor (pre-id callers). */
+    public UiMenuItemEntity(String label, String icon, String description, String route,
+                            String pageId, List<UiMenuItemEntity> children) {
+        this(label, icon, description, route, pageId, children, null);
     }
 }

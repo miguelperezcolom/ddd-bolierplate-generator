@@ -45,7 +45,8 @@ public class UiAdapterFileRepository implements UiAdapterRepository {
         var children = m.children() != null
                 ? m.children().stream().map(c -> UiAdapterFileRepository.toEntity(c, null)).toList()
                 : stored != null && stored.children() != null ? stored.children() : List.<UiMenuItemEntity>of();
-        return new UiMenuItemEntity(m.label(), m.icon(), m.description(), m.route(), m.pageId(), children);
+        return new UiMenuItemEntity(m.label(), m.icon(), m.description(), m.route(), m.pageId(),
+                children, stored != null ? stored.id() : null);
     }
 
     @Override

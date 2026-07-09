@@ -19,8 +19,20 @@ const PAGE_H = 60;
 const CHIP_W = 170;
 const CHIP_H = 44;
 
-export function menuNodeId(appId: string, path: string[]): string {
-  return `menu:${appId}:${path.join('>')}`;
+/** Unambiguous node id: entries with a stable id use it; pre-id entries use their label path. */
+export function menuNodeId(appId: string, entry: UiMenuEntryRef, path: string[]): string {
+  return entry.id ? `menu:${appId}:id:${entry.id}` : `menu:${appId}:p:${path.join('>')}`;
+}
+
+/** The inverse: what a menu node id addresses (itemId when id-based, label when path-based). */
+export function parseMenuNodeId(
+  id: string,
+): { appId: string; itemId?: string; label?: string } | null {
+  const m = /^menu:([^:]+):(id|p):(.+)$/.exec(id);
+  if (!m) return null;
+  return m[2] === 'id'
+    ? { appId: m[1], itemId: m[3] }
+    : { appId: m[1], label: m[3].split('>').pop() };
 }
 
 /** Depth-first flatten of an app's menu tree, with the label path to each entry. */
@@ -74,7 +86,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     });
     let entryY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
     for (const { entry, path, depth } of entries) {
-      const id = menuNodeId(app.id, path);
+      const id = menuNodeId(app.id, entry, path);
       const indent = depth * INDENT;
       nodes.push({
         id,
@@ -90,6 +102,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         parentId: app.id,
         tooltip: entry.pageId ? `Abre ${entry.pageId}` : 'Entrada de menú sin página',
       });
+      entryY += ENTRY_H + ENTRY_GAP;
       if (entry.pageId && pages.some((p) => p.id === entry.pageId)) {
         edges.push({
           id: `menupage:${id}->${entry.pageId}`,

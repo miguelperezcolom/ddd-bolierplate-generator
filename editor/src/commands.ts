@@ -683,8 +683,23 @@ export type ModuxCommand =
       menuLabel?: string;
     }
   | { kind: 'delete-ui-page'; id: string }
-  | { kind: 'add-menu-item'; appId: string; label: string; pageId?: string | null }
-  | { kind: 'remove-menu-item'; appId: string; label: string | undefined }
+  | {
+      kind: 'add-menu-item';
+      appId: string;
+      label: string;
+      pageId?: string | null;
+      itemId?: string;
+      parentId?: string;
+      parentLabel?: string;
+    }
+  | { kind: 'remove-menu-item'; appId: string; label?: string; itemId?: string }
+  | {
+      kind: 'set-menu-page';
+      appId: string;
+      pageId: string | null;
+      itemId?: string;
+      label?: string;
+    }
   | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string }
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
   | { kind: 'set-page-listing'; pageId: string; queryServiceId: string | null }

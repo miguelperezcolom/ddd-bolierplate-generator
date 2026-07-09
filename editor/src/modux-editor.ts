@@ -10,7 +10,7 @@ import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
-import { uiScene } from './views/ui.js';
+import { uiScene, parseMenuNodeId } from './views/ui.js';
 import type { UiMenuEntryRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
@@ -988,21 +988,35 @@ export class ModuxEditor extends LitElement {
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
       case 'add-menu-item':
-        return [{ kind: 'remove-menu-item', appId: c.appId, label: c.label }];
-      case 'remove-menu-item': {
+        return [{ kind: 'remove-menu-item', appId: c.appId, itemId: c.itemId, label: c.label }];
+      case 'remove-menu-item':
+      case 'set-menu-page': {
         const app = (this.model.uiApps ?? []).find((a) => a.id === c.appId);
         const find = (items: UiMenuEntryRef[] | undefined): UiMenuEntryRef | null => {
           for (const it of items ?? []) {
-            if (it.label === c.label) return it;
+            if (c.itemId ? it.id === c.itemId : it.label === c.label) return it;
             const hit = find(it.children);
             if (hit) return hit;
           }
           return null;
         };
-        const entry = c.label ? find(app?.menuItems) : null;
-        return entry && c.label
-          ? [{ kind: 'add-menu-item', appId: c.appId, label: c.label, pageId: entry.pageId ?? null }]
-          : null;
+        const entry = c.itemId || c.label ? find(app?.menuItems) : null;
+        if (!entry) return null;
+        return c.kind === 'remove-menu-item'
+          ? [{
+              kind: 'add-menu-item',
+              appId: c.appId,
+              label: entry.label,
+              pageId: entry.pageId ?? null,
+              itemId: entry.id,
+            }]
+          : [{
+              kind: 'set-menu-page',
+              appId: c.appId,
+              pageId: entry.pageId ?? null,
+              itemId: c.itemId,
+              label: c.label,
+            }];
       }
       case 'add-page-button':
         return [{ kind: 'remove-page-button', pageId: c.pageId, useCaseId: c.useCaseId }];
@@ -2121,7 +2135,22 @@ export class ModuxEditor extends LitElement {
       // a page dropped on an app (drag or catalog): a menu entry that opens it
       if (isPage(sourceId) && isApp(targetId)) {
         const page = pages.find((x) => x.id === sourceId)!;
-        this.command({ kind: 'add-menu-item', appId: targetId, label: page.name, pageId: sourceId });
+        this.command({
+          kind: 'add-menu-item',
+          appId: targetId,
+          label: page.name,
+          pageId: sourceId,
+          itemId: this.newMenuItemId(page.name),
+        });
+        return;
+      }
+      // menu entry → page (handle drag), or a catalog page dropped ON an entry: link them
+      const menuRef = parseMenuNodeId(sourceId) ?? parseMenuNodeId(targetId);
+      if (menuRef) {
+        const pageId = isPage(sourceId) ? sourceId : isPage(targetId) ? targetId : null;
+        if (pageId) {
+          this.command({ kind: 'set-menu-page', pageId, ...menuRef });
+        }
         return;
       }
       // actor → app: the actor uses that app
@@ -2987,8 +3016,9 @@ export class ModuxEditor extends LitElement {
           this.command({ kind: 'set-page-model', pageId: m[1], modelId: null });
         } else if ((m = /^actorapp:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-actor-app', actorId: m[1], appId: m[2] });
-        } else if ((m = /^menupage:menu:([^:]+):(.+)->.+$/.exec(id))) {
-          this.command({ kind: 'remove-menu-item', appId: m[1], label: m[2].split('>').pop() });
+        } else if ((m = /^menupage:(.+)->[^>]+$/.exec(id))) {
+          const ref = parseMenuNodeId(m[1]);
+          if (ref) this.command({ kind: 'set-menu-page', pageId: null, ...ref });
         }
         return;
       }
@@ -3001,8 +3031,8 @@ export class ModuxEditor extends LitElement {
         return;
       }
       if (kind === 'menu-item') {
-        const m = /^menu:([^:]+):(.+)$/.exec(id);
-        if (m) this.command({ kind: 'remove-menu-item', appId: m[1], label: m[2].split('>').pop() });
+        const ref = parseMenuNodeId(id);
+        if (ref) this.command({ kind: 'remove-menu-item', ...ref });
         return;
       }
       // system chips (use cases, query services, models, actors) are not deletable from here
@@ -3816,6 +3846,22 @@ export class ModuxEditor extends LitElement {
     if (mapped) this.emit('modux-activate', mapped);
   }
 
+  /** A fresh menu-entry id, unique across every app's tree (client-generated, like node ids). */
+  private newMenuItemId(label: string): string {
+    const used = new Set<string>();
+    const walk = (items: { id?: string; children?: { id?: string }[] }[] | undefined) => {
+      for (const it of items ?? []) {
+        if (it.id) used.add(it.id);
+        walk((it as { children?: [] }).children);
+      }
+    };
+    (this.model.uiApps ?? []).forEach((a) => walk(a.menuItems));
+    const base = `mi-${slug(label)}`;
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    return id;
+  }
+
   /** The «Figma» panel: a page's mockup inferred from its declaration. */
   private renderDesigner() {
     if (!this._designer || this._view !== 'ui') return '';
@@ -4214,8 +4260,27 @@ export class ModuxEditor extends LitElement {
         this.emit('modux-notice', { message: 'Suelta la entrada de menú sobre una app' });
         return;
       }
-      const { name } = this.uniquePaletteName('Entrada', '');
-      this.command({ kind: 'add-menu-item', appId, label: name });
+      // labels must not collide: they are what the user reads AND the pre-id identity
+      const taken = new Set<string>();
+      const walkLabels = (items: { label: string; children?: [] }[] | undefined) => {
+        for (const it of items ?? []) {
+          taken.add(it.label);
+          walkLabels(it.children);
+        }
+      };
+      (this.model.uiApps ?? []).forEach((a) => walkLabels(a.menuItems as never));
+      let label = 'Entrada';
+      for (let n = 2; taken.has(label); n++) label = `Entrada ${n}`;
+      // dropped on an existing entry: the new one nests under it (a submenu)
+      const parentNode = chain.map((cid) => parseMenuNodeId(cid)).find(Boolean);
+      this.command({
+        kind: 'add-menu-item',
+        appId,
+        label,
+        itemId: this.newMenuItemId(label),
+        parentId: parentNode?.itemId,
+        parentLabel: parentNode?.itemId ? undefined : parentNode?.label,
+      });
       return;
     }
     if (type === 'workflow-step') {

@@ -1444,6 +1444,25 @@ roles:
   name: "Actor 3"
 - id: "actor-2"
   name: "Actor 2"
+pages:
+- id: "page-pagina"
+  name: "Página"
+  route: "/page-pagina"
+  type: "FORM"
+uiAdapters:
+- id: "app-app"
+  name: "App"
+  title: "App"
+  menuItems:
+  - label: "Entrada"
+  - label: "Entrada"
+  - label: "Entrada"
+  - label: "Página"
+    pageId: "page-pagina"
+  - label: "Entrada"
+- id: "app-app-2"
+  name: "App 2"
+  title: "App 2"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1693,6 +1712,20 @@ diagrams:
   - ref: "step-paso-de-caso-de-uso"
     x: 2.0
     "y": -19.0
+- id: "ui"
+  nodes:
+  - ref: "app-app"
+    x: 101.0
+    "y": 202.0
+  - ref: "page-pagina"
+    x: 447.0
+    "y": 233.0
+  - ref: "menu:app-app:Entrada"
+    x: 0.0
+    "y": 18.8
+  - ref: "app-app-2"
+    x: 397.7
+    "y": 341.5
 - id: "context-map"
   detail: "detail"
   nodes:

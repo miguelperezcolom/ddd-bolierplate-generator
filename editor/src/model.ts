@@ -474,6 +474,8 @@ export interface UiMenuEntryRef {
   icon?: string;
   pageId?: string;
   children?: UiMenuEntryRef[];
+  /** Stable identity (labels repeat and rename); absent on pre-id stores. */
+  id?: string;
 }
 
 export interface UiAppRef {
