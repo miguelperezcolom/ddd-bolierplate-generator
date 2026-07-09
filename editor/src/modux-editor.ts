@@ -843,6 +843,10 @@ export class ModuxEditor extends LitElement {
         const px = (this.model.proxyApis ?? []).find((x) => x.id === c.id);
         return px ? [{ kind: 'set-proxy-target', id: c.id, targetId: px.targetApiId ?? '' }] : null;
       }
+      case 'add-api-implementation':
+        return [{ kind: 'remove-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
+      case 'remove-api-implementation':
+        return [{ kind: 'add-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
       case 'set-api-publisher': {
         const el =
           (this.model.apis ?? []).find((a) => a.id === c.id) ??
@@ -1814,12 +1818,24 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
-    // Dragging a proxy onto an API wires what it fronts; onto an external system, its host.
+    // Dragging a proxy onto an API wires what it fronts; onto an external system, its host;
+    // onto a bounded context, the API it fronts gets an implementation THERE too (the same
+    // API — strangler style — and the proxy routes to it as well).
     if ((this.model.proxyApis ?? []).some((px) => px.id === sourceId)) {
       const px = (this.model.proxyApis ?? []).find((x) => x.id === sourceId)!;
       if ((this.model.apis ?? []).some((a) => a.id === targetId)) {
         if (px.targetApiId !== targetId) {
           this.command({ kind: 'set-proxy-target', id: sourceId, targetId });
+        }
+        return;
+      }
+      if (this.model.modules.some((m) => m.id === targetId)) {
+        if (!px.targetApiId) return; // nothing to implement until the proxy fronts an API
+        const already = (this.model.apiImplementations ?? []).some(
+          (impl) => impl.apiId === px.targetApiId && impl.moduleId === targetId,
+        );
+        if (!already) {
+          this.command({ kind: 'add-api-implementation', apiId: px.targetApiId, moduleId: targetId });
         }
         return;
       }
@@ -1830,12 +1846,22 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
-    // Dragging an API onto an external system declares its publisher (it nests inside).
+    // Dragging an API onto an external system declares its publisher (it nests inside);
+    // onto a bounded context, the sibling gesture of proxy → context: implemented there too.
     if ((this.model.apis ?? []).some((a) => a.id === sourceId)) {
       if (this.model.externalSystems.some((x) => x.id === targetId)) {
         const api = (this.model.apis ?? []).find((a) => a.id === sourceId)!;
         if (api.publishedByExternalSystemId !== targetId) {
           this.command({ kind: 'set-api-publisher', id: sourceId, targetId });
+        }
+        return;
+      }
+      if (this.model.modules.some((m) => m.id === targetId)) {
+        const already = (this.model.apiImplementations ?? []).some(
+          (impl) => impl.apiId === sourceId && impl.moduleId === targetId,
+        );
+        if (!already) {
+          this.command({ kind: 'add-api-implementation', apiId: sourceId, moduleId: targetId });
         }
       }
       return;
@@ -2475,6 +2501,15 @@ export class ModuxEditor extends LitElement {
     if (elementType === 'node' && kind === 'api') {
       this._selectedId = null;
       this.command({ kind: 'remove-api', id });
+      return;
+    }
+    // An API-implementation occurrence: deleting it removes the implementation SITE,
+    // never the API itself (which lives on, published where it was).
+    if (elementType === 'node' && kind === 'api-impl') {
+      const match = /^apiimpl:(.+)@(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-api-implementation', apiId: match[1], moduleId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'proxy-api') {

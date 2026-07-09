@@ -38,6 +38,11 @@ const FLOW_COLOR: Record<FlowCoherence, string> = {
 const NODE_W = 168;
 const NODE_H = 56;
 
+/** Canvas id of an API-implementation occurrence (same ApiRef, one node per site). */
+export function apiImplNodeId(apiId: string, moduleId: string): string {
+  return `apiimpl:${apiId}@${moduleId}`;
+}
+
 // Detail level: a context becomes a resizable container holding small aggregate
 // and use-case boxes the user can rearrange inside it. Children are stored as
 // offsets from the container centre (see ViewLayout.nodes), so they follow the
@@ -721,6 +726,36 @@ export function contextMapScene(
     };
   });
 
+  // API implementation occurrences: the SAME published API, implemented (also) in one of
+  // our bounded contexts (strangler migrations). Each site renders as an occurrence node —
+  // same ApiRef underneath, so it shares name and identity with the published node — placed
+  // next to its context and wired to it and to every proxy fronting the API.
+  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
+  const moduleById = new Map(model.modules.map((m) => [m.id, m]));
+  const implEntries = (model.apiImplementations ?? []).filter(
+    (impl) => apiById.has(impl.apiId) && moduleById.has(impl.moduleId),
+  );
+  implEntries.forEach((impl, i) => {
+    const api = apiById.get(impl.apiId)!;
+    const mod = moduleById.get(impl.moduleId)!;
+    const nid = apiImplNodeId(impl.apiId, impl.moduleId);
+    const pos = layout[nid] ?? defaultPosition(allNodes.length + i, allNodes.length + implEntries.length);
+    nodes.push({
+      id: nid,
+      label: api.name,
+      kind: 'api-impl',
+      symbol: 'interface',
+      fill: '#eef2ff',
+      stroke: '#4f46e5',
+      badge: 'API · IMPL',
+      tooltip: `${api.name} — la misma API, implementada en ${mod.name}`,
+      x: pos.x,
+      y: pos.y,
+      w: NODE_W,
+      h: NODE_H,
+    });
+  });
+
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
   const nodeIds = new Set(nodes.map((n) => n.id));
@@ -979,6 +1014,42 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // API implementation wiring: the occurrence sits IN its bounded context ("implementada
+  // en", solid indigo like the API family) and every proxy fronting that API also routes
+  // to it (teal, like the proxy → published-API edge).
+  const apiImplEdges: SceneEdge[] = implEntries.flatMap((impl) => {
+    const nid = apiImplNodeId(impl.apiId, impl.moduleId);
+    if (!nodeIds.has(nid)) return [];
+    const edges: SceneEdge[] = [];
+    if (nodeIds.has(impl.moduleId)) {
+      edges.push({
+        id: `apiimplin:${nid}`,
+        sourceId: nid,
+        targetId: impl.moduleId,
+        kind: 'api-impl',
+        color: '#4f46e5',
+        arrow: true,
+        tooltip: 'implementada en',
+      });
+    }
+    for (const px of (model.proxyApis ?? []).filter((p) => p.targetApiId === impl.apiId)) {
+      const sid = rollUp(px.id);
+      if (nodeIds.has(sid) && sid !== nid) {
+        edges.push({
+          id: `pxr:${sid}->${nid}`,
+          sourceId: sid,
+          targetId: nid,
+          kind: 'proxy-route',
+          color: '#0e7490',
+          dashed: true,
+          arrow: true,
+          tooltip: 'enruta también a',
+        });
+      }
+    }
+    return edges;
+  });
+
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
@@ -1193,6 +1264,7 @@ export function contextMapScene(
       ...actorExternalEdges,
       ...externalDependencyEdges,
       ...proxyTargetEdges,
+      ...apiImplEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...agentUseEdges,

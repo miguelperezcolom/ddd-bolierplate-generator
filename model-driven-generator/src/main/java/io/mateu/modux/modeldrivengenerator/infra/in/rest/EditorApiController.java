@@ -199,6 +199,8 @@ public class EditorApiController {
     /** An API proxy/cache: fronts a published API, consumable exactly like it. */
     public record ProxyApiDto(String id, String name, String targetApiId,
                               String publishedByExternalSystemId) {}
+    /** The SAME published API, (also) implemented in one of our bounded contexts. */
+    public record ApiImplementationDto(String apiId, String moduleId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -238,7 +240,8 @@ public class EditorApiController {
             List<AgentQueryUseDto> agentQueryUses,
             List<AgentDelegationDto> agentDelegations,
             List<ActorAgentUseDto> actorAgentUses,
-            List<AgentTriggerDto> agentTriggers) {}
+            List<AgentTriggerDto> agentTriggers,
+            List<ApiImplementationDto> apiImplementations) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -664,6 +667,10 @@ public class EditorApiController {
                 .map(px -> new ProxyApiDto(px.id(), px.name(), px.targetApiId(),
                         px.publishedByExternalSystemId()))
                 .toList();
+        var apiImplementations = repository.findAllOfType(ApiEntity.class).stream()
+                .flatMap(a -> a.implementedByModuleIds().stream()
+                        .map(mid -> new ApiImplementationDto(a.id(), mid)))
+                .toList();
 
         // The strategic map is a projection of the concrete dependency graph:
         // upstream (provider) → downstream (consumer). contextMap entries only
@@ -751,7 +758,8 @@ public class EditorApiController {
                 agentQueryUses.stream().distinct().toList(),
                 agentDelegations.stream().distinct().toList(),
                 actorAgentUses.stream().distinct().toList(),
-                agentTriggers.stream().distinct().toList());
+                agentTriggers.stream().distinct().toList(),
+                apiImplementations);
     }
 
     // ---- commands ---------------------------------------------------------
@@ -845,6 +853,8 @@ public class EditorApiController {
             case "remove-actor-agent" -> removeActorAgent(command);
             case "add-agent-trigger" -> addAgentTrigger(command);
             case "remove-agent-trigger" -> removeAgentTrigger(command);
+            case "add-api-implementation" -> addApiImplementation(command);
+            case "remove-api-implementation" -> removeApiImplementation(command);
             case "add-api" -> addApi(command);
             case "remove-api" -> removeApi(command);
             case "add-api-operation" -> addApiOperation(command);
@@ -2780,6 +2790,24 @@ public class EditorApiController {
         repository.findById(command.targetId(), AiAgentEntity.class).ifPresent(agent ->
                 repository.save(agent.withReactsToEventIds(
                         without(agent.reactsToEventIds(), command.sourceId()))));
+    }
+
+    /** The API gets (another) implementation site: a bounded context of ours (same API, no copy). */
+    private void addApiImplementation(EditorCommand command) {
+        var api = repository.findById(command.apiId(), ApiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
+        if (repository.findById(command.moduleId(), ModuleEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown bounded context: " + command.moduleId());
+        }
+        if (api.implementedByModuleIds().contains(command.moduleId())) return;
+        repository.save(api.withImplementedByModuleIds(
+                appended(api.implementedByModuleIds(), command.moduleId())));
+    }
+
+    private void removeApiImplementation(EditorCommand command) {
+        repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
+                repository.save(api.withImplementedByModuleIds(
+                        without(api.implementedByModuleIds(), command.moduleId()))));
     }
 
     private static List<String> appended(List<String> ids, String id) {

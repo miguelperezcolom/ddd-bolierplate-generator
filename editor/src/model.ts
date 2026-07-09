@@ -96,6 +96,17 @@ export interface ProxyApiRef {
   publishedByExternalSystemId?: string;
 }
 
+/**
+ * The SAME published API, (also) implemented inside one of our bounded contexts — a
+ * strangler migration: N implementation sites coexist and every proxy fronting the API
+ * routes to all of them (routing logic / per-operation wiring comes later). References
+ * the ApiRef by id: never a copy — renaming or editing operations touches the one API.
+ */
+export interface ApiImplementationRef {
+  apiId: string;
+  moduleId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -426,6 +437,8 @@ export interface ModuxModel {
   /** External system → external system dependencies. */
   externalSystemDependencies?: ExternalSystemDependencyRef[];
   proxyApis?: ProxyApiRef[];
+  /** APIs (also) implemented in our bounded contexts — same ApiRef, several sites. */
+  apiImplementations?: ApiImplementationRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

@@ -387,6 +387,18 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** The API gets (another) implementation inside one of our bounded contexts —
+       *  the same API, never a copy; proxies fronting it route there too. */
+      kind: 'add-api-implementation';
+      apiId: string;
+      moduleId: string;
+    }
+  | {
+      kind: 'remove-api-implementation';
+      apiId: string;
+      moduleId: string;
+    }
+  | {
       kind: 'remove-external-dependency';
       sourceId: string;
       targetId: string;
