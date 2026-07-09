@@ -1,6 +1,6 @@
 # RFC: Puertos de almacenamiento — ficheros+git hoy, base de datos mañana
 
-**Estado: propuesta (no implementado).** Pregunta de Miguel (2026-07-09): ¿podemos hacer
+**Estado: IMPLEMENTADO (2026-07-09, F1-F4).** Puertos extraídos, adapters git detrás sin cambio de comportamiento, tipo de repositorio DATABASE con JdbcModelDatabase (H2/PostgreSQL) + DbWorkspaceStore con paridad de soluciones probada e2e sobre H2 (109/109), y copia entre repositorios (`POST /modux/editor/solutions/copy-repository`) como export/import. Credenciales por MODUX_DB_USER/MODUX_DB_PASSWORD o en la URL JDBC. Pregunta de Miguel (2026-07-09): ¿podemos hacer
 que modux se base en base de datos en lugar de ficheros+git, como una cuestión SOLO de
 la capa de infraestructura?
 

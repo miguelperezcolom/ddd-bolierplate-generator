@@ -5,8 +5,12 @@ description: The as-is and its to-be proposals — git branches over the store, 
 
 An architecture practice distinguishes the **system** (the as-is: what is deployed)
 from **solutions** (to-be proposals, each tied to a project). Modux makes both live in
-the same spec: the store sits in **its own git repo** — `main` is the system, each
-solution a `solution/<slug>` branch. When a solution is approved and implemented it
+the same spec. For file repositories (LOCAL/GIT) the store sits in **its own git
+repo** — `main` is the system, each solution a `solution/<slug>` branch. For
+**DATABASE repositories** the same contract runs on rows: workspaces instead of
+branches, a frozen `element_base` as the three-way merge base, and a history table —
+same UI, same semantic diff and merge, chosen per repository (see
+`docs/design/storage-ports.md`). When a solution is approved and implemented it
 **merges into main** and becomes the new as-is. Full design rationale in
 `docs/design/system-and-solutions.md` (in the repo).
 

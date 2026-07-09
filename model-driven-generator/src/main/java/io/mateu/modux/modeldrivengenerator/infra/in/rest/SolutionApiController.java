@@ -29,6 +29,7 @@ public class SolutionApiController {
 
     final WorkspaceStore workspace;
     final ModelStore repository;
+    final io.mateu.modux.modeldrivengenerator.application.usecases.repository.copy.CopyRepositoryUseCase copyUseCase;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService mergeService;
 
@@ -131,6 +132,15 @@ public class SolutionApiController {
         mergeService.updateFromSystem(
                 command == null || command.resolutions() == null ? Map.of() : command.resolutions());
         return workspace();
+    }
+
+    public record CopyCommand(String sourceRepositoryId, String targetRepositoryId) {}
+
+    /** Copies one repository's model into another (file ↔ database export/import). */
+    @PostMapping("/copy-repository")
+    public Map<String, String> copyRepository(@RequestBody CopyCommand command) {
+        copyUseCase.handle(command.sourceRepositoryId(), command.targetRepositoryId());
+        return Map.of("copiedTo", command.targetRepositoryId());
     }
 
     /** Rejections travel as 400 + plain message (shown as a toast by the editor). */
