@@ -3062,6 +3062,8 @@ export class ModuxEditor extends LitElement {
       case 'entity':
       case 'process':
       case 'workflow':
+      case 'page':
+      case 'ui-app':
         return id;
       case 'flow':
         return id.replace(/^flow:/, '');
@@ -3794,8 +3796,16 @@ export class ModuxEditor extends LitElement {
         case 'rag':
         case 'mcp-gateway':
         case 'api':
+        case 'page':
+        case 'ui-app':
           members.add(id);
           break;
+        case 'menu-item':
+        case 'menu-group': {
+          const ref = parseMenuNodeId(id);
+          if (ref) members.add(ref.appId);
+          break;
+        }
         case 'flow':
           members.add(id.replace(/^flow:/, ''));
           break;
@@ -3843,8 +3853,24 @@ export class ModuxEditor extends LitElement {
       (a) => members.has(a.id) || moduleIds.has(a.moduleId),
     );
     const aggregateIds = new Set(aggregates.map((a) => a.id));
+    const uiApps = (this.model.uiApps ?? []).filter((a) => members.has(a.id));
+    const menuPageIds = new Set<string>();
+    const collectMenuPages = (items?: UiMenuEntryRef[]) => {
+      for (const it of items ?? []) {
+        if (it.pageId) menuPageIds.add(it.pageId);
+        collectMenuPages(it.children);
+      }
+    };
+    uiApps.forEach((a) => collectMenuPages(a.menuItems));
+    const pages = (this.model.pages ?? []).filter(
+      (x) => members.has(x.id) || menuPageIds.has(x.id),
+    );
+    const keptAppIds = new Set(uiApps.map((a) => a.id));
     return {
       ...this.model,
+      uiApps,
+      pages,
+      actorAppUses: (this.model.actorAppUses ?? []).filter((u) => keptAppIds.has(u.appId)),
       modules,
       externalSystems,
       relations: this.model.relations.filter(
@@ -3951,7 +3977,7 @@ export class ModuxEditor extends LitElement {
   private renderFigma() {
     const vl = this.viewLayout('design');
     return html`<modux-figma
-      .pages=${this.model.pages ?? []}
+      .pages=${this.filteredModel().pages ?? []}
       .layout=${vl.nodes}
       .selectedId=${this._selectedId}
       @node-moved=${this.onNodeMoved}
