@@ -3646,7 +3646,16 @@ export class ModuxEditor extends LitElement {
       return chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ?? null;
     }
     if (type === 'api-operation') {
-      return chain.find((id) => (this.model.apis ?? []).some((a) => a.id === id)) ?? null;
+      // The API itself, an implementation occurrence of it, or a proxy — a proxy's
+      // surface IS its fronted API, so the operation lands on the target.
+      for (const id of chain) {
+        if ((this.model.apis ?? []).some((a) => a.id === id)) return id;
+        const impl = /^apiimpl:(.+)@(.+)$/.exec(id);
+        if (impl && (this.model.apis ?? []).some((a) => a.id === impl[1])) return impl[1];
+        const px = (this.model.proxyApis ?? []).find((p) => p.id === id);
+        if (px?.targetApiId) return px.targetApiId;
+      }
+      return null;
     }
     if (type === 'api') {
       return (
@@ -3824,8 +3833,26 @@ export class ModuxEditor extends LitElement {
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
       issue({ kind: 'add-read-model', id, name, aggregateId: container }, id, aggregate?.moduleId ?? container);
     } else if (type === 'api-operation') {
-      const id = `apiop-${container.replace(/^api-/, '')}-${slug(name)}`;
-      issue({ kind: 'add-api-operation', apiId: container, id, name }, id, container);
+      // The operation id embeds the API, so uniqueness is per-API — the generic
+      // pool above can't see it and a second «Operación de API» would collide.
+      const api = (this.model.apis ?? []).find((a) => a.id === container);
+      const taken = new Set((api?.operations ?? []).map((o) => o.id));
+      let opName = name;
+      let id = `apiop-${container.replace(/^api-/, '')}-${slug(opName)}`;
+      for (let n = 2; taken.has(id); n++) {
+        opName = `${def.label} ${n}`;
+        id = `apiop-${container.replace(/^api-/, '')}-${slug(opName)}`;
+      }
+      issue({ kind: 'add-api-operation', apiId: container, id, name: opName }, id, container);
+      // Guide the eye when the current level doesn't draw operation chips.
+      const showsOps = scene.nodes.some(
+        (n) => n.parentId === container && (n.kind === 'api-operation' || n.kind === 'api-op-occurrence'),
+      );
+      if (!showsOps) {
+        this.emit('modux-notice', {
+          message: `Operación añadida a ${api?.name ?? container} — se ve en el nivel «APIs y operaciones»`,
+        });
+      }
     } else if (type === 'external-use-case') {
       const id = `xuc-${slug(name)}`;
       issue({ kind: 'add-external-use-case', id, name, moduleId: container }, id, container);
