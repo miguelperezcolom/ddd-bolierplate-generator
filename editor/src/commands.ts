@@ -689,6 +689,15 @@ export type ModuxCommand =
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
   | { kind: 'set-page-listing'; pageId: string; queryServiceId: string | null }
   | { kind: 'set-page-model'; pageId: string; modelId: string | null }
+  | {
+      kind: 'set-page-field-config';
+      pageId: string;
+      fieldId: string;
+      stereotype: string | null;
+      colspan: number | null;
+      label: string | null;
+    }
+  | { kind: 'set-page-field-order'; pageId: string; fieldIds: string[] }
   | { kind: 'add-actor-app'; actorId: string; appId: string }
   | { kind: 'remove-actor-app'; actorId: string; appId: string }
   | {

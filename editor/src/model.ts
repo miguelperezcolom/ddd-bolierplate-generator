@@ -489,6 +489,16 @@ export interface UiPageButtonRef {
   mappingId?: string;
 }
 
+export interface UiFieldRef {
+  fieldId: string;
+  name: string;
+  type?: string;
+  stereotype?: string;
+  colspan?: number;
+  label?: string;
+  help?: string;
+}
+
 export interface UiPageRef {
   id: string;
   name: string;
@@ -499,6 +509,8 @@ export interface UiPageRef {
   aggregateId?: string;
   listingQueryServiceId?: string;
   buttons?: UiPageButtonRef[];
+  /** The viewmodel Model's fields merged with the page's fieldConfigs (designer order). */
+  viewmodelFields?: UiFieldRef[];
 }
 
 export interface ActorAppUseRef {

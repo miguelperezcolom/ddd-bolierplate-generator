@@ -15,6 +15,7 @@ import type { UiMenuEntryRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
+import './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
@@ -303,6 +304,8 @@ export class ModuxEditor extends LitElement {
   @state() private _fullscreen = false;
   /** Tilt mode: the diagram as stacked 3D plates (a read-only lens). */
   @state() private _tilt = false;
+  /** The page open in the designer (the inferred-mockup «Figma» panel). */
+  @state() private _designer: string | null = null;
   /** Keyboard-shortcuts help popover (toggled with ?). */
   @state() private _helpOpen = false;
   @state() private _newName = '';
@@ -1017,6 +1020,23 @@ export class ModuxEditor extends LitElement {
       case 'set-page-model': {
         const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
         return [{ kind: 'set-page-model', pageId: c.pageId, modelId: page?.modelId ?? null }];
+      }
+      case 'set-page-field-config': {
+        const field = ((this.model.pages ?? []).find((x) => x.id === c.pageId)?.viewmodelFields ?? [])
+          .find((f) => f.fieldId === c.fieldId);
+        return [{
+          kind: 'set-page-field-config',
+          pageId: c.pageId,
+          fieldId: c.fieldId,
+          stereotype: field?.stereotype ?? null,
+          colspan: field?.colspan ?? null,
+          label: field?.label ?? null,
+        }];
+      }
+      case 'set-page-field-order': {
+        const current = ((this.model.pages ?? []).find((x) => x.id === c.pageId)?.viewmodelFields ?? [])
+          .map((f) => f.fieldId);
+        return current.length ? [{ kind: 'set-page-field-order', pageId: c.pageId, fieldIds: current }] : null;
       }
       case 'add-actor-app':
         return [{ kind: 'remove-actor-app', actorId: c.actorId, appId: c.appId }];
@@ -3766,6 +3786,10 @@ export class ModuxEditor extends LitElement {
   }
 
   private onElementActivated(e: CustomEvent): void {
+    if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
+      this._designer = e.detail.id;
+      return;
+    }
     // Double-clicking a relation's label edits its type rather than opening a CRUD.
     if (this._view === 'context-map' && e.detail.elementType === 'edge' && e.detail.kind === 'relation') {
       const m = /^rel:(.+)->(.+)$/.exec(e.detail.id);
@@ -3790,6 +3814,27 @@ export class ModuxEditor extends LitElement {
             })()
           : normalizeActivation(e.detail.id, e.detail.kind);
     if (mapped) this.emit('modux-activate', mapped);
+  }
+
+  /** The «Figma» panel: a page's mockup inferred from its declaration. */
+  private renderDesigner() {
+    if (!this._designer || this._view !== 'ui') return '';
+    const page = (this.model.pages ?? []).find((x) => x.id === this._designer);
+    if (!page) return '';
+    return html`<modux-page-designer
+      .page=${page}
+      @designer-closed=${() => (this._designer = null)}
+      @open-crud=${() => {
+        this.emit('modux-activate', { elementType: 'page', id: page.id });
+      }}
+      @field-config-changed=${(e: CustomEvent) => {
+        const { fieldId, stereotype, colspan, label } = e.detail;
+        this.command({ kind: 'set-page-field-config', pageId: page.id, fieldId, stereotype, colspan, label });
+      }}
+      @fields-reordered=${(e: CustomEvent) => {
+        this.command({ kind: 'set-page-field-order', pageId: page.id, fieldIds: e.detail.fieldIds });
+      }}
+    ></modux-page-designer>`;
   }
 
   // ── palette (drag to create / drag to place) ────────────────────────────
@@ -5097,6 +5142,7 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
+      ${this.renderDesigner()}
       ${this._tilt
         ? html`
       ${this.renderPalette()}

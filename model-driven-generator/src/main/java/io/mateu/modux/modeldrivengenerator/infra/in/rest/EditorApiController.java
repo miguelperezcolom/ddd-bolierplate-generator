@@ -39,6 +39,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
@@ -227,7 +229,11 @@ public class EditorApiController {
     /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
-                            List<UiPageButtonDto> buttons) {}
+                            List<UiPageButtonDto> buttons,
+                            List<UiFieldDto> viewmodelFields) {}
+    /** A viewmodel field as the page designer sees it: model field + its PageFieldConfig. */
+    public record UiFieldDto(String fieldId, String name, String type, String stereotype,
+                             Integer colspan, String label, String help) {}
     public record UiPageButtonDto(String label, String useCaseId, String mappingId) {}
     /** An actor uses a UI app (RoleEntity.uiAdapterIds — the actor→app link of the UI map). */
     public record ActorAppUseDto(String actorId, String appId) {}
@@ -746,7 +752,8 @@ public class EditorApiController {
                                         (p.toolbar() == null ? List.<PageButtonEntity>of() : p.toolbar()).stream(),
                                         (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream())
                                 .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId()))
-                                .toList()))
+                                .toList(),
+                        uiFields(p)))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
@@ -881,7 +888,9 @@ public class EditorApiController {
                                 String proxyId, String operationId, String targetSiteId,
                                 String pageType, String appId, String menuLabel, String label,
                                 String pageId, String parentLabel, String queryServiceId,
-                                String modelId, String actorId) {}
+                                String modelId, String actorId,
+                                String fieldId, String stereotype, Integer colspan,
+                                List<String> fieldIds) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1041,6 +1050,8 @@ public class EditorApiController {
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
             case "set-page-model" -> setPageModel(command);
+            case "set-page-field-config" -> setPageFieldConfig(command);
+            case "set-page-field-order" -> setPageFieldOrder(command);
             case "add-actor-app" -> addActorApp(command);
             case "remove-actor-app" -> removeActorApp(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
@@ -3515,6 +3526,71 @@ public class EditorApiController {
     }
 
     /** Record copy with only toolbar/bottomBar replaced — every other field preserved verbatim. */
+    /**
+     * The designer's field list: the viewmodel Model's fields, ordered by the page's
+     * fieldConfigs (configured fields first, in config order), each merged with its config.
+     */
+    private List<UiFieldDto> uiFields(PageEntity p) {
+        if (p.modelId() == null) return List.of();
+        var model = repository.findById(p.modelId(), ModelEntity.class).orElse(null);
+        if (model == null || model.fields() == null) return List.of();
+        var configs = p.fieldConfigs() == null ? List.<PageFieldConfigEntity>of() : p.fieldConfigs();
+        // Authored YAML often declares fields by name only — the name is the identity then.
+        var fieldById = new java.util.LinkedHashMap<String, ModelFieldEntity>();
+        model.fields().forEach(f -> fieldById.put(f.id() != null ? f.id() : f.name(), f));
+        var order = new ArrayList<String>();
+        configs.forEach(c -> { if (fieldById.containsKey(c.fieldId()) && !order.contains(c.fieldId())) order.add(c.fieldId()); });
+        fieldById.keySet().forEach(id -> { if (!order.contains(id)) order.add(id); });
+        var configById = new java.util.HashMap<String, PageFieldConfigEntity>();
+        configs.forEach(c -> configById.putIfAbsent(c.fieldId(), c));
+        return order.stream().map(id -> {
+            var f = fieldById.get(id);
+            var c = configById.get(id);
+            var type = f.basicType() ? String.valueOf(f.type()) : f.isEnum() ? "ENUM" : "MODEL";
+            return new UiFieldDto(id, f.name(), type,
+                    c == null ? null : c.stereotype(), c == null ? null : c.colspan(),
+                    c == null ? null : c.label(), c == null ? null : c.help());
+        }).toList();
+    }
+
+    private void setPageFieldConfig(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("No existe la página " + command.pageId()));
+        var configs = new ArrayList<>(page.fieldConfigs() == null
+                ? List.<PageFieldConfigEntity>of() : page.fieldConfigs());
+        var index = -1;
+        for (int i = 0; i < configs.size(); i++) {
+            if (configs.get(i).fieldId().equals(command.fieldId())) index = i;
+        }
+        var previous = index >= 0 ? configs.get(index) : null;
+        var next = new PageFieldConfigEntity(command.fieldId(), command.stereotype(), command.colspan(),
+                previous == null ? null : previous.style(), previous == null ? null : previous.cssClass(),
+                command.label(), previous == null ? null : previous.help());
+        if (index >= 0) configs.set(index, next); else configs.add(next);
+        repository.save(withFieldConfigs(page, configs));
+    }
+
+    private void setPageFieldOrder(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("No existe la página " + command.pageId()));
+        var configById = new java.util.HashMap<String, PageFieldConfigEntity>();
+        (page.fieldConfigs() == null ? List.<PageFieldConfigEntity>of() : page.fieldConfigs())
+                .forEach(c -> configById.putIfAbsent(c.fieldId(), c));
+        var configs = command.fieldIds().stream()
+                .map(id -> configById.getOrDefault(id,
+                        new PageFieldConfigEntity(id, null, null, null, null, null, null)))
+                .toList();
+        repository.save(withFieldConfigs(page, configs));
+    }
+
+    /** Record copy with only fieldConfigs replaced — every other field preserved verbatim. */
+    private static PageEntity withFieldConfigs(PageEntity p, List<PageFieldConfigEntity> fieldConfigs) {
+        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
+                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
+                p.bottomBar(), p.triggers(), p.rules(), p.validations(), fieldConfigs,
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+    }
+
     private static PageEntity withButtons(PageEntity p, List<PageButtonEntity> toolbar,
                                           List<PageButtonEntity> bottomBar) {
         return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
