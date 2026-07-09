@@ -3902,7 +3902,7 @@ export class ModuxEditor extends LitElement {
                 @change=${(e: Event) =>
                   (this._newRagSourceType = (e.target as HTMLSelectElement).value)}
               >
-                ${['WEB', 'REPO', 'FTP'].map(
+                ${['WEB', 'REPO', 'FTP', 'DATABASE', 'BUCKET', 'SHAREPOINT', 'CONFLUENCE', 'DRIVE', 'FILESYSTEM'].map(
                   (t) =>
                     html`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`,
                 )}
@@ -3910,7 +3910,7 @@ export class ModuxEditor extends LitElement {
               <input
                 class="new-name"
                 placeholder="URI de la fuente…"
-                title="Repo, web o servidor FTP que alimenta el RAG"
+                title="La fuente que alimenta el RAG: repo, web, FTP, base de datos, bucket, SharePoint, Confluence, Drive o sistema de ficheros"
                 .value=${this._newRagSourceUri}
                 @input=${(e: Event) =>
                   (this._newRagSourceUri = (e.target as HTMLInputElement).value)}

@@ -8181,14 +8181,14 @@ let V = class extends He {
                 title="Tipo de fuente de contenido del RAG"
                 @change=${(t) => this._newRagSourceType = t.target.value}
               >
-                ${["WEB", "REPO", "FTP"].map(
+                ${["WEB", "REPO", "FTP", "DATABASE", "BUCKET", "SHAREPOINT", "CONFLUENCE", "DRIVE", "FILESYSTEM"].map(
       (t) => T`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`
     )}
               </select>
               <input
                 class="new-name"
                 placeholder="URI de la fuente…"
-                title="Repo, web o servidor FTP que alimenta el RAG"
+                title="La fuente que alimenta el RAG: repo, web, FTP, base de datos, bucket, SharePoint, Confluence, Drive o sistema de ficheros"
                 .value=${this._newRagSourceUri}
                 @input=${(t) => this._newRagSourceUri = t.target.value}
                 @keydown=${(t) => t.key === "Enter" && this.addRagContentSourceFromToolbar()}
