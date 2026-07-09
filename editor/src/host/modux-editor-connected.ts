@@ -40,6 +40,8 @@ export class ModuxEditorConnected extends LitElement {
     removed: number;
     changes: { type: string; id: string; name?: string; kind: string }[];
   } | null = null;
+  /** The change-list panel under the bar (toggled by clicking the diff badge). */
+  @state() private _diffListOpen = false;
   /** Element-by-element conflict resolution before a merge/update. */
   @state() private _mergeFlow: {
     op: 'merge' | 'update';
@@ -128,6 +130,86 @@ export class ModuxEditorConnected extends LitElement {
     .workspace .badge.solution {
       background: #fef3c7;
       color: #b45309;
+    }
+    .workspace .diff-badge {
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .workspace .diff-badge:hover,
+    .workspace .diff-badge[data-open] {
+      background: #fde68a;
+    }
+    .diff-panel {
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      color: #334155;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-bottom: none;
+      padding: 8px 14px 10px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .diff-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .diff-head button {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      color: #64748b;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .diff-head button:hover {
+      background: #fde68a;
+    }
+    .diff-group {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #92400e;
+      margin: 8px 0 2px;
+    }
+    .diff-row {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      padding: 1px 0;
+    }
+    .diff-mark {
+      font-weight: 700;
+      flex: 0 0 14px;
+    }
+    .diff-mark.added {
+      color: #16a34a;
+    }
+    .diff-mark.modified {
+      color: #d97706;
+    }
+    .diff-mark.removed {
+      color: #dc2626;
+    }
+    .diff-type {
+      flex: 0 0 150px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .diff-name {
+      font-weight: 500;
+      color: #1e293b;
     }
     .merge-panel {
       font: 13px ui-sans-serif, system-ui, sans-serif;
@@ -313,6 +395,8 @@ export class ModuxEditorConnected extends LitElement {
     this._lastVersion = version;
     if (external) {
       await this.reload();
+      // External edits move the solution's diff too — keep the badge honest.
+      await this.refreshDiff();
       // Someone else changed the model: the local undo history no longer
       // describes valid inverses, so it is discarded rather than misapplied.
       (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
@@ -354,6 +438,7 @@ export class ModuxEditorConnected extends LitElement {
   private async refreshDiff(): Promise<void> {
     if (!this._workspace || this._workspace.system) {
       this._diff = null;
+      this._diffListOpen = false;
       return;
     }
     try {
@@ -362,6 +447,84 @@ export class ModuxEditorConnected extends LitElement {
     } catch {
       this._diff = null;
     }
+    if (!this._diff?.changes.length) this._diffListOpen = false;
+  }
+
+  /** AllData component names → human labels for the change list. */
+  private static readonly TYPE_LABELS: Record<string, string> = {
+    projects: 'Proyecto',
+    services: 'Servicio',
+    modules: 'Contexto',
+    aggregates: 'Agregado',
+    entities: 'Entidad',
+    valueObjects: 'Value object',
+    invariants: 'Invariante',
+    domainEvents: 'Evento de dominio',
+    applicationEvents: 'Evento de aplicación',
+    integrationEvents: 'Evento de integración',
+    useCases: 'Caso de uso',
+    queryServices: 'Query service',
+    readModels: 'Read model',
+    projections: 'Proyección',
+    subscriptions: 'Subscription',
+    sagas: 'Saga',
+    scheduledTriggers: 'Scheduled trigger',
+    flows: 'Flow',
+    processes: 'Proceso',
+    workflows: 'Workflow',
+    decisions: 'Decisión',
+    models: 'Modelo',
+    modelMappings: 'Model mapping',
+    gateways: 'Gateway',
+    businessRules: 'Regla de negocio',
+    roles: 'Actor',
+    aiAgents: 'Agente IA',
+    rags: 'RAG',
+    mcpGateways: 'Gateway MCP',
+    apis: 'API',
+    proxyApis: 'Proxy API',
+    pages: 'Pantalla',
+    enums: 'Enum',
+    bddScenarios: 'Escenario BDD',
+    components: 'Componente UI',
+    uiAdapters: 'UI adapter',
+    uiShells: 'UI shell',
+  };
+
+  /** The full change list of the solution, grouped by kind — opened from the badge. */
+  private renderDiffList() {
+    if (!this._diffListOpen || !this._diff || this._workspace?.system) return '';
+    const groups: { kind: string; title: string; mark: string; cls: string }[] = [
+      { kind: 'ADDED', title: 'Añadidos', mark: '＋', cls: 'added' },
+      { kind: 'MODIFIED', title: 'Modificados', mark: '～', cls: 'modified' },
+      { kind: 'REMOVED', title: 'Eliminados', mark: '－', cls: 'removed' },
+    ];
+    const label = (type: string) =>
+      ModuxEditorConnected.TYPE_LABELS[type] ?? type;
+    return html`
+      <div class="diff-panel">
+        <div class="diff-head">
+          <span>Cambios de la solución respecto al sistema</span>
+          <button title="Cerrar el listado" @click=${() => (this._diffListOpen = false)}>✕</button>
+        </div>
+        ${groups.map(({ kind, title, mark, cls }) => {
+          const rows = this._diff!.changes.filter((c) => c.kind === kind);
+          if (!rows.length) return '';
+          return html`
+            <div class="diff-group">${title} (${rows.length})</div>
+            ${rows.map(
+              (c) => html`
+                <div class="diff-row">
+                  <span class="diff-mark ${cls}">${mark}</span>
+                  <span class="diff-type">${label(c.type)}</span>
+                  <span class="diff-name" title=${c.id}>${c.name ?? c.id}</span>
+                </div>
+              `,
+            )}
+          `;
+        })}
+      </div>
+    `;
   }
 
   /**
@@ -614,17 +777,14 @@ export class ModuxEditorConnected extends LitElement {
                 ? (() => {
                     const count = (kind: string) =>
                       this._diff!.changes.filter((c) => c.kind === kind).length;
-                    const removedNames = this._diff!.changes
-                      .filter((c) => c.kind === 'REMOVED')
-                      .map((c) => c.name ?? c.id);
-                    return html`<span
-                      class="badge solution"
-                      title=${removedNames.length
-                        ? `Eliminados respecto al sistema: ${removedNames.join(', ')}`
-                        : 'Cambios respecto al sistema'}
+                    return html`<button
+                      class="badge solution diff-badge"
+                      ?data-open=${this._diffListOpen}
+                      title="Cambios respecto al sistema — click para ver el listado"
+                      @click=${() => (this._diffListOpen = !this._diffListOpen)}
                     >
                       ＋${count('ADDED')} ～${count('MODIFIED')} －${count('REMOVED')}
-                    </span>`;
+                    </button>`;
                   })()
                 : ''}
               ${this._creatingSolution
@@ -689,6 +849,7 @@ export class ModuxEditorConnected extends LitElement {
             </div>
           `
         : ''}
+      ${this.renderDiffList()}
       ${this._mergeFlow
         ? html`
             <div class="merge-panel">

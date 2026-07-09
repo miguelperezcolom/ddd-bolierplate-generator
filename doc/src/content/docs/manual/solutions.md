@@ -128,8 +128,10 @@ On a solution, the canvas shows *what the proposal changes* live:
 
 - a dashed **green ring** — elements that only exist in the solution;
 - a dashed **amber ring** — elements modified with respect to the system;
-- the **`＋n ～n −n` badge** summarizes the change set (deleted elements, no longer on
-  the canvas, are listed in its tooltip).
+- the **`＋n ～n −n` badge** summarizes the change set — and **clicking it unfolds
+  the full change list** under the bar, grouped into *Añadidos*, *Modificados* and
+  *Eliminados*, each row with the element's kind and name. Deleted elements, no
+  longer on the canvas, are only visible there.
 
 The diff compares the current model — including uncommitted work — against the
 committed system, element by element and **by id**, across every type of the
