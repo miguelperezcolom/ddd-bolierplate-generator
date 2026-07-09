@@ -26,10 +26,16 @@ public class RepositoryStoreOpener implements ProjectStorePort {
 
     final ModuxHomeStore home;
     final CommonFileRepository repository;
+    final io.mateu.modux.modeldrivengenerator.infra.out.store.WorkspaceStoreRouter workspaceRouter;
+    final io.mateu.modux.modeldrivengenerator.infra.out.git.GitWorkspaceStore gitWorkspaceStore;
 
     @Override
     @SneakyThrows
     public Path open(Repository repo) {
+        if (repo.getType() == io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.vo.RepositoryType.DATABASE) {
+            return openDatabase(repo);
+        }
+        workspaceRouter.setDelegate(gitWorkspaceStore);
         var location = resolveLocation(repo);
         Files.createDirectories(location);
         var monolithic = location.resolve("model-driven-store.yaml");
@@ -63,6 +69,22 @@ public class RepositoryStoreOpener implements ProjectStorePort {
                 .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::id)
                 .orElse(null);
         home.saveCurrentProjectId(resolved);
+    }
+
+    /** A DATABASE repository: the catalog loads from rows; workspaces are rows too. */
+    private Path openDatabase(Repository repo) {
+        var db = new io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase(
+                repo.getJdbcUrl(),
+                System.getenv().getOrDefault("MODUX_DB_USER", ""),
+                System.getenv().getOrDefault("MODUX_DB_PASSWORD", ""));
+        repository.openDatabase(db);
+        workspaceRouter.setDelegate(
+                new io.mateu.modux.modeldrivengenerator.infra.out.db.DbWorkspaceStore(db, repository));
+        home.saveCurrentRepositoryId(repo.getId().id());
+        selectProject(home.loadCurrentProjectId().orElse(null));
+        log.info("proyecto abierto desde el repositorio DATABASE {} ({})",
+                repo.getName().name(), repo.getJdbcUrl());
+        return home.homeDir();
     }
 
     private Path resolveLocation(Repository repo) {

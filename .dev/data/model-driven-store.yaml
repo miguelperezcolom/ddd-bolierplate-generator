@@ -29,6 +29,10 @@ modules:
   name: "Housekeeping"
   aggregateIds:
   - "habitacion-hk"
+  useCaseIds:
+  - "uc-crearHabitacion-hk"
+  - "uc-actualizarHabitacion-hk"
+  - "uc-eliminarHabitacion-hk"
   subscriptionIds:
   - "sub-housekeeping-habitacionCreada"
 - id: "mod-servicio-tecnico"
@@ -37,6 +41,8 @@ modules:
   - "habitacion-st"
   projectionIds:
   - "proj-habitacionhousekeeping-serviciotecnico"
+  - "proj-habitacionserviciotecnico-habitacionhousekeepingview"
+  - "proj-cardex-habitacionhousekeepingview"
   readModelIds:
   - "rm-habitacionhousekeeping-serviciotecnico"
   subscriptionIds:
@@ -604,8 +610,28 @@ domainEvents:
   name: "EstanciaCreada"
   modelId: "payload-estanciaCreada"
 useCases:
+- id: "uc-crearHabitacion-hk"
+  name: "CrearHabitacionHousekeeping"
+  exposedAsUi: true
+  steps:
+  - id: "step-save"
+    name: "saveHabitacionHousekeeping"
+    type: "SaveAggregate"
+    aggregateId: "habitacion-hk"
 - id: "uc-realizarCheckin"
   name: "RealizarCheckin"
+- id: "uc-actualizarHabitacion-hk"
+  name: "ActualizarHabitacionHousekeeping"
+  exposedAsUi: true
+  steps:
+  - id: "step-read"
+    name: "readHabitacionHousekeeping"
+    type: "ReadAggregate"
+    aggregateId: "habitacion-hk"
+  - id: "step-save"
+    name: "saveHabitacionHousekeeping"
+    type: "SaveAggregate"
+    aggregateId: "habitacion-hk"
 - id: "uc-actualizarEstancia"
   name: "ActualizarEstancia"
   inputModelId: "payload-reservaModificada"
@@ -623,6 +649,15 @@ useCases:
     name: "publishEstanciaActualizada"
     type: "PublishDomainEvent"
     domainEventId: "ev-estanciaActualizada"
+- id: "uc-eliminarHabitacion-hk"
+  name: "EliminarHabitacionHousekeeping"
+  exposedAsUi: true
+  steps:
+  - id: "step-delete"
+    name: "deleteHabitacionHousekeeping"
+    type: "Custom"
+    aggregateId: "habitacion-hk"
+    intent: "Elimina el agregado HabitacionHousekeeping"
 - id: "uc-crearEstancia"
   name: "CrearEstancia"
   inputModelId: "payload-reservaCreada"
@@ -1298,10 +1333,18 @@ projections:
   rebuildStrategy: "REPLAY"
   errorHandlingStrategy: "RETRY"
   maxRetries: 3
+- id: "proj-cardex-habitacionhousekeepingview"
+  name: "HabitacionHousekeepingViewProjection"
+  readModelId: "rm-habitacionhousekeeping-serviciotecnico"
+  sourceAggregateId: "cardex"
 - id: "proj-habitacionhousekeeping-serviciotecnico"
   name: "HabitacionHousekeepingViewProjection"
   readModelId: "rm-habitacionhousekeeping-serviciotecnico"
   sourceAggregateId: "habitacion-hk"
+- id: "proj-habitacionserviciotecnico-habitacionhousekeepingview"
+  name: "HabitacionHousekeepingViewProjection"
+  readModelId: "rm-habitacionhousekeeping-serviciotecnico"
+  sourceAggregateId: "habitacion-st"
 subscriptions:
 - id: "sub-servicio-tecnico-habitacionCreada"
   name: "ServicioTecnicoHabitacionCreada"
@@ -1371,6 +1414,10 @@ roles:
   name: "JefeRecepcion"
 - id: "actor"
   name: "Actor"
+  allowedUseCaseIds:
+  - "uc-crearHabitacion-hk"
+  - "uc-actualizarHabitacion-hk"
+  - "uc-eliminarHabitacion-hk"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1558,58 +1605,24 @@ diagrams:
 - id: "context-map@detail"
   nodes:
   - ref: "mod-housekeeping"
-    x: 377.0
-    "y": 478.8
+    x: 176.0
+    "y": 547.1
+    w: 252.0
+    h: 227.1
   - ref: "mod-servicio-tecnico"
-    x: 706.0
-    "y": 577.4
-    w: 256.0
+    x: 180.6
+    "y": 281.9
+    w: 261.3
     h: 163.1
-  - ref: "mod-reservas"
-    x: 504.0
-    "y": 856.9
   - ref: "mod-cardex"
-    x: 1032.0
-    "y": 535.9
-  - ref: "mod-facturacion"
-    x: 178.0
-    "y": 685.9
-  - ref: "mod-master-data"
-    x: 830.0
-    "y": 961.9
-  - ref: "mod-pagos"
-    x: 504.0
-    "y": 685.9
-  - ref: "mod-rack"
-    x: 830.0
-    "y": 685.9
-  - ref: "mod-frontoffice"
-    x: 617.7
-    "y": 301.9
-  - ref: "mod-folios"
-    x: 178.0
-    "y": 90.0
-  - ref: "mod-produccion"
-    x: 178.0
-    "y": 835.9
-  - ref: "recepcionista"
-    x: 881.7
-    "y": 74.0
-  - ref: "jefeRecepcion"
-    x: 1083.7
-    "y": 74.0
+    x: 380.0
+    "y": 90.2
   - ref: "actor"
-    x: 116.0
-    "y": 519.9
-  - ref: "cardex"
-    x: 25.8
-    "y": 9.6
-  - ref: "rm-habitacionhousekeeping-serviciotecnico"
-    x: -43.9
-    "y": -18.4
-  - ref: "habitacion-st"
-    x: -33.0
-    "y": 45.3
+    x: -319.0
+    "y": 355.9
+  - ref: "habitacion-hk"
+    x: 12.8
+    "y": 45.5
 - id: "context-map"
   detail: "detail"
   nodes:

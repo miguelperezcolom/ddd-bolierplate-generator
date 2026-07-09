@@ -39,6 +39,9 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     /** True after a scoped (partial) load: only a slice of a granular model is in memory, so it is read-only. */
     private boolean scoped;
 
+    /** Non-null when the open repository is DATABASE-backed: rows instead of files. */
+    private io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase jdbc;
+
     /** True when the store path did not exist at load time (authoring from scratch). */
     private boolean startedFromScratch;
 
@@ -113,10 +116,23 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         init();
     }
 
-    /** Re-read the catalog from the underlying persistence (file formats today). */
+    /** Re-read the catalog from the underlying persistence (files or database). */
     @Override
     public void reload() {
+        if (jdbc != null) {
+            loadIntoStore(jdbc.load(jdbc.getCurrentWorkspace()));
+            return;
+        }
         init();
+    }
+
+    /** Open a DATABASE-backed repository: the catalog loads from rows and persists to rows. */
+    public void openDatabase(io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase db) {
+        this.jdbc = db;
+        this.scoped = false;
+        this.startedFromScratch = false;
+        loadIntoStore(db.load(db.getCurrentWorkspace()));
+        log.info("spec store (JDBC) in workspace {}", db.getCurrentWorkspace());
     }
 
     @SneakyThrows
@@ -124,6 +140,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     public void init() {
         var specFile = overrideModelFile != null ? overrideModelFile
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
+        jdbc = null;
         scoped = false;
         storePath = Path.of(specFile).toAbsolutePath().normalize();
         startedFromScratch = !Files.exists(storePath);
@@ -203,6 +220,10 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         if (scoped) {
             throw new IllegalStateException("The model is partially loaded (a view scope) and is read-only. "
                     + "Load the full model before saving.");
+        }
+        if (jdbc != null) {
+            jdbc.replaceAll(jdbc.getCurrentWorkspace(), buildAllData());
+            return;
         }
         activeFormat.save(storePath, buildAllData());
     }

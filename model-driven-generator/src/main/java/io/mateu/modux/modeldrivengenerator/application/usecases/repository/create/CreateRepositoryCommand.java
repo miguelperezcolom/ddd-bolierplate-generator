@@ -7,6 +7,7 @@ public record CreateRepositoryCommand(
         String folder,
         String gitUrl,
         String branch,
+        String jdbcUrl,
         String description
 ) {
 }

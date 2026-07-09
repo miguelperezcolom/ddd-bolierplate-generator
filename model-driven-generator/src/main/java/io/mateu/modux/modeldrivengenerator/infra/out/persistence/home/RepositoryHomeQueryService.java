@@ -54,6 +54,6 @@ public class RepositoryHomeQueryService implements RepositoryQueryService {
                 .filter(e -> e.id().equals(id))
                 .findFirst()
                 .map(e -> new RepositoryDto(e.id(), e.name(), inferredType(e), e.folder(), e.gitUrl(),
-                        e.branch(), e.description()));
+                        e.branch(), e.jdbcUrl(), e.description()));
     }
 }

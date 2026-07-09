@@ -20,7 +20,7 @@ public class CreateRepositoryUseCase {
                 command.type(),
                 command.folder(),
                 command.gitUrl(),
-                command.branch(),
+                command.branch(), command.jdbcUrl(),
                 command.description()));
     }
 }
