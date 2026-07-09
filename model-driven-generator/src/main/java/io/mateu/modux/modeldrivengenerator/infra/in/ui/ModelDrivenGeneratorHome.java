@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.menu.*;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.editor.GraphicalEditorPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.modelhealth.ModelHealthPage;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.ModelContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.ProjectContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryCrudOrchestrator;
@@ -23,6 +24,10 @@ public class ModelDrivenGeneratorHome {
 
     @AppContext(label = "Proyecto")
     ProjectContextSelector project;
+
+    /** The working model: the system (as-is) or one of its solutions (to-be). */
+    @AppContext(label = "Modelo")
+    ModelContextSelector model;
 
     @Menu
     WorkspaceCrudOrchestrator workspace;

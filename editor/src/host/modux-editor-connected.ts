@@ -307,6 +307,8 @@ export class ModuxEditorConnected extends LitElement {
       this._pendingVersion = version; // processed on pointerup / after the last write
       return;
     }
+    // A workspace bar hidden by a transient failure heals with the next signal.
+    if (!this._workspace) void this.loadWorkspace();
     const external = this._lastVersion !== null && version !== this._lastVersion;
     this._lastVersion = version;
     if (external) {

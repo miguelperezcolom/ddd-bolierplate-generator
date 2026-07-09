@@ -38,6 +38,17 @@ public class SolutionApiController {
 
     @GetMapping
     public WorkspaceDto workspace() {
+        try {
+            return readWorkspace();
+        } catch (RuntimeException e) {
+            // A git hiccup must not hide the whole workspace bar — report the system.
+            org.slf4j.LoggerFactory.getLogger(getClass())
+                    .warn("workspace no legible: {}", e.getMessage());
+            return new WorkspaceDto(SolutionGitService.SYSTEM_BRANCH, true, List.of());
+        }
+    }
+
+    private WorkspaceDto readWorkspace() {
         var current = git.currentBranch();
         var solutions = git.solutionBranches().stream()
                 .map(branch -> {

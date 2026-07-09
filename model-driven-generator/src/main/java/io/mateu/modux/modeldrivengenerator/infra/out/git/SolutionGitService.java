@@ -43,15 +43,38 @@ public class SolutionGitService {
 
     /** Initialises the repo lazily: the current store becomes the system's baseline. */
     public void ensureRepo() {
-        if (isRepo()) return;
-        git("init");
-        git("checkout", "-B", SYSTEM_BRANCH);
-        commitAll("sistema: línea base");
-        log.info("store git repo initialised at {}", repoDir());
+        if (!isRepo()) {
+            git("init");
+            git("checkout", "-B", SYSTEM_BRANCH);
+            commitAll("sistema: línea base");
+            log.info("store git repo initialised at {}", repoDir());
+            return;
+        }
+        // A repo initialised elsewhere but WITHOUT history (unborn HEAD — e.g. the user
+        // ran `git init` in the store folder): the current store becomes the baseline.
+        if (!hasCommits()) {
+            git("checkout", "-B", SYSTEM_BRANCH);
+            commitAll("sistema: línea base");
+            log.info("store git repo baselined at {}", repoDir());
+        }
+    }
+
+    /** False while HEAD is unborn (a repo with no commits yet). */
+    public boolean hasCommits() {
+        if (!isRepo()) return false;
+        try {
+            git("rev-parse", "--verify", "HEAD");
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     public String currentBranch() {
-        return isRepo() ? git("rev-parse", "--abbrev-ref", "HEAD").trim() : SYSTEM_BRANCH;
+        // An unborn repo IS the as-is: its baseline gets committed on the first solution op.
+        return isRepo() && hasCommits()
+                ? git("rev-parse", "--abbrev-ref", "HEAD").trim()
+                : SYSTEM_BRANCH;
     }
 
     public List<String> solutionBranches() {

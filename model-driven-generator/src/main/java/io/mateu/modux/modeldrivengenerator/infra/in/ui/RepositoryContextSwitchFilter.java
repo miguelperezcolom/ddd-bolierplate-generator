@@ -29,6 +29,7 @@ public class RepositoryContextSwitchFilter extends OncePerRequestFilter {
 
     final OpenRepositoryUseCase openUseCase;
     final ProjectStorePort projectStore;
+    final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionGitService solutionGit;
     private final ObjectMapper json = new ObjectMapper();
 
     @Override
@@ -51,6 +52,13 @@ public class RepositoryContextSwitchFilter extends OncePerRequestFilter {
             if (selectedProject != null && !selectedProject.isBlank()
                     && !selectedProject.equals(projectStore.currentProjectId().orElse(null))) {
                 projectStore.selectProject(selectedProject);
+            }
+            // The working model (system or a solution) is app-level context too: a stale
+            // selection from another repository throws in switchTo and lands in the catch.
+            var selectedModel = appState.path("model").asText(null);
+            if (selectedModel != null && !selectedModel.isBlank()
+                    && !selectedModel.equals(solutionGit.currentBranch())) {
+                solutionGit.switchTo(selectedModel);
             }
         } catch (RuntimeException | IOException e) {
             log.debug("app-context no procesable en {}: {}", request.getRequestURI(), e.getMessage());
