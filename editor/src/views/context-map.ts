@@ -919,8 +919,6 @@ export function contextMapScene(
   // the detail level; at the contexts level the API box points at the module.
   const apiWireEdges: SceneEdge[] = (model.apis ?? []).flatMap((api) =>
     api.operations.flatMap((op) => {
-      const source = detailed && nodeIds.has(op.id) ? op.id : api.id;
-      if (!nodeIds.has(source)) return [];
       const target =
         detailed && op.targetUseCaseId && nodeIds.has(op.targetUseCaseId)
           ? op.targetUseCaseId
@@ -930,6 +928,29 @@ export function contextMapScene(
               ? null // fine wiring is invisible at the contexts level unless a module is set
               : null;
       if (!target) return [];
+      // The wiring's visual home: when the use case lives in a context that IMPLEMENTS
+      // this API, the edge starts at the operation's occurrence THERE (or at the impl
+      // chip while operations are folded) — not at the API as published elsewhere.
+      const ucModule =
+        detailed && op.targetUseCaseId === target
+          ? model.modules.find((m) => (m.useCases ?? []).some((u) => u.id === target))?.id
+          : undefined;
+      const implSite =
+        ucModule &&
+        (model.apiImplementations ?? []).some(
+          (impl) => impl.apiId === api.id && impl.moduleId === ucModule,
+        )
+          ? ucModule
+          : undefined;
+      const source =
+        implSite && nodeIds.has(apiOpOccurrenceId(op.id, implSite))
+          ? apiOpOccurrenceId(op.id, implSite)
+          : implSite && nodeIds.has(apiImplNodeId(api.id, implSite))
+            ? apiImplNodeId(api.id, implSite)
+            : detailed && nodeIds.has(op.id)
+              ? op.id
+              : api.id;
+      if (!nodeIds.has(source)) return [];
       return [
         {
           id: `apiwire:${op.id}`,
