@@ -4351,6 +4351,18 @@ export class ModuxEditor extends LitElement {
     return scene;
   }
 
+  /** Screen space the overlays occupy on the left — fit() centers in what remains. */
+  private fitInsets(): { left: number } {
+    const paletteVisible =
+      this._paletteOpen && (this._view === 'context-map' || this._view === 'workflows');
+    const treeVisible = this._treeOpen && !!this._activeViewId;
+    // Geometry mirrors the CSS: tree at 8+264, palette 244 wide (shifted past the tree).
+    if (treeVisible && paletteVisible) return { left: 280 + 244 + 8 };
+    if (treeVisible) return { left: 8 + 264 + 8 };
+    if (paletteVisible) return { left: 8 + 244 + 8 };
+    return { left: 0 };
+  }
+
   /** ELK layout for the current view, applied as ONE undoable composite move. */
   private async runAutoLayout(): Promise<void> {
     const view = this._view;
@@ -4914,6 +4926,7 @@ export class ModuxEditor extends LitElement {
       <modux-canvas
         @dragover=${(e: DragEvent) => e.preventDefault()}
         @drop=${this.onPaletteDrop}
+        .fitInsets=${this.fitInsets()}
         .scene=${scene}
         .edgePoints=${this.routedEdgePoints(scene)}
         .selectedId=${this._selectedId}

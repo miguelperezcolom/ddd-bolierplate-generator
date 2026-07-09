@@ -395,20 +395,40 @@ export class ModuxCanvas extends LitElement {
     }
   }
 
-  /** Center and scale the viewport so the whole scene is visible. */
+  /**
+   * Space along the edges occupied by overlays (palette, catalog tree): fit()
+   * centers the scene in what remains visible, not under them.
+   */
+  @property({ attribute: false }) fitInsets: {
+    left?: number;
+    right?: number;
+    top?: number;
+    bottom?: number;
+  } = {};
+
+  /** Center and scale the viewport so the whole scene is visible (and unobscured). */
   fit(padding = 60): void {
     const nodes = this.scene.nodes;
     const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
     if (!nodes.length || !svgEl || !this._zoomBehavior) return;
     const rect = this.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
+    const left = this.fitInsets.left ?? 0;
+    const right = this.fitInsets.right ?? 0;
+    const top = this.fitInsets.top ?? 0;
+    const bottom = this.fitInsets.bottom ?? 0;
+    const availW = Math.max(80, rect.width - left - right);
+    const availH = Math.max(80, rect.height - top - bottom);
     const minX = Math.min(...nodes.map((n) => n.x - n.w / 2)) - padding;
     const maxX = Math.max(...nodes.map((n) => n.x + n.w / 2)) + padding;
     const minY = Math.min(...nodes.map((n) => n.y - n.h / 2)) - padding;
     const maxY = Math.max(...nodes.map((n) => n.y + n.h / 2)) + padding;
-    const k = Math.max(0.15, Math.min(rect.width / (maxX - minX), rect.height / (maxY - minY), 1.25));
+    const k = Math.max(0.15, Math.min(availW / (maxX - minX), availH / (maxY - minY), 1.25));
     const t = zoomIdentity
-      .translate(rect.width / 2 - (k * (minX + maxX)) / 2, rect.height / 2 - (k * (minY + maxY)) / 2)
+      .translate(
+        left + availW / 2 - (k * (minX + maxX)) / 2,
+        top + availH / 2 - (k * (minY + maxY)) / 2,
+      )
       .scale(k);
     select(svgEl).call(this._zoomBehavior.transform, t);
   }
