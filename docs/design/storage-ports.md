@@ -89,7 +89,37 @@ history(workspace_id, seq, at, actor, summary, changeset jsonb)  -- blame/audito
 - `baseOf` = leer `element_base`. «⟳ Actualizar del sistema» = merge semántico (ya
   existente) + refrescar `element_base`.
 - Merge al sistema = `commitToSystem(merged)` + fila de `history` + archivar workspace.
-- El selector `modux.storage=fs-git|db` elige los adapters por perfil Spring.
+
+## La BD como un TIPO más de repositorio (decisión de Miguel, 2026-07-09)
+
+En lugar de un selector global (`modux.storage` por perfil Spring), la BD entra por el
+catálogo de repositorios que ya existe: `RepositoryType` gana **`DATABASE`** junto a
+`LOCAL` y `GIT`, con sus campos condicionales en el formulario (JDBC URL, usuario,
+esquema, y credencial como *referencia* — env var / secretsProvider — nunca en claro
+en `~/.modux/repositories.yaml`).
+
+La consecuencia arquitectónica: la elección de adapters es **por repositorio y en
+tiempo de apertura**, no de arranque. Hoy `RepositoryStoreOpener.open(repo)` devuelve
+un `Path` (clonando si es GIT); pasa a resolver un **par de adapters**
+(`ModelStore` + `WorkspaceStore`) según el tipo:
+
+```
+LOCAL / GIT  → FileModelStore + GitWorkspaceStore   (lo actual)
+DATABASE     → JdbcModelStore + DbWorkspaceStore
+```
+
+Los ~100 puntos de inyección siguen inyectando UN bean: un `ModelStore` *router* que
+delega en el par abierto por el repositorio en curso — el mismo patrón que hoy, donde
+cambiar de repositorio hace `loadFrom` sobre el singleton.
+
+Bonus que salen gratis con este diseño:
+
+- **Backends mezclados en la misma sesión**: el repo corporativo en Postgres y un
+  repo LOCAL de exploración personal (con su YAML editable a mano/IA), conmutables
+  desde el mismo selector de la cabecera.
+- **Migración entre backends = gesto de UI**: abrir el repo origen → `snapshot()` →
+  crear el repo destino → `replaceWith()`. El espejo YAML de la F4 se reduce a
+  «copiar el repositorio a uno de tipo LOCAL» (export) y viceversa (import).
 
 ## Qué NO se toca
 
@@ -109,10 +139,13 @@ es de **tipos en infraestructura**: el compilador guía los ~100 puntos de uso.
 ## Fases
 
 - **F1 — Extraer los puertos** (sin cambio de comportamiento): `ModelStore` +
-  `WorkspaceStore`, adapters actuales detrás, servicios semánticos a application.
-  Prueba de no-regresión: la suite (108) y los e2e de soluciones en verde intactos.
-- **F2 — `JdbcModelStore`** (Postgres jsonb) tras `modux.storage=db`, sin soluciones aún.
+  `WorkspaceStore`, adapters actuales detrás (elegidos por `RepositoryStoreOpener`
+  según el tipo), servicios semánticos a application. Prueba de no-regresión: la
+  suite (108) y los e2e de soluciones en verde intactos.
+- **F2 — Tipo `DATABASE` + `JdbcModelStore`** (Postgres jsonb): alta del repositorio
+  en el formulario con campos condicionales, abrir/conmutar, catálogo funcionando;
+  sin soluciones aún.
 - **F3 — `DbWorkspaceStore`** + paridad de soluciones: la misma suite e2e de
-  soluciones ejecutada contra ambos backends.
-- **F4 (opcional) — Espejo YAML** export/import para no perder la edición como texto
-  en despliegues DB.
+  soluciones ejecutada contra ambos tipos de repositorio.
+- **F4 (opcional) — Migración entre repositorios** («copiar a…»): que hace de
+  export/import YAML gratis.
