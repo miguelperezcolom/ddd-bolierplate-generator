@@ -17,10 +17,10 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
                                │
         ┌── tools ────────────┼──────────────────────────────────────┐
         ▼                     ▼                                      ▼
-   use case (MCP)   query service · API u operación       external operation · MCP server
-                    (real o proxy)                                   │
+   use case (MCP)    query service · API or operation      external operation · MCP server
+                     (real or proxy)                                 │
                               ├── delegates ──▶ another agent
-                              └── knowledge ──▶ RAG ◀── read models · tablas externas ·
+                              └── knowledge ──▶ RAG ◀── read models · external tables ·
                                                         APIs · repos, webs, SharePoint…
 
   external AI agent ───▶ MCP gateway ───▶ MCP servers · APIs · operations · use cases · RAGs
