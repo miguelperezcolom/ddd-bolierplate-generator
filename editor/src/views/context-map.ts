@@ -43,6 +43,11 @@ export function apiImplNodeId(apiId: string, moduleId: string): string {
   return `apiimpl:${apiId}@${moduleId}`;
 }
 
+/** Canvas id of an operation occurrence at a SITE (a proxy or a bounded context). */
+export function apiOpOccurrenceId(operationId: string, siteId: string): string {
+  return `apiop:${operationId}@${siteId}`;
+}
+
 /**
  * API-implementation occurrences of a bounded context, as nestable children — the SAME
  * ApiRef the external system publishes, so the chip looks exactly like the API nested
@@ -128,6 +133,7 @@ interface ChildDesc {
     | 'external-table'
     | 'mcp-server'
     | 'api-operation'
+    | 'api-op-occurrence'
     | 'api'
     | 'api-impl'
     | 'proxy-api';
@@ -149,6 +155,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
   'mcp-server': { symbol: 'robot', fill: '#faf5ff', stroke: '#9333ea' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
+  'api-op-occurrence': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
   api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'api-impl': { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
@@ -166,6 +173,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'external-table': 'Tabla (legacy)',
   'mcp-server': 'Servidor MCP',
   'api-operation': 'Operación de API',
+  'api-op-occurrence': 'Operación de la API, en este sitio',
   api: 'API publicada por este sistema',
   'api-impl': 'La misma API, implementada también en este contexto',
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
@@ -203,6 +211,7 @@ function detailedContext(
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
+  operationsLevel = false,
 ): SceneNode[] {
   const aggregates = (model.aggregates ?? []).filter((a) => a.moduleId === module.id);
   const children: ChildDesc[] = [
@@ -233,6 +242,33 @@ function detailedContext(
     // Nothing to nest — keep the compact context box.
     return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
   }
+  // The deepest level unfolds the implemented APIs into sub-containers with their
+  // operation OCCURRENCES (per-site ids) — so proxy operations can later wire to the
+  // implementation here or to the published API, operation by operation.
+  if (operationsLevel) {
+    const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
+    const boxes: ApiBoxDesc[] = (model.apiImplementations ?? [])
+      .filter((impl) => impl.moduleId === module.id && apiById.has(impl.apiId))
+      .map((impl) => {
+        const api = apiById.get(impl.apiId)!;
+        return {
+          id: apiImplNodeId(impl.apiId, impl.moduleId),
+          name: api.name,
+          kind: 'api-impl' as const,
+          badge: 'API',
+          tooltip: `${api.name} — la misma API, implementada en ${module.name}`,
+          opKind: 'api-op-occurrence' as const,
+          ops: (api.operations ?? []).map((op) => ({
+            id: apiOpOccurrenceId(op.id, module.id),
+            name: op.name,
+          })),
+        };
+      });
+    if (boxes.length > 0) {
+      const rest = children.filter((c) => c.kind !== 'api-impl');
+      return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
+    }
+  }
   return detailedContainer(center, base, children, layout, sizes);
 }
 
@@ -242,18 +278,31 @@ function detailedContext(
  * API boxes plus its plain children. Offsets follow the usual convention: children
  * hang off their parent's STORED centre, even when the painted (fitted) one shifts.
  */
-function externalSystemWithApiContainers(
+/** An API-shaped sub-container (a published API, or an implementation occurrence). */
+interface ApiBoxDesc {
+  id: string;
+  name: string;
+  kind: 'api' | 'api-impl';
+  badge: string;
+  tooltip: string;
+  /** Kind of the operation chips inside (real operations vs per-site occurrences). */
+  opKind: 'api-operation' | 'api-op-occurrence';
+  ops: { id: string; name: string }[];
+}
+
+/** A container nesting API sub-containers (with their operation chips) plus plain chips. */
+function containerWithApiBoxes(
   center: { x: number; y: number },
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  apis: NonNullable<ModuxModel['apis']>,
+  boxes: ApiBoxDesc[],
   plainChildren: ChildDesc[],
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
 ): SceneNode[] {
-  const sysSize = sizes[base.id] ?? defaultContainerSize(apis.length + plainChildren.length);
-  const apiBoxes = apis.map((a, i) => {
+  const sysSize = sizes[base.id] ?? defaultContainerSize(boxes.length + plainChildren.length);
+  const apiBoxes = boxes.map((a, i) => {
     const off = layout[a.id] ?? defaultChildOffset(i, sysSize);
-    const ops = a.operations ?? [];
+    const ops = a.ops;
     const apiSize = sizes[a.id] ?? defaultContainerSize(ops.length);
     const opOffs = ops.map((op, j) => layout[op.id] ?? defaultChildOffset(j, apiSize));
     const fit = containerFit(
@@ -264,7 +313,7 @@ function externalSystemWithApiContainers(
     return { a, off, ops, opOffs, fit };
   });
   const plainOffs = plainChildren.map(
-    (c, i) => layout[c.id] ?? defaultChildOffset(apis.length + i, sysSize),
+    (c, i) => layout[c.id] ?? defaultChildOffset(boxes.length + i, sysSize),
   );
   // Siblings NEVER overlap: separate the (large) API boxes and the plain chips
   // before the system fits around them — display-time, so it always holds.
@@ -303,24 +352,24 @@ function externalSystemWithApiContainers(
     nodes.push({
       id: b.a.id,
       label: b.a.name,
-      kind: 'api',
+      kind: b.a.kind,
       symbol: 'interface',
       fill: '#eef2ff',
       stroke: '#4f46e5',
-      badge: 'API',
+      badge: b.a.badge,
       container: true,
       parentId: base.id,
       x: center.x + b.fit.x,
       y: center.y + b.fit.y,
       w: b.fit.w,
       h: b.fit.h,
-      tooltip: `${b.a.name} — API publicada por ${base.label}`,
+      tooltip: b.a.tooltip,
     });
     b.ops.forEach((op, j) => {
       nodes.push({
         id: op.id,
         label: op.name,
-        kind: 'api-operation',
+        kind: b.a.opKind,
         symbol: 'usecase',
         fill: '#eef2ff',
         stroke: '#4f46e5',
@@ -329,7 +378,7 @@ function externalSystemWithApiContainers(
         y: center.y + b.off.y + b.opOffs[j].y,
         w: CHILD_W,
         h: CHILD_H,
-        tooltip: `Operación de API ${op.name}`,
+        tooltip: `${CHILD_TOOLTIP[b.a.opKind]}: ${op.name}`,
       });
     });
   }
@@ -351,6 +400,26 @@ function externalSystemWithApiContainers(
     });
   });
   return nodes;
+}
+
+function externalSystemWithApiContainers(
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  apis: NonNullable<ModuxModel['apis']>,
+  plainChildren: ChildDesc[],
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const boxes: ApiBoxDesc[] = apis.map((a) => ({
+    id: a.id,
+    name: a.name,
+    kind: 'api',
+    badge: 'API',
+    tooltip: `${a.name} — API publicada por ${base.label}`,
+    opKind: 'api-operation',
+    ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
+  }));
+  return containerWithApiBoxes(center, base, boxes, plainChildren, layout, sizes);
 }
 
 /** A resizable container with child boxes — shared by contexts and external systems. */
@@ -468,7 +537,7 @@ export function contextMapScene(
     }
     if (entry.proxy) {
       const px = entry.ref as NonNullable<ModuxModel['proxyApis']>[number];
-      return [{
+      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
         id: px.id,
         label: px.name,
         kind: 'proxy-api',
@@ -477,11 +546,28 @@ export function contextMapScene(
         stroke: '#0e7490',
         badge: 'PROXY API',
         tooltip: `${px.name} — proxy/cache de una API, consumible como ella`,
-        x: pos.x,
-        y: pos.y,
-        w: NODE_W,
-        h: NODE_H,
-      }];
+      };
+      // The deepest level unfolds the proxy too: its surface IS the fronted API, so its
+      // operation OCCURRENCES nest inside — future arrows will route each one to the
+      // published API or to a bounded-context implementation.
+      if (operationsLevel && px.targetApiId) {
+        const target = (model.apis ?? []).find((a) => a.id === px.targetApiId);
+        const ops = target?.operations ?? [];
+        if (ops.length > 0) {
+          return detailedContainer(
+            pos,
+            base,
+            ops.map((op): ChildDesc => ({
+              id: apiOpOccurrenceId(op.id, px.id),
+              name: op.name,
+              kind: 'api-op-occurrence',
+            })),
+            layout,
+            sizes,
+          );
+        }
+      }
+      return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
     }
     if (entry.api) {
       const a = entry.ref as NonNullable<ModuxModel['apis']>[number];
@@ -569,7 +655,7 @@ export function contextMapScene(
       badge: subdomain,
       tooltip: `${m.name} — subdominio ${subdomain}`,
     };
-    if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
+    if (detailed) return detailedContext(model, m, pos, base, layout, sizes, operationsLevel);
     // Implemented APIs are strategic-level: they nest inside the context at EVERY
     // detail level, exactly like a published API nests inside its external system.
     const implChildren = apiImplChildren(model, m.id);
