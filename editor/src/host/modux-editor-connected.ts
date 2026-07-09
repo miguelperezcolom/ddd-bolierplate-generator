@@ -364,8 +364,27 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
-  /** create / switch / discard / status / merge against the solutions API, then reload. */
+  /**
+   * The app-level «Modelo» selector must always match the branch we are on:
+   * otherwise the context filter would silently switch back on the next mateu
+   * request. Same localStorage entries the mateu picker uses.
+   */
+  private syncModelContext(branch: string, label: string): void {
+    try {
+      const ctx = JSON.parse(localStorage.getItem('mateu-app-context') ?? '{}');
+      const labels = JSON.parse(localStorage.getItem('mateu-app-context-labels') ?? '{}');
+      ctx.model = branch;
+      labels.model = label;
+      localStorage.setItem('mateu-app-context', JSON.stringify(ctx));
+      localStorage.setItem('mateu-app-context-labels', JSON.stringify(labels));
+    } catch {
+      /* storage unavailable: the header keeps its previous label */
+    }
+  }
+
+  /** create / discard / status / merge against the solutions API, then reload. */
   private async solutionOp(op: string, body: unknown): Promise<void> {
+    const before = this._workspace?.current;
     await this.trackWrite(async () => {
       try {
         const res = await fetch(`${this.base}/solutions/${op}`, {
@@ -393,16 +412,15 @@ export class ModuxEditorConnected extends LitElement {
         this.showToast(String(err));
       }
     });
-  }
-
-  private onWorkspaceSelect(e: Event): void {
-    const value = (e.target as HTMLSelectElement).value;
-    if (value === '__new__') {
-      this._creatingSolution = true;
-      return;
-    }
-    if (this._workspace && value !== this._workspace.current) {
-      void this.solutionOp('switch', { branch: value });
+    const after = this._workspace?.current;
+    if (after && after !== before) {
+      const name = this._workspace!.solutions.find((s) => s.branch === after)?.name
+        ?? after.replace(/^solution\//, '');
+      this.syncModelContext(
+        after,
+        this._workspace!.system ? 'Sistema (as-is)' : `Solución: ${name}`,
+      );
+      window.location.reload();
     }
   }
 
@@ -561,16 +579,19 @@ export class ModuxEditorConnected extends LitElement {
         ? html`
             <div class="workspace">
               <label>Modelo:</label>
-              <select @change=${this.onWorkspaceSelect} title="Sistema (as-is) o una solución (to-be)">
-                <option value="main" ?selected=${this._workspace.system}>Sistema (as-is)</option>
-                ${this._workspace.solutions.map(
-                  (s) =>
-                    html`<option value=${s.branch} ?selected=${s.branch === this._workspace!.current}>
-                      Solución: ${s.name}${s.status ? ` · ${s.status}` : ''}
-                    </option>`,
-                )}
-                <option value="__new__">＋ Nueva solución…</option>
-              </select>
+              <span title="El modelo activo se cambia desde el selector «Modelo» de la cabecera">
+                ${this._workspace.system
+                  ? 'Sistema (as-is)'
+                  : `Solución: ${
+                      this._workspace.solutions.find((s) => s.branch === this._workspace!.current)
+                        ?.name ?? this._workspace.current
+                    }`}
+              </span>
+              ${this._creatingSolution
+                ? ''
+                : html`<button @click=${() => (this._creatingSolution = true)}>
+                    ＋ Nueva solución…
+                  </button>`}
               <span class="badge ${this._workspace.system ? '' : 'solution'}">
                 ${this._workspace.system ? 'AS-IS' : 'TO-BE'}
               </span>
