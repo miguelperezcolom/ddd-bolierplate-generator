@@ -736,6 +736,14 @@ public class EditorApiController {
                 .toList();
 
         // The UI map: apps (menu trees), pages (with their buttons) and who uses which app.
+        // Pre-id stores (and entries created before ids existed) self-heal on first read:
+        // duplicate labels made selection and gestures ambiguous without a stable identity.
+        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
+            var healed = withMenuItemIds(app.menuItems(), new java.util.HashSet<>());
+            if (healed != null) {
+                repository.save(withMenuItems(app, healed));
+            }
+        }
         var uiApps = repository.findAllOfType(UiAdapterEntity.class).stream()
                 .map(a -> new UiAppDto(a.id(), a.name(), a.title(),
                         (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
@@ -892,7 +900,7 @@ public class EditorApiController {
                                 String modelId, String actorId,
                                 String fieldId, String stereotype, Integer colspan,
                                 List<String> fieldIds,
-                                String itemId, String parentId) {}
+                                String itemId, String parentId, String toAppId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1049,6 +1057,7 @@ public class EditorApiController {
             case "add-menu-item" -> addMenuItem(command);
             case "remove-menu-item" -> removeMenuItem(command);
             case "set-menu-page" -> setMenuPage(command);
+            case "move-menu-item" -> moveMenuItem(command);
             case "add-page-button" -> addPageButton(command);
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
@@ -3467,6 +3476,36 @@ public class EditorApiController {
         });
     }
 
+    /** Moves a menu entry (subtree included) to another app's menu root. */
+    private void moveMenuItem(EditorCommand command) {
+        var source = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        var target = repository.findById(command.toAppId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
+        var entry = findMenuItem(source.menuItems(), command.itemId(), command.label());
+        if (entry == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        var pruned = withoutFirstMatching(source.menuItems(), command.itemId(), command.label());
+        repository.save(withMenuItems(source, pruned == null ? source.menuItems() : pruned));
+        var reloaded = repository.findById(command.toAppId(), UiAdapterEntity.class).orElse(target);
+        var items = new ArrayList<>(reloaded.menuItems() == null
+                ? List.<UiMenuItemEntity>of() : reloaded.menuItems());
+        items.add(entry);
+        repository.save(withMenuItems(reloaded, items));
+    }
+
+    private static UiMenuItemEntity findMenuItem(List<UiMenuItemEntity> items,
+                                                 String itemId, String label) {
+        for (var item : items == null ? List.<UiMenuItemEntity>of() : items) {
+            if (menuItemMatches(item, itemId, label)) return item;
+            var hit = findMenuItem(item.children(), itemId, label);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
     /** Points a menu entry (by stable id, or by label on pre-id entries) at a page. */
     private void setMenuPage(EditorCommand command) {
         var app = repository.findById(command.appId(), UiAdapterEntity.class)
@@ -3652,6 +3691,39 @@ public class EditorApiController {
                 .filter(i -> !pageId.equals(i.pageId()))
                 .map(i -> withChildren(i, withoutMenuEntriesFor(i.children(), pageId)))
                 .toList();
+    }
+
+    /**
+     * The tree with every entry carrying a UNIQUE stable id — null when it already does
+     * (nothing to save then). Duplicates count as missing: the first keeps the id.
+     */
+    private static List<UiMenuItemEntity> withMenuItemIds(List<UiMenuItemEntity> items,
+                                                          java.util.Set<String> used) {
+        if (items == null) return null;
+        var changed = false;
+        var copy = new ArrayList<UiMenuItemEntity>();
+        for (var item : items) {
+            var id = item.id();
+            if (id == null || id.isBlank() || used.contains(id)) {
+                id = null; // reassign below, uniquified against everything seen so far
+            }
+            if (id == null) {
+                var base = "mi-" + (item.label() == null ? "entrada" : item.label()).toLowerCase()
+                        .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
+                id = base;
+                for (var n = 2; used.contains(id); n++) id = base + "-" + n;
+                changed = true;
+            }
+            used.add(id);
+            var healedChildren = withMenuItemIds(item.children(), used);
+            if (healedChildren != null) changed = true;
+            copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                    item.route(), item.pageId(),
+                    healedChildren != null ? healedChildren
+                            : item.children() == null ? List.of() : item.children(),
+                    id));
+        }
+        return changed ? copy : null;
     }
 
     /** Entry identity: the stable id when both sides have one, the label for pre-id entries. */

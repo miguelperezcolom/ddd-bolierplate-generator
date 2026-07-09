@@ -1052,6 +1052,8 @@ export class ModuxEditor extends LitElement {
           .map((f) => f.fieldId);
         return current.length ? [{ kind: 'set-page-field-order', pageId: c.pageId, fieldIds: current }] : null;
       }
+      case 'move-menu-item':
+        return [{ kind: 'move-menu-item', appId: c.toAppId, toAppId: c.appId, itemId: c.itemId, label: c.label }];
       case 'add-actor-app':
         return [{ kind: 'remove-actor-app', actorId: c.actorId, appId: c.appId }];
       case 'remove-actor-app':
@@ -2142,6 +2144,14 @@ export class ModuxEditor extends LitElement {
           pageId: sourceId,
           itemId: this.newMenuItemId(page.name),
         });
+        return;
+      }
+      // menu entry → another app: the entry (with its submenu) moves there
+      const movingRef = parseMenuNodeId(sourceId);
+      if (movingRef && isApp(targetId)) {
+        if (movingRef.appId !== targetId) {
+          this.command({ kind: 'move-menu-item', toAppId: targetId, ...movingRef });
+        }
         return;
       }
       // menu entry → page (handle drag), or a catalog page dropped ON an entry: link them

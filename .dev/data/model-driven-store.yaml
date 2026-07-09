@@ -1445,6 +1445,18 @@ roles:
 - id: "actor-2"
   name: "Actor 2"
 pages:
+- id: "page-pagina-2"
+  name: "Página 2"
+  route: "/page-pagina-2"
+  type: "FORM"
+- id: "page-pagina-4"
+  name: "Página 4"
+  route: "/page-pagina-4"
+  type: "FORM"
+- id: "page-pagina-3"
+  name: "Página 3"
+  route: "/page-pagina-3"
+  type: "FORM"
 - id: "page-pagina"
   name: "Página"
   route: "/page-pagina"
@@ -1455,14 +1467,33 @@ uiAdapters:
   title: "App"
   menuItems:
   - label: "Entrada"
+    children:
+    - label: "Entrada 3"
+      id: "mi-entrada-3"
   - label: "Entrada"
   - label: "Entrada"
   - label: "Página"
     pageId: "page-pagina"
+    children:
+    - label: "Entrada 2"
+      id: "mi-entrada-2"
   - label: "Entrada"
+- id: "app-app-3"
+  name: "App 3"
+  title: "App 3"
+  menuItems:
+  - label: "Entrada 4"
+    id: "mi-entrada-4"
+  - label: "Página 3"
+    pageId: "page-pagina-3"
+  - label: "Página 4"
+    pageId: "page-pagina-4"
 - id: "app-app-2"
   name: "App 2"
   title: "App 2"
+  menuItems:
+  - label: "Página 2"
+    pageId: "page-pagina-2"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1715,17 +1746,26 @@ diagrams:
 - id: "ui"
   nodes:
   - ref: "app-app"
-    x: 101.0
-    "y": 202.0
-  - ref: "page-pagina"
-    x: 447.0
-    "y": 233.0
-  - ref: "menu:app-app:Entrada"
-    x: 0.0
-    "y": 18.8
+    x: 175.0
+    "y": 695.0
+  - ref: "app-app-3"
+    x: 495.0
+    "y": 391.0
   - ref: "app-app-2"
-    x: 397.7
-    "y": 341.5
+    x: 175.0
+    "y": 355.0
+  - ref: "page-pagina-2"
+    x: 145.0
+    "y": 80.0
+  - ref: "page-pagina-4"
+    x: 405.0
+    "y": 80.0
+  - ref: "page-pagina-3"
+    x: 145.0
+    "y": 210.0
+  - ref: "page-pagina"
+    x: 405.0
+    "y": 210.0
 - id: "context-map"
   detail: "detail"
   nodes:

@@ -693,6 +693,7 @@ export type ModuxCommand =
       parentLabel?: string;
     }
   | { kind: 'remove-menu-item'; appId: string; label?: string; itemId?: string }
+  | { kind: 'move-menu-item'; appId: string; toAppId: string; itemId?: string; label?: string }
   | {
       kind: 'set-menu-page';
       appId: string;

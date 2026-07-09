@@ -1118,7 +1118,8 @@ export class ModuxCanvas extends LitElement {
         ${selected &&
         this.connectable &&
         (isChild
-          ? node.kind === 'aggregate' ||
+          ? node.kind === 'menu-item' ||
+            node.kind === 'aggregate' ||
             node.kind === 'domain-service' ||
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
