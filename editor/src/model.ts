@@ -537,6 +537,9 @@ export interface ModuxModel {
   pages?: UiPageRef[];
   /** Actor → app links (Role.uiAdapterIds). */
   actorAppUses?: ActorAppUseRef[];
+  /** id+name catalogs for the designer's pickers. */
+  models?: { id: string; name: string }[];
+  modelMappings?: { id: string; name: string }[];
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
   relations: ContextMapRelation[];

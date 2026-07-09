@@ -29,6 +29,10 @@ export class ModuxFigma extends LitElement {
   @property({ attribute: false }) selectedId: string | null = null;
   /** Multi-selection (shift-click on titles), owned by the shell like selectedId. */
   @property({ attribute: false }) selectedIds: string[] = [];
+  /** Pickers handed down to every frame. */
+  @property({ attribute: false }) models: { id: string; name: string }[] = [];
+  @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
+  @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
 
   /** Camera: screen-space pan + zoom. */
   @state() private _t = { x: 40, y: 40, k: 0.85 };
@@ -126,6 +130,21 @@ export class ModuxFigma extends LitElement {
     this.removeEventListener('pointercancel', this.onUp);
     this.removeEventListener('wheel', this.onWheel);
     super.disconnectedCallback();
+  }
+
+  /** A client point → surface coordinates (palette drops share the canvas contract). */
+  sceneFromClient(clientX: number, clientY: number): Point {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - this._t.x) / this._t.k,
+      y: (clientY - rect.top - this._t.y) / this._t.k,
+    };
+  }
+
+  /** The frame under a client point, if any (same contract as the canvas). */
+  nodeIdAtClient(clientX: number, clientY: number): string | null {
+    const el = this.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    return (el?.closest?.('.frame') as HTMLElement | null)?.dataset.pageId ?? null;
   }
 
   /** The frame's top-left in surface coordinates (layout, live drag, or default grid). */
@@ -226,6 +245,28 @@ export class ModuxFigma extends LitElement {
               <modux-page-designer
                 framed
                 .page=${page}
+                .models=${this.models}
+                .mappings=${this.mappings}
+                .useCases=${this.useCases}
+                @page-renamed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-renamed', { pageId: page.id, ...e.detail });
+                }}
+                @page-type-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-type-changed', { pageId: page.id, ...e.detail });
+                }}
+                @page-route-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-route-changed', { pageId: page.id, ...e.detail });
+                }}
+                @page-model-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-model-changed', { pageId: page.id, ...e.detail });
+                }}
+                @button-added=${(e: CustomEvent) => this.emit('page-button-added', { pageId: page.id, ...e.detail })}
+                @button-changed=${(e: CustomEvent) => this.emit('page-button-changed', { pageId: page.id, ...e.detail })}
+                @button-removed=${(e: CustomEvent) => this.emit('page-button-removed', { pageId: page.id, ...e.detail })}
                 @open-crud=${() => this.emit('page-open-crud', { pageId: page.id })}
                 @field-config-changed=${(e: CustomEvent) =>
                   this.emit('page-field-config-changed', { pageId: page.id, ...e.detail })}

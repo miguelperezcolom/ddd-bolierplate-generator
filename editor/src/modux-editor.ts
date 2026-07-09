@@ -718,7 +718,7 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'workflows', 'ui'].includes(this._view)) {
+        if (['context-map', 'workflows', 'ui', 'design'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
@@ -1067,6 +1067,31 @@ export class ModuxEditor extends LitElement {
         const button = (page?.buttons ?? []).find((b) => b.useCaseId === c.useCaseId);
         return button
           ? [{ kind: 'add-page-button', pageId: c.pageId, useCaseId: c.useCaseId, label: button.label }]
+          : null;
+      }
+      case 'rename-ui-page': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        return page ? [{ kind: 'rename-ui-page', pageId: c.pageId, name: page.name }] : null;
+      }
+      case 'set-page-type': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        return page ? [{ kind: 'set-page-type', pageId: c.pageId, pageType: page.type ?? 'FORM' }] : null;
+      }
+      case 'set-page-route': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        return page?.route ? [{ kind: 'set-page-route', pageId: c.pageId, path: page.route }] : null;
+      }
+      case 'set-page-button': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        const button = (page?.buttons ?? []).find((b) => b.useCaseId === c.useCaseId);
+        return button
+          ? [{
+              kind: 'set-page-button',
+              pageId: c.pageId,
+              useCaseId: c.useCaseId,
+              label: button.label ?? null,
+              mappingId: button.mappingId ?? null,
+            }]
           : null;
       }
       case 'set-page-listing': {
@@ -3996,9 +4021,45 @@ export class ModuxEditor extends LitElement {
       .layout=${vl.nodes}
       .selectedId=${this._selectedId}
       .selectedIds=${this._multi}
+      .models=${this.model.models ?? []}
+      .mappings=${this.model.modelMappings ?? []}
+      .useCases=${this.model.modules.flatMap((mod) =>
+        (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
+      )}
+      @dragover=${(e: DragEvent) => e.preventDefault()}
+      @drop=${this.onPaletteDrop}
       @node-moved=${this.onNodeMoved}
       @element-selected=${this.onElementSelected}
       @element-multi-toggled=${this.onMultiToggled}
+      @page-renamed=${(e: CustomEvent) =>
+        this.command({ kind: 'rename-ui-page', pageId: e.detail.pageId, name: e.detail.name })}
+      @page-type-changed=${(e: CustomEvent) =>
+        this.command({ kind: 'set-page-type', pageId: e.detail.pageId, pageType: e.detail.pageType })}
+      @page-route-changed=${(e: CustomEvent) =>
+        this.command({ kind: 'set-page-route', pageId: e.detail.pageId, path: e.detail.route })}
+      @page-model-changed=${(e: CustomEvent) =>
+        this.command({ kind: 'set-page-model', pageId: e.detail.pageId, modelId: e.detail.modelId })}
+      @page-button-added=${(e: CustomEvent) =>
+        this.command({
+          kind: 'add-page-button',
+          pageId: e.detail.pageId,
+          useCaseId: e.detail.useCaseId,
+          label: e.detail.label,
+        })}
+      @page-button-changed=${(e: CustomEvent) =>
+        this.command({
+          kind: 'set-page-button',
+          pageId: e.detail.pageId,
+          useCaseId: e.detail.useCaseId,
+          label: e.detail.label,
+          mappingId: e.detail.mappingId,
+        })}
+      @page-button-removed=${(e: CustomEvent) =>
+        this.command({
+          kind: 'remove-page-button',
+          pageId: e.detail.pageId,
+          useCaseId: e.detail.useCaseId,
+        })}
       @page-open-crud=${(e: CustomEvent) => {
         this.emit('modux-activate', { elementType: 'page', id: e.detail.pageId });
       }}
@@ -4210,9 +4271,12 @@ export class ModuxEditor extends LitElement {
     if (!raw) return;
     e.preventDefault();
     // Whichever surface is showing takes the drop — canvas and tilt share the API.
-    const surface = this._tilt
-      ? this.renderRoot.querySelector('modux-tilt')
-      : this.renderRoot.querySelector('modux-canvas');
+    const surface =
+      this._view === 'design'
+        ? this.renderRoot.querySelector('modux-figma')
+        : this._tilt
+          ? this.renderRoot.querySelector('modux-tilt')
+          : this.renderRoot.querySelector('modux-canvas');
     if (!surface) return;
     const pos = surface.sceneFromClient(e.clientX, e.clientY);
     const targetId = surface.nodeIdAtClient(e.clientX, e.clientY);
@@ -4625,7 +4689,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
@@ -4634,7 +4698,9 @@ export class ModuxEditor extends LitElement {
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
             ? ['ui-app', 'page', 'menu-item'].includes(k.type)
-            : !['ui-app', 'page', 'menu-item'].includes(k.type)) &&
+            : this._view === 'design'
+              ? k.type === 'page'
+              : !['ui-app', 'page', 'menu-item'].includes(k.type)) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
@@ -4868,7 +4934,7 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'workflows', 'ui'].includes(this._view)}
+          ?hidden=${!['context-map', 'workflows', 'ui', 'design'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -5351,7 +5417,9 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._view === 'design' ? this.renderFigma() : this._tilt
+      ${this._view === 'design'
+        ? html`${this.renderPalette()}${this.renderFigma()}`
+        : this._tilt
         ? html`
       ${this.renderPalette()}
       <modux-tilt

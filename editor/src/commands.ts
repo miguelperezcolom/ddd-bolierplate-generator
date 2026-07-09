@@ -726,6 +726,16 @@ export type ModuxCommand =
     }
   | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string }
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
+  | { kind: 'rename-ui-page'; pageId: string; name: string }
+  | { kind: 'set-page-type'; pageId: string; pageType: string }
+  | { kind: 'set-page-route'; pageId: string; path: string }
+  | {
+      kind: 'set-page-button';
+      pageId: string;
+      useCaseId: string;
+      label: string | null;
+      mappingId: string | null;
+    }
   | { kind: 'set-page-listing'; pageId: string; queryServiceId: string | null }
   | { kind: 'set-page-model'; pageId: string; modelId: string | null }
   | {

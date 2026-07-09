@@ -35,6 +35,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -240,6 +241,8 @@ public class EditorApiController {
     public record UiPageButtonDto(String label, String useCaseId, String mappingId) {}
     /** An actor uses a UI app (RoleEntity.uiAdapterIds — the actor→app link of the UI map). */
     public record ActorAppUseDto(String actorId, String appId) {}
+    /** A bare id+name reference (models, mappings…) for the designer's pickers. */
+    public record NamedRefDto(String id, String name) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -287,7 +290,9 @@ public class EditorApiController {
             List<ApiOperationImplementationDto> apiOperationImplementations,
             List<UiAppDto> uiApps,
             List<UiPageDto> pages,
-            List<ActorAppUseDto> actorAppUses) {}
+            List<ActorAppUseDto> actorAppUses,
+            List<NamedRefDto> models,
+            List<NamedRefDto> modelMappings) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -868,7 +873,11 @@ public class EditorApiController {
                 apiOperationImplementations,
                 uiApps,
                 pages,
-                actorAppUses.stream().distinct().toList());
+                actorAppUses.stream().distinct().toList(),
+                repository.findAllOfType(ModelEntity.class).stream()
+                        .map(x -> new NamedRefDto(x.id(), x.name())).toList(),
+                repository.findAllOfType(ModelMappingEntity.class).stream()
+                        .map(x -> new NamedRefDto(x.id(), x.name())).toList());
     }
 
     private static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
@@ -908,7 +917,7 @@ public class EditorApiController {
                                 String fieldId, String stereotype, Integer colspan,
                                 List<String> fieldIds,
                                 String itemId, String parentId, String toAppId,
-                                String queryOperationId) {}
+                                String queryOperationId, String mappingId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1074,6 +1083,10 @@ public class EditorApiController {
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
             case "set-page-model" -> setPageModel(command);
+            case "rename-ui-page" -> renameUiPage(command);
+            case "set-page-type" -> setPageType(command);
+            case "set-page-route" -> setPageRoute(command);
+            case "set-page-button" -> setPageButton(command);
             case "set-page-field-config" -> setPageFieldConfig(command);
             case "set-page-field-order" -> setPageFieldOrder(command);
             case "add-actor-app" -> addActorApp(command);
@@ -3763,6 +3776,57 @@ public class EditorApiController {
                         new PageFieldConfigEntity(id, null, null, null, null, null, null)))
                 .toList();
         repository.save(withFieldConfigs(page, configs));
+    }
+
+    private void renameUiPage(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        repository.save(new PageEntity(page.id(), command.name(), page.route(), page.type(),
+                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
+                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
+                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
+                page.listingQueryServiceId()));
+    }
+
+    private void setPageType(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        repository.save(new PageEntity(page.id(), page.name(), page.route(), command.pageType(),
+                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
+                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
+                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
+                page.listingQueryServiceId()));
+    }
+
+    private void setPageRoute(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        repository.save(new PageEntity(page.id(), page.name(), command.path(), page.type(),
+                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
+                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
+                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
+                page.listingQueryServiceId()));
+    }
+
+    /** Edits an existing toolbar/bottomBar button (matched by useCaseId): label and mapping. */
+    private void setPageButton(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (command.mappingId() != null) {
+            repository.findById(command.mappingId(), ModelMappingEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown mapping: " + command.mappingId()));
+        }
+        java.util.function.Function<List<PageButtonEntity>, List<PageButtonEntity>> edit = buttons ->
+                (buttons == null ? List.<PageButtonEntity>of() : buttons).stream()
+                        .map(b -> command.useCaseId().equals(b.useCaseId())
+                                ? new PageButtonEntity(
+                                        command.label() != null && !command.label().isBlank()
+                                                ? command.label() : b.label(),
+                                        b.icon(), b.useCaseId(), b.actionId(), command.mappingId())
+                                : b)
+                        .toList();
+        repository.save(withButtons(page, edit.apply(page.toolbar()), edit.apply(page.bottomBar())));
     }
 
     /** Record copy with only fieldConfigs replaced — every other field preserved verbatim. */

@@ -26,6 +26,10 @@ export class ModuxPageDesigner extends LitElement {
   @property({ attribute: false }) page: UiPageRef | null = null;
   /** Rendered as a frame on the Diseño surface (relative, fixed size, no close). */
   @property({ type: Boolean, reflect: true }) framed = false;
+  /** Pickers for the declaration: every model, mapping and use case of the catalog. */
+  @property({ attribute: false }) models: { id: string; name: string }[] = [];
+  @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
+  @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
 
   /** The field whose declaration is being edited, with the draft values. */
   @state() private _editing: {
@@ -36,6 +40,11 @@ export class ModuxPageDesigner extends LitElement {
   } | null = null;
   @state() private _dragId: string | null = null;
   @state() private _overId: string | null = null;
+  /** Inline edits of the page's own declaration. */
+  @state() private _rename: string | null = null;
+  @state() private _route: string | null = null;
+  /** The button being edited ('' useCaseId = adding a new one). */
+  @state() private _btn: { useCaseId: string; label: string; mappingId: string } | null = null;
 
   private emitEvent(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -105,6 +114,58 @@ export class ModuxPageDesigner extends LitElement {
       background: #e0f2fe;
       border-radius: 4px;
       padding: 2px 5px;
+    }
+    .chrome select.type,
+    .chrome input.inline {
+      font: inherit;
+      font-size: 11px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      padding: 2px 4px;
+      min-width: 0;
+    }
+    .chrome span.type,
+    .chrome .route,
+    .chrome .title {
+      cursor: text;
+    }
+    .toolbar .btn {
+      cursor: pointer;
+    }
+    .toolbar .add {
+      border: 1px dashed #94a3b8;
+      color: #64748b;
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .vm {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .vm select {
+      font: inherit;
+      font-size: 11px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      padding: 2px 4px;
+      max-width: 200px;
+    }
+    .vm .chip {
+      color: #7c3aed;
+      background: #f5f3ff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-weight: 600;
     }
     .chrome button {
       border: 1px solid #cbd5e1;
@@ -310,6 +371,40 @@ export class ModuxPageDesigner extends LitElement {
     return html`<div class="control">Texto…</div>`;
   }
 
+  private applyRename(): void {
+    const name = (this._rename ?? '').trim();
+    this._rename = null;
+    if (name && name !== this.page?.name) this.emitEvent('page-renamed', { name });
+  }
+
+  private applyRoute(): void {
+    const route = (this._route ?? '').trim();
+    this._route = null;
+    if (route && route !== this.page?.route) this.emitEvent('page-route-changed', { route });
+  }
+
+  private applyButton(existing: boolean): void {
+    const draft = this._btn;
+    this._btn = null;
+    if (!draft || !draft.useCaseId) return;
+    if (existing) {
+      this.emitEvent('button-changed', {
+        useCaseId: draft.useCaseId,
+        label: draft.label.trim() || null,
+        mappingId: draft.mappingId || null,
+      });
+    } else {
+      this.emitEvent('button-added', { useCaseId: draft.useCaseId, label: draft.label.trim() || undefined });
+      if (draft.mappingId) {
+        this.emitEvent('button-changed', {
+          useCaseId: draft.useCaseId,
+          label: draft.label.trim() || null,
+          mappingId: draft.mappingId,
+        });
+      }
+    }
+  }
+
   private onFieldClick(field: UiFieldRef): void {
     this._editing = {
       fieldId: field.fieldId,
@@ -352,21 +447,84 @@ export class ModuxPageDesigner extends LitElement {
     return html`
       <div class="chrome">
         <span class="dots"><span></span><span></span><span></span></span>
-        <span class="title">${page.name}</span>
-        <span class="type">${page.type ?? 'FORM'}</span>
-        ${page.route ? html`<span class="route">${page.route}</span>` : nothing}
+        ${this._rename !== null
+          ? html`<input
+              class="inline"
+              style="flex:1"
+              .value=${this._rename}
+              @input=${(e: Event) => (this._rename = (e.target as HTMLInputElement).value)}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter') this.applyRename();
+                if (e.key === 'Escape') this._rename = null;
+              }}
+              @blur=${() => this.applyRename()}
+            />`
+          : html`<span class="title" title="Doble click para renombrar" @dblclick=${() => (this._rename = page.name)}
+              >${page.name}</span
+            >`}
+        <select
+          class="type"
+          title="Tipo de página"
+          @change=${(e: Event) =>
+            this.emitEvent('page-type-changed', { pageType: (e.target as HTMLSelectElement).value })}
+        >
+          ${['FORM', 'CRUD', 'DASHBOARD', 'WIZARD'].map(
+            (t) => html`<option value=${t} ?selected=${(page.type ?? 'FORM') === t}>${t}</option>`,
+          )}
+        </select>
+        ${this._route !== null
+          ? html`<input
+              class="inline"
+              style="width:110px"
+              .value=${this._route}
+              @input=${(e: Event) => (this._route = (e.target as HTMLInputElement).value)}
+              @keydown=${(e: KeyboardEvent) => {
+                if (e.key === 'Enter') this.applyRoute();
+                if (e.key === 'Escape') this._route = null;
+              }}
+              @blur=${() => this.applyRoute()}
+            />`
+          : html`<span class="route" title="Click para editar la ruta" @click=${() => (this._route = page.route ?? '/')}
+              >${page.route ?? '/…'}</span
+            >`}
         <button @click=${() => this.emitEvent('open-crud')} title="Abrir la ficha completa de la página">Ficha</button>
         <button class="close" @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
       </div>
       <div class="toolbar">
         ${(page.buttons ?? []).map(
-          (b) => html`<span class="btn" title=${b.useCaseId ?? ''}>${b.label}</span>`,
+          (b) => html`<span
+            class="btn"
+            title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : (b.useCaseId ?? '')}
+            @click=${() =>
+              (this._btn = {
+                useCaseId: b.useCaseId ?? '',
+                label: b.label ?? '',
+                mappingId: b.mappingId ?? '',
+              })}
+            >${b.label}</span
+          >`,
         )}
-        <span class="hint">
-          ${(page.buttons ?? []).length
-            ? ''
-            : 'Sin botones — suelta un caso de uso sobre la página en el mapa'}
-        </span>
+        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '' })}>
+          + botón
+        </button>
+      </div>
+      <div class="vm">
+        viewmodel:
+        ${page.modelId
+          ? html`<span class="chip">${page.modelName ?? page.modelId}</span>`
+          : html`<span>—</span>`}
+        <select
+          title="Asignar el Model que hace de viewmodel"
+          @change=${(e: Event) => {
+            const value = (e.target as HTMLSelectElement).value;
+            this.emitEvent('page-model-changed', { modelId: value === '' ? null : value });
+          }}
+        >
+          <option value="" ?selected=${!page.modelId}>(sin viewmodel)</option>
+          ${this.models.map(
+            (m) => html`<option value=${m.id} ?selected=${m.id === page.modelId}>${m.name}</option>`,
+          )}
+        </select>
       </div>
       <div class="body">
         ${listing
@@ -408,6 +566,57 @@ export class ModuxPageDesigner extends LitElement {
               Asigna un <b>Model</b> en su ficha y el formulario se inferirá solo, al estilo Mateu.
             </div>`}
       </div>
+      ${this._btn
+        ? (() => {
+            const existing = (this.page?.buttons ?? []).some((b) => b.useCaseId === this._btn!.useCaseId);
+            return html`<div class="pop">
+              <label>Caso de uso</label>
+              <select
+                ?disabled=${existing}
+                @change=${(e: Event) =>
+                  (this._btn = { ...this._btn!, useCaseId: (e.target as HTMLSelectElement).value })}
+              >
+                <option value="" ?selected=${!this._btn.useCaseId}>elige…</option>
+                ${this.useCases.map(
+                  (u) => html`<option value=${u.id} ?selected=${u.id === this._btn!.useCaseId}>${u.name}</option>`,
+                )}
+              </select>
+              <label>Etiqueta</label>
+              <input
+                placeholder="(el nombre del caso de uso)"
+                .value=${this._btn.label}
+                @input=${(e: Event) => (this._btn = { ...this._btn!, label: (e.target as HTMLInputElement).value })}
+              />
+              <label>Mapping</label>
+              <select
+                style="grid-column: 2 / -1"
+                title="ModelMapping del viewmodel al request del caso de uso"
+                @change=${(e: Event) =>
+                  (this._btn = { ...this._btn!, mappingId: (e.target as HTMLSelectElement).value })}
+              >
+                <option value="" ?selected=${!this._btn.mappingId}>(el viewmodel viaja tal cual)</option>
+                ${this.mappings.map(
+                  (mm) => html`<option value=${mm.id} ?selected=${mm.id === this._btn!.mappingId}>${mm.name}</option>`,
+                )}
+              </select>
+              <div class="actions">
+                ${existing
+                  ? html`<button
+                      @click=${() => {
+                        const useCaseId = this._btn!.useCaseId;
+                        this._btn = null;
+                        this.emitEvent('button-removed', { useCaseId });
+                      }}
+                    >
+                      Quitar
+                    </button>`
+                  : nothing}
+                <button @click=${() => (this._btn = null)}>Cancelar</button>
+                <button class="ok" @click=${() => this.applyButton(existing)}>Aplicar</button>
+              </div>
+            </div>`;
+          })()
+        : nothing}
       ${this._editing
         ? html`<div class="pop">
             <label>Estereotipo</label>
