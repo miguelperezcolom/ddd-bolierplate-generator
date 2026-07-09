@@ -52,6 +52,9 @@ public class ModelMcpTools {
     private final AiCompleteCodeUseCase aiCompleteCodeUseCase;
     private final GlobalIdPolicy idPolicy;
 
+    private final io.mateu.modux.modeldrivengenerator.application.out.store.WorkspaceStore workspace;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService mergeService;
     private final ObjectMapper json = new ObjectMapper();
     private final YAMLMapper yaml = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelYaml.writer();
 
@@ -141,6 +144,43 @@ public class ModelMcpTools {
                                         "description", "Only return findings of this severity and above "
                                                 + "(ERROR < WARNING < INFO). Default: all.")),
                                 List.of())),
+                new ToolSpec("workspace_status",
+                        "System/solutions workspace: the active branch (main = the as-is), the open "
+                                + "solutions, and the semantic diff summary of the current one.",
+                        obj(Map.of(), List.of())),
+                new ToolSpec("create_solution",
+                        "Branch a new TO-BE solution off the system and switch to it. Work there, then "
+                                + "walk it through set_solution_status and merge_solution.",
+                        obj(Map.of("name", str("Solution name")), List.of("name"))),
+                new ToolSpec("switch_solution",
+                        "Check out a workspace: 'main' (the system) or a solution branch id.",
+                        obj(Map.of("branch", str("'main' or 'solution/<slug>'")), List.of("branch"))),
+                new ToolSpec("solution_diff",
+                        "The semantic diff of the current solution against the system, element by element "
+                                + "(ADDED/MODIFIED/REMOVED). Empty on the system.",
+                        obj(Map.of(), List.of())),
+                new ToolSpec("set_solution_status",
+                        "Move the current solution through its lifecycle: EXPLORING → PROPOSED → APPROVED. "
+                                + "APPROVED enforces the gate (green lint + no open decisions).",
+                        obj(Map.of("status", Map.of("type", "string",
+                                        "enum", List.of("PROPOSED", "APPROVED"),
+                                        "description", "Target status")),
+                                List.of("status"))),
+                new ToolSpec("merge_solution",
+                        "Semantic merge of the APPROVED current solution into the system (it becomes the new "
+                                + "as-is and the branch is archived). Conflicts (same element changed on both "
+                                + "sides) must come resolved in 'resolutions'.",
+                        obj(Map.of("resolutions", Map.of("type", "object",
+                                        "description", "Conflict key ('type:id') → 'system' | 'solution'",
+                                        "additionalProperties", Map.of("type", "string"))),
+                                List.of())),
+                new ToolSpec("update_solution_from_system",
+                        "Bring the system's advances into the current solution (the semantic rebase); same "
+                                + "resolutions contract as merge_solution.",
+                        obj(Map.of("resolutions", Map.of("type", "object",
+                                        "description", "Conflict key ('type:id') → 'system' | 'solution'",
+                                        "additionalProperties", Map.of("type", "string"))),
+                                List.of())),
                 new ToolSpec("list_recipes",
                         "List the starter recipes: parameterized templates that emit intent-layer elements "
                                 + "(flows, processes) instead of structural pieces. Prefer a recipe over building "
@@ -189,6 +229,13 @@ public class ModelMcpTools {
             case "delete_element" -> deleteElement(requireText(args, "type"), requireText(args, "id"));
             case "check_model" -> checkModel();
             case "lint_model" -> lintModel(args != null && args.hasNonNull("severity") ? args.get("severity").asText() : null);
+            case "workspace_status" -> workspaceStatus();
+            case "create_solution" -> { workspace.createSolution(requireText(args, "name")); yield workspaceStatus(); }
+            case "switch_solution" -> { workspace.switchTo(requireText(args, "branch")); yield workspaceStatus(); }
+            case "solution_diff" -> yamlOf(diffService.diffAgainstSystem());
+            case "set_solution_status" -> yamlOf(mergeService.setStatus(requireText(args, "status")));
+            case "merge_solution" -> { mergeService.mergeIntoSystem(resolutions(args)); yield workspaceStatus(); }
+            case "update_solution_from_system" -> { mergeService.updateFromSystem(resolutions(args)); yield workspaceStatus(); }
             case "list_recipes" -> listRecipes();
             case "apply_recipe" -> applyRecipe(requireText(args, "recipe"), args.get("params"));
             case "propose_implementations" -> proposeImplementations(requireText(args, "projectId"),
@@ -546,4 +593,29 @@ public class ModelMcpTools {
         return Map.of("type", "string", "description", description);
     }
 
+
+    // ---- system/solutions workspace ------------------------------------------
+
+    private String workspaceStatus() throws Exception {
+        var diff = diffService.diffAgainstSystem();
+        return yamlOf(Map.of(
+                "current", workspace.currentBranch(),
+                "system", workspace.onSystem(),
+                "solutions", workspace.solutionBranches(),
+                "diff", Map.of("added", diff.added(), "modified", diff.modified(),
+                        "removed", diff.removed())));
+    }
+
+    private java.util.Map<String, String> resolutions(JsonNode args) {
+        var map = new java.util.LinkedHashMap<String, String>();
+        if (args != null && args.hasNonNull("resolutions")) {
+            args.get("resolutions").properties()
+                    .forEach(e -> map.put(e.getKey(), e.getValue().asText()));
+        }
+        return map;
+    }
+
+    private String yamlOf(Object value) throws Exception {
+        return yaml.writeValueAsString(value);
+    }
 }

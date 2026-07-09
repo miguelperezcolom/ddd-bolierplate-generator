@@ -5,6 +5,15 @@ description: Let an AI agent build and validate the Modux spec conversationally 
 
 Modux positions AI as the natural-language-to-model translator: you describe the system, the agent writes the spec, Modux generates the code deterministically. The **MCP authoring server** turns that stance into tooling — any MCP client (Claude Code, IDE assistants, custom agents) can create, inspect and validate model elements directly against the store, with the linter closing the feedback loop in the same conversation.
 
+## System & solutions over MCP
+
+The AI can drive the [solutions workflow](/manual/solutions/) too: `workspace_status`
+(branch, solutions, diff summary), `create_solution` / `switch_solution`,
+`solution_diff` (the semantic element-by-element diff), `set_solution_status`
+(APPROVED enforces the gate) and `merge_solution` / `update_solution_from_system`
+(conflicts come back listed; resolve them per element with the `resolutions` map).
+Same contract as the editor's bar — and it works on git AND database repositories.
+
 ## Starting the server
 
 ```bash
