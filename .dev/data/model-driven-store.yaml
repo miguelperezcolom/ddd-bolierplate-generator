@@ -1445,6 +1445,10 @@ roles:
 - id: "actor-2"
   name: "Actor 2"
 pages:
+- id: "page-pagina-5"
+  name: "Página 5"
+  route: "/page-pagina-5"
+  type: "FORM"
 - id: "page-pagina-2"
   name: "Página 2"
   route: "/page-pagina-2"
@@ -1453,6 +1457,11 @@ pages:
   name: "Página 4"
   route: "/page-pagina-4"
   type: "FORM"
+  toolbar:
+  - label: "CrearHabitacionHousekeeping"
+    useCaseId: "uc-crearHabitacion-hk"
+  - label: "EliminarHabitacionHousekeeping"
+    useCaseId: "uc-eliminarHabitacion-hk"
 - id: "page-pagina-3"
   name: "Página 3"
   route: "/page-pagina-3"
@@ -1470,30 +1479,45 @@ uiAdapters:
     children:
     - label: "Entrada 3"
       id: "mi-entrada-3"
+    id: "mi-entrada"
   - label: "Entrada"
+    id: "mi-entrada-2"
   - label: "Entrada"
+    id: "mi-entrada-4"
   - label: "Página"
     pageId: "page-pagina"
     children:
     - label: "Entrada 2"
-      id: "mi-entrada-2"
+      id: "mi-entrada-2-2"
+    id: "mi-p-gina"
   - label: "Entrada"
+    id: "mi-entrada-5"
 - id: "app-app-3"
   name: "App 3"
   title: "App 3"
   menuItems:
-  - label: "Entrada 4"
-    id: "mi-entrada-4"
   - label: "Página 3"
     pageId: "page-pagina-3"
-  - label: "Página 4"
-    pageId: "page-pagina-4"
+    children:
+    - label: "Entrada 5"
+      pageId: "page-pagina-5"
+      id: "mi-entrada-5-2"
+    id: "mi-p-gina-3"
+  - label: "Página 5"
+    pageId: "page-pagina-5"
+    id: "mi-p-gina-5"
 - id: "app-app-2"
   name: "App 2"
   title: "App 2"
   menuItems:
   - label: "Página 2"
     pageId: "page-pagina-2"
+    id: "mi-p-gina-2"
+  - label: "Entrada 4"
+    id: "mi-entrada-4"
+  - label: "Página 4"
+    pageId: "page-pagina-5"
+    id: "mi-p-gina-4"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1752,7 +1776,7 @@ diagrams:
     x: 495.0
     "y": 391.0
   - ref: "app-app-2"
-    x: 175.0
+    x: 87.2
     "y": 355.0
   - ref: "page-pagina-2"
     x: 145.0
@@ -1766,6 +1790,9 @@ diagrams:
   - ref: "page-pagina"
     x: 405.0
     "y": 210.0
+  - ref: "page-pagina-5"
+    x: 780.0
+    "y": 350.0
 - id: "context-map"
   detail: "detail"
   nodes:

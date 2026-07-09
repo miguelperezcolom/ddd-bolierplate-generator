@@ -100,9 +100,23 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         fill: '#ffffff',
         stroke: '#7dd3fc',
         parentId: app.id,
-        tooltip: entry.pageId ? `Abre ${entry.pageId}` : 'Entrada de menú sin página',
+        tooltip: entry.pageId
+          ? `Abre ${entry.pageId}`
+          : entry.uiAdapterId
+            ? `Abre la app ${entry.uiAdapterId}`
+            : 'Entrada de menú sin destino',
       });
       entryY += ENTRY_H + ENTRY_GAP;
+      if (entry.uiAdapterId && apps.some((a) => a.id === entry.uiAdapterId)) {
+        edges.push({
+          id: `menuapp:${id}->${entry.uiAdapterId}`,
+          sourceId: id,
+          targetId: entry.uiAdapterId,
+          kind: 'menu-app',
+          color: '#64748b',
+          arrow: true,
+        });
+      }
       if (entry.pageId && pages.some((p) => p.id === entry.pageId)) {
         edges.push({
           id: `menupage:${id}->${entry.pageId}`,

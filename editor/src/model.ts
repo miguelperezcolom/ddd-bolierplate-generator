@@ -476,6 +476,8 @@ export interface UiMenuEntryRef {
   children?: UiMenuEntryRef[];
   /** Stable identity (labels repeat and rename); absent on pre-id stores. */
   id?: string;
+  /** The app this entry opens — an app is just another UI component, like a page. */
+  uiAdapterId?: string;
 }
 
 export interface UiAppRef {

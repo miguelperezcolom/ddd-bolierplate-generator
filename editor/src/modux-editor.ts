@@ -990,7 +990,8 @@ export class ModuxEditor extends LitElement {
       case 'add-menu-item':
         return [{ kind: 'remove-menu-item', appId: c.appId, itemId: c.itemId, label: c.label }];
       case 'remove-menu-item':
-      case 'set-menu-page': {
+      case 'set-menu-page':
+      case 'set-menu-app': {
         const app = (this.model.uiApps ?? []).find((a) => a.id === c.appId);
         const find = (items: UiMenuEntryRef[] | undefined): UiMenuEntryRef | null => {
           for (const it of items ?? []) {
@@ -1002,21 +1003,31 @@ export class ModuxEditor extends LitElement {
         };
         const entry = c.itemId || c.label ? find(app?.menuItems) : null;
         if (!entry) return null;
-        return c.kind === 'remove-menu-item'
-          ? [{
-              kind: 'add-menu-item',
-              appId: c.appId,
-              label: entry.label,
-              pageId: entry.pageId ?? null,
-              itemId: entry.id,
-            }]
-          : [{
-              kind: 'set-menu-page',
-              appId: c.appId,
-              pageId: entry.pageId ?? null,
-              itemId: c.itemId,
-              label: c.label,
-            }];
+        if (c.kind === 'remove-menu-item') {
+          return [{
+            kind: 'add-menu-item',
+            appId: c.appId,
+            label: entry.label,
+            pageId: entry.pageId ?? null,
+            itemId: entry.id,
+          }];
+        }
+        if (c.kind === 'set-menu-app') {
+          return [{
+            kind: 'set-menu-app',
+            appId: c.appId,
+            toAppId: entry.uiAdapterId ?? null,
+            itemId: c.itemId,
+            label: c.label,
+          }];
+        }
+        return [{
+          kind: 'set-menu-page',
+          appId: c.appId,
+          pageId: entry.pageId ?? null,
+          itemId: c.itemId,
+          label: c.label,
+        }];
       }
       case 'add-page-button':
         return [{ kind: 'remove-page-button', pageId: c.pageId, useCaseId: c.useCaseId }];
@@ -2146,20 +2157,15 @@ export class ModuxEditor extends LitElement {
         });
         return;
       }
-      // menu entry → another app: the entry (with its submenu) moves there
-      const movingRef = parseMenuNodeId(sourceId);
-      if (movingRef && isApp(targetId)) {
-        if (movingRef.appId !== targetId) {
-          this.command({ kind: 'move-menu-item', toAppId: targetId, ...movingRef });
-        }
-        return;
-      }
-      // menu entry → page (handle drag), or a catalog page dropped ON an entry: link them
+      // menu entry ↔ page or app: the entry OPENS that UI component (an app is just
+      // another component, like a page) — same gesture, both directions
       const menuRef = parseMenuNodeId(sourceId) ?? parseMenuNodeId(targetId);
       if (menuRef) {
-        const pageId = isPage(sourceId) ? sourceId : isPage(targetId) ? targetId : null;
-        if (pageId) {
-          this.command({ kind: 'set-menu-page', pageId, ...menuRef });
+        const other = parseMenuNodeId(sourceId) ? targetId : sourceId;
+        if (isPage(other)) {
+          this.command({ kind: 'set-menu-page', pageId: other, ...menuRef });
+        } else if (isApp(other) && other !== menuRef.appId) {
+          this.command({ kind: 'set-menu-app', toAppId: other, ...menuRef });
         }
         return;
       }
@@ -3029,6 +3035,9 @@ export class ModuxEditor extends LitElement {
         } else if ((m = /^menupage:(.+)->[^>]+$/.exec(id))) {
           const ref = parseMenuNodeId(m[1]);
           if (ref) this.command({ kind: 'set-menu-page', pageId: null, ...ref });
+        } else if ((m = /^menuapp:(.+)->[^>]+$/.exec(id))) {
+          const ref = parseMenuNodeId(m[1]);
+          if (ref) this.command({ kind: 'set-menu-app', toAppId: null, ...ref });
         }
         return;
       }

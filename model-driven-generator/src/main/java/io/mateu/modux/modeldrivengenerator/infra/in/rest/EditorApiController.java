@@ -225,7 +225,7 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
-    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id) {}
+    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId) {}
     /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
@@ -870,7 +870,7 @@ public class EditorApiController {
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
                         .map(EditorApiController::toMenuEntry)
                         .toList(),
-                item.id());
+                item.id(), item.uiAdapterId());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -1058,6 +1058,7 @@ public class EditorApiController {
             case "remove-menu-item" -> removeMenuItem(command);
             case "set-menu-page" -> setMenuPage(command);
             case "move-menu-item" -> moveMenuItem(command);
+            case "set-menu-app" -> setMenuApp(command);
             case "add-page-button" -> addPageButton(command);
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
@@ -3410,7 +3411,32 @@ public class EditorApiController {
                 .filter(r -> r.uiAdapterIds().contains(command.id()))
                 .forEach(r -> repository.save(r.withUiAdapterIds(
                         without(r.uiAdapterIds(), command.id()))));
+        // menu entries of OTHER apps pointing at this one lose their target, not their place
+        for (var other : repository.findAllOfType(UiAdapterEntity.class)) {
+            if (other.id().equals(command.id())) continue;
+            var cleared = withoutMenuAppRefs(other.menuItems(), command.id());
+            if (cleared != null) repository.save(withMenuItems(other, cleared));
+        }
         repository.deleteAllById(List.of(command.id()), UiAdapterEntity.class);
+    }
+
+    /** The tree with every reference to the given app cleared, or null when there were none. */
+    private static List<UiMenuItemEntity> withoutMenuAppRefs(List<UiMenuItemEntity> items,
+                                                             String appId) {
+        if (items == null) return null;
+        var changed = false;
+        var copy = new ArrayList<UiMenuItemEntity>();
+        for (var item : items) {
+            var clearedChildren = withoutMenuAppRefs(item.children(), appId);
+            var hit = appId.equals(item.uiAdapterId());
+            if (hit || clearedChildren != null) changed = true;
+            copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                    item.route(), item.pageId(),
+                    clearedChildren != null ? clearedChildren
+                            : item.children() == null ? List.of() : item.children(),
+                    item.id(), hit ? null : item.uiAdapterId()));
+        }
+        return changed ? copy : null;
     }
 
     private void createUiPage(EditorCommand command) {
@@ -3474,6 +3500,45 @@ public class EditorApiController {
                 repository.save(withMenuItems(app, pruned));
             }
         });
+    }
+
+    /** Points a menu entry at an APP — an app is just another UI component, like a page. */
+    private void setMenuApp(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.toAppId() != null) {
+            repository.findById(command.toAppId(), UiAdapterEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
+        }
+        var updated = withMenuApp(app.menuItems(), command.itemId(), command.label(), command.toAppId());
+        if (updated == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        repository.save(withMenuItems(app, updated));
+    }
+
+    /** The tree with the FIRST matching item's uiAdapterId replaced, or null when nothing matches. */
+    private static List<UiMenuItemEntity> withMenuApp(List<UiMenuItemEntity> items,
+                                                      String itemId, String label, String toAppId) {
+        if (items == null) return null;
+        for (var i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            if (menuItemMatches(item, itemId, label)) {
+                var copy = new ArrayList<>(items);
+                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                        item.route(), toAppId != null ? null : item.pageId(), item.children(),
+                        item.id(), toAppId));
+                return copy;
+            }
+            var newChildren = withMenuApp(item.children(), itemId, label, toAppId);
+            if (newChildren != null) {
+                var copy = new ArrayList<>(items);
+                copy.set(i, withChildren(item, newChildren));
+                return copy;
+            }
+        }
+        return null;
     }
 
     /** Moves a menu entry (subtree included) to another app's menu root. */
@@ -3721,7 +3786,7 @@ public class EditorApiController {
                     item.route(), item.pageId(),
                     healedChildren != null ? healedChildren
                             : item.children() == null ? List.of() : item.children(),
-                    id));
+                    id, item.uiAdapterId()));
         }
         return changed ? copy : null;
     }
@@ -3754,7 +3819,7 @@ public class EditorApiController {
     private static UiMenuItemEntity withChildren(UiMenuItemEntity item,
                                                  List<UiMenuItemEntity> children) {
         return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
-                item.pageId(), children, item.id());
+                item.pageId(), children, item.id(), item.uiAdapterId());
     }
 
     /**
@@ -3817,7 +3882,8 @@ public class EditorApiController {
             if (menuItemMatches(item, itemId, label)) {
                 var copy = new ArrayList<>(items);
                 copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), pageId, item.children(), item.id()));
+                        item.route(), pageId, item.children(), item.id(),
+                        pageId != null ? null : item.uiAdapterId()));
                 return copy;
             }
             var newChildren = withMenuPage(item.children(), itemId, label, pageId);
