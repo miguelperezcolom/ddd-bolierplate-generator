@@ -187,14 +187,16 @@ element from the project:
 
 ## System and solutions
 
-The **Modelo:** bar above the canvas switches between the **system** (the as-is,
-badge AS-IS) and any open **solution** (a to-be proposal, badge TO-BE) — see
-[System & Solutions](/manual/solutions/). On a solution the canvas shows the
-**semantic diff** against the system live: a dashed **green ring** marks elements
-that only exist in the solution, a dashed **amber ring** the modified ones, and the
-`＋n ～n −n` badge summarizes the change set (removed elements are listed in its
-tooltip). «＋ Nueva solución…» branches from the system; «⏏ Descartar» archives the
-current one.
+The **Modelo:** bar above the canvas shows the model being edited — the **system**
+(the as-is, badge AS-IS) or a **solution** (a to-be proposal, badge TO-BE) — see
+[System & Solutions](/manual/solutions/). **Switching lives in the app header**: the
+«Modelo» application context, next to «Repositorio» and «Proyecto», works from every
+page. The bar keeps what is editor-specific: «＋ Nueva solución…» branches from the
+system, and on a solution the lifecycle actions (Proponer, Actualizar del sistema,
+Mergear, Descartar) plus the live **semantic diff** against the system: a dashed
+**green ring** marks elements that only exist in the solution, a dashed **amber
+ring** the modified ones, and the `＋n ～n −n` badge summarizes the change set
+(removed elements are listed in its tooltip).
 
 ## Live updates
 

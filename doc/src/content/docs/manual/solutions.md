@@ -15,24 +15,89 @@ the solution's identity, the element-by-element diff, and the deliverable.
 
 ## Working with solutions
 
-The **Modelo:** bar above the [graphical editor](/manual/graphical-editor/) drives
-everything:
+The working model is **application-level context**: the header shows
+`Repositorio | Proyecto | Modelo` on every page. The «Modelo» selector is where you
+**see** which branch you are on («Sistema (as-is)» or «Solución: X») and where you
+**switch** — picking another model checks the branch out server-side before the
+request is handled, so the page that reloads already shows the other model. The
+selector queries the server when opened, so solutions created a moment ago are
+always listed.
 
-- **Sistema (as-is)** — the `main` branch, badge AS-IS.
+The **Modelo:** bar above the [graphical editor](/manual/graphical-editor/) keeps
+what is editor-specific:
+
+- the model being edited (read-only — switching lives in the header) and its badge
+  (AS-IS / TO-BE with the `＋n ～n −n` diff summary);
 - **＋ Nueva solución…** — branches from the system and registers a self-describing
   `Solution` element *in the branch's own store*: name, objective, status
   (`EXPLORING → PROPOSED → APPROVED → MERGED | DISCARDED`) and the
   [decisions](/reference/patterns/#decisions-adrs-and-traceability) it rests on. The
   list of solutions is derived from the branches — no duplicate registry.
-- **Switching** checks the branch out and reloads the catalog; pending work is
-  auto-committed (`wip: <branch>`) before every switch, so nothing is ever lost.
-- **⏏ Descartar** archives the solution as a tag (`archive/solution-x`) and deletes
-  the branch — history stays reachable, the branch list stays clean.
+- the lifecycle actions of the checked-out solution — see
+  [Approval and merge](#approval-and-merge).
 
-The store repo is initialised lazily on first use, with the current model as the
-system's baseline. **Point `modux.model-file` at a directory outside your code
-repository** — the store deserves its own repo (nesting it inside another git repo
-creates a gitlink).
+Whenever an editor action lands on another branch (creating a solution, discarding
+the current one, a merge), the header context is synchronised automatically — both
+indicators always tell the same story.
+
+## The solution lifecycle
+
+A solution walks through its statuses; each step is one button on the editor bar:
+
+| Status | Meaning | Next step |
+|---|---|---|
+| `EXPLORING` | Being designed — the default at birth. | **→ Proponer** |
+| `PROPOSED` | Ready for review; its HLA is the review artifact. | **✓ Aprobar** (gated) or back to work |
+| `APPROVED` | Green lint, no open decisions — implementable. | **⇧ Mergear al sistema** |
+| `MERGED` | Its changes ARE the system now; the branch is archived. | — |
+| `DISCARDED` | Abandoned; archived as a tag, reachable forever. | — |
+
+**⟳ Actualizar del sistema** can be used at any point of a living solution to bring
+in the system's advances (the semantic take on a rebase).
+
+## Git under the hood
+
+Git is an implementation detail: the UI never speaks of commits, and no git
+knowledge is needed. For the curious — and for whoever operates the repo from
+outside — this is what each action does in the store's repo:
+
+| Action in modux | Git effect |
+|---|---|
+| First solution ever (or first switch) | `git init` in the store folder + `checkout -B main` + baseline commit («sistema: línea base»). If the folder already is a git repo **without commits** (you ran `git init` yourself), the current store is committed as the baseline on `main`. |
+| ＋ Nueva solución «X» | auto-commit of pending work (`wip: <rama>`), `checkout main`, `checkout -b solution/x`, commit with the solution's registry. |
+| Switch model (header selector) | auto-commit of pending work on the branch you leave, `checkout` of the target, in-memory catalog reload. Nothing is ever lost. |
+| Every model edit | saved to the working tree immediately (no commit per edit); committed as `wip:` on the next branch change. |
+| ⏏ Descartar | tag `archive/solution-x` + `branch -D` — history stays reachable, the branch list stays clean. |
+| ⇧ Mergear al sistema | **semantic merge** (element by element, never textual) committed on `main` as a true merge commit (both parents), then the branch is archived like a discard. |
+| ⟳ Actualizar del sistema | same semantic machinery in the opposite direction, committed on the solution's branch. |
+| Semantic diff / merge base | read-only `git worktree` checkouts at temp paths, removed afterwards. |
+
+Modux **never touches remotes**: no fetch, no pull, no push, no rebase.
+
+## Outside modux: your repo, your rules
+
+The store repo is a perfectly normal git repository — everything modux does not do
+is yours to do with plain git, from the store folder:
+
+- **Where it lives** — for a `LOCAL` [repository](/manual/workspace/) the repo is the
+  folder itself; for a `GIT` repository it is the clone under
+  `~/.modux/checkouts/<id>`. Point local folders **outside** your code repository —
+  the store deserves its own repo (nesting it inside another git repo creates a
+  gitlink).
+- **Sharing and backup** — add a remote and push: `git push -u origin main` and
+  `git push origin solution/x`. Pulling colleagues' work is a plain `git pull`
+  (switch models or reload afterwards; modux detects external changes and reloads by
+  itself while running).
+- **Review as PRs** — a solution branch pushed to a forge is reviewable like any
+  other branch; the granular format (one YAML per element) makes textual diffs
+  readable, and the solution's HLA is the narrative companion.
+- **Manual merges and rebases** — legitimate whenever you prefer git's own tooling:
+  the granular format merges cleanly when different elements changed, and a textual
+  conflict means *the same element changed on both sides* — exactly the granularity
+  an architect wants to resolve. Modux's semantic merge is the assisted alternative,
+  not a requirement.
+- **History and archaeology** — `git log -- aggregates/reserva.yaml` is the history
+  of ONE element; discarded solutions live under `archive/*` tags.
 
 ## The working method: where does each change go?
 
