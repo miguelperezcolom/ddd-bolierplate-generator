@@ -522,6 +522,29 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** A bare Custom step (no counterpart on the map); typed steps come from gestures. */
+      kind: 'add-use-case-step';
+      useCaseId: string;
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-use-case-step';
+      useCaseId: string;
+      id: string;
+    }
+  | {
+      /** Use case A operates on aggregate B (a CallAggregateOperation step in A). */
+      kind: 'add-aggregate-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-aggregate-call';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** The source aggregate emits the target domain event. */
       kind: 'add-emission';
       sourceId: string;

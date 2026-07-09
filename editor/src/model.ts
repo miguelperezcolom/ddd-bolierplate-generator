@@ -23,6 +23,8 @@ export interface UseCaseRef {
   name: string;
   /** A policy: use-case-shaped reaction logic, not a business use case. */
   policy?: boolean;
+  /** Ids of the use case's steps (typed step editing stays in its form). */
+  stepIds?: string[];
 }
 
 export interface DomainEventRef {

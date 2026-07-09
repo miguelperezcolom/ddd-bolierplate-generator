@@ -1064,6 +1064,22 @@ export function contextMapScene(
         }))
     : [];
 
+  // Use case → aggregate: a CallAggregateOperation/SaveAggregate step, derived.
+  const aggCallEdges: SceneEdge[] = detailed
+    ? (model.aggregateCalls ?? [])
+        .filter((c) => nodeIds.has(c.sourceId) && nodeIds.has(c.targetId))
+        .map((c) => ({
+          id: `aggcall:${c.sourceId}->${c.targetId}`,
+          sourceId: c.sourceId,
+          targetId: c.targetId,
+          kind: 'agg-call',
+          color: '#b45309',
+          dashed: true,
+          arrow: true,
+          tooltip: 'opera sobre el agregado',
+        }))
+    : [];
+
   // Use case → query service consumption, and actor → use case/query service usage.
   const queryEdges: SceneEdge[] = detailed
     ? (model.queryCalls ?? [])
@@ -1694,6 +1710,7 @@ export function contextMapScene(
       ...projectionEdges,
       ...apiWireEdges,
       ...callEdges,
+      ...aggCallEdges,
       ...queryEdges,
       ...actorUseEdges,
       ...actorExternalEdges,

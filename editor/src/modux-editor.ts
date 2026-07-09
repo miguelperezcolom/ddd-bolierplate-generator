@@ -1014,6 +1014,12 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-use-case-call':
         return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-use-case-step':
+        return [{ kind: 'remove-use-case-step', useCaseId: c.useCaseId, id: c.id }];
+      case 'add-aggregate-call':
+        return [{ kind: 'remove-aggregate-call', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-aggregate-call':
+        return [{ kind: 'add-aggregate-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-emission':
         return [{ kind: 'remove-emission', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-emission':
@@ -2445,6 +2451,15 @@ export class ModuxEditor extends LitElement {
       if (!already) this.command({ kind: 'add-use-case-call', sourceId, targetId });
       return;
     }
+    // Use case → aggregate: the use case operates on it (a CallAggregateOperation
+    // step; the aggregate's single operation wires itself, more stay for the form).
+    if (ucIds.has(sourceId) && (this.model.aggregates ?? []).some((a) => a.id === targetId)) {
+      const already = (this.model.aggregateCalls ?? []).some(
+        (c) => c.sourceId === sourceId && c.targetId === targetId,
+      );
+      if (!already) this.command({ kind: 'add-aggregate-call', sourceId, targetId });
+      return;
+    }
     if (
       (emitterIds.has(sourceId) && eventIds.has(targetId)) ||
       (ucIds.has(sourceId) && appEventIds.has(targetId))
@@ -2784,6 +2799,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'agg-call') {
+      const match = /^aggcall:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-aggregate-call', sourceId: match[1], targetId: match[2] });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'qs-call') {
@@ -3503,6 +3525,7 @@ export class ModuxEditor extends LitElement {
     { type: 'workflow-step', label: 'Paso de workflow', child: true },
     { type: 'aggregate', label: 'Agregado', child: true },
     { type: 'use-case', label: 'Caso de uso', child: true },
+    { type: 'use-case-step', label: 'Paso de caso de uso', child: true },
     { type: 'policy', label: 'Policy', child: true },
     { type: 'domain-event', label: 'Evento de dominio', child: true },
     { type: 'application-event', label: 'Evento de aplicación', child: true },
@@ -3644,6 +3667,13 @@ export class ModuxEditor extends LitElement {
     }
     if (['external-use-case', 'external-table', 'mcp-server'].includes(type)) {
       return chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ?? null;
+    }
+    if (type === 'use-case-step') {
+      return (
+        chain.find((id) =>
+          this.model.modules.some((mo) => (mo.useCases ?? []).some((u) => u.id === id)),
+        ) ?? null
+      );
     }
     if (type === 'api-operation') {
       // The API itself, an implementation occurrence of it, or a proxy — a proxy's
@@ -3799,9 +3829,11 @@ export class ModuxEditor extends LitElement {
         message:
           type === 'api-operation'
             ? 'Suelta la operación sobre una API'
-            : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
-              ? 'Suelta el elemento sobre un sistema externo'
-              : 'Suelta el elemento sobre un contexto',
+            : type === 'use-case-step'
+              ? 'Suelta el paso sobre un caso de uso'
+              : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
+                ? 'Suelta el elemento sobre un sistema externo'
+                : 'Suelta el elemento sobre un contexto',
       });
       return;
     }
@@ -3853,6 +3885,24 @@ export class ModuxEditor extends LitElement {
           message: `Operación añadida a ${api?.name ?? container} — se ve en el nivel «APIs y operaciones»`,
         });
       }
+    } else if (type === 'use-case-step') {
+      // Step ids are per-use-case; a bare palette step is Custom — drawing a relation
+      // FROM the use case (evento, otro caso de uso, agregado, query…) creates the
+      // typed steps instead.
+      const uc = this.model.modules
+        .flatMap((mo) => mo.useCases ?? [])
+        .find((u) => u.id === container);
+      const taken = new Set(uc?.stepIds ?? []);
+      let stepName = name;
+      let id = `step-${slug(stepName)}`;
+      for (let n = 2; taken.has(id); n++) {
+        stepName = `${def.label} ${n}`;
+        id = `step-${slug(stepName)}`;
+      }
+      issue({ kind: 'add-use-case-step', useCaseId: container, id, name: stepName }, id, container);
+      this.emit('modux-notice', {
+        message: `Paso Custom añadido a ${uc?.name ?? container} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`,
+      });
     } else if (type === 'external-use-case') {
       const id = `xuc-${slug(name)}`;
       issue({ kind: 'add-external-use-case', id, name, moduleId: container }, id, container);

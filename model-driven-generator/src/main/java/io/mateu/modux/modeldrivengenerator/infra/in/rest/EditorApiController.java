@@ -122,7 +122,7 @@ public class EditorApiController {
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
-    public record UseCaseDto(String id, String name, boolean policy) {}
+    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds) {}
     public record AggregateDto(String id, String name, String moduleId) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
@@ -372,7 +372,9 @@ public class EditorApiController {
                         (m.useCaseIds() == null ? List.<String>of() : m.useCaseIds()).stream()
                                 .map(useCasesById::get)
                                 .filter(Objects::nonNull)
-                                .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy()))
+                                .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy(),
+                                        (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                                                .map(UseCaseStepEntity::id).toList()))
                                 .toList(),
                         (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
                                 .map(domainEventsById::get)
@@ -919,6 +921,10 @@ public class EditorApiController {
             case "add-emission" -> addEmission(command);
             case "add-use-case-call" -> addUseCaseCall(command);
             case "remove-use-case-call" -> removeUseCaseCall(command);
+            case "add-use-case-step" -> addUseCaseStep(command);
+            case "remove-use-case-step" -> removeUseCaseStep(command);
+            case "add-aggregate-call" -> addAggregateCall(command);
+            case "remove-aggregate-call" -> removeAggregateCall(command);
             case "add-query-service" -> addQueryService(command);
             case "remove-query-service" -> removeQueryService(command);
             case "add-query-call" -> addQueryCall(command);
@@ -1615,6 +1621,59 @@ public class EditorApiController {
                 repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
                         .filter(st -> !(st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
                                 && command.targetId().equals(st.useCaseId())))
+                        .toList())));
+    }
+
+    /**
+     * A bare step with no counterpart on the map: it stays {@code Custom} — its intent
+     * (natural language) is the spec {@code mvn modux:ai-complete} works from. Steps
+     * WITH a counterpart are born typed by the connect gestures instead (CallUseCase,
+     * CallQueryService, CallAggregateOperation, PublishApplicationEvent…).
+     */
+    private void addUseCaseStep(EditorCommand command) {
+        var uc = repository.findById(command.useCaseId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.useCaseId()));
+        var steps = new ArrayList<>(uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps());
+        if (steps.stream().anyMatch(st -> st.id().equals(command.id()))) return;
+        steps.add(new UseCaseStepEntity(command.id(), command.name(),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom,
+                null, null, null, null, null, null, null, null, null, null, null));
+        repository.save(withSteps(uc, steps));
+    }
+
+    private void removeUseCaseStep(EditorCommand command) {
+        repository.findById(command.useCaseId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(st -> !st.id().equals(command.id()))
+                        .toList())));
+    }
+
+    /** Use case → aggregate: a CallAggregateOperation step (the single operation wires itself). */
+    private void addAggregateCall(EditorCommand command) {
+        var uc = repository.findById(command.sourceId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        var steps = new ArrayList<>(uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps());
+        var alreadyThere = steps.stream().anyMatch(st ->
+                (st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation
+                        || st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate)
+                        && aggregate.id().equals(st.aggregateId()));
+        if (alreadyThere) return;
+        var operations = aggregate.operations() == null ? List.<OperationEntity>of() : aggregate.operations();
+        var operationId = operations.size() == 1 ? operations.get(0).id() : null;
+        steps.add(new UseCaseStepEntity("step-call-" + aggregate.id(), "call" + capitalize(aggregate.name()),
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation,
+                aggregate.id(), operationId, null, null, null, null, null, null, null, null, null));
+        repository.save(withSteps(uc, steps));
+    }
+
+    private void removeAggregateCall(EditorCommand command) {
+        repository.findById(command.sourceId(), UseCaseEntity.class).ifPresent(uc ->
+                repository.save(withSteps(uc, (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .filter(st -> !((st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation
+                                || st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate)
+                                && command.targetId().equals(st.aggregateId())))
                         .toList())));
     }
 

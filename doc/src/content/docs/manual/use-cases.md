@@ -107,6 +107,19 @@ Steps describe the orchestration logic of the use case. They are executed in ord
 | **CallQueryService** | Read from a query service operation |
 | **ApplyModelMapping** | Transform data between two models via a mapping definition |
 
+### From the graphical editor
+
+Steps are also born on the context map (detail level). Drag **«Paso de caso de uso»**
+from the palette onto a use case to add a `Custom` step — its *intent* is then stated
+in the form. Steps with a counterpart on the map are created by drawing the relation
+from the use case instead, and the relation types the step: another use case
+(`CallUseCase`), a query service (`CallQueryService`), an application event
+(`PublishApplicationEvent`), an external operation (`CallExternalUseCase`) or an
+**aggregate** (`CallAggregateOperation` — when the aggregate has exactly one
+operation it wires itself; otherwise the operation is picked in the form). The
+use-case→aggregate relation draws an amber «opera sobre» edge, and Supr on any of
+those edges removes the step behind it.
+
 ### The pipeline shape
 
 Every operation of an information system has the same shape: **gather data → transform it → write it somewhere or return it**. Each step type plays one of those roles:
