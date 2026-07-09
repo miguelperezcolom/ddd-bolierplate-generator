@@ -58,28 +58,40 @@ public record RoleEntity(
         return aiAgentIds != null ? aiAgentIds : List.of();
     }
 
+    public List<String> uiAdapterIds() {
+        return uiAdapterIds != null ? uiAdapterIds : List.of();
+    }
+
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
     public RoleEntity withName(String name) {
         return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
-                externalSystemIds, aiAgentIds);
+                externalSystemIds, aiAgentIds, uiAdapterIds);
     }
 
     public RoleEntity withAllowedUseCaseIds(List<String> ids) {
-        return new RoleEntity(id, name, ids, allowedQueryServiceIds, externalSystemIds, aiAgentIds);
+        return new RoleEntity(id, name, ids, allowedQueryServiceIds, externalSystemIds,
+                aiAgentIds, uiAdapterIds);
     }
 
     public RoleEntity withAllowedQueryServiceIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, ids, externalSystemIds, aiAgentIds);
+        return new RoleEntity(id, name, allowedUseCaseIds, ids, externalSystemIds,
+                aiAgentIds, uiAdapterIds);
     }
 
     public RoleEntity withExternalSystemIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, ids, aiAgentIds);
+        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, ids,
+                aiAgentIds, uiAdapterIds);
     }
 
     public RoleEntity withAiAgentIds(List<String> ids) {
         return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
-                externalSystemIds, ids);
+                externalSystemIds, ids, uiAdapterIds);
+    }
+
+    public RoleEntity withUiAdapterIds(List<String> ids) {
+        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
+                externalSystemIds, aiAgentIds, ids);
     }
 }

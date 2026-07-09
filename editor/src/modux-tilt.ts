@@ -17,7 +17,7 @@ const HANDLE_KINDS = new Set([
   'external-system', 'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'proxy-api',
   'workflow-step', 'aggregate', 'domain-service', 'use-case', 'domain-event',
   'application-event', 'external-use-case', 'external-table', 'mcp-server',
-  'api-operation',
+  'api-operation', 'page',
 ]);
 
 @customElement('modux-tilt')

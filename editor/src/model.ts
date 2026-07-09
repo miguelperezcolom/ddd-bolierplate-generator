@@ -469,7 +469,50 @@ export interface WorkflowRef {
   steps: WorkflowStepRef[];
 }
 
+export interface UiMenuEntryRef {
+  label: string;
+  icon?: string;
+  pageId?: string;
+  children?: UiMenuEntryRef[];
+}
+
+export interface UiAppRef {
+  id: string;
+  name: string;
+  title?: string;
+  menuItems?: UiMenuEntryRef[];
+}
+
+export interface UiPageButtonRef {
+  label: string;
+  useCaseId?: string;
+  mappingId?: string;
+}
+
+export interface UiPageRef {
+  id: string;
+  name: string;
+  type?: string;
+  route?: string;
+  modelId?: string;
+  modelName?: string;
+  aggregateId?: string;
+  listingQueryServiceId?: string;
+  buttons?: UiPageButtonRef[];
+}
+
+export interface ActorAppUseRef {
+  actorId: string;
+  appId: string;
+}
+
 export interface ModuxModel {
+  /** UI apps (UiAdapter) with their menu tree — the UI view's containers. */
+  uiApps?: UiAppRef[];
+  /** Pages (Mateu views) with their MVVM wiring. */
+  pages?: UiPageRef[];
+  /** Actor → app links (Role.uiAdapterIds). */
+  actorAppUses?: ActorAppUseRef[];
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
   relations: ContextMapRelation[];

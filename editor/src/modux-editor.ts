@@ -10,6 +10,8 @@ import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
+import { uiScene } from './views/ui.js';
+import type { UiMenuEntryRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
@@ -29,7 +31,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'eventstorming';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'eventstorming';
 
 
 /**
@@ -233,6 +235,10 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'projection', id };
     case 'read-model':
       return { elementType: 'read-model', id };
+    case 'ui-app':
+      return { elementType: 'ui-adapter', id };
+    case 'page':
+      return { elementType: 'page', id };
     default:
       return null;
   }
@@ -710,7 +716,7 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (this._view === 'context-map' || this._view === 'workflows') {
+        if (['context-map', 'workflows', 'ui'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
@@ -764,6 +770,7 @@ export class ModuxEditor extends LitElement {
       case '5': scope('view:flows'); break;
       case '6': scope('view:processes'); break;
       case '7': scope('view:workflows'); break;
+      case '8': scope('view:ui'); break;
       case '?':
         e.preventDefault();
         this._helpOpen = !this._helpOpen;
@@ -973,6 +980,48 @@ export class ModuxEditor extends LitElement {
           ? [{ kind: 'set-relation-type', sourceId: c.sourceId, targetId: c.targetId, type: rel.type }]
           : [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       }
+      case 'create-ui-app':
+        return [{ kind: 'delete-ui-app', id: c.id }];
+      case 'create-ui-page':
+        return [{ kind: 'delete-ui-page', id: c.id }];
+      case 'add-menu-item':
+        return [{ kind: 'remove-menu-item', appId: c.appId, label: c.label }];
+      case 'remove-menu-item': {
+        const app = (this.model.uiApps ?? []).find((a) => a.id === c.appId);
+        const find = (items: UiMenuEntryRef[] | undefined): UiMenuEntryRef | null => {
+          for (const it of items ?? []) {
+            if (it.label === c.label) return it;
+            const hit = find(it.children);
+            if (hit) return hit;
+          }
+          return null;
+        };
+        const entry = c.label ? find(app?.menuItems) : null;
+        return entry && c.label
+          ? [{ kind: 'add-menu-item', appId: c.appId, label: c.label, pageId: entry.pageId ?? null }]
+          : null;
+      }
+      case 'add-page-button':
+        return [{ kind: 'remove-page-button', pageId: c.pageId, useCaseId: c.useCaseId }];
+      case 'remove-page-button': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        const button = (page?.buttons ?? []).find((b) => b.useCaseId === c.useCaseId);
+        return button
+          ? [{ kind: 'add-page-button', pageId: c.pageId, useCaseId: c.useCaseId, label: button.label }]
+          : null;
+      }
+      case 'set-page-listing': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        return [{ kind: 'set-page-listing', pageId: c.pageId, queryServiceId: page?.listingQueryServiceId ?? null }];
+      }
+      case 'set-page-model': {
+        const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        return [{ kind: 'set-page-model', pageId: c.pageId, modelId: page?.modelId ?? null }];
+      }
+      case 'add-actor-app':
+        return [{ kind: 'remove-actor-app', actorId: c.actorId, appId: c.appId }];
+      case 'remove-actor-app':
+        return [{ kind: 'add-actor-app', actorId: c.actorId, appId: c.appId }];
       case 'add-module':
         return [{ kind: 'remove-module', id: c.id }];
       case 'remove-module': {
@@ -2044,6 +2093,49 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
+    if (this._view === 'ui') {
+      const pages = this.model.pages ?? [];
+      const apps = this.model.uiApps ?? [];
+      const isApp = (id: string) => apps.some((a) => a.id === id);
+      const isPage = (id: string) => pages.some((x) => x.id === id);
+      // a page dropped on an app (drag or catalog): a menu entry that opens it
+      if (isPage(sourceId) && isApp(targetId)) {
+        const page = pages.find((x) => x.id === sourceId)!;
+        this.command({ kind: 'add-menu-item', appId: targetId, label: page.name, pageId: sourceId });
+        return;
+      }
+      // actor → app: the actor uses that app
+      if ((this.model.actors ?? []).some((a) => a.id === sourceId) && isApp(targetId)) {
+        if (!(this.model.actorAppUses ?? []).some((u) => u.actorId === sourceId && u.appId === targetId)) {
+          this.command({ kind: 'add-actor-app', actorId: sourceId, appId: targetId });
+        }
+        return;
+      }
+      // page ↔ use case (a toolbar button) / query service (the listing source),
+      // in either direction so the catalog can drop system pieces ON the page
+      const pair = isPage(sourceId)
+        ? { pageId: sourceId, other: targetId }
+        : isPage(targetId)
+          ? { pageId: targetId, other: sourceId }
+          : null;
+      if (pair) {
+        const useCaseIds = new Set(
+          this.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        );
+        const queryServiceIds = new Set(
+          this.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+        );
+        const page = pages.find((x) => x.id === pair.pageId)!;
+        if (useCaseIds.has(pair.other)) {
+          if (!(page.buttons ?? []).some((b) => b.useCaseId === pair.other)) {
+            this.command({ kind: 'add-page-button', pageId: pair.pageId, useCaseId: pair.other });
+          }
+        } else if (queryServiceIds.has(pair.other)) {
+          this.command({ kind: 'set-page-listing', pageId: pair.pageId, queryServiceId: pair.other });
+        }
+      }
+      return;
+    }
     if (this._view !== 'context-map') return;
     // A proxy's operation occurrence → an implementation SITE of the fronted API: the
     // published API node (in its external system) or an api-impl occurrence (in a
@@ -2864,6 +2956,38 @@ export class ModuxEditor extends LitElement {
   }
 
   private performDelete(elementType: string, id: string, kind: string): void {
+    if (this._view === 'ui') {
+      if (elementType === 'edge') {
+        let m: RegExpExecArray | null;
+        if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'remove-page-button', pageId: m[1], useCaseId: m[2] });
+        } else if ((m = /^pglist:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-page-listing', pageId: m[1], queryServiceId: null });
+        } else if ((m = /^pgmodel:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-page-model', pageId: m[1], modelId: null });
+        } else if ((m = /^actorapp:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'remove-actor-app', actorId: m[1], appId: m[2] });
+        } else if ((m = /^menupage:menu:([^:]+):(.+)->.+$/.exec(id))) {
+          this.command({ kind: 'remove-menu-item', appId: m[1], label: m[2].split('>').pop() });
+        }
+        return;
+      }
+      if (kind === 'ui-app') {
+        this.command({ kind: 'delete-ui-app', id });
+        return;
+      }
+      if (kind === 'page') {
+        this.command({ kind: 'delete-ui-page', id });
+        return;
+      }
+      if (kind === 'menu-item') {
+        const m = /^menu:([^:]+):(.+)$/.exec(id);
+        if (m) this.command({ kind: 'remove-menu-item', appId: m[1], label: m[2].split('>').pop() });
+        return;
+      }
+      // system chips (use cases, query services, models, actors) are not deletable from here
+      return;
+    }
     if (this._view === 'workflows' && elementType === 'edge' && kind === 'workflow-dependency') {
       const match = /^wfdep:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -3702,6 +3826,9 @@ export class ModuxEditor extends LitElement {
     { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b' },
     { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207' },
     { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea' },
+    { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9' },
+    { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7' },
+    { type: 'menu-item', label: 'Entrada de menú', child: true, symbol: 'process', color: '#0ea5e9' },
   ];
 
   /** Every element of the model, grouped for the palette's «Catálogo» tab. */
@@ -3723,6 +3850,18 @@ export class ModuxEditor extends LitElement {
         symbol: 'component',
         color: '#94a3b8',
         items: m.modules.map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
+        label: 'Apps',
+        symbol: 'component',
+        color: '#0ea5e9',
+        items: (m.uiApps ?? []).map((x) => ({ id: x.id, name: x.title || x.name })),
+      },
+      {
+        label: 'Páginas',
+        symbol: 'interface',
+        color: '#0284c7',
+        items: (m.pages ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Casos de uso',
@@ -3873,6 +4012,8 @@ export class ModuxEditor extends LitElement {
       (m.rags ?? []).map((x) => x.id),
       (m.workflows ?? []).map((x) => x.id),
       (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
+      (m.uiApps ?? []).map((x) => x.id),
+      (m.pages ?? []).map((x) => x.id),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -3959,7 +4100,7 @@ export class ModuxEditor extends LitElement {
       const prefix: Record<string, string> = {
         module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
-        'proxy-api': 'proxy-', workflow: 'wf-',
+        'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -3981,13 +4122,55 @@ export class ModuxEditor extends LitElement {
                         ? { kind: 'add-api', id, name }
                         : type === 'proxy-api'
                           ? { kind: 'add-proxy-api', id, name }
-                          : {
-                              kind: 'add-workflow',
-                              id,
-                              name,
-                              completionEventName: `${name.replace(/\s+/g, '')}Completado`,
-                            };
+                          : type === 'ui-app'
+                            ? { kind: 'create-ui-app', id, name }
+                            : {
+                                kind: 'add-workflow',
+                                id,
+                                name,
+                                completionEventName: `${name.replace(/\s+/g, '')}Completado`,
+                              };
       issue(cmd, id);
+      return;
+    }
+    if (type === 'page') {
+      const { id, name } = this.uniquePaletteName('Página', 'page-');
+      // Dropped on an app (or on one of its menu entries): the page hangs from its menu.
+      const chain: string[] = [];
+      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+        chain.push(cur);
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
+      if (appId) {
+        // Born from an app's menu: park the page beside the app, not on top of it.
+        const appNode = scene.nodes.find((n) => n.id === appId);
+        if (appNode) {
+          pos.x = appNode.x + appNode.w / 2 + 160;
+          pos.y = appNode.y - appNode.h / 2 + 40;
+        }
+      }
+      issue(
+        appId
+          ? { kind: 'create-ui-page', id, name, pageType: 'FORM', appId, menuLabel: name }
+          : { kind: 'create-ui-page', id, name, pageType: 'FORM' },
+        id,
+      );
+      return;
+    }
+    if (type === 'menu-item') {
+      const chain: string[] = [];
+      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+        chain.push(cur);
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
+      if (!appId) {
+        this.emit('modux-notice', { message: 'Suelta la entrada de menú sobre una app' });
+        return;
+      }
+      const { name } = this.uniquePaletteName('Entrada', '');
+      this.command({ kind: 'add-menu-item', appId, label: name });
       return;
     }
     if (type === 'workflow-step') {
@@ -4193,12 +4376,16 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || (this._view !== 'context-map' && this._view !== 'workflows')) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
       (k) =>
-        (this._view !== 'workflows' || ['workflow', 'workflow-step'].includes(k.type)) &&
+        (this._view === 'workflows'
+          ? ['workflow', 'workflow-step'].includes(k.type)
+          : this._view === 'ui'
+            ? ['ui-app', 'page', 'menu-item'].includes(k.type)
+            : !['ui-app', 'page', 'menu-item'].includes(k.type)) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
@@ -4335,6 +4522,8 @@ export class ModuxEditor extends LitElement {
             ? processesScene(model, vl.nodes)
             : view === 'workflows'
               ? workflowsScene(model, vl.nodes)
+              : view === 'ui'
+                ? uiScene(model, vl.nodes)
               : view === 'eventstorming'
                 ? eventstormingScene(model, vl.nodes)
                 : contextMapScene(
@@ -4357,7 +4546,7 @@ export class ModuxEditor extends LitElement {
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */
   private fitInsets(): { left: number } {
     const paletteVisible =
-      this._paletteOpen && (this._view === 'context-map' || this._view === 'workflows');
+      this._paletteOpen && ['context-map', 'workflows', 'ui'].includes(this._view);
     const treeVisible = this._treeOpen && !!this._activeViewId;
     // Geometry mirrors the CSS: tree at 8+264, palette 244 wide (shifted past the tree).
     if (treeVisible && paletteVisible) return { left: 280 + 244 + 8 };
@@ -4428,7 +4617,7 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${this._view !== 'context-map' && this._view !== 'workflows'}
+          ?hidden=${!['context-map', 'workflows', 'ui'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -4483,6 +4672,7 @@ export class ModuxEditor extends LitElement {
               <option value="view:workflows" ?selected=${this._view === 'workflows'}>
                 Workflows
               </option>
+              <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
             </optgroup>
           </select>
         </div>
@@ -4915,7 +5105,7 @@ export class ModuxEditor extends LitElement {
             @drop=${this.onPaletteDrop}
             .scene=${scene}
             .selectedId=${this._selectedId}
-            .connectable=${this._view === 'context-map' || this._view === 'workflows'}
+            .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
             @connect-requested=${this.onConnectRequested}
             @element-selected=${this.onElementSelected}
             @element-activated=${this.onElementActivated}
@@ -4940,7 +5130,7 @@ export class ModuxEditor extends LitElement {
         .edgePoints=${this.routedEdgePoints(scene)}
         .selectedId=${this._selectedId}
         .selectedIds=${this._multi}
-        .connectable=${this._view === 'context-map' || this._view === 'workflows'}
+        .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
         @node-moved=${this.onNodeMoved}
         @nodes-moved=${this.onNodesMoved}
         @node-reparent-requested=${this.onNodeReparentRequested}

@@ -37,6 +37,10 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
@@ -216,6 +220,17 @@ public class EditorApiController {
     public record ExternalOperationUseDto(String externalSystemId, String operationId, String siteId) {}
     /** The use case implementing one operation at one implementation site. */
     public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
+    /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
+    public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
+    /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
+    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children) {}
+    /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
+    public record UiPageDto(String id, String name, String type, String route, String modelId,
+                            String modelName, String aggregateId, String listingQueryServiceId,
+                            List<UiPageButtonDto> buttons) {}
+    public record UiPageButtonDto(String label, String useCaseId, String mappingId) {}
+    /** An actor uses a UI app (RoleEntity.uiAdapterIds — the actor→app link of the UI map). */
+    public record ActorAppUseDto(String actorId, String appId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -260,7 +275,10 @@ public class EditorApiController {
             List<ApiImplementationDto> apiImplementations,
             List<ProxyOperationRouteDto> proxyOperationRoutes,
             List<ExternalOperationUseDto> externalOperationUses,
-            List<ApiOperationImplementationDto> apiOperationImplementations) {}
+            List<ApiOperationImplementationDto> apiOperationImplementations,
+            List<UiAppDto> uiApps,
+            List<UiPageDto> pages,
+            List<ActorAppUseDto> actorAppUses) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -711,6 +729,30 @@ public class EditorApiController {
                         .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.moduleId(), w.useCaseId())))
                 .toList();
 
+        // The UI map: apps (menu trees), pages (with their buttons) and who uses which app.
+        var uiApps = repository.findAllOfType(UiAdapterEntity.class).stream()
+                .map(a -> new UiAppDto(a.id(), a.name(), a.title(),
+                        (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
+                                .map(EditorApiController::toMenuEntry)
+                                .toList()))
+                .toList();
+        var pages = repository.findAllOfType(PageEntity.class).stream()
+                .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
+                        p.modelId() == null ? null
+                                : repository.findById(p.modelId(), ModelEntity.class)
+                                        .map(ModelEntity::name).orElse(null),
+                        p.aggregateId(), p.listingQueryServiceId(),
+                        java.util.stream.Stream.concat(
+                                        (p.toolbar() == null ? List.<PageButtonEntity>of() : p.toolbar()).stream(),
+                                        (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream())
+                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId()))
+                                .toList()))
+                .toList();
+        var actorAppUses = new ArrayList<ActorAppUseDto>();
+        for (var role : repository.findAllOfType(RoleEntity.class)) {
+            role.uiAdapterIds().forEach(id -> actorAppUses.add(new ActorAppUseDto(role.id(), id)));
+        }
+
         // The strategic map is a projection of the concrete dependency graph:
         // upstream (provider) → downstream (consumer). contextMap entries only
         // annotate the DDD pattern of a derived pair; orphaned annotations
@@ -802,7 +844,17 @@ public class EditorApiController {
                 apiImplementations,
                 proxyOperationRoutes,
                 externalOperationUses,
-                apiOperationImplementations);
+                apiOperationImplementations,
+                uiApps,
+                pages,
+                actorAppUses.stream().distinct().toList());
+    }
+
+    private static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
+        return new UiMenuEntryDto(item.label(), item.icon(), item.pageId(),
+                (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
+                        .map(EditorApiController::toMenuEntry)
+                        .toList());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -826,7 +878,10 @@ public class EditorApiController {
                                 String uri, String externalUseCaseId, String externalTableId,
                                 String apiId, String httpMethod, String path,
                                 Boolean external,
-                                String proxyId, String operationId, String targetSiteId) {}
+                                String proxyId, String operationId, String targetSiteId,
+                                String pageType, String appId, String menuLabel, String label,
+                                String pageId, String parentLabel, String queryServiceId,
+                                String modelId, String actorId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -976,6 +1031,18 @@ public class EditorApiController {
             case "add-workflow-dependency" -> addWorkflowDependency(command);
             case "set-workflow-trigger" -> setWorkflowTrigger(command);
             case "remove-workflow-dependency" -> removeWorkflowDependency(command);
+            case "create-ui-app" -> createUiApp(command);
+            case "delete-ui-app" -> deleteUiApp(command);
+            case "create-ui-page" -> createUiPage(command);
+            case "delete-ui-page" -> deleteUiPage(command);
+            case "add-menu-item" -> addMenuItem(command);
+            case "remove-menu-item" -> removeMenuItem(command);
+            case "add-page-button" -> addPageButton(command);
+            case "remove-page-button" -> removePageButton(command);
+            case "set-page-listing" -> setPageListing(command);
+            case "set-page-model" -> setPageModel(command);
+            case "add-actor-app" -> addActorApp(command);
+            case "remove-actor-app" -> removeActorApp(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -3304,6 +3371,242 @@ public class EditorApiController {
                     "El actor " + command.id() + " está permitido en casos de uso; desasígnalo primero");
         }
         repository.deleteAllById(List.of(command.id()), RoleEntity.class);
+    }
+
+    // ---- UI map commands (apps, pages, menus, buttons, actor→app) ----------
+
+    private void createUiApp(EditorCommand command) {
+        if (repository.findById(command.id(), UiAdapterEntity.class).isPresent()) return;
+        repository.save(new UiAdapterEntity(command.id(), command.name(), null,
+                command.name(), null, null, List.of()));
+    }
+
+    /** Removing an app also unlinks it from every actor that used it. */
+    private void deleteUiApp(EditorCommand command) {
+        repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> r.uiAdapterIds().contains(command.id()))
+                .forEach(r -> repository.save(r.withUiAdapterIds(
+                        without(r.uiAdapterIds(), command.id()))));
+        repository.deleteAllById(List.of(command.id()), UiAdapterEntity.class);
+    }
+
+    private void createUiPage(EditorCommand command) {
+        if (repository.findById(command.id(), PageEntity.class).isPresent()) return;
+        var type = command.pageType() == null || command.pageType().isBlank()
+                ? "FORM" : command.pageType();
+        repository.save(new PageEntity(command.id(), command.name(), "/" + command.id(), type,
+                null, null, List.of(), null, null, List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(), List.of(), List.of(), null));
+        if (command.appId() == null || command.appId().isBlank()) return;
+        // Born reachable: the page hangs from the app's menu right away.
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        var label = command.menuLabel() == null || command.menuLabel().isBlank()
+                ? command.name() : command.menuLabel();
+        var items = new ArrayList<>(app.menuItems() == null
+                ? List.<UiMenuItemEntity>of() : app.menuItems());
+        items.add(new UiMenuItemEntity(label, null, null, null, command.id(), List.of()));
+        repository.save(withMenuItems(app, items));
+    }
+
+    /** Removing a page also drops every menu entry pointing at it, in any app at any depth. */
+    private void deleteUiPage(EditorCommand command) {
+        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
+            var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
+            var pruned = withoutMenuEntriesFor(items, command.id());
+            if (!pruned.equals(items)) {
+                repository.save(withMenuItems(app, pruned));
+            }
+        }
+        repository.deleteAllById(List.of(command.id()), PageEntity.class);
+    }
+
+    private void addMenuItem(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        var entry = new UiMenuItemEntity(command.label(), null, null, null,
+                command.pageId(), List.of());
+        var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
+        if (command.parentLabel() == null || command.parentLabel().isBlank()) {
+            var copy = new ArrayList<>(items);
+            copy.add(entry);
+            repository.save(withMenuItems(app, copy));
+            return;
+        }
+        var inserted = insertedUnderParent(items, command.parentLabel(), entry);
+        if (inserted == null) {
+            throw new IllegalArgumentException("Unknown menu item: " + command.parentLabel());
+        }
+        repository.save(withMenuItems(app, inserted));
+    }
+
+    private void removeMenuItem(EditorCommand command) {
+        repository.findById(command.appId(), UiAdapterEntity.class).ifPresent(app -> {
+            var pruned = withoutFirstLabelled(app.menuItems(), command.label());
+            if (pruned != null) {
+                repository.save(withMenuItems(app, pruned));
+            }
+        });
+    }
+
+    private void addPageButton(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var useCase = repository.findById(command.useCaseId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unknown use case: " + command.useCaseId()));
+        var label = command.label() == null || command.label().isBlank()
+                ? useCase.name() : command.label();
+        var toolbar = new ArrayList<>(page.toolbar() == null
+                ? List.<PageButtonEntity>of() : page.toolbar());
+        toolbar.add(new PageButtonEntity(label, null, command.useCaseId(), null, null));
+        repository.save(withButtons(page, toolbar, page.bottomBar()));
+    }
+
+    private void removePageButton(EditorCommand command) {
+        repository.findById(command.pageId(), PageEntity.class).ifPresent(page ->
+                repository.save(withButtons(page,
+                        withoutUseCaseButtons(page.toolbar(), command.useCaseId()),
+                        withoutUseCaseButtons(page.bottomBar(), command.useCaseId()))));
+    }
+
+    private void setPageListing(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (command.queryServiceId() != null) {
+            repository.findById(command.queryServiceId(), QueryServiceEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown query service: " + command.queryServiceId()));
+        }
+        repository.save(withListingQueryServiceId(page, command.queryServiceId()));
+    }
+
+    private void setPageModel(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (command.modelId() != null) {
+            repository.findById(command.modelId(), ModelEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown model: " + command.modelId()));
+        }
+        repository.save(withModelId(page, command.modelId()));
+    }
+
+    /** Actor → app: the person opens the app (the actor→app link of the UI map). */
+    private void addActorApp(EditorCommand command) {
+        var role = repository.findById(command.actorId(), RoleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.actorId()));
+        repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (role.uiAdapterIds().contains(command.appId())) return;
+        repository.save(role.withUiAdapterIds(appended(role.uiAdapterIds(), command.appId())));
+    }
+
+    private void removeActorApp(EditorCommand command) {
+        repository.findById(command.actorId(), RoleEntity.class).ifPresent(role ->
+                repository.save(role.withUiAdapterIds(
+                        without(role.uiAdapterIds(), command.appId()))));
+    }
+
+    /** Record copy with only menuItems replaced — every other field preserved verbatim. */
+    private static UiAdapterEntity withMenuItems(UiAdapterEntity app, List<UiMenuItemEntity> menuItems) {
+        return new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
+                app.path(), app.appVariant(), menuItems);
+    }
+
+    /** Record copy with only toolbar/bottomBar replaced — every other field preserved verbatim. */
+    private static PageEntity withButtons(PageEntity p, List<PageButtonEntity> toolbar,
+                                          List<PageButtonEntity> bottomBar) {
+        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
+                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), toolbar,
+                bottomBar, p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+    }
+
+    /** Record copy with only listingQueryServiceId replaced — every other field preserved verbatim. */
+    private static PageEntity withListingQueryServiceId(PageEntity p, String listingQueryServiceId) {
+        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
+                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
+                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
+                p.wizardSteps(), p.completionActions(), listingQueryServiceId);
+    }
+
+    /** Record copy with only modelId replaced — every other field preserved verbatim. */
+    private static PageEntity withModelId(PageEntity p, String modelId) {
+        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), modelId,
+                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
+                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
+                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId());
+    }
+
+    private static List<PageButtonEntity> withoutUseCaseButtons(List<PageButtonEntity> buttons,
+                                                                String useCaseId) {
+        if (buttons == null) return List.of();
+        return buttons.stream().filter(b -> !useCaseId.equals(b.useCaseId())).toList();
+    }
+
+    /** The menu tree without any entry (at any depth) pointing at the given page. */
+    private static List<UiMenuItemEntity> withoutMenuEntriesFor(List<UiMenuItemEntity> items,
+                                                                String pageId) {
+        if (items == null) return List.of();
+        return items.stream()
+                .filter(i -> !pageId.equals(i.pageId()))
+                .map(i -> new UiMenuItemEntity(i.label(), i.icon(), i.description(), i.route(),
+                        i.pageId(), withoutMenuEntriesFor(i.children(), pageId)))
+                .toList();
+    }
+
+    /**
+     * The menu tree with the entry appended under the FIRST item (depth-first) labelled
+     * {@code parentLabel}, or null when no item carries that label.
+     */
+    private static List<UiMenuItemEntity> insertedUnderParent(List<UiMenuItemEntity> items,
+                                                              String parentLabel,
+                                                              UiMenuItemEntity entry) {
+        if (items == null) return null;
+        for (var i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            var children = item.children() == null ? List.<UiMenuItemEntity>of() : item.children();
+            List<UiMenuItemEntity> newChildren;
+            if (parentLabel.equals(item.label())) {
+                newChildren = new ArrayList<>(children);
+                newChildren.add(entry);
+            } else {
+                newChildren = insertedUnderParent(children, parentLabel, entry);
+            }
+            if (newChildren != null) {
+                var copy = new ArrayList<>(items);
+                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                        item.route(), item.pageId(), newChildren));
+                return copy;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The menu tree without the FIRST item (depth-first) carrying the given label, or
+     * null when no item carries it (nothing to save then).
+     */
+    private static List<UiMenuItemEntity> withoutFirstLabelled(List<UiMenuItemEntity> items,
+                                                               String label) {
+        if (items == null) return null;
+        for (var i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            if (label.equals(item.label())) {
+                var copy = new ArrayList<>(items);
+                copy.remove(i);
+                return copy;
+            }
+            var newChildren = withoutFirstLabelled(item.children(), label);
+            if (newChildren != null) {
+                var copy = new ArrayList<>(items);
+                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
+                        item.route(), item.pageId(), newChildren));
+                return copy;
+            }
+        }
+        return null;
     }
 
     /** Record copy with only externalSystems replaced — every other field preserved verbatim. */

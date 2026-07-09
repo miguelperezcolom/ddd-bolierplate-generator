@@ -2073,6 +2073,11 @@
         "label" : {
           "type" : "string"
         },
+        "mappingId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'mapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "useCaseId" : {
           "type" : "string",
           "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
@@ -3015,6 +3020,14 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "uiAdapterIds" : {
+          "description" : "References to existing 'uiAdapter' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
         }
       },
       "required" : [ "id" ],
@@ -3517,6 +3530,12 @@
     "UiMenuItemEntity" : {
       "type" : "object",
       "properties" : {
+        "children" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/UiMenuItemEntity"
+          }
+        },
         "description" : {
           "type" : "string"
         },
@@ -3525,6 +3544,11 @@
         },
         "label" : {
           "type" : "string"
+        },
+        "pageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'page' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "route" : {
           "type" : "string"

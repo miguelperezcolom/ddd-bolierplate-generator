@@ -672,6 +672,25 @@ export type ModuxCommand =
       targetUseCaseId?: string;
       completionEventName?: string;
     }
+  | { kind: 'create-ui-app'; id: string; name: string }
+  | { kind: 'delete-ui-app'; id: string }
+  | {
+      kind: 'create-ui-page';
+      id: string;
+      name: string;
+      pageType?: string;
+      appId?: string;
+      menuLabel?: string;
+    }
+  | { kind: 'delete-ui-page'; id: string }
+  | { kind: 'add-menu-item'; appId: string; label: string; pageId?: string | null }
+  | { kind: 'remove-menu-item'; appId: string; label: string | undefined }
+  | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string }
+  | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
+  | { kind: 'set-page-listing'; pageId: string; queryServiceId: string | null }
+  | { kind: 'set-page-model'; pageId: string; modelId: string | null }
+  | { kind: 'add-actor-app'; actorId: string; appId: string }
+  | { kind: 'remove-actor-app'; actorId: string; appId: string }
   | {
       /** The step `id` starts only after `dependsOnStepId` completes. */
       kind: 'add-workflow-dependency';

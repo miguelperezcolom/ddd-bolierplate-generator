@@ -61,10 +61,15 @@ modules:
   name: "Cardex"
   aggregateIds:
   - "cardex"
+  - "agg-agregado"
 - id: "mod-facturacion"
   name: "Facturacion"
   aggregateIds:
   - "datosFacturacion"
+  projectionIds:
+  - "proj-agregado-facturacion"
+  readModelIds:
+  - "rm-agregado-facturacion"
 - id: "mod-master-data"
   name: "MasterData"
   aggregateIds:
@@ -126,6 +131,8 @@ modules:
   name: "Produccion"
   aggregateIds:
   - "cargo"
+  useCaseIds:
+  - "uc-caso-de-uso"
 aggregates:
 - id: "habitacion-hk"
   name: "HabitacionHousekeeping"
@@ -145,6 +152,9 @@ aggregates:
   valueObjectIds:
   - "habitacion-rack-id"
   - "habitacion-rack-name"
+- id: "agg-agregado"
+  name: "Agregado"
+  modelId: "model-agregado"
 - id: "nacionalidad"
   name: "Nacionalidad"
   modelId: "nacionalidad"
@@ -610,6 +620,12 @@ domainEvents:
   name: "EstanciaCreada"
   modelId: "payload-estanciaCreada"
 useCases:
+- id: "uc-caso-de-uso"
+  name: "Caso de uso"
+  steps:
+  - id: "step-paso-de-caso-de-uso"
+    name: "Paso de caso de uso"
+    type: "Custom"
 - id: "uc-crearHabitacion-hk"
   name: "CrearHabitacionHousekeeping"
   exposedAsUi: true
@@ -770,6 +786,8 @@ models:
   - name: "fechaSalida"
     basicType: true
     type: "date"
+- id: "model-agregado"
+  name: "Agregado"
 - id: "pax"
   name: "Pax"
   fields:
@@ -1333,6 +1351,10 @@ projections:
   rebuildStrategy: "REPLAY"
   errorHandlingStrategy: "RETRY"
   maxRetries: 3
+- id: "proj-agregado-facturacion"
+  name: "AgregadoViewProjection"
+  readModelId: "rm-agregado-facturacion"
+  sourceAggregateId: "agg-agregado"
 - id: "proj-cardex-habitacionhousekeepingview"
   name: "HabitacionHousekeepingViewProjection"
   readModelId: "rm-habitacionhousekeeping-serviciotecnico"
@@ -1418,6 +1440,10 @@ roles:
   - "uc-crearHabitacion-hk"
   - "uc-actualizarHabitacion-hk"
   - "uc-eliminarHabitacion-hk"
+- id: "actor-3"
+  name: "Actor 3"
+- id: "actor-2"
+  name: "Actor 2"
 uiShells:
 - id: "hotel-shell"
   name: "HotelShell"
@@ -1581,6 +1607,11 @@ readModels:
   modelId: "LlegadaResumen"
   storageType: "Document"
   consistency: "Eventual"
+- id: "rm-agregado-facturacion"
+  name: "AgregadoView"
+  moduleId: "mod-facturacion"
+  modelId: "model-agregado"
+  aggregateId: "agg-agregado"
 flows:
 - id: "flow-estanciaactualizada-estanciaactualizadaview"
   name: "EstanciaActualizadaView"
@@ -1605,24 +1636,63 @@ diagrams:
 - id: "context-map@detail"
   nodes:
   - ref: "mod-housekeeping"
-    x: 176.0
-    "y": 547.1
+    x: 507.3
+    "y": 951.5
     w: 252.0
     h: 227.1
   - ref: "mod-servicio-tecnico"
-    x: 180.6
-    "y": 281.9
+    x: 180.7
+    "y": 919.5
     w: 261.3
     h: 163.1
+  - ref: "mod-reservas"
+    x: 1156.0
+    "y": 706.9
   - ref: "mod-cardex"
-    x: 380.0
-    "y": 90.2
+    x: 830.0
+    "y": 693.4
+  - ref: "mod-facturacion"
+    x: 784.0
+    "y": 535.9
+  - ref: "mod-master-data"
+    x: 831.3
+    "y": 1003.9
+  - ref: "mod-pagos"
+    x: 1110.0
+    "y": 535.9
+  - ref: "mod-rack"
+    x: 178.0
+    "y": 685.9
+  - ref: "mod-frontoffice"
+    x: 617.7
+    "y": 301.9
+  - ref: "mod-folios"
+    x: 178.0
+    "y": 90.0
+  - ref: "mod-produccion"
+    x: 504.0
+    "y": 685.9
+  - ref: "recepcionista"
+    x: 881.7
+    "y": 74.0
+  - ref: "jefeRecepcion"
+    x: 1083.7
+    "y": 74.0
   - ref: "actor"
-    x: -319.0
-    "y": 355.9
-  - ref: "habitacion-hk"
-    x: 12.8
-    "y": 45.5
+    x: 116.0
+    "y": 519.9
+  - ref: "actor-3"
+    x: 318.0
+    "y": 519.9
+  - ref: "actor-2"
+    x: 520.0
+    "y": 519.9
+  - ref: "uc-caso-de-uso"
+    x: 56.0
+    "y": -2.0
+  - ref: "step-paso-de-caso-de-uso"
+    x: 2.0
+    "y": -19.0
 - id: "context-map"
   detail: "detail"
   nodes:
