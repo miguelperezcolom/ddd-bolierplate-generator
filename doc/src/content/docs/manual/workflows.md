@@ -54,5 +54,24 @@ toolbar; **drag a handle from step A onto step B** to declare *B waits for A*; S
 deletes steps or dependency arrows; everything is undoable — removing a step restores
 its dependants' links on undo. Double click opens the owning workflow's form.
 
+## On the context map
+
+Workflows are strategic elements too: the context map shows each one as a lilac
+dashed node with derived edges — violet **«orquesta»** to every use case its steps
+target, and amber **«dispara el workflow»** from its trigger event (both roll up to
+the owning context at the coarse detail level). The node has a connect handle:
+
+- **Workflow → use case** — adds a step orchestrating it (named after the use case;
+  de-duplicated if already orchestrated).
+- **Domain/application event → workflow** — points the trigger at that event
+  (`set-workflow-trigger`); the emitter is filled in automatically when the map's
+  emissions know it.
+- **Workflow → workflow** — **chains them**: A's completion event becomes B's
+  trigger, drawn as an amber edge labelled with the event. Supr on that edge clears
+  the downstream trigger.
+
+Supr on the node deletes the workflow (undoable), F2 renames, and the palette
+creates one by dragging. Fine-grained step editing stays in the Workflows tab.
+
 Workflows also join the [EventStorming view](/manual/graphical-editor/#views) as lilac
 policies: trigger event → workflow → the commands it launches, with its emitted events.

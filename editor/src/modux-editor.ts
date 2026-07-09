@@ -2098,9 +2098,21 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
-    // Dragging a WORKFLOW onto a use case adds a step orchestrating it.
+    // Dragging a WORKFLOW onto a use case adds a step orchestrating it; onto
+    // ANOTHER workflow, chains them: A's completion event becomes B's trigger.
     if ((this.model.workflows ?? []).some((w) => w.id === sourceId)) {
       const wf = (this.model.workflows ?? []).find((w) => w.id === sourceId)!;
+      const targetWf = (this.model.workflows ?? []).find(
+        (w) => w.id === targetId && w.id !== sourceId,
+      );
+      if (targetWf) {
+        const completion =
+          wf.onCompletionEventName || `${wf.name.replace(/\s+/g, '')}Completado`;
+        if (targetWf.triggerEvent !== completion) {
+          this.command({ kind: 'set-workflow-trigger', id: targetId, triggerEvent: completion });
+        }
+        return;
+      }
       const uc = this.model.modules
         .flatMap((mo) => mo.useCases ?? [])
         .find((u) => u.id === targetId);
@@ -2963,6 +2975,13 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-external-dependency', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'wf-chain') {
+      const match = /^wfchain:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'set-workflow-trigger', id: match[2], triggerEvent: '' });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'agent-api') {

@@ -1214,6 +1214,28 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // Workflow chaining: A's completion event is B's trigger — drawn directly.
+  const completionOf = (w: NonNullable<ModuxModel['workflows']>[number]) =>
+    w.onCompletionEventName || `${w.name.replace(/\s+/g, '')}Completado`;
+  const workflowChainEdges: SceneEdge[] = (model.workflows ?? []).flatMap((b) =>
+    !b.triggerEvent
+      ? []
+      : (model.workflows ?? [])
+          .filter((a) => a.id !== b.id && completionOf(a) === b.triggerEvent)
+          .filter((a) => nodeIds.has(a.id) && nodeIds.has(b.id))
+          .map((a) => ({
+            id: `wfchain:${a.id}->${b.id}`,
+            sourceId: a.id,
+            targetId: b.id,
+            kind: 'wf-chain',
+            color: '#f59e0b',
+            label: b.triggerEvent!,
+            dashed: true,
+            arrow: true,
+            tooltip: 'su evento final dispara este workflow',
+          })),
+  );
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -1580,6 +1602,7 @@ export function contextMapScene(
       ...apiOpImplWireEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
+      ...workflowChainEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
