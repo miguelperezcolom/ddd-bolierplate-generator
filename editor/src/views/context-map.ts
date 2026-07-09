@@ -43,6 +43,22 @@ export function apiImplNodeId(apiId: string, moduleId: string): string {
   return `apiimpl:${apiId}@${moduleId}`;
 }
 
+/**
+ * API-implementation occurrences of a bounded context, as nestable children — the SAME
+ * ApiRef the external system publishes, so the chip looks exactly like the API nested
+ * in its publisher; only the site differs.
+ */
+function apiImplChildren(model: ModuxModel, moduleId: string): ChildDesc[] {
+  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
+  return (model.apiImplementations ?? [])
+    .filter((impl) => impl.moduleId === moduleId && apiById.has(impl.apiId))
+    .map((impl): ChildDesc => ({
+      id: apiImplNodeId(impl.apiId, impl.moduleId),
+      name: apiById.get(impl.apiId)!.name,
+      kind: 'api-impl',
+    }));
+}
+
 // Detail level: a context becomes a resizable container holding small aggregate
 // and use-case boxes the user can rearrange inside it. Children are stored as
 // offsets from the container centre (see ViewLayout.nodes), so they follow the
@@ -113,6 +129,7 @@ interface ChildDesc {
     | 'mcp-server'
     | 'api-operation'
     | 'api'
+    | 'api-impl'
     | 'proxy-api';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -133,6 +150,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'mcp-server': { symbol: 'robot', fill: '#faf5ff', stroke: '#9333ea' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
   api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
+  'api-impl': { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
 };
 
@@ -149,6 +167,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'mcp-server': 'Servidor MCP',
   'api-operation': 'Operación de API',
   api: 'API publicada por este sistema',
+  'api-impl': 'La misma API, implementada también en este contexto',
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
 };
 
@@ -187,6 +206,9 @@ function detailedContext(
 ): SceneNode[] {
   const aggregates = (model.aggregates ?? []).filter((a) => a.moduleId === module.id);
   const children: ChildDesc[] = [
+    // APIs implemented here nest first: strategic-level elements, like an external
+    // system's published APIs.
+    ...apiImplChildren(model, module.id),
     ...aggregates.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
     ...(module.useCases ?? []).map(
       (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
@@ -548,6 +570,12 @@ export function contextMapScene(
       tooltip: `${m.name} — subdominio ${subdomain}`,
     };
     if (detailed) return detailedContext(model, m, pos, base, layout, sizes);
+    // Implemented APIs are strategic-level: they nest inside the context at EVERY
+    // detail level, exactly like a published API nests inside its external system.
+    const implChildren = apiImplChildren(model, m.id);
+    if (implChildren.length > 0) {
+      return detailedContainer(pos, base, implChildren, layout, sizes);
+    }
     return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every context.
@@ -726,35 +754,14 @@ export function contextMapScene(
     };
   });
 
-  // API implementation occurrences: the SAME published API, implemented (also) in one of
-  // our bounded contexts (strangler migrations). Each site renders as an occurrence node —
-  // same ApiRef underneath, so it shares name and identity with the published node — placed
-  // next to its context and wired to it and to every proxy fronting the API.
-  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
-  const moduleById = new Map(model.modules.map((m) => [m.id, m]));
+  // API implementation sites (the SAME published API, also implemented in bounded
+  // contexts): the occurrences nest INSIDE their context above; here only the list
+  // survives, feeding the proxy-routing edges below.
+  const implApiIds = new Map((model.apis ?? []).map((a) => [a.id, a]));
+  const implModuleIds = new Set(model.modules.map((m) => m.id));
   const implEntries = (model.apiImplementations ?? []).filter(
-    (impl) => apiById.has(impl.apiId) && moduleById.has(impl.moduleId),
+    (impl) => implApiIds.has(impl.apiId) && implModuleIds.has(impl.moduleId),
   );
-  implEntries.forEach((impl, i) => {
-    const api = apiById.get(impl.apiId)!;
-    const mod = moduleById.get(impl.moduleId)!;
-    const nid = apiImplNodeId(impl.apiId, impl.moduleId);
-    const pos = layout[nid] ?? defaultPosition(allNodes.length + i, allNodes.length + implEntries.length);
-    nodes.push({
-      id: nid,
-      label: api.name,
-      kind: 'api-impl',
-      symbol: 'interface',
-      fill: '#eef2ff',
-      stroke: '#4f46e5',
-      badge: 'API · IMPL',
-      tooltip: `${api.name} — la misma API, implementada en ${mod.name}`,
-      x: pos.x,
-      y: pos.y,
-      w: NODE_W,
-      h: NODE_H,
-    });
-  });
 
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
@@ -1014,24 +1021,13 @@ export function contextMapScene(
     ).values(),
   ];
 
-  // API implementation wiring: the occurrence sits IN its bounded context ("implementada
-  // en", solid indigo like the API family) and every proxy fronting that API also routes
-  // to it (teal, like the proxy → published-API edge).
+  // API implementation wiring: the occurrence nests in its bounded context (that IS the
+  // "implemented here"), and every proxy fronting that API also routes to it (teal, like
+  // the proxy → published-API edge).
   const apiImplEdges: SceneEdge[] = implEntries.flatMap((impl) => {
     const nid = apiImplNodeId(impl.apiId, impl.moduleId);
     if (!nodeIds.has(nid)) return [];
     const edges: SceneEdge[] = [];
-    if (nodeIds.has(impl.moduleId)) {
-      edges.push({
-        id: `apiimplin:${nid}`,
-        sourceId: nid,
-        targetId: impl.moduleId,
-        kind: 'api-impl',
-        color: '#4f46e5',
-        arrow: true,
-        tooltip: 'implementada en',
-      });
-    }
     for (const px of (model.proxyApis ?? []).filter((p) => p.targetApiId === impl.apiId)) {
       const sid = rollUp(px.id);
       if (nodeIds.has(sid) && sid !== nid) {
