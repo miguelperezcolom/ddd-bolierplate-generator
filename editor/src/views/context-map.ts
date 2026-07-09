@@ -49,6 +49,31 @@ export function apiOpOccurrenceId(operationId: string, siteId: string): string {
 }
 
 /**
+ * The three forms a container node can take, ranked by how much it reveals. The level
+ * picks the default; the chevron toggles to the OTHER meaningful form: from `full` it
+ * folds everything away, from `compact` it unfolds everything the level supports, and
+ * from the `coarse` chip form it prefers unfolding when there is detail beyond the
+ * chips, folding the chips away otherwise. Any node with children is toggleable.
+ */
+type NodeForm = 'compact' | 'coarse' | 'full';
+const FORM_RANK: Record<NodeForm, number> = { compact: 0, coarse: 1, full: 2 };
+
+function resolveForm(
+  toggled: boolean,
+  defaultForm: NodeForm,
+  hasBeyondChips: boolean,
+): { form: NodeForm; collapsed: boolean } {
+  const altForm: NodeForm =
+    defaultForm === 'full' ? 'compact'
+    : defaultForm === 'compact' ? 'full'
+    : hasBeyondChips ? 'full' : 'compact';
+  const form = toggled ? altForm : defaultForm;
+  const other = toggled ? defaultForm : altForm;
+  // ▸ when the click reveals more, ▾ when it hides.
+  return { form, collapsed: FORM_RANK[other] > FORM_RANK[form] };
+}
+
+/**
  * API-implementation occurrences of a bounded context, as nestable children — the SAME
  * ApiRef the external system publishes, so the chip looks exactly like the API nested
  * in its publisher; only the site differs.
@@ -607,33 +632,36 @@ export function contextMapScene(
         badge: 'EXTERNAL',
         tooltip: `${x.name} (sistema externo)`,
       };
-      // Published APIs are strategic-level elements: they nest visibly at EVERY
-      // detail level, while operations and tables only unfold in detailed mode.
+      // Published APIs and proxies are strategic-level elements: they are the system's
+      // chip (coarse) form; operations and tables only unfold in the full form.
       const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
       const hostedProxies = nestedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
-      const xExpanded = toggledIds.has(x.id) ? !detailed : detailed;
-      const plainChildren: ChildDesc[] = [
-        ...hostedProxies.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
-        ...(xExpanded
-          ? [
-              ...(x.useCases ?? []).map(
-                (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
-              ),
-              ...(x.tables ?? []).map(
-                (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
-              ),
-              ...(x.mcpServers ?? []).map(
-                (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
-              ),
-            ]
-          : []),
+      const proxyChips: ChildDesc[] = hostedProxies.map(
+        (px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' }),
+      );
+      const richChildren: ChildDesc[] = [
+        ...(x.useCases ?? []).map(
+          (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
+        ),
+        ...(x.tables ?? []).map(
+          (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
+        ),
+        ...(x.mcpServers ?? []).map(
+          (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
+        ),
       ];
-      const xFoldable =
-        (x.useCases ?? []).length > 0 ||
-        (x.tables ?? []).length > 0 ||
-        (x.mcpServers ?? []).length > 0 ||
-        (operationsLevel && publishedApis.length > 0);
-      const unfoldableProxies = operationsLevel && xExpanded
+      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0;
+      const xFoldable = hasChips || richChildren.length > 0;
+      const { form: xForm, collapsed: xCollapsed } = resolveForm(
+        toggledIds.has(x.id),
+        detailed ? 'full' : hasChips ? 'coarse' : 'compact',
+        richChildren.length > 0 || (operationsLevel && hasChips),
+      );
+      const plainChildren: ChildDesc[] = [
+        ...proxyChips,
+        ...(xForm === 'full' ? richChildren : []),
+      ];
+      const unfoldableProxies = operationsLevel && xForm === 'full'
         ? hostedProxies.filter((px) => {
             const target = px.targetApiId
               ? (model.apis ?? []).find((a) => a.id === px.targetApiId)
@@ -641,7 +669,7 @@ export function contextMapScene(
             return (target?.operations ?? []).length > 0;
           })
         : [];
-      if (operationsLevel && xExpanded && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
+      if (operationsLevel && xForm === 'full' && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
         // The deepest level nests twice: the system wraps each API's (and hosted
         // proxy's) own container, which in turn wraps its operations. A hosted
         // proxy's surface IS its fronted API, so it unfolds operation OCCURRENCES.
@@ -678,7 +706,7 @@ export function contextMapScene(
         const unfoldedIds = new Set(unfoldableProxies.map((px) => px.id));
         return containerWithApiBoxes(
           pos,
-          { ...base, collapsible: true, collapsed: false },
+          { ...base, collapsible: true, collapsed: xCollapsed },
           boxes,
           plainChildren.filter((c) => !unfoldedIds.has(c.id)),
           layout,
@@ -686,21 +714,23 @@ export function contextMapScene(
           collapsedIds,
         );
       }
-      const children: ChildDesc[] = [
-        ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
-        ...plainChildren,
-      ];
+      const children: ChildDesc[] = xForm === 'compact'
+        ? []
+        : [
+            ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+            ...plainChildren,
+          ];
       if (children.length > 0) {
         return detailedContainer(
           pos,
-          { ...base, collapsible: xFoldable, collapsed: xFoldable && !xExpanded },
+          { ...base, collapsible: xFoldable, collapsed: xCollapsed },
           children, layout, sizes,
         );
       }
       return [{
         ...base,
         collapsible: xFoldable,
-        collapsed: xFoldable && !xExpanded,
+        collapsed: xFoldable && xCollapsed,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -728,26 +758,31 @@ export function contextMapScene(
       (m.readModels ?? []).length > 0 ||
       (m.domainServices ?? []).length > 0 ||
       (m.queryServices ?? []).length > 0;
-    const expanded = toggledIds.has(m.id) ? !detailed : detailed;
-    if (expanded && (hasDetail || implChildren.length > 0)) {
+    const mFoldable = hasDetail || implChildren.length > 0;
+    const { form: mForm, collapsed: mCollapsed } = resolveForm(
+      toggledIds.has(m.id),
+      detailed ? 'full' : implChildren.length > 0 ? 'coarse' : 'compact',
+      hasDetail,
+    );
+    if (mForm === 'full' && mFoldable) {
       return detailedContext(
         model, m, pos,
-        { ...base, collapsible: true, collapsed: false },
+        { ...base, collapsible: true, collapsed: mCollapsed },
         layout, sizes, operationsLevel,
       );
     }
-    // Folded (or nothing to unfold): the strategic form — implemented APIs still nest.
-    if (implChildren.length > 0) {
+    // Coarse: the strategic form — implemented APIs still nest.
+    if (mForm === 'coarse' && implChildren.length > 0) {
       return detailedContainer(
         pos,
-        { ...base, collapsible: hasDetail, collapsed: hasDetail },
+        { ...base, collapsible: mFoldable, collapsed: mCollapsed },
         implChildren, layout, sizes,
       );
     }
     return [{
       ...base,
-      collapsible: hasDetail,
-      collapsed: hasDetail,
+      collapsible: mFoldable,
+      collapsed: mFoldable && mCollapsed,
       x: pos.x,
       y: pos.y,
       w: NODE_W,
@@ -1396,7 +1431,9 @@ export function contextMapScene(
             if (isPublishedSite || (model.proxyApis ?? []).some((p) => p.id === u.siteId)) {
               target = rollUp(u.siteId);
             } else {
-              target = apiImplNodeId(owningApi.id, u.siteId);
+              // Implementation site: the impl chip when visible, else its context.
+              const implChip = apiImplNodeId(owningApi.id, u.siteId);
+              target = nodeIds.has(implChip) ? implChip : u.siteId;
             }
           }
           if (!target || !nodeIds.has(target) || target === u.externalSystemId) return null;
