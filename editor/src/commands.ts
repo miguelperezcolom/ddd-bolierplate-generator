@@ -703,6 +703,21 @@ export type ModuxCommand =
       label?: string;
     }
   | {
+      kind: 'set-menu-aggregate';
+      appId: string;
+      aggregateId: string | null;
+      itemId?: string;
+      label?: string;
+    }
+  | {
+      kind: 'set-menu-query-operation';
+      appId: string;
+      queryServiceId: string | null;
+      queryOperationId: string | null;
+      itemId?: string;
+      label?: string;
+    }
+  | {
       kind: 'set-menu-page';
       appId: string;
       pageId: string | null;

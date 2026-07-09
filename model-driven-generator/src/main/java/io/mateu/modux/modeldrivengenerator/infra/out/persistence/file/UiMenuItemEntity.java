@@ -16,30 +16,43 @@ public record UiMenuItemEntity(
         /** The app this entry opens — an app is just another UI component, like a page. */
         String uiAdapterId,
         /** The use case this entry fires. An entry opens/fires exactly ONE thing. */
-        String useCaseId
+        String useCaseId,
+        /** The aggregate this entry opens — a CRUD is inferred over it. */
+        String aggregateId,
+        /** The query service operation this entry opens — a filtered listing is inferred. */
+        String queryServiceId,
+        String queryOperationId
 ) {
 
     /** Backward-compatible constructor (pre-pageId/children callers and stores). */
     public UiMenuItemEntity(String label, String icon, String description, String route) {
-        this(label, icon, description, route, null, List.of(), null, null, null);
+        this(label, icon, description, route, null, List.of(), null, null, null, null, null, null);
+    }
+
+    /** Backward-compatible constructor (pre-aggregate/query targets). */
+    public UiMenuItemEntity(String label, String icon, String description, String route,
+                            String pageId, List<UiMenuItemEntity> children, String id,
+                            String uiAdapterId, String useCaseId) {
+        this(label, icon, description, route, pageId, children, id, uiAdapterId, useCaseId,
+                null, null, null);
     }
 
     /** Backward-compatible constructor (pre-useCaseId callers). */
     public UiMenuItemEntity(String label, String icon, String description, String route,
                             String pageId, List<UiMenuItemEntity> children, String id,
                             String uiAdapterId) {
-        this(label, icon, description, route, pageId, children, id, uiAdapterId, null);
+        this(label, icon, description, route, pageId, children, id, uiAdapterId, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-uiAdapterId callers). */
     public UiMenuItemEntity(String label, String icon, String description, String route,
                             String pageId, List<UiMenuItemEntity> children, String id) {
-        this(label, icon, description, route, pageId, children, id, null, null);
+        this(label, icon, description, route, pageId, children, id, null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-id callers). */
     public UiMenuItemEntity(String label, String icon, String description, String route,
                             String pageId, List<UiMenuItemEntity> children) {
-        this(label, icon, description, route, pageId, children, null, null, null);
+        this(label, icon, description, route, pageId, children, null, null, null, null, null, null);
     }
 }

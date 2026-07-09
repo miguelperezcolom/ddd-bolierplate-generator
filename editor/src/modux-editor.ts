@@ -992,7 +992,9 @@ export class ModuxEditor extends LitElement {
       case 'remove-menu-item':
       case 'set-menu-page':
       case 'set-menu-app':
-      case 'set-menu-use-case': {
+      case 'set-menu-use-case':
+      case 'set-menu-aggregate':
+      case 'set-menu-query-operation': {
         const app = (this.model.uiApps ?? []).find((a) => a.id === c.appId);
         const find = (items: UiMenuEntryRef[] | undefined): UiMenuEntryRef | null => {
           for (const it of items ?? []) {
@@ -1027,6 +1029,25 @@ export class ModuxEditor extends LitElement {
             kind: 'set-menu-use-case',
             appId: c.appId,
             useCaseId: entry.useCaseId ?? null,
+            itemId: c.itemId,
+            label: c.label,
+          }];
+        }
+        if (c.kind === 'set-menu-aggregate') {
+          return [{
+            kind: 'set-menu-aggregate',
+            appId: c.appId,
+            aggregateId: entry.aggregateId ?? null,
+            itemId: c.itemId,
+            label: c.label,
+          }];
+        }
+        if (c.kind === 'set-menu-query-operation') {
+          return [{
+            kind: 'set-menu-query-operation',
+            appId: c.appId,
+            queryServiceId: entry.queryServiceId ?? null,
+            queryOperationId: entry.queryOperationId ?? null,
             itemId: c.itemId,
             label: c.label,
           }];
@@ -2180,12 +2201,25 @@ export class ModuxEditor extends LitElement {
         const isUseCase = this.model.modules.some((mod) =>
           (mod.useCases ?? []).some((u) => u.id === other),
         );
+        const isAggregate = (this.model.aggregates ?? []).some((a) => a.id === other);
+        const owningQs = this.model.modules
+          .flatMap((mod) => mod.queryServices ?? [])
+          .find((qs) => (qs.operations ?? []).some((op) => op.id === other));
         if (isPage(other)) {
           this.command({ kind: 'set-menu-page', pageId: other, ...menuRef });
         } else if (isApp(other) && other !== menuRef.appId) {
           this.command({ kind: 'set-menu-app', toAppId: other, ...menuRef });
         } else if (isUseCase) {
           this.command({ kind: 'set-menu-use-case', useCaseId: other, ...menuRef });
+        } else if (isAggregate) {
+          this.command({ kind: 'set-menu-aggregate', aggregateId: other, ...menuRef });
+        } else if (owningQs) {
+          this.command({
+            kind: 'set-menu-query-operation',
+            queryServiceId: owningQs.id,
+            queryOperationId: other,
+            ...menuRef,
+          });
         }
         return;
       }
@@ -3061,6 +3095,14 @@ export class ModuxEditor extends LitElement {
         } else if ((m = /^menuuc:(.+)->[^>]+$/.exec(id))) {
           const ref = parseMenuNodeId(m[1]);
           if (ref) this.command({ kind: 'set-menu-use-case', useCaseId: null, ...ref });
+        } else if ((m = /^menuagg:(.+)->[^>]+$/.exec(id))) {
+          const ref = parseMenuNodeId(m[1]);
+          if (ref) this.command({ kind: 'set-menu-aggregate', aggregateId: null, ...ref });
+        } else if ((m = /^menuqop:(.+)->[^>]+$/.exec(id))) {
+          const ref = parseMenuNodeId(m[1]);
+          if (ref) {
+            this.command({ kind: 'set-menu-query-operation', queryServiceId: null, queryOperationId: null, ...ref });
+          }
         }
         return;
       }
@@ -4022,6 +4064,16 @@ export class ModuxEditor extends LitElement {
         symbol: 'readmodel',
         color: '#10b981',
         items: m.modules.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
+      },
+      {
+        label: 'Operaciones de consulta',
+        symbol: 'lens',
+        color: '#0284c7',
+        items: m.modules.flatMap((mod) =>
+          (mod.queryServices ?? []).flatMap((qs) =>
+            (qs.operations ?? []).map((op) => ({ id: op.id, name: `${op.name} (${qs.name})` })),
+          ),
+        ),
       },
       {
         label: 'Query services',

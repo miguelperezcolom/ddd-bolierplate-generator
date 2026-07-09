@@ -111,7 +111,11 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
               ? `Abre la app ${entry.uiAdapterId}`
               : entry.useCaseId
                 ? `Lanza ${entry.useCaseId}`
-                : 'Entrada de menú sin destino',
+                : entry.aggregateId
+                  ? `CRUD inferido sobre ${entry.aggregateId}`
+                  : entry.queryOperationId
+                    ? `Listado con filtros de ${entry.queryOperationId}`
+                    : 'Entrada de menú sin destino',
       });
       entryY += ENTRY_H + ENTRY_GAP;
       if (entry.uiAdapterId && apps.some((a) => a.id === entry.uiAdapterId)) {
@@ -139,6 +143,44 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
             targetId: entry.useCaseId,
             kind: 'menu-use-case',
             color: '#06b6d4',
+            dashed: true,
+            arrow: true,
+          });
+        }
+      }
+      if (entry.aggregateId && (model.aggregates ?? []).some((a) => a.id === entry.aggregateId)) {
+        const agg = (model.aggregates ?? []).find((a) => a.id === entry.aggregateId)!;
+        chipMeta.set(agg.id, { label: agg.name, kind: 'aggregate', symbol: 'aggregate', stroke: '#8b5cf6' });
+        edges.push({
+          id: `menuagg:${id}->${agg.id}`,
+          sourceId: id,
+          targetId: agg.id,
+          kind: 'menu-aggregate',
+          label: 'CRUD',
+          color: '#8b5cf6',
+          dashed: true,
+          arrow: true,
+        });
+      }
+      if (entry.queryOperationId) {
+        const qs = model.modules
+          .flatMap((mod) => mod.queryServices ?? [])
+          .find((x) => x.id === entry.queryServiceId);
+        const op = (qs?.operations ?? []).find((o) => o.id === entry.queryOperationId);
+        if (qs && op) {
+          chipMeta.set(op.id, {
+            label: `${op.name} (${qs.name})`,
+            kind: 'query-operation',
+            symbol: 'lens',
+            stroke: '#0284c7',
+          });
+          edges.push({
+            id: `menuqop:${id}->${op.id}`,
+            sourceId: id,
+            targetId: op.id,
+            kind: 'menu-query-operation',
+            label: 'listado',
+            color: '#0284c7',
             dashed: true,
             arrow: true,
           });

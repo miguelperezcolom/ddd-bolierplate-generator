@@ -64,6 +64,7 @@ export interface UseCaseCallRef {
 export interface QueryServiceRef {
   id: string;
   name: string;
+  operations?: { id: string; name: string }[];
 }
 
 /** Use case A consumes query service B (a CallQueryService step in A). */
@@ -480,6 +481,11 @@ export interface UiMenuEntryRef {
   uiAdapterId?: string;
   /** The use case this entry fires. An entry opens/fires exactly ONE thing. */
   useCaseId?: string;
+  /** The aggregate this entry opens — a CRUD is inferred over it. */
+  aggregateId?: string;
+  /** The query service operation this entry opens — a filtered listing is inferred. */
+  queryServiceId?: string;
+  queryOperationId?: string;
 }
 
 export interface UiAppRef {

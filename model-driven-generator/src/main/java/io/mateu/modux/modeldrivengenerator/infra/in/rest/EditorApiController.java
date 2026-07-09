@@ -39,6 +39,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
@@ -201,7 +202,8 @@ public class EditorApiController {
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
     public record UseCaseCallDto(String sourceId, String targetId) {}
-    public record QueryServiceDto(String id, String name) {}
+    public record QueryServiceDto(String id, String name, List<QueryOperationDto> operations) {}
+    public record QueryOperationDto(String id, String name) {}
     /** Use case A consumes query service B (a CallQueryService step in A). */
     public record QueryCallDto(String sourceId, String targetId) {}
     /** An actor uses a use case or a query service directly (a UI is derived from it). */
@@ -225,7 +227,8 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
-    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId) {}
+    public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
+                                  String aggregateId, String queryServiceId, String queryOperationId) {}
     /** A page of the UI map; buttons = toolbar + bottomBar, each firing a use case. */
     public record UiPageDto(String id, String name, String type, String route, String modelId,
                             String modelName, String aggregateId, String listingQueryServiceId,
@@ -421,7 +424,10 @@ public class EditorApiController {
                                 .map(ev -> new ApplicationEventDto(ev.id(), ev.name()))
                                 .toList(),
                         queryServicesByModule.getOrDefault(m.id(), List.of()).stream()
-                                .map(qs -> new QueryServiceDto(qs.id(), qs.name()))
+                                .map(qs -> new QueryServiceDto(qs.id(), qs.name(),
+                                        (qs.operations() == null ? List.<QueryOperationEntity>of() : qs.operations()).stream()
+                                                .map(op -> new QueryOperationDto(op.id(), op.name()))
+                                                .toList()))
                                 .toList()))
                 .toList();
 
@@ -870,7 +876,8 @@ public class EditorApiController {
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
                         .map(EditorApiController::toMenuEntry)
                         .toList(),
-                item.id(), item.uiAdapterId(), item.useCaseId());
+                item.id(), item.uiAdapterId(), item.useCaseId(),
+                item.aggregateId(), item.queryServiceId(), item.queryOperationId());
     }
 
     // ---- commands ---------------------------------------------------------
@@ -900,7 +907,8 @@ public class EditorApiController {
                                 String modelId, String actorId,
                                 String fieldId, String stereotype, Integer colspan,
                                 List<String> fieldIds,
-                                String itemId, String parentId, String toAppId) {}
+                                String itemId, String parentId, String toAppId,
+                                String queryOperationId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1060,6 +1068,8 @@ public class EditorApiController {
             case "move-menu-item" -> moveMenuItem(command);
             case "set-menu-app" -> setMenuApp(command);
             case "set-menu-use-case" -> setMenuUseCase(command);
+            case "set-menu-aggregate" -> setMenuAggregate(command);
+            case "set-menu-query-operation" -> setMenuQueryOperation(command);
             case "add-page-button" -> addPageButton(command);
             case "remove-page-button" -> removePageButton(command);
             case "set-page-listing" -> setPageListing(command);
@@ -3435,7 +3445,8 @@ public class EditorApiController {
                     item.route(), item.pageId(),
                     clearedChildren != null ? clearedChildren
                             : item.children() == null ? List.of() : item.children(),
-                    item.id(), hit ? null : item.uiAdapterId(), item.useCaseId()));
+                    item.id(), hit ? null : item.uiAdapterId(), item.useCaseId(),
+                    item.aggregateId(), item.queryServiceId(), item.queryOperationId()));
         }
         return changed ? copy : null;
     }
@@ -3511,7 +3522,8 @@ public class EditorApiController {
             repository.findById(command.toAppId(), UiAdapterEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
         }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(), "app", command.toAppId());
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
+                item -> retargeted(item, null, command.toAppId(), null, null, null, null));
         if (updated == null) {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
@@ -3531,7 +3543,51 @@ public class EditorApiController {
                             "Unknown use case: " + command.useCaseId()));
         }
         var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                "useCase", command.useCaseId());
+                item -> retargeted(item, null, null, command.useCaseId(), null, null, null));
+        if (updated == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        repository.save(withMenuItems(app, updated));
+    }
+
+    /** Points a menu entry at an AGGREGATE — a CRUD over it is inferred downstream. */
+    private void setMenuAggregate(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.aggregateId() != null) {
+            repository.findById(command.aggregateId(), AggregateEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown aggregate: " + command.aggregateId()));
+        }
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
+                item -> retargeted(item, null, null, null, command.aggregateId(), null, null));
+        if (updated == null) {
+            throw new IllegalArgumentException(
+                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
+        }
+        repository.save(withMenuItems(app, updated));
+    }
+
+    /** Points a menu entry at a QUERY SERVICE OPERATION — a filtered listing is inferred. */
+    private void setMenuQueryOperation(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.queryOperationId() != null) {
+            var service = repository.findById(command.queryServiceId(), QueryServiceEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown query service: " + command.queryServiceId()));
+            var known = (service.operations() == null ? List.<QueryOperationEntity>of() : service.operations())
+                    .stream().anyMatch(op -> command.queryOperationId().equals(op.id()));
+            if (!known) {
+                throw new IllegalArgumentException("Unknown query operation: "
+                        + command.queryOperationId() + " en " + command.queryServiceId());
+            }
+        }
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
+                item -> retargeted(item, null, null, null, null,
+                        command.queryOperationId() == null ? null : command.queryServiceId(),
+                        command.queryOperationId()));
         if (updated == null) {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
@@ -3577,7 +3633,8 @@ public class EditorApiController {
             repository.findById(command.pageId(), PageEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
         }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(), "page", command.pageId());
+        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
+                item -> retargeted(item, command.pageId(), null, null, null, null, null));
         if (updated == null) {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
@@ -3781,14 +3838,17 @@ public class EditorApiController {
             var healedChildren = withMenuItemIds(item.children(), used);
             if (healedChildren != null) changed = true;
             var isGroup = item.children() != null && !item.children().isEmpty();
-            if (isGroup && (item.pageId() != null || item.uiAdapterId() != null || item.useCaseId() != null)) {
+            if (isGroup && (item.pageId() != null || item.uiAdapterId() != null || item.useCaseId() != null
+                    || item.aggregateId() != null || item.queryOperationId() != null)) {
                 changed = true; // a parent is a pure grouper — legacy targets are dropped
             }
             copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
                     item.route(), isGroup ? null : item.pageId(),
                     healedChildren != null ? healedChildren
                             : item.children() == null ? List.of() : item.children(),
-                    id, isGroup ? null : item.uiAdapterId(), isGroup ? null : item.useCaseId()));
+                    id, isGroup ? null : item.uiAdapterId(), isGroup ? null : item.useCaseId(),
+                    isGroup ? null : item.aggregateId(), isGroup ? null : item.queryServiceId(),
+                    isGroup ? null : item.queryOperationId()));
         }
         return changed ? copy : null;
     }
@@ -3821,7 +3881,8 @@ public class EditorApiController {
     private static UiMenuItemEntity withChildren(UiMenuItemEntity item,
                                                  List<UiMenuItemEntity> children) {
         return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
-                item.pageId(), children, item.id(), item.uiAdapterId(), item.useCaseId());
+                item.pageId(), children, item.id(), item.uiAdapterId(), item.useCaseId(),
+                item.aggregateId(), item.queryServiceId(), item.queryOperationId());
     }
 
     /**
@@ -3842,7 +3903,7 @@ public class EditorApiController {
                 // a parent is a pure grouper: gaining a submenu clears any target it had
                 var copy = new ArrayList<>(items);
                 copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), null, newChildren, item.id(), null, null));
+                        item.route(), null, newChildren, item.id(), null, null, null, null, null));
                 return copy;
             } else {
                 newChildren = insertedUnderParent(children, parentId, parentLabel, entry);
@@ -3882,30 +3943,30 @@ public class EditorApiController {
 
     /**
      * The tree with the FIRST matching item's target replaced — an entry opens/fires
-     * exactly ONE thing, so setting a target clears the other two; null when nothing
-     * matches. Entries with a submenu are pure groupers: linking them is rejected.
+     * exactly ONE thing, so every retarget lambda sets ITS target and nulls the rest;
+     * null when nothing matches. Entries with a submenu are pure groupers: linking
+     * them is rejected (linking = the lambda yields any non-null target).
      */
-    private static List<UiMenuItemEntity> withMenuTarget(List<UiMenuItemEntity> items,
-                                                         String itemId, String label,
-                                                         String kind, String targetId) {
+    private static List<UiMenuItemEntity> withMenuTarget(
+            List<UiMenuItemEntity> items, String itemId, String label,
+            java.util.function.UnaryOperator<UiMenuItemEntity> retarget) {
         if (items == null) return null;
         for (var i = 0; i < items.size(); i++) {
             var item = items.get(i);
             if (menuItemMatches(item, itemId, label)) {
-                if (targetId != null && item.children() != null && !item.children().isEmpty()) {
+                var retargeted = retarget.apply(item);
+                var links = retargeted.pageId() != null || retargeted.uiAdapterId() != null
+                        || retargeted.useCaseId() != null || retargeted.aggregateId() != null
+                        || retargeted.queryOperationId() != null;
+                if (links && item.children() != null && !item.children().isEmpty()) {
                     throw new IllegalArgumentException(
                             "La entrada «" + item.label() + "» tiene submenú: no puede abrir nada");
                 }
                 var copy = new ArrayList<>(items);
-                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(),
-                        "page".equals(kind) ? targetId : null,
-                        item.children(), item.id(),
-                        "app".equals(kind) ? targetId : null,
-                        "useCase".equals(kind) ? targetId : null));
+                copy.set(i, retargeted);
                 return copy;
             }
-            var newChildren = withMenuTarget(item.children(), itemId, label, kind, targetId);
+            var newChildren = withMenuTarget(item.children(), itemId, label, retarget);
             if (newChildren != null) {
                 var copy = new ArrayList<>(items);
                 copy.set(i, withChildren(item, newChildren));
@@ -3913,6 +3974,15 @@ public class EditorApiController {
             }
         }
         return null;
+    }
+
+    /** The item retargeted: one target set, every other cleared. */
+    private static UiMenuItemEntity retargeted(UiMenuItemEntity item, String pageId, String appId,
+                                               String useCaseId, String aggregateId,
+                                               String queryServiceId, String queryOperationId) {
+        return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
+                pageId, item.children(), item.id(), appId, useCaseId,
+                aggregateId, queryServiceId, queryOperationId);
     }
 
     /** Record copy with only externalSystems replaced — every other field preserved verbatim. */
