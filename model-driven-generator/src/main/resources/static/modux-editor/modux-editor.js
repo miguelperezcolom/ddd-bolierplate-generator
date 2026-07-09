@@ -8754,6 +8754,7 @@ let V = class extends Ke {
           ＋ Crear
         </button>
         <input
+          class="import-api-file"
           type="file"
           hidden
           accept=".json,.yaml,.yml,.wsdl,.xml"
@@ -8772,7 +8773,10 @@ let V = class extends Ke {
           class="tab"
           ?hidden=${this._view !== "context-map"}
           title=${this.selectedApiId() ? "Importa un OpenAPI/WSDL sobre la API seleccionada (operaciones y modelos rq/rs)" : "Importa un OpenAPI/WSDL como una nueva API del diagrama"}
-          @click=${(t) => t.currentTarget.previousElementSibling.click()}
+          @click=${() => {
+      var t;
+      return (t = this.renderRoot.querySelector("input.import-api-file")) == null ? void 0 : t.click();
+    }}
         >
           ⇪ Importar API${this.selectedApiId() ? " aquí" : "…"}
         </button>

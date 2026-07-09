@@ -4570,6 +4570,7 @@ export class ModuxEditor extends LitElement {
           ＋ Crear
         </button>
         <input
+          class="import-api-file"
           type="file"
           hidden
           accept=".json,.yaml,.yml,.wsdl,.xml"
@@ -4590,8 +4591,8 @@ export class ModuxEditor extends LitElement {
           title=${this.selectedApiId()
             ? 'Importa un OpenAPI/WSDL sobre la API seleccionada (operaciones y modelos rq/rs)'
             : 'Importa un OpenAPI/WSDL como una nueva API del diagrama'}
-          @click=${(e: Event) =>
-            ((e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement).click()}
+          @click=${() =>
+            (this.renderRoot.querySelector('input.import-api-file') as HTMLInputElement | null)?.click()}
         >
           ⇪ Importar API${this.selectedApiId() ? ' aquí' : '…'}
         </button>
