@@ -61,6 +61,12 @@ export class ModuxTilt extends LitElement {
       position: absolute;
       overflow: visible;
     }
+    .edge3 {
+      position: absolute;
+      height: 0;
+      transform-origin: 0 50%;
+      pointer-events: none;
+    }
     .n3 {
       position: absolute;
       box-sizing: border-box;
@@ -226,12 +232,41 @@ export class ModuxTilt extends LitElement {
               const s = byId.get(e.sourceId);
               const t = byId.get(e.targetId);
               if (!s || !t) return '';
+              // Faint shadow on the floor: the depth cue under the real 3D line.
               return svg`<line
                 x1=${s.x} y1=${s.y} x2=${t.x} y2=${t.y}
-                stroke=${e.color ?? '#475569'} stroke-width="1.6" opacity="0.75"
-                stroke-dasharray=${e.dashed ? '6 4' : ''} />`;
+                stroke="#000000" stroke-width="2" opacity="0.22" />`;
             })}
           </svg>
+          ${this.scene.edges.map((e) => {
+            const s = byId.get(e.sourceId);
+            const t = byId.get(e.targetId);
+            if (!s || !t) return '';
+            // A 3D segment between the two plates: rotateZ sets the bearing on
+            // the XY plane, rotateY lifts the far end to the target's storey.
+            const z1 = (depth.get(s.id) ?? 0) * STOREY + 2;
+            const z2 = (depth.get(t.id) ?? 0) * STOREY + 2;
+            const dx = t.x - s.x;
+            const dy = t.y - s.y;
+            const dz = z2 - z1;
+            const dxy = Math.hypot(dx, dy);
+            const len = Math.hypot(dxy, dz);
+            const bearing = (Math.atan2(dy, dx) * 180) / Math.PI;
+            const climb = (Math.atan2(dz, dxy) * 180) / Math.PI;
+            const color = e.color ?? '#64748b';
+            const stroke = e.dashed
+              ? `repeating-linear-gradient(90deg, ${color} 0 6px, transparent 6px 10px)`
+              : color;
+            return html`<div
+              class="edge3"
+              style="
+                left: ${s.x}px; top: ${s.y}px; width: ${len}px; height: 1.7px;
+                transform: translateZ(${z1}px) rotateZ(${bearing}deg) rotateY(${-climb}deg);
+                background: ${stroke};
+                opacity: 0.9;
+              "
+            ></div>`;
+          })}
           ${nodes.map((n) => {
             const d = depth.get(n.id) ?? 0;
             const isPlate = n.container || d === 0;

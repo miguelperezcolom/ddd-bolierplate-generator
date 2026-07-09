@@ -223,6 +223,11 @@ aggregates:
 - id: "habitacion-st"
   name: "HabitacionServicioTecnico"
   modelId: "habitacion-st"
+  operations:
+  - id: "op-emit-ev-reservaModificada"
+    name: "emitReservaModificada"
+    emits: "ReservaModificada"
+    type: "CUSTOM"
   valueObjectIds:
   - "habitacion-st-id"
   - "habitacion-st-name"
@@ -1530,6 +1535,12 @@ diagrams:
   - ref: "actor"
     x: -96.0
     "y": 130.0
+  - ref: "mod-reservas"
+    x: 1007.8
+    "y": 224.4
+  - ref: "mod-servicio-tecnico"
+    x: 634.4
+    "y": 206.7
 - id: "context-map"
   detail: "detail"
   nodes:

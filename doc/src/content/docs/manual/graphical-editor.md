@@ -170,8 +170,9 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
 - **⬦ 3D (or V) tilts the diagram** — the Firefox-Tilt view of the model: the same
   scene rendered as stacked plates where **containment depth becomes height** (a
   bounded context is the base plate, its aggregates, use cases and events float one
-  storey above, an API's operations one more), with the edges lying on the floor
-  plane. Drag orbits, shift+drag pans, wheel zooms, double click resets the camera.
+  storey above, an API's operations one more). Edges fly **at their nodes' heights**
+  — a line between storeys climbs in 3D — with a faint shadow on the floor as the
+  depth cue. Drag orbits, shift+drag pans, wheel zooms, double click resets the camera.
   A read-only lens — press V again to come back and edit. Pure CSS 3D, works on any
   view and detail level.
 
