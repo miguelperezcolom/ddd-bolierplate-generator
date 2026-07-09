@@ -2482,6 +2482,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-proxy-api', id });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'workflow') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-workflow', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'api-operation') {
       const owner = this.owningApiOf(id);
       if (!owner) return;

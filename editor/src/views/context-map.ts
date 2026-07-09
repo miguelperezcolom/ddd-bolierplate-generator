@@ -410,10 +410,35 @@ export function contextMapScene(
     ...(model.proxyApis ?? [])
       .filter((px) => !nestedProxyIds.has(px.id))
       .map((px) => ({ ref: px, external: false, api: false, proxy: true })),
+    ...(model.workflows ?? []).map((w) => ({
+      ref: w,
+      external: false,
+      api: false,
+      proxy: false,
+      workflow: true,
+    })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if ('workflow' in entry && entry.workflow) {
+      const w = entry.ref as NonNullable<ModuxModel['workflows']>[number];
+      return [{
+        id: w.id,
+        label: w.name,
+        kind: 'workflow',
+        symbol: 'process',
+        fill: '#ede9fe',
+        stroke: '#6d28d9',
+        dashed: true,
+        badge: 'WORKFLOW',
+        tooltip: `${w.name} — workflow${w.triggerEvent ? ` · arranca con ${w.triggerEvent}` : ''}`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
+    }
     if (entry.proxy) {
       const px = entry.ref as NonNullable<ModuxModel['proxyApis']>[number];
       return [{
@@ -864,6 +889,71 @@ export function contextMapScene(
         ]),
     ).values(),
   ];
+  // Workflows on the strategic map: what they orchestrate and what fires them.
+  // A hidden child (use case / event at the coarse level) rolls up to its context.
+  const moduleOfChild = new Map<string, string>();
+  for (const m of model.modules) {
+    for (const u of m.useCases ?? []) moduleOfChild.set(u.id, m.id);
+    for (const ev of m.domainEvents ?? []) moduleOfChild.set(ev.id, m.id);
+    for (const ev of m.applicationEvents ?? []) moduleOfChild.set(ev.id, m.id);
+  }
+  const rollUpChild = (id: string) => (nodeIds.has(id) ? id : (moduleOfChild.get(id) ?? id));
+  const eventIdByName = new Map<string, string>();
+  for (const m of model.modules) {
+    for (const ev of m.domainEvents ?? []) eventIdByName.set(ev.name, ev.id);
+    for (const ev of m.applicationEvents ?? []) eventIdByName.set(ev.name, ev.id);
+  }
+  const workflowCallEdges: SceneEdge[] = [
+    ...new Map(
+      (model.workflows ?? [])
+        .flatMap((w) =>
+          (w.steps ?? [])
+            .filter((st) => st.targetUseCaseId)
+            .map((st) => ({ sourceId: w.id, targetId: rollUpChild(st.targetUseCaseId!) })),
+        )
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `wfcall:${d.sourceId}->${d.targetId}`,
+          {
+            id: `wfcall:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'wf-call',
+            color: '#7c3aed',
+            dashed: true,
+            arrow: true,
+            tooltip: 'orquesta',
+          },
+        ]),
+    ).values(),
+  ];
+  const workflowTriggerEdges: SceneEdge[] = [
+    ...new Map(
+      (model.workflows ?? [])
+        .filter((w) => w.triggerEvent && eventIdByName.has(w.triggerEvent))
+        .map((w) => ({
+          sourceId: rollUpChild(eventIdByName.get(w.triggerEvent!)!),
+          targetId: w.id,
+          label: w.triggerEvent!,
+        }))
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `wftrig:${d.sourceId}->${d.targetId}`,
+          {
+            id: `wftrig:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'wf-trigger',
+            color: '#f59e0b',
+            label: d.label,
+            dashed: true,
+            arrow: true,
+            tooltip: 'dispara el workflow',
+          },
+        ]),
+    ).values(),
+  ];
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -1103,6 +1193,8 @@ export function contextMapScene(
       ...actorExternalEdges,
       ...externalDependencyEdges,
       ...proxyTargetEdges,
+      ...workflowCallEdges,
+      ...workflowTriggerEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentMcpEdges,
