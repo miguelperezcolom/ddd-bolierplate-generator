@@ -55,6 +55,8 @@ export class ModuxTilt extends LitElement {
     | null = null;
   /** The total scale used at the last render — needed to unproject pointer deltas. */
   private _kUsed = 1;
+  /** The world center the last render pivoted on — needed to unproject absolute points. */
+  private _center = { x: 0, y: 0 };
 
   private emit(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -219,6 +221,50 @@ export class ModuxTilt extends LitElement {
       x: ux * Math.cos(rz) + uy * Math.sin(rz),
       y: -ux * Math.sin(rz) + uy * Math.cos(rz),
     };
+  }
+
+  /** The plate under a client point, if any (drops arrive as plain mouse coords). */
+  nodeIdAtClient(clientX: number, clientY: number): string | null {
+    const el = this.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    return (el?.closest?.('.n3') as HTMLElement | null)?.dataset.nodeId ?? null;
+  }
+
+  /**
+   * A client point → the floor plane (z=0), exactly: rebuild the CSS projection
+   * (perspective with its origin + the world transform) as a DOMMatrix and solve
+   * the 2×2 system the perspective divide leaves for a point known to sit at z=0.
+   */
+  sceneFromClient(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.getBoundingClientRect();
+    const ox = rect.width * 0.5;
+    const oy = rect.height * 0.42; // perspective-origin: 50% 42%
+    const persp = new DOMMatrix();
+    persp.m34 = -1 / 1600;
+    const m = new DOMMatrix()
+      .translate(ox, oy)
+      .multiply(persp)
+      .translate(-ox, -oy)
+      .translate(rect.width / 2, rect.height / 2) // .world sits at 50% / 50%
+      .translate(this._pan.x, this._pan.y)
+      .scale(this._kUsed, this._kUsed, this._kUsed)
+      .rotateAxisAngle(1, 0, 0, this._rx)
+      .rotateAxisAngle(0, 0, 1, this._rz)
+      .translate(-this._center.x, -this._center.y, 0);
+    // screen = proj(M·(x,y,0,1)) — linear in (x,y) once the divide is cleared.
+    const c0 = m.transformPoint(new DOMPoint(0, 0, 0, 1));
+    const c1 = m.transformPoint(new DOMPoint(1, 0, 0, 0));
+    const c2 = m.transformPoint(new DOMPoint(0, 1, 0, 0));
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    const a11 = c1.x - sx * c1.w;
+    const a12 = c2.x - sx * c2.w;
+    const a21 = c1.y - sy * c1.w;
+    const a22 = c2.y - sy * c2.w;
+    const b1 = sx * c0.w - c0.x;
+    const b2 = sy * c0.w - c0.y;
+    const det = a11 * a22 - a12 * a21;
+    if (!det) return { ...this._center };
+    return { x: (b1 * a22 - a12 * b2) / det, y: (a11 * b2 - b1 * a21) / det };
   }
 
   private onDown = (e: PointerEvent): void => {
@@ -408,6 +454,7 @@ export class ModuxTilt extends LitElement {
       : 0.5;
     const k = this._k * fit;
     this._kUsed = k; // the unprojection of pointer deltas needs the real scale
+    this._center = { x: cx, y: cy }; // …and absolute points also need the pivot
     const STOREY = 30; // px of elevation per containment level
     const live = this._liveMove;
     const lx = (n: SceneNode) => n.x + (live?.id === n.id ? live.dx : 0);

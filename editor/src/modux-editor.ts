@@ -3840,10 +3840,13 @@ export class ModuxEditor extends LitElement {
     const raw = e.dataTransfer?.getData('application/x-modux-palette');
     if (!raw) return;
     e.preventDefault();
-    const canvas = this.renderRoot.querySelector('modux-canvas');
-    if (!canvas) return;
-    const pos = canvas.sceneFromClient(e.clientX, e.clientY);
-    const targetId = canvas.nodeIdAtClient(e.clientX, e.clientY);
+    // Whichever surface is showing takes the drop — canvas and tilt share the API.
+    const surface = this._tilt
+      ? this.renderRoot.querySelector('modux-tilt')
+      : this.renderRoot.querySelector('modux-canvas');
+    if (!surface) return;
+    const pos = surface.sceneFromClient(e.clientX, e.clientY);
+    const targetId = surface.nodeIdAtClient(e.clientX, e.clientY);
     let payload: { new?: string; existing?: string };
     try {
       payload = JSON.parse(raw);
@@ -4201,7 +4204,7 @@ export class ModuxEditor extends LitElement {
     // The workflows view has no catalog section: it always shows the new elements.
     const tab = this._view === 'workflows' ? 'new' : this._paletteTab;
     return html`
-      <div class="palette ${this._treeOpen && this._activeViewId ? 'shifted' : ''}">
+      <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? 'shifted' : ''}">
         <div class="palette-body">
           <input
             class="palette-filter"
@@ -4905,7 +4908,11 @@ export class ModuxEditor extends LitElement {
       </div>
       <div class="canvas-wrap">
       ${this._tilt
-        ? html`<modux-tilt
+        ? html`
+      ${this.renderPalette()}
+      <modux-tilt
+            @dragover=${(e: DragEvent) => e.preventDefault()}
+            @drop=${this.onPaletteDrop}
             .scene=${scene}
             .selectedId=${this._selectedId}
             .connectable=${this._view === 'context-map' || this._view === 'workflows'}

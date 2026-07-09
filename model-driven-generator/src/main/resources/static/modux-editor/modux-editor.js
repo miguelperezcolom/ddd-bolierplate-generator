@@ -5747,7 +5747,7 @@ const xl = /* @__PURE__ */ new Set([
 ]);
 let fe = class extends De {
   constructor() {
-    super(...arguments), this.scene = { nodes: [], edges: [] }, this.selectedId = null, this.connectable = !1, this._rx = 55, this._rz = -18, this._k = 1, this._pan = { x: 0, y: 0 }, this._liveMove = null, this._connect = null, this._hoverTargetId = null, this._drag = null, this._kUsed = 1, this.onDown = (e) => {
+    super(...arguments), this.scene = { nodes: [], edges: [] }, this.selectedId = null, this.connectable = !1, this._rx = 55, this._rz = -18, this._k = 1, this._pan = { x: 0, y: 0 }, this._liveMove = null, this._connect = null, this._hoverTargetId = null, this._drag = null, this._kUsed = 1, this._center = { x: 0, y: 0 }, this.onDown = (e) => {
       var s, o;
       if (e.button !== 0) return;
       this.focus(), (s = this.setPointerCapture) == null || s.call(this, e.pointerId);
@@ -5877,6 +5877,23 @@ let fe = class extends De {
       y: -i * Math.sin(s) + n * Math.cos(s)
     };
   }
+  /** The plate under a client point, if any (drops arrive as plain mouse coords). */
+  nodeIdAtClient(e, t) {
+    var n, s, o;
+    const i = (n = this.shadowRoot) == null ? void 0 : n.elementFromPoint(e, t);
+    return ((o = (s = i == null ? void 0 : i.closest) == null ? void 0 : s.call(i, ".n3")) == null ? void 0 : o.dataset.nodeId) ?? null;
+  }
+  /**
+   * A client point → the floor plane (z=0), exactly: rebuild the CSS projection
+   * (perspective with its origin + the world transform) as a DOMMatrix and solve
+   * the 2×2 system the perspective divide leaves for a point known to sit at z=0.
+   */
+  sceneFromClient(e, t) {
+    const i = this.getBoundingClientRect(), n = i.width * 0.5, s = i.height * 0.42, o = new DOMMatrix();
+    o.m34 = -1 / 1600;
+    const r = new DOMMatrix().translate(n, s).multiply(o).translate(-n, -s).translate(i.width / 2, i.height / 2).translate(this._pan.x, this._pan.y).scale(this._kUsed, this._kUsed, this._kUsed).rotateAxisAngle(1, 0, 0, this._rx).rotateAxisAngle(0, 0, 1, this._rz).translate(-this._center.x, -this._center.y, 0), a = r.transformPoint(new DOMPoint(0, 0, 0, 1)), l = r.transformPoint(new DOMPoint(1, 0, 0, 0)), c = r.transformPoint(new DOMPoint(0, 1, 0, 0)), p = e - i.left, h = t - i.top, m = l.x - p * l.w, f = c.x - p * c.w, g = l.y - h * l.w, x = c.y - h * c.w, v = p * a.w - a.x, b = h * a.w - a.y, A = m * x - f * g;
+    return A ? { x: (v * x - f * b) / A, y: (m * b - v * g) / A } : { ...this._center };
+  }
   /** Containment depth: how many parents above the node (0 = floor plate). */
   depths() {
     const e = new Map(this.scene.nodes.map((n) => [n.id, n])), t = /* @__PURE__ */ new Map(), i = (n) => {
@@ -5893,7 +5910,7 @@ let fe = class extends De {
     if (!e.length)
       return P`<div class="hud">Nada que inclinar — el diagrama está vacío</div>`;
     const t = this.depths(), i = new Map(e.map((v) => [v.id, v])), n = Math.min(...e.map((v) => v.x - v.w / 2)) - 60, s = Math.max(...e.map((v) => v.x + v.w / 2)) + 60, o = Math.min(...e.map((v) => v.y - v.h / 2)) - 60, r = Math.max(...e.map((v) => v.y + v.h / 2)) + 60, a = (n + s) / 2, l = (o + r) / 2, c = this.getBoundingClientRect(), p = c.width ? Math.min(c.width / (s - n), c.height / (r - o), 1) * 0.9 : 0.5, h = this._k * p;
-    this._kUsed = h;
+    this._kUsed = h, this._center = { x: a, y: l };
     const m = 30, f = this._liveMove, g = (v) => v.x + ((f == null ? void 0 : f.id) === v.id ? f.dx : 0), x = (v) => v.y + ((f == null ? void 0 : f.id) === v.id ? f.dy : 0);
     return P`
       <div class="stage">
@@ -8625,7 +8642,7 @@ let F = class extends De {
     const t = (r = e.dataTransfer) == null ? void 0 : r.getData("application/x-modux-palette");
     if (!t) return;
     e.preventDefault();
-    const i = this.renderRoot.querySelector("modux-canvas");
+    const i = this._tilt ? this.renderRoot.querySelector("modux-tilt") : this.renderRoot.querySelector("modux-canvas");
     if (!i) return;
     const n = i.sceneFromClient(e.clientX, e.clientY), s = i.nodeIdAtClient(e.clientX, e.clientY);
     let o;
@@ -8865,7 +8882,7 @@ let F = class extends De {
       (n) => (this._view !== "workflows" || ["workflow", "workflow-step"].includes(n.type)) && (!e || n.label.toLowerCase().includes(e))
     ), i = this._view === "workflows" ? "new" : this._paletteTab;
     return P`
-      <div class="palette ${this._treeOpen && this._activeViewId ? "shifted" : ""}">
+      <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? "shifted" : ""}">
         <div class="palette-body">
           <input
             class="palette-filter"
@@ -9458,7 +9475,11 @@ let F = class extends De {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._tilt ? P`<modux-tilt
+      ${this._tilt ? P`
+      ${this.renderPalette()}
+      <modux-tilt
+            @dragover=${(t) => t.preventDefault()}
+            @drop=${this.onPaletteDrop}
             .scene=${e}
             .selectedId=${this._selectedId}
             .connectable=${this._view === "context-map" || this._view === "workflows"}

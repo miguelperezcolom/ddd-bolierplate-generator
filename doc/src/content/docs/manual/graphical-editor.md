@@ -180,7 +180,10 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   another plate (a screen-space rubber line follows) and the shell applies the same
   gesture vocabulary; while tracing, the plate under the pointer **reacts**: it grows,
   lifts a storey and rings green (the 2D canvas nodes grow on hover during tracing as
-  well). Dragging the background orbits,
+  well). The **palette works in 3D too**: open it with ☰/P and drag a new type or a
+  catalog element onto the floor — the drop point is unprojected onto the ground
+  plane exactly, and dropping onto a plate connects, same as in 2D. Dragging the
+  background orbits,
   shift+drag pans, wheel zooms, double click on the background resets the camera.
   Press V again to come back to the 2D canvas. Pure CSS 3D, works on any view and
   detail level.
