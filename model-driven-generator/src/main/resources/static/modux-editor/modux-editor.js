@@ -1,4 +1,4 @@
-const ml = 34, fl = 10;
+const pl = 34, ml = 10;
 function Ii(e, t = 24) {
   const i = new Map(e.map((s) => [s.id, { x: s.x, y: s.y }]));
   for (let s = 0; s < 80; s++) {
@@ -99,7 +99,7 @@ const wn = 34, yn = 14, Is = 14, ve = 108, Ie = 32, xn = 12, vn = 10, ft = 2, _s
 function $s(e, t) {
   return `rel:${e}->${t}`;
 }
-function bs(e, t) {
+function ks(e, t) {
   const i = new Set(e.externalSystems.map((n) => n.id));
   return t.sourceId === t.targetId ? "INTERNAL" : i.has(t.sourceId) || i.has(t.targetId) ? "EXTERNAL" : e.relations.some(
     (n) => n.sourceId === t.sourceId && n.targetId === t.targetId && n.declared
@@ -114,7 +114,7 @@ function st(e, t) {
     y: 340 + 240 * Math.sin(i)
   };
 }
-const ks = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, In = {
+const bs = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, In = {
   aggregate: { symbol: "aggregate", fill: "#f5f3ff", stroke: "#8b5cf6" },
   "use-case": { symbol: "usecase", fill: "#ecfeff", stroke: "#06b6d4" },
   "domain-event": { symbol: "event", fill: "#fff7ed", stroke: "#f59e0b" },
@@ -320,7 +320,7 @@ function lt(e, t, i, n, s) {
     h: l.h,
     container: !0
   }, u = i.map((p, m) => {
-    const f = a[m], y = p.policy ? ks : In[p.kind];
+    const f = a[m], y = p.policy ? bs : In[p.kind];
     return {
       id: p.id,
       label: p.name,
@@ -657,7 +657,7 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
     tooltip: d.type ? `${d.type} (${d.sourceId} upstream → ${d.targetId} downstream)${d.reasons ? ` — ${d.reasons}` : ""}` : `Relación derivada — doble click para elegir el patrón${d.reasons ? ` — ${d.reasons}` : ""}`
   })), I = e.flows.map((d) => {
     var xe, Qt, Y, pe, de, Pe;
-    const A = bs(e, d), z = o ? e.modules.find((ie) => ie.id === d.sourceId) : void 0, j = ((xe = z == null ? void 0 : z.domainEvents) == null ? void 0 : xe.find((ie) => ie.name === d.triggerEvent)) ?? ((Qt = z == null ? void 0 : z.applicationEvents) == null ? void 0 : Qt.find((ie) => ie.name === d.triggerEvent)), Q = o && d.readModelName ? (pe = (Y = e.modules.find((ie) => ie.id === d.targetId)) == null ? void 0 : Y.readModels) == null ? void 0 : pe.find((ie) => ie.name === d.readModelName) : void 0, ae = o && d.targetUseCaseId ? (Pe = (de = e.modules.find((ie) => ie.id === d.targetId)) == null ? void 0 : de.useCases) == null ? void 0 : Pe.find((ie) => ie.id === d.targetUseCaseId) : void 0;
+    const A = ks(e, d), z = o ? e.modules.find((ie) => ie.id === d.sourceId) : void 0, j = ((xe = z == null ? void 0 : z.domainEvents) == null ? void 0 : xe.find((ie) => ie.name === d.triggerEvent)) ?? ((Qt = z == null ? void 0 : z.applicationEvents) == null ? void 0 : Qt.find((ie) => ie.name === d.triggerEvent)), Q = o && d.readModelName ? (pe = (Y = e.modules.find((ie) => ie.id === d.targetId)) == null ? void 0 : Y.readModels) == null ? void 0 : pe.find((ie) => ie.name === d.readModelName) : void 0, ae = o && d.targetUseCaseId ? (Pe = (de = e.modules.find((ie) => ie.id === d.targetId)) == null ? void 0 : de.useCases) == null ? void 0 : Pe.find((ie) => ie.id === d.targetUseCaseId) : void 0;
     return {
       id: `flow:${d.id}`,
       sourceId: (j == null ? void 0 : j.id) ?? d.sourceId,
@@ -777,7 +777,7 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
     for (const A of d.domainEvents ?? []) w.set(A.id, d.id);
     for (const A of d.applicationEvents ?? []) w.set(A.id, d.id);
   }
-  const b = (d) => g.has(d) ? d : w.get(d) ?? d, N = /* @__PURE__ */ new Map();
+  const k = (d) => g.has(d) ? d : w.get(d) ?? d, N = /* @__PURE__ */ new Map();
   for (const d of e.modules) {
     for (const A of d.domainEvents ?? []) N.set(A.name, A.id);
     for (const A of d.applicationEvents ?? []) N.set(A.name, A.id);
@@ -785,7 +785,7 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
   const L = [
     ...new Map(
       (e.workflows ?? []).flatMap(
-        (d) => (d.steps ?? []).filter((A) => A.targetUseCaseId).map((A) => ({ sourceId: d.id, targetId: b(A.targetUseCaseId) }))
+        (d) => (d.steps ?? []).filter((A) => A.targetUseCaseId).map((A) => ({ sourceId: d.id, targetId: k(A.targetUseCaseId) }))
       ).filter((d) => g.has(d.sourceId) && g.has(d.targetId)).map((d) => [
         `wfcall:${d.sourceId}->${d.targetId}`,
         {
@@ -800,10 +800,10 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
         }
       ])
     ).values()
-  ], k = [
+  ], b = [
     ...new Map(
       (e.workflows ?? []).filter((d) => d.triggerEvent && N.has(d.triggerEvent)).map((d) => ({
-        sourceId: b(N.get(d.triggerEvent)),
+        sourceId: k(N.get(d.triggerEvent)),
         targetId: d.id,
         label: d.triggerEvent
       })).filter((d) => g.has(d.sourceId) && g.has(d.targetId)).map((d) => [
@@ -824,7 +824,7 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
   ], S = /* @__PURE__ */ new Map();
   for (const d of e.externalSystems)
     for (const A of d.tables ?? []) S.set(A.id, d.id);
-  const R = [
+  const O = [
     ...new Map(
       (e.rags ?? []).flatMap(
         (d) => (d.sourceExternalTableIds ?? []).map((A) => ({
@@ -1156,10 +1156,10 @@ function Ss(e, t, i = "contexts", n = {}, s = /* @__PURE__ */ new Set()) {
       ...ts,
       ...is,
       ...L,
-      ...k,
+      ...b,
       ...he,
       ...ue,
-      ...R,
+      ...O,
       ...Z,
       ...J,
       ...ns,
@@ -1466,7 +1466,7 @@ let $n = class {
     return this.cssText;
   }
 };
-const Bs = (e) => new $n(typeof e == "string" ? e : e + "", void 0, $i), bi = (e, ...t) => {
+const Bs = (e) => new $n(typeof e == "string" ? e : e + "", void 0, $i), ki = (e, ...t) => {
   const i = e.length === 1 ? e[0] : t.reduce((n, s, o) => n + ((a) => {
     if (a._$cssResult$ === !0) return a.cssText;
     if (typeof a == "number") return a;
@@ -1517,7 +1517,7 @@ const { is: js, defineProperty: Xs, getOwnPropertyDescriptor: Qs, getOwnProperty
       }
   }
   return i;
-} }, ki = (e, t) => !js(e, t), qi = { attribute: !0, type: String, converter: zt, reflect: !1, useDefault: !1, hasChanged: ki };
+} }, bi = (e, t) => !js(e, t), qi = { attribute: !0, type: String, converter: zt, reflect: !1, useDefault: !1, hasChanged: bi };
 Symbol.metadata ?? (Symbol.metadata = Symbol("metadata")), Ue.litPropertyMetadata ?? (Ue.litPropertyMetadata = /* @__PURE__ */ new WeakMap());
 let je = class extends HTMLElement {
   static addInitializer(t) {
@@ -1646,7 +1646,7 @@ let je = class extends HTMLElement {
     var a;
     if (t !== void 0) {
       const r = this.constructor;
-      if (s === !1 && (o = this[t]), n ?? (n = r.getPropertyOptions(t)), !((n.hasChanged ?? ki)(o, i) || n.useDefault && n.reflect && o === ((a = this._$Ej) == null ? void 0 : a.get(t)) && !this.hasAttribute(r._$Eu(t, n)))) return;
+      if (s === !1 && (o = this[t]), n ?? (n = r.getPropertyOptions(t)), !((n.hasChanged ?? bi)(o, i) || n.useDefault && n.reflect && o === ((a = this._$Ej) == null ? void 0 : a.get(t)) && !this.hasAttribute(r._$Eu(t, n)))) return;
       this.C(t, i, n);
     }
     this.isUpdatePending === !1 && (this._$ES = this._$EP());
@@ -1728,9 +1728,9 @@ je.elementStyles = [], je.shadowRootOptions = { mode: "open" }, je[ht("elementPr
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const pt = globalThis, Fi = (e) => e, qt = pt.trustedTypes, Vi = qt ? qt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, bn = "$lit$", Re = `lit$${Math.random().toFixed(9).slice(2)}$`, kn = "?" + Re, io = `<${kn}>`, Ge = document, gt = () => Ge.createComment(""), wt = (e) => e === null || typeof e != "object" && typeof e != "function", Ei = Array.isArray, no = (e) => Ei(e) || typeof (e == null ? void 0 : e[Symbol.iterator]) == "function", ti = `[ 	
+const pt = globalThis, Fi = (e) => e, qt = pt.trustedTypes, Vi = qt ? qt.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, kn = "$lit$", Re = `lit$${Math.random().toFixed(9).slice(2)}$`, bn = "?" + Re, io = `<${bn}>`, Ge = document, gt = () => Ge.createComment(""), wt = (e) => e === null || typeof e != "object" && typeof e != "function", Ei = Array.isArray, no = (e) => Ei(e) || typeof (e == null ? void 0 : e[Symbol.iterator]) == "function", ti = `[ 	
 \f\r]`, ot = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Hi = /-->/g, Ki = />/g, De = RegExp(`>|${ti}(?:([^\\s"'>=/]+)(${ti}*=${ti}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Wi = /'/g, Gi = /"/g, En = /^(?:script|style|textarea|title)$/i, Sn = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), O = Sn(1), B = Sn(2), Qe = Symbol.for("lit-noChange"), se = Symbol.for("lit-nothing"), Bi = /* @__PURE__ */ new WeakMap(), Fe = Ge.createTreeWalker(Ge, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Wi = /'/g, Gi = /"/g, En = /^(?:script|style|textarea|title)$/i, Sn = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), R = Sn(1), B = Sn(2), Qe = Symbol.for("lit-noChange"), se = Symbol.for("lit-nothing"), Bi = /* @__PURE__ */ new WeakMap(), Fe = Ge.createTreeWalker(Ge, 129);
 function An(e, t) {
   if (!Ei(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return Vi !== void 0 ? Vi.createHTML(t) : t;
@@ -1743,7 +1743,7 @@ const so = (e, t) => {
     let c, u, p = -1, m = 0;
     for (; m < l.length && (a.lastIndex = m, u = a.exec(l), u !== null); ) m = a.lastIndex, a === ot ? u[1] === "!--" ? a = Hi : u[1] !== void 0 ? a = Ki : u[2] !== void 0 ? (En.test(u[2]) && (s = RegExp("</" + u[2], "g")), a = De) : u[3] !== void 0 && (a = De) : a === De ? u[0] === ">" ? (a = s ?? ot, p = -1) : u[1] === void 0 ? p = -2 : (p = a.lastIndex - u[2].length, c = u[1], a = u[3] === void 0 ? De : u[3] === '"' ? Gi : Wi) : a === Gi || a === Wi ? a = De : a === Hi || a === Ki ? a = ot : (a = De, s = void 0);
     const f = a === De && e[r + 1].startsWith("/>") ? " " : "";
-    o += a === ot ? l + io : p >= 0 ? (n.push(c), l.slice(0, p) + bn + l.slice(p) + Re + f) : l + Re + (p === -2 ? r : f);
+    o += a === ot ? l + io : p >= 0 ? (n.push(c), l.slice(0, p) + kn + l.slice(p) + Re + f) : l + Re + (p === -2 ? r : f);
   }
   return [An(e, o + (e[i] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), n];
 };
@@ -1759,7 +1759,7 @@ class yt {
     }
     for (; (s = Fe.nextNode()) !== null && l.length < r; ) {
       if (s.nodeType === 1) {
-        if (s.hasAttributes()) for (const p of s.getAttributeNames()) if (p.endsWith(bn)) {
+        if (s.hasAttributes()) for (const p of s.getAttributeNames()) if (p.endsWith(kn)) {
           const m = u[a++], f = s.getAttribute(p).split(Re), y = /([.?@])?(.*)/.exec(m);
           l.push({ type: 1, index: o, name: y[2], strings: f, ctor: y[1] === "." ? ao : y[1] === "?" ? ro : y[1] === "@" ? lo : Bt }), s.removeAttribute(p);
         } else p.startsWith(Re) && (l.push({ type: 6, index: o }), s.removeAttribute(p));
@@ -1771,7 +1771,7 @@ class yt {
             s.append(p[m], gt());
           }
         }
-      } else if (s.nodeType === 8) if (s.data === kn) l.push({ type: 2, index: o });
+      } else if (s.nodeType === 8) if (s.data === bn) l.push({ type: 2, index: o });
       else {
         let p = -1;
         for (; (p = s.data.indexOf(Re, p + 1)) !== -1; ) l.push({ type: 7, index: o }), p += Re.length - 1;
@@ -2010,7 +2010,7 @@ const Si = (e) => (t, i) => {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ho = { attribute: !0, type: String, converter: zt, reflect: !1, hasChanged: ki }, po = (e = ho, t, i) => {
+const ho = { attribute: !0, type: String, converter: zt, reflect: !1, hasChanged: bi }, po = (e = ho, t, i) => {
   const { kind: n, metadata: s } = i;
   let o = globalThis.litPropertyMetadata.get(s);
   if (o === void 0 && globalThis.litPropertyMetadata.set(s, o = /* @__PURE__ */ new Map()), n === "setter" && ((e = Object.create(e)).wrapped = !0), o.set(i.name, e), n === "accessor") {
@@ -2125,11 +2125,11 @@ function $o(e) {
     return _o.call(this.children, e);
   };
 }
-function bo() {
+function ko() {
   return this.firstElementChild;
 }
-function ko(e) {
-  return this.select(e == null ? bo : $o(typeof e == "function" ? e : Nn(e)));
+function bo(e) {
+  return this.select(e == null ? ko : $o(typeof e == "function" ? e : Nn(e)));
 }
 var Eo = Array.prototype.filter;
 function So() {
@@ -2452,14 +2452,14 @@ function _a(e) {
 function $a() {
   this.nextSibling && this.parentNode.appendChild(this);
 }
-function ba() {
+function ka() {
   return this.each($a);
 }
-function ka() {
+function ba() {
   this.previousSibling && this.parentNode.insertBefore(this, this.parentNode.firstChild);
 }
 function Ea() {
-  return this.each(ka);
+  return this.each(ba);
 }
 function Sa(e) {
   var t = typeof e == "function" ? e : Cn(e);
@@ -2572,17 +2572,17 @@ var qn = [null];
 function fe(e, t) {
   this._groups = e, this._parents = t;
 }
-function bt() {
+function kt() {
   return new fe([[document.documentElement]], qn);
 }
 function Wa() {
   return this;
 }
-fe.prototype = bt.prototype = {
+fe.prototype = kt.prototype = {
   constructor: fe,
   select: wo,
   selectAll: Io,
-  selectChild: ko,
+  selectChild: bo,
   selectChildren: Co,
   filter: Mo,
   data: Uo,
@@ -2605,7 +2605,7 @@ fe.prototype = bt.prototype = {
   classed: ma,
   text: ya,
   html: _a,
-  raise: ba,
+  raise: ka,
   lower: Ea,
   append: Sa,
   insert: Ca,
@@ -2616,7 +2616,7 @@ fe.prototype = bt.prototype = {
   dispatch: Ha,
   [Symbol.iterator]: Ka
 };
-function be(e) {
+function ke(e) {
   return typeof e == "string" ? new fe([[document.querySelector(e)]], [document.documentElement]) : new fe([[e]], qn);
 }
 function Ga(e) {
@@ -2704,11 +2704,11 @@ function pi(e) {
   e.preventDefault(), e.stopImmediatePropagation();
 }
 function Xa(e) {
-  var t = e.document.documentElement, i = be(e).on("dragstart.drag", pi, hi);
+  var t = e.document.documentElement, i = ke(e).on("dragstart.drag", pi, hi);
   "onselectstart" in t ? i.on("selectstart.drag", pi, hi) : (t.__noselect = t.style.MozUserSelect, t.style.MozUserSelect = "none");
 }
 function Qa(e, t) {
-  var i = e.document.documentElement, n = be(e).on("dragstart.drag", null);
+  var i = e.document.documentElement, n = ke(e).on("dragstart.drag", null);
   t && (n.on("click.drag", pi, hi), setTimeout(function() {
     n.on("click.drag", null);
   }, 0)), "onselectstart" in i ? n.on("selectstart.drag", null) : (i.style.MozUserSelect = i.__noselect, delete i.__noselect);
@@ -2721,9 +2721,9 @@ function Fn(e, t) {
   for (var n in t) i[n] = t[n];
   return i;
 }
-function kt() {
+function bt() {
 }
-var xt = 0.7, Vt = 1 / xt, Xe = "\\s*([+-]?\\d+)\\s*", vt = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)\\s*", ke = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)%\\s*", Za = /^#([0-9a-f]{3,8})$/, Ja = new RegExp(`^rgb\\(${Xe},${Xe},${Xe}\\)$`), er = new RegExp(`^rgb\\(${ke},${ke},${ke}\\)$`), tr = new RegExp(`^rgba\\(${Xe},${Xe},${Xe},${vt}\\)$`), ir = new RegExp(`^rgba\\(${ke},${ke},${ke},${vt}\\)$`), nr = new RegExp(`^hsl\\(${vt},${ke},${ke}\\)$`), sr = new RegExp(`^hsla\\(${vt},${ke},${ke},${vt}\\)$`), Xi = {
+var xt = 0.7, Vt = 1 / xt, Xe = "\\s*([+-]?\\d+)\\s*", vt = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)\\s*", be = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)%\\s*", Za = /^#([0-9a-f]{3,8})$/, Ja = new RegExp(`^rgb\\(${Xe},${Xe},${Xe}\\)$`), er = new RegExp(`^rgb\\(${be},${be},${be}\\)$`), tr = new RegExp(`^rgba\\(${Xe},${Xe},${Xe},${vt}\\)$`), ir = new RegExp(`^rgba\\(${be},${be},${be},${vt}\\)$`), nr = new RegExp(`^hsl\\(${vt},${be},${be}\\)$`), sr = new RegExp(`^hsla\\(${vt},${be},${be},${vt}\\)$`), Xi = {
   aliceblue: 15792383,
   antiquewhite: 16444375,
   aqua: 65535,
@@ -2873,7 +2873,7 @@ var xt = 0.7, Vt = 1 / xt, Xe = "\\s*([+-]?\\d+)\\s*", vt = "\\s*([+-]?(?:\\d*\\
   yellow: 16776960,
   yellowgreen: 10145074
 };
-Pi(kt, It, {
+Pi(bt, It, {
   copy(e) {
     return Object.assign(new this.constructor(), this, e);
   },
@@ -2911,7 +2911,7 @@ function At(e, t, i, n) {
   return n <= 0 && (e = t = i = NaN), new le(e, t, i, n);
 }
 function rr(e) {
-  return e instanceof kt || (e = It(e)), e ? (e = e.rgb(), new le(e.r, e.g, e.b, e.opacity)) : new le();
+  return e instanceof bt || (e = It(e)), e ? (e = e.rgb(), new le(e.r, e.g, e.b, e.opacity)) : new le();
 }
 function mi(e, t, i, n) {
   return arguments.length === 1 ? rr(e) : new le(e, t, i, n ?? 1);
@@ -2919,7 +2919,7 @@ function mi(e, t, i, n) {
 function le(e, t, i, n) {
   this.r = +e, this.g = +t, this.b = +i, this.opacity = +n;
 }
-Pi(le, mi, Fn(kt, {
+Pi(le, mi, Fn(bt, {
   brighter(e) {
     return e = e == null ? Vt : Math.pow(Vt, e), new le(this.r * e, this.g * e, this.b * e, this.opacity);
   },
@@ -2966,7 +2966,7 @@ function nn(e, t, i, n) {
 }
 function Vn(e) {
   if (e instanceof _e) return new _e(e.h, e.s, e.l, e.opacity);
-  if (e instanceof kt || (e = It(e)), !e) return new _e();
+  if (e instanceof bt || (e = It(e)), !e) return new _e();
   if (e instanceof _e) return e;
   e = e.rgb();
   var t = e.r / 255, i = e.g / 255, n = e.b / 255, s = Math.min(t, i, n), o = Math.max(t, i, n), a = NaN, r = o - s, l = (o + s) / 2;
@@ -2978,7 +2978,7 @@ function lr(e, t, i, n) {
 function _e(e, t, i, n) {
   this.h = +e, this.s = +t, this.l = +i, this.opacity = +n;
 }
-Pi(_e, lr, Fn(kt, {
+Pi(_e, lr, Fn(bt, {
   brighter(e) {
     return e = e == null ? Vt : Math.pow(Vt, e), new _e(this.h, this.s, this.l * e, this.opacity);
   },
@@ -3169,9 +3169,9 @@ var et = 0, ct = 0, at = 0, Bn = 1e3, Kt, ut, Wt = 0, Be = 0, jt = 0, _t = typeo
   setTimeout(e, 17);
 };
 function Ni() {
-  return Be || (Yn(br), Be = _t.now() + jt);
+  return Be || (Yn(kr), Be = _t.now() + jt);
 }
-function br() {
+function kr() {
   Be = 0;
 }
 function Gt() {
@@ -3191,7 +3191,7 @@ function jn(e, t, i) {
   var n = new Gt();
   return n.restart(e, t, i), n;
 }
-function kr() {
+function br() {
   Ni(), ++et;
   for (var e = Kt, t; e; )
     (t = Be - e._time) >= 0 && e._call.call(void 0, t), e = e._next;
@@ -3200,7 +3200,7 @@ function kr() {
 function dn() {
   Be = (Wt = _t.now()) + jt, et = ct = 0;
   try {
-    kr();
+    br();
   } finally {
     et = 0, Sr(), Be = 0;
   }
@@ -3558,7 +3558,7 @@ function ud(e) {
       }
   return new Me(o, a, t, i);
 }
-var hd = bt.prototype.constructor;
+var hd = kt.prototype.constructor;
 function pd() {
   return new hd(this._groups, this._parents);
 }
@@ -3630,10 +3630,10 @@ function $d(e) {
     this.textContent = t ?? "";
   };
 }
-function bd(e) {
+function kd(e) {
   return this.tween("text", typeof e == "function" ? $d(Oi(this, "text", e)) : _d(e == null ? "" : e + ""));
 }
-function kd(e) {
+function bd(e) {
   return function(t) {
     this.textContent = e.call(this, t);
   };
@@ -3642,7 +3642,7 @@ function Ed(e) {
   var t, i;
   function n() {
     var s = e.apply(this, arguments);
-    return s !== i && (t = (i = s) && kd(s)), t;
+    return s !== i && (t = (i = s) && bd(s)), t;
   }
   return n._value = e, n;
 }
@@ -3686,7 +3686,7 @@ function Me(e, t, i, n) {
 function Jn() {
   return ++Md;
 }
-var Ae = bt.prototype;
+var Ae = kt.prototype;
 Me.prototype = {
   constructor: Me,
   select: cd,
@@ -3708,7 +3708,7 @@ Me.prototype = {
   attrTween: Gr,
   style: yd,
   styleTween: Id,
-  text: bd,
+  text: kd,
   textTween: Sd,
   remove: ld,
   tween: Or,
@@ -3743,8 +3743,8 @@ function Od(e) {
       (l = a[c]) && Xt(l, e, t, c, a, i || Td(l, t));
   return new Me(n, this._parents, e, t);
 }
-bt.prototype.interrupt = Pr;
-bt.prototype.transition = Od;
+kt.prototype.interrupt = Pr;
+kt.prototype.transition = Od;
 const Pt = (e) => () => e;
 function Rd(e, {
   sourceEvent: t,
@@ -3835,61 +3835,61 @@ function Fd() {
   function I(h) {
     h.property("__zoom", hn).on("wheel.zoom", E, { passive: !1 }).on("mousedown.zoom", D).on("dblclick.zoom", C).filter(s).on("touchstart.zoom", T).on("touchmove.zoom", G).on("touchend.zoom touchcancel.zoom", X).style("-webkit-tap-highlight-color", "rgba(0,0,0,0)");
   }
-  I.transform = function(h, x, w, b) {
+  I.transform = function(h, x, w, k) {
     var N = h.selection ? h.selection() : h;
-    N.property("__zoom", hn), h !== N ? g(h, x, w, b) : N.interrupt().each(function() {
-      _(this, arguments).event(b).start().zoom(null, typeof x == "function" ? x.apply(this, arguments) : x).end();
+    N.property("__zoom", hn), h !== N ? g(h, x, w, k) : N.interrupt().each(function() {
+      _(this, arguments).event(k).start().zoom(null, typeof x == "function" ? x.apply(this, arguments) : x).end();
     });
-  }, I.scaleBy = function(h, x, w, b) {
+  }, I.scaleBy = function(h, x, w, k) {
     I.scaleTo(h, function() {
       var N = this.__zoom.k, L = typeof x == "function" ? x.apply(this, arguments) : x;
       return N * L;
-    }, w, b);
-  }, I.scaleTo = function(h, x, w, b) {
+    }, w, k);
+  }, I.scaleTo = function(h, x, w, k) {
     I.transform(h, function() {
-      var N = t.apply(this, arguments), L = this.__zoom, k = w == null ? K(N) : typeof w == "function" ? w.apply(this, arguments) : w, S = L.invert(k), R = typeof x == "function" ? x.apply(this, arguments) : x;
-      return i(H(P(L, R), k, S), N, a);
-    }, w, b);
-  }, I.translateBy = function(h, x, w, b) {
+      var N = t.apply(this, arguments), L = this.__zoom, b = w == null ? K(N) : typeof w == "function" ? w.apply(this, arguments) : w, S = L.invert(b), O = typeof x == "function" ? x.apply(this, arguments) : x;
+      return i(H(P(L, O), b, S), N, a);
+    }, w, k);
+  }, I.translateBy = function(h, x, w, k) {
     I.transform(h, function() {
       return i(this.__zoom.translate(
         typeof x == "function" ? x.apply(this, arguments) : x,
         typeof w == "function" ? w.apply(this, arguments) : w
       ), t.apply(this, arguments), a);
-    }, null, b);
-  }, I.translateTo = function(h, x, w, b, N) {
+    }, null, k);
+  }, I.translateTo = function(h, x, w, k, N) {
     I.transform(h, function() {
-      var L = t.apply(this, arguments), k = this.__zoom, S = b == null ? K(L) : typeof b == "function" ? b.apply(this, arguments) : b;
-      return i(mt.translate(S[0], S[1]).scale(k.k).translate(
+      var L = t.apply(this, arguments), b = this.__zoom, S = k == null ? K(L) : typeof k == "function" ? k.apply(this, arguments) : k;
+      return i(mt.translate(S[0], S[1]).scale(b.k).translate(
         typeof x == "function" ? -x.apply(this, arguments) : -x,
         typeof w == "function" ? -w.apply(this, arguments) : -w
       ), L, a);
-    }, b, N);
+    }, k, N);
   };
   function P(h, x) {
     return x = Math.max(o[0], Math.min(o[1], x)), x === h.k ? h : new Ce(x, h.x, h.y);
   }
   function H(h, x, w) {
-    var b = x[0] - w[0] * h.k, N = x[1] - w[1] * h.k;
-    return b === h.x && N === h.y ? h : new Ce(h.k, b, N);
+    var k = x[0] - w[0] * h.k, N = x[1] - w[1] * h.k;
+    return k === h.x && N === h.y ? h : new Ce(h.k, k, N);
   }
   function K(h) {
     return [(+h[0][0] + +h[1][0]) / 2, (+h[0][1] + +h[1][1]) / 2];
   }
-  function g(h, x, w, b) {
+  function g(h, x, w, k) {
     h.on("start.zoom", function() {
-      _(this, arguments).event(b).start();
+      _(this, arguments).event(k).start();
     }).on("interrupt.zoom end.zoom", function() {
-      _(this, arguments).event(b).end();
+      _(this, arguments).event(k).end();
     }).tween("zoom", function() {
-      var N = this, L = arguments, k = _(N, L).event(b), S = t.apply(N, L), R = w == null ? K(S) : typeof w == "function" ? w.apply(N, L) : w, Z = Math.max(S[1][0] - S[0][0], S[1][1] - S[0][1]), J = N.__zoom, ue = typeof x == "function" ? x.apply(N, L) : x, we = l(J.invert(R).concat(Z / J.k), ue.invert(R).concat(Z / ue.k));
+      var N = this, L = arguments, b = _(N, L).event(k), S = t.apply(N, L), O = w == null ? K(S) : typeof w == "function" ? w.apply(N, L) : w, Z = Math.max(S[1][0] - S[0][0], S[1][1] - S[0][1]), J = N.__zoom, ue = typeof x == "function" ? x.apply(N, L) : x, we = l(J.invert(O).concat(Z / J.k), ue.invert(O).concat(Z / ue.k));
       return function(he) {
         if (he === 1) he = ue;
         else {
           var ye = we(he), tt = Z / ye[2];
-          he = new Ce(tt, R[0] - ye[0] * tt, R[1] - ye[1] * tt);
+          he = new Ce(tt, O[0] - ye[0] * tt, O[1] - ye[1] * tt);
         }
-        k.zoom(null, he);
+        b.zoom(null, he);
       };
     });
   }
@@ -3913,7 +3913,7 @@ function Fd() {
       return --this.active === 0 && (delete this.that.__zooming, this.emit("end")), this;
     },
     emit: function(h) {
-      var x = be(this.that).datum();
+      var x = ke(this.that).datum();
       c.call(
         h,
         this.that,
@@ -3929,72 +3929,72 @@ function Fd() {
   };
   function E(h, ...x) {
     if (!e.apply(this, arguments)) return;
-    var w = _(this, x).event(h), b = this.__zoom, N = Math.max(o[0], Math.min(o[1], b.k * Math.pow(2, n.apply(this, arguments)))), L = Le(h);
+    var w = _(this, x).event(h), k = this.__zoom, N = Math.max(o[0], Math.min(o[1], k.k * Math.pow(2, n.apply(this, arguments)))), L = Le(h);
     if (w.wheel)
-      (w.mouse[0][0] !== L[0] || w.mouse[0][1] !== L[1]) && (w.mouse[1] = b.invert(w.mouse[0] = L)), clearTimeout(w.wheel);
+      (w.mouse[0][0] !== L[0] || w.mouse[0][1] !== L[1]) && (w.mouse[1] = k.invert(w.mouse[0] = L)), clearTimeout(w.wheel);
     else {
-      if (b.k === N) return;
-      w.mouse = [L, b.invert(L)], Lt(this), w.start();
+      if (k.k === N) return;
+      w.mouse = [L, k.invert(L)], Lt(this), w.start();
     }
-    rt(h), w.wheel = setTimeout(k, y), w.zoom("mouse", i(H(P(b, N), w.mouse[0], w.mouse[1]), w.extent, a));
-    function k() {
+    rt(h), w.wheel = setTimeout(b, y), w.zoom("mouse", i(H(P(k, N), w.mouse[0], w.mouse[1]), w.extent, a));
+    function b() {
       w.wheel = null, w.end();
     }
   }
   function D(h, ...x) {
     if (m || !e.apply(this, arguments)) return;
-    var w = h.currentTarget, b = _(this, x, !0).event(h), N = be(h.view).on("mousemove.zoom", R, !0).on("mouseup.zoom", Z, !0), L = Le(h, w), k = h.clientX, S = h.clientY;
-    Xa(h.view), ai(h), b.mouse = [L, this.__zoom.invert(L)], Lt(this), b.start();
-    function R(J) {
-      if (rt(J), !b.moved) {
-        var ue = J.clientX - k, we = J.clientY - S;
-        b.moved = ue * ue + we * we > v;
+    var w = h.currentTarget, k = _(this, x, !0).event(h), N = ke(h.view).on("mousemove.zoom", O, !0).on("mouseup.zoom", Z, !0), L = Le(h, w), b = h.clientX, S = h.clientY;
+    Xa(h.view), ai(h), k.mouse = [L, this.__zoom.invert(L)], Lt(this), k.start();
+    function O(J) {
+      if (rt(J), !k.moved) {
+        var ue = J.clientX - b, we = J.clientY - S;
+        k.moved = ue * ue + we * we > v;
       }
-      b.event(J).zoom("mouse", i(H(b.that.__zoom, b.mouse[0] = Le(J, w), b.mouse[1]), b.extent, a));
+      k.event(J).zoom("mouse", i(H(k.that.__zoom, k.mouse[0] = Le(J, w), k.mouse[1]), k.extent, a));
     }
     function Z(J) {
-      N.on("mousemove.zoom mouseup.zoom", null), Qa(J.view, b.moved), rt(J), b.event(J).end();
+      N.on("mousemove.zoom mouseup.zoom", null), Qa(J.view, k.moved), rt(J), k.event(J).end();
     }
   }
   function C(h, ...x) {
     if (e.apply(this, arguments)) {
-      var w = this.__zoom, b = Le(h.changedTouches ? h.changedTouches[0] : h, this), N = w.invert(b), L = w.k * (h.shiftKey ? 0.5 : 2), k = i(H(P(w, L), b, N), t.apply(this, x), a);
-      rt(h), r > 0 ? be(this).transition().duration(r).call(g, k, b, h) : be(this).call(I.transform, k, b, h);
+      var w = this.__zoom, k = Le(h.changedTouches ? h.changedTouches[0] : h, this), N = w.invert(k), L = w.k * (h.shiftKey ? 0.5 : 2), b = i(H(P(w, L), k, N), t.apply(this, x), a);
+      rt(h), r > 0 ? ke(this).transition().duration(r).call(g, b, k, h) : ke(this).call(I.transform, b, k, h);
     }
   }
   function T(h, ...x) {
     if (e.apply(this, arguments)) {
-      var w = h.touches, b = w.length, N = _(this, x, h.changedTouches.length === b).event(h), L, k, S, R;
-      for (ai(h), k = 0; k < b; ++k)
-        S = w[k], R = Le(S, this), R = [R, this.__zoom.invert(R), S.identifier], N.touch0 ? !N.touch1 && N.touch0[2] !== R[2] && (N.touch1 = R, N.taps = 0) : (N.touch0 = R, L = !0, N.taps = 1 + !!u);
-      u && (u = clearTimeout(u)), L && (N.taps < 2 && (p = R[0], u = setTimeout(function() {
+      var w = h.touches, k = w.length, N = _(this, x, h.changedTouches.length === k).event(h), L, b, S, O;
+      for (ai(h), b = 0; b < k; ++b)
+        S = w[b], O = Le(S, this), O = [O, this.__zoom.invert(O), S.identifier], N.touch0 ? !N.touch1 && N.touch0[2] !== O[2] && (N.touch1 = O, N.taps = 0) : (N.touch0 = O, L = !0, N.taps = 1 + !!u);
+      u && (u = clearTimeout(u)), L && (N.taps < 2 && (p = O[0], u = setTimeout(function() {
         u = null;
       }, f)), Lt(this), N.start());
     }
   }
   function G(h, ...x) {
     if (this.__zooming) {
-      var w = _(this, x).event(h), b = h.changedTouches, N = b.length, L, k, S, R;
+      var w = _(this, x).event(h), k = h.changedTouches, N = k.length, L, b, S, O;
       for (rt(h), L = 0; L < N; ++L)
-        k = b[L], S = Le(k, this), w.touch0 && w.touch0[2] === k.identifier ? w.touch0[0] = S : w.touch1 && w.touch1[2] === k.identifier && (w.touch1[0] = S);
-      if (k = w.that.__zoom, w.touch1) {
+        b = k[L], S = Le(b, this), w.touch0 && w.touch0[2] === b.identifier ? w.touch0[0] = S : w.touch1 && w.touch1[2] === b.identifier && (w.touch1[0] = S);
+      if (b = w.that.__zoom, w.touch1) {
         var Z = w.touch0[0], J = w.touch0[1], ue = w.touch1[0], we = w.touch1[1], he = (he = ue[0] - Z[0]) * he + (he = ue[1] - Z[1]) * he, ye = (ye = we[0] - J[0]) * ye + (ye = we[1] - J[1]) * ye;
-        k = P(k, Math.sqrt(he / ye)), S = [(Z[0] + ue[0]) / 2, (Z[1] + ue[1]) / 2], R = [(J[0] + we[0]) / 2, (J[1] + we[1]) / 2];
-      } else if (w.touch0) S = w.touch0[0], R = w.touch0[1];
+        b = P(b, Math.sqrt(he / ye)), S = [(Z[0] + ue[0]) / 2, (Z[1] + ue[1]) / 2], O = [(J[0] + we[0]) / 2, (J[1] + we[1]) / 2];
+      } else if (w.touch0) S = w.touch0[0], O = w.touch0[1];
       else return;
-      w.zoom("touch", i(H(k, S, R), w.extent, a));
+      w.zoom("touch", i(H(b, S, O), w.extent, a));
     }
   }
   function X(h, ...x) {
     if (this.__zooming) {
-      var w = _(this, x).event(h), b = h.changedTouches, N = b.length, L, k;
+      var w = _(this, x).event(h), k = h.changedTouches, N = k.length, L, b;
       for (ai(h), m && clearTimeout(m), m = setTimeout(function() {
         m = null;
       }, f), L = 0; L < N; ++L)
-        k = b[L], w.touch0 && w.touch0[2] === k.identifier ? delete w.touch0 : w.touch1 && w.touch1[2] === k.identifier && delete w.touch1;
+        b = k[L], w.touch0 && w.touch0[2] === b.identifier ? delete w.touch0 : w.touch1 && w.touch1[2] === b.identifier && delete w.touch1;
       if (w.touch1 && !w.touch0 && (w.touch0 = w.touch1, delete w.touch1), w.touch0) w.touch0[1] = this.__zoom.invert(w.touch0[0]);
-      else if (w.end(), w.taps === 2 && (k = Le(k, this), Math.hypot(p[0] - k[0], p[1] - k[1]) < M)) {
-        var S = be(this).on("dblclick.zoom");
+      else if (w.end(), w.taps === 2 && (b = Le(b, this), Math.hypot(p[0] - b[0], p[1] - b[1]) < M)) {
+        var S = ke(this).on("dblclick.zoom");
         S && S.apply(this, arguments);
       }
     }
@@ -4158,7 +4158,7 @@ let ne = class extends Ke {
     const e = this.renderRoot.querySelector("svg.main");
     this._zoomBehavior = Fd().scaleExtent([0.15, 4]).filter((t) => t.type === "wheel" ? !0 : this._spaceDown && t.button === 0).on("zoom", (t) => {
       this._t = t.transform;
-    }), be(e).call(this._zoomBehavior);
+    }), ke(e).call(this._zoomBehavior);
   }
   willUpdate(e) {
     var t;
@@ -4181,7 +4181,7 @@ let ne = class extends Ke {
     const n = this.getBoundingClientRect();
     if (n.width === 0 || n.height === 0) return;
     const s = Math.min(...t.map((u) => u.x - u.w / 2)) - e, o = Math.max(...t.map((u) => u.x + u.w / 2)) + e, a = Math.min(...t.map((u) => u.y - u.h / 2)) - e, r = Math.max(...t.map((u) => u.y + u.h / 2)) + e, l = Math.max(0.15, Math.min(n.width / (o - s), n.height / (r - a), 1.25)), c = mt.translate(n.width / 2 - l * (s + o) / 2, n.height / 2 - l * (a + r) / 2).scale(l);
-    be(i).call(this._zoomBehavior.transform, c);
+    ke(i).call(this._zoomBehavior.transform, c);
   }
   /** Client coordinates → scene coordinates (undo pan/zoom). */
   toScene(e) {
@@ -4695,7 +4695,7 @@ let ne = class extends Ke {
     const i = this.renderRoot.querySelector("svg.main");
     if (!i || !this._zoomBehavior) return;
     const n = this.getBoundingClientRect(), s = this._t.k, o = mt.translate(n.width / 2 - s * e, n.height / 2 - s * t).scale(s);
-    be(i).call(this._zoomBehavior.transform, o);
+    ke(i).call(this._zoomBehavior.transform, o);
   }
   onMinimapPointer(e, t, i) {
     const n = e.currentTarget.getBoundingClientRect(), s = t.minX + (e.clientX - n.left) / i, o = t.minY + (e.clientY - n.top) / i;
@@ -4703,9 +4703,9 @@ let ne = class extends Ke {
   }
   renderMinimap() {
     const e = this.sceneBounds();
-    if (!e || this.scene.nodes.length < 2) return O``;
+    if (!e || this.scene.nodes.length < 2) return R``;
     const t = 160, i = 110, n = Math.min(t / e.w, i / e.h), s = this.getBoundingClientRect(), o = (0 - this._t.x) / this._t.k, a = (0 - this._t.y) / this._t.k, r = s.width / this._t.k, l = s.height / this._t.k;
-    return O`
+    return R`
       <div
         class="minimap"
         title="Minimapa — click o arrastra para navegar"
@@ -4750,7 +4750,7 @@ let ne = class extends Ke {
         i.push(this.renderEdgeHit(s, o)), n.push(this.renderEdgeInk(s, o, [...t]));
         for (let a = 0; a < o.length - 1; a++) t.push([o[a], o[a + 1]]);
       }
-    }), O`
+    }), R`
       <svg
         class="main ${this._pendingLink ? "linking" : ""} ${this._spaceDown ? "panning" : ""}"
         @pointerdown=${(s) => {
@@ -4785,7 +4785,7 @@ let ne = class extends Ke {
     `;
   }
 };
-ne.styles = bi`
+ne.styles = ki`
     :host {
       display: block;
       width: 100%;
@@ -4987,7 +4987,7 @@ function Bd(e, t) {
       tooltip: `${h} — referenciado por nombre, sin evento declarado en el catálogo`
     }), w;
   }, f = (h) => {
-    const x = u.find((b) => b.id === h.id) ?? u.find((b) => h.name && Ye(b.name) === Ye(h.name)), w = (x == null ? void 0 : x.id) ?? (h.id || (h.name ? `rm:${Ye(h.name)}` : null));
+    const x = u.find((k) => k.id === h.id) ?? u.find((k) => h.name && Ye(k.name) === Ye(h.name)), w = (x == null ? void 0 : x.id) ?? (h.id || (h.name ? `rm:${Ye(h.name)}` : null));
     return w ? (me(i, {
       id: w,
       label: (x == null ? void 0 : x.name) ?? h.name ?? w,
@@ -5027,8 +5027,8 @@ function Bd(e, t) {
     }));
   }
   for (const h of e.aiAgents ?? []) {
-    const x = (e.agentUses ?? []).filter((k) => k.agentId === h.id), w = (e.agentExternalUses ?? []).filter((k) => k.agentId === h.id), b = (e.agentRags ?? []).filter((k) => k.agentId === h.id), N = (e.agentMcpUses ?? []).filter((k) => k.agentId === h.id), L = (e.agentGatewayUses ?? []).some((k) => k.agentId === h.id) || (e.agentApiOpUses ?? []).some((k) => k.agentId === h.id) || (e.agentQueryUses ?? []).some((k) => k.agentId === h.id) || (e.agentDelegations ?? []).some((k) => k.agentId === h.id) || (e.agentTriggers ?? []).some((k) => k.agentId === h.id);
-    if (!(!x.length && !w.length && !b.length && !N.length && !L)) {
+    const x = (e.agentUses ?? []).filter((b) => b.agentId === h.id), w = (e.agentExternalUses ?? []).filter((b) => b.agentId === h.id), k = (e.agentRags ?? []).filter((b) => b.agentId === h.id), N = (e.agentMcpUses ?? []).filter((b) => b.agentId === h.id), L = (e.agentGatewayUses ?? []).some((b) => b.agentId === h.id) || (e.agentApiOpUses ?? []).some((b) => b.agentId === h.id) || (e.agentQueryUses ?? []).some((b) => b.agentId === h.id) || (e.agentDelegations ?? []).some((b) => b.agentId === h.id) || (e.agentTriggers ?? []).some((b) => b.agentId === h.id);
+    if (!(!x.length && !w.length && !k.length && !N.length && !L)) {
       me(i, {
         id: h.id,
         label: h.name,
@@ -5043,23 +5043,23 @@ function Bd(e, t) {
         badge: "AGENTE IA",
         tooltip: `${h.name} — agente de IA (consume por MCP)`
       });
-      for (const k of x)
-        o.has(k.useCaseId) && te(i, {
-          id: `es-agent:${h.id}->${k.useCaseId}`,
+      for (const b of x)
+        o.has(b.useCaseId) && te(i, {
+          id: `es-agent:${h.id}->${b.useCaseId}`,
           sourceId: h.id,
-          targetId: k.useCaseId,
+          targetId: b.useCaseId,
           kind: "es-agent-command",
           color: "#9333ea",
           dashed: !0,
           arrow: !0,
           tooltip: "consume por MCP"
         });
-      for (const k of w) {
+      for (const b of w) {
         const S = e.externalSystems.find(
-          (Z) => (Z.useCases ?? []).some((J) => J.id === k.externalUseCaseId)
+          (Z) => (Z.useCases ?? []).some((J) => J.id === b.externalUseCaseId)
         );
         if (!S) continue;
-        const R = (D = (S.useCases ?? []).find((Z) => Z.id === k.externalUseCaseId)) == null ? void 0 : D.name;
+        const O = (D = (S.useCases ?? []).find((Z) => Z.id === b.externalUseCaseId)) == null ? void 0 : D.name;
         me(i, {
           id: S.id,
           label: S.name,
@@ -5074,23 +5074,23 @@ function Bd(e, t) {
           dashed: !0,
           badge: "EXTERNO"
         }), te(i, {
-          id: `es-agentx:${h.id}->${k.externalUseCaseId}`,
+          id: `es-agentx:${h.id}->${b.externalUseCaseId}`,
           sourceId: h.id,
           targetId: S.id,
           kind: "es-agent-external",
-          label: R,
+          label: O,
           color: "#9333ea",
           dashed: !0,
           arrow: !0,
-          tooltip: R ? `Llama a ${R} del sistema externo` : void 0
+          tooltip: O ? `Llama a ${O} del sistema externo` : void 0
         });
       }
-      for (const k of N) {
+      for (const b of N) {
         const S = e.externalSystems.find(
-          (Z) => (Z.mcpServers ?? []).some((J) => J.id === k.mcpServerId)
+          (Z) => (Z.mcpServers ?? []).some((J) => J.id === b.mcpServerId)
         );
         if (!S) continue;
-        const R = (C = (S.mcpServers ?? []).find((Z) => Z.id === k.mcpServerId)) == null ? void 0 : C.name;
+        const O = (C = (S.mcpServers ?? []).find((Z) => Z.id === b.mcpServerId)) == null ? void 0 : C.name;
         me(i, {
           id: S.id,
           label: S.name,
@@ -5105,19 +5105,19 @@ function Bd(e, t) {
           dashed: !0,
           badge: "EXTERNO"
         }), te(i, {
-          id: `es-agentmcp:${h.id}->${k.mcpServerId}`,
+          id: `es-agentmcp:${h.id}->${b.mcpServerId}`,
           sourceId: h.id,
           targetId: S.id,
           kind: "es-agent-mcp",
-          label: R,
+          label: O,
           color: "#9333ea",
           dashed: !0,
           arrow: !0,
-          tooltip: R ? `Consume las herramientas del servidor MCP ${R}` : void 0
+          tooltip: O ? `Consume las herramientas del servidor MCP ${O}` : void 0
         });
       }
-      for (const k of b) {
-        const S = (e.rags ?? []).find((R) => R.id === k.ragId);
+      for (const b of k) {
+        const S = (e.rags ?? []).find((O) => O.id === b.ragId);
         if (S) {
           me(i, {
             id: S.id,
@@ -5141,8 +5141,8 @@ function Bd(e, t) {
             arrow: !0,
             tooltip: "consulta (retrieval)"
           });
-          for (const R of S.sourceReadModelIds ?? []) {
-            const Z = f({ id: R });
+          for (const O of S.sourceReadModelIds ?? []) {
+            const Z = f({ id: O });
             Z && te(i, {
               id: `es-ragsrc:${S.id}->${Z}`,
               sourceId: Z,
@@ -5193,17 +5193,17 @@ function Bd(e, t) {
       (N) => (N.useCases ?? []).some((L) => L.id === h.targetId)
     ), w = x ? y(x.id) : null;
     if (!w) continue;
-    const b = (T = ((x == null ? void 0 : x.useCases) ?? []).find((N) => N.id === h.targetId)) == null ? void 0 : T.name;
+    const k = (T = ((x == null ? void 0 : x.useCases) ?? []).find((N) => N.id === h.targetId)) == null ? void 0 : T.name;
     te(i, {
       id: `es-extout:${h.sourceId}->${h.targetId}`,
       sourceId: h.sourceId,
       targetId: w,
       kind: "es-command-external",
-      label: b,
+      label: k,
       color: "#be185d",
       dashed: !0,
       arrow: !0,
-      tooltip: b ? `Llama a ${b} del sistema externo` : void 0
+      tooltip: k ? `Llama a ${k} del sistema externo` : void 0
     });
   }
   for (const h of e.aggregateCalls ?? [])
@@ -5229,7 +5229,7 @@ function Bd(e, t) {
       arrow: !0,
       tooltip: "emite"
     });
-  const M = (h, x, w, b, N, L) => (me(i, {
+  const M = (h, x, w, k, N, L) => (me(i, {
     id: h,
     label: x,
     x: 0,
@@ -5240,7 +5240,7 @@ function Bd(e, t) {
     symbol: "flow",
     fill: F.policy.fill,
     stroke: F.policy.stroke,
-    badge: b,
+    badge: k,
     tooltip: N
   }), h), I = (h, x) => {
     const w = m(h);
@@ -5274,22 +5274,22 @@ function Bd(e, t) {
     I(h.eventName, x);
     for (const w of h.actions ?? []) {
       if (w.type === "CallUseCase" && P(x, w.useCaseId), w.type === "StartSaga" && w.sagaId) {
-        const b = `saga:${w.sagaId}`;
-        M(b, w.sagaId, "saga", "SAGA"), te(i, {
-          id: `es-saga:${x}->${b}`,
+        const k = `saga:${w.sagaId}`;
+        M(k, w.sagaId, "saga", "SAGA"), te(i, {
+          id: `es-saga:${x}->${k}`,
           sourceId: x,
-          targetId: b,
+          targetId: k,
           kind: "es-invoke",
           color: "#7e22ce",
           arrow: !0
         });
       }
       if (w.type === "UpdateProjection" && w.projectionId) {
-        const b = (e.projections ?? []).find((N) => N.id === w.projectionId);
-        b && te(i, {
-          id: `es-feeds:${x}->${b.id}`,
+        const k = (e.projections ?? []).find((N) => N.id === w.projectionId);
+        k && te(i, {
+          id: `es-feeds:${x}->${k.id}`,
           sourceId: x,
-          targetId: b.id,
+          targetId: k.id,
           kind: "es-invoke",
           color: "#7e22ce",
           arrow: !0
@@ -5330,28 +5330,28 @@ function Bd(e, t) {
     const w = h.sourceExternalUseCaseId ?? h.sourceExternalTableId;
     if (w) {
       const N = e.externalSystems.find(
-        (k) => (k.useCases ?? []).some((S) => S.id === w) || (k.tables ?? []).some((S) => S.id === w)
+        (b) => (b.useCases ?? []).some((S) => S.id === w) || (b.tables ?? []).some((S) => S.id === w)
       ), L = N ? y(N.id) : null;
       if (L) {
-        const k = ((G = (N.useCases ?? []).find((S) => S.id === w)) == null ? void 0 : G.name) ?? ((X = (N.tables ?? []).find((S) => S.id === w)) == null ? void 0 : X.name);
+        const b = ((G = (N.useCases ?? []).find((S) => S.id === w)) == null ? void 0 : G.name) ?? ((X = (N.tables ?? []).find((S) => S.id === w)) == null ? void 0 : X.name);
         te(i, {
           id: `es-poll:${h.id}`,
           sourceId: L,
           targetId: x,
           kind: "es-projects-poll",
-          label: k,
+          label: b,
           color: "#0d9488",
           dashed: !0,
           arrow: !0,
-          tooltip: k ? `polling de ${k}` : "polling"
+          tooltip: b ? `polling de ${b}` : "polling"
         });
       }
     }
-    const b = f({ id: h.readModelId, name: h.readModelName });
-    b && te(i, {
-      id: `es-projects:${x}->${b}`,
+    const k = f({ id: h.readModelId, name: h.readModelName });
+    k && te(i, {
+      id: `es-projects:${x}->${k}`,
       sourceId: x,
-      targetId: b,
+      targetId: k,
       kind: "es-projects",
       color: "#15803d",
       arrow: !0
@@ -5359,11 +5359,11 @@ function Bd(e, t) {
   }
   for (const h of e.flows) {
     if (h.archetype === "MATERIALIZES") {
-      const w = m(h.triggerEvent), b = f({ name: h.readModelName ?? `${h.triggerEvent}View` });
-      w && b && te(i, {
+      const w = m(h.triggerEvent), k = f({ name: h.readModelName ?? `${h.triggerEvent}View` });
+      w && k && te(i, {
         id: `es-mat:${h.id}`,
         sourceId: w,
-        targetId: b,
+        targetId: k,
         kind: "es-materializes",
         label: h.name,
         color: "#0d9488",
@@ -5381,9 +5381,9 @@ function Bd(e, t) {
       `Flow ${h.name} [${h.archetype}]`
     );
     if (I(h.triggerEvent, x), P(x, h.targetUseCaseId), !h.targetUseCaseId) {
-      const w = y(h.targetId), b = w ?? `tgt:${h.targetId}`;
+      const w = y(h.targetId), k = w ?? `tgt:${h.targetId}`;
       !w && n.has(h.targetId) && me(i, {
-        id: b,
+        id: k,
         label: n.get(h.targetId) ?? h.targetId,
         x: 0,
         y: 0,
@@ -5394,10 +5394,10 @@ function Bd(e, t) {
         fill: F.module.fill,
         stroke: F.module.stroke,
         badge: "CONTEXTO"
-      }), i.nodes.has(b) && te(i, {
+      }), i.nodes.has(k) && te(i, {
         id: `es-deliver:${h.id}`,
         sourceId: x,
-        targetId: b,
+        targetId: k,
         kind: "es-deliver",
         color: "#ea580c",
         arrow: !0
@@ -5413,7 +5413,7 @@ function Bd(e, t) {
       `${h.name}${h.triggerEvent ? ` — arranca con ${h.triggerEvent}` : ""}`
     );
     I(h.triggerEvent, x);
-    for (const b of h.steps) P(x, b.useCaseId);
+    for (const k of h.steps) P(x, k.useCaseId);
     const w = m(h.onCompletionEventName);
     w && te(i, {
       id: `es-done:${h.id}`,
@@ -5434,9 +5434,9 @@ function Bd(e, t) {
       `${h.name}${h.triggerEvent ? ` — arranca con ${h.triggerEvent}` : ""}`
     );
     I(h.triggerEvent, x);
-    for (const b of h.steps ?? []) {
-      P(x, b.targetUseCaseId);
-      for (const N of [b.emittedEventName, b.completionEventName]) {
+    for (const k of h.steps ?? []) {
+      P(x, k.targetUseCaseId);
+      for (const N of [k.emittedEventName, k.completionEventName]) {
         const L = m(N);
         L && te(i, {
           id: `es-wfemit:${h.id}:${L}`,
@@ -5466,8 +5466,8 @@ function Bd(e, t) {
     if (x !== void 0) return x;
     if (_.has(h)) return 0;
     _.add(h);
-    const w = K.get(h) ?? [], b = w.length ? 1 + Math.max(...w.map($)) : 0;
-    return _.delete(h), g.set(h, b), b;
+    const w = K.get(h) ?? [], k = w.length ? 1 + Math.max(...w.map($)) : 0;
+    return _.delete(h), g.set(h, k), k;
   }, E = /* @__PURE__ */ new Map();
   for (const h of H) {
     const x = t[h.id];
@@ -5475,8 +5475,8 @@ function Bd(e, t) {
       h.x = x.x, h.y = x.y;
       continue;
     }
-    const w = $(h.id), b = E.get(w) ?? 0;
-    E.set(w, b + 1), h.x = 140 + w * 260, h.y = 110 + b * 110;
+    const w = $(h.id), k = E.get(w) ?? 0;
+    E.set(w, k + 1), h.x = 140 + w * 260, h.y = 110 + k * 110;
   }
   return { nodes: H, edges: i.edges };
 }
@@ -5682,14 +5682,7 @@ const vi = {
   ANTI_CORRUPTION_LAYER: { abbr: "ACL", name: "Anti-Corruption Layer" },
   PUBLISHED_LANGUAGE: { abbr: "PL", name: "Published Language" },
   SEPARATE_WAYS: { abbr: "SW", name: "Separate Ways" }
-}, ol = Object.keys(vi), al = [
-  { id: "context-map", label: "Context map", ready: !0 },
-  { id: "aggregates", label: "Agregados", ready: !0 },
-  { id: "flows", label: "Flows", ready: !0 },
-  { id: "processes", label: "Procesos", ready: !0 },
-  { id: "workflows", label: "Workflows", ready: !0 },
-  { id: "eventstorming", label: "EventStorming", ready: !0 }
-], rl = ["CORE", "SUPPORTING", "GENERIC"];
+}, ol = Object.keys(vi), al = ["CORE", "SUPPORTING", "GENERIC"];
 function dt(e, t, i) {
   const n = i.x - i.w / 2, s = i.x + i.w / 2, o = i.y - i.h / 2, a = i.y + i.h / 2;
   let r = 0, l = 1;
@@ -5715,7 +5708,7 @@ function dt(e, t, i) {
   }
   return l - r > 0.02;
 }
-function dl(e, t, i = 28) {
+function rl(e, t, i = 28) {
   var c;
   const n = new Map(e.nodes.map((u) => [u.id, u])), s = (u) => {
     var m;
@@ -5778,7 +5771,7 @@ function dl(e, t, i = 28) {
   return r;
 }
 const q = (e) => e.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-function ll(e, t) {
+function dl(e, t) {
   switch (t) {
     case "module":
       return { elementType: "module", id: e.replace(/^tgt:/, "") };
@@ -5806,7 +5799,7 @@ function ll(e, t) {
       return null;
   }
 }
-function cl(e, t) {
+function ll(e, t) {
   const i = (e ?? []).find((n) => n.steps.some((s) => s.id === t));
   return i ? { elementType: "process", id: i.id } : null;
 }
@@ -5885,7 +5878,7 @@ let V = class extends Ke {
   routedEdgePoints(e) {
     const t = this.viewLayout(this._view).edges;
     if (this._view !== "context-map") return t;
-    const i = dl(e, t);
+    const i = rl(e, t);
     return i.size ? { ...Object.fromEntries(i), ...t } : t;
   }
   pushUndoEntry(e) {
@@ -6703,6 +6696,14 @@ let V = class extends Ke {
       homeModuleId: a
     });
   }
+  /** One dropdown drives the diagram: a context-map detail level, or a specialized view. */
+  onDiagramScopeChange(e) {
+    if (e.startsWith("level:")) {
+      this._view = "context-map", this.setDetail(e.slice(6));
+      return;
+    }
+    e.startsWith("view:") && (this._view = e.slice(5));
+  }
   /** Folding is a view preference (like the detail level): persisted, not undoable. */
   onNodeCollapseToggled(e) {
     const { id: t } = e.detail, i = this._view, n = this.viewLayout(i), s = new Set(n.collapsed ?? []);
@@ -7172,10 +7173,10 @@ let V = class extends Ke {
       return;
     }
     if (m.has(e) || y.has(e)) {
-      const g = y.has(e), _ = this.model.modules.flatMap((w) => (g ? w.applicationEvents : w.domainEvents) ?? []).find((w) => w.id === e), $ = this.model.modules.flatMap((w) => (w.useCases ?? []).map((b) => ({ u: b, module: w }))).find(({ u: w }) => w.id === t), E = this.model.modules.flatMap((w) => (w.readModels ?? []).map((b) => ({ rm: b, module: w }))).find(({ rm: w }) => w.id === t), D = this.model.modules.find((w) => w.id === t) ?? (E == null ? void 0 : E.module) ?? ($ == null ? void 0 : $.module);
+      const g = y.has(e), _ = this.model.modules.flatMap((w) => (g ? w.applicationEvents : w.domainEvents) ?? []).find((w) => w.id === e), $ = this.model.modules.flatMap((w) => (w.useCases ?? []).map((k) => ({ u: k, module: w }))).find(({ u: w }) => w.id === t), E = this.model.modules.flatMap((w) => (w.readModels ?? []).map((k) => ({ rm: k, module: w }))).find(({ rm: w }) => w.id === t), D = this.model.modules.find((w) => w.id === t) ?? (E == null ? void 0 : E.module) ?? ($ == null ? void 0 : $.module);
       if (!_ || !D) return;
       const C = new Set((this.model.aggregates ?? []).map((w) => w.id)), T = new Set(
-        this.model.modules.flatMap((w) => (w.domainServices ?? []).map((b) => b.id))
+        this.model.modules.flatMap((w) => (w.domainServices ?? []).map((k) => k.id))
       ), G = (this.model.emissions ?? []).find(
         (w) => w.domainEventId === e && (g ? v.has(w.sourceId) : C.has(w.sourceId) || T.has(w.sourceId))
       );
@@ -7189,7 +7190,7 @@ let V = class extends Ke {
       const X = !g && C.has(G.sourceId);
       if ($) {
         if (this.model.flows.some(
-          (b) => b.archetype === "TRIGGERS" && b.triggerEvent === _.name && b.targetUseCaseId === $.u.id
+          (k) => k.archetype === "TRIGGERS" && k.triggerEvent === _.name && k.targetUseCaseId === $.u.id
         )) return;
         this.command({
           kind: "add-flow",
@@ -7759,7 +7760,7 @@ let V = class extends Ke {
   renderViewTree() {
     const e = (this.model.views ?? []).find((s) => s.id === this._activeViewId);
     if (!e) return "";
-    const t = new Set(e.memberIds), i = (s, o, a = {}) => O`
+    const t = new Set(e.memberIds), i = (s, o, a = {}) => R`
       <label
         class="${a.child ? "child" : ""} ${a.implicit && !t.has(s) ? "implicit" : ""}"
         title=${a.implicit && !t.has(s) ? "Ya se ve por su contenedor; márcalo para que sea miembro explícito" : "Miembro de la vista — desmarcar lo quita de la vista, NO del proyecto"}
@@ -7771,8 +7772,8 @@ let V = class extends Ke {
         />
         ${o}
       </label>
-    `, n = (s, o) => o.length ? O`<h4>${s}</h4>${o}` : "";
-    return O`
+    `, n = (s, o) => o.length ? R`<h4>${s}</h4>${o}` : "";
+    return R`
       <aside class="view-tree" @pointerdown=${(s) => s.stopPropagation()}>
         <div class="tree-title">Vista: ${e.name}</div>
         ${n(
@@ -7924,10 +7925,10 @@ let V = class extends Ke {
       });
       return;
     }
-    const t = e.detail.kind === "process-step" ? cl(this.model.processes, e.detail.id) : e.detail.kind === "workflow-step" ? (() => {
+    const t = e.detail.kind === "process-step" ? ll(this.model.processes, e.detail.id) : e.detail.kind === "workflow-step" ? (() => {
       const i = this.owningWorkflowOf(e.detail.id);
       return i ? { elementType: "workflow", id: i.id } : null;
-    })() : ll(e.detail.id, e.detail.kind);
+    })() : dl(e.detail.id, e.detail.kind);
     t && this.emit("modux-activate", t);
   }
   /** Every element of the model, grouped for the palette's «Existentes» section. */
@@ -8169,7 +8170,7 @@ let V = class extends Ke {
     const e = this._paletteFilter.trim().toLowerCase(), t = V.PALETTE_NEW.filter(
       (i) => !e || i.label.toLowerCase().includes(e)
     );
-    return O`
+    return R`
       <div class="palette">
         <input
           class="palette-filter"
@@ -8179,7 +8180,7 @@ let V = class extends Ke {
         />
         <div class="palette-h">Nuevos — arrastra al lienzo${""}</div>
         ${t.map(
-      (i) => O`
+      (i) => R`
             <div
               class="palette-item ${i.child ? "palette-child" : ""}"
               draggable="true"
@@ -8192,10 +8193,10 @@ let V = class extends Ke {
     )}
         <div class="palette-h">Existentes — arrastra para colocar o conectar</div>
         ${this.paletteCatalog().map(
-      (i) => O`
+      (i) => R`
             <div class="palette-g">${i.label}</div>
             ${i.items.map(
-        (n) => O`
+        (n) => R`
                 <div
                   class="palette-item"
                   draggable="true"
@@ -8212,7 +8213,7 @@ let V = class extends Ke {
     `;
   }
   createElementFromToolbar() {
-    var t, i, n, s, o, a, r, l, c, u, p, m, f, y, v, M, I, P, H, K, g, _, $, E, D, C, T, G, X, h, x, w, b, N, L;
+    var t, i, n, s, o, a, r, l, c, u, p, m, f, y, v, M, I, P, H, K, g, _, $, E, D, C, T, G, X, h, x, w, k, N, L;
     const e = this._newName.trim();
     if (e) {
       if (this._view === "context-map")
@@ -8229,19 +8230,19 @@ let V = class extends Ke {
         else if (this._newContextMapKind === "rag")
           this.command({ kind: "add-rag", id: `rag-${q(e)}`, name: e });
         else if (this._newContextMapKind === "api") {
-          const k = ((t = this.model.externalSystems.find((R) => R.id === this._selectedId)) == null ? void 0 : t.id) ?? ((i = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : i.id);
-          if (!k) {
+          const b = ((t = this.model.externalSystems.find((O) => O.id === this._selectedId)) == null ? void 0 : t.id) ?? ((i = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : i.id);
+          if (!b) {
             this.emit("modux-notice", {
               message: "Selecciona el sistema externo o el contexto que publica la API antes de crearla"
             });
             return;
           }
           const S = `api-${q(e)}`;
-          this.command({ kind: "add-api", id: S, name: e }), this.model.externalSystems.some((R) => R.id === k) ? this.command({ kind: "set-api-publisher", id: S, targetId: k }, !1) : this.command({ kind: "add-api-implementation", apiId: S, moduleId: k }, !1);
+          this.command({ kind: "add-api", id: S, name: e }), this.model.externalSystems.some((O) => O.id === b) ? this.command({ kind: "set-api-publisher", id: S, targetId: b }, !1) : this.command({ kind: "add-api-implementation", apiId: S, moduleId: b }, !1);
         } else if (this._newContextMapKind === "proxy-api")
           this.command({ kind: "add-proxy-api", id: `proxy-${q(e)}`, name: e });
         else if (this._detail !== "contexts" && this._newContextMapKind === "api-operation") {
-          const k = (n = (this.model.apis ?? []).find((R) => R.id === this._selectedId)) == null ? void 0 : n.id, S = this._newApiId || k || ((o = (s = this.model.apis) == null ? void 0 : s[0]) == null ? void 0 : o.id);
+          const b = (n = (this.model.apis ?? []).find((O) => O.id === this._selectedId)) == null ? void 0 : n.id, S = this._newApiId || b || ((o = (s = this.model.apis) == null ? void 0 : s[0]) == null ? void 0 : o.id);
           if (!S) return;
           this.command({
             kind: "add-api-operation",
@@ -8250,31 +8251,31 @@ let V = class extends Ke {
             name: e
           });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "domain-event") {
-          const k = (a = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : a.id, S = this._newModuleId || k || ((r = this.model.modules[0]) == null ? void 0 : r.id);
+          const b = (a = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : a.id, S = this._newModuleId || b || ((r = this.model.modules[0]) == null ? void 0 : r.id);
           if (!S) return;
           this.command({ kind: "add-domain-event", id: `ev-${q(e)}`, name: e, moduleId: S });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "application-event") {
-          const k = (l = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : l.id, S = this._newModuleId || k || ((c = this.model.modules[0]) == null ? void 0 : c.id);
+          const b = (l = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : l.id, S = this._newModuleId || b || ((c = this.model.modules[0]) == null ? void 0 : c.id);
           if (!S) return;
           this.command({ kind: "add-application-event", id: `aev-${q(e)}`, name: e, moduleId: S });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "domain-service") {
-          const k = (u = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : u.id, S = this._newModuleId || k || ((p = this.model.modules[0]) == null ? void 0 : p.id);
+          const b = (u = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : u.id, S = this._newModuleId || b || ((p = this.model.modules[0]) == null ? void 0 : p.id);
           if (!S) return;
           this.command({ kind: "add-domain-service", id: `ds-${q(e)}`, name: e, moduleId: S });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "query-service") {
-          const k = (m = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : m.id, S = this._newModuleId || k || ((f = this.model.modules[0]) == null ? void 0 : f.id);
+          const b = (m = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : m.id, S = this._newModuleId || b || ((f = this.model.modules[0]) == null ? void 0 : f.id);
           if (!S) return;
           this.command({ kind: "add-query-service", id: `qs-${q(e)}`, name: e, moduleId: S });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "use-case") {
-          const k = (y = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : y.id, S = this._newModuleId || k || ((v = this.model.modules[0]) == null ? void 0 : v.id);
+          const b = (y = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : y.id, S = this._newModuleId || b || ((v = this.model.modules[0]) == null ? void 0 : v.id);
           if (!S) return;
           this.command({ kind: "add-use-case", id: `uc-${q(e)}`, name: e, moduleId: S });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "policy") {
-          const k = (M = this.model.modules.find((R) => R.id === this._selectedId)) == null ? void 0 : M.id, S = this._newModuleId || k || ((I = this.model.modules[0]) == null ? void 0 : I.id);
+          const b = (M = this.model.modules.find((O) => O.id === this._selectedId)) == null ? void 0 : M.id, S = this._newModuleId || b || ((I = this.model.modules[0]) == null ? void 0 : I.id);
           if (!S) return;
           this.command({ kind: "add-use-case", id: `uc-${q(e)}`, name: e, moduleId: S, policy: !0 });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "external-use-case") {
-          const k = (P = this.model.externalSystems.find((R) => R.id === this._selectedId)) == null ? void 0 : P.id, S = this._newExternalId || k || ((H = this.model.externalSystems[0]) == null ? void 0 : H.id);
+          const b = (P = this.model.externalSystems.find((O) => O.id === this._selectedId)) == null ? void 0 : P.id, S = this._newExternalId || b || ((H = this.model.externalSystems[0]) == null ? void 0 : H.id);
           if (!S) return;
           this.command({
             kind: "add-external-use-case",
@@ -8283,7 +8284,7 @@ let V = class extends Ke {
             moduleId: S
           });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "external-table") {
-          const k = (K = this.model.externalSystems.find((R) => R.id === this._selectedId)) == null ? void 0 : K.id, S = this._newExternalId || k || ((g = this.model.externalSystems[0]) == null ? void 0 : g.id);
+          const b = (K = this.model.externalSystems.find((O) => O.id === this._selectedId)) == null ? void 0 : K.id, S = this._newExternalId || b || ((g = this.model.externalSystems[0]) == null ? void 0 : g.id);
           if (!S) return;
           this.command({
             kind: "add-external-table",
@@ -8292,7 +8293,7 @@ let V = class extends Ke {
             moduleId: S
           });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "mcp-server") {
-          const k = (_ = this.model.externalSystems.find((R) => R.id === this._selectedId)) == null ? void 0 : _.id, S = this._newExternalId || k || (($ = this.model.externalSystems[0]) == null ? void 0 : $.id);
+          const b = (_ = this.model.externalSystems.find((O) => O.id === this._selectedId)) == null ? void 0 : _.id, S = this._newExternalId || b || (($ = this.model.externalSystems[0]) == null ? void 0 : $.id);
           if (!S) return;
           this.command({
             kind: "add-mcp-server",
@@ -8301,7 +8302,7 @@ let V = class extends Ke {
             moduleId: S
           });
         } else if (this._detail !== "contexts" && this._newContextMapKind === "read-model") {
-          const k = (E = (this.model.aggregates ?? []).find((R) => R.id === this._selectedId)) == null ? void 0 : E.id, S = this._newAggregateId || k || ((C = (D = this.model.aggregates) == null ? void 0 : D[0]) == null ? void 0 : C.id);
+          const b = (E = (this.model.aggregates ?? []).find((O) => O.id === this._selectedId)) == null ? void 0 : E.id, S = this._newAggregateId || b || ((C = (D = this.model.aggregates) == null ? void 0 : D[0]) == null ? void 0 : C.id);
           if (!S) return;
           this.command({ kind: "add-read-model", id: `rm-${q(e)}`, name: e, aggregateId: S });
         } else
@@ -8312,30 +8313,30 @@ let V = class extends Ke {
             subdomainType: this._newSubdomain
           });
       else if (this._view === "aggregates") {
-        const k = this._newModuleId || ((T = this.model.modules[0]) == null ? void 0 : T.id);
-        if (!k) return;
-        this.command({ kind: "add-aggregate", id: `agg-${q(e)}`, name: e, moduleId: k });
+        const b = this._newModuleId || ((T = this.model.modules[0]) == null ? void 0 : T.id);
+        if (!b) return;
+        this.command({ kind: "add-aggregate", id: `agg-${q(e)}`, name: e, moduleId: b });
       } else if (this._view === "flows") {
-        const k = this._newTriggerAggId || ((X = (G = this.model.aggregates) == null ? void 0 : G[0]) == null ? void 0 : X.id), S = this._newTargetId || ((h = this.model.modules[0]) == null ? void 0 : h.id), R = this._newTriggerEvent.trim();
-        if (!k || !S || !R) return;
+        const b = this._newTriggerAggId || ((X = (G = this.model.aggregates) == null ? void 0 : G[0]) == null ? void 0 : X.id), S = this._newTargetId || ((h = this.model.modules[0]) == null ? void 0 : h.id), O = this._newTriggerEvent.trim();
+        if (!b || !S || !O) return;
         this.command({
           kind: "add-flow",
           id: `flow-${q(e)}`,
           name: e,
           archetype: this._newArchetype,
-          triggerAggregateId: k,
-          triggerEvent: R,
+          triggerAggregateId: b,
+          triggerEvent: O,
           targetId: S
         }), this._newTriggerEvent = "";
       } else if (this._view === "processes") {
-        const k = this._newModuleId || ((x = this.model.modules[0]) == null ? void 0 : x.id);
-        if (!k) return;
+        const b = this._newModuleId || ((x = this.model.modules[0]) == null ? void 0 : x.id);
+        if (!b) return;
         this.command({
           kind: "add-process",
           id: `proc-${q(e)}`,
           name: e,
-          moduleId: k,
-          triggerAggregateId: this._newTriggerAggId || ((b = (w = this.model.aggregates) == null ? void 0 : w[0]) == null ? void 0 : b.id),
+          moduleId: b,
+          triggerAggregateId: this._newTriggerAggId || ((k = (w = this.model.aggregates) == null ? void 0 : w[0]) == null ? void 0 : k.id),
           triggerEvent: this._newTriggerEvent.trim() || void 0
         }), this._newTriggerEvent = "";
       } else this._view === "workflows" && (this.command({
@@ -8402,24 +8403,60 @@ let V = class extends Ke {
   }
   render() {
     const e = this.sceneFor(this._view);
-    return O`
+    return R`
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
         <div class="tabs">
-          ${al.map(
-      (t) => O`
-              <button
-                class="tab"
-                ?data-active=${this._view === t.id}
-                ?disabled=${!t.ready}
-                title=${t.ready ? "" : "Próximamente"}
-                @click=${() => this._view = t.id}
-              >
-                ${t.label}
-              </button>
-            `
-    )}
+          <button
+            class="tab"
+            ?data-active=${this._view !== "eventstorming"}
+            title="El diagrama del modelo — el desplegable elige qué pinta"
+            @click=${() => {
+      this._view === "eventstorming" && (this._view = "context-map");
+    }}
+          >
+            Diagrama
+          </button>
+          <button
+            class="tab"
+            ?data-active=${this._view === "eventstorming"}
+            @click=${() => this._view = "eventstorming"}
+          >
+            EventStorming
+          </button>
+          <select
+            ?hidden=${this._view === "eventstorming"}
+            title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
+            @change=${(t) => this.onDiagramScopeChange(t.target.value)}
+          >
+            <optgroup label="Context map">
+              <option value="level:contexts"
+                ?selected=${this._view === "context-map" && this._detail === "contexts"}>
+                Contextos
+              </option>
+              <option value="level:detail"
+                ?selected=${this._view === "context-map" && this._detail === "detail"}>
+                Agregados y casos de uso
+              </option>
+              <option value="level:operations"
+                ?selected=${this._view === "context-map" && this._detail === "operations"}>
+                APIs y operaciones
+              </option>
+            </optgroup>
+            <optgroup label="Vistas especializadas">
+              <option value="view:aggregates" ?selected=${this._view === "aggregates"}>
+                Agregados y referencias
+              </option>
+              <option value="view:flows" ?selected=${this._view === "flows"}>Flows</option>
+              <option value="view:processes" ?selected=${this._view === "processes"}>
+                Procesos
+              </option>
+              <option value="view:workflows" ?selected=${this._view === "workflows"}>
+                Workflows
+              </option>
+            </optgroup>
+          </select>
         </div>
         <select
           title="Limitar el lienzo a una vista del modelo"
@@ -8427,12 +8464,12 @@ let V = class extends Ke {
         >
           <option value="" ?selected=${this._activeViewId === ""}>Vista: todo el modelo</option>
           ${(this.model.views ?? []).filter((t) => t.kind === "CURATED").map(
-      (t) => O`<option value=${t.id} ?selected=${t.id === this._activeViewId}>
+      (t) => R`<option value=${t.id} ?selected=${t.id === this._activeViewId}>
                   Vista: ${t.name}
                 </option>`
     )}
         </select>
-        ${this._activeViewId ? O`
+        ${this._activeViewId ? R`
               <input
                 class="new-name"
                 list="view-member-options"
@@ -8444,7 +8481,7 @@ let V = class extends Ke {
               />
               <datalist id="view-member-options">
                 ${this.viewMemberCandidates().map(
-      (t) => O`<option value="${t.name} (${t.id})">${t.kind}</option>`
+      (t) => R`<option value="${t.name} (${t.id})">${t.kind}</option>`
     )}
               </datalist>
               <button class="tab" title="Añadir el elemento a la vista" @click=${this.addMemberFromToolbar}>
@@ -8460,7 +8497,7 @@ let V = class extends Ke {
               </button>
             ` : ""}
         <div class="spacer"></div>
-        ${this._multi.length ? O`
+        ${this._multi.length ? R`
               <input
                 class="new-name"
                 placeholder="Nombre de la vista…"
@@ -8488,7 +8525,7 @@ let V = class extends Ke {
           @input=${(t) => this._newName = t.target.value}
           @keydown=${(t) => t.key === "Enter" && this.createElementFromToolbar()}
         />
-        ${this._view === "context-map" ? O`<select
+        ${this._view === "context-map" ? R`<select
               title="Qué crear en el lienzo"
               @change=${(t) => this._newContextMapKind = t.target.value}
             >
@@ -8525,7 +8562,7 @@ let V = class extends Ke {
               <option value="proxy-api" ?selected=${this._newContextMapKind === "proxy-api"}>
                 Proxy API
               </option>
-              ${this._detail !== "contexts" ? O`
+              ${this._detail !== "contexts" ? R`
                     <option
                       value="domain-event"
                       ?selected=${this._newContextMapKind === "domain-event"}
@@ -8588,14 +8625,14 @@ let V = class extends Ke {
                     </option>
                   ` : ""}
             </select>` : ""}
-        ${this._view === "context-map" && this._detail !== "contexts" && (this._newContextMapKind === "external-use-case" || this._newContextMapKind === "external-table" || this._newContextMapKind === "mcp-server") ? O`<select
+        ${this._view === "context-map" && this._detail !== "contexts" && (this._newContextMapKind === "external-use-case" || this._newContextMapKind === "external-table" || this._newContextMapKind === "mcp-server") ? R`<select
               title="Sistema externo dueño del nuevo elemento"
               @change=${(t) => this._newExternalId = t.target.value}
             >
               ${this.model.externalSystems.map(
       (t) => {
         var i;
-        return O`<option
+        return R`<option
                     value=${t.id}
                     ?selected=${t.id === (this._newExternalId || ((i = this.model.externalSystems[0]) == null ? void 0 : i.id))}
                   >
@@ -8604,14 +8641,14 @@ let V = class extends Ke {
       }
     )}
             </select>` : ""}
-        ${this._view === "context-map" && this._detail !== "contexts" && this._newContextMapKind === "api-operation" ? O`<select
+        ${this._view === "context-map" && this._detail !== "contexts" && this._newContextMapKind === "api-operation" ? R`<select
               title="API dueña de la nueva operación"
               @change=${(t) => this._newApiId = t.target.value}
             >
               ${(this.model.apis ?? []).map(
       (t) => {
         var i, n;
-        return O`<option
+        return R`<option
                     value=${t.id}
                     ?selected=${t.id === (this._newApiId || ((n = (i = this.model.apis) == null ? void 0 : i[0]) == null ? void 0 : n.id))}
                   >
@@ -8620,14 +8657,14 @@ let V = class extends Ke {
       }
     )}
             </select>` : ""}
-        ${this._view === "context-map" && this._detail !== "contexts" && this._newContextMapKind === "read-model" ? O`<select
+        ${this._view === "context-map" && this._detail !== "contexts" && this._newContextMapKind === "read-model" ? R`<select
               title="Agregado del que es vista el read model"
               @change=${(t) => this._newAggregateId = t.target.value}
             >
               ${(this.model.aggregates ?? []).map(
       (t) => {
         var i, n;
-        return O`<option
+        return R`<option
                     value=${t.id}
                     ?selected=${t.id === (this._newAggregateId || ((n = (i = this.model.aggregates) == null ? void 0 : i[0]) == null ? void 0 : n.id))}
                   >
@@ -8636,22 +8673,22 @@ let V = class extends Ke {
       }
     )}
             </select>` : ""}
-        ${this._view === "context-map" && this._newContextMapKind === "module" ? O`<select
+        ${this._view === "context-map" && this._newContextMapKind === "module" ? R`<select
               title="Subdominio del nuevo contexto"
               @change=${(t) => this._newSubdomain = t.target.value}
             >
-              ${rl.map(
-      (t) => O`<option value=${t} ?selected=${t === this._newSubdomain}>${t}</option>`
+              ${al.map(
+      (t) => R`<option value=${t} ?selected=${t === this._newSubdomain}>${t}</option>`
     )}
             </select>` : ""}
-        ${this._view === "aggregates" || this._view === "processes" || this._view === "context-map" && this._detail !== "contexts" && (this._newContextMapKind === "domain-event" || this._newContextMapKind === "application-event" || this._newContextMapKind === "domain-service" || this._newContextMapKind === "query-service" || this._newContextMapKind === "use-case" || this._newContextMapKind === "policy") ? O`<select
+        ${this._view === "aggregates" || this._view === "processes" || this._view === "context-map" && this._detail !== "contexts" && (this._newContextMapKind === "domain-event" || this._newContextMapKind === "application-event" || this._newContextMapKind === "domain-service" || this._newContextMapKind === "query-service" || this._newContextMapKind === "use-case" || this._newContextMapKind === "policy") ? R`<select
               title=${this._view === "aggregates" ? "Módulo del nuevo agregado" : this._view === "processes" ? "Módulo dueño del proceso" : "Contexto dueño del nuevo elemento"}
               @change=${(t) => this._newModuleId = t.target.value}
             >
               ${this.model.modules.map(
       (t) => {
         var i;
-        return O`<option
+        return R`<option
                     value=${t.id}
                     ?selected=${t.id === (this._newModuleId || ((i = this.model.modules[0]) == null ? void 0 : i.id))}
                   >
@@ -8660,13 +8697,13 @@ let V = class extends Ke {
       }
     )}
             </select>` : ""}
-        ${this._view === "flows" || this._view === "processes" || this._view === "workflows" ? O`
-              ${this._view === "flows" ? O`<select
+        ${this._view === "flows" || this._view === "processes" || this._view === "workflows" ? R`
+              ${this._view === "flows" ? R`<select
                     title="Arquetipo del nuevo flow"
                     @change=${(t) => this._newArchetype = t.target.value}
                   >
                     ${["MATERIALIZES", "TRIGGERS", "ORCHESTRATES", "NOTIFIES"].map(
-      (t) => O`<option value=${t} ?selected=${t === this._newArchetype}>${t}</option>`
+      (t) => R`<option value=${t} ?selected=${t === this._newArchetype}>${t}</option>`
     )}
                   </select>` : ""}
               <select
@@ -8676,7 +8713,7 @@ let V = class extends Ke {
                 ${(this.model.aggregates ?? []).map(
       (t) => {
         var i, n;
-        return O`<option
+        return R`<option
                       value=${t.id}
                       ?selected=${t.id === (this._newTriggerAggId || ((n = (i = this.model.aggregates) == null ? void 0 : i[0]) == null ? void 0 : n.id))}
                     >
@@ -8692,14 +8729,14 @@ let V = class extends Ke {
                 @input=${(t) => this._newTriggerEvent = t.target.value}
                 @keydown=${(t) => t.key === "Enter" && this.createElementFromToolbar()}
               />
-              ${this._view === "flows" ? O`<select
+              ${this._view === "flows" ? R`<select
                     title="Destino del nuevo flow"
                     @change=${(t) => this._newTargetId = t.target.value}
                   >
                     ${[...this.model.modules, ...this.model.externalSystems].map(
       (t) => {
         var i;
-        return O`<option
+        return R`<option
                           value=${t.id}
                           ?selected=${t.id === (this._newTargetId || ((i = this.model.modules[0]) == null ? void 0 : i.id))}
                         >
@@ -8739,14 +8776,14 @@ let V = class extends Ke {
         >
           ⇪ Importar API${this.selectedApiId() ? " aquí" : "…"}
         </button>
-        ${this._view === "context-map" && this._selectedId && (this.model.rags ?? []).some((t) => t.id === this._selectedId) ? O`
+        ${this._view === "context-map" && this._selectedId && (this.model.rags ?? []).some((t) => t.id === this._selectedId) ? R`
               <span class="sep"></span>
               <select
                 title="Tipo de fuente de contenido del RAG"
                 @change=${(t) => this._newRagSourceType = t.target.value}
               >
                 ${["WEB", "REPO", "FTP", "DATABASE", "BUCKET", "SHAREPOINT", "CONFLUENCE", "DRIVE", "FILESYSTEM", "TICKETING", "CRM"].map(
-      (t) => O`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`
+      (t) => R`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`
     )}
               </select>
               <input
@@ -8765,7 +8802,7 @@ let V = class extends Ke {
                 ＋ Fuente
               </button>
             ` : ""}
-        ${this._view === "processes" && this._selectedId && ((this.model.processes ?? []).some((t) => t.id === this._selectedId) || this.owningProcessOf(this._selectedId)) ? O`
+        ${this._view === "processes" && this._selectedId && ((this.model.processes ?? []).some((t) => t.id === this._selectedId) || this.owningProcessOf(this._selectedId)) ? R`
               <span class="sep"></span>
               <input
                 class="new-name evt"
@@ -8779,10 +8816,10 @@ let V = class extends Ke {
                 @change=${(t) => this._newStepType = t.target.value}
               >
                 ${["AUTOMATED", "HUMAN"].map(
-      (t) => O`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`
+      (t) => R`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`
     )}
               </select>
-              ${this._newStepType === "HUMAN" ? O`<input
+              ${this._newStepType === "HUMAN" ? R`<input
                       class="new-name evt"
                       placeholder="Rol…"
                       .value=${this._newStepRole}
@@ -8797,7 +8834,7 @@ let V = class extends Ke {
               <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
                 ＋ Paso
               </button>
-              ${this.owningProcessOf(this._selectedId) ? O`
+              ${this.owningProcessOf(this._selectedId) ? R`
                     <span class="sep"></span>
                     <input
                       class="new-name evt"
@@ -8825,7 +8862,7 @@ let V = class extends Ke {
                     </button>
                   ` : ""}
             ` : ""}
-        ${this._view === "workflows" && this._selectedId && ((this.model.workflows ?? []).some((t) => t.id === this._selectedId) || this.owningWorkflowOf(this._selectedId)) ? O`
+        ${this._view === "workflows" && this._selectedId && ((this.model.workflows ?? []).some((t) => t.id === this._selectedId) || this.owningWorkflowOf(this._selectedId)) ? R`
               <span class="sep"></span>
               <input
                 class="new-name evt"
@@ -8840,7 +8877,7 @@ let V = class extends Ke {
               >
                 <option value="" ?selected=${this._newStepUseCase === ""}>— sin use case —</option>
                 ${this.model.modules.flatMap((t) => t.useCases ?? []).map(
-      (t) => O`<option value=${t.id} ?selected=${t.id === this._newStepUseCase}>
+      (t) => R`<option value=${t.id} ?selected=${t.id === this._newStepUseCase}>
                         ${t.name}
                       </option>`
     )}
@@ -8859,7 +8896,7 @@ let V = class extends Ke {
               >
                 ＋ Paso
               </button>
-              ${this.owningWorkflowOf(this._selectedId) ? O`
+              ${this.owningWorkflowOf(this._selectedId) ? R`
                     <span class="sep"></span>
                     <select
                       title="Caso de uso destino del paso seleccionado"
@@ -8869,7 +8906,7 @@ let V = class extends Ke {
                         — sin use case —
                       </option>
                       ${this.model.modules.flatMap((t) => t.useCases ?? []).map(
-      (t) => O`<option value=${t.id} ?selected=${t.id === this._editStepUseCase}>
+      (t) => R`<option value=${t.id} ?selected=${t.id === this._editStepUseCase}>
                               ${t.name}
                             </option>`
     )}
@@ -8913,23 +8950,7 @@ let V = class extends Ke {
         >
           ↷ Rehacer
         </button>
-        <label ?hidden=${this._view !== "context-map"}>Detalle:</label>
-        <select
-          ?hidden=${this._view !== "context-map"}
-          title="Nivel de detalle: contextos, sus agregados y casos de uso, o las operaciones de las APIs"
-          .value=${this._detail}
-          @change=${(t) => this.setDetail(
-      t.target.value
-    )}
-        >
-          <option value="contexts" ?selected=${this._detail === "contexts"}>Contextos</option>
-          <option value="detail" ?selected=${this._detail === "detail"}>
-            Agregados y casos de uso
-          </option>
-          <option value="operations" ?selected=${this._detail === "operations"}>
-            APIs y operaciones
-          </option>
-        </select>
+
         <button
           class="tab"
           title="Ajustar el diagrama a la ventana"
@@ -8984,14 +9005,14 @@ let V = class extends Ke {
       </div>
       </div>
       <div class="hint">
-        ${this._view === "context-map" ? O`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
+        ${this._view === "context-map" ? R`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
-            · rueda para zoom` : this._view === "eventstorming" ? O`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
+            · rueda para zoom` : this._view === "eventstorming" ? R`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
               policy lila → read model verde · se edita desde las otras vistas o los CRUD (doble
-              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom` : this._view === "workflows" ? O`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
+              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom` : this._view === "workflows" ? R`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
                 · Supr borra el paso o la dependencia seleccionada · F2 renombra · doble click abre
-                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom` : O`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
+                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom` : R`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
       </div>
@@ -9002,7 +9023,7 @@ let V = class extends Ke {
   renderDeletePicker() {
     if (!this._deletePicker) return "";
     const t = (this.model.views ?? []).find((i) => i.id === this._activeViewId);
-    return O`
+    return R`
       <div class="picker-backdrop" @pointerdown=${() => this._deletePicker = null}></div>
       <div
         class="relation-picker"
@@ -9060,7 +9081,7 @@ let V = class extends Ke {
       { type: "DEPENDS", abbr: "DEP", name: "Dependencia simple" },
       { type: "CQRS", abbr: "CQRS", name: "CQRS — consulta sobre sus datos" }
     ];
-    return O`
+    return R`
       <div class="picker-backdrop" @pointerdown=${() => this._extDepPicker = null}></div>
       <div
         class="relation-picker"
@@ -9069,7 +9090,7 @@ let V = class extends Ke {
       >
         <div class="picker-title">Tipo de dependencia</div>
         ${i.map(
-      (s) => O`
+      (s) => R`
             <button
               class="picker-item ${s.type === (t ?? "") ? "current" : ""}"
               title=${s.name}
@@ -9090,7 +9111,7 @@ let V = class extends Ke {
     const t = e.mode === "edit" ? (i = this.model.relations.find(
       (n) => n.sourceId === e.sourceId && n.targetId === e.targetId
     )) == null ? void 0 : i.type : this._relationType;
-    return O`
+    return R`
       <div class="picker-backdrop" @pointerdown=${() => this._relationPicker = null}></div>
       <div
         class="relation-picker"
@@ -9101,7 +9122,7 @@ let V = class extends Ke {
           ${e.mode === "create" ? "Tipo de relación" : "Cambiar tipo"}
         </div>
         ${ol.map(
-      (n) => O`
+      (n) => R`
             <button
               class="picker-item ${n === t ? "current" : ""}"
               title=${n}
@@ -9116,7 +9137,7 @@ let V = class extends Ke {
     `;
   }
 };
-V.styles = bi`
+V.styles = ki`
     .canvas-wrap {
       position: relative;
     }
@@ -9527,10 +9548,10 @@ W([
 V = W([
   Si("modux-editor")
 ], V);
-var ul = Object.defineProperty, hl = Object.getOwnPropertyDescriptor, ge = (e, t, i, n) => {
-  for (var s = n > 1 ? void 0 : n ? hl(t, i) : t, o = e.length - 1, a; o >= 0; o--)
+var cl = Object.defineProperty, ul = Object.getOwnPropertyDescriptor, ge = (e, t, i, n) => {
+  for (var s = n > 1 ? void 0 : n ? ul(t, i) : t, o = e.length - 1, a; o >= 0; o--)
     (a = e[o]) && (s = (n ? a(t, i, s) : a(s)) || s);
-  return n && s && ul(t, i, s), s;
+  return n && s && cl(t, i, s), s;
 };
 let ce = class extends Ke {
   constructor() {
@@ -9813,14 +9834,14 @@ let ce = class extends Ke {
   }
   render() {
     var e, t;
-    return this._error ? O`<div class="status error">modux editor: ${this._error}</div>` : this._model ? O`
-      ${this._workspace ? O`
+    return this._error ? R`<div class="status error">modux editor: ${this._error}</div>` : this._model ? R`
+      ${this._workspace ? R`
             <div class="workspace">
               <label>Modelo:</label>
               <span title="El modelo activo se cambia desde el selector «Modelo» de la cabecera">
                 ${this._workspace.system ? "Sistema (as-is)" : `Solución: ${((e = this._workspace.solutions.find((i) => i.branch === this._workspace.current)) == null ? void 0 : e.name) ?? this._workspace.current}`}
               </span>
-              ${this._creatingSolution ? "" : O`<button @click=${() => this._creatingSolution = !0}>
+              ${this._creatingSolution ? "" : R`<button @click=${() => this._creatingSolution = !0}>
                     ＋ Nueva solución…
                   </button>`}
               <span class="badge ${this._workspace.system ? "" : "solution"}">
@@ -9828,14 +9849,14 @@ let ce = class extends Ke {
               </span>
               ${this._diff && !this._workspace.system ? (() => {
       const i = (s) => this._diff.changes.filter((o) => o.kind === s).length, n = this._diff.changes.filter((s) => s.kind === "REMOVED").map((s) => s.name ?? s.id);
-      return O`<span
+      return R`<span
                       class="badge solution"
                       title=${n.length ? `Eliminados respecto al sistema: ${n.join(", ")}` : "Cambios respecto al sistema"}
                     >
                       ＋${i("ADDED")} ～${i("MODIFIED")} －${i("REMOVED")}
                     </span>`;
     })() : ""}
-              ${this._creatingSolution ? O`
+              ${this._creatingSolution ? R`
                     <input
                       placeholder="Nombre de la solución…"
                       .value=${this._newSolutionName}
@@ -9850,20 +9871,20 @@ let ce = class extends Ke {
       const i = (n = this._workspace.solutions.find(
         (s) => s.branch === this._workspace.current
       )) == null ? void 0 : n.status;
-      return O`
-                      ${i === "EXPLORING" ? O`<button
+      return R`
+                      ${i === "EXPLORING" ? R`<button
                             title="La solución queda propuesta para revisión"
                             @click=${() => void this.solutionOp("status", { status: "PROPOSED" })}
                           >
                             → Proponer
                           </button>` : ""}
-                      ${i === "PROPOSED" ? O`<button
+                      ${i === "PROPOSED" ? R`<button
                             title="Aprueba la solución — exige lint verde y ninguna decisión abierta"
                             @click=${() => void this.solutionOp("status", { status: "APPROVED" })}
                           >
                             ✓ Aprobar
                           </button>` : ""}
-                      ${i === "APPROVED" ? O`<button
+                      ${i === "APPROVED" ? R`<button
                             title="Merge semántico al sistema: la solución pasa a ser el nuevo as-is"
                             @click=${() => void this.startMergeFlow("merge")}
                           >
@@ -9885,14 +9906,14 @@ let ce = class extends Ke {
     })() : ""}
             </div>
           ` : ""}
-      ${this._mergeFlow ? O`
+      ${this._mergeFlow ? R`
             <div class="merge-panel">
               <div class="merge-title">
                 ${this._mergeFlow.conflicts.length} elemento(s) cambiados en el sistema Y en la
                 solución — elige qué versión queda:
               </div>
               ${this._mergeFlow.conflicts.map(
-      (i) => O`
+      (i) => R`
                   <div class="merge-row">
                     <span class="merge-el">${i.type} · ${i.name ?? i.id}</span>
                     <label title=${i.system ?? "(eliminado en el sistema)"}>
@@ -9947,17 +9968,17 @@ let ce = class extends Ke {
         @modux-notice=${(i) => this.showToast(i.detail.message, i.detail.kind ?? "info")}
         style=${this._saving ? "opacity: 0.7" : ""}
       ></modux-editor>
-      ${this._toast ? O`<div
+      ${this._toast ? R`<div
             class="toast ${this._toast.kind}"
             role="alert"
             @click=${() => this._toast = null}
           >
             ${this._toast.kind === "error" ? "⚠" : "ℹ"} ${this._toast.message}
           </div>` : ""}
-    ` : O`<div class="status">Cargando el modelo…</div>`;
+    ` : R`<div class="status">Cargando el modelo…</div>`;
   }
 };
-ce.styles = bi`
+ce.styles = ki`
     :host {
       display: flex;
       flex-direction: column;
@@ -10128,8 +10149,8 @@ ce = ge([
   Si("modux-editor-connected")
 ], ce);
 export {
-  ml as CONTAINER_HEADER,
-  fl as CONTAINER_INSET,
+  pl as CONTAINER_HEADER,
+  ml as CONTAINER_INSET,
   ne as ModuxCanvas,
   V as ModuxEditor,
   ce as ModuxEditorConnected,
@@ -10139,7 +10160,7 @@ export {
   ri as containerFit,
   ws as containerMinSize,
   Ss as contextMapScene,
-  bs as flowCoherence,
+  ks as flowCoherence,
   Hs as flowsScene,
   St as normalizeViewLayout,
   Ui as processesScene,

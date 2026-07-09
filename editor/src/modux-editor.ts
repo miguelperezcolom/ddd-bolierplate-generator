@@ -29,15 +29,6 @@ const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
 type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'eventstorming';
 
-const VIEWS: { id: ViewId; label: string; ready: boolean }[] = [
-  { id: 'context-map', label: 'Context map', ready: true },
-  { id: 'aggregates', label: 'Agregados', ready: true },
-  { id: 'flows', label: 'Flows', ready: true },
-  { id: 'processes', label: 'Procesos', ready: true },
-  { id: 'workflows', label: 'Workflows', ready: true },
-  { id: 'eventstorming', label: 'EventStorming', ready: true },
-];
-
 const SUBDOMAIN_TYPES: SubdomainType[] = ['CORE', 'SUPPORTING', 'GENERIC'];
 
 /**
@@ -1760,6 +1751,18 @@ export class ModuxEditor extends LitElement {
       homeExternalId,
       homeModuleId,
     });
+  }
+
+  /** One dropdown drives the diagram: a context-map detail level, or a specialized view. */
+  private onDiagramScopeChange(value: string): void {
+    if (value.startsWith('level:')) {
+      this._view = 'context-map';
+      this.setDetail(value.slice('level:'.length) as 'contexts' | 'detail' | 'operations');
+      return;
+    }
+    if (value.startsWith('view:')) {
+      this._view = value.slice('view:'.length) as ViewId;
+    }
   }
 
   /** Folding is a view preference (like the detail level): persisted, not undoable. */
@@ -4140,19 +4143,55 @@ export class ModuxEditor extends LitElement {
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
         <div class="tabs">
-          ${VIEWS.map(
-            (v) => html`
-              <button
-                class="tab"
-                ?data-active=${this._view === v.id}
-                ?disabled=${!v.ready}
-                title=${v.ready ? '' : 'Próximamente'}
-                @click=${() => (this._view = v.id)}
-              >
-                ${v.label}
-              </button>
-            `,
-          )}
+          <button
+            class="tab"
+            ?data-active=${this._view !== 'eventstorming'}
+            title="El diagrama del modelo — el desplegable elige qué pinta"
+            @click=${() => {
+              if (this._view === 'eventstorming') this._view = 'context-map';
+            }}
+          >
+            Diagrama
+          </button>
+          <button
+            class="tab"
+            ?data-active=${this._view === 'eventstorming'}
+            @click=${() => (this._view = 'eventstorming')}
+          >
+            EventStorming
+          </button>
+          <select
+            ?hidden=${this._view === 'eventstorming'}
+            title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
+            @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
+          >
+            <optgroup label="Context map">
+              <option value="level:contexts"
+                ?selected=${this._view === 'context-map' && this._detail === 'contexts'}>
+                Contextos
+              </option>
+              <option value="level:detail"
+                ?selected=${this._view === 'context-map' && this._detail === 'detail'}>
+                Agregados y casos de uso
+              </option>
+              <option value="level:operations"
+                ?selected=${this._view === 'context-map' && this._detail === 'operations'}>
+                APIs y operaciones
+              </option>
+            </optgroup>
+            <optgroup label="Vistas especializadas">
+              <option value="view:aggregates" ?selected=${this._view === 'aggregates'}>
+                Agregados y referencias
+              </option>
+              <option value="view:flows" ?selected=${this._view === 'flows'}>Flows</option>
+              <option value="view:processes" ?selected=${this._view === 'processes'}>
+                Procesos
+              </option>
+              <option value="view:workflows" ?selected=${this._view === 'workflows'}>
+                Workflows
+              </option>
+            </optgroup>
+          </select>
         </div>
         <select
           title="Limitar el lienzo a una vista del modelo"
@@ -4772,24 +4811,7 @@ export class ModuxEditor extends LitElement {
         >
           ↷ Rehacer
         </button>
-        <label ?hidden=${this._view !== 'context-map'}>Detalle:</label>
-        <select
-          ?hidden=${this._view !== 'context-map'}
-          title="Nivel de detalle: contextos, sus agregados y casos de uso, o las operaciones de las APIs"
-          .value=${this._detail}
-          @change=${(e: Event) =>
-            this.setDetail(
-              (e.target as HTMLSelectElement).value as 'contexts' | 'detail' | 'operations',
-            )}
-        >
-          <option value="contexts" ?selected=${this._detail === 'contexts'}>Contextos</option>
-          <option value="detail" ?selected=${this._detail === 'detail'}>
-            Agregados y casos de uso
-          </option>
-          <option value="operations" ?selected=${this._detail === 'operations'}>
-            APIs y operaciones
-          </option>
-        </select>
+
         <button
           class="tab"
           title="Ajustar el diagrama a la ventana"
