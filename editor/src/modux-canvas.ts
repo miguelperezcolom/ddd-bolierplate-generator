@@ -1027,6 +1027,21 @@ export class ModuxCanvas extends LitElement {
           ? svg`<text x=${-hw} y=${-hh - 7} font-size="10" font-family="ui-sans-serif, system-ui"
                   fill="#64748b" letter-spacing="0.08em">${node.badge}</text>`
           : ''}
+        ${node.collapsible
+          ? svg`<g transform="translate(${hw - (node.container ? 42 : 38)}, ${-hh + 16})"
+                  style="cursor: pointer" pointer-events="all"
+                  @pointerdown=${(e: PointerEvent) => {
+                    e.stopPropagation();
+                    this.emit('node-collapse-toggled', { id: node.id });
+                  }}
+                  @click=${(e: MouseEvent) => e.stopPropagation()}>
+                  <rect data-collapse-toggle x="-9" y="-10" width="18" height="18" rx="4"
+                        fill="transparent"></rect>
+                  <text text-anchor="middle" y="4" font-size="12" fill="#64748b"
+                        pointer-events="none">${node.collapsed ? '▸' : '▾'}</text>
+                  <title>${node.collapsed ? 'Expandir' : 'Colapsar'}</title>
+                </g>`
+          : ''}
         ${node.symbol && SYMBOLS[node.symbol] && !isChild
           ? svg`<g transform="translate(${hw - 17}, ${-hh + 5})" fill="none"
                   stroke=${node.stroke ?? '#64748b'} stroke-width="1.1" stroke-linejoin="round"

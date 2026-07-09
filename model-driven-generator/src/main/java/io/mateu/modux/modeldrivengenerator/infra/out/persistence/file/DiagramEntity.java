@@ -17,11 +17,20 @@ public record DiagramEntity(
         String id,
         String detail,                  // context-map detail level: "contexts" or "detail"
         List<DiagramNodeEntity> nodes,
-        List<DiagramEdgeEntity> edges
+        List<DiagramEdgeEntity> edges,
+        /** Containers folded by hand at this view/level (they render compact). */
+        List<String> collapsed
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-collapsed callers and stores). */
+    public DiagramEntity(String id, String detail,
+                         List<DiagramNodeEntity> nodes, List<DiagramEdgeEntity> edges) {
+        this(id, detail, nodes, edges, List.of());
+    }
 
     public DiagramEntity {
         nodes = nodes != null ? nodes : List.of();
         edges = edges != null ? edges : List.of();
+        collapsed = collapsed != null ? collapsed : List.of();
     }
 }

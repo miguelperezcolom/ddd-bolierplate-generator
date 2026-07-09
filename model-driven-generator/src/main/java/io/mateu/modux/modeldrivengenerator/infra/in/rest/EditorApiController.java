@@ -3306,6 +3306,10 @@ public class EditorApiController {
         for (var diagram : diagrams) {
             var view = root.putObject(diagram.id());
             if (diagram.detail() != null) view.put("detail", diagram.detail());
+            if (!diagram.collapsed().isEmpty()) {
+                var folded = view.putArray("collapsed");
+                diagram.collapsed().forEach(folded::add);
+            }
             var nodes = view.putObject("nodes");
             var sizes = view.putObject("sizes");
             for (var node : diagram.nodes()) {
@@ -3341,7 +3345,8 @@ public class EditorApiController {
         var kept = new ArrayList<String>();
         root.properties().forEach(entry -> {
             var diagram = toDiagram(entry.getKey(), entry.getValue());
-            if (diagram.nodes().isEmpty() && diagram.edges().isEmpty() && diagram.detail() == null) return;
+            if (diagram.nodes().isEmpty() && diagram.edges().isEmpty()
+                    && diagram.detail() == null && diagram.collapsed().isEmpty()) return;
             repository.save(diagram);
             kept.add(diagram.id());
         });
@@ -3381,7 +3386,13 @@ public class EditorApiController {
         }
         var detail = view.get("detail") != null && view.get("detail").isTextual()
                 ? view.get("detail").asText() : null;
-        return new DiagramEntity(id, detail, nodes, edges);
+        var collapsed = new ArrayList<String>();
+        if (v2 && view.get("collapsed") != null && view.get("collapsed").isArray()) {
+            view.get("collapsed").forEach(c -> {
+                if (c.isTextual()) collapsed.add(c.asText());
+            });
+        }
+        return new DiagramEntity(id, detail, nodes, edges, collapsed);
     }
 
     /** Emissions declared by an emitter's operations (CSV of event names in emits). */

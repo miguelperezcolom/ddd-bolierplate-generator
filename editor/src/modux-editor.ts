@@ -1762,6 +1762,17 @@ export class ModuxEditor extends LitElement {
     });
   }
 
+  /** Folding is a view preference (like the detail level): persisted, not undoable. */
+  private onNodeCollapseToggled(e: CustomEvent): void {
+    const { id } = e.detail as { id: string };
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const set = new Set(current.collapsed ?? []);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    this.writeViewLayout(view, { ...current, collapsed: [...set] });
+  }
+
   /** A multi-selection drag: every position lands in ONE layout write and ONE undo entry. */
   private onNodesMoved(e: CustomEvent): void {
     const { moves } = e.detail as { moves: { id: string; x: number; y: number }[] };
@@ -4051,7 +4062,13 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes)
               : view === 'eventstorming'
                 ? eventstormingScene(model, vl.nodes)
-                : contextMapScene(model, vl.nodes, this._detail, vl.sizes ?? {});
+                : contextMapScene(
+                    model,
+                    vl.nodes,
+                    this._detail,
+                    vl.sizes ?? {},
+                    new Set(vl.collapsed ?? []),
+                  );
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
       for (const node of scene.nodes) {
@@ -4803,6 +4820,7 @@ export class ModuxEditor extends LitElement {
         @node-moved=${this.onNodeMoved}
         @nodes-moved=${this.onNodesMoved}
         @node-reparent-requested=${this.onNodeReparentRequested}
+        @node-collapse-toggled=${this.onNodeCollapseToggled}
         @node-proxy-requested=${this.onNodeProxyRequested}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}

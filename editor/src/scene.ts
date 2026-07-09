@@ -30,6 +30,10 @@ export interface SceneNode {
   container?: boolean;
   /** On a solution (to-be): how this element differs from the system (diff ring). */
   diffKind?: 'ADDED' | 'MODIFIED';
+  /** The node can fold/unfold its children (containers). */
+  collapsible?: boolean;
+  /** Folded by hand: rendered compact, children hidden. */
+  collapsed?: boolean;
 }
 
 /**
@@ -170,6 +174,8 @@ export interface ViewLayout {
   sizes?: Record<string, { w: number; h: number }>;
   /** Persisted detail level (context-map only): contexts, their contents, or API operations. */
   detail?: 'contexts' | 'detail' | 'operations';
+  /** Containers collapsed by hand at this level (they render compact). */
+  collapsed?: string[];
 }
 
 /**
@@ -183,7 +189,13 @@ export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefine
   if (!value) return { nodes: {}, edges: {}, sizes: {} };
   if ('nodes' in value && typeof value.nodes === 'object' && !('x' in (value.nodes as object))) {
     const v = value as ViewLayout;
-    return { nodes: v.nodes ?? {}, edges: v.edges ?? {}, sizes: v.sizes ?? {}, detail: v.detail };
+    return {
+      nodes: v.nodes ?? {},
+      edges: v.edges ?? {},
+      sizes: v.sizes ?? {},
+      detail: v.detail,
+      collapsed: v.collapsed,
+    };
   }
   return { nodes: value as DiagramLayout, edges: {}, sizes: {} };
 }
