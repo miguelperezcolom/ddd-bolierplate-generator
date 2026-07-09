@@ -50,9 +50,10 @@ steps (`workflow-depends-scope`).
 The **Workflows** tab draws each workflow as its dependency DAG: trigger source
 →(event, dashed)→ workflow → steps laid out by dependency depth → completion event
 (green). Steps badge their target use case. Create workflows and steps from the
-toolbar — or from the **palette** (🧰), reduced here to *Workflow* and *Paso de
-workflow*: drop the step on a workflow to append it, or **on one of its steps to
-chain it** (the new step lands beside it, already depending on it). **Drag a handle
+**palette** (🧰), reduced here to *Workflow* and *Paso de workflow*: drop the step
+on a workflow to append it, or **on one of its steps to chain it** (the new step
+lands beside it, already depending on it). The trigger is a gesture too — drag an
+event onto the workflow on the context map — or a field in the workflow's form. **Drag a handle
 from step A onto step B** to declare *B waits for A*; Supr deletes steps or
 dependency arrows; everything is undoable — removing a step restores its dependants'
 links on undo. Double click opens the owning workflow's form.

@@ -50,7 +50,7 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
 
 ## Agents
 
-Create an agent from the context-map toolbar — **Agente de IA** (internal) or
+Create an agent from the context map's palette — **Agente IA** (internal) or
 **Agente IA externo** (external, drawn dashed). Then drag its handle onto any tool,
 another agent (delegation) or a RAG; every arrow above is a gesture, and Supr on the
 arrow removes the link. API **proxies** count as APIs everywhere: dragging the agent
@@ -78,7 +78,7 @@ re-exposes them as one MCP endpoint:
   (retrieval as a tool).
 
 It is the front door for external agents — and a convenient single surface for
-internal ones. Create it from the toolbar (plug glyph) and drag its handle onto
+internal ones. Create it from the palette (plug glyph) and drag its handle onto
 whatever it should expose. `mcp-gateway-empty` (INFO) flags a gateway that exposes
 nothing. How it is deployed and authenticated is a generation-time decision.
 

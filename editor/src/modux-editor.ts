@@ -1,6 +1,6 @@
 import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { ModuxModel, ContextMapRelationType, SubdomainType } from './model.js';
+import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { EditorLayout, Point, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
@@ -29,7 +29,6 @@ const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
 type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'eventstorming';
 
-const SUBDOMAIN_TYPES: SubdomainType[] = ['CORE', 'SUPPORTING', 'GENERIC'];
 
 /**
  * Undo/redo operate on edit operations: model commands (sent to the host) plus
@@ -291,36 +290,7 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteOpen = false;
   @state() private _paletteFilter = '';
   @state() private _newName = '';
-  @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
   @state() private _newModuleId = '';
-  /** What the context-map toolbar creates at detail level: a context, or a child element. */
-  @state() private _newContextMapKind:
-    | 'module'
-    | 'external-system'
-    | 'actor'
-    | 'ai-agent'
-    | 'external-ai-agent'
-    | 'mcp-gateway'
-    | 'rag'
-    | 'domain-event'
-    | 'application-event'
-    | 'read-model'
-    | 'domain-service'
-    | 'query-service'
-    | 'use-case'
-    | 'policy'
-    | 'external-use-case'
-    | 'external-table'
-    | 'mcp-server'
-    | 'api'
-    | 'proxy-api'
-    | 'api-operation' = 'module';
-  /** Owner aggregate for a new read model. */
-  @state() private _newAggregateId = '';
-  /** Owner external system for a new external use case. */
-  @state() private _newExternalId = '';
-  /** Owner API for a new operation. */
-  @state() private _newApiId = '';
   @state() private _newArchetype = 'TRIGGERS';
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
@@ -662,19 +632,6 @@ export class ModuxEditor extends LitElement {
         edges: { ...seed.edges },
         sizes: { ...(seed.sizes ?? {}) },
       });
-    }
-    if (
-      detail === 'contexts' &&
-      this._newContextMapKind !== 'module' &&
-      this._newContextMapKind !== 'external-system' &&
-      this._newContextMapKind !== 'actor' &&
-      this._newContextMapKind !== 'ai-agent' &&
-      this._newContextMapKind !== 'external-ai-agent' &&
-      this._newContextMapKind !== 'mcp-gateway' &&
-      this._newContextMapKind !== 'rag' &&
-      this._newContextMapKind !== 'api'
-    ) {
-      this._newContextMapKind = 'module';
     }
     // The chosen level persists on the BASE entry — where load-time adoption looks.
     const base = normalizeViewLayout(this.layout['context-map']);
@@ -4015,126 +3972,7 @@ export class ModuxEditor extends LitElement {
   private createElementFromToolbar(): void {
     const name = this._newName.trim();
     if (!name) return;
-    if (this._view === 'context-map') {
-      if (this._newContextMapKind === 'external-system') {
-        this.command({ kind: 'add-external-system', id: `ext-${slug(name)}`, name });
-      } else if (this._newContextMapKind === 'actor') {
-        this.command({ kind: 'add-actor', id: slug(name), name });
-      } else if (this._newContextMapKind === 'ai-agent') {
-        this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name });
-      } else if (this._newContextMapKind === 'external-ai-agent') {
-        this.command({ kind: 'add-ai-agent', id: `agent-${slug(name)}`, name, external: true });
-      } else if (this._newContextMapKind === 'mcp-gateway') {
-        this.command({ kind: 'add-mcp-gateway', id: `mcpgw-${slug(name)}`, name });
-      } else if (this._newContextMapKind === 'rag') {
-        this.command({ kind: 'add-rag', id: `rag-${slug(name)}`, name });
-      } else if (this._newContextMapKind === 'api') {
-        // An API never floats: the selected external system or context is its home.
-        const home =
-          this.model.externalSystems.find((x) => x.id === this._selectedId)?.id ??
-          this.model.modules.find((mo) => mo.id === this._selectedId)?.id;
-        if (!home) {
-          this.emit('modux-notice', {
-            message:
-              'Selecciona el sistema externo o el contexto que publica la API antes de crearla',
-          });
-          return;
-        }
-        const id = `api-${slug(name)}`;
-        this.command({ kind: 'add-api', id, name });
-        if (this.model.externalSystems.some((x) => x.id === home)) {
-          this.command({ kind: 'set-api-publisher', id, targetId: home }, false);
-        } else {
-          this.command({ kind: 'add-api-implementation', apiId: id, moduleId: home }, false);
-        }
-      } else if (this._newContextMapKind === 'proxy-api') {
-        this.command({ kind: 'add-proxy-api', id: `proxy-${slug(name)}`, name });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'api-operation') {
-        const selected = (this.model.apis ?? []).find((a) => a.id === this._selectedId)?.id;
-        const apiId = this._newApiId || selected || this.model.apis?.[0]?.id;
-        if (!apiId) return;
-        this.command({
-          kind: 'add-api-operation',
-          apiId,
-          id: `apiop-${apiId.replace(/^api-/, '')}-${slug(name)}`,
-          name,
-        });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'domain-event') {
-        // A selected context is the natural owner; the dropdown can override it.
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-domain-event', id: `ev-${slug(name)}`, name, moduleId });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'application-event') {
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-application-event', id: `aev-${slug(name)}`, name, moduleId });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'domain-service') {
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-domain-service', id: `ds-${slug(name)}`, name, moduleId });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'query-service') {
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-query-service', id: `qs-${slug(name)}`, name, moduleId });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'use-case') {
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'policy') {
-        const selected = this.model.modules.find((m) => m.id === this._selectedId)?.id;
-        const moduleId = this._newModuleId || selected || this.model.modules[0]?.id;
-        if (!moduleId) return;
-        this.command({ kind: 'add-use-case', id: `uc-${slug(name)}`, name, moduleId, policy: true });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'external-use-case') {
-        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
-        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
-        if (!externalId) return;
-        this.command({
-          kind: 'add-external-use-case',
-          id: `xuc-${slug(name)}`,
-          name,
-          moduleId: externalId,
-        });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'external-table') {
-        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
-        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
-        if (!externalId) return;
-        this.command({
-          kind: 'add-external-table',
-          id: `tbl-${slug(name)}`,
-          name,
-          moduleId: externalId,
-        });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'mcp-server') {
-        const selected = this.model.externalSystems.find((x) => x.id === this._selectedId)?.id;
-        const externalId = this._newExternalId || selected || this.model.externalSystems[0]?.id;
-        if (!externalId) return;
-        this.command({
-          kind: 'add-mcp-server',
-          id: `mcpsrv-${slug(name)}`,
-          name,
-          moduleId: externalId,
-        });
-      } else if (this._detail !== 'contexts' && this._newContextMapKind === 'read-model') {
-        // A read model is a view of an aggregate; a selected aggregate is the default.
-        const selected = (this.model.aggregates ?? []).find((a) => a.id === this._selectedId)?.id;
-        const aggregateId = this._newAggregateId || selected || this.model.aggregates?.[0]?.id;
-        if (!aggregateId) return;
-        this.command({ kind: 'add-read-model', id: `rm-${slug(name)}`, name, aggregateId });
-      } else {
-        this.command({
-          kind: 'add-module',
-          id: `mod-${slug(name)}`,
-          name,
-          subdomainType: this._newSubdomain,
-        });
-      }
-    } else if (this._view === 'aggregates') {
+    if (this._view === 'aggregates') {
       const moduleId = this._newModuleId || this.model.modules[0]?.id;
       if (!moduleId) return;
       this.command({ kind: 'add-aggregate', id: `agg-${slug(name)}`, name, moduleId });
@@ -4163,17 +4001,6 @@ export class ModuxEditor extends LitElement {
         moduleId,
         triggerAggregateId: this._newTriggerAggId || this.model.aggregates?.[0]?.id,
         triggerEvent: this._newTriggerEvent.trim() || undefined,
-      });
-      this._newTriggerEvent = '';
-    } else if (this._view === 'workflows') {
-      // No owner module on purpose: a workflow lives outside the bounded contexts.
-      this.command({
-        kind: 'add-workflow',
-        id: `wf-${slug(name)}`,
-        name,
-        triggerAggregateId: this._newTriggerAggId || this.model.aggregates?.[0]?.id,
-        triggerEvent: this._newTriggerEvent.trim() || undefined,
-        completionEventName: `${name.replace(/\s+/g, '')}Completado`,
       });
       this._newTriggerEvent = '';
     }
@@ -4383,247 +4210,21 @@ export class ModuxEditor extends LitElement {
           : ''}
         <input
           class="new-name"
-          ?hidden=${this._view === 'eventstorming'}
-          placeholder=${{
-            'context-map':
-              this._newContextMapKind === 'external-system'
-                ? 'Nuevo sistema externo…'
-                : this._newContextMapKind === 'actor'
-                  ? 'Nuevo actor…'
-                  : this._newContextMapKind === 'ai-agent'
-                    ? 'Nuevo agente de IA…'
-                    : this._newContextMapKind === 'external-ai-agent'
-                      ? 'Nuevo agente IA externo…'
-                      : this._newContextMapKind === 'mcp-gateway'
-                        ? 'Nuevo gateway MCP…'
-                    : this._newContextMapKind === 'rag'
-                      ? 'Nuevo RAG…'
-                      : this._newContextMapKind === 'api'
-                        ? 'Nueva API…'
-                        : this._newContextMapKind === 'proxy-api'
-                          ? 'Nuevo proxy API…'
-                  : this._detail === 'contexts' || this._newContextMapKind === 'module'
-                    ? 'Nuevo contexto…'
-                    : this._newContextMapKind === 'domain-event'
-                  ? 'Nuevo evento de dominio…'
-                      : this._newContextMapKind === 'application-event'
-                        ? 'Nuevo evento de aplicación…'
-                        : this._newContextMapKind === 'domain-service'
-                          ? 'Nuevo servicio de dominio…'
-                          : this._newContextMapKind === 'policy'
-                            ? 'Nueva policy…'
-                            : this._newContextMapKind === 'use-case'
-                              ? 'Nuevo caso de uso…'
-                              : this._newContextMapKind === 'query-service'
-                                ? 'Nuevo query service…'
-                                : this._newContextMapKind === 'external-use-case'
-                                  ? 'Nuevo caso de uso externo…'
-                                  : this._newContextMapKind === 'external-table'
-                                    ? 'Nueva tabla externa…'
-                                    : this._newContextMapKind === 'mcp-server'
-                                      ? 'Nuevo servidor MCP…'
-                                    : this._newContextMapKind === 'api-operation'
-                                      ? 'Nueva operación de API…'
-                                      : 'Nuevo read model…',
+          ?hidden=${this._view !== 'aggregates' && this._view !== 'flows' && this._view !== 'processes'}
+          placeholder=${({
             aggregates: 'Nuevo agregado…',
             flows: 'Nuevo flow…',
             processes: 'Nuevo proceso…',
-            workflows: 'Nuevo workflow…',
-            eventstorming: '',
-          }[this._view]}
+          } as Partial<Record<ViewId, string>>)[this._view] ?? ''}
           .value=${this._newName}
           @input=${(e: Event) => (this._newName = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createElementFromToolbar()}
         />
-        ${this._view === 'context-map'
-          ? html`<select
-              title="Qué crear en el lienzo"
-              @change=${(e: Event) =>
-                (this._newContextMapKind = (e.target as HTMLSelectElement)
-                  .value as typeof this._newContextMapKind)}
-            >
-              <option value="module" ?selected=${this._newContextMapKind === 'module'}>
-                Contexto
-              </option>
-              <option
-                value="external-system"
-                ?selected=${this._newContextMapKind === 'external-system'}
-              >
-                Sistema externo
-              </option>
-              <option value="actor" ?selected=${this._newContextMapKind === 'actor'}>
-                Actor
-              </option>
-              <option value="ai-agent" ?selected=${this._newContextMapKind === 'ai-agent'}>
-                Agente de IA
-              </option>
-              <option
-                value="external-ai-agent"
-                ?selected=${this._newContextMapKind === 'external-ai-agent'}
-              >
-                Agente IA externo
-              </option>
-              <option value="mcp-gateway" ?selected=${this._newContextMapKind === 'mcp-gateway'}>
-                Gateway MCP
-              </option>
-              <option value="rag" ?selected=${this._newContextMapKind === 'rag'}>
-                RAG (base de conocimiento)
-              </option>
-              <option value="api" ?selected=${this._newContextMapKind === 'api'}>
-                API publicada
-              </option>
-              <option value="proxy-api" ?selected=${this._newContextMapKind === 'proxy-api'}>
-                Proxy API
-              </option>
-              ${this._detail !== 'contexts'
-                ? html`
-                    <option
-                      value="domain-event"
-                      ?selected=${this._newContextMapKind === 'domain-event'}
-                    >
-                      Evento de dominio
-                    </option>
-                    <option
-                      value="application-event"
-                      ?selected=${this._newContextMapKind === 'application-event'}
-                    >
-                      Evento de aplicación
-                    </option>
-                    <option
-                      value="read-model"
-                      ?selected=${this._newContextMapKind === 'read-model'}
-                    >
-                      Read model
-                    </option>
-                    <option
-                      value="domain-service"
-                      ?selected=${this._newContextMapKind === 'domain-service'}
-                    >
-                      Servicio de dominio
-                    </option>
-                    <option
-                      value="query-service"
-                      ?selected=${this._newContextMapKind === 'query-service'}
-                    >
-                      Query service
-                    </option>
-                    <option value="use-case" ?selected=${this._newContextMapKind === 'use-case'}>
-                      Caso de uso
-                    </option>
-                    <option value="policy" ?selected=${this._newContextMapKind === 'policy'}>
-                      Policy
-                    </option>
-                    <option
-                      value="external-use-case"
-                      ?selected=${this._newContextMapKind === 'external-use-case'}
-                    >
-                      Caso de uso externo
-                    </option>
-                    <option
-                      value="external-table"
-                      ?selected=${this._newContextMapKind === 'external-table'}
-                    >
-                      Tabla externa (legacy)
-                    </option>
-                    <option
-                      value="mcp-server"
-                      ?selected=${this._newContextMapKind === 'mcp-server'}
-                    >
-                      Servidor MCP (externo)
-                    </option>
-                    <option
-                      value="api-operation"
-                      ?selected=${this._newContextMapKind === 'api-operation'}
-                    >
-                      Operación de API
-                    </option>
-                  `
-                : ''}
-            </select>`
-          : ''}
-        ${this._view === 'context-map' &&
-        this._detail !== 'contexts' &&
-        (this._newContextMapKind === 'external-use-case' ||
-          this._newContextMapKind === 'external-table' ||
-          this._newContextMapKind === 'mcp-server')
-          ? html`<select
-              title="Sistema externo dueño del nuevo elemento"
-              @change=${(e: Event) => (this._newExternalId = (e.target as HTMLSelectElement).value)}
-            >
-              ${this.model.externalSystems.map(
-                (x) =>
-                  html`<option
-                    value=${x.id}
-                    ?selected=${x.id === (this._newExternalId || this.model.externalSystems[0]?.id)}
-                  >
-                    ${x.name}
-                  </option>`,
-              )}
-            </select>`
-          : ''}
-        ${this._view === 'context-map' &&
-        this._detail !== 'contexts' &&
-        this._newContextMapKind === 'api-operation'
-          ? html`<select
-              title="API dueña de la nueva operación"
-              @change=${(e: Event) => (this._newApiId = (e.target as HTMLSelectElement).value)}
-            >
-              ${(this.model.apis ?? []).map(
-                (a) =>
-                  html`<option
-                    value=${a.id}
-                    ?selected=${a.id === (this._newApiId || this.model.apis?.[0]?.id)}
-                  >
-                    ${a.name}
-                  </option>`,
-              )}
-            </select>`
-          : ''}
-        ${this._view === 'context-map' &&
-        this._detail !== 'contexts' &&
-        this._newContextMapKind === 'read-model'
-          ? html`<select
-              title="Agregado del que es vista el read model"
-              @change=${(e: Event) => (this._newAggregateId = (e.target as HTMLSelectElement).value)}
-            >
-              ${(this.model.aggregates ?? []).map(
-                (a) =>
-                  html`<option
-                    value=${a.id}
-                    ?selected=${a.id === (this._newAggregateId || this.model.aggregates?.[0]?.id)}
-                  >
-                    ${a.name}
-                  </option>`,
-              )}
-            </select>`
-          : ''}
-        ${this._view === 'context-map' && this._newContextMapKind === 'module'
-          ? html`<select
-              title="Subdominio del nuevo contexto"
-              @change=${(e: Event) =>
-                (this._newSubdomain = (e.target as HTMLSelectElement).value as SubdomainType)}
-            >
-              ${SUBDOMAIN_TYPES.map(
-                (t) => html`<option value=${t} ?selected=${t === this._newSubdomain}>${t}</option>`,
-              )}
-            </select>`
-          : ''}
-        ${this._view === 'aggregates' ||
-        this._view === 'processes' ||
-        (this._view === 'context-map' &&
-          this._detail !== 'contexts' &&
-          (this._newContextMapKind === 'domain-event' ||
-            this._newContextMapKind === 'application-event' ||
-            this._newContextMapKind === 'domain-service' ||
-            this._newContextMapKind === 'query-service' ||
-            this._newContextMapKind === 'use-case' ||
-            this._newContextMapKind === 'policy'))
+        ${this._view === 'aggregates' || this._view === 'processes'
           ? html`<select
               title=${this._view === 'aggregates'
                 ? 'Módulo del nuevo agregado'
-                : this._view === 'processes'
-                  ? 'Módulo dueño del proceso'
-                  : 'Contexto dueño del nuevo elemento'}
+                : 'Módulo dueño del proceso'}
               @change=${(e: Event) => (this._newModuleId = (e.target as HTMLSelectElement).value)}
             >
               ${this.model.modules.map(
@@ -4637,7 +4238,7 @@ export class ModuxEditor extends LitElement {
               )}
             </select>`
           : ''}
-        ${this._view === 'flows' || this._view === 'processes' || this._view === 'workflows'
+        ${this._view === 'flows' || this._view === 'processes'
           ? html`
               ${this._view === 'flows'
                 ? html`<select
@@ -4693,7 +4294,7 @@ export class ModuxEditor extends LitElement {
           : ''}
         <button
           class="tab"
-          ?hidden=${this._view === 'eventstorming'}
+          ?hidden=${this._view !== 'aggregates' && this._view !== 'flows' && this._view !== 'processes'}
           @click=${this.createElementFromToolbar}
         >
           ＋ Crear

@@ -47,16 +47,17 @@ person / gear (human / automated steps), double circle (events), return arrow
   deleting a module with aggregates or an aggregate with entities (server-checked
   too, shown as a toast).
 - **F2** renames inline (modules, aggregates, entities, domain events, process steps).
-- **Toolbar creation** per view: contexts (with subdomain), **external systems** and
-  **actors** (roles, drawn with the person glyph outside every context), aggregates
-  (with owner module, plus a stub state model), flows (archetype, trigger aggregate,
-  event, target) and processes; with a process or step selected you can append/insert
+- **Creation lives in the palette (🧰)** on the context map and the Workflows view:
+  one button opens a panel with every creatable type — drag a new element onto the
+  canvas, or onto its container for child kinds (an aggregate into its context, an
+  operation onto its API, a step onto its workflow or use case). The panel also
+  lists every EXISTING element: drop one on empty canvas to place it, or on a node
+  to connect them (the same gesture vocabulary as the handles). The specialized
+  views without a palette keep their toolbar creation: aggregates (with owner
+  module, plus a stub state model), flows (archetype, trigger aggregate, event,
+  target) and processes; with a process or step selected you can append/insert
   steps (AUTOMATED or HUMAN with role and deadline) and edit the selected step's
-  role, deadline and compensation. At the context map's detail level the toolbar
-  also creates, inside a bounded context: **domain events** (amber event glyph),
-  **application events** (yellow), **read models** (born from an aggregate: they
-  live in its module and start with its state model) and **domain services**
-  (gear glyph).
+  role, deadline and compensation.
 - **Emissions**: only aggregates and domain services emit DOMAIN events (their
   operations declare `emits`); use cases publish APPLICATION events (a
   `PublishApplicationEvent` step). Amber dashed arrows connect each emitter to its
@@ -67,13 +68,13 @@ person / gear (human / automated steps), double circle (events), return arrow
   arrow; Supr on the arrow removes the step. Cross-context calls are the seed for a
   gateway/API at generation time. Dragging onto a **query service** instead adds a
   `CallQueryService` step (teal dashed arrow), also across contexts. Query services
-  and plain **use cases** are created from the toolbar like the other children.
-- **External systems have a surface too**: give them **use cases** from the toolbar
+  and plain **use cases** are created from the palette like the other children.
+- **External systems have a surface too**: give them **use cases** from the palette
   (the external node becomes a container) and drag from one of our use cases onto
   them to record a `CallExternalUseCase` step (slate dashed arrow — the seed of a
   derived gateway/API). Drag from the external system onto one of OUR use cases and
   the call comes in through an **INBOUND ACL** in the target module (violet arrow).
-- **AI agents consume through MCP**: create an **AI agent** from the toolbar (robot
+- **AI agents consume through MCP**: create an **AI agent** from the palette (robot
   glyph, outside every context) and drag it onto a use case — the consumption is
   recorded on the agent and the use case flips `exposedAsMcp: true` (the bounded
   context will expose it as an MCP tool). Removing the arrow clears the exposure
@@ -99,7 +100,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   unless you dropped on an existing read model. At the detail level flow arrows anchor on the
   concrete pieces: the trigger event on the source side and the read model on the
   target side.
-- **Policies**: the context-map toolbar (detail level) also creates a **Policy** — a
+- **Policies**: the palette (at the map's detail level) also creates a **Policy** — a
   use case that expresses reaction/automation logic rather than a business case (see
   [Use Cases](/manual/use-cases/)). Policies keep every use-case gesture but wear the
   lilac chip on the map and the lilac POLICY sticky in the EventStorming view.
@@ -113,7 +114,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   (amber chips inside the external container) — the pollable surface of a legacy
   system.
 - **External MCP servers**: an external system can also publish an **MCP server**
-  (lilac robot chip, created from the toolbar with its owner system) — a whole tool
+  (lilac robot chip, dropped from the palette onto its owner system) — a whole tool
   surface agents consume directly (drag agent → chip) or through a gateway.
 - **Published APIs are first-class**: an **API** (usually born from
   [importing a contract](/manual/importers/) with no target) is a top-level container
@@ -121,7 +122,8 @@ person / gear (human / automated steps), double circle (events), return arrow
   policy that implements it** (fine wiring), or onto a **bounded context** (coarse) —
   the indigo dashed wire is the published surface mapped onto the domain. Supr on a
   wire unwires (the operation stays published, flagged by `api-operation-unwired`);
-  APIs and operations are also creatable from the toolbar, renamable and deletable.
+  APIs and operations are also creatable from the palette (an API is dropped onto
+  the system or context that owns it), renamable and deletable.
 - **The agent's whole tool surface is drawn**: drag an agent onto a use case (MCP),
   a **query service** (read tool), an **API operation**, an **external operation**,
   an **external MCP server**, an **MCP gateway** or **another agent** (delegation) —
@@ -130,12 +132,12 @@ person / gear (human / automated steps), double circle (events), return arrow
   (a **reactive agent**, amber dashed arrow); drag an **actor onto an agent** and
   the person talks to it (a chat/supervision UI derives). Deleting an agent unlinks
   it everywhere, and one undo restores the agent *with* every link.
-- **MCP gateways**: created from the toolbar (plug glyph, outside every context) —
+- **MCP gateways**: created from the palette (plug glyph, outside every context) —
   our component that aggregates external MCP servers and exposes APIs, single
   operations, use cases and RAGs as one MCP endpoint. Drag the gateway's handle onto
   whatever it exposes (violet dashed arrows); external agents consume the gateway,
   not the internals. See [AI Agents, MCP Gateways & RAGs](/manual/ai-agents/).
-- **RAGs**: created from the toolbar (lens glyph, outside every context); drag an
+- **RAGs**: created from the palette (lens glyph, outside every context); drag an
   agent onto a RAG (the knowledge it grounds on), drag a RAG onto a **read model**
   to declare it indexes it, and use the **＋ Fuente** toolbar (with the RAG selected)
   to add external content sources — a repo, a web site, an FTP server — drawn as
