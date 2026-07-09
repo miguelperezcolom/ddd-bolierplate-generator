@@ -1179,6 +1179,51 @@ export function contextMapScene(
     }];
   });
 
+  // External system → a specific API operation. Precise chip when visible (operations
+  // level); coarser levels roll up to the operation's SITE (published API, proxy or the
+  // implementation occurrence), all of which render at every level.
+  const extOpUseEdges: SceneEdge[] = [
+    ...new Map(
+      (model.externalOperationUses ?? [])
+        .map((u) => {
+          if (!nodeIds.has(u.externalSystemId)) return null;
+          const owningApi = (model.apis ?? []).find((a) =>
+            a.operations.some((o) => o.id === u.operationId),
+          );
+          if (!owningApi) return null;
+          const isPublishedSite = u.siteId === owningApi.id;
+          const precise = isPublishedSite
+            ? u.operationId
+            : apiOpOccurrenceId(u.operationId, u.siteId);
+          let target: string | null = nodeIds.has(precise) ? precise : null;
+          if (!target) {
+            if (isPublishedSite || (model.proxyApis ?? []).some((p) => p.id === u.siteId)) {
+              target = rollUp(u.siteId);
+            } else {
+              target = apiImplNodeId(owningApi.id, u.siteId);
+            }
+          }
+          if (!target || !nodeIds.has(target) || target === u.externalSystemId) return null;
+          return { u, target };
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null)
+        .map((d): [string, SceneEdge] => [
+          `extopuse:${d.u.externalSystemId}->${d.u.operationId}@${d.u.siteId}`,
+          {
+            id: `extopuse:${d.u.externalSystemId}->${d.u.operationId}@${d.u.siteId}`,
+            sourceId: d.u.externalSystemId,
+            targetId: d.target,
+            kind: 'ext-op-use',
+            color: '#64748b',
+            label: 'op',
+            dashed: true,
+            arrow: true,
+            tooltip: 'llama a esta operación',
+          },
+        ]),
+    ).values(),
+  ];
+
   const agentUseEdges: SceneEdge[] = detailed
     ? (model.agentUses ?? [])
         .filter((u) => nodeIds.has(u.agentId) && nodeIds.has(u.useCaseId))
@@ -1395,6 +1440,7 @@ export function contextMapScene(
       ...proxyTargetEdges,
       ...apiImplEdges,
       ...opRouteEdges,
+      ...extOpUseEdges,
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...agentUseEdges,

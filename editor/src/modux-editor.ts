@@ -861,6 +861,20 @@ export class ModuxEditor extends LitElement {
           operationId: c.operationId,
           targetSiteId: c.targetSiteId,
         }];
+      case 'add-external-operation-use':
+        return [{
+          kind: 'remove-external-operation-use',
+          sourceId: c.sourceId,
+          operationId: c.operationId,
+          targetSiteId: c.targetSiteId,
+        }];
+      case 'remove-external-operation-use':
+        return [{
+          kind: 'add-external-operation-use',
+          sourceId: c.sourceId,
+          operationId: c.operationId,
+          targetSiteId: c.targetSiteId,
+        }];
       case 'set-api-publisher': {
         const el =
           (this.model.apis ?? []).find((a) => a.id === c.id) ??
@@ -2290,6 +2304,34 @@ export class ModuxEditor extends LitElement {
         this._extDepPicker = { sourceId, targetId, x: x ?? 0, y: y ?? 0 };
         return;
       }
+      // A specific API operation: the real chip (nested in the published API) or an
+      // occurrence at a proxy / bounded-context implementation.
+      const realOpApi = (this.model.apis ?? []).find((a) =>
+        a.operations.some((o) => o.id === targetId),
+      );
+      const occTarget = /^apiop:(.+)@(.+)$/.exec(targetId);
+      const opUse = realOpApi
+        ? { operationId: targetId, siteId: realOpApi.id }
+        : occTarget
+          ? { operationId: occTarget[1], siteId: occTarget[2] }
+          : null;
+      if (opUse) {
+        const already = (this.model.externalOperationUses ?? []).some(
+          (u) =>
+            u.externalSystemId === sourceId &&
+            u.operationId === opUse.operationId &&
+            u.siteId === opUse.siteId,
+        );
+        if (!already) {
+          this.command({
+            kind: 'add-external-operation-use',
+            sourceId,
+            operationId: opUse.operationId,
+            targetSiteId: opUse.siteId,
+          });
+        }
+        return;
+      }
       if (
         (this.model.apis ?? []).some((a) => a.id === targetId) ||
         (this.model.proxyApis ?? []).some((px) => px.id === targetId)
@@ -2403,6 +2445,19 @@ export class ModuxEditor extends LitElement {
       if (!owner) return;
       this._selectedId = null;
       this.command({ kind: 'remove-workflow-step', workflowId: owner.id, id });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'ext-op-use') {
+      // Edge ids are `extopuse:<systemId>-><operationId>@<siteId>` (see context-map.ts).
+      const match = /^extopuse:(.+)->(.+)@(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({
+        kind: 'remove-external-operation-use',
+        sourceId: match[1],
+        operationId: match[2],
+        targetSiteId: match[3],
+      });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'op-route') {

@@ -413,6 +413,20 @@ export type ModuxCommand =
       targetSiteId: string;
     }
   | {
+      /** An external system calls ONE API operation at a site (published API, proxy or
+       *  bounded-context implementation). sourceId = the external system. */
+      kind: 'add-external-operation-use';
+      sourceId: string;
+      operationId: string;
+      targetSiteId: string;
+    }
+  | {
+      kind: 'remove-external-operation-use';
+      sourceId: string;
+      operationId: string;
+      targetSiteId: string;
+    }
+  | {
       kind: 'remove-external-dependency';
       sourceId: string;
       targetId: string;

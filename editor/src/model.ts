@@ -120,6 +120,16 @@ export interface ProxyOperationRouteRef {
   targetSiteId: string;
 }
 
+/**
+ * An external system calls ONE operation of an API at a given SITE: the API as
+ * published (siteId = apiId), a proxy fronting it, or a bounded context implementing it.
+ */
+export interface ExternalOperationUseRef {
+  externalSystemId: string;
+  operationId: string;
+  siteId: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -454,6 +464,8 @@ export interface ModuxModel {
   apiImplementations?: ApiImplementationRef[];
   /** Per-operation routing of proxies to the API's implementation sites. */
   proxyOperationRoutes?: ProxyOperationRouteRef[];
+  /** External systems calling specific API operations (at a published API, proxy or implementation). */
+  externalOperationUses?: ExternalOperationUseRef[];
   externalCalls?: ExternalCallRef[];
   externalUseCaseCalls?: ExternalUseCaseCallRef[];
   aiAgents?: AiAgentRef[];

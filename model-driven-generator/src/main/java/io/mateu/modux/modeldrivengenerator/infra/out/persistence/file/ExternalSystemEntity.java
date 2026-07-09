@@ -34,8 +34,25 @@ public record ExternalSystemEntity(
         /** External systems consumed through a CQRS relation (queries over their data). */
         List<String> cqrsExternalSystemIds,
         /** MCP servers this system publishes — tool surfaces AI agents consume directly. */
-        List<McpServerEntity> mcpServers
+        List<McpServerEntity> mcpServers,
+        /** Specific API operations this system calls (at the published API, a proxy or an implementation). */
+        List<ExternalApiOperationUseEntity> apiOperationUses
 ) {
+
+    /** Backward-compatible constructor (pre-apiOperationUses callers and stores). */
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases,
+                                List<ExternalSystemTableEntity> tables,
+                                List<String> dependsOnExternalSystemIds,
+                                List<String> dependsOnApiIds,
+                                List<String> cqrsExternalSystemIds,
+                                List<McpServerEntity> mcpServers) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                tables, dependsOnExternalSystemIds, dependsOnApiIds, cqrsExternalSystemIds,
+                mcpServers, List.of());
+    }
 
     /** Backward-compatible constructor (pre-mcpServers callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,
@@ -125,48 +142,58 @@ public record ExternalSystemEntity(
         return mcpServers != null ? mcpServers : List.of();
     }
 
+    public List<ExternalApiOperationUseEntity> apiOperationUses() {
+        return apiOperationUses != null ? apiOperationUses : List.of();
+    }
+
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
     public ExternalSystemEntity withName(String name) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers);
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withUseCases(List<ExternalSystemUseCaseEntity> useCases) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers);
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withTables(List<ExternalSystemTableEntity> tables) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers);
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withDependsOnExternalSystemIds(List<String> ids) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, ids, dependsOnApiIds, cqrsExternalSystemIds,
-                mcpServers);
+                mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withDependsOnApiIds(List<String> ids) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, ids,
-                cqrsExternalSystemIds, mcpServers);
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withCqrsExternalSystemIds(List<String> ids) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                ids, mcpServers);
+                ids, mcpServers, apiOperationUses);
     }
 
     public ExternalSystemEntity withMcpServers(List<McpServerEntity> mcpServers) {
         return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
                 owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers);
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+    }
+
+    public ExternalSystemEntity withApiOperationUses(List<ExternalApiOperationUseEntity> apiOperationUses) {
+        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
+                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
+                cqrsExternalSystemIds, mcpServers, apiOperationUses);
     }
 }

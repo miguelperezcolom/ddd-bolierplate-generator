@@ -884,6 +884,22 @@
       },
       "additionalProperties" : false
     },
+    "ExternalApiOperationUseEntity" : {
+      "type" : "object",
+      "properties" : {
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "siteId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'site' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "additionalProperties" : false
+    },
     "ExternalSystemDirection" : {
       "type" : "string",
       "enum" : [ "INBOUND", "OUTBOUND", "BOTH" ]
@@ -891,6 +907,12 @@
     "ExternalSystemEntity" : {
       "type" : "object",
       "properties" : {
+        "apiOperationUses" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ExternalApiOperationUseEntity"
+          }
+        },
         "cqrsExternalSystemIds" : {
           "description" : "References to existing 'cqrsExternalSystem' ids (referential integrity is checked by the linter).",
           "type" : "array",
