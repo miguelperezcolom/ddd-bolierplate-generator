@@ -180,7 +180,9 @@ public class EditorApiController {
     /** A RAG knowledge base, optionally fed from read models and external content. */
     public record RagDto(String id, String name, String description,
                          List<String> sourceReadModelIds,
-                         List<RagContentSourceDto> contentSources) {}
+                         List<RagContentSourceDto> contentSources,
+                         List<String> sourceExternalTableIds,
+                         List<String> sourceApiIds) {}
     public record RagContentSourceDto(String type, String uri) {}
     /** A published API as a first-class element; operations wire to their implementers. */
     public record ApiDto(String id, String name, List<ApiOperationDto> operations,
@@ -568,7 +570,8 @@ public class EditorApiController {
                 .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds(),
                         r.contentSources().stream()
                                 .map(s -> new RagContentSourceDto(s.type(), s.uri()))
-                                .toList()))
+                                .toList(),
+                        r.sourceExternalTableIds(), r.sourceApiIds()))
                 .toList();
         var apis = repository.findAllOfType(ApiEntity.class).stream()
                 .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
@@ -1283,9 +1286,7 @@ public class EditorApiController {
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
                     .ifPresent(a -> repository.save(a.withName(command.name())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
-                    .ifPresent(r -> repository.save(new RagEntity(
-                            r.id(), command.name(), r.description(), r.sourceReadModelIds(),
-                            r.contentSources())));
+                    .ifPresent(r -> repository.save(r.withName(command.name())));
             case "mcp-gateway" -> repository.findById(command.id(), McpGatewayEntity.class)
                     .ifPresent(g -> repository.save(g.withName(command.name())));
             case "api" -> repository.findById(command.id(), ApiEntity.class)
@@ -2167,6 +2168,10 @@ public class EditorApiController {
             throw new IllegalArgumentException("La tabla " + command.id()
                     + " la proyectan proyecciones; bórralas primero");
         }
+        repository.findAllOfType(RagEntity.class).stream()
+                .filter(r -> r.sourceExternalTableIds().contains(command.id()))
+                .forEach(r -> repository.save(r.withSourceExternalTableIds(
+                        without(r.sourceExternalTableIds(), command.id()))));
         var project = owningProject();
         repository.save(withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> withTables(x, x.tables().stream()
@@ -3078,25 +3083,43 @@ public class EditorApiController {
     }
 
     /** RAG → read model: the knowledge base indexes the read model's content. */
+    /** The RAG indexes a read model, an external system's table, or an API/proxy. */
     private void addRagSource(EditorCommand command) {
         var rag = repository.findById(command.sourceId(), RagEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.sourceId()));
-        repository.findById(command.targetId(), ReadModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown read model: " + command.targetId()));
-        if (rag.sourceReadModelIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(rag.sourceReadModelIds());
-        ids.add(command.targetId());
-        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(), ids,
-                rag.contentSources()));
+        var target = command.targetId();
+        if (repository.findById(target, ReadModelEntity.class).isPresent()) {
+            if (rag.sourceReadModelIds().contains(target)) return;
+            repository.save(rag.withSourceReadModelIds(appended(rag.sourceReadModelIds(), target)));
+            return;
+        }
+        var isExternalTable = currentProject().stream()
+                .flatMap(pr -> pr.externalSystems().stream())
+                .flatMap(x -> x.tables().stream())
+                .anyMatch(t -> t.id().equals(target));
+        if (isExternalTable) {
+            if (rag.sourceExternalTableIds().contains(target)) return;
+            repository.save(rag.withSourceExternalTableIds(
+                    appended(rag.sourceExternalTableIds(), target)));
+            return;
+        }
+        if (repository.findById(target, ApiEntity.class).isPresent()
+                || repository.findById(target, ProxyApiEntity.class).isPresent()) {
+            if (rag.sourceApiIds().contains(target)) return;
+            repository.save(rag.withSourceApiIds(appended(rag.sourceApiIds(), target)));
+            return;
+        }
+        throw new IllegalArgumentException(
+                "El RAG indexa read models, tablas externas o APIs; destino desconocido: " + target);
     }
 
     private void removeRagSource(EditorCommand command) {
         repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
-                repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
-                        rag.sourceReadModelIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList(),
-                        rag.contentSources())));
+                repository.save(rag
+                        .withSourceReadModelIds(without(rag.sourceReadModelIds(), command.targetId()))
+                        .withSourceExternalTableIds(
+                                without(rag.sourceExternalTableIds(), command.targetId()))
+                        .withSourceApiIds(without(rag.sourceApiIds(), command.targetId()))));
     }
 
     /** External content feeding the RAG: a repo, a web site, an FTP server… */
@@ -3110,8 +3133,7 @@ public class EditorApiController {
         var sources = new ArrayList<>(rag.contentSources());
         sources.add(new RagContentSourceEntity(
                 command.type() == null ? "WEB" : command.type(), command.uri()));
-        repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
-                rag.sourceReadModelIds(), sources));
+        repository.save(rag.withContentSources(sources));
     }
 
     private void removeRagContentSource(EditorCommand command) {

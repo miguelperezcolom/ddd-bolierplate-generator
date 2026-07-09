@@ -259,6 +259,10 @@ export interface RagRef {
   description?: string;
   sourceReadModelIds?: string[];
   contentSources?: RagContentSourceRef[];
+  /** Tables of external systems it indexes (structured legacy content). */
+  sourceExternalTableIds?: string[];
+  /** APIs (or proxies) whose content it indexes by calling them. */
+  sourceApiIds?: string[];
 }
 
 /** An AI agent grounds its answers on a knowledge base. */

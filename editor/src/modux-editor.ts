@@ -1958,6 +1958,23 @@ export class ModuxEditor extends LitElement {
       );
       if (readModelIds.has(targetId) && !(rag.sourceReadModelIds ?? []).includes(targetId)) {
         this.command({ kind: 'add-rag-source', sourceId, targetId });
+        return;
+      }
+      // Structured legacy content: a table owned by an external system.
+      const extTableIds = new Set(
+        this.model.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)),
+      );
+      if (extTableIds.has(targetId) && !(rag.sourceExternalTableIds ?? []).includes(targetId)) {
+        this.command({ kind: 'add-rag-source', sourceId, targetId });
+        return;
+      }
+      // Or an API — real or proxy — whose content it indexes by calling it.
+      if (
+        ((this.model.apis ?? []).some((a) => a.id === targetId) ||
+          (this.model.proxyApis ?? []).some((px) => px.id === targetId)) &&
+        !(rag.sourceApiIds ?? []).includes(targetId)
+      ) {
+        this.command({ kind: 'add-rag-source', sourceId, targetId });
       }
       return;
     }
@@ -2674,6 +2691,18 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-rag-source', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (
+      this._view === 'context-map' &&
+      elementType === 'edge' &&
+      (kind === 'rag-table' || kind === 'rag-api')
+    ) {
+      // ragtbl/ragapi run source→rag; the command speaks rag→source.
+      const match = /^rag(?:tbl|api):(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-rag-source', sourceId: match[2], targetId: match[1] });
       return;
     }
     if (elementType === 'node' && kind === 'rag') {
@@ -3902,7 +3931,7 @@ export class ModuxEditor extends LitElement {
                 @change=${(e: Event) =>
                   (this._newRagSourceType = (e.target as HTMLSelectElement).value)}
               >
-                ${['WEB', 'REPO', 'FTP', 'DATABASE', 'BUCKET', 'SHAREPOINT', 'CONFLUENCE', 'DRIVE', 'FILESYSTEM'].map(
+                ${['WEB', 'REPO', 'FTP', 'DATABASE', 'BUCKET', 'SHAREPOINT', 'CONFLUENCE', 'DRIVE', 'FILESYSTEM', 'TICKETING', 'CRM'].map(
                   (t) =>
                     html`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`,
                 )}

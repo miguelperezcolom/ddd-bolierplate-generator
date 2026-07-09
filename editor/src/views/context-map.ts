@@ -1108,6 +1108,65 @@ export function contextMapScene(
     ).values(),
   ];
 
+  // RAG → structured sources beyond read models: external tables (chips only in
+  // detailed mode — they roll up to their system) and APIs (always visible).
+  const tableSystem = new Map<string, string>();
+  for (const x of model.externalSystems) {
+    for (const t of x.tables ?? []) tableSystem.set(t.id, x.id);
+  }
+  const ragTableEdges: SceneEdge[] = [
+    ...new Map(
+      (model.rags ?? [])
+        .flatMap((r) =>
+          (r.sourceExternalTableIds ?? []).map((tid) => ({
+            sourceId: nodeIds.has(tid) ? tid : (tableSystem.get(tid) ?? tid),
+            targetId: r.id,
+            name: r.name,
+          })),
+        )
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `ragtbl:${d.sourceId}->${d.targetId}`,
+          {
+            id: `ragtbl:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'rag-table',
+            color: '#0e7490',
+            dashed: true,
+            arrow: true,
+            tooltip: `${d.name} indexa esta tabla`,
+          },
+        ]),
+    ).values(),
+  ];
+  const ragApiEdges: SceneEdge[] = [
+    ...new Map(
+      (model.rags ?? [])
+        .flatMap((r) =>
+          (r.sourceApiIds ?? []).map((aid) => ({
+            sourceId: rollUp(aid),
+            targetId: r.id,
+            name: r.name,
+          })),
+        )
+        .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
+        .map((d): [string, SceneEdge] => [
+          `ragapi:${d.sourceId}->${d.targetId}`,
+          {
+            id: `ragapi:${d.sourceId}->${d.targetId}`,
+            sourceId: d.sourceId,
+            targetId: d.targetId,
+            kind: 'rag-api',
+            color: '#0e7490',
+            dashed: true,
+            arrow: true,
+            tooltip: `${d.name} indexa el contenido de esta API`,
+          },
+        ]),
+    ).values(),
+  ];
+
   // Agent → whole API (or proxy): its full tool surface, at every detail level.
   const agentApiEdges: SceneEdge[] = [
     ...new Map(
@@ -1497,6 +1556,8 @@ export function contextMapScene(
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...agentApiEdges,
+      ...ragTableEdges,
+      ...ragApiEdges,
       ...agentUseEdges,
       ...agentExternalUseEdges,
       ...agentMcpEdges,
