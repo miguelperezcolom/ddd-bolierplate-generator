@@ -1551,6 +1551,19 @@ export class ModuxEditor extends LitElement {
           },
         ];
       }
+      case 'set-workflow-trigger': {
+        const wf = (this.model.workflows ?? []).find((w) => w.id === c.id);
+        return wf
+          ? [{
+              kind: 'set-workflow-trigger',
+              id: c.id,
+              triggerEvent: wf.triggerEvent ?? '',
+              triggerAggregateId: wf.triggerAggregateId,
+              triggerDomainServiceId: wf.triggerDomainServiceId,
+              triggerUseCaseId: wf.triggerUseCaseId,
+            }]
+          : null;
+      }
       case 'add-workflow-dependency':
         return [
           {
@@ -2085,6 +2098,64 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if ((this.model.rags ?? []).some((r) => r.id === targetId)) return; // rag targets only make sense from agents
+    // Dragging a WORKFLOW onto a use case adds a step orchestrating it.
+    if ((this.model.workflows ?? []).some((w) => w.id === sourceId)) {
+      const wf = (this.model.workflows ?? []).find((w) => w.id === sourceId)!;
+      const uc = this.model.modules
+        .flatMap((mo) => mo.useCases ?? [])
+        .find((u) => u.id === targetId);
+      if (uc) {
+        const already = (wf.steps ?? []).some((st) => st.targetUseCaseId === targetId);
+        if (!already) {
+          const base = `wfs-${slug(uc.name)}`;
+          let stepId = base;
+          for (let n = 2; (wf.steps ?? []).some((st) => st.id === stepId); n++) {
+            stepId = `${base}-${n}`;
+          }
+          this.command({
+            kind: 'add-workflow-step',
+            workflowId: sourceId,
+            id: stepId,
+            name: uc.name,
+            targetUseCaseId: targetId,
+          });
+        }
+      }
+      return;
+    }
+    // Dragging an EVENT onto a workflow points its trigger at that event.
+    if ((this.model.workflows ?? []).some((w) => w.id === targetId)) {
+      const domainEv = this.model.modules
+        .flatMap((mo) => mo.domainEvents ?? [])
+        .find((ev) => ev.id === sourceId);
+      const appEv = this.model.modules
+        .flatMap((mo) => mo.applicationEvents ?? [])
+        .find((ev) => ev.id === sourceId);
+      const ev = domainEv ?? appEv;
+      if (ev) {
+        // Best effort on the emitter: whoever the emission edges say publishes it.
+        const emitter = (this.model.emissions ?? []).find((em) => em.domainEventId === sourceId);
+        const aggregateIds2 = new Set((this.model.aggregates ?? []).map((a) => a.id));
+        const dsIds2 = new Set(
+          this.model.modules.flatMap((mo) => (mo.domainServices ?? []).map((d) => d.id)),
+        );
+        const ucIds2 = new Set(
+          this.model.modules.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)),
+        );
+        this.command({
+          kind: 'set-workflow-trigger',
+          id: targetId,
+          triggerEvent: ev.name,
+          triggerAggregateId:
+            emitter && aggregateIds2.has(emitter.sourceId) ? emitter.sourceId : undefined,
+          triggerDomainServiceId:
+            emitter && dsIds2.has(emitter.sourceId) ? emitter.sourceId : undefined,
+          triggerUseCaseId:
+            emitter && ucIds2.has(emitter.sourceId) ? emitter.sourceId : undefined,
+        });
+      }
+      return;
+    }
     // Dragging a proxy onto an API wires what it fronts; onto an external system, its host;
     // onto a bounded context, the API it fronts gets an implementation THERE too (the same
     // API — strangler style — and the proxy routes to it as well).

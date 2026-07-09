@@ -1091,6 +1091,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'mcp-gateway' ||
             node.kind === 'api' ||
             node.kind === 'proxy-api' ||
+            node.kind === 'workflow' ||
             node.kind === 'workflow-step')
           ? [
               [hw, 0],
@@ -1119,7 +1120,9 @@ export class ModuxCanvas extends LitElement {
                               ? 'Arrastra hasta el sistema externo que la publica: la API se anida en él'
                               : node.kind === 'proxy-api'
                                 ? 'Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja'
-                                : 'Arrastra hasta otro nodo para crear una relación'
+                                : node.kind === 'workflow'
+                                  ? 'Arrastra hasta un caso de uso: el workflow lo orquestará como un paso'
+                                  : 'Arrastra hasta otro nodo para crear una relación'
                     : node.kind === 'api'
                       ? 'Arrastra hasta otro sistema externo: la API se moverá a ese publicador'
                       : node.kind === 'proxy-api'

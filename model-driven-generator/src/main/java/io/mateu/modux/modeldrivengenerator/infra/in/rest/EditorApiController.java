@@ -968,6 +968,7 @@ public class EditorApiController {
             case "remove-workflow-step" -> removeWorkflowStep(command);
             case "update-workflow-step" -> updateWorkflowStep(command);
             case "add-workflow-dependency" -> addWorkflowDependency(command);
+            case "set-workflow-trigger" -> setWorkflowTrigger(command);
             case "remove-workflow-dependency" -> removeWorkflowDependency(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
@@ -1115,6 +1116,15 @@ public class EditorApiController {
 
     private void removeWorkflow(EditorCommand command) {
         repository.deleteAllById(List.of(command.id()), WorkflowEntity.class);
+    }
+
+    /** Points the workflow at the event that starts it (drawn event → workflow). */
+    private void setWorkflowTrigger(EditorCommand command) {
+        var wf = requireWorkflow(command.id());
+        repository.save(new WorkflowEntity(wf.id(), wf.name(), wf.description(),
+                command.triggerAggregateId(), command.triggerDomainServiceId(),
+                command.triggerUseCaseId(), command.triggerEvent(),
+                wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
     }
 
     private void addWorkflowStep(EditorCommand command) {

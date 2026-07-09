@@ -619,6 +619,15 @@ export type ModuxCommand =
     }
   | { kind: 'remove-workflow'; id: string }
   | {
+      /** Points the workflow at the event that starts it (and at its emitter). */
+      kind: 'set-workflow-trigger';
+      id: string;
+      triggerEvent: string;
+      triggerAggregateId?: string;
+      triggerDomainServiceId?: string;
+      triggerUseCaseId?: string;
+    }
+  | {
       kind: 'add-workflow-step';
       workflowId: string;
       id: string;
