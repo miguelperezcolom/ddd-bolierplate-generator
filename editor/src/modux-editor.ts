@@ -3500,6 +3500,7 @@ export class ModuxEditor extends LitElement {
     { type: 'api', label: 'API', child: true },
     { type: 'proxy-api', label: 'Proxy API' },
     { type: 'workflow', label: 'Workflow' },
+    { type: 'workflow-step', label: 'Paso de workflow', child: true },
     { type: 'aggregate', label: 'Agregado', child: true },
     { type: 'use-case', label: 'Caso de uso', child: true },
     { type: 'policy', label: 'Policy', child: true },
@@ -3610,6 +3611,7 @@ export class ModuxEditor extends LitElement {
       (m.aiAgents ?? []).map((x) => x.id),
       (m.rags ?? []).map((x) => x.id),
       (m.workflows ?? []).map((x) => x.id),
+      (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -3709,6 +3711,49 @@ export class ModuxEditor extends LitElement {
                               completionEventName: `${name.replace(/\s+/g, '')}Completado`,
                             };
       issue(cmd, id);
+      return;
+    }
+    if (type === 'workflow-step') {
+      // A step lives in a workflow: drop it on the workflow node, or on one of its
+      // steps (workflows view) to declare the dependency at the same time.
+      const workflows = this.model.workflows ?? [];
+      const chain: string[] = [];
+      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+        chain.push(cur);
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      const wfDirect = chain.map((cid) => workflows.find((w) => w.id === cid)).find(Boolean);
+      const stepHit = chain
+        .map((cid) => {
+          const owner = workflows.find((w) => (w.steps ?? []).some((s) => s.id === cid));
+          return owner ? { owner, stepId: cid } : null;
+        })
+        .find(Boolean);
+      const wf = wfDirect ?? stepHit?.owner;
+      if (!wf) {
+        this.emit('modux-notice', {
+          message: 'Suelta el paso sobre un workflow (o sobre uno de sus pasos para encadenarlo)',
+        });
+        return;
+      }
+      const { id, name } = this.uniquePaletteName('Paso', 'wfs-');
+      // Chained onto a step: land beside it, downstream (dependencies flow left→right).
+      if (stepHit) pos = { x: pos.x + 190, y: pos.y };
+      issue(
+        {
+          kind: 'add-workflow-step',
+          workflowId: wf.id,
+          id,
+          name,
+          ...(stepHit ? { dependsOnStepIds: [stepHit.stepId], afterStepId: stepHit.stepId } : {}),
+        },
+        id,
+      );
+      if (this._view !== 'workflows') {
+        this.emit('modux-notice', {
+          message: `Paso añadido a ${wf.name} — se ve en la vista Workflows`,
+        });
+      }
       return;
     }
     if (type === 'api') {
@@ -3833,10 +3878,13 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || this._view !== 'context-map') return '';
+    if (!this._paletteOpen || (this._view !== 'context-map' && this._view !== 'workflows')) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
+    // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
-      (k) => !needle || k.label.toLowerCase().includes(needle),
+      (k) =>
+        (this._view !== 'workflows' || ['workflow', 'workflow-step'].includes(k.type)) &&
+        (!needle || k.label.toLowerCase().includes(needle)),
     );
     return html`
       <div class="palette">
@@ -3852,17 +3900,21 @@ export class ModuxEditor extends LitElement {
             <div
               class="palette-item ${k.child ? 'palette-child' : ''}"
               draggable="true"
-              title=${k.child
-                ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
-                : 'Suéltalo en el lienzo'}
+              title=${k.type === 'workflow-step'
+                ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
+                : k.child
+                  ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
+                  : 'Suéltalo en el lienzo'}
               @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
             >
               ＋ ${k.label}
             </div>
           `,
         )}
-        <div class="palette-h">Existentes — arrastra para colocar o conectar</div>
-        ${this.paletteCatalog().map(
+        ${this._view === 'workflows'
+          ? ''
+          : html`<div class="palette-h">Existentes — arrastra para colocar o conectar</div>`}
+        ${(this._view === 'workflows' ? [] : this.paletteCatalog()).map(
           (g) => html`
             <div class="palette-g">${g.label}</div>
             ${g.items.map(
@@ -4578,7 +4630,7 @@ export class ModuxEditor extends LitElement {
         />
         <button
           class="tab"
-          ?hidden=${this._view !== 'context-map'}
+          ?hidden=${this._view !== 'context-map' && this._view !== 'workflows'}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}

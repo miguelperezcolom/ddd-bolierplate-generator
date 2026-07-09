@@ -50,9 +50,12 @@ steps (`workflow-depends-scope`).
 The **Workflows** tab draws each workflow as its dependency DAG: trigger source
 →(event, dashed)→ workflow → steps laid out by dependency depth → completion event
 (green). Steps badge their target use case. Create workflows and steps from the
-toolbar; **drag a handle from step A onto step B** to declare *B waits for A*; Supr
-deletes steps or dependency arrows; everything is undoable — removing a step restores
-its dependants' links on undo. Double click opens the owning workflow's form.
+toolbar — or from the **palette** (🧰), reduced here to *Workflow* and *Paso de
+workflow*: drop the step on a workflow to append it, or **on one of its steps to
+chain it** (the new step lands beside it, already depending on it). **Drag a handle
+from step A onto step B** to declare *B waits for A*; Supr deletes steps or
+dependency arrows; everything is undoable — removing a step restores its dependants'
+links on undo. Double click opens the owning workflow's form.
 
 ## On the context map
 
@@ -71,7 +74,8 @@ the owning context at the coarse detail level). The node has a connect handle:
   the downstream trigger.
 
 Supr on the node deletes the workflow (undoable), F2 renames, and the palette
-creates one by dragging. Fine-grained step editing stays in the Workflows tab.
+creates one by dragging — dropping a *Paso de workflow* on the workflow's node adds
+a step to it right from the map. Fine-grained step editing stays in the Workflows tab.
 
 Workflows also join the [EventStorming view](/manual/graphical-editor/#views) as lilac
 policies: trigger event → workflow → the commands it launches, with its emitted events.
