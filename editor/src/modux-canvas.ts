@@ -479,12 +479,26 @@ export class ModuxCanvas extends LitElement {
    * edge's fat invisible hit-line can sit on top of a node and swallow the hit.
    */
   private nodeIdAt(ev: PointerEvent): string | null {
-    const els = this.shadowRoot?.elementsFromPoint(ev.clientX, ev.clientY) ?? [];
+    return this.nodeIdAtClient(ev.clientX, ev.clientY);
+  }
+
+  /** Topmost node at a client-space point (also used by palette drops). */
+  nodeIdAtClient(clientX: number, clientY: number): string | null {
+    const els = this.shadowRoot?.elementsFromPoint(clientX, clientY) ?? [];
     for (const el of els) {
       const g = el.closest?.('[data-node-id]');
       if (g) return g.getAttribute('data-node-id');
     }
     return null;
+  }
+
+  /** Scene coordinates for a client-space point (palette drops). */
+  sceneFromClient(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - this._t.x) / this._t.k,
+      y: (clientY - rect.top - this._t.y) / this._t.k,
+    };
   }
 
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {

@@ -296,6 +296,9 @@ export class ModuxEditor extends LitElement {
     y: number;
   } | null = null;
   @state() private _selectedId: string | null = null;
+  /** The drag-to-create / drag-to-place palette. */
+  @state() private _paletteOpen = false;
+  @state() private _paletteFilter = '';
   @state() private _newName = '';
   @state() private _newSubdomain: SubdomainType = 'SUPPORTING';
   @state() private _newModuleId = '';
@@ -358,6 +361,66 @@ export class ModuxEditor extends LitElement {
     null;
 
   static styles = css`
+    .canvas-wrap {
+      position: relative;
+    }
+    .palette {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      bottom: 8px;
+      width: 218px;
+      overflow-y: auto;
+      z-index: 15;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      padding: 8px;
+    }
+    .palette-filter {
+      width: 100%;
+      box-sizing: border-box;
+      font: inherit;
+      font-size: 12px;
+      padding: 4px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .palette-h {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 10px 2px 4px;
+    }
+    .palette-g {
+      font-size: 11px;
+      font-weight: 600;
+      color: #475569;
+      margin: 8px 2px 2px;
+    }
+    .palette-item {
+      font-size: 12px;
+      color: #1e293b;
+      padding: 4px 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin: 2px 0;
+      cursor: grab;
+      background: #f8fafc;
+      user-select: none;
+    }
+    .palette-item:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+    }
+    .palette-child {
+      border-style: dashed;
+    }
+
     :host {
       display: flex;
       flex-direction: column;
@@ -1754,6 +1817,11 @@ export class ModuxEditor extends LitElement {
 
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y } = e.detail;
+    this.applyConnection(sourceId, targetId, x, y);
+  }
+
+  /** The whole gesture vocabulary, callable from drags AND from palette drops. */
+  private applyConnection(sourceId: string, targetId: string, x?: number, y?: number): void {
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
       const sourceOwner = this.owningWorkflowOf(sourceId);
@@ -3281,6 +3349,367 @@ export class ModuxEditor extends LitElement {
     if (mapped) this.emit('modux-activate', mapped);
   }
 
+  // ── palette (drag to create / drag to place) ────────────────────────────
+
+  private static readonly PALETTE_NEW: { type: string; label: string; child?: boolean }[] = [
+    { type: 'module', label: 'Contexto' },
+    { type: 'actor', label: 'Actor' },
+    { type: 'external-system', label: 'Sistema externo' },
+    { type: 'ai-agent', label: 'Agente IA' },
+    { type: 'external-ai-agent', label: 'Agente IA externo' },
+    { type: 'mcp-gateway', label: 'Gateway MCP' },
+    { type: 'rag', label: 'RAG' },
+    { type: 'api', label: 'API' },
+    { type: 'proxy-api', label: 'Proxy API' },
+    { type: 'workflow', label: 'Workflow' },
+    { type: 'aggregate', label: 'Agregado', child: true },
+    { type: 'use-case', label: 'Caso de uso', child: true },
+    { type: 'policy', label: 'Policy', child: true },
+    { type: 'domain-event', label: 'Evento de dominio', child: true },
+    { type: 'application-event', label: 'Evento de aplicación', child: true },
+    { type: 'read-model', label: 'Read model', child: true },
+    { type: 'domain-service', label: 'Servicio de dominio', child: true },
+    { type: 'query-service', label: 'Query service', child: true },
+    { type: 'api-operation', label: 'Operación de API', child: true },
+    { type: 'external-use-case', label: 'Operación externa', child: true },
+    { type: 'external-table', label: 'Tabla externa', child: true },
+    { type: 'mcp-server', label: 'Servidor MCP', child: true },
+  ];
+
+  /** Every element of the model, grouped for the palette's «Existentes» section. */
+  private paletteCatalog(): { label: string; items: { id: string; name: string }[] }[] {
+    const m = this.model;
+    const groups: { label: string; items: { id: string; name: string }[] }[] = [
+      { label: 'Contextos', items: m.modules.map((x) => ({ id: x.id, name: x.name })) },
+      {
+        label: 'Casos de uso',
+        items: m.modules.flatMap((mod) => (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name }))),
+      },
+      {
+        label: 'Eventos',
+        items: m.modules.flatMap((mod) => [
+          ...(mod.domainEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
+          ...(mod.applicationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
+        ]),
+      },
+      { label: 'Agregados', items: (m.aggregates ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'Read models',
+        items: m.modules.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
+      },
+      {
+        label: 'Query services',
+        items: m.modules.flatMap((mod) => (mod.queryServices ?? []).map((q) => ({ id: q.id, name: q.name }))),
+      },
+      { label: 'Actores', items: (m.actors ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'Sistemas externos',
+        items: m.externalSystems.map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
+        label: 'Operaciones y tablas externas',
+        items: m.externalSystems.flatMap((x) => [
+          ...(x.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
+          ...(x.tables ?? []).map((t) => ({ id: t.id, name: t.name })),
+          ...(x.mcpServers ?? []).map((sv) => ({ id: sv.id, name: sv.name })),
+        ]),
+      },
+      { label: 'APIs', items: (m.apis ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      {
+        label: 'Operaciones de API',
+        items: (m.apis ?? []).flatMap((a) => a.operations.map((o) => ({ id: o.id, name: o.name }))),
+      },
+      { label: 'Proxies API', items: (m.proxyApis ?? []).map((px) => ({ id: px.id, name: px.name })) },
+      { label: 'Agentes IA', items: (m.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name })) },
+      { label: 'Gateways MCP', items: (m.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name })) },
+      { label: 'RAGs', items: (m.rags ?? []).map((r) => ({ id: r.id, name: r.name })) },
+      { label: 'Workflows', items: (m.workflows ?? []).map((w) => ({ id: w.id, name: w.name })) },
+    ];
+    const needle = this._paletteFilter.trim().toLowerCase();
+    return groups
+      .map((g) => ({
+        label: g.label,
+        items: needle ? g.items.filter((it) => it.name.toLowerCase().includes(needle)) : g.items,
+      }))
+      .filter((g) => g.items.length > 0);
+  }
+
+  private onPaletteDragStart(e: DragEvent, payload: { new?: string; existing?: string }): void {
+    e.dataTransfer?.setData('application/x-modux-palette', JSON.stringify(payload));
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+  }
+
+  private onPaletteDrop(e: DragEvent): void {
+    const raw = e.dataTransfer?.getData('application/x-modux-palette');
+    if (!raw) return;
+    e.preventDefault();
+    const canvas = this.renderRoot.querySelector('modux-canvas');
+    if (!canvas) return;
+    const pos = canvas.sceneFromClient(e.clientX, e.clientY);
+    const targetId = canvas.nodeIdAtClient(e.clientX, e.clientY);
+    let payload: { new?: string; existing?: string };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (payload.new) this.createFromPalette(payload.new, pos, targetId);
+    else if (payload.existing) {
+      this.placeExistingFromPalette(payload.existing, pos, targetId, e.clientX, e.clientY);
+    }
+  }
+
+  /** A name (and slug id) that does not collide with anything already in the model. */
+  private uniquePaletteName(base: string, prefix: string): { id: string; name: string } {
+    const ids = new Set(this.sceneFor(this._view).nodes.map((n) => n.id));
+    const m = this.model;
+    for (const pool of [
+      m.modules.map((x) => x.id),
+      (m.actors ?? []).map((x) => x.id),
+      m.externalSystems.map((x) => x.id),
+      (m.apis ?? []).map((x) => x.id),
+      (m.proxyApis ?? []).map((x) => x.id),
+      (m.aiAgents ?? []).map((x) => x.id),
+      (m.rags ?? []).map((x) => x.id),
+      (m.workflows ?? []).map((x) => x.id),
+    ]) {
+      pool.forEach((id) => ids.add(id));
+    }
+    for (let n = 1; ; n++) {
+      const name = n === 1 ? base : `${base} ${n}`;
+      const id = `${prefix}${slug(name)}`;
+      if (!ids.has(id)) return { id, name };
+    }
+  }
+
+  /** The container a child kind needs, resolved from whatever the drop landed on. */
+  private dropContainerFor(type: string, targetId: string | null): string | null {
+    if (!targetId) return null;
+    const scene = this.sceneFor(this._view);
+    const chain: string[] = [];
+    for (let cur: string | undefined = targetId; cur; ) {
+      chain.push(cur);
+      cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+    }
+    const needsModule = [
+      'aggregate', 'use-case', 'policy', 'domain-event',
+      'application-event', 'domain-service', 'query-service',
+    ].includes(type);
+    if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
+    if (type === 'read-model') {
+      const agg = chain.find((id) => (this.model.aggregates ?? []).some((a) => a.id === id));
+      if (agg) return agg;
+      const mod = chain.find((id) => this.model.modules.some((mo) => mo.id === id));
+      return (this.model.aggregates ?? []).find((a) => a.moduleId === mod)?.id ?? null;
+    }
+    if (['external-use-case', 'external-table', 'mcp-server'].includes(type)) {
+      return chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ?? null;
+    }
+    if (type === 'api-operation') {
+      return chain.find((id) => (this.model.apis ?? []).some((a) => a.id === id)) ?? null;
+    }
+    return null;
+  }
+
+  private createFromPalette(type: string, pos: Point, targetId: string | null): void {
+    const def = ModuxEditor.PALETTE_NEW.find((k) => k.type === type);
+    if (!def) return;
+    const view = this._view;
+    const scene = this.sceneFor(view);
+    const place = (id: string, container?: string) => {
+      const current = this.viewLayout(view);
+      const parent = container ? scene.nodes.find((n) => n.id === container) : undefined;
+      const p = parent
+        ? { x: Math.round(pos.x - parent.x), y: Math.round(pos.y - parent.y) }
+        : { x: Math.round(pos.x), y: Math.round(pos.y) };
+      this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: p } });
+      return { kind: 'move-node', view, id, pos: null } as EditOp;
+    };
+    const issue = (cmd: ModuxCommand, id: string, container?: string) => {
+      const inverse = this.inverseOf(cmd) ?? [];
+      this.command(cmd, false);
+      const moveOp = place(id, container);
+      this.pushUndoEntry([...inverse, moveOp]);
+    };
+    if (!def.child) {
+      const prefix: Record<string, string> = {
+        module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
+        'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
+        'proxy-api': 'proxy-', workflow: 'wf-',
+      };
+      const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
+      const cmd: ModuxCommand =
+        type === 'module'
+          ? { kind: 'add-module', id, name, subdomainType: 'SUPPORTING' }
+          : type === 'actor'
+            ? { kind: 'add-actor', id, name }
+            : type === 'external-system'
+              ? { kind: 'add-external-system', id, name }
+              : type === 'ai-agent'
+                ? { kind: 'add-ai-agent', id, name }
+                : type === 'external-ai-agent'
+                  ? { kind: 'add-ai-agent', id, name, external: true }
+                  : type === 'mcp-gateway'
+                    ? { kind: 'add-mcp-gateway', id, name }
+                    : type === 'rag'
+                      ? { kind: 'add-rag', id, name }
+                      : type === 'api'
+                        ? { kind: 'add-api', id, name }
+                        : type === 'proxy-api'
+                          ? { kind: 'add-proxy-api', id, name }
+                          : {
+                              kind: 'add-workflow',
+                              id,
+                              name,
+                              completionEventName: `${name.replace(/\s+/g, '')}Completado`,
+                            };
+      issue(cmd, id);
+      return;
+    }
+    const container = this.dropContainerFor(type, targetId);
+    if (!container) {
+      this.emit('modux-notice', {
+        message:
+          type === 'api-operation'
+            ? 'Suelta la operación sobre una API'
+            : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
+              ? 'Suelta el elemento sobre un sistema externo'
+              : 'Suelta el elemento sobre un contexto',
+      });
+      return;
+    }
+    const { name } = this.uniquePaletteName(def.label, '');
+    if (type === 'aggregate') {
+      const id = `agg-${slug(name)}`;
+      issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+    } else if (type === 'use-case' || type === 'policy') {
+      const id = `uc-${slug(name)}`;
+      issue(
+        { kind: 'add-use-case', id, name, moduleId: container, ...(type === 'policy' ? { policy: true } : {}) },
+        id,
+        container,
+      );
+    } else if (type === 'domain-event') {
+      const id = `ev-${slug(name)}`;
+      issue({ kind: 'add-domain-event', id, name, moduleId: container }, id, container);
+    } else if (type === 'application-event') {
+      const id = `aev-${slug(name)}`;
+      issue({ kind: 'add-application-event', id, name, moduleId: container }, id, container);
+    } else if (type === 'domain-service') {
+      const id = `ds-${slug(name)}`;
+      issue({ kind: 'add-domain-service', id, name, moduleId: container }, id, container);
+    } else if (type === 'query-service') {
+      const id = `qs-${slug(name)}`;
+      issue({ kind: 'add-query-service', id, name, moduleId: container }, id, container);
+    } else if (type === 'read-model') {
+      const id = `rm-${slug(name)}`;
+      const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
+      issue({ kind: 'add-read-model', id, name, aggregateId: container }, id, aggregate?.moduleId ?? container);
+    } else if (type === 'api-operation') {
+      const id = `apiop-${container.replace(/^api-/, '')}-${slug(name)}`;
+      issue({ kind: 'add-api-operation', apiId: container, id, name }, id, container);
+    } else if (type === 'external-use-case') {
+      const id = `xuc-${slug(name)}`;
+      issue({ kind: 'add-external-use-case', id, name, moduleId: container }, id, container);
+    } else if (type === 'external-table') {
+      const id = `tbl-${slug(name)}`;
+      issue({ kind: 'add-external-table', id, name, moduleId: container }, id, container);
+    } else if (type === 'mcp-server') {
+      const id = `mcpsrv-${slug(name)}`;
+      issue({ kind: 'add-mcp-server', id, name, moduleId: container }, id, container);
+    }
+  }
+
+  /** Dropping an EXISTING element: onto a node = the connect gesture; onto empty = place it. */
+  private placeExistingFromPalette(
+    id: string,
+    pos: Point,
+    targetId: string | null,
+    clientX: number,
+    clientY: number,
+  ): void {
+    if (targetId && targetId !== id) {
+      this.applyConnection(id, targetId, clientX, clientY);
+      return;
+    }
+    const view = this._view;
+    const scene = this.sceneFor(view);
+    const node = scene.nodes.find((n) => n.id === id);
+    if (!node) {
+      if (this._activeViewId) {
+        this.command({ kind: 'add-view-member', id: this._activeViewId, targetId: id });
+        const current = this.viewLayout(view);
+        this.writeViewLayout(view, {
+          ...current,
+          nodes: { ...current.nodes, [id]: { x: Math.round(pos.x), y: Math.round(pos.y) } },
+        });
+      } else {
+        this.emit('modux-notice', {
+          message: 'Ese elemento no se pinta en este nivel de detalle',
+        });
+      }
+      return;
+    }
+    const current = this.viewLayout(view);
+    const parent = node.parentId ? scene.nodes.find((n) => n.id === node.parentId) : undefined;
+    const p = parent
+      ? { x: Math.round(pos.x - parent.x), y: Math.round(pos.y - parent.y) }
+      : { x: Math.round(pos.x), y: Math.round(pos.y) };
+    this.pushUndoEntry([{ kind: 'move-node', view, id, pos: current.nodes[id] ?? null }]);
+    this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: p } });
+  }
+
+  private renderPalette() {
+    if (!this._paletteOpen || this._view !== 'context-map') return '';
+    const needle = this._paletteFilter.trim().toLowerCase();
+    const news = ModuxEditor.PALETTE_NEW.filter(
+      (k) => !needle || k.label.toLowerCase().includes(needle),
+    );
+    return html`
+      <div class="palette">
+        <input
+          class="palette-filter"
+          placeholder="Filtrar…"
+          .value=${this._paletteFilter}
+          @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
+        />
+        <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
+        ${news.map(
+          (k) => html`
+            <div
+              class="palette-item ${k.child ? 'palette-child' : ''}"
+              draggable="true"
+              title=${k.child
+                ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
+                : 'Suéltalo en el lienzo'}
+              @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
+            >
+              ＋ ${k.label}
+            </div>
+          `,
+        )}
+        <div class="palette-h">Existentes — arrastra para colocar o conectar</div>
+        ${this.paletteCatalog().map(
+          (g) => html`
+            <div class="palette-g">${g.label}</div>
+            ${g.items.map(
+              (it) => html`
+                <div
+                  class="palette-item"
+                  draggable="true"
+                  title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
+                  @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { existing: it.id })}
+                >
+                  ${it.name}
+                </div>
+              `,
+            )}
+          `,
+        )}
+      </div>
+    `;
+  }
+
   private createElementFromToolbar(): void {
     const name = this._newName.trim();
     if (!name) return;
@@ -3917,6 +4346,15 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           ?hidden=${this._view !== 'context-map'}
+          ?data-active=${this._paletteOpen}
+          title="Paleta de elementos: arrastra nuevos o existentes al lienzo"
+          @click=${() => (this._paletteOpen = !this._paletteOpen)}
+        >
+          🧰 Paleta
+        </button>
+        <button
+          class="tab"
+          ?hidden=${this._view !== 'context-map'}
           title=${this.selectedApiId()
             ? 'Importa un OpenAPI/WSDL sobre la API seleccionada (operaciones y modelos rq/rs)'
             : 'Importa un OpenAPI/WSDL como una nueva API del diagrama'}
@@ -4176,7 +4614,11 @@ export class ModuxEditor extends LitElement {
       </div>
       <div class="canvas-wrap">
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
+      <div class="canvas-wrap">
+      ${this.renderPalette()}
       <modux-canvas
+        @dragover=${(e: DragEvent) => e.preventDefault()}
+        @drop=${this.onPaletteDrop}
         .scene=${scene}
         .edgePoints=${this.routedEdgePoints(scene)}
         .selectedId=${this._selectedId}
@@ -4204,6 +4646,7 @@ export class ModuxEditor extends LitElement {
           this.emit('modux-select', null);
         }}
       ></modux-canvas>
+      </div>
       </div>
       <div class="hint">
         ${this._view === 'context-map'
