@@ -470,8 +470,11 @@ export function contextMapScene(
   layout: DiagramLayout,
   detail: 'contexts' | 'detail' | 'operations' = 'contexts',
   sizes: Record<string, { w: number; h: number }> = {},
-  collapsedIds: ReadonlySet<string> = new Set(),
+  toggledIds: ReadonlySet<string> = new Set(),
 ): Scene {
+  // The per-node chevron OVERRIDES the level's default: it expands a node the
+  // level draws compact, and folds one the level draws unfolded.
+  const collapsedIds = toggledIds; // sub-boxes at the operations level: same semantics
   const detailed = detail !== 'contexts';
   // The deepest level: every API surfaces as a container with its operations,
   // and its containment in the host system becomes a "publicada por" edge.
@@ -569,10 +572,11 @@ export function contextMapScene(
         badge: 'API',
         tooltip: `${a.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
       };
-      if (detailed && a.operations.length > 0 && !collapsedIds.has(a.id)) {
+      const aExpanded = toggledIds.has(a.id) ? !detailed : detailed;
+      if (aExpanded && a.operations.length > 0) {
         return detailedContainer(
           pos,
-          { ...base, collapsible: true },
+          { ...base, collapsible: true, collapsed: false },
           a.operations.map(
             (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),
           ),
@@ -582,8 +586,8 @@ export function contextMapScene(
       }
       return [{
         ...base,
-        collapsible: detailed && a.operations.length > 0,
-        collapsed: detailed && a.operations.length > 0 && collapsedIds.has(a.id),
+        collapsible: a.operations.length > 0,
+        collapsed: a.operations.length > 0,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -607,9 +611,10 @@ export function contextMapScene(
       // detail level, while operations and tables only unfold in detailed mode.
       const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
       const hostedProxies = nestedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
+      const xExpanded = toggledIds.has(x.id) ? !detailed : detailed;
       const plainChildren: ChildDesc[] = [
         ...hostedProxies.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
-        ...(detailed
+        ...(xExpanded
           ? [
               ...(x.useCases ?? []).map(
                 (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
@@ -623,22 +628,12 @@ export function contextMapScene(
             ]
           : []),
       ];
-      const foldable =
-        publishedApis.length > 0 ||
-        plainChildren.length > 0 ||
-        apiImplChildren(model, x.id).length > 0;
-      if (foldable && collapsedIds.has(x.id)) {
-        return [{
-          ...base,
-          collapsible: true,
-          collapsed: true,
-          x: pos.x,
-          y: pos.y,
-          w: NODE_W,
-          h: NODE_H,
-        }];
-      }
-      const unfoldableProxies = operationsLevel
+      const xFoldable =
+        (x.useCases ?? []).length > 0 ||
+        (x.tables ?? []).length > 0 ||
+        (x.mcpServers ?? []).length > 0 ||
+        (operationsLevel && publishedApis.length > 0);
+      const unfoldableProxies = operationsLevel && xExpanded
         ? hostedProxies.filter((px) => {
             const target = px.targetApiId
               ? (model.apis ?? []).find((a) => a.id === px.targetApiId)
@@ -646,7 +641,7 @@ export function contextMapScene(
             return (target?.operations ?? []).length > 0;
           })
         : [];
-      if (operationsLevel && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
+      if (operationsLevel && xExpanded && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
         // The deepest level nests twice: the system wraps each API's (and hosted
         // proxy's) own container, which in turn wraps its operations. A hosted
         // proxy's surface IS its fronted API, so it unfolds operation OCCURRENCES.
@@ -683,7 +678,7 @@ export function contextMapScene(
         const unfoldedIds = new Set(unfoldableProxies.map((px) => px.id));
         return containerWithApiBoxes(
           pos,
-          { ...base, collapsible: true },
+          { ...base, collapsible: true, collapsed: false },
           boxes,
           plainChildren.filter((c) => !unfoldedIds.has(c.id)),
           layout,
@@ -696,9 +691,21 @@ export function contextMapScene(
         ...plainChildren,
       ];
       if (children.length > 0) {
-        return detailedContainer(pos, { ...base, collapsible: true }, children, layout, sizes);
+        return detailedContainer(
+          pos,
+          { ...base, collapsible: xFoldable, collapsed: xFoldable && !xExpanded },
+          children, layout, sizes,
+        );
       }
-      return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
+      return [{
+        ...base,
+        collapsible: xFoldable,
+        collapsed: xFoldable && !xExpanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
     }
     const m = entry.ref as ModuxModel['modules'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
@@ -713,29 +720,39 @@ export function contextMapScene(
       tooltip: `${m.name} — subdominio ${subdomain}`,
     };
     const implChildren = apiImplChildren(model, m.id);
-    const moduleFoldable = detailed || implChildren.length > 0;
-    if (moduleFoldable && collapsedIds.has(m.id)) {
-      return [{
-        ...base,
-        collapsible: true,
-        collapsed: true,
-        x: pos.x,
-        y: pos.y,
-        w: NODE_W,
-        h: NODE_H,
-      }];
-    }
-    if (detailed) {
+    const hasDetail =
+      (model.aggregates ?? []).some((a) => a.moduleId === m.id) ||
+      (m.useCases ?? []).length > 0 ||
+      (m.domainEvents ?? []).length > 0 ||
+      (m.applicationEvents ?? []).length > 0 ||
+      (m.readModels ?? []).length > 0 ||
+      (m.domainServices ?? []).length > 0 ||
+      (m.queryServices ?? []).length > 0;
+    const expanded = toggledIds.has(m.id) ? !detailed : detailed;
+    if (expanded && (hasDetail || implChildren.length > 0)) {
       return detailedContext(
-        model, m, pos, { ...base, collapsible: true }, layout, sizes, operationsLevel,
+        model, m, pos,
+        { ...base, collapsible: true, collapsed: false },
+        layout, sizes, operationsLevel,
       );
     }
-    // Implemented APIs are strategic-level: they nest inside the context at EVERY
-    // detail level, exactly like a published API nests inside its external system.
+    // Folded (or nothing to unfold): the strategic form — implemented APIs still nest.
     if (implChildren.length > 0) {
-      return detailedContainer(pos, { ...base, collapsible: true }, implChildren, layout, sizes);
+      return detailedContainer(
+        pos,
+        { ...base, collapsible: hasDetail, collapsed: hasDetail },
+        implChildren, layout, sizes,
+      );
     }
-    return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
+    return [{
+      ...base,
+      collapsible: hasDetail,
+      collapsed: hasDetail,
+      x: pos.x,
+      y: pos.y,
+      w: NODE_W,
+      h: NODE_H,
+    }];
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every context.
   const totalTop =
