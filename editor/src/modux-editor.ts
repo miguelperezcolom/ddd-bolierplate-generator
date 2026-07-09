@@ -3562,9 +3562,13 @@ export class ModuxEditor extends LitElement {
     const name = this._newViewName.trim();
     const memberIds = this.memberIdsFromSelection();
     if (!name || !memberIds.length) return;
-    this.command({ kind: 'add-view', id: `view-${slug(name)}`, name, memberIds });
+    const id = `view-${slug(name)}`;
+    this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
+    // You created it to work in it: the new view becomes the active one (the
+    // canvas scopes as soon as the refreshed model lands).
+    this._activeViewId = id;
   }
 
   /** Model scoped to the active modux View (CURATED members + their context). */

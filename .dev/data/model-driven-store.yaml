@@ -1529,6 +1529,18 @@ flows:
   triggerEvent: "EstanciaActualizada"
   targetModuleId: "mod-folios"
   readModelName: "EstanciaActualizadaView"
+views:
+- id: "view-wedwede"
+  name: "wedwede"
+  kind: "CURATED"
+  memberIds:
+  - "mod-housekeeping"
+  - "mod-servicio-tecnico"
+  - "mod-cardex"
+  - "actor"
+  - "habitacion-hk"
+  - "habitacion-st"
+  - "cardex"
 diagrams:
 - id: "context-map@detail"
   nodes:
@@ -1574,6 +1586,9 @@ diagrams:
   - ref: "actor"
     x: 116.0
     "y": 519.9
+  - ref: "cardex"
+    x: 25.8
+    "y": 9.6
 - id: "context-map"
   detail: "detail"
   nodes:

@@ -8315,7 +8315,9 @@ let F = class extends Re {
   }
   createViewFromSelection() {
     const e = this._newViewName.trim(), t = this.memberIdsFromSelection();
-    !e || !t.length || (this.command({ kind: "add-view", id: `view-${Y(e)}`, name: e, memberIds: t }), this._newViewName = "", this._multi = []);
+    if (!e || !t.length) return;
+    const i = `view-${Y(e)}`;
+    this.command({ kind: "add-view", id: i, name: e, memberIds: t }), this._newViewName = "", this._multi = [], this._activeViewId = i;
   }
   /** Model scoped to the active modux View (CURATED members + their context). */
   filteredModel() {
