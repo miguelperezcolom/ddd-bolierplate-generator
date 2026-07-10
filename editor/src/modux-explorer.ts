@@ -189,6 +189,8 @@ export class ModuxExplorer extends LitElement {
   private t = 0;
   private cam = { x: 0, y: 0, k: 1 };
   private hover?: XNode;
+  /** When the current hover began (t seconds) — fades the ghost preview in. */
+  private hoverAt = 0;
   private dragNode?: XNode;
   private panning = false;
   private downAt = { x: 0, y: 0 };
@@ -599,8 +601,50 @@ export class ModuxExplorer extends LitElement {
       }
     }
 
+    if (this.hover && !this.hover.expanded && this.hover.children?.length) {
+      this.drawGhosts(ctx, this.hover);
+    }
     ctx.restore();
     if (this.hover) this.drawCard(ctx, this.hover, w, h);
+  }
+
+  /** Ghost preview: a hovered, folded node whispers its children around it. */
+  private drawGhosts(ctx: CanvasRenderingContext2D, n: XNode): void {
+    const kids = n.children ?? [];
+    const shown = kids.slice(0, 14);
+    const alpha = Math.min(0.55, (this.t - this.hoverAt) * 2.2);
+    if (alpha <= 0.02) return;
+    const r = this.radiusOf(n);
+    const ring = r + 24;
+    const away = n.parent ? Math.atan2(n.y - n.parent.y, n.x - n.parent.x) : -Math.PI / 2;
+    const spread = n.parent ? Math.PI * 1.35 : Math.PI * 2;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1.2 / this.cam.k;
+    shown.forEach((c, i) => {
+      const a = away - spread / 2 + (spread * (i + 0.5)) / shown.length;
+      // Each ghost shimmers with its child's own phase, like the real thing.
+      const wob = this.reducedMotion ? 0 : Math.sin(this.t * c.f1 * Math.PI * 2 + c.p1) * 1.8;
+      const gx = n.x + Math.cos(a) * (ring + wob);
+      const gy = n.y + Math.sin(a) * (ring + wob);
+      ctx.beginPath();
+      ctx.arc(gx, gy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = c.color;
+      ctx.stroke();
+    });
+    if (kids.length > shown.length) {
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${11 / this.cam.k}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const a = away + spread / 2 + 0.35;
+      ctx.fillText(`+${kids.length - shown.length}`, n.x + Math.cos(a) * ring, n.y + Math.sin(a) * ring);
+    }
+    ctx.restore();
   }
 
   /** A tiny kind glyph inside the circle, so the tree reads without hovering. */
@@ -804,12 +848,17 @@ export class ModuxExplorer extends LitElement {
     const lines: string[] = [];
     for (const [kind, count] of counts) {
       lines.push(`${count} ${count === 1 ? (KIND_LABEL[kind] ?? kind).toLowerCase() : (KIND_PLURAL[kind] ?? kind)}`);
-      if (lines.length === 5) {
-        const rest = [...counts.keys()].length - 5;
-        if (rest > 0) lines[4] += ` (+${rest} tipos más)`;
+      if (lines.length === 4) {
+        const rest = [...counts.keys()].length - 4;
+        if (rest > 0) lines[3] += ` (+${rest} tipos más)`;
         break;
       }
     }
+    // A taste of what is inside, by name — colored bullet per kind.
+    const names: { label: string; color: string }[] = (n.children ?? [])
+      .slice(0, 6)
+      .map((c) => ({ label: c.label.length > 30 ? c.label.slice(0, 29) + '…' : c.label, color: c.color }));
+    const more = (n.children?.length ?? 0) - names.length;
     const title = n.label;
     const sub = KIND_LABEL[n.kind] ?? n.kind;
     const hint =
@@ -822,10 +871,12 @@ export class ModuxExplorer extends LitElement {
     const wLines = Math.max(
       ctx.measureText(sub).width,
       ...lines.map((l) => ctx.measureText(l).width),
+      ...names.map((x) => ctx.measureText(x.label).width + 12),
       ctx.measureText(hint).width,
     );
-    const bw = Math.min(280, Math.max(wTitle, wLines) + 24);
-    const bh = 40 + lines.length * 15 + (hint ? 18 : 0);
+    const bw = Math.min(300, Math.max(wTitle, wLines) + 24);
+    const namesBlock = names.length ? 8 + names.length * 15 + (more > 0 ? 15 : 0) : 0;
+    const bh = 40 + lines.length * 15 + namesBlock + (hint ? 18 : 0);
     // Beside the node, flipped/clamped so it never leaves the canvas.
     const sr = this.radiusOf(n) * this.cam.k;
     const sx = this.cam.x + n.x * this.cam.k;
@@ -852,6 +903,20 @@ export class ModuxExplorer extends LitElement {
     ctx.fillText(sub, 12, 25);
     ctx.fillStyle = '#475569';
     lines.forEach((l, i) => ctx.fillText(l, 12, 41 + i * 15));
+    let ny = 41 + lines.length * 15 + (names.length ? 8 : 0);
+    names.forEach((x) => {
+      ctx.fillStyle = x.color;
+      ctx.beginPath();
+      ctx.arc(15, ny + 5.5, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.fillText(x.label, 24, ny);
+      ny += 15;
+    });
+    if (more > 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`… y ${more} más`, 24, ny);
+    }
     if (hint) {
       ctx.fillStyle = '#94a3b8';
       ctx.fillText(hint, 12, bh - 16);
@@ -911,7 +976,9 @@ export class ModuxExplorer extends LitElement {
       return;
     }
     const w = this.toWorld(e);
+    const prev = this.hover;
     this.hover = this.nodeAt(w.x, w.y);
+    if (this.hover !== prev) this.hoverAt = this.t;
     if (this.canvas) this.canvas.style.cursor = this.hover ? 'pointer' : 'default';
   }
 
