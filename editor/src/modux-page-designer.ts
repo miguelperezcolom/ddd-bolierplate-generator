@@ -56,6 +56,8 @@ export class ModuxPageDesigner extends LitElement {
   @state() private _overCmpPos: 'before' | 'after' | 'into' = 'into';
   /** A drag from outside this designer (palette or another frame) hovering us. */
   @state() private _foreignOver = false;
+  /** The tab each tabLayout is showing (defaults to the first one). */
+  @state() private _activeTabs: Record<string, string> = {};
 
   private emitEvent(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -385,6 +387,11 @@ export class ModuxPageDesigner extends LitElement {
       font-size: 11px;
       color: #64748b;
       border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tabbar span:hover {
+      background: #f1f5f9;
     }
     .tabbar span.on {
       background: #e0f2fe;
@@ -600,6 +607,19 @@ export class ModuxPageDesigner extends LitElement {
     'form', 'listing', 'button', 'field', 'text', 'metricCard', 'menuBar',
   ]);
 
+  /** A node of the content tree, by id. */
+  private nodeById(componentId: string): UiComponentNodeRef | null {
+    let found: UiComponentNodeRef | null = null;
+    const walk = (items?: UiComponentNodeRef[]) => {
+      for (const it of items ?? []) {
+        if (it.id === componentId) found = it;
+        walk(it.children);
+      }
+    };
+    walk(this.page?.content);
+    return found;
+  }
+
   /** The parent of each node in the content tree (null at the root). */
   private parentOf(componentId: string): UiComponentNodeRef | null {
     let found: UiComponentNodeRef | null = null;
@@ -640,6 +660,8 @@ export class ModuxPageDesigner extends LitElement {
 
   /** Sibling slot vs inside, from where the pointer is over the node's box. */
   private dropPosFor(node: UiComponentNodeRef, e: DragEvent): 'before' | 'after' | 'into' {
+    // a tab's body swallows everything: siblings of a tab are ordered on the HEADERS
+    if (node.kind === 'tab') return 'into';
     const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const y = (e.clientY - box.top) / Math.max(1, box.height);
     if (ModuxPageDesigner.LEAF_KINDS.has(node.kind)) return y < 0.5 ? 'before' : 'after';
@@ -652,8 +674,12 @@ export class ModuxPageDesigner extends LitElement {
     target: UiComponentNodeRef,
     pos: 'before' | 'after' | 'into',
   ): { toParentId: string | null; beforeComponentId: string | null } {
-    if (pos === 'into' && target.kind === 'tabLayout' && (target.children ?? [])[0]) {
-      target = (target.children ?? [])[0]; // tabs hold the content — land in the active one
+    if (pos === 'into' && target.kind === 'tabLayout') {
+      const dragged = this._dragCmpId ? this.nodeById(this._dragCmpId) : null;
+      if (dragged?.kind === 'tab') return { toParentId: target.id, beforeComponentId: null };
+      const tabs = (target.children ?? []).filter((c) => c.kind === 'tab');
+      const active = tabs.find((t) => t.id === this._activeTabs[target.id]) ?? tabs[0];
+      if (active) target = active; // tabs hold the content — land in the one showing
     }
     if (pos === 'into' && !ModuxPageDesigner.LEAF_KINDS.has(target.kind)) {
       return { toParentId: target.id, beforeComponentId: null };
@@ -715,10 +741,58 @@ export class ModuxPageDesigner extends LitElement {
         break;
       case 'tabLayout': {
         const tabs = children.filter((c) => c.kind === 'tab');
-        const active = tabs[0];
+        const active = tabs.find((t) => t.id === this._activeTabs[node.id]) ?? tabs[0];
         body = html`
           <div class="tabbar">
-            ${tabs.map((t, i) => html`<span class=${i === 0 ? 'on' : ''}>${t.title ?? 'Pestaña'}</span>`)}
+            ${tabs.map(
+              (t, i) => html`<span
+                class=${t === active ? 'on' : ''}
+                draggable="true"
+                title="Click: ver y seleccionar la pestaña · doble click: configurarla · arrastra para reordenar"
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  this._activeTabs = { ...this._activeTabs, [node.id]: t.id };
+                  this.emitEvent('component-selected', { componentId: t.id });
+                }}
+                @dblclick=${(e: Event) => {
+                  e.stopPropagation();
+                  this._cmp = { ...t };
+                }}
+                @dragstart=${(e: DragEvent) => {
+                  e.stopPropagation();
+                  this._dragCmpId = t.id;
+                  e.dataTransfer?.setData(
+                    'application/x-modux-cmp',
+                    JSON.stringify({ pageId: this.page?.id, componentId: t.id }),
+                  );
+                }}
+                @dragover=${(e: DragEvent) => {
+                  // only a sibling tab slots between headers
+                  if (this.nodeById(this._dragCmpId ?? '')?.kind !== 'tab') return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                @drop=${(e: DragEvent) => {
+                  const source = this._dragCmpId;
+                  if (!source || source === t.id) return;
+                  if (this.nodeById(source)?.kind !== 'tab') return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const beforeThis = e.clientX - box.left < box.width / 2;
+                  const beforeId = beforeThis ? t.id : (tabs[i + 1]?.id ?? null);
+                  this._dragCmpId = null;
+                  this._overCmpId = null;
+                  if (beforeId === source) return;
+                  this.emitEvent('component-moved', {
+                    componentId: source,
+                    toParentId: node.id,
+                    beforeComponentId: beforeId,
+                  });
+                }}
+                >${t.title ?? 'Pestaña'}</span
+              >`,
+            )}
           </div>
           ${active ? this.renderComponent(active) : empty}`;
         break;

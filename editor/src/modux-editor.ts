@@ -4233,7 +4233,9 @@ export class ModuxEditor extends LitElement {
         beforeComponentId = found.beforeId;
       } else {
         parentComponentId =
-          found.node.kind === 'tabLayout' ? (found.node.children ?? [])[0]?.id : found.node.id;
+          found.node.kind === 'tabLayout' && clip.kind !== 'tab'
+            ? (found.node.children ?? [])[0]?.id
+            : found.node.id;
       }
     } else if (this._selectedId && (this.model.pages ?? []).some((x) => x.id === this._selectedId)) {
       pageId = this._selectedId;
@@ -4413,6 +4415,7 @@ export class ModuxEditor extends LitElement {
     { type: 'cmp:formLayout', label: 'Layout · Form', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:splitLayout', label: 'Layout · Split', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:tabLayout', label: 'Layout · Tabs', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:tab', label: 'Layout · Pestaña', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:accordionLayout', label: 'Layout · Acordeón', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:card', label: 'Layout · Card', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:gridLayout', label: 'Layout · Grid', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -4718,10 +4721,36 @@ export class ModuxEditor extends LitElement {
       }
       let parentComponentId = m ? m[2] : undefined;
       let beforeComponentId: string | null = null;
+      if (componentKind === 'tab') {
+        // a tab only lives in a tabLayout: walk up from wherever the drop landed
+        let hostId: string | null = null;
+        let cur = parentComponentId ? this.componentIn(pageId, parentComponentId) : null;
+        while (cur) {
+          if (cur.node.kind === 'tabLayout') {
+            hostId = cur.node.id;
+            break;
+          }
+          cur = cur.parentId ? this.componentIn(pageId, cur.parentId) : null;
+        }
+        if (!hostId) {
+          this.emit('modux-notice', { message: 'Suelta la pestaña sobre un layout de pestañas' });
+          return;
+        }
+        const host = this.componentIn(pageId, hostId)!.node;
+        const componentId = this.newComponentId('tab');
+        const title = `Pestaña ${(host.children ?? []).filter((c) => c.kind === 'tab').length + 1}`;
+        this.command({ kind: 'add-page-component', pageId, componentId, componentKind: 'tab', parentComponentId: hostId }, false);
+        this.command({ kind: 'set-page-component', pageId, componentId, title }, false);
+        this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId }]);
+        return;
+      }
       if (slot?.componentId && slot.pos !== 'into') {
         // the drop opened a sibling slot: land beside the hovered node, not inside it
         const hovered = this.componentIn(pageId, slot.componentId);
-        if (hovered) {
+        if (hovered && hovered.node.kind === 'tab') {
+          // nothing slots BETWEEN tabs (headers reorder them): land inside the tab
+          parentComponentId = hovered.node.id;
+        } else if (hovered) {
           parentComponentId = hovered.parentId ?? undefined;
           beforeComponentId = slot.pos === 'before' ? slot.componentId : hovered.beforeId;
         }
