@@ -168,9 +168,12 @@ export class ModuxTilt extends LitElement {
       white-space: nowrap;
     }
     .hud {
+      /* right-aligned: the palette docks on the left and was covering it */
       position: absolute;
-      left: 12px;
+      right: 12px;
       bottom: 10px;
+      max-width: 46%;
+      text-align: right;
       font: 11px ui-sans-serif, system-ui, sans-serif;
       color: #94a3b8;
       pointer-events: none;
