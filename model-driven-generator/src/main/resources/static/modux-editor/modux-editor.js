@@ -7103,9 +7103,10 @@ let ie = class extends Te {
   }
   /** The content-node declaration editor. */
   renderCmpPop() {
+    var n;
     const e = this._cmp;
     if (!e) return J;
-    const t = (n) => this._cmp = { ...this._cmp, ...n }, i = e.kind, s = [
+    const t = (o) => this._cmp = { ...this._cmp, ...o }, i = e.kind, s = [
       "tab",
       "card",
       "accordionLayout",
@@ -7123,49 +7124,51 @@ let ie = class extends Te {
       "masterDetailLayout",
       "carouselLayout"
     ].includes(i);
-    return $`<div class="pop" @click=${(n) => n.stopPropagation()}>
+    return $`<div class="pop" @click=${(o) => o.stopPropagation()}>
       ${s ? $`<label>Título</label>
-            <input .value=${e.title ?? ""} @input=${(n) => t({ title: n.target.value })} />` : J}
+            <input .value=${e.title ?? ""} @input=${(o) => t({ title: o.target.value })} />` : J}
       ${i === "text" ? $`<label>Texto</label>
-            <input style="grid-column: 2 / -1" .value=${e.text ?? ""} @input=${(n) => t({ text: n.target.value })} />` : J}
+            <input style="grid-column: 2 / -1" .value=${e.text ?? ""} @input=${(o) => t({ text: o.target.value })} />` : J}
       ${i === "button" || i === "field" ? $`<label>Etiqueta</label>
-            <input .value=${e.label ?? ""} @input=${(n) => t({ label: n.target.value })} />` : J}
+            <input .value=${e.label ?? ""} @input=${(o) => t({ label: o.target.value })} />` : J}
       ${i === "button" ? $`<label>Caso de uso</label>
-            <select @change=${(n) => t({ useCaseId: n.target.value || void 0 })}>
+            <select @change=${(o) => t({ useCaseId: o.target.value || void 0 })}>
               <option value="" ?selected=${!e.useCaseId}>—</option>
-              ${this.useCases.map((n) => $`<option value=${n.id} ?selected=${n.id === e.useCaseId}>${n.name}</option>`)}
+              ${this.useCases.map((o) => $`<option value=${o.id} ?selected=${o.id === e.useCaseId}>${o.name}</option>`)}
             </select>
             <label>Mapping</label>
-            <select style="grid-column: 2 / -1" @change=${(n) => t({ mappingId: n.target.value || void 0 })}>
+            <select style="grid-column: 2 / -1" @change=${(o) => t({ mappingId: o.target.value || void 0 })}>
               <option value="" ?selected=${!e.mappingId}>(el viewmodel viaja tal cual)</option>
-              ${this.mappings.map((n) => $`<option value=${n.id} ?selected=${n.id === e.mappingId}>${n.name}</option>`)}
+              ${this.mappings.map((o) => $`<option value=${o.id} ?selected=${o.id === e.mappingId}>${o.name}</option>`)}
             </select>` : J}
       ${i === "form" ? $`<label>Model</label>
-            <select style="grid-column: 2 / -1" @change=${(n) => t({ modelId: n.target.value || void 0 })}>
-              <option value="" ?selected=${!e.modelId}>—</option>
-              ${this.models.map((n) => $`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`)}
-            </select>` : J}
+            <span style="grid-column: 2 / -1">
+              ${e.modelId ? $`<span class="chip"
+                      >${((n = this.models.find((o) => o.id === e.modelId)) == null ? void 0 : n.name) ?? e.modelId}
+                      <span class="chipx" title="Quitar el modelo" @click=${() => t({ modelId: void 0 })}>✕</span></span
+                    >` : $`<span class="vmhint">arrastra un modelo del Catálogo hasta el formulario</span>`}
+            </span>` : J}
       ${i === "listing" ? $`<label>Consulta</label>
             <select
               style="grid-column: 2 / -1"
-              @change=${(n) => {
-      const o = n.target.value, r = this.queryOps.find((l) => l.id === o);
-      t({ queryOperationId: r == null ? void 0 : r.id, queryServiceId: r == null ? void 0 : r.queryServiceId });
+              @change=${(o) => {
+      const r = o.target.value, l = this.queryOps.find((u) => u.id === r);
+      t({ queryOperationId: l == null ? void 0 : l.id, queryServiceId: l == null ? void 0 : l.queryServiceId });
     }}
             >
               <option value="" ?selected=${!e.queryOperationId}>—</option>
-              ${this.queryOps.map((n) => $`<option value=${n.id} ?selected=${n.id === e.queryOperationId}>${n.name}</option>`)}
+              ${this.queryOps.map((o) => $`<option value=${o.id} ?selected=${o.id === e.queryOperationId}>${o.name}</option>`)}
             </select>` : J}
       ${i === "field" ? $`<label>Estereotipo</label>
-            <select @change=${(n) => t({ stereotype: n.target.value || void 0 })}>
-              ${Fn.map((n) => $`<option value=${n} ?selected=${n === (e.stereotype ?? "regular")}>${n}</option>`)}
+            <select @change=${(o) => t({ stereotype: o.target.value || void 0 })}>
+              ${Fn.map((o) => $`<option value=${o} ?selected=${o === (e.stereotype ?? "regular")}>${o}</option>`)}
             </select>` : J}
       ${i === "tabLayout" ? $`<label style="grid-column: 1 / -1; color:#94a3b8">Las pestañas son hijos «tab»: configura su título clicándolas</label>` : J}
       <div class="actions">
         <button
           @click=${() => {
-      const n = this._cmp.id;
-      this._cmp = null, this.emitEvent("component-removed", { componentId: n });
+      const o = this._cmp.id;
+      this._cmp = null, this.emitEvent("component-removed", { componentId: o });
     }}
         >
           Quitar
@@ -7174,20 +7177,20 @@ let ie = class extends Te {
         <button
           class="ok"
           @click=${() => {
-      const n = this._cmp;
+      const o = this._cmp;
       this._cmp = null, this.emitEvent("component-config-changed", {
-        componentId: n.id,
-        title: n.title ?? null,
-        text: n.text ?? null,
-        label: n.label ?? null,
-        useCaseId: n.useCaseId ?? null,
-        mappingId: n.mappingId ?? null,
-        modelId: n.modelId ?? null,
-        queryServiceId: n.queryServiceId ?? null,
-        queryOperationId: n.queryOperationId ?? null,
-        fieldId: n.fieldId ?? null,
-        stereotype: n.stereotype ?? null,
-        colspan: n.colspan ?? null
+        componentId: o.id,
+        title: o.title ?? null,
+        text: o.text ?? null,
+        label: o.label ?? null,
+        useCaseId: o.useCaseId ?? null,
+        mappingId: o.mappingId ?? null,
+        modelId: o.modelId ?? null,
+        queryServiceId: o.queryServiceId ?? null,
+        queryOperationId: o.queryOperationId ?? null,
+        fieldId: o.fieldId ?? null,
+        stereotype: o.stereotype ?? null,
+        colspan: o.colspan ?? null
       });
     }}
         >
@@ -7545,7 +7548,8 @@ ie.styles = ht`
       padding: 2px 4px;
       max-width: 200px;
     }
-    .vm .chip {
+    .vm .chip,
+    .pop .chip {
       color: #7c3aed;
       background: #f5f3ff;
       border-radius: 4px;
@@ -7804,15 +7808,18 @@ ie.styles = ht`
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    .vm .chipx {
+    .vm .chipx,
+    .pop .chipx {
       margin-left: 5px;
       cursor: pointer;
       color: #94a3b8;
     }
-    .vm .chipx:hover {
+    .vm .chipx:hover,
+    .pop .chipx:hover {
       color: #dc2626;
     }
-    .vm .vmhint {
+    .vm .vmhint,
+    .pop .vmhint {
       color: #94a3b8;
       font-size: 10.5px;
     }

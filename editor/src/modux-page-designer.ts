@@ -175,7 +175,8 @@ export class ModuxPageDesigner extends LitElement {
       padding: 2px 4px;
       max-width: 200px;
     }
-    .vm .chip {
+    .vm .chip,
+    .pop .chip {
       color: #7c3aed;
       background: #f5f3ff;
       border-radius: 4px;
@@ -434,15 +435,18 @@ export class ModuxPageDesigner extends LitElement {
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    .vm .chipx {
+    .vm .chipx,
+    .pop .chipx {
       margin-left: 5px;
       cursor: pointer;
       color: #94a3b8;
     }
-    .vm .chipx:hover {
+    .vm .chipx:hover,
+    .pop .chipx:hover {
       color: #dc2626;
     }
-    .vm .vmhint {
+    .vm .vmhint,
+    .pop .vmhint {
       color: #94a3b8;
       font-size: 10.5px;
     }
@@ -1122,10 +1126,14 @@ export class ModuxPageDesigner extends LitElement {
         : nothing}
       ${kind === 'form'
         ? html`<label>Model</label>
-            <select style="grid-column: 2 / -1" @change=${(e: Event) => set({ modelId: (e.target as HTMLSelectElement).value || undefined })}>
-              <option value="" ?selected=${!draft.modelId}>—</option>
-              ${this.models.map((m) => html`<option value=${m.id} ?selected=${m.id === draft.modelId}>${m.name}</option>`)}
-            </select>`
+            <span style="grid-column: 2 / -1">
+              ${draft.modelId
+                ? html`<span class="chip"
+                      >${this.models.find((m) => m.id === draft.modelId)?.name ?? draft.modelId}
+                      <span class="chipx" title="Quitar el modelo" @click=${() => set({ modelId: undefined })}>✕</span></span
+                    >`
+                : html`<span class="vmhint">arrastra un modelo del Catálogo hasta el formulario</span>`}
+            </span>`
         : nothing}
       ${kind === 'listing'
         ? html`<label>Consulta</label>
