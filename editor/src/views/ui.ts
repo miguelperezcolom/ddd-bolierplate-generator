@@ -307,13 +307,15 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       symbol: 'interface',
       badge: page.type ?? 'PAGE',
       container: wizSteps.length > 0,
-      extraHandles:
-        page.type === 'CRUD'
-            ? [
-                { kind: 'crud-detail', title: 'Detalle: arrastra hasta la página o app que abre una fila', color: '#ea580c' },
-                { kind: 'crud-create', title: 'Alta: arrastra hasta la página o app del nuevo registro', color: '#0d9488' },
-              ]
-            : undefined,
+      extraHandles: [
+        { kind: 'viewmodel', title: 'Viewmodel: arrastra hasta el modelo de datos de la página', color: '#8b5cf6' },
+        ...(page.type === 'CRUD'
+          ? [
+              { kind: 'crud-detail', title: 'Detalle: arrastra hasta la página o app que abre una fila', color: '#ea580c' },
+              { kind: 'crud-create', title: 'Alta: arrastra hasta la página o app del nuevo registro', color: '#0d9488' },
+            ]
+          : []),
+      ],
       fill: '#ffffff',
       stroke: '#0284c7',
       tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),

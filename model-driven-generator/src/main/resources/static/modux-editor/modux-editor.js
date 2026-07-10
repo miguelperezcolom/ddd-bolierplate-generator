@@ -6032,10 +6032,13 @@ function Dl(e, t) {
       symbol: "interface",
       badge: w.type ?? "PAGE",
       container: y.length > 0,
-      extraHandles: w.type === "CRUD" ? [
-        { kind: "crud-detail", title: "Detalle: arrastra hasta la página o app que abre una fila", color: "#ea580c" },
-        { kind: "crud-create", title: "Alta: arrastra hasta la página o app del nuevo registro", color: "#0d9488" }
-      ] : void 0,
+      extraHandles: [
+        { kind: "viewmodel", title: "Viewmodel: arrastra hasta el modelo de datos de la página", color: "#8b5cf6" },
+        ...w.type === "CRUD" ? [
+          { kind: "crud-detail", title: "Detalle: arrastra hasta la página o app que abre una fila", color: "#ea580c" },
+          { kind: "crud-create", title: "Alta: arrastra hasta la página o app del nuevo registro", color: "#0d9488" }
+        ] : []
+      ],
       fill: "#ffffff",
       stroke: "#0284c7",
       tooltip: w.route ? `${w.type ?? "PAGE"} · ${w.route}` : w.type ?? "PAGE"
@@ -7294,19 +7297,17 @@ let ie = class extends Te {
       </div>
       <div class="vm">
         viewmodel:
-        ${e.modelId ? $`<span class="chip">${e.modelName ?? e.modelId}</span>` : $`<span>—</span>`}
-        <select
-          title="Asignar el Model que hace de viewmodel"
-          @change=${(n) => {
-      const o = n.target.value;
-      this.emitEvent("page-model-changed", { modelId: o === "" ? null : o });
-    }}
-        >
-          <option value="" ?selected=${!e.modelId}>(sin viewmodel)</option>
-          ${this.models.map(
-      (n) => $`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`
-    )}
-        </select>
+        ${e.modelId ? $`<span class="chip"
+                >${e.modelName ?? e.modelId}
+                <span
+                  class="chipx"
+                  title="Quitar el viewmodel"
+                  @click=${() => this.emitEvent("page-model-changed", { modelId: null })}
+                  >✕</span
+                ></span
+              >` : $`<span class="vmhint"
+              >arrastra un modelo del Catálogo hasta el frame — o el asa violeta de la página, en la vista UI</span
+            >`}
       </div>
       <div class="body" @click=${() => this.onBodyClick()}>
         ${s ? $`<div class="wizbar">
@@ -7802,6 +7803,18 @@ ie.styles = ht`
       color: #cbd5e1;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+    }
+    .vm .chipx {
+      margin-left: 5px;
+      cursor: pointer;
+      color: #94a3b8;
+    }
+    .vm .chipx:hover {
+      color: #dc2626;
+    }
+    .vm .vmhint {
+      color: #94a3b8;
+      font-size: 10.5px;
     }
     .wizbar {
       display: flex;
@@ -10110,6 +10123,10 @@ let H = class extends Te {
         this.command(
           g(t) ? { kind: D, pageId: e, targetId: t, toAppId: null } : { kind: D, pageId: e, targetId: null, toAppId: t }
         );
+        return;
+      }
+      if (n === "viewmodel" && g(e)) {
+        (this.model.models ?? []).some((D) => D.id === t) ? this.command({ kind: "set-page-model", pageId: e, modelId: t }) : this.emit("modux-notice", { message: "El viewmodel se traza hasta un MODELO de datos" });
         return;
       }
       if ((n === "view" || n === "edit") && h(e) && g(t)) {

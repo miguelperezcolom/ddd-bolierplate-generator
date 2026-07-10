@@ -2607,6 +2607,14 @@ export class ModuxEditor extends LitElement {
         );
         return;
       }
+      if (connectKind === 'viewmodel' && isPage(sourceId)) {
+        if ((this.model.models ?? []).some((mo) => mo.id === targetId)) {
+          this.command({ kind: 'set-page-model', pageId: sourceId, modelId: targetId });
+        } else {
+          this.emit('modux-notice', { message: 'El viewmodel se traza hasta un MODELO de datos' });
+        }
+        return;
+      }
       if ((connectKind === 'view' || connectKind === 'edit') && isApp(sourceId) && isPage(targetId)) {
         this.command({
           kind: connectKind === 'view' ? 'set-app-view-page' : 'set-app-edit-page',

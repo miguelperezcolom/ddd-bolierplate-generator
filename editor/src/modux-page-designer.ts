@@ -434,6 +434,18 @@ export class ModuxPageDesigner extends LitElement {
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
+    .vm .chipx {
+      margin-left: 5px;
+      cursor: pointer;
+      color: #94a3b8;
+    }
+    .vm .chipx:hover {
+      color: #dc2626;
+    }
+    .vm .vmhint {
+      color: #94a3b8;
+      font-size: 10.5px;
+    }
     .wizbar {
       display: flex;
       align-items: center;
@@ -1304,20 +1316,18 @@ export class ModuxPageDesigner extends LitElement {
       <div class="vm">
         viewmodel:
         ${page.modelId
-          ? html`<span class="chip">${page.modelName ?? page.modelId}</span>`
-          : html`<span>—</span>`}
-        <select
-          title="Asignar el Model que hace de viewmodel"
-          @change=${(e: Event) => {
-            const value = (e.target as HTMLSelectElement).value;
-            this.emitEvent('page-model-changed', { modelId: value === '' ? null : value });
-          }}
-        >
-          <option value="" ?selected=${!page.modelId}>(sin viewmodel)</option>
-          ${this.models.map(
-            (m) => html`<option value=${m.id} ?selected=${m.id === page.modelId}>${m.name}</option>`,
-          )}
-        </select>
+          ? html`<span class="chip"
+                >${page.modelName ?? page.modelId}
+                <span
+                  class="chipx"
+                  title="Quitar el viewmodel"
+                  @click=${() => this.emitEvent('page-model-changed', { modelId: null })}
+                  >✕</span
+                ></span
+              >`
+          : html`<span class="vmhint"
+              >arrastra un modelo del Catálogo hasta el frame — o el asa violeta de la página, en la vista UI</span
+            >`}
       </div>
       <div class="body" @click=${() => this.onBodyClick()}>
         ${wizard
