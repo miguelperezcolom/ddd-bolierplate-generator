@@ -207,15 +207,24 @@ export class ModuxFigma extends LitElement {
       }
       const index = this.pages.findIndex((p) => p.id === id);
       const at = this.posOf(id, index);
-      this.setPointerCapture(e.pointerId);
-      this._drag = { mode: 'frame', id, x: e.clientX, y: e.clientY, ox: at.x, oy: at.y, moved: false };
+      // Select FIRST: a capture failure must never swallow the selection.
       this.emit('element-selected', { elementType: 'node', id, kind: 'page' });
+      try {
+        this.setPointerCapture(e.pointerId);
+      } catch {
+        return;
+      }
+      this._drag = { mode: 'frame', id, x: e.clientX, y: e.clientY, ox: at.x, oy: at.y, moved: false };
       e.preventDefault();
       return;
     }
     // inside a frame: let the designer work; on the background: pan
     if (path.some((el) => el.tagName === 'MODUX-PAGE-DESIGNER')) return;
-    this.setPointerCapture(e.pointerId);
+    try {
+      this.setPointerCapture(e.pointerId);
+    } catch {
+      return;
+    }
     this._drag = { mode: 'pan', x: e.clientX, y: e.clientY, t: { x: this._t.x, y: this._t.y } };
   };
 

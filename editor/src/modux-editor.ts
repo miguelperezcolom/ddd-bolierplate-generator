@@ -992,6 +992,55 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'delete-ui-app', id: c.id }];
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
+      case 'delete-ui-page': {
+        const pg = (this.model.pages ?? []).find((x) => x.id === c.id);
+        if (!pg) return null;
+        const ops: ModuxCommand[] = [
+          { kind: 'create-ui-page', id: pg.id, name: pg.name, pageType: pg.type ?? 'FORM' },
+        ];
+        if (pg.route) ops.push({ kind: 'set-page-route', pageId: pg.id, path: pg.route });
+        if (pg.modelId) ops.push({ kind: 'set-page-model', pageId: pg.id, modelId: pg.modelId });
+        if (pg.listingQueryServiceId) {
+          ops.push({ kind: 'set-page-listing', pageId: pg.id, queryServiceId: pg.listingQueryServiceId });
+        }
+        for (const b of pg.buttons ?? []) {
+          if (!b.useCaseId) continue;
+          ops.push({ kind: 'add-page-button', pageId: pg.id, useCaseId: b.useCaseId, label: b.label });
+          if (b.mappingId) {
+            ops.push({
+              kind: 'set-page-button',
+              pageId: pg.id,
+              useCaseId: b.useCaseId,
+              label: b.label ?? null,
+              mappingId: b.mappingId,
+            });
+          }
+        }
+        for (const f of pg.viewmodelFields ?? []) {
+          if (f.stereotype || f.colspan || f.label) {
+            ops.push({
+              kind: 'set-page-field-config',
+              pageId: pg.id,
+              fieldId: f.fieldId,
+              stereotype: f.stereotype ?? null,
+              colspan: f.colspan ?? null,
+              label: f.label ?? null,
+            });
+          }
+        }
+        if ((pg.viewmodelFields ?? []).length) {
+          ops.push({
+            kind: 'set-page-field-order',
+            pageId: pg.id,
+            fieldIds: (pg.viewmodelFields ?? []).map((f) => f.fieldId),
+          });
+        }
+        for (const root of pg.content ?? []) {
+          ops.push(...this.rebuildComponentOps(pg.id, root, undefined, null).ops);
+        }
+        // Menu entries pointing at the page are pruned server-side and stay pruned.
+        return ops;
+      }
       case 'add-menu-item':
         return [{ kind: 'remove-menu-item', appId: c.appId, itemId: c.itemId, label: c.label }];
       case 'remove-menu-item':
@@ -4198,6 +4247,18 @@ export class ModuxEditor extends LitElement {
       const { pageId, componentId } = this._selectedCmp;
       this._selectedCmp = null;
       this.command({ kind: 'remove-page-component', pageId, componentId });
+      e.preventDefault();
+      return;
+    }
+    if (
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      !this._selectedCmp &&
+      this._selectedId &&
+      (this.model.pages ?? []).some((x) => x.id === this._selectedId)
+    ) {
+      const id = this._selectedId;
+      this._selectedId = null;
+      this.command({ kind: 'delete-ui-page', id });
       e.preventDefault();
       return;
     }
