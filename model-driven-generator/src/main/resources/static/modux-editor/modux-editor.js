@@ -9305,7 +9305,7 @@ let Y = class extends Ne {
       externalSystems: [],
       relations: [],
       flows: []
-    }, this.layout = {}, this.diff = null, this._view = "context-map", this._detail = "contexts", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !1, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newModuleId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._activeViewId = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
+    }, this.layout = {}, this.diff = null, this._view = "explorer", this._detail = "contexts", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !1, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newModuleId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._activeViewId = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
       this._fullscreen = this.matches(":fullscreen");
     }, this.hostKeydown = (e) => {
       var o;
@@ -13613,6 +13613,11 @@ let Y = class extends Ne {
             title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
             @change=${(t) => this.onDiagramScopeChange(t.target.value)}
           >
+            <optgroup label="Explorar">
+              <option value="view:explorer" ?selected=${this._view === "explorer"}>
+                Explorador del modelo
+              </option>
+            </optgroup>
             <optgroup label="Context map">
               <option value="level:contexts"
                 ?selected=${this._view === "context-map" && this._detail === "contexts"}>
@@ -13640,9 +13645,6 @@ let Y = class extends Ne {
               </option>
               <option value="view:ui" ?selected=${this._view === "ui"}>UI</option>
               <option value="view:mappings" ?selected=${this._view === "mappings"}>Mapeados</option>
-              <option value="view:explorer" ?selected=${this._view === "explorer"}>
-                Explorador (beta)
-              </option>
               <option value="view:design" ?selected=${this._view === "design"}>
                 Diseño (páginas)
               </option>
@@ -13991,12 +13993,14 @@ let Y = class extends Ne {
         <button
           class="tab"
           title="Recolocar los nodos automáticamente (deshacible)"
+          ?disabled=${this._view === "explorer"}
           @click=${() => void this.runAutoLayout()}
         >
           ✨ Auto-layout
         </button>
         <button
           class="tab"
+          ?disabled=${this._view === "explorer"}
           ?data-active=${this._tilt}
           title=${this._tilt ? "Volver al lienzo editable (V)" : "Vista 3D: el diagrama como placas apiladas por contención (V)"}
           @click=${() => this._tilt = !this._tilt}

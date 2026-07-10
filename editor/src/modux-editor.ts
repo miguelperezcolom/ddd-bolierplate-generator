@@ -277,7 +277,8 @@ export class ModuxEditor extends LitElement {
   /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
   @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
-  @state() private _view: ViewId = 'context-map';
+  /** The explorer is the front door: graphics-first, the CRUDs behind it. */
+  @state() private _view: ViewId = 'explorer';
   /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
   @state() private _detail: 'contexts' | 'detail' | 'operations' = 'contexts';
   /** Last chosen relation type — the default pre-selection in the picker. */
@@ -6625,6 +6626,11 @@ export class ModuxEditor extends LitElement {
             title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
             @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
           >
+            <optgroup label="Explorar">
+              <option value="view:explorer" ?selected=${this._view === 'explorer'}>
+                Explorador del modelo
+              </option>
+            </optgroup>
             <optgroup label="Context map">
               <option value="level:contexts"
                 ?selected=${this._view === 'context-map' && this._detail === 'contexts'}>
@@ -6652,9 +6658,6 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
               <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
-              <option value="view:explorer" ?selected=${this._view === 'explorer'}>
-                Explorador (beta)
-              </option>
               <option value="view:design" ?selected=${this._view === 'design'}>
                 Diseño (páginas)
               </option>
@@ -7059,12 +7062,14 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           title="Recolocar los nodos automáticamente (deshacible)"
+          ?disabled=${this._view === 'explorer'}
           @click=${() => void this.runAutoLayout()}
         >
           ✨ Auto-layout
         </button>
         <button
           class="tab"
+          ?disabled=${this._view === 'explorer'}
           ?data-active=${this._tilt}
           title=${this._tilt
             ? 'Volver al lienzo editable (V)'
