@@ -1137,17 +1137,19 @@ export class ModuxPageDesigner extends LitElement {
         : nothing}
       ${kind === 'listing'
         ? html`<label>Consulta</label>
-            <select
-              style="grid-column: 2 / -1"
-              @change=${(e: Event) => {
-                const id = (e.target as HTMLSelectElement).value;
-                const op = this.queryOps.find((o) => o.id === id);
-                set({ queryOperationId: op?.id, queryServiceId: op?.queryServiceId });
-              }}
-            >
-              <option value="" ?selected=${!draft.queryOperationId}>—</option>
-              ${this.queryOps.map((o) => html`<option value=${o.id} ?selected=${o.id === draft.queryOperationId}>${o.name}</option>`)}
-            </select>`
+            <span style="grid-column: 2 / -1">
+              ${draft.queryOperationId
+                ? html`<span class="chip"
+                      >${this.queryOps.find((o) => o.id === draft.queryOperationId)?.name ?? draft.queryOperationId}
+                      <span
+                        class="chipx"
+                        title="Quitar la consulta"
+                        @click=${() => set({ queryOperationId: undefined, queryServiceId: undefined })}
+                        >✕</span
+                      ></span
+                    >`
+                : html`<span class="vmhint">arrastra una operación de consulta del Catálogo hasta el listado</span>`}
+            </span>`
         : nothing}
       ${kind === 'field'
         ? html`<label>Estereotipo</label>
