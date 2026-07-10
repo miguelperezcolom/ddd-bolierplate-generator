@@ -33,6 +33,8 @@ export class ModuxTilt extends LitElement {
   @state() private _rz = -18;
   @state() private _k = 1;
   @state() private _pan = { x: 0, y: 0 };
+  /** Space held: drags pan instead of orbiting (the 2D canvas convention). */
+  private _space = false;
   /** A plate being dragged: its live scene-space offset until the drop commits. */
   @state() private _liveMove: { id: string; dx: number; dy: number } | null = null;
   /** A relation being traced: rubber line in screen space + the reacting target. */
@@ -179,6 +181,8 @@ export class ModuxTilt extends LitElement {
     super.connectedCallback();
     // Focusable, so the editor-level shortcuts (V to leave, F, ?) keep working.
     this.tabIndex = 0;
+    window.addEventListener('keydown', this.onSpaceKey);
+    window.addEventListener('keyup', this.onSpaceKey);
     this.addEventListener('pointerdown', this.onDown);
     this.addEventListener('pointermove', this.onMove);
     this.addEventListener('pointerup', this.onUp);
@@ -189,6 +193,8 @@ export class ModuxTilt extends LitElement {
   }
 
   disconnectedCallback(): void {
+    window.removeEventListener('keydown', this.onSpaceKey);
+    window.removeEventListener('keyup', this.onSpaceKey);
     this.removeEventListener('pointerdown', this.onDown);
     this.removeEventListener('pointermove', this.onMove);
     this.removeEventListener('pointerup', this.onUp);
@@ -267,8 +273,17 @@ export class ModuxTilt extends LitElement {
     return { x: (b1 * a22 - a12 * b2) / det, y: (a11 * b2 - b1 * a21) / det };
   }
 
+  private onSpaceKey = (e: KeyboardEvent): void => {
+    if (e.key !== ' ') return;
+    const t = e.target as HTMLElement;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    this._space = e.type === 'keydown';
+    if (this._space) e.preventDefault();
+  };
+
   private onDown = (e: PointerEvent): void => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.button !== 1) return;
+    if (e.button === 1) e.preventDefault(); // middle button pans, not autoscroll
     this.focus();
     this.setPointerCapture?.(e.pointerId);
     const el = e.composedPath()[0] as HTMLElement | undefined;
@@ -285,9 +300,10 @@ export class ModuxTilt extends LitElement {
       this._drag = { mode: 'connect', x: e.clientX, y: e.clientY, rx: this._rx, rz: this._rz, pan: { ...this._pan } };
       return;
     }
-    const plate = this.plateAt(e);
+    const wantsPan = e.shiftKey || this._space || e.button === 1;
+    const plate = wantsPan ? null : this.plateAt(e);
     this._drag = {
-      mode: plate ? 'node' : e.shiftKey ? 'pan' : 'orbit',
+      mode: plate ? 'node' : wantsPan ? 'pan' : 'orbit',
       x: e.clientX,
       y: e.clientY,
       rx: this._rx,
@@ -583,7 +599,7 @@ export class ModuxTilt extends LitElement {
         : ''}
       <div class="hud">
         click selecciona · doble click abre · arrastra una placa para moverla · arrastra el fondo
-        para orbitar · shift+arrastra panea · rueda para zoom · Supr borra · doble click en el
+        para orbitar · shift, espacio o botón central+arrastra panea · rueda para zoom · Supr borra · doble click en el
         fondo resetea
       </div>
     `;
