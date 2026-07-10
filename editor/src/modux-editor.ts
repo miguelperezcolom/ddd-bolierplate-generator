@@ -17,6 +17,7 @@ import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
 import './modux-figma.js';
+import './modux-explorer.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
 
@@ -34,7 +35,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'explorer';
 
 
 /**
@@ -6650,6 +6651,9 @@ export class ModuxEditor extends LitElement {
               </option>
               <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
               <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
+              <option value="view:explorer" ?selected=${this._view === 'explorer'}>
+                Explorador (beta)
+              </option>
               <option value="view:design" ?selected=${this._view === 'design'}>
                 Diseño (páginas)
               </option>
@@ -7079,6 +7083,15 @@ export class ModuxEditor extends LitElement {
       <div class="canvas-wrap">
       ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
+        : this._view === 'explorer'
+        ? html`<modux-explorer
+            .model=${this.model}
+            @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
+              const kind = e.detail.kind === 'policy' ? 'use-case' : e.detail.kind;
+              const mapped = normalizeActivation(e.detail.id, kind);
+              if (mapped) this.emit('modux-activate', mapped);
+            }}
+          ></modux-explorer>`
         : this._tilt
         ? html`
       ${this.renderPalette()}

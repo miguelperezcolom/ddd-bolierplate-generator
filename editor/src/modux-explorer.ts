@@ -1,0 +1,708 @@
+import { LitElement, html, css } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import type { ModuxModel, UiMenuEntryRef } from './model.js';
+
+/**
+ * Explorador radial del modelo: un árbol vivo con física de muelles.
+ * El proyecto en el centro; click en un nodo y sus hijos brotan de él
+ * empujados por la simulación (no hay tweens). Un ruido de baja amplitud
+ * mantiene todo respirando para que el lienzo nunca se sienta estático.
+ *
+ * Interacción: click = expandir/plegar · hover = ampliar + ficha ·
+ * doble click = abrir (emite node-activated {id, kind}) ·
+ * arrastrar nodo = tirar de su subárbol · fondo = pan · rueda = zoom.
+ *
+ * Solo lectura: las posiciones son efímeras (las posee la física), no se
+ * persisten en el layout del editor.
+ */
+
+interface XNode {
+  /** Path-unique id (a page can hang from two apps). */
+  key: string;
+  /** Model id, for activation. */
+  refId: string;
+  kind: string;
+  label: string;
+  color: string;
+  depth: number;
+  parent?: XNode;
+  children?: XNode[];
+  expanded: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Hover grow animation, lerped each frame towards its target. */
+  scale: number;
+  /** Per-node phases so the idle breathing never synchronizes. */
+  p1: number;
+  p2: number;
+  f1: number;
+  f2: number;
+}
+
+const KIND_COLOR: Record<string, string> = {
+  root: '#334155',
+  module: '#0369a1',
+  'external-system': '#9333ea',
+  'ui-app': '#16a34a',
+  page: '#22c55e',
+  actor: '#f59e0b',
+  workflow: '#7c3aed',
+  'identity-provider': '#ca8a04',
+  'ai-agent': '#e11d48',
+  aggregate: '#0d9488',
+  entity: '#14b8a6',
+  'use-case': '#2563eb',
+  policy: '#7c3aed',
+  'domain-event': '#ea580c',
+  'application-event': '#fb923c',
+  'read-model': '#475569',
+  'domain-service': '#0891b2',
+  'query-service': '#64748b',
+  'scheduled-trigger': '#d97706',
+  'etl-flow': '#0f766e',
+  notification: '#db2777',
+  document: '#475569',
+  api: '#7c3aed',
+  'api-operation': '#8b5cf6',
+  'external-use-case': '#a855f7',
+  'external-table': '#94a3b8',
+  'mcp-server': '#c026d3',
+};
+
+const KIND_LABEL: Record<string, string> = {
+  root: 'Sistema',
+  module: 'Bounded context',
+  'external-system': 'Sistema externo',
+  'ui-app': 'App',
+  page: 'Página',
+  actor: 'Actor',
+  workflow: 'Workflow',
+  'identity-provider': 'IdP',
+  'ai-agent': 'Agente IA',
+  aggregate: 'Agregado',
+  entity: 'Entidad',
+  'use-case': 'Caso de uso',
+  policy: 'Policy',
+  'domain-event': 'Evento de dominio',
+  'application-event': 'Evento de aplicación',
+  'read-model': 'Read model',
+  'domain-service': 'Servicio de dominio',
+  'query-service': 'Servicio de consulta',
+  'scheduled-trigger': 'Trigger programado',
+  'etl-flow': 'Flujo ETL',
+  notification: 'Notificación',
+  document: 'Documento',
+  api: 'API',
+  'api-operation': 'Operación',
+  'external-use-case': 'Caso de uso externo',
+  'external-table': 'Tabla externa',
+  'mcp-server': 'MCP',
+};
+
+/** Plural, for the hover summary («5 agregados», «3 casos de uso»). */
+const KIND_PLURAL: Record<string, string> = {
+  module: 'bounded contexts',
+  'external-system': 'sistemas externos',
+  'ui-app': 'apps',
+  page: 'páginas',
+  actor: 'actores',
+  workflow: 'workflows',
+  'identity-provider': 'IdPs',
+  'ai-agent': 'agentes IA',
+  aggregate: 'agregados',
+  entity: 'entidades',
+  'use-case': 'casos de uso',
+  policy: 'policies',
+  'domain-event': 'eventos de dominio',
+  'application-event': 'eventos de aplicación',
+  'read-model': 'read models',
+  'domain-service': 'servicios de dominio',
+  'query-service': 'servicios de consulta',
+  'scheduled-trigger': 'triggers programados',
+  'etl-flow': 'flujos ETL',
+  notification: 'notificaciones',
+  document: 'documentos',
+  api: 'APIs',
+  'api-operation': 'operaciones',
+  'external-use-case': 'casos de uso externos',
+  'external-table': 'tablas externas',
+  'mcp-server': 'MCPs',
+};
+
+const RADIUS = [30, 20, 13, 9.5, 7.5];
+const REST = [0, 180, 118, 80, 58];
+const SPRING_K = 0.055;
+const DAMPING = 0.86;
+const REPULSION = 2600;
+const REP_CUTOFF = 240;
+const NOISE_AMP = 0.16;
+const ANCHOR_K = 0.015;
+
+@customElement('modux-explorer')
+export class ModuxExplorer extends LitElement {
+  static styles = css`
+    :host {
+      display: block;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at center, #ffffff 0%, #f1f5f9 100%);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: default;
+    }
+    .hud {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      font: 11px/1.5 system-ui, sans-serif;
+      color: #94a3b8;
+      pointer-events: none;
+      text-align: right;
+    }
+  `;
+
+  @property({ attribute: false }) model: ModuxModel = {
+    modules: [],
+    externalSystems: [],
+    relations: [],
+    flows: [],
+  };
+
+  private root?: XNode;
+  private canvas?: HTMLCanvasElement;
+  private ctx?: CanvasRenderingContext2D;
+  private raf = 0;
+  private t = 0;
+  private cam = { x: 0, y: 0, k: 1 };
+  private hover?: XNode;
+  private dragNode?: XNode;
+  private panning = false;
+  private downAt = { x: 0, y: 0 };
+  private moved = false;
+  private ro?: ResizeObserver;
+  private reducedMotion = false;
+  /** Keeps expand/collapse + positions across model refreshes. */
+  private prevByKey = new Map<string, XNode>();
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    cancelAnimationFrame(this.raf);
+    this.ro?.disconnect();
+  }
+
+  protected firstUpdated(): void {
+    this.canvas = this.renderRoot.querySelector('canvas') ?? undefined;
+    this.ctx = this.canvas?.getContext('2d') ?? undefined;
+    this.ro = new ResizeObserver(() => this.resize());
+    this.ro.observe(this);
+    this.resize();
+    this.buildTree();
+    this.raf = requestAnimationFrame(() => this.tick());
+  }
+
+  protected updated(changed: Map<string, unknown>): void {
+    if (changed.has('model')) this.buildTree();
+  }
+
+  private resize(): void {
+    if (!this.canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = this.clientWidth || 800;
+    const h = this.clientHeight || 600;
+    this.canvas.width = w * dpr;
+    this.canvas.height = h * dpr;
+    this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (this.cam.x === 0 && this.cam.y === 0) {
+      this.cam.x = w / 2;
+      this.cam.y = h / 2;
+    }
+  }
+
+  // ── Tree construction (lazy children per node kind) ──────────────────
+
+  private buildTree(): void {
+    if (this.root) this.rememberSubtree(this.root);
+    this.root = this.makeNode('root', 'root', 'Sistema', 0, undefined);
+    this.root.x = 0;
+    this.root.y = 0;
+    if (!this.prevByKey.has(this.root.key)) this.root.expanded = true;
+    this.materialize(this.root);
+  }
+
+  private rememberSubtree(n: XNode): void {
+    this.prevByKey.set(n.key, n);
+    for (const c of n.children ?? []) this.rememberSubtree(c);
+  }
+
+  private makeNode(kind: string, refId: string, label: string, depth: number, parent?: XNode): XNode {
+    const key = `${parent?.key ?? ''}/${kind}:${refId}`;
+    const prev = this.prevByKey.get(key);
+    const jitter = () => (Math.random() - 0.5) * 10;
+    const n: XNode = {
+      key,
+      refId,
+      kind,
+      label,
+      color: KIND_COLOR[kind] ?? '#64748b',
+      depth,
+      parent,
+      expanded: prev?.expanded ?? false,
+      x: prev?.x ?? (parent ? parent.x + jitter() : 0),
+      y: prev?.y ?? (parent ? parent.y + jitter() : 0),
+      vx: 0,
+      vy: 0,
+      scale: 1,
+      p1: Math.random() * Math.PI * 2,
+      p2: Math.random() * Math.PI * 2,
+      f1: 0.35 + Math.random() * 0.4,
+      f2: 0.3 + Math.random() * 0.45,
+    };
+    return n;
+  }
+
+  /** Builds n.children (idempotent) and recurses into expanded ones. */
+  private materialize(n: XNode): void {
+    if (!n.children) n.children = this.childrenOf(n);
+    if (n.expanded) for (const c of n.children) this.materialize(c);
+  }
+
+  private childrenOf(n: XNode): XNode[] {
+    const m = this.model;
+    const d = n.depth + 1;
+    const mk = (kind: string, id: string, label: string) => this.makeNode(kind, id, label, d, n);
+    switch (n.kind) {
+      case 'root':
+        return [
+          ...m.modules.map((x) => mk('module', x.id, x.name)),
+          ...m.externalSystems.map((x) => mk('external-system', x.id, x.name)),
+          ...(m.uiApps ?? []).map((x) => mk('ui-app', x.id, x.name)),
+          ...(m.actors ?? []).map((x) => mk('actor', x.id, x.name)),
+          ...(m.aiAgents ?? []).filter((a) => !a.external).map((x) => mk('ai-agent', x.id, x.name)),
+          ...(m.workflows ?? []).map((x) => mk('workflow', x.id, x.name)),
+          ...(m.identityProviders ?? []).map((x) => mk('identity-provider', x.id, x.name)),
+        ];
+      case 'module': {
+        const mod = m.modules.find((x) => x.id === n.refId);
+        if (!mod) return [];
+        return [
+          ...(m.aggregates ?? []).filter((a) => a.moduleId === n.refId).map((x) => mk('aggregate', x.id, x.name)),
+          ...(mod.useCases ?? []).map((x) => mk(x.policy ? 'policy' : 'use-case', x.id, x.name)),
+          ...(mod.domainEvents ?? []).map((x) => mk('domain-event', x.id, x.name)),
+          ...(mod.applicationEvents ?? []).map((x) => mk('application-event', x.id, x.name)),
+          ...(mod.readModels ?? []).map((x) => mk('read-model', x.id, x.name)),
+          ...(mod.domainServices ?? []).map((x) => mk('domain-service', x.id, x.name)),
+          ...(mod.queryServices ?? []).map((x) => mk('query-service', x.id, x.name)),
+          ...(mod.scheduledTriggers ?? []).map((x) => mk('scheduled-trigger', x.id, x.name)),
+          ...(m.etlFlows ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('etl-flow', x.id, x.name)),
+          ...(m.notifications ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('notification', x.id, x.name)),
+          ...(m.documents ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('document', x.id, x.name)),
+        ];
+      }
+      case 'aggregate':
+        return (m.entities ?? []).filter((e) => e.aggregateId === n.refId).map((x) => mk('entity', x.id, x.name));
+      case 'external-system': {
+        const ext = m.externalSystems.find((x) => x.id === n.refId);
+        if (!ext) return [];
+        return [
+          ...(m.apis ?? []).filter((a) => a.publishedByExternalSystemId === n.refId).map((x) => mk('api', x.id, x.name)),
+          ...(ext.useCases ?? []).map((x) => mk('external-use-case', x.id, x.name)),
+          ...(ext.tables ?? []).map((x) => mk('external-table', x.id, x.name)),
+          ...(ext.mcpServers ?? []).map((x) => mk('mcp-server', x.id, x.name)),
+        ];
+      }
+      case 'api': {
+        const api = (m.apis ?? []).find((a) => a.id === n.refId);
+        return (api?.operations ?? []).map((x) => mk('api-operation', x.id, x.name));
+      }
+      case 'ui-app': {
+        const app = (m.uiApps ?? []).find((a) => a.id === n.refId);
+        if (!app) return [];
+        const pageIds = new Set<string>();
+        const walk = (items?: UiMenuEntryRef[]) => {
+          for (const it of items ?? []) {
+            if (it.pageId) pageIds.add(it.pageId);
+            walk(it.children);
+          }
+        };
+        walk(app.menuItems);
+        for (const pid of [app.headerPageId, app.homePageId, app.viewPageId, app.editPageId]) {
+          if (pid) pageIds.add(pid);
+        }
+        return [...pageIds]
+          .map((pid) => (m.pages ?? []).find((p) => p.id === pid))
+          .filter((p): p is NonNullable<typeof p> => !!p)
+          .map((p) => mk('page', p.id, p.name));
+      }
+      default:
+        return [];
+    }
+  }
+
+  // ── Simulation ────────────────────────────────────────────────────────
+
+  private visible(): XNode[] {
+    const out: XNode[] = [];
+    const walk = (n: XNode) => {
+      out.push(n);
+      if (n.expanded) for (const c of n.children ?? []) walk(c);
+    };
+    if (this.root) walk(this.root);
+    return out;
+  }
+
+  private tick(): void {
+    this.t += 1 / 60;
+    const nodes = this.visible();
+    this.step(nodes);
+    this.draw(nodes);
+    this.raf = requestAnimationFrame(() => this.tick());
+  }
+
+  private step(nodes: XNode[]): void {
+    const t = this.t;
+    // Springs: each visible node towards its parent at the depth's rest length.
+    for (const n of nodes) {
+      if (n.parent) {
+        const rest =
+          (REST[Math.min(n.depth, REST.length - 1)] ?? 60) +
+          Math.min(60, ((n.parent.children?.length ?? 1) - 1) * 2.5);
+        let dx = n.x - n.parent.x;
+        let dy = n.y - n.parent.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist < 0.01) {
+          const a = Math.random() * Math.PI * 2;
+          dx = Math.cos(a) * 0.1;
+          dy = Math.sin(a) * 0.1;
+          dist = 0.1;
+        }
+        const f = SPRING_K * (dist - rest);
+        const fx = (dx / dist) * f;
+        const fy = (dy / dist) * f;
+        n.vx -= fx;
+        n.vy -= fy;
+        n.parent.vx += fx * 0.4;
+        n.parent.vy += fy * 0.4;
+      } else {
+        n.vx -= n.x * ANCHOR_K;
+        n.vy -= n.y * ANCHOR_K;
+      }
+      if (!this.reducedMotion) {
+        n.vx += Math.sin(t * n.f1 * Math.PI * 2 + n.p1) * NOISE_AMP;
+        n.vy += Math.cos(t * n.f2 * Math.PI * 2 + n.p2) * NOISE_AMP;
+      }
+    }
+    // Pairwise repulsion within a cutoff; hubs (low depth) push harder.
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        if (Math.abs(dx) > REP_CUTOFF || Math.abs(dy) > REP_CUTOFF) continue;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > REP_CUTOFF * REP_CUTOFF || d2 < 0.01) continue;
+        const d = Math.sqrt(d2);
+        const hub = a.depth <= 1 && b.depth <= 1 ? 3 : 1;
+        const f = (REPULSION * hub) / d2;
+        const fx = (dx / d) * f;
+        const fy = (dy / d) * f;
+        a.vx -= fx;
+        a.vy -= fy;
+        b.vx += fx;
+        b.vy += fy;
+      }
+    }
+    for (const n of nodes) {
+      if (n === this.dragNode) {
+        n.vx = 0;
+        n.vy = 0;
+        continue;
+      }
+      n.vx *= DAMPING;
+      n.vy *= DAMPING;
+      const v = Math.hypot(n.vx, n.vy);
+      if (v > 14) {
+        n.vx = (n.vx / v) * 14;
+        n.vy = (n.vy / v) * 14;
+      }
+      n.x += n.vx;
+      n.y += n.vy;
+      const target = n === this.hover ? 1.75 : 1;
+      n.scale += (target - n.scale) * 0.18;
+    }
+  }
+
+  // ── Drawing ───────────────────────────────────────────────────────────
+
+  private radiusOf(n: XNode): number {
+    return (RADIUS[Math.min(n.depth, RADIUS.length - 1)] ?? 7) * n.scale;
+  }
+
+  private draw(nodes: XNode[]): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.canvas) return;
+    const w = this.clientWidth;
+    const h = this.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(this.cam.x, this.cam.y);
+    ctx.scale(this.cam.k, this.cam.k);
+
+    ctx.lineWidth = 1.3 / this.cam.k;
+    for (const n of nodes) {
+      if (!n.parent) continue;
+      ctx.strokeStyle = n.color + '55';
+      ctx.beginPath();
+      ctx.moveTo(n.parent.x, n.parent.y);
+      ctx.lineTo(n.x, n.y);
+      ctx.stroke();
+    }
+
+    const fontPx = (px: number) => `${px}px system-ui, sans-serif`;
+    for (const n of nodes) {
+      const r = this.radiusOf(n);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = n.expanded ? n.color + '22' : '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = (n === this.hover ? 2.6 : 1.8) / this.cam.k;
+      ctx.strokeStyle = n.color;
+      ctx.stroke();
+      const kids = n.children?.length ?? 0;
+      if (!n.expanded && kids > 0) {
+        // Collapsed hub: a count badge so you can tell there is more inside.
+        const br = Math.max(7, r * 0.42);
+        const bx = n.x + r * 0.75;
+        const by = n.y + r * 0.75;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fillStyle = n.color;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = fontPx(br * 1.1);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(kids), bx, by + 0.5);
+      }
+      const showLabel = n.depth <= 1 || n === this.hover || this.cam.k > 0.8;
+      if (showLabel) {
+        const label = n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label;
+        ctx.font = n === this.hover ? `600 ${fontPx(12)}` : fontPx(n.depth <= 1 ? 12 : 10.5);
+        ctx.fillStyle = n === this.hover ? '#0f172a' : '#475569';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(label, n.x, n.y + r + 4);
+      }
+    }
+
+    ctx.restore();
+    if (this.hover) this.drawCard(ctx, this.hover, w, h);
+  }
+
+  /** Hover card: what the node is, what it holds, how to enter. Screen space, clamped to the canvas. */
+  private drawCard(ctx: CanvasRenderingContext2D, n: XNode, w: number, h: number): void {
+    const counts = new Map<string, number>();
+    for (const c of n.children ?? []) counts.set(c.kind, (counts.get(c.kind) ?? 0) + 1);
+    const lines: string[] = [];
+    for (const [kind, count] of counts) {
+      lines.push(`${count} ${count === 1 ? (KIND_LABEL[kind] ?? kind).toLowerCase() : (KIND_PLURAL[kind] ?? kind)}`);
+      if (lines.length === 5) {
+        const rest = [...counts.keys()].length - 5;
+        if (rest > 0) lines[4] += ` (+${rest} tipos más)`;
+        break;
+      }
+    }
+    const title = n.label;
+    const sub = KIND_LABEL[n.kind] ?? n.kind;
+    const hint =
+      (n.children?.length ? (n.expanded ? 'click: plegar' : 'click: expandir') : '') +
+      (n.kind !== 'root' ? (n.children?.length ? ' · ' : '') + 'doble click: abrir' : '');
+    ctx.save();
+    ctx.font = '600 13px system-ui, sans-serif';
+    const wTitle = ctx.measureText(title).width;
+    ctx.font = '11px system-ui, sans-serif';
+    const wLines = Math.max(
+      ctx.measureText(sub).width,
+      ...lines.map((l) => ctx.measureText(l).width),
+      ctx.measureText(hint).width,
+    );
+    const bw = Math.min(280, Math.max(wTitle, wLines) + 24);
+    const bh = 40 + lines.length * 15 + (hint ? 18 : 0);
+    // Beside the node, flipped/clamped so it never leaves the canvas.
+    const sr = this.radiusOf(n) * this.cam.k;
+    const sx = this.cam.x + n.x * this.cam.k;
+    const sy = this.cam.y + n.y * this.cam.k;
+    let bx = sx + sr + 14;
+    if (bx + bw > w - 8) bx = sx - sr - 14 - bw;
+    bx = Math.max(8, Math.min(bx, w - bw - 8));
+    const by = Math.max(8, Math.min(sy - 10, h - bh - 8));
+    ctx.translate(bx, by);
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, bw, bh, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(title, 12, 9);
+    ctx.fillStyle = n.color;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillText(sub, 12, 25);
+    ctx.fillStyle = '#475569';
+    lines.forEach((l, i) => ctx.fillText(l, 12, 41 + i * 15));
+    if (hint) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(hint, 12, bh - 16);
+    }
+    ctx.restore();
+  }
+
+  // ── Interaction ───────────────────────────────────────────────────────
+
+  private toWorld(e: PointerEvent | WheelEvent): { x: number; y: number } {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left - this.cam.x) / this.cam.k,
+      y: (e.clientY - rect.top - this.cam.y) / this.cam.k,
+    };
+  }
+
+  private nodeAt(wx: number, wy: number): XNode | undefined {
+    // Iterate deepest-last so small leaves win over their big parents.
+    const nodes = this.visible();
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const r = this.radiusOf(n) + 4 / this.cam.k;
+      if ((wx - n.x) ** 2 + (wy - n.y) ** 2 <= r * r) return n;
+    }
+    return undefined;
+  }
+
+  private onPointerDown(e: PointerEvent): void {
+    const w = this.toWorld(e);
+    this.downAt = { x: e.clientX, y: e.clientY };
+    this.moved = false;
+    const n = this.nodeAt(w.x, w.y);
+    if (n) {
+      this.dragNode = n;
+    } else {
+      this.panning = true;
+    }
+    try {
+      (e.target as Element).setPointerCapture(e.pointerId);
+    } catch {
+      /* synthetic events */
+    }
+  }
+
+  private onPointerMove(e: PointerEvent): void {
+    if (Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y) > 4) this.moved = true;
+    if (this.dragNode) {
+      const w = this.toWorld(e);
+      this.dragNode.x = w.x;
+      this.dragNode.y = w.y;
+      return;
+    }
+    if (this.panning && (e.buttons & 1)) {
+      this.cam.x += e.movementX;
+      this.cam.y += e.movementY;
+      return;
+    }
+    const w = this.toWorld(e);
+    this.hover = this.nodeAt(w.x, w.y);
+    if (this.canvas) this.canvas.style.cursor = this.hover ? 'pointer' : 'default';
+  }
+
+  private onPointerUp(): void {
+    const n = this.dragNode;
+    this.dragNode = undefined;
+    this.panning = false;
+    if (n && !this.moved) this.toggle(n);
+  }
+
+  /** Click: the node explodes — children burst out from it and the springs settle. */
+  private toggle(n: XNode): void {
+    if (!n.children?.length) return;
+    n.expanded = !n.expanded;
+    if (n.expanded) {
+      // Children are born at the parent and shot outwards, away from the
+      // grandparent so the subtree opens into free space.
+      const away = n.parent ? Math.atan2(n.y - n.parent.y, n.x - n.parent.x) : Math.random() * Math.PI * 2;
+      const spread = n.parent ? Math.PI * 1.25 : Math.PI * 2;
+      const kids = n.children;
+      kids.forEach((c, i) => {
+        this.materialize(c.parent!);
+        const a = away - spread / 2 + (spread * (i + 0.5)) / kids.length;
+        c.x = n.x + Math.cos(a) * 6;
+        c.y = n.y + Math.sin(a) * 6;
+        c.vx = Math.cos(a) * 7;
+        c.vy = Math.sin(a) * 7;
+        if (!c.children) c.children = this.childrenOf(c);
+      });
+      // A little recoil on the parent sells the explosion.
+      n.vx -= Math.cos(away) * 2;
+      n.vy -= Math.sin(away) * 2;
+    }
+  }
+
+  private onDblClick(e: MouseEvent): void {
+    const rect = this.getBoundingClientRect();
+    const wx = (e.clientX - rect.left - this.cam.x) / this.cam.k;
+    const wy = (e.clientY - rect.top - this.cam.y) / this.cam.k;
+    const n = this.nodeAt(wx, wy);
+    if (!n || n.kind === 'root') return;
+    this.dispatchEvent(
+      new CustomEvent('node-activated', {
+        detail: { id: n.refId, kind: n.kind },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private onWheel(e: WheelEvent): void {
+    e.preventDefault();
+    const rect = this.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const factor = Math.exp(-e.deltaY * 0.0012);
+    const k = Math.min(2.5, Math.max(0.25, this.cam.k * factor));
+    const real = k / this.cam.k;
+    this.cam.x = px - (px - this.cam.x) * real;
+    this.cam.y = py - (py - this.cam.y) * real;
+    this.cam.k = k;
+  }
+
+  render() {
+    return html`
+      <canvas
+        @pointerdown=${this.onPointerDown}
+        @pointermove=${this.onPointerMove}
+        @pointerup=${this.onPointerUp}
+        @dblclick=${this.onDblClick}
+        @wheel=${this.onWheel}
+      ></canvas>
+      <div class="hud">
+        click: expandir / plegar · doble click: abrir · hover: ver contenido<br />
+        arrastrar nodo: tirar del subárbol · fondo: mover · rueda: zoom
+      </div>
+    `;
+  }
+}
