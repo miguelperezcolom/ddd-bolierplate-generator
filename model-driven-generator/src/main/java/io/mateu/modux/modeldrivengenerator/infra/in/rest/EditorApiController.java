@@ -954,7 +954,7 @@ public class EditorApiController {
                                 String queryOperationId, String mappingId,
                                 String componentId, String parentComponentId, String componentKind,
                                 String beforeComponentId, String title, String text,
-                                String cronExpression) {}
+                                String cronExpression, String beforeItemId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -3707,6 +3707,11 @@ public class EditorApiController {
     }
 
     /** Moves a menu entry (subtree included) to another app's menu root. */
+    /**
+     * Moves an entry (subtree included) anywhere in the menu forest: to another app,
+     * under a parent entry (nesting — the parent becomes a grouper), to the root
+     * (promotion), and into a concrete slot (`beforeItemId`). Same-app moves reorder.
+     */
     private void moveMenuItem(EditorCommand command) {
         var source = repository.findById(command.appId(), UiAdapterEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
@@ -3717,14 +3722,62 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
         }
+        if (command.parentId() != null
+                && findMenuItem(List.of(entry), command.parentId(), null) != null) {
+            throw new IllegalArgumentException("Una opción no puede moverse dentro de sí misma");
+        }
         var pruned = withoutFirstMatching(source.menuItems(), command.itemId(), command.label());
         repository.save(withMenuItems(source, pruned == null ? source.menuItems() : pruned));
         var reloaded = repository.findById(command.toAppId(), UiAdapterEntity.class).orElse(target);
-        var items = new ArrayList<>(reloaded.menuItems() == null
-                ? List.<UiMenuItemEntity>of() : reloaded.menuItems());
-        items.add(entry);
-        repository.save(withMenuItems(reloaded, items));
+        var items = reloaded.menuItems() == null
+                ? List.<UiMenuItemEntity>of() : reloaded.menuItems();
+        List<UiMenuItemEntity> placed = command.parentId() == null || command.parentId().isBlank()
+                ? insertedMenu(items, entry, command.beforeItemId())
+                : withMenuChildInserted(items, command.parentId(), entry, command.beforeItemId());
+        if (placed == null) {
+            throw new IllegalArgumentException("Unknown menu item: " + command.parentId());
+        }
+        repository.save(withMenuItems(reloaded, placed));
     }
+
+    /** The list with `entry` inserted before `beforeId` (append when null or absent). */
+    private static List<UiMenuItemEntity> insertedMenu(List<UiMenuItemEntity> items,
+                                                       UiMenuItemEntity entry, String beforeId) {
+        var out = new ArrayList<>(items);
+        var at = beforeId == null ? -1
+                : java.util.stream.IntStream.range(0, out.size())
+                        .filter(i -> beforeId.equals(out.get(i).id()))
+                        .findFirst().orElse(-1);
+        if (at < 0) out.add(entry); else out.add(at, entry);
+        return out;
+    }
+
+    /** The forest with `entry` hung from the entry `parentId`, wherever it lives; null if absent. */
+    private static List<UiMenuItemEntity> withMenuChildInserted(List<UiMenuItemEntity> items,
+                                                                String parentId,
+                                                                UiMenuItemEntity entry,
+                                                                String beforeId) {
+        var out = new ArrayList<UiMenuItemEntity>();
+        var found = false;
+        for (var it : items) {
+            if (parentId.equals(it.id())) {
+                found = true;
+                var children = it.children() == null ? List.<UiMenuItemEntity>of() : it.children();
+                out.add(withChildren(it, insertedMenu(children, entry, beforeId)));
+                continue;
+            }
+            var children = it.children() == null ? List.<UiMenuItemEntity>of() : it.children();
+            var nested = withMenuChildInserted(children, parentId, entry, beforeId);
+            if (nested != null) {
+                found = true;
+                out.add(withChildren(it, nested));
+            } else {
+                out.add(it);
+            }
+        }
+        return found ? out : null;
+    }
+
 
     private static UiMenuItemEntity findMenuItem(List<UiMenuItemEntity> items,
                                                  String itemId, String label) {

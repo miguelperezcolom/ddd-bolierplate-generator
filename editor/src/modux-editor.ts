@@ -1282,8 +1282,18 @@ export class ModuxEditor extends LitElement {
           .map((f) => f.fieldId);
         return current.length ? [{ kind: 'set-page-field-order', pageId: c.pageId, fieldIds: current }] : null;
       }
-      case 'move-menu-item':
-        return [{ kind: 'move-menu-item', appId: c.toAppId, toAppId: c.appId, itemId: c.itemId, label: c.label }];
+      case 'move-menu-item': {
+        const home = c.itemId ? this.menuEntryIn(c.appId, c.itemId) : null;
+        return [{
+          kind: 'move-menu-item',
+          appId: c.toAppId,
+          toAppId: c.appId,
+          itemId: c.itemId,
+          label: c.label,
+          parentId: home?.parentId ?? undefined,
+          beforeItemId: home?.beforeId ?? undefined,
+        }];
+      }
       case 'add-actor-app':
         return [{ kind: 'remove-actor-app', actorId: c.actorId, appId: c.appId }];
       case 'remove-actor-app':
@@ -2406,6 +2416,62 @@ export class ModuxEditor extends LitElement {
           label: page.name,
           pageId: sourceId,
           itemId: this.newMenuItemId(page.name),
+        });
+        return;
+      }
+      // an entry dragged onto ANOTHER entry moves it: the edges slot it as a sibling,
+      // the middle nests it (the target becomes a grouper); onto an app, to its root —
+      // including another app's. The subtree travels whole.
+      const srcMenu = parseMenuNodeId(sourceId);
+      if (srcMenu?.itemId && (parseMenuNodeId(targetId)?.itemId || isApp(targetId))) {
+        const tgtMenu = parseMenuNodeId(targetId);
+        const src = this.menuEntryIn(srcMenu.appId, srcMenu.itemId);
+        if (!src) return;
+        if (tgtMenu?.itemId) {
+          const tgt = this.menuEntryIn(tgtMenu.appId, tgtMenu.itemId);
+          if (!tgt) return;
+          // its own subtree is off-limits
+          const inSubtree = (items?: UiMenuEntryRef[]): boolean =>
+            (items ?? []).some((it) => it.id === tgtMenu.itemId || inSubtree(it.children));
+          if (srcMenu.appId === tgtMenu.appId && (tgtMenu.itemId === srcMenu.itemId || inSubtree(src.entry.children))) {
+            return;
+          }
+          // where on the row: edges slot a sibling, the middle nests
+          const g = this.renderRoot
+            .querySelector('modux-canvas')
+            ?.renderRoot.querySelector(`g[data-node-id="${targetId}"]`);
+          const rect = g?.getBoundingClientRect();
+          const fr = rect && y !== undefined ? (y - rect.top) / Math.max(1, rect.height) : 0.5;
+          const pos = fr < 0.3 ? 'before' : fr > 0.7 ? 'after' : 'nest';
+          if (pos === 'nest') {
+            this.command({
+              kind: 'move-menu-item',
+              appId: srcMenu.appId,
+              toAppId: tgtMenu.appId,
+              itemId: srcMenu.itemId,
+              parentId: tgtMenu.itemId,
+            });
+          } else {
+            const before = pos === 'before' ? tgtMenu.itemId : (tgt.beforeId ?? undefined);
+            if (srcMenu.appId === tgtMenu.appId && tgt.parentId === src.parentId && before === srcMenu.itemId) return;
+            this.command({
+              kind: 'move-menu-item',
+              appId: srcMenu.appId,
+              toAppId: tgtMenu.appId,
+              itemId: srcMenu.itemId,
+              parentId: tgt.parentId ?? undefined,
+              beforeItemId: before,
+            });
+          }
+          return;
+        }
+        // dropped on an app: to its root level (also the promote-to-top gesture)
+        if (srcMenu.appId === targetId && !src.parentId) return; // already there
+        this.command({
+          kind: 'move-menu-item',
+          appId: srcMenu.appId,
+          toAppId: targetId,
+          itemId: srcMenu.itemId,
         });
         return;
       }
@@ -4343,6 +4409,27 @@ export class ModuxEditor extends LitElement {
     let id = base;
     for (let n = 2; used.has(id) || used.has(`${id}-tab-1`); n++) id = `${base}-${n}`;
     return id;
+  }
+
+  /** A menu entry (with its parent and next sibling) inside an app's tree, by id. */
+  private menuEntryIn(appId: string, itemId: string): {
+    entry: UiMenuEntryRef;
+    parentId: string | null;
+    beforeId: string | null;
+  } | null {
+    const app = (this.model.uiApps ?? []).find((a) => a.id === appId);
+    let found: { entry: UiMenuEntryRef; parentId: string | null; beforeId: string | null } | null = null;
+    const walk = (items: UiMenuEntryRef[] | undefined, up: string | null) => {
+      const list = items ?? [];
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].id === itemId) {
+          found = { entry: list[i], parentId: up, beforeId: list[i + 1]?.id ?? null };
+        }
+        walk(list[i].children, list[i].id ?? null);
+      }
+    };
+    walk(app?.menuItems, null);
+    return found;
   }
 
   /** Supr borra, Ctrl+C copia el subárbol, Ctrl+V lo pega bajo la selección. */

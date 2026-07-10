@@ -715,7 +715,16 @@ export type ModuxCommand =
       parentLabel?: string;
     }
   | { kind: 'remove-menu-item'; appId: string; label?: string; itemId?: string }
-  | { kind: 'move-menu-item'; appId: string; toAppId: string; itemId?: string; label?: string }
+  | {
+      /** Moves an entry (subtree included): to another app, under a parent, into a slot. */
+      kind: 'move-menu-item';
+      appId: string;
+      toAppId: string;
+      itemId?: string;
+      label?: string;
+      parentId?: string;
+      beforeItemId?: string;
+    }
   | { kind: 'set-menu-app'; appId: string; toAppId: string | null; itemId?: string; label?: string }
   | {
       kind: 'set-menu-use-case';
