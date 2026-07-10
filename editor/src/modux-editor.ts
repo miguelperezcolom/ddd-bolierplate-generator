@@ -4411,6 +4411,57 @@ export class ModuxEditor extends LitElement {
     return id;
   }
 
+  /** A menu row dropped on a slot (between options / an app's end) or nested on a row. */
+  private onMenuSlotRequested = (e: CustomEvent): void => {
+    const { id, appId, beforeId, nestRowId } = e.detail as {
+      id: string;
+      appId?: string;
+      beforeId?: string | null;
+      nestRowId?: string;
+    };
+    const src = parseMenuNodeId(id);
+    if (!src?.itemId) return;
+    const home = this.menuEntryIn(src.appId, src.itemId);
+    if (!home) return;
+    const inSubtree = (items: UiMenuEntryRef[] | undefined, needle: string): boolean =>
+      (items ?? []).some((it) => it.id === needle || inSubtree(it.children, needle));
+    if (nestRowId) {
+      const tgt = parseMenuNodeId(nestRowId);
+      if (!tgt?.itemId || tgt.itemId === src.itemId) return;
+      if (src.appId === tgt.appId && inSubtree(home.entry.children, tgt.itemId)) return;
+      this.command({
+        kind: 'move-menu-item',
+        appId: src.appId,
+        toAppId: tgt.appId,
+        itemId: src.itemId,
+        parentId: tgt.itemId,
+      });
+      return;
+    }
+    if (beforeId) {
+      const tgt = parseMenuNodeId(beforeId);
+      if (!tgt?.itemId || tgt.itemId === src.itemId) return;
+      const tgtHome = this.menuEntryIn(tgt.appId, tgt.itemId);
+      if (!tgtHome) return;
+      // the slot's level must not live inside the dragged subtree
+      if (src.appId === tgt.appId && inSubtree(home.entry.children, tgt.itemId)) return;
+      if (src.appId === tgt.appId && tgtHome.parentId === home.parentId && home.beforeId === tgt.itemId) {
+        return; // already exactly there
+      }
+      this.command({
+        kind: 'move-menu-item',
+        appId: src.appId,
+        toAppId: tgt.appId,
+        itemId: src.itemId,
+        parentId: tgtHome.parentId ?? undefined,
+        beforeItemId: tgt.itemId,
+      });
+      return;
+    }
+    if (!appId) return;
+    this.command({ kind: 'move-menu-item', appId: src.appId, toAppId: appId, itemId: src.itemId });
+  };
+
   /** A menu entry (with its parent and next sibling) inside an app's tree, by id. */
   private menuEntryIn(appId: string, itemId: string): {
     entry: UiMenuEntryRef;
@@ -6239,6 +6290,7 @@ export class ModuxEditor extends LitElement {
         @nodes-moved=${this.onNodesMoved}
         @node-reparent-requested=${this.onNodeReparentRequested}
         @node-collapse-toggled=${this.onNodeCollapseToggled}
+        @menu-slot-requested=${this.onMenuSlotRequested}
         @node-proxy-requested=${this.onNodeProxyRequested}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}

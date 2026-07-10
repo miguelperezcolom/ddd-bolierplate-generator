@@ -137,6 +137,12 @@ export class ModuxCanvas extends LitElement {
 
   @state() private _t: ZoomTransform = zoomIdentity;
   @state() private _dragPos: { id: string; x: number; y: number } | null = null;
+  /** Dragging a menu row: every landing slot, with the one under the pointer lit. */
+  @state() private _menuSlots: {
+    slots: { x1: number; x2: number; y: number; appId: string; beforeId: string | null }[];
+    active: number | null;
+    nestRowId: string | null;
+  } | null = null;
   /** Live positions of every node in a multi-selection drag. */
   @state() private _dragGroup: Map<string, { x: number; y: number }> | null = null;
   @state() private _pendingLink: { sourceId: string; x: number; y: number } | null = null;
@@ -555,6 +561,33 @@ export class ModuxCanvas extends LitElement {
     // on another external system re-homes the API (the handle stays for relations).
     const freeDrag = (ev: PointerEvent) =>
       (ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group;
+    // Menu rows drag FREE between apps, landing on explicit slots between the options.
+    const menuRow = (node.kind === 'menu-item' || node.kind === 'menu-group') && !group;
+    const menuSlotsOf = () => {
+      const slots: { x1: number; x2: number; y: number; appId: string; beforeId: string | null }[] = [];
+      for (const app of this.scene.nodes.filter((n) => n.kind === 'ui-app')) {
+        const rows = this.scene.nodes
+          .filter(
+            (n) =>
+              n.parentId === app.id &&
+              (n.kind === 'menu-item' || n.kind === 'menu-group') &&
+              n.id !== node.id,
+          )
+          .sort((r1, r2) => r1.y - r2.y);
+        const x1 = app.x - app.w / 2 + CONTAINER_INSET;
+        const x2 = app.x + app.w / 2 - CONTAINER_INSET;
+        for (const r of rows) slots.push({ x1, x2, y: r.y - r.h / 2 - 3, appId: app.id, beforeId: r.id });
+        const last = rows[rows.length - 1];
+        slots.push({
+          x1,
+          x2,
+          y: last ? last.y + last.h / 2 + 3 : app.y - app.h / 2 + CONTAINER_HEADER + 8,
+          appId: app.id,
+          beforeId: null,
+        });
+      }
+      return slots;
+    };
     const dropHome = (ev: PointerEvent): string | null => {
       const targetId = this.nodeIdAt(ev);
       const target =
@@ -584,6 +617,35 @@ export class ModuxCanvas extends LitElement {
           positions.set(n.id, { x: c.x, y: c.y });
         }
         this._dragGroup = positions;
+      } else if (menuRow) {
+        this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
+        if (!this._menuSlots) this._menuSlots = { slots: menuSlotsOf(), active: null, nestRowId: null };
+        // The pointer decides: the middle of another row nests; otherwise the
+        // nearest slot line (within reach) takes the drop.
+        const rows = this.scene.nodes.filter(
+          (n) =>
+            (n.kind === 'menu-item' || n.kind === 'menu-group') &&
+            n.id !== node.id &&
+            Math.abs(p.x - n.x) <= n.w / 2 + 8,
+        );
+        const nest = rows.find((n) => Math.abs(p.y - n.y) < n.h * 0.28);
+        if (nest) {
+          this._menuSlots = { ...this._menuSlots, active: null, nestRowId: nest.id };
+          this._hoverNodeId = nest.id;
+        } else {
+          let best = -1;
+          let bestD = 14;
+          this._menuSlots.slots.forEach((s, i) => {
+            if (p.x < s.x1 - 24 || p.x > s.x2 + 24) return;
+            const d = Math.abs(p.y - s.y);
+            if (d < bestD) {
+              bestD = d;
+              best = i;
+            }
+          });
+          this._menuSlots = { ...this._menuSlots, active: best >= 0 ? best : null, nestRowId: null };
+          this._hoverNodeId = null;
+        }
       } else if (freeDrag(ev)) {
         this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
         this._hoverNodeId = dropHome(ev);
@@ -599,6 +661,18 @@ export class ModuxCanvas extends LitElement {
         this.emit('nodes-moved', {
           moves: [...this._dragGroup.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y })),
         });
+      } else if (moved && this._dragPos && menuRow) {
+        const state = this._menuSlots;
+        this._menuSlots = null;
+        this._dragPos = null;
+        this._hoverNodeId = null;
+        if (state?.nestRowId) {
+          this.emit('menu-slot-requested', { id: node.id, nestRowId: state.nestRowId });
+        } else if (state && state.active !== null) {
+          const slot = state.slots[state.active];
+          this.emit('menu-slot-requested', { id: node.id, appId: slot.appId, beforeId: slot.beforeId });
+        }
+        return;
       } else if (moved && this._dragPos) {
         if (freeDrag(ev)) {
           const home = dropHome(ev);
@@ -1408,6 +1482,21 @@ export class ModuxCanvas extends LitElement {
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
           ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
           ${edgeInks}
+          ${this._menuSlots
+            ? svg`<g pointer-events="none">
+                ${this._menuSlots.slots.map(
+                  (s, i) => svg`
+                    <line x1=${s.x1} y1=${s.y} x2=${s.x2} y2=${s.y}
+                          stroke=${i === this._menuSlots!.active ? '#0284c7' : '#bae6fd'}
+                          stroke-width=${i === this._menuSlots!.active ? 3.5 : 1.5}
+                          stroke-linecap="round"></line>
+                    ${i === this._menuSlots!.active
+                      ? svg`<circle cx=${s.x1} cy=${s.y} r="3.5" fill="#0284c7"></circle>
+                          <circle cx=${s.x2} cy=${s.y} r="3.5" fill="#0284c7"></circle>`
+                      : ''}`,
+                )}
+              </g>`
+            : ''}
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>
