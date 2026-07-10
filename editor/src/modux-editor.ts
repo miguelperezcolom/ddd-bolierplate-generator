@@ -992,6 +992,50 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'delete-ui-app', id: c.id }];
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
+      case 'delete-ui-app': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.id);
+        if (!app) return null;
+        const ops: ModuxCommand[] = [{ kind: 'create-ui-app', id: app.id, name: app.name }];
+        const rebuildMenu = (items: UiMenuEntryRef[] | undefined, parent?: UiMenuEntryRef) => {
+          for (const it of items ?? []) {
+            ops.push({
+              kind: 'add-menu-item',
+              appId: app.id,
+              label: it.label,
+              itemId: it.id,
+              parentId: parent?.id,
+              parentLabel: parent && !parent.id ? parent.label : undefined,
+              pageId: it.pageId ?? null,
+            });
+            if (it.uiAdapterId) {
+              ops.push({ kind: 'set-menu-app', appId: app.id, toAppId: it.uiAdapterId, itemId: it.id, label: it.label });
+            }
+            if (it.useCaseId) {
+              ops.push({ kind: 'set-menu-use-case', appId: app.id, useCaseId: it.useCaseId, itemId: it.id, label: it.label });
+            }
+            if (it.aggregateId) {
+              ops.push({ kind: 'set-menu-aggregate', appId: app.id, aggregateId: it.aggregateId, itemId: it.id, label: it.label });
+            }
+            if (it.queryOperationId) {
+              ops.push({
+                kind: 'set-menu-query-operation',
+                appId: app.id,
+                queryServiceId: it.queryServiceId ?? null,
+                queryOperationId: it.queryOperationId,
+                itemId: it.id,
+                label: it.label,
+              });
+            }
+            rebuildMenu(it.children, it);
+          }
+        };
+        rebuildMenu(app.menuItems);
+        for (const u of this.model.actorAppUses ?? []) {
+          if (u.appId === c.id) ops.push({ kind: 'add-actor-app', actorId: u.actorId, appId: c.id });
+        }
+        // menu entries of OTHER apps that pointed here are cleared server-side and stay so
+        return ops;
+      }
       case 'delete-ui-page': {
         const pg = (this.model.pages ?? []).find((x) => x.id === c.id);
         if (!pg) return null;
