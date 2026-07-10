@@ -5919,7 +5919,7 @@ export class ModuxEditor extends LitElement {
     targetId: string | null,
     slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null,
   ): void {
-    // a mapping dropped on a BUTTON transforms its viewmodel into the use case's request
+    // a mapping dropped on a BUTTON transforms its viewmodel; a USE CASE retargets it
     const btnHit = targetId ? /^btn:([^:]+):(.+)$/.exec(targetId) : null;
     if (btnHit) {
       const mapping = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
@@ -5932,9 +5932,58 @@ export class ModuxEditor extends LitElement {
           mappingId: id,
         });
         this.emit('modux-notice', { message: `El botón mapea con ${mapping.name}` });
-      } else {
-        this.emit('modux-notice', { message: 'Sobre un botón se sueltan MAPEADOS del Catálogo' });
+        return;
       }
+      const newUc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+      if (newUc) {
+        if (id === btnHit[2]) return;
+        const pg = (this.model.pages ?? []).find((x) => x.id === btnHit[1]);
+        const btn = (pg?.buttons ?? []).find((x) => x.useCaseId === btnHit[2]);
+        if (!btn) return;
+        if ((pg?.buttons ?? []).some((x) => x.useCaseId === id)) {
+          this.emit('modux-notice', { message: 'La página ya tiene un botón para ese caso de uso' });
+          return;
+        }
+        // retarget = the same button (label, bar, mapping) pointing at the new use case
+        this.command({ kind: 'remove-page-button', pageId: btnHit[1], useCaseId: btnHit[2] }, false);
+        this.command(
+          { kind: 'add-page-button', pageId: btnHit[1], useCaseId: id, label: btn.label, type: btn.bar },
+          false,
+        );
+        if (btn.mappingId) {
+          this.command(
+            { kind: 'set-page-button', pageId: btnHit[1], useCaseId: id, label: null, mappingId: btn.mappingId },
+            false,
+          );
+        }
+        this.pushUndoEntry([
+          { kind: 'remove-page-button', pageId: btnHit[1], useCaseId: id },
+          { kind: 'add-page-button', pageId: btnHit[1], useCaseId: btnHit[2], label: btn.label, type: btn.bar },
+          ...(btn.mappingId
+            ? [{ kind: 'set-page-button', pageId: btnHit[1], useCaseId: btnHit[2], label: null, mappingId: btn.mappingId } as ModuxCommand]
+            : []),
+        ]);
+        this.emit('modux-notice', { message: `El botón lanza ahora ${newUc.name}` });
+        return;
+      }
+      this.emit('modux-notice', { message: 'Sobre un botón se sueltan mapeados o casos de uso del Catálogo' });
+      return;
+    }
+    // a use case dropped on a BAR creates its button right there
+    const barHit = targetId ? /^bar:([^:]+):(.+)$/.exec(targetId) : null;
+    if (barHit) {
+      const uc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+      if (!uc) {
+        this.emit('modux-notice', { message: 'En una barra se sueltan CASOS DE USO del Catálogo' });
+        return;
+      }
+      const pg = (this.model.pages ?? []).find((x) => x.id === barHit[1]);
+      if ((pg?.buttons ?? []).some((x) => x.useCaseId === id)) {
+        this.emit('modux-notice', { message: 'La página ya tiene un botón para ese caso de uso' });
+        return;
+      }
+      this.command({ kind: 'add-page-button', pageId: barHit[1], useCaseId: id, type: barHit[2] });
+      this.emit('modux-notice', { message: `Botón de ${uc.name} en la barra ${barHit[2] === 'bottom' ? 'de abajo' : 'superior'}` });
       return;
     }
     const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;

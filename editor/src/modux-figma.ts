@@ -185,6 +185,8 @@ export class ModuxFigma extends LitElement {
     const inner = designer?.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
     const btn = inner?.closest?.('[data-btn-uc]') as HTMLElement | null;
     if (btn?.dataset.btnUc) return `btn:${pageId}:${btn.dataset.btnUc}`;
+    const bar = inner?.closest?.('[data-bar]') as HTMLElement | null;
+    if (bar?.dataset.bar) return `bar:${pageId}:${bar.dataset.bar}`;
     const cmp = inner?.closest?.('[data-cmp-id]') as HTMLElement | null;
     return cmp ? `cmp:${pageId}:${cmp.dataset.cmpId}` : pageId;
   }

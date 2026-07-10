@@ -1114,10 +1114,12 @@ export class ModuxPageDesigner extends LitElement {
         : nothing}
       ${kind === 'button'
         ? html`<label>Caso de uso</label>
-            <select @change=${(e: Event) => set({ useCaseId: (e.target as HTMLSelectElement).value || undefined })}>
-              <option value="" ?selected=${!draft.useCaseId}>—</option>
-              ${this.useCases.map((u) => html`<option value=${u.id} ?selected=${u.id === draft.useCaseId}>${u.name}</option>`)}
-            </select>
+            <span style="grid-column: 2 / -1">
+              ${draft.useCaseId
+                ? html`<span class="chip">${this.useCases.find((u) => u.id === draft.useCaseId)?.name ?? draft.useCaseId}</span>
+                    <span class="vmhint">suelta otro caso de uso sobre el botón para re-apuntarlo</span>`
+                : html`<span class="vmhint">suelta un caso de uso del Catálogo sobre el botón</span>`}
+            </span>
             <label>Mapping</label>
             <span>
               ${draft.mappingId
@@ -1308,7 +1310,7 @@ export class ModuxPageDesigner extends LitElement {
       <div class="zone zhdr" title="Cabecera de la página: título y descripción se infieren de la declaración">
         ⌐ ${page.name}
       </div>
-      <div class="toolbar" title="Toolbar: los botones de arriba">
+      <div class="toolbar" data-bar="toolbar" title="Toolbar: suelta un caso de uso del Catálogo para crear un botón">
         ${(page.buttons ?? []).filter((b) => (b.bar ?? 'toolbar') === 'toolbar').map(
           (b) => html`<span
             class="btn"
@@ -1324,9 +1326,9 @@ export class ModuxPageDesigner extends LitElement {
             >${b.label}</span
           >`,
         )}
-        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '', bar: 'toolbar' })}>
-          + botón
-        </button>
+        ${(page.buttons ?? []).some((b) => (b.bar ?? 'toolbar') === 'toolbar')
+          ? nothing
+          : html`<span class="zoneph">suelta un caso de uso aquí</span>`}
       </div>
       <div class="vm">
         viewmodel:
@@ -1388,7 +1390,7 @@ export class ModuxPageDesigner extends LitElement {
           ? html`<div class="col-lay">${(page.content ?? []).map((n) => this.renderComponent(n))}</div>`
           : this.renderInferredBody(page, fields, listing)}
       </div>
-      <div class="bottombar" title="Botones de abajo: las acciones de cierre de la página">
+      <div class="bottombar" data-bar="bottom" title="Botones de abajo: suelta un caso de uso del Catálogo para crear un botón">
         ${(page.buttons ?? [])
           .filter((b) => b.bar === 'bottom')
           .map(
@@ -1408,10 +1410,7 @@ export class ModuxPageDesigner extends LitElement {
           )}
         ${(page.buttons ?? []).some((b) => b.bar === 'bottom')
           ? nothing
-          : html`<span class="zoneph">botones abajo</span>`}
-        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '', bar: 'bottom' })}>
-          + botón
-        </button>
+          : html`<span class="zoneph">botones abajo — suelta un caso de uso aquí</span>`}
       </div>
       ${this.renderCmpPop()}
       ${this._btn
@@ -1419,16 +1418,10 @@ export class ModuxPageDesigner extends LitElement {
             const existing = (this.page?.buttons ?? []).some((b) => b.useCaseId === this._btn!.useCaseId);
             return html`<div class="pop">
               <label>Caso de uso</label>
-              <select
-                ?disabled=${existing}
-                @change=${(e: Event) =>
-                  (this._btn = { ...this._btn!, useCaseId: (e.target as HTMLSelectElement).value })}
-              >
-                <option value="" ?selected=${!this._btn.useCaseId}>elige…</option>
-                ${this.useCases.map(
-                  (u) => html`<option value=${u.id} ?selected=${u.id === this._btn!.useCaseId}>${u.name}</option>`,
-                )}
-              </select>
+              <span style="grid-column: 2 / -1">
+                <span class="chip">${this.useCases.find((u) => u.id === this._btn!.useCaseId)?.name ?? this._btn.useCaseId}</span>
+                <span class="vmhint">suelta otro caso de uso sobre el botón para re-apuntarlo</span>
+              </span>
               <label>Etiqueta</label>
               <input
                 placeholder="(el nombre del caso de uso)"
