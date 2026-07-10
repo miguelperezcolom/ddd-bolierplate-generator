@@ -4196,63 +4196,71 @@ export class ModuxEditor extends LitElement {
   // ── palette (drag to create / drag to place) ────────────────────────────
 
   /** Palette entries carry the SAME glyph and stroke colour their node wears on the canvas. */
+  /** Section order for the «Nuevos» tab. */
+  private static readonly PALETTE_GROUPS = [
+    'Estratégico', 'Dominio', 'APIs', 'Sistema externo', 'IA',
+    'Orquestación', 'UI', 'Layouts', 'Componentes',
+  ];
+
   private static readonly PALETTE_NEW: {
     type: string;
     label: string;
     child?: boolean;
     symbol: string;
     color: string;
+    /** Section header the item renders under in the «Nuevos» tab. */
+    group: string;
   }[] = [
-    { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8' },
-    { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b' },
-    { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b' },
-    { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea' },
-    { type: 'external-ai-agent', label: 'Agente IA externo', symbol: 'robot', color: '#9333ea' },
-    { type: 'mcp-gateway', label: 'Gateway MCP', symbol: 'plug', color: '#7c3aed' },
-    { type: 'rag', label: 'RAG', symbol: 'lens', color: '#0e7490' },
-    { type: 'api', label: 'API', child: true, symbol: 'interface', color: '#4f46e5' },
-    { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490' },
-    { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9' },
-    { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9' },
-    { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6' },
-    { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4' },
-    { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4' },
-    { type: 'policy', label: 'Policy', child: true, symbol: 'usecase', color: '#a855f7' },
-    { type: 'domain-event', label: 'Evento de dominio', child: true, symbol: 'event', color: '#f59e0b' },
-    { type: 'application-event', label: 'Evento de aplicación', child: true, symbol: 'event', color: '#eab308' },
-    { type: 'read-model', label: 'Read model', child: true, symbol: 'readmodel', color: '#10b981' },
-    { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e' },
-    { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7' },
-    { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5' },
-    { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b' },
-    { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207' },
-    { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea' },
-    { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9' },
-    { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7' },
-    { type: 'menu-item', label: 'Entrada de menú', child: true, symbol: 'process', color: '#0ea5e9' },
+    { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
+    { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
+    { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
+    { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea', group: 'IA' },
+    { type: 'external-ai-agent', label: 'Agente IA externo', symbol: 'robot', color: '#9333ea', group: 'IA' },
+    { type: 'mcp-gateway', label: 'Gateway MCP', symbol: 'plug', color: '#7c3aed', group: 'IA' },
+    { type: 'rag', label: 'RAG', symbol: 'lens', color: '#0e7490', group: 'IA' },
+    { type: 'api', label: 'API', child: true, symbol: 'interface', color: '#4f46e5', group: 'APIs' },
+    { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490', group: 'APIs' },
+    { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
+    { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4', group: 'Dominio' },
+    { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4', group: 'Dominio' },
+    { type: 'policy', label: 'Policy', child: true, symbol: 'usecase', color: '#a855f7', group: 'Dominio' },
+    { type: 'domain-event', label: 'Evento de dominio', child: true, symbol: 'event', color: '#f59e0b', group: 'Dominio' },
+    { type: 'application-event', label: 'Evento de aplicación', child: true, symbol: 'event', color: '#eab308', group: 'Dominio' },
+    { type: 'read-model', label: 'Read model', child: true, symbol: 'readmodel', color: '#10b981', group: 'Dominio' },
+    { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e', group: 'Dominio' },
+    { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7', group: 'Dominio' },
+    { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5', group: 'APIs' },
+    { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
+    { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
+    { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
+    { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
+    { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7', group: 'UI' },
+    { type: 'menu-item', label: 'Entrada de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
     // Diseño: the Mateu layout vocabulary…
-    { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:formLayout', label: 'Layout · Form', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:splitLayout', label: 'Layout · Split', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:tabLayout', label: 'Layout · Tabs', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:accordionLayout', label: 'Layout · Acordeón', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:card', label: 'Layout · Card', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:gridLayout', label: 'Layout · Grid', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:boardLayout', label: 'Layout · Board', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:dashboardLayout', label: 'Layout · Dashboard', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:masterDetailLayout', label: 'Layout · Master-detail', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:foldoutLayout', label: 'Layout · Foldout', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:carouselLayout', label: 'Layout · Carrusel', symbol: 'component', color: '#0ea5e9' },
-    { type: 'cmp:appLayout', label: 'Layout · App', symbol: 'component', color: '#0ea5e9' },
+    { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:formLayout', label: 'Layout · Form', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:splitLayout', label: 'Layout · Split', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:tabLayout', label: 'Layout · Tabs', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:accordionLayout', label: 'Layout · Acordeón', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:card', label: 'Layout · Card', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:gridLayout', label: 'Layout · Grid', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:boardLayout', label: 'Layout · Board', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:dashboardLayout', label: 'Layout · Dashboard', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:masterDetailLayout', label: 'Layout · Master-detail', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:foldoutLayout', label: 'Layout · Foldout', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:carouselLayout', label: 'Layout · Carrusel', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
+    { type: 'cmp:appLayout', label: 'Layout · App', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     // …and the components that live inside those layouts.
-    { type: 'cmp:form', label: 'Componente · Formulario', symbol: 'interface', color: '#0284c7' },
-    { type: 'cmp:listing', label: 'Componente · Listado', symbol: 'lens', color: '#0284c7' },
-    { type: 'cmp:button', label: 'Componente · Botón', symbol: 'usecase', color: '#0284c7' },
-    { type: 'cmp:field', label: 'Componente · Campo', symbol: 'gear', color: '#0284c7' },
-    { type: 'cmp:text', label: 'Componente · Texto', symbol: 'readmodel', color: '#0284c7' },
-    { type: 'cmp:metricCard', label: 'Componente · Métrica', symbol: 'event', color: '#0284c7' },
-    { type: 'cmp:menuBar', label: 'Componente · Menú', symbol: 'process', color: '#0284c7' },
+    { type: 'cmp:form', label: 'Componente · Formulario', symbol: 'interface', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:listing', label: 'Componente · Listado', symbol: 'lens', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:button', label: 'Componente · Botón', symbol: 'usecase', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:field', label: 'Componente · Campo', symbol: 'gear', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:text', label: 'Componente · Texto', symbol: 'readmodel', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:metricCard', label: 'Componente · Métrica', symbol: 'event', color: '#0284c7', group: 'Componentes' },
+    { type: 'cmp:menuBar', label: 'Componente · Menú', symbol: 'process', color: '#0284c7', group: 'Componentes' },
   ];
 
   /** Every element of the model, grouped for the palette's «Catálogo» tab. */
@@ -4894,25 +4902,33 @@ export class ModuxEditor extends LitElement {
           ${tab === 'new'
             ? html`
                 <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
-                ${news.map(
-                  (k) => html`
-                    <div
-                      class="palette-item ${k.child ? 'palette-child' : ''}"
-                      draggable="true"
-                      title=${k.type === 'workflow-step'
-                        ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
-                        : k.child
-                          ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
-                          : 'Suéltalo en el lienzo'}
-                      @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
-                    >
-                      <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${k.color}">
-                        ${SYMBOLS[k.symbol]}
-                      </svg>
-                      <span class="pal-label">${k.label}</span>
-                    </div>
-                  `,
-                )}
+                ${ModuxEditor.PALETTE_GROUPS.map((g) => {
+                  const items = news.filter((k) => k.group === g);
+                  return items.length
+                    ? html`
+                        <div class="palette-g">${g}</div>
+                        ${items.map(
+                          (k) => html`
+                            <div
+                              class="palette-item ${k.child ? 'palette-child' : ''}"
+                              draggable="true"
+                              title=${k.type === 'workflow-step'
+                                ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
+                                : k.child
+                                  ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
+                                  : 'Suéltalo en el lienzo'}
+                              @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
+                            >
+                              <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${k.color}">
+                                ${SYMBOLS[k.symbol]}
+                              </svg>
+                              <span class="pal-label">${k.label.replace(/^(Layout|Componente) · /, '')}</span>
+                            </div>
+                          `,
+                        )}
+                      `
+                    : '';
+                })}
               `
             : html`
                 <div class="palette-h">Catálogo — arrastra para colocar o conectar</div>
