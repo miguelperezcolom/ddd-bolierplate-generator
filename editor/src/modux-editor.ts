@@ -5015,8 +5015,8 @@ export class ModuxEditor extends LitElement {
       }
       issue(
         appId
-          ? { kind: 'create-ui-page', id, name, pageType: 'FORM', appId, menuLabel: name }
-          : { kind: 'create-ui-page', id, name, pageType: 'FORM' },
+          ? { kind: 'create-ui-page', id, name, pageType: 'PAGE', appId, menuLabel: name }
+          : { kind: 'create-ui-page', id, name, pageType: 'PAGE' },
         id,
       );
       return;

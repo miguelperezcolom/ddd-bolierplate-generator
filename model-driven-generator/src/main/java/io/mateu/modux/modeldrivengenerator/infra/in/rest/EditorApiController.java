@@ -3546,7 +3546,7 @@ public class EditorApiController {
     private void createUiPage(EditorCommand command) {
         if (repository.findById(command.id(), PageEntity.class).isPresent()) return;
         var type = command.pageType() == null || command.pageType().isBlank()
-                ? "FORM" : command.pageType();
+                ? "PAGE" : command.pageType();
         repository.save(new PageEntity(command.id(), command.name(), "/" + command.id(), type,
                 null, null, List.of(), null, null, List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(), null, List.of()));

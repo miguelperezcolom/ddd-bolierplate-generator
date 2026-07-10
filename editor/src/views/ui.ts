@@ -213,10 +213,10 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       h: PAGE_H,
       kind: 'page',
       symbol: 'interface',
-      badge: page.type ?? 'FORM',
+      badge: page.type ?? 'PAGE',
       fill: '#ffffff',
       stroke: '#0284c7',
-      tooltip: page.route ? `${page.type ?? 'FORM'} · ${page.route}` : (page.type ?? 'FORM'),
+      tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),
     });
     if (page.modelId) {
       chipMeta.set(page.modelId, {

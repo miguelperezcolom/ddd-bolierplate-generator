@@ -1735,6 +1735,13 @@ public class GenerateCodeUseCase {
             case "FORM" -> "page-form.ftl";
             case "DASHBOARD" -> "page-dashboard.ftl";
             case "WIZARD" -> "page-wizard.ftl";
+            // A generic page: the declaration decides — viewmodel => form, components => dashboard.
+            case "PAGE" -> page.modelId() != null && !page.modelId().isBlank()
+                    ? "page-form.ftl"
+                    : (page.componentIds() != null && !page.componentIds().isEmpty())
+                            || (page.content() != null && !page.content().isEmpty())
+                        ? "page-dashboard.ftl"
+                        : "page-form.ftl";
             default -> "page-crud.ftl";
         };
 
@@ -1743,7 +1750,7 @@ public class GenerateCodeUseCase {
                         + "/" + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + "Page.java");
 
         // FORM and WIZARD pages also emit an EventConductor form definition (for USER_TASK steps)
-        if ((pageType.equals("FORM") || pageType.equals("WIZARD")) && page.modelId() != null) {
+        if ((pageType.equals("FORM") || pageType.equals("PAGE") || pageType.equals("WIZARD")) && page.modelId() != null) {
             var pageModelEntity = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
             if (pageModelEntity != null && pageModelEntity.fields() != null && !pageModelEntity.fields().isEmpty()) {
                 createFile(moduleDir, model, "form-definition.ftl",

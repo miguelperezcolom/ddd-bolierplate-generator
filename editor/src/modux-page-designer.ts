@@ -393,6 +393,27 @@ export class ModuxPageDesigner extends LitElement {
     .tabbar span:hover {
       background: #f1f5f9;
     }
+    .wizbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 2px 8px;
+      margin-bottom: 8px;
+      border-bottom: 1.5px dashed #cbd5e1;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .wizbar .on {
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .wizbar .wiznext {
+      margin-left: auto;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 2px 8px;
+      color: #475569;
+    }
     .tabbar span.on {
       background: #e0f2fe;
       color: #0369a1;
@@ -1150,6 +1171,7 @@ export class ModuxPageDesigner extends LitElement {
     if (!page) return nothing;
     const fields = page.viewmodelFields ?? [];
     const listing = page.type === 'CRUD' || !!page.listingQueryServiceId;
+    const wizard = page.type === 'WIZARD';
     return html`
       <div class="chrome">
         <span class="dots"><span></span><span></span><span></span></span>
@@ -1170,13 +1192,25 @@ export class ModuxPageDesigner extends LitElement {
             >`}
         <select
           class="type"
-          title="Tipo de página"
+          title="Tipo de página: Página (el contenido decide), CRUD (listado + ficha) o Wizard (pasos)"
           @change=${(e: Event) =>
             this.emitEvent('page-type-changed', { pageType: (e.target as HTMLSelectElement).value })}
         >
-          ${['FORM', 'CRUD', 'DASHBOARD', 'WIZARD'].map(
-            (t) => html`<option value=${t} ?selected=${(page.type ?? 'FORM') === t}>${t}</option>`,
-          )}
+          ${(() => {
+            const current = page.type ?? 'PAGE';
+            const kinds: [string, string][] = [
+              ['PAGE', 'Página'],
+              ['CRUD', 'CRUD'],
+              ['WIZARD', 'Wizard'],
+            ];
+            // Legacy store values keep showing until the user re-types the page;
+            // FORM and DASHBOARD are composition now (form component, dashboard layout).
+            if (current === 'FORM') kinds.splice(1, 0, ['FORM', 'Form (legado)']);
+            if (current === 'DASHBOARD') kinds.push(['DASHBOARD', 'Dashboard (legado)']);
+            return kinds.map(
+              ([v, label]) => html`<option value=${v} ?selected=${current === v}>${label}</option>`,
+            );
+          })()}
         </select>
         ${this._route !== null
           ? html`<input
@@ -1233,6 +1267,12 @@ export class ModuxPageDesigner extends LitElement {
         </select>
       </div>
       <div class="body" @click=${() => this.onBodyClick()}>
+        ${wizard
+          ? html`<div class="wizbar">
+              <span class="on">① Paso 1</span><span>② Paso 2</span><span>③ Paso 3</span>
+              <span class="wiznext">Siguiente ›</span>
+            </div>`
+          : nothing}
         ${(page.content ?? []).length
           ? html`<div class="col-lay">${(page.content ?? []).map((n) => this.renderComponent(n))}</div>`
           : this.renderInferredBody(page, fields, listing)}

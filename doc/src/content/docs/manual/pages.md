@@ -9,10 +9,10 @@ A **Page** is the fundamental unit of UI in Modux. In hexagonal architecture ter
 
 | Type | Description |
 |---|---|
+| **PAGE** | A generic page: its content decides the look — an inferred viewmodel form, or a [UI-first composition](/manual/graphical-editor/) (a *form* is a component, a *dashboard* is a layout) |
 | **CRUD** | List + create + edit screen backed by an aggregate |
-| **FORM** | A standalone form backed by a model |
-| **DASHBOARD** | A composition of visual components (charts, lists, cards) |
 | **WIZARD** | A multi-step flow with completion actions |
+| **FORM** / **DASHBOARD** *(legacy)* | Older stores keep them and they still generate; new pages express both through PAGE + composition |
 
 ## Creating a page
 
@@ -30,7 +30,7 @@ A **Page** is the fundamental unit of UI in Modux. In hexagonal architecture ter
 |---|---|
 | **Name** | Page name (PascalCase, e.g. `BookingWizard`) |
 | **Route** | URL path for this page (e.g. `/bookings`) |
-| **Type** | CRUD, FORM, DASHBOARD or WIZARD |
+| **Type** | PAGE, CRUD or WIZARD (FORM/DASHBOARD legacy) |
 
 ### CRUD pages
 
