@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, UiMenuEntryRef } from './model.js';
 
 /**
@@ -173,6 +173,75 @@ export class ModuxExplorer extends LitElement {
       pointer-events: none;
       text-align: right;
     }
+    .search {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      width: 260px;
+      font: 12px system-ui, sans-serif;
+    }
+    .search input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.95);
+      font: inherit;
+      color: #0f172a;
+      outline: none;
+    }
+    .search input:focus {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 2px #0284c722;
+    }
+    .sugs {
+      margin: 4px 0 0;
+      padding: 4px;
+      list-style: none;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .sugs li {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .sugs li.active,
+    .sugs li:hover {
+      background: #f1f5f9;
+    }
+    .sugs .dot {
+      flex: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      align-self: center;
+    }
+    .sugs .name {
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sugs .path {
+      color: #94a3b8;
+      font-size: 10.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sugs .empty {
+      color: #94a3b8;
+      cursor: default;
+    }
   `;
 
   @property({ attribute: false }) model: ModuxModel = {
@@ -201,6 +270,15 @@ export class ModuxExplorer extends LitElement {
   private prevByKey = new Map<string, XNode>();
   /** Cross-relations by model id (symmetric) — the faint threads on hover. */
   private related = new Map<string, Set<string>>();
+  /** Every node in the tree, expanded or not — the search space. */
+  private allNodes: XNode[] = [];
+  /** Camera flight towards a found node (re-aims every frame: nodes move). */
+  private flight?: { node: XNode; until: number };
+  /** The landing ring: pulses around the found node for a moment. */
+  private found?: { node: XNode; until: number };
+  @state() private _q = '';
+  @state() private _sugs: XNode[] = [];
+  @state() private _active = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -330,6 +408,14 @@ export class ModuxExplorer extends LitElement {
     if (!this.prevByKey.has(this.root.key)) this.root.expanded = true;
     this.materialize(this.root);
     this.buildRelations();
+    // The full tree, eagerly: search must see what is still folded.
+    this.allNodes = [];
+    const dig = (n: XNode) => {
+      this.allNodes.push(n);
+      if (!n.children) n.children = this.childrenOf(n);
+      for (const c of n.children) dig(c);
+    };
+    dig(this.root);
   }
 
   /** Everything that relates two model elements across the tree's branches. */
@@ -491,6 +577,7 @@ export class ModuxExplorer extends LitElement {
     this.t += 1 / 60;
     const nodes = this.visible();
     this.step(nodes);
+    this.stepFlight();
     this.draw(nodes);
     // Lazy persistence: a full reload (activation navigates) skips
     // disconnectedCallback, so checkpoint about once per second.
@@ -638,6 +725,28 @@ export class ModuxExplorer extends LitElement {
       }
     }
 
+    if (this.found) {
+      // Landing ring: a pulse around the node search flew to.
+      if (this.t > this.found.until) {
+        this.found = undefined;
+      } else {
+        const f = this.found.node;
+        const life = (this.found.until - this.t) / 3.2;
+        ctx.save();
+        ctx.globalAlpha = Math.min(0.8, life * 1.6);
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = 2.2 / this.cam.k;
+        const pulse = this.reducedMotion ? 0 : Math.sin(this.t * 5) * 3;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, this.radiusOf(f) + 9 + pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha *= 0.4;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, this.radiusOf(f) + 18 + pulse * 1.4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
     if (this.hover) this.drawThreads(ctx, this.hover, nodes);
     if (this.hover && !this.hover.expanded && this.hover.children?.length) {
       this.drawGhosts(ctx, this.hover);
@@ -999,6 +1108,76 @@ export class ModuxExplorer extends LitElement {
     ctx.restore();
   }
 
+  // ── Search & fly ──────────────────────────────────────────────────────
+
+  private static fold(s: string): string {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  private onSearchInput(e: Event): void {
+    this._q = (e.target as HTMLInputElement).value;
+    const q = ModuxExplorer.fold(this._q.trim());
+    this._active = 0;
+    this._sugs =
+      q.length < 2
+        ? []
+        : this.allNodes
+            .filter((n) => n.kind !== 'root' && ModuxExplorer.fold(n.label).includes(q))
+            .slice(0, 8);
+  }
+
+  private onSearchKeydown(e: KeyboardEvent): void {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this._active = Math.min(this._active + 1, this._sugs.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this._active = Math.max(this._active - 1, 0);
+    } else if (e.key === 'Enter' && this._sugs.length) {
+      this.flyToNode(this._sugs[this._active]);
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      this._q = '';
+      this._sugs = [];
+      (e.target as HTMLInputElement).blur();
+    }
+  }
+
+  /** Where the node lives, for disambiguation («Reservas › Reserva»). */
+  private pathOf(n: XNode): string {
+    const parts: string[] = [];
+    for (let p = n.parent; p && p.kind !== 'root'; p = p.parent) parts.unshift(p.label);
+    return parts.join(' › ');
+  }
+
+  /** Expands the path to the node (each level explodes) and flies the camera. */
+  private flyToNode(n: XNode): void {
+    const chain: XNode[] = [];
+    for (let p = n.parent; p; p = p.parent) chain.unshift(p);
+    for (const a of chain) if (!a.expanded) this.toggle(a);
+    this.flight = { node: n, until: this.t + 1.5 };
+    this.found = { node: n, until: this.t + 3.2 };
+    this._q = '';
+    this._sugs = [];
+    this.saveState();
+  }
+
+  /** Eases the camera towards the flight target, re-aiming as physics moves it. */
+  private stepFlight(): void {
+    if (!this.flight) return;
+    if (this.t > this.flight.until) {
+      this.flight = undefined;
+      return;
+    }
+    const n = this.flight.node;
+    const w = this.clientWidth || 800;
+    const h = this.clientHeight || 600;
+    const tk = Math.max(0.9, Math.min(1.2, this.cam.k));
+    this.cam.k += (tk - this.cam.k) * 0.08;
+    this.cam.x += (w / 2 - n.x * this.cam.k - this.cam.x) * 0.12;
+    this.cam.y += (h / 2 - n.y * this.cam.k - this.cam.y) * 0.12;
+  }
+
   // ── Interaction ───────────────────────────────────────────────────────
 
   private toWorld(e: PointerEvent | WheelEvent): { x: number; y: number } {
@@ -1021,6 +1200,7 @@ export class ModuxExplorer extends LitElement {
   }
 
   private onPointerDown(e: PointerEvent): void {
+    this.flight = undefined; // the user takes the wheel back
     const w = this.toWorld(e);
     this.downAt = { x: e.clientX, y: e.clientY };
     this.moved = false;
@@ -1106,6 +1286,7 @@ export class ModuxExplorer extends LitElement {
 
   private onWheel(e: WheelEvent): void {
     e.preventDefault();
+    this.flight = undefined;
     const rect = this.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
@@ -1126,8 +1307,35 @@ export class ModuxExplorer extends LitElement {
         @dblclick=${this.onDblClick}
         @wheel=${this.onWheel}
       ></canvas>
+      <div class="search" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <input
+          type="text"
+          placeholder="Buscar en el modelo…"
+          .value=${this._q}
+          @input=${this.onSearchInput}
+          @keydown=${this.onSearchKeydown}
+        />
+        ${this._sugs.length
+          ? html`<ul class="sugs">
+              ${this._sugs.map(
+                (n, i) => html`<li
+                  class=${i === this._active ? 'active' : ''}
+                  @mouseenter=${() => (this._active = i)}
+                  @click=${() => this.flyToNode(n)}
+                >
+                  <span class="dot" style="background:${n.color}"></span>
+                  <span class="name">${n.label}</span>
+                  <span class="path">${this.pathOf(n) || (KIND_LABEL[n.kind] ?? n.kind)}</span>
+                </li>`,
+              )}
+            </ul>`
+          : this._q.trim().length >= 2
+            ? html`<ul class="sugs"><li class="empty">sin resultados</li></ul>`
+            : null}
+      </div>
       <div class="hud">
         click: expandir / plegar · doble click: abrir · hover: ver contenido<br />
+        buscar: expande el camino y vuela hasta el nodo<br />
         arrastrar nodo: tirar del subárbol · fondo: mover · rueda: zoom
       </div>
     `;
