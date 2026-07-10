@@ -252,7 +252,7 @@ public class EditorApiController {
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
 
-    public record EtlFlowDto(String id, String name, List<EtlStepDto> steps) {}
+    public record EtlFlowDto(String id, String name, String ownerModuleId, List<EtlStepDto> steps) {}
 
     public record EtlStepDto(String id, String name, String type, String externalTableId,
                              String apiId, String operationId, String eventId, String mappingId) {}
@@ -893,7 +893,7 @@ public class EditorApiController {
                 agentUses.stream().distinct().toList(),
                 workflows,
                 repository.findAllOfType(EtlFlowEntity.class).stream()
-                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.steps().stream()
+                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerModuleId(), f.steps().stream()
                                 .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
                                         s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
                                 .toList()))
@@ -3599,7 +3599,10 @@ public class EditorApiController {
 
     private void addEtlFlow(EditorCommand command) {
         if (repository.findById(command.id(), EtlFlowEntity.class).isPresent()) return;
-        repository.save(new EtlFlowEntity(command.id(), command.name(), null, List.of()));
+        repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new EtlFlowEntity(command.id(), command.name(), null,
+                command.moduleId(), List.of()));
     }
 
     private void removeEtlFlow(EditorCommand command) {
@@ -3619,12 +3622,14 @@ public class EditorApiController {
                 command.name() != null ? command.name() : command.stepType(),
                 command.stepType(), command.externalTableId(), command.apiId(),
                 command.operationId(), command.targetId(), command.mappingId(), null));
-        repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(), steps));
+        repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
+                flow.ownerModuleId(), steps));
     }
 
     private void removeEtlStep(EditorCommand command) {
         repository.findById(command.etlFlowId(), EtlFlowEntity.class).ifPresent(flow ->
                 repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
+                        flow.ownerModuleId(),
                         flow.steps().stream().filter(s -> !s.id().equals(command.id())).toList())));
     }
 

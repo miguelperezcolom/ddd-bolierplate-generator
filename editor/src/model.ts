@@ -597,6 +597,8 @@ export interface EtlStepRef {
 export interface EtlFlowRef {
   id: string;
   name: string;
+  /** The bounded context that owns (generates, operates) the pipeline. */
+  ownerModuleId?: string;
   steps?: EtlStepRef[];
 }
 

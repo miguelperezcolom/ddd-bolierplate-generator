@@ -732,10 +732,11 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model'; id: string }
   | {
-      /** An integrator: an ETL flow outside every context. */
+      /** An integrator: an ETL flow owned by a bounded context. */
       kind: 'add-etl-flow';
       id: string;
       name: string;
+      moduleId: string;
     }
   | { kind: 'remove-etl-flow'; id: string }
   | {

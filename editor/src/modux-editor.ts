@@ -1621,8 +1621,9 @@ export class ModuxEditor extends LitElement {
       case 'remove-etl-flow': {
         const flow = (this.model.etlFlows ?? []).find((f) => f.id === c.id);
         if (!flow) return null;
+        if (!flow.ownerModuleId) return null; // legacy ownerless flows: not rebuildable
         return [
-          { kind: 'add-etl-flow', id: flow.id, name: flow.name },
+          { kind: 'add-etl-flow', id: flow.id, name: flow.name, moduleId: flow.ownerModuleId },
           ...(flow.steps ?? []).map((s): ModuxCommand => ({
             kind: 'add-etl-step',
             etlFlowId: flow.id,
@@ -5048,7 +5049,7 @@ export class ModuxEditor extends LitElement {
     { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490', group: 'APIs' },
     { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9', group: 'Orquestación' },
     { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9', group: 'Orquestación' },
-    { type: 'etl-flow', label: 'Flujo ETL (integrador)', symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
+    { type: 'etl-flow', label: 'Flujo ETL (integrador)', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'etl-transform', label: 'Transformación ETL', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
     { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4', group: 'Dominio' },
@@ -5355,7 +5356,7 @@ export class ModuxEditor extends LitElement {
     }
     const needsModule = [
       'aggregate', 'use-case', 'policy', 'domain-event',
-      'application-event', 'domain-service', 'query-service', 'scheduled-trigger',
+      'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
     ].includes(type);
     if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
     if (type === 'read-model') {
@@ -5498,7 +5499,6 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
-        'etl-flow': 'etl-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5530,8 +5530,6 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'create-ui-app', id, name, type: 'VIEW_EDITOR' }
                                   : type === 'ui-model'
                                   ? { kind: 'add-model', id, name }
-                                  : type === 'etl-flow'
-                                    ? { kind: 'add-etl-flow', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
@@ -5756,7 +5754,7 @@ export class ModuxEditor extends LitElement {
     const prefixOf: Record<string, string> = {
       aggregate: 'agg-', 'use-case': 'uc-', policy: 'uc-', 'domain-event': 'ev-',
       'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
-      'scheduled-trigger': 'st-', 'read-model': 'rm-', 'external-use-case': 'xuc-',
+      'scheduled-trigger': 'st-', 'etl-flow': 'etl-', 'read-model': 'rm-', 'external-use-case': 'xuc-',
       'external-table': 'tbl-', 'mcp-server': 'mcpsrv-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
@@ -5780,6 +5778,12 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-scheduled-trigger', id, name, moduleId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
+      });
+    } else if (type === 'etl-flow') {
+      issue({ kind: 'add-etl-flow', id, name, moduleId: container }, id, container);
+      this.emit('modux-notice', {
+        message:
+          'Integrador creado en el contexto — cablea fuentes HACIA él (tabla/API = pull, evento = consumidor) y escrituras DESDE él',
       });
     } else if (type === 'read-model') {
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);

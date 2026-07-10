@@ -162,7 +162,8 @@ interface ChildDesc {
     | 'api'
     | 'api-impl'
     | 'proxy-api'
-    | 'scheduled-trigger';
+    | 'scheduled-trigger'
+    | 'etl-flow';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -186,6 +187,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'api-impl': { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
   'scheduled-trigger': { symbol: 'clock', fill: '#fffbeb', stroke: '#d97706' },
+  'etl-flow': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -205,6 +207,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'api-impl': 'La misma API, implementada también en este contexto',
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
   'scheduled-trigger': 'Trigger programado (cron) — dispara un caso de uso',
+  'etl-flow': 'Integrador ETL — fuentes (pull/consumidor) → transformación → escrituras',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -268,6 +271,9 @@ function detailedContext(
     ...(module.scheduledTriggers ?? []).map(
       (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'scheduled-trigger' }),
     ),
+    ...(model.etlFlows ?? [])
+      .filter((f) => f.ownerModuleId === module.id)
+      .map((f): ChildDesc => ({ id: f.id, name: f.name, kind: 'etl-flow' })),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.
@@ -535,13 +541,16 @@ export function contextMapScene(
       proxy: false,
       workflow: true,
     })),
-    ...(model.etlFlows ?? []).map((f) => ({
-      ref: f,
-      external: false,
-      api: false,
-      proxy: false,
-      etl: true,
-    })),
+    // ETL flows without owner (legacy) still float; owned ones nest in their context.
+    ...(model.etlFlows ?? [])
+      .filter((f) => !f.ownerModuleId)
+      .map((f) => ({
+        ref: f,
+        external: false,
+        api: false,
+        proxy: false,
+        etl: true,
+      })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
@@ -789,7 +798,8 @@ export function contextMapScene(
       (m.readModels ?? []).length > 0 ||
       (m.domainServices ?? []).length > 0 ||
       (m.queryServices ?? []).length > 0 ||
-      (m.scheduledTriggers ?? []).length > 0;
+      (m.scheduledTriggers ?? []).length > 0 ||
+      (model.etlFlows ?? []).some((f) => f.ownerModuleId === m.id);
     const mFoldable = hasDetail || implChildren.length > 0;
     const { form: mForm, collapsed: mCollapsed } = resolveForm(
       toggledIds.has(m.id),
@@ -1284,7 +1294,12 @@ export function contextMapScene(
   // ETL steps drawn as data lines: sources flow INTO the integrator, writes leave it.
   const etlEdges: SceneEdge[] = (model.etlFlows ?? []).flatMap((f) =>
     (f.steps ?? []).flatMap((s): SceneEdge[] => {
-      if (!nodeIds.has(f.id)) return [];
+      const flowEl = nodeIds.has(f.id)
+        ? f.id
+        : f.ownerModuleId && nodeIds.has(f.ownerModuleId)
+          ? f.ownerModuleId
+          : null;
+      if (!flowEl) return [];
       const ref = s.externalTableId ?? s.operationId ?? s.apiId ?? s.eventId;
       if (!ref) return []; // transforms live inside the flow
       let el = ref;
@@ -1292,12 +1307,12 @@ export function contextMapScene(
       if (!nodeIds.has(el) && s.externalTableId) el = tableSystem.get(s.externalTableId) ?? el;
       if (!nodeIds.has(el)) el = rollUp(el);
       if (!nodeIds.has(el)) el = moduleOfChild.get(ref) ?? el;
-      if (!nodeIds.has(el) || el === f.id) return [];
+      if (!nodeIds.has(el) || el === flowEl) return [];
       const source = s.type.startsWith('SOURCE');
       return [{
         id: `etl:${f.id}:${s.id}`,
-        sourceId: source ? el : f.id,
-        targetId: source ? f.id : el,
+        sourceId: source ? el : flowEl,
+        targetId: source ? flowEl : el,
         kind: source ? 'etl-source' : 'etl-write',
         color: '#0f766e',
         label: s.type === 'SOURCE_PULL' ? 'pull' : s.type === 'SOURCE_CONSUMER' ? 'consume'

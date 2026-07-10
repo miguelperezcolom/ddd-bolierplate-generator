@@ -1207,6 +1207,7 @@ export class ModuxCanvas extends LitElement {
           ? node.kind === 'menu-item' ||
             node.kind === 'menu-group' ||
             node.kind === 'wizard-step-row' ||
+            node.kind === 'etl-flow' ||
             node.kind === 'scheduled-trigger' ||
             node.kind === 'aggregate' ||
             node.kind === 'domain-service' ||
