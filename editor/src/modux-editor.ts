@@ -1616,6 +1616,46 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-step':
         return [{ kind: 'remove-use-case-step', useCaseId: c.useCaseId, id: c.id }];
+      case 'add-etl-flow':
+        return [{ kind: 'remove-etl-flow', id: c.id }];
+      case 'remove-etl-flow': {
+        const flow = (this.model.etlFlows ?? []).find((f) => f.id === c.id);
+        if (!flow) return null;
+        return [
+          { kind: 'add-etl-flow', id: flow.id, name: flow.name },
+          ...(flow.steps ?? []).map((s): ModuxCommand => ({
+            kind: 'add-etl-step',
+            etlFlowId: flow.id,
+            id: s.id,
+            name: s.name,
+            stepType: s.type,
+            externalTableId: s.externalTableId,
+            apiId: s.apiId,
+            operationId: s.operationId,
+            targetId: s.eventId,
+            mappingId: s.mappingId,
+          })),
+        ];
+      }
+      case 'add-etl-step':
+        return [{ kind: 'remove-etl-step', etlFlowId: c.etlFlowId, id: c.id }];
+      case 'remove-etl-step': {
+        const s = ((this.model.etlFlows ?? []).find((f) => f.id === c.etlFlowId)?.steps ?? [])
+          .find((x) => x.id === c.id);
+        if (!s) return null;
+        return [{
+          kind: 'add-etl-step',
+          etlFlowId: c.etlFlowId,
+          id: s.id,
+          name: s.name,
+          stepType: s.type,
+          externalTableId: s.externalTableId,
+          apiId: s.apiId,
+          operationId: s.operationId,
+          targetId: s.eventId,
+          mappingId: s.mappingId,
+        }];
+      }
       case 'add-scheduled-trigger':
         return [{ kind: 'remove-scheduled-trigger', id: c.id }];
       case 'remove-scheduled-trigger': {
@@ -3166,6 +3206,60 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // ETL integrator: whatever you wire INTO the flow is a source (a table or an
+    // API = pull, an event = consumer); whatever the flow wires OUT to is a write.
+    const etlFlowsAll = this.model.etlFlows ?? [];
+    const etlOf = (id: string) => etlFlowsAll.find((f) => f.id === id);
+    if (etlOf(sourceId) || etlOf(targetId)) {
+      const flow = etlOf(sourceId) ?? etlOf(targetId)!;
+      const other = etlOf(sourceId) ? targetId : sourceId;
+      const isSource = !etlOf(sourceId); // element dragged ONTO the flow
+      const tables = new Set(this.model.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)));
+      const apisAll = new Set([
+        ...(this.model.apis ?? []).map((a) => a.id),
+        ...(this.model.proxyApis ?? []).map((px) => px.id),
+      ]);
+      const owningApi = (this.model.apis ?? []).find((a) => a.operations.some((o) => o.id === other));
+      const evAll = new Set(
+        this.model.modules.flatMap((mo) => [
+          ...(mo.domainEvents ?? []).map((ev) => ev.id),
+          ...(mo.applicationEvents ?? []).map((ev) => ev.id),
+        ]),
+      );
+      let stepType: string | null = null;
+      let refs: { externalTableId?: string; apiId?: string; operationId?: string; targetId?: string } = {};
+      if (tables.has(other)) {
+        stepType = isSource ? 'SOURCE_PULL' : 'WRITE_DB';
+        refs = { externalTableId: other };
+      } else if (owningApi) {
+        stepType = isSource ? 'SOURCE_PULL' : 'WRITE_API';
+        refs = { apiId: owningApi.id, operationId: other };
+      } else if (apisAll.has(other)) {
+        stepType = isSource ? 'SOURCE_PULL' : 'WRITE_API';
+        refs = { apiId: other };
+      } else if (evAll.has(other)) {
+        stepType = isSource ? 'SOURCE_CONSUMER' : 'WRITE_EVENT';
+        refs = { targetId: other };
+      }
+      if (!stepType) {
+        this.emit('modux-notice', {
+          message: 'Un flujo ETL lee de tablas, APIs y eventos, y escribe en APIs, tablas y eventos',
+        });
+        return;
+      }
+      const dup = (flow.steps ?? []).some(
+        (s) =>
+          s.type === stepType &&
+          (s.externalTableId ?? s.operationId ?? s.apiId ?? s.eventId) ===
+            (refs.externalTableId ?? refs.operationId ?? refs.apiId ?? refs.targetId),
+      );
+      if (dup) return;
+      const taken = new Set((flow.steps ?? []).map((s) => s.id));
+      let n = (flow.steps ?? []).length + 1;
+      while (taken.has(`ets-${n}`)) n++;
+      this.command({ kind: 'add-etl-step', etlFlowId: flow.id, id: `ets-${n}`, stepType, ...refs });
+      return;
+    }
     // Dragging an external operation or a legacy table onto a read model (or another
     // context) declares a POLLING projection — the classic legacy integration.
     const externalOp = this.model.externalSystems
@@ -3734,6 +3828,18 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && (kind === 'etl-source' || kind === 'etl-write')) {
+      const match = /^etl:([^:]+):(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'remove-etl-step', etlFlowId: match[1], id: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'etl-flow') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-etl-flow', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'st-fire') {
@@ -4942,6 +5048,8 @@ export class ModuxEditor extends LitElement {
     { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490', group: 'APIs' },
     { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9', group: 'Orquestación' },
     { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'etl-flow', label: 'Flujo ETL (integrador)', symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
+    { type: 'etl-transform', label: 'Transformación ETL', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
     { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4', group: 'Dominio' },
     { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4', group: 'Dominio' },
@@ -5223,6 +5331,7 @@ export class ModuxEditor extends LitElement {
       (m.rags ?? []).map((x) => x.id),
       (m.workflows ?? []).map((x) => x.id),
       (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
+      (m.etlFlows ?? []).map((x) => x.id),
       (m.uiApps ?? []).map((x) => x.id),
       (m.pages ?? []).map((x) => x.id),
     ]) {
@@ -5389,6 +5498,7 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
+        'etl-flow': 'etl-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5420,6 +5530,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'create-ui-app', id, name, type: 'VIEW_EDITOR' }
                                   : type === 'ui-model'
                                   ? { kind: 'add-model', id, name }
+                                  : type === 'etl-flow'
+                                    ? { kind: 'add-etl-flow', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
@@ -5525,6 +5637,34 @@ export class ModuxEditor extends LitElement {
         itemId: this.newMenuItemId(label),
         parentId: parentNode?.itemId,
         parentLabel: parentNode?.itemId ? undefined : parentNode?.label,
+      });
+      return;
+    }
+    if (type === 'etl-transform') {
+      const chain: string[] = [];
+      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+        chain.push(cur);
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      const flow = chain
+        .map((cid) => (this.model.etlFlows ?? []).find((f) => f.id === cid))
+        .find(Boolean);
+      if (!flow) {
+        this.emit('modux-notice', { message: 'Suelta la transformación sobre un flujo ETL' });
+        return;
+      }
+      const taken = new Set((flow.steps ?? []).map((s) => s.id));
+      let n = (flow.steps ?? []).length + 1;
+      while (taken.has(`ets-${n}`)) n++;
+      this.command({
+        kind: 'add-etl-step',
+        etlFlowId: flow.id,
+        id: `ets-${n}`,
+        name: `Transformación ${n}`,
+        stepType: 'TRANSFORM',
+      });
+      this.emit('modux-notice', {
+        message: 'Transformación añadida — el mapping o el intent se detallan en su ficha',
       });
       return;
     }

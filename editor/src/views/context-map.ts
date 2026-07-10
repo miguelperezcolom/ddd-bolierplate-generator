@@ -535,10 +535,35 @@ export function contextMapScene(
       proxy: false,
       workflow: true,
     })),
+    ...(model.etlFlows ?? []).map((f) => ({
+      ref: f,
+      external: false,
+      api: false,
+      proxy: false,
+      etl: true,
+    })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if ('etl' in entry && entry.etl) {
+      const f = entry.ref as NonNullable<ModuxModel['etlFlows']>[number];
+      return [{
+        id: f.id,
+        label: f.name,
+        kind: 'etl-flow',
+        symbol: 'gear',
+        fill: '#f0fdfa',
+        stroke: '#0f766e',
+        dashed: true,
+        badge: 'ETL',
+        tooltip: `${f.name} — integrador: fuentes (pull/consumidor) → transformación → escrituras (API/BD/evento)`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
+    }
     if ('workflow' in entry && entry.workflow) {
       const w = entry.ref as NonNullable<ModuxModel['workflows']>[number];
       return [{
@@ -1256,6 +1281,37 @@ export function contextMapScene(
   for (const x of model.externalSystems) {
     for (const t of x.tables ?? []) tableSystem.set(t.id, x.id);
   }
+  // ETL steps drawn as data lines: sources flow INTO the integrator, writes leave it.
+  const etlEdges: SceneEdge[] = (model.etlFlows ?? []).flatMap((f) =>
+    (f.steps ?? []).flatMap((s): SceneEdge[] => {
+      if (!nodeIds.has(f.id)) return [];
+      const ref = s.externalTableId ?? s.operationId ?? s.apiId ?? s.eventId;
+      if (!ref) return []; // transforms live inside the flow
+      let el = ref;
+      if (!nodeIds.has(el) && s.operationId && s.apiId) el = s.apiId;
+      if (!nodeIds.has(el) && s.externalTableId) el = tableSystem.get(s.externalTableId) ?? el;
+      if (!nodeIds.has(el)) el = rollUp(el);
+      if (!nodeIds.has(el)) el = moduleOfChild.get(ref) ?? el;
+      if (!nodeIds.has(el) || el === f.id) return [];
+      const source = s.type.startsWith('SOURCE');
+      return [{
+        id: `etl:${f.id}:${s.id}`,
+        sourceId: source ? el : f.id,
+        targetId: source ? f.id : el,
+        kind: source ? 'etl-source' : 'etl-write',
+        color: '#0f766e',
+        label: s.type === 'SOURCE_PULL' ? 'pull' : s.type === 'SOURCE_CONSUMER' ? 'consume'
+          : s.type === 'WRITE_API' ? 'api' : s.type === 'WRITE_DB' ? 'bd' : 'evento',
+        dashed: true,
+        arrow: true,
+        tooltip: source
+          ? `${f.name} lee de aquí (${s.type === 'SOURCE_PULL' ? 'pull' : 'consumidor'})`
+          : `${f.name} escribe aquí — Supr quita el paso`,
+      }];
+    }),
+  );
+
+
   const ragTableEdges: SceneEdge[] = [
     ...new Map(
       (model.rags ?? [])
@@ -1736,6 +1792,7 @@ export function contextMapScene(
       ...apiWireEdges,
       ...callEdges,
       ...triggerFireEdges,
+      ...etlEdges,
       ...aggCallEdges,
       ...queryEdges,
       ...actorUseEdges,

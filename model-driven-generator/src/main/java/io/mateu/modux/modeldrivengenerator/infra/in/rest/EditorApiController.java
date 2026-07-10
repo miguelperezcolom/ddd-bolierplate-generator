@@ -40,6 +40,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlFlowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
@@ -249,6 +251,11 @@ public class EditorApiController {
                             String crudCreatePageId, String crudCreateAppId) {}
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
+
+    public record EtlFlowDto(String id, String name, List<EtlStepDto> steps) {}
+
+    public record EtlStepDto(String id, String name, String type, String externalTableId,
+                             String apiId, String operationId, String eventId, String mappingId) {}
     /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
     public record UiComponentNodeDto(String id, String kind, String title, String text, String label,
                                      String useCaseId, String mappingId, String modelId,
@@ -284,6 +291,7 @@ public class EditorApiController {
             List<AiAgentDto> aiAgents,
             List<AgentUseDto> agentUses,
             List<WorkflowDto> workflows,
+            List<EtlFlowDto> etlFlows,
             List<AggregateCallDto> aggregateCalls,
             List<EmissionDto> useCaseEmissions,
             List<SubscriptionDto> subscriptions,
@@ -884,6 +892,12 @@ public class EditorApiController {
                 aiAgents,
                 agentUses.stream().distinct().toList(),
                 workflows,
+                repository.findAllOfType(EtlFlowEntity.class).stream()
+                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.steps().stream()
+                                .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
+                                        s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
+                                .toList()))
+                        .toList(),
                 aggregateCalls.stream().distinct().toList(),
                 useCaseEmissions.stream().distinct().toList(),
                 subscriptions,
@@ -967,7 +981,7 @@ public class EditorApiController {
                                 String queryOperationId, String mappingId,
                                 String componentId, String parentComponentId, String componentKind,
                                 String beforeComponentId, String title, String text,
-                                String cronExpression, String beforeItemId) {}
+                                String cronExpression, String beforeItemId, String etlFlowId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1128,6 +1142,10 @@ public class EditorApiController {
             case "set-crud-create" -> setCrudTarget(command, false);
             case "set-app-view-page" -> setAppViewOrEdit(command, true);
             case "set-app-edit-page" -> setAppViewOrEdit(command, false);
+            case "add-etl-flow" -> addEtlFlow(command);
+            case "remove-etl-flow" -> removeEtlFlow(command);
+            case "add-etl-step" -> addEtlStep(command);
+            case "remove-etl-step" -> removeEtlStep(command);
             case "add-model" -> addModel(command);
             case "remove-model" -> removeModel(command);
             case "add-page-wizard-step" -> addPageWizardStep(command);
@@ -3577,6 +3595,37 @@ public class EditorApiController {
         repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
                 app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
                 toAppId != null ? null : pageId, toAppId, app.modelId()));
+    }
+
+    private void addEtlFlow(EditorCommand command) {
+        if (repository.findById(command.id(), EtlFlowEntity.class).isPresent()) return;
+        repository.save(new EtlFlowEntity(command.id(), command.name(), null, List.of()));
+    }
+
+    private void removeEtlFlow(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), EtlFlowEntity.class);
+    }
+
+    /** One ETL step: a source (pull/consumer), a transform, or a write (api/db/event). */
+    private void addEtlStep(EditorCommand command) {
+        var flow = repository.findById(command.etlFlowId(), EtlFlowEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown ETL flow: " + command.etlFlowId()));
+        if (command.stepType() == null || !EtlStepEntity.KINDS.contains(command.stepType())) {
+            throw new IllegalArgumentException("Unknown ETL step type: " + command.stepType());
+        }
+        var steps = new ArrayList<>(flow.steps());
+        if (steps.stream().anyMatch(s -> s.id().equals(command.id()))) return;
+        steps.add(new EtlStepEntity(command.id(),
+                command.name() != null ? command.name() : command.stepType(),
+                command.stepType(), command.externalTableId(), command.apiId(),
+                command.operationId(), command.targetId(), command.mappingId(), null));
+        repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(), steps));
+    }
+
+    private void removeEtlStep(EditorCommand command) {
+        repository.findById(command.etlFlowId(), EtlFlowEntity.class).ifPresent(flow ->
+                repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
+                        flow.steps().stream().filter(s -> !s.id().equals(command.id())).toList())));
     }
 
     /** A fresh empty data model, ready to be a viewmodel; fields grow in its form. */

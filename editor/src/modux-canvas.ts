@@ -1220,7 +1220,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'api' ||
             node.kind === 'api-impl' ||
             node.kind === 'proxy-api'
-          : node.kind === 'external-system' ||
+          : node.kind === 'etl-flow' ||
+            node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
             node.kind === 'rag' ||

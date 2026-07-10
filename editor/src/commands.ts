@@ -732,6 +732,27 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model'; id: string }
   | {
+      /** An integrator: an ETL flow outside every context. */
+      kind: 'add-etl-flow';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-etl-flow'; id: string }
+  | {
+      /** One ETL step; targetId carries the event for consumers/event writes. */
+      kind: 'add-etl-step';
+      etlFlowId: string;
+      id: string;
+      name?: string;
+      stepType: string;
+      externalTableId?: string;
+      apiId?: string;
+      operationId?: string;
+      targetId?: string;
+      mappingId?: string;
+    }
+  | { kind: 'remove-etl-step'; etlFlowId: string; id: string }
+  | {
       /** CRUD: what opens a row — a page (targetId) or an app (toAppId); nulls clear. */
       kind: 'set-crud-detail';
       pageId: string;

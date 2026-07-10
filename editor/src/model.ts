@@ -581,6 +581,25 @@ export interface ActorAppUseRef {
   appId: string;
 }
 
+/** One ETL step: a source (pull/consumer), a transform, or a write (api/db/event). */
+export interface EtlStepRef {
+  id: string;
+  name?: string;
+  type: string;
+  externalTableId?: string;
+  apiId?: string;
+  operationId?: string;
+  eventId?: string;
+  mappingId?: string;
+}
+
+/** An integrator: an ETL flow outside the contexts, moving data between systems. */
+export interface EtlFlowRef {
+  id: string;
+  name: string;
+  steps?: EtlStepRef[];
+}
+
 export interface ModuxModel {
   /** UI apps (UiAdapter) with their menu tree — the UI view's containers. */
   uiApps?: UiAppRef[];
@@ -637,6 +656,7 @@ export interface ModuxModel {
   agentRags?: AgentRagRef[];
   apis?: ApiRef[];
   workflows?: WorkflowRef[];
+  etlFlows?: EtlFlowRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */
   useCaseEmissions?: EmissionRef[];
