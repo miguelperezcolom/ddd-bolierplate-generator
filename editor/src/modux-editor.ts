@@ -11,6 +11,7 @@ import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { uiScene, parseMenuNodeId } from './views/ui.js';
+import { mappingsScene } from './views/mappings.js';
 import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
@@ -33,7 +34,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'eventstorming';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming';
 
 
 /**
@@ -1002,6 +1003,19 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-model':
         return [{ kind: 'remove-model', id: c.id }];
+      case 'add-model-mapping':
+        return [{ kind: 'remove-model-mapping', id: c.id }];
+      case 'remove-model-mapping': {
+        const mm = (this.model.modelMappings ?? []).find((x) => x.id === c.id);
+        if (!mm?.sourceModelId || !mm.targetModelId) return null;
+        return [{
+          kind: 'add-model-mapping',
+          id: mm.id,
+          name: mm.name,
+          sourceId: mm.sourceModelId,
+          targetId: mm.targetModelId,
+        }];
+      }
       case 'remove-model': {
         const mo = (this.model.models ?? []).find((x) => x.id === c.id);
         if (!mo) return null;
@@ -2780,6 +2794,28 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    if (this._view === 'mappings') {
+      const models = this.model.models ?? [];
+      if (!models.some((m) => m.id === sourceId) || !models.some((m) => m.id === targetId)) return;
+      if (sourceId === targetId) return;
+      if ((this.model.modelMappings ?? []).some((mm) => mm.sourceModelId === sourceId && mm.targetModelId === targetId)) {
+        return;
+      }
+      const src = models.find((m) => m.id === sourceId)!;
+      const tgt = models.find((m) => m.id === targetId)!;
+      const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '');
+      const taken = new Set((this.model.modelMappings ?? []).map((mm) => mm.id));
+      let id = `mapping-${slug(src.name)}-${slug(tgt.name)}`;
+      for (let n = 2; taken.has(id); n++) id = `mapping-${slug(src.name)}-${slug(tgt.name)}-${n}`;
+      this.command({
+        kind: 'add-model-mapping',
+        id,
+        name: `${clean(src.name)}2${clean(tgt.name)}`,
+        sourceId,
+        targetId,
+      });
+      return;
+    }
     if (this._view !== 'context-map') return;
     // A proxy's operation occurrence → an implementation SITE of the fronted API: the
     // published API node (in its external system) or an api-impl occurrence (in a
@@ -3737,6 +3773,14 @@ export class ModuxEditor extends LitElement {
         return;
       }
       // system chips (use cases, query services, models, actors) are not deletable from here
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'model-mapping') {
+      const match = /^mapping:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-model-mapping', id: match[1] });
+      }
       return;
     }
     if (this._view === 'workflows' && elementType === 'edge' && kind === 'workflow-dependency') {
@@ -4986,6 +5030,7 @@ export class ModuxEditor extends LitElement {
           pageId: e.detail.pageId,
           useCaseId: e.detail.useCaseId,
           label: e.detail.label,
+          type: e.detail.bar,
         })}
       @page-button-changed=${(e: CustomEvent) =>
         this.command({
@@ -6117,8 +6162,10 @@ export class ModuxEditor extends LitElement {
                 ? uiScene(model, vl.nodes)
                 : view === 'design'
                   ? { nodes: [], edges: [] }
-              : view === 'eventstorming'
-                ? eventstormingScene(model, vl.nodes)
+              : view === 'mappings'
+                ? mappingsScene(model, vl.nodes)
+                : view === 'eventstorming'
+                  ? eventstormingScene(model, vl.nodes)
                 : contextMapScene(
                     model,
                     vl.nodes,
@@ -6266,6 +6313,7 @@ export class ModuxEditor extends LitElement {
                 Workflows
               </option>
               <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
+              <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
               <option value="view:design" ?selected=${this._view === 'design'}>
                 Diseño (páginas)
               </option>

@@ -25,6 +25,8 @@ export interface UseCaseRef {
   policy?: boolean;
   /** Ids of the use case's steps (typed step editing stays in its form). */
   stepIds?: string[];
+  /** The request/command model this use case receives. */
+  inputModelId?: string;
 }
 
 export interface DomainEventRef {
@@ -523,6 +525,8 @@ export interface UiPageButtonRef {
   label: string;
   useCaseId?: string;
   mappingId?: string;
+  /** Where it lives: 'toolbar' (top) or 'bottom'. */
+  bar?: string;
 }
 
 export interface UiFieldRef {
@@ -611,7 +615,7 @@ export interface ModuxModel {
   actorAppUses?: ActorAppUseRef[];
   /** id+name catalogs for the designer's pickers. */
   models?: { id: string; name: string }[];
-  modelMappings?: { id: string; name: string }[];
+  modelMappings?: { id: string; name: string; sourceModelId?: string; targetModelId?: string }[];
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
   relations: ContextMapRelation[];

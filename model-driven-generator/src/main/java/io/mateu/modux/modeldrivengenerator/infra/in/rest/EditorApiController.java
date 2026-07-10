@@ -138,7 +138,7 @@ public class EditorApiController {
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
-    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds) {}
+    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds, String inputModelId) {}
     public record AggregateDto(String id, String name, String moduleId) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
@@ -265,7 +265,7 @@ public class EditorApiController {
     /** A viewmodel field as the page designer sees it: model field + its PageFieldConfig. */
     public record UiFieldDto(String fieldId, String name, String type, String stereotype,
                              Integer colspan, String label, String help) {}
-    public record UiPageButtonDto(String label, String useCaseId, String mappingId) {}
+    public record UiPageButtonDto(String label, String useCaseId, String mappingId, String bar) {}
     /** An actor uses a UI app (RoleEntity.uiAdapterIds — the actor→app link of the UI map). */
     public record ActorAppUseDto(String actorId, String appId) {}
     /** A bare id+name reference (models, mappings…) for the designer's pickers. */
@@ -320,7 +320,9 @@ public class EditorApiController {
             List<UiPageDto> pages,
             List<ActorAppUseDto> actorAppUses,
             List<NamedRefDto> models,
-            List<NamedRefDto> modelMappings) {}
+            List<MappingRefDto> modelMappings) {}
+
+    public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -436,7 +438,8 @@ public class EditorApiController {
                                 .filter(Objects::nonNull)
                                 .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy(),
                                         (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
-                                                .map(UseCaseStepEntity::id).toList()))
+                                                .map(UseCaseStepEntity::id).toList(),
+                                        uc.inputModelId()))
                                 .toList(),
                         (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
                                 .map(domainEventsById::get)
@@ -805,9 +808,10 @@ public class EditorApiController {
                                         .map(ModelEntity::name).orElse(null),
                         p.aggregateId(), p.listingQueryServiceId(),
                         java.util.stream.Stream.concat(
-                                        (p.toolbar() == null ? List.<PageButtonEntity>of() : p.toolbar()).stream(),
-                                        (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream())
-                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId()))
+                                        (p.toolbar() == null ? List.<PageButtonEntity>of() : p.toolbar()).stream()
+                                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId(), "toolbar")),
+                                        (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream()
+                                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId(), "bottom")))
                                 .toList(),
                         uiFields(p),
                         (p.content() == null ? List.<UiComponentNodeEntity>of() : p.content()).stream()
@@ -928,7 +932,8 @@ public class EditorApiController {
                 repository.findAllOfType(ModelEntity.class).stream()
                         .map(x -> new NamedRefDto(x.id(), x.name())).toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
-                        .map(x -> new NamedRefDto(x.id(), x.name())).toList());
+                        .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId()))
+                        .toList());
     }
 
     private static UiComponentNodeDto toComponentNode(UiComponentNodeEntity node) {
@@ -1146,6 +1151,8 @@ public class EditorApiController {
             case "remove-etl-flow" -> removeEtlFlow(command);
             case "add-etl-step" -> addEtlStep(command);
             case "remove-etl-step" -> removeEtlStep(command);
+            case "add-model-mapping" -> addModelMapping(command);
+            case "remove-model-mapping" -> removeModelMapping(command);
             case "add-model" -> addModel(command);
             case "remove-model" -> removeModel(command);
             case "add-page-wizard-step" -> addPageWizardStep(command);
@@ -3633,6 +3640,21 @@ public class EditorApiController {
                         flow.steps().stream().filter(s -> !s.id().equals(command.id())).toList())));
     }
 
+    /** A declarative mapping between two models; its rules grow in its form. */
+    private void addModelMapping(EditorCommand command) {
+        if (repository.findById(command.id(), ModelMappingEntity.class).isPresent()) return;
+        repository.findById(command.sourceId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.sourceId()));
+        repository.findById(command.targetId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.targetId()));
+        repository.save(new ModelMappingEntity(command.id(), command.name(),
+                command.sourceId(), command.targetId(), false, List.of()));
+    }
+
+    private void removeModelMapping(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), ModelMappingEntity.class);
+    }
+
     /** A fresh empty data model, ready to be a viewmodel; fields grow in its form. */
     private void addModel(EditorCommand command) {
         if (repository.findById(command.id(), ModelEntity.class).isPresent()) return;
@@ -4162,10 +4184,13 @@ public class EditorApiController {
                         "Unknown use case: " + command.useCaseId()));
         var label = command.label() == null || command.label().isBlank()
                 ? useCase.name() : command.label();
-        var toolbar = new ArrayList<>(page.toolbar() == null
-                ? List.<PageButtonEntity>of() : page.toolbar());
-        toolbar.add(new PageButtonEntity(label, null, command.useCaseId(), null, null));
-        repository.save(withButtons(page, toolbar, page.bottomBar()));
+        var bottom = "bottom".equalsIgnoreCase(command.type());
+        var bar = new ArrayList<>((bottom ? page.bottomBar() : page.toolbar()) == null
+                ? List.<PageButtonEntity>of() : (bottom ? page.bottomBar() : page.toolbar()));
+        bar.add(new PageButtonEntity(label, null, command.useCaseId(), null, null));
+        repository.save(bottom
+                ? withButtons(page, page.toolbar(), bar)
+                : withButtons(page, bar, page.bottomBar()));
     }
 
     private void removePageButton(EditorCommand command) {

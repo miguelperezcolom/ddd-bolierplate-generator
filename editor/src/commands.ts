@@ -732,6 +732,15 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model'; id: string }
   | {
+      /** A declarative mapping between two models (rules grow in its form). */
+      kind: 'add-model-mapping';
+      id: string;
+      name: string;
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-model-mapping'; id: string }
+  | {
       /** An integrator: an ETL flow owned by a bounded context. */
       kind: 'add-etl-flow';
       id: string;
@@ -846,7 +855,7 @@ export type ModuxCommand =
       itemId?: string;
       label?: string;
     }
-  | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string }
+  | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string; type?: string }
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
   | { kind: 'rename-ui-page'; pageId: string; name: string }
   | { kind: 'set-page-type'; pageId: string; pageType: string }

@@ -47,7 +47,7 @@ export class ModuxPageDesigner extends LitElement {
   @state() private _rename: string | null = null;
   @state() private _route: string | null = null;
   /** The button being edited ('' useCaseId = adding a new one). */
-  @state() private _btn: { useCaseId: string; label: string; mappingId: string } | null = null;
+  @state() private _btn: { useCaseId: string; label: string; mappingId: string; bar: string } | null = null;
   /** The content-tree node whose declaration is being edited (draft copy). */
   @state() private _cmp: UiComponentNodeRef | null = null;
   @state() private _dragCmpId: string | null = null;
@@ -395,6 +395,45 @@ export class ModuxPageDesigner extends LitElement {
     .tabbar span:hover {
       background: #f1f5f9;
     }
+    .zone.zhdr {
+      padding: 5px 12px 3px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #64748b;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .bottombar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 7px 12px;
+      border-top: 1.5px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .bottombar .btn {
+      background: #0284c7;
+      color: #ffffff;
+      border-radius: 7px;
+      padding: 3px 12px;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    .bottombar .add {
+      border: 1px dashed #94a3b8;
+      background: none;
+      border-radius: 7px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .zoneph {
+      font-size: 10.5px;
+      color: #cbd5e1;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
     .wizbar {
       display: flex;
       align-items: center;
@@ -609,7 +648,11 @@ export class ModuxPageDesigner extends LitElement {
         mappingId: draft.mappingId || null,
       });
     } else {
-      this.emitEvent('button-added', { useCaseId: draft.useCaseId, label: draft.label.trim() || undefined });
+      this.emitEvent('button-added', {
+        useCaseId: draft.useCaseId,
+        label: draft.label.trim() || undefined,
+        bar: draft.bar,
+      });
       if (draft.mappingId) {
         this.emitEvent('button-changed', {
           useCaseId: draft.useCaseId,
@@ -1236,8 +1279,11 @@ export class ModuxPageDesigner extends LitElement {
         <button @click=${() => this.emitEvent('open-crud')} title="Abrir la ficha completa de la página">Ficha</button>
         <button class="close" @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
       </div>
-      <div class="toolbar">
-        ${(page.buttons ?? []).map(
+      <div class="zone zhdr" title="Cabecera de la página: título y descripción se infieren de la declaración">
+        ⌐ ${page.name}
+      </div>
+      <div class="toolbar" title="Toolbar: los botones de arriba">
+        ${(page.buttons ?? []).filter((b) => (b.bar ?? 'toolbar') === 'toolbar').map(
           (b) => html`<span
             class="btn"
             title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : (b.useCaseId ?? '')}
@@ -1246,11 +1292,12 @@ export class ModuxPageDesigner extends LitElement {
                 useCaseId: b.useCaseId ?? '',
                 label: b.label ?? '',
                 mappingId: b.mappingId ?? '',
+                bar: b.bar ?? 'toolbar',
               })}
             >${b.label}</span
           >`,
         )}
-        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '' })}>
+        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '', bar: 'toolbar' })}>
           + botón
         </button>
       </div>
@@ -1315,6 +1362,30 @@ export class ModuxPageDesigner extends LitElement {
         ${(page.content ?? []).length
           ? html`<div class="col-lay">${(page.content ?? []).map((n) => this.renderComponent(n))}</div>`
           : this.renderInferredBody(page, fields, listing)}
+      </div>
+      <div class="bottombar" title="Botones de abajo: las acciones de cierre de la página">
+        ${(page.buttons ?? [])
+          .filter((b) => b.bar === 'bottom')
+          .map(
+            (b) => html`<span
+              class="btn"
+              title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : (b.useCaseId ?? '')}
+              @click=${() =>
+                (this._btn = {
+                  useCaseId: b.useCaseId ?? '',
+                  label: b.label ?? '',
+                  mappingId: b.mappingId ?? '',
+                  bar: 'bottom',
+                })}
+              >${b.label}</span
+            >`,
+          )}
+        ${(page.buttons ?? []).some((b) => b.bar === 'bottom')
+          ? nothing
+          : html`<span class="zoneph">botones abajo</span>`}
+        <button class="add" @click=${() => (this._btn = { useCaseId: '', label: '', mappingId: '', bar: 'bottom' })}>
+          + botón
+        </button>
       </div>
       ${this.renderCmpPop()}
       ${this._btn
