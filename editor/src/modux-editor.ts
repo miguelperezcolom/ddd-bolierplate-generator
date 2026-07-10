@@ -4929,6 +4929,18 @@ export class ModuxEditor extends LitElement {
     return html`<modux-figma
       .pages=${this.filteredModel().pages ?? []}
       .layout=${vl.nodes}
+      .sizes=${vl.sizes ?? {}}
+      @frame-resized=${(e: CustomEvent) => {
+        const { id, w, h } = e.detail as { id: string; w: number; h: number };
+        const current = this.viewLayout('design');
+        this.pushUndoEntry([
+          { kind: 'resize-node', view: 'design', id, size: current.sizes?.[id] ?? null },
+        ]);
+        this.writeViewLayout('design', {
+          ...current,
+          sizes: { ...(current.sizes ?? {}), [id]: { w, h } },
+        });
+      }}
       .selectedId=${this._selectedId}
       .selectedIds=${this._multi}
       .selectedCmp=${this._selectedCmp}
