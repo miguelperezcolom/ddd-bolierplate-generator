@@ -4894,17 +4894,36 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  /** A name (and slug id) that does not collide with anything already in the model. */
+  /**
+   * A name (and its slug id, WITH the kind's prefix) that does not collide with
+   * anything already in the model. The pool sweeps every element: testing the raw
+   * slug against a partial pool once made a second «Caso de uso» silently reuse
+   * the first one's id — and the backend ignores duplicate adds.
+   */
   private uniquePaletteName(base: string, prefix: string): { id: string; name: string } {
     const ids = new Set(this.sceneFor(this._view).nodes.map((n) => n.id));
     const m = this.model;
     for (const pool of [
       m.modules.map((x) => x.id),
+      m.modules.flatMap((mo) => (mo.useCases ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.domainEvents ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.applicationEvents ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.readModels ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.domainServices ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.queryServices ?? []).map((x) => x.id)),
+      m.modules.flatMap((mo) => (mo.scheduledTriggers ?? []).map((x) => x.id)),
+      (m.aggregates ?? []).map((x) => x.id),
+      (m.entities ?? []).map((x) => x.id),
       (m.actors ?? []).map((x) => x.id),
       m.externalSystems.map((x) => x.id),
+      m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
+      m.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)),
+      m.externalSystems.flatMap((x) => (x.mcpServers ?? []).map((s) => s.id)),
       (m.apis ?? []).map((x) => x.id),
+      (m.apis ?? []).flatMap((a) => (a.operations ?? []).map((o) => o.id)),
       (m.proxyApis ?? []).map((x) => x.id),
       (m.aiAgents ?? []).map((x) => x.id),
+      (m.mcpGateways ?? []).map((x) => x.id),
       (m.rags ?? []).map((x) => x.id),
       (m.workflows ?? []).map((x) => x.id),
       (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
@@ -5256,37 +5275,35 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    const { name } = this.uniquePaletteName(def.label, '');
+    const prefixOf: Record<string, string> = {
+      aggregate: 'agg-', 'use-case': 'uc-', policy: 'uc-', 'domain-event': 'ev-',
+      'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
+      'scheduled-trigger': 'st-', 'read-model': 'rm-', 'external-use-case': 'xuc-',
+      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-',
+    };
+    const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
-      const id = `agg-${slug(name)}`;
       issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
     } else if (type === 'use-case' || type === 'policy') {
-      const id = `uc-${slug(name)}`;
       issue(
         { kind: 'add-use-case', id, name, moduleId: container, ...(type === 'policy' ? { policy: true } : {}) },
         id,
         container,
       );
     } else if (type === 'domain-event') {
-      const id = `ev-${slug(name)}`;
       issue({ kind: 'add-domain-event', id, name, moduleId: container }, id, container);
     } else if (type === 'application-event') {
-      const id = `aev-${slug(name)}`;
       issue({ kind: 'add-application-event', id, name, moduleId: container }, id, container);
     } else if (type === 'domain-service') {
-      const id = `ds-${slug(name)}`;
       issue({ kind: 'add-domain-service', id, name, moduleId: container }, id, container);
     } else if (type === 'query-service') {
-      const id = `qs-${slug(name)}`;
       issue({ kind: 'add-query-service', id, name, moduleId: container }, id, container);
     } else if (type === 'scheduled-trigger') {
-      const id = `st-${slug(name)}`;
       issue({ kind: 'add-scheduled-trigger', id, name, moduleId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
       });
     } else if (type === 'read-model') {
-      const id = `rm-${slug(name)}`;
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
       issue({ kind: 'add-read-model', id, name, aggregateId: container }, id, aggregate?.moduleId ?? container);
     } else if (type === 'api-operation') {
@@ -5329,13 +5346,10 @@ export class ModuxEditor extends LitElement {
         message: `Paso Custom añadido a ${uc?.name ?? container} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`,
       });
     } else if (type === 'external-use-case') {
-      const id = `xuc-${slug(name)}`;
       issue({ kind: 'add-external-use-case', id, name, moduleId: container }, id, container);
     } else if (type === 'external-table') {
-      const id = `tbl-${slug(name)}`;
       issue({ kind: 'add-external-table', id, name, moduleId: container }, id, container);
     } else if (type === 'mcp-server') {
-      const id = `mcpsrv-${slug(name)}`;
       issue({ kind: 'add-mcp-server', id, name, moduleId: container }, id, container);
     }
   }
