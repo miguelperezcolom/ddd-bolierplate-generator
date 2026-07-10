@@ -1630,6 +1630,48 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-step':
         return [{ kind: 'remove-use-case-step', useCaseId: c.useCaseId, id: c.id }];
+      case 'add-notification':
+        return [{ kind: 'remove-notification', id: c.id }];
+      case 'remove-notification': {
+        const n = (this.model.notifications ?? []).find((x) => x.id === c.id);
+        if (!n?.ownerModuleId) return null;
+        const ops: ModuxCommand[] = [
+          { kind: 'add-notification', id: n.id, name: n.name, moduleId: n.ownerModuleId, type: (n.channels ?? [])[0] },
+        ];
+        if (n.eventId) ops.push({ kind: 'set-notification-event', id: n.id, targetId: n.eventId });
+        for (const r of n.recipientRoleIds ?? []) ops.push({ kind: 'add-notification-recipient', id: n.id, roleId: r });
+        return ops;
+      }
+      case 'set-notification-event': {
+        const n = (this.model.notifications ?? []).find((x) => x.id === c.id);
+        return [{ kind: 'set-notification-event', id: c.id, targetId: n?.eventId ?? null }];
+      }
+      case 'add-notification-recipient':
+        return [{ kind: 'remove-notification-recipient', id: c.id, roleId: c.roleId }];
+      case 'remove-notification-recipient':
+        return [{ kind: 'add-notification-recipient', id: c.id, roleId: c.roleId }];
+      case 'add-document':
+        return [{ kind: 'remove-document', id: c.id }];
+      case 'remove-document': {
+        const d = (this.model.documents ?? []).find((x) => x.id === c.id);
+        if (!d?.ownerModuleId) return null;
+        const ops: ModuxCommand[] = [
+          { kind: 'add-document', id: d.id, name: d.name, moduleId: d.ownerModuleId, type: d.kind },
+        ];
+        if (d.modelId) ops.push({ kind: 'set-document-model', id: d.id, modelId: d.modelId });
+        if (d.queryServiceId) {
+          ops.push({ kind: 'set-document-query', id: d.id, queryServiceId: d.queryServiceId, queryOperationId: d.queryOperationId ?? null });
+        }
+        return ops;
+      }
+      case 'set-document-model': {
+        const d = (this.model.documents ?? []).find((x) => x.id === c.id);
+        return [{ kind: 'set-document-model', id: c.id, modelId: d?.modelId ?? null }];
+      }
+      case 'set-document-query': {
+        const d = (this.model.documents ?? []).find((x) => x.id === c.id);
+        return [{ kind: 'set-document-query', id: c.id, queryServiceId: d?.queryServiceId ?? null, queryOperationId: d?.queryOperationId ?? null }];
+      }
       case 'add-identity-provider':
         return [{ kind: 'remove-identity-provider', id: c.id }];
       case 'remove-identity-provider': {
@@ -3298,6 +3340,61 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // Notifications: an event wired to one fires it; the notification wired to an
+    // actor adds that role as recipient.
+    const notifOf = (id: string) => (this.model.notifications ?? []).find((x) => x.id === id);
+    if (notifOf(sourceId) || notifOf(targetId)) {
+      const notif = notifOf(sourceId) ?? notifOf(targetId)!;
+      const other = notifOf(sourceId) ? targetId : sourceId;
+      const isEvent = this.model.modules.some((mo) =>
+        [...(mo.domainEvents ?? []), ...(mo.applicationEvents ?? [])].some((ev) => ev.id === other),
+      );
+      if (isEvent) {
+        if (notif.eventId !== other) {
+          this.command({ kind: 'set-notification-event', id: notif.id, targetId: other });
+        }
+        return;
+      }
+      if ((this.model.actors ?? []).some((a2) => a2.id === other)) {
+        if (!(notif.recipientRoleIds ?? []).includes(other)) {
+          this.command({ kind: 'add-notification-recipient', id: notif.id, roleId: other });
+        }
+        return;
+      }
+      this.emit('modux-notice', {
+        message: 'Una notificación se dispara con un EVENTO y avisa a ACTORES (roles)',
+      });
+      return;
+    }
+    // Documents: wired to a query service (or one of its operations) it becomes a
+    // query-fed report.
+    const docOf = (id: string) => (this.model.documents ?? []).find((x) => x.id === id);
+    if (docOf(sourceId) || docOf(targetId)) {
+      const doc = docOf(sourceId) ?? docOf(targetId)!;
+      const other = docOf(sourceId) ? targetId : sourceId;
+      const asModel = (this.model.models ?? []).find((x) => x.id === other);
+      if (asModel) {
+        this.command({ kind: 'set-document-model', id: doc.id, modelId: other });
+        return;
+      }
+      const qs = this.model.modules.flatMap((mo) => mo.queryServices ?? []).find((x) => x.id === other);
+      const opOwner = this.model.modules
+        .flatMap((mo) => (mo.queryServices ?? []).flatMap((x) => (x.operations ?? []).map((op) => ({ op, qs: x }))))
+        .find(({ op }) => op.id === other);
+      if (qs || opOwner) {
+        this.command({
+          kind: 'set-document-query',
+          id: doc.id,
+          queryServiceId: qs?.id ?? opOwner!.qs.id,
+          queryOperationId: opOwner?.op.id ?? null,
+        });
+        return;
+      }
+      this.emit('modux-notice', {
+        message: 'Un informe se alimenta de una CONSULTA (aquí); la plantilla de documento se rellena con un MODELO (suéltalo del Catálogo sobre el documento)',
+      });
+      return;
+    }
     // Identity: wiring an element to an IdP declares the trust — a bounded context
     // validates its tokens, an ETL flow runs as one of its service identities; and
     // an IdP wired to an external system becomes FEDERATED (published by it).
@@ -3959,6 +4056,40 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'notification-trigger') {
+      const match = /^notif:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'set-notification-event', id: match[1], targetId: null });
+      }
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'notification-recipient') {
+      const match = /^notifto:([^:]+):(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-notification-recipient', id: match[1], roleId: match[2] });
+      }
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'document-query') {
+      const match = /^docq:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'set-document-query', id: match[1], queryServiceId: null, queryOperationId: null });
+      }
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'notification') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-notification', id });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'document') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-document', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && (kind === 'idp-trust' || kind === 'idp-service')) {
@@ -5224,6 +5355,8 @@ export class ModuxEditor extends LitElement {
     { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e', group: 'Dominio' },
     { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7', group: 'Dominio' },
     { type: 'scheduled-trigger', label: 'Trigger programado', child: true, symbol: 'clock', color: '#d97706', group: 'Dominio' },
+    { type: 'notification', label: 'Notificación', child: true, symbol: 'event', color: '#db2777', group: 'Dominio' },
+    { type: 'document', label: 'Documento/Informe', child: true, symbol: 'readmodel', color: '#475569', group: 'Dominio' },
     { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5', group: 'APIs' },
     { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
     { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
@@ -5503,6 +5636,8 @@ export class ModuxEditor extends LitElement {
       (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
       (m.etlFlows ?? []).map((x) => x.id),
       (m.identityProviders ?? []).map((x) => x.id),
+      (m.notifications ?? []).map((x) => x.id),
+      (m.documents ?? []).map((x) => x.id),
       (m.uiApps ?? []).map((x) => x.id),
       (m.pages ?? []).map((x) => x.id),
     ]) {
@@ -5527,6 +5662,7 @@ export class ModuxEditor extends LitElement {
     const needsModule = [
       'aggregate', 'use-case', 'policy', 'domain-event',
       'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
+      'notification', 'document',
     ].includes(type);
     if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
     if (type === 'read-model') {
@@ -5927,7 +6063,8 @@ export class ModuxEditor extends LitElement {
     const prefixOf: Record<string, string> = {
       aggregate: 'agg-', 'use-case': 'uc-', policy: 'uc-', 'domain-event': 'ev-',
       'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
-      'scheduled-trigger': 'st-', 'etl-flow': 'etl-', 'read-model': 'rm-', 'external-use-case': 'xuc-',
+      'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
+      'read-model': 'rm-', 'external-use-case': 'xuc-',
       'external-table': 'tbl-', 'mcp-server': 'mcpsrv-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
@@ -5951,6 +6088,16 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-scheduled-trigger', id, name, moduleId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
+      });
+    } else if (type === 'notification') {
+      issue({ kind: 'add-notification', id, name, moduleId: container }, id, container);
+      this.emit('modux-notice', {
+        message: 'Notificación creada (canal EMAIL) — arrastra un evento hasta ella y de ella a los roles que avisa',
+      });
+    } else if (type === 'document') {
+      issue({ kind: 'add-document', id, name, moduleId: container }, id, container);
+      this.emit('modux-notice', {
+        message: 'Documento creado — arrástralo a un modelo (plantilla) o a una consulta (informe)',
       });
     } else if (type === 'etl-flow') {
       issue({ kind: 'add-etl-flow', id, name, moduleId: container }, id, container);

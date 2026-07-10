@@ -45,7 +45,9 @@ public record AllData(
         List<ProxyApiEntity> proxyApis,
         List<McpGatewayEntity> mcpGateways,
         List<EtlFlowEntity> etlFlows,
-        List<IdentityProviderEntity> identityProviders
+        List<IdentityProviderEntity> identityProviders,
+        List<NotificationEntity> notifications,
+        List<DocumentEntity> documents
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -53,7 +55,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -95,6 +97,8 @@ public record AllData(
         workflows = workflows != null ? workflows : List.of();
         etlFlows = etlFlows != null ? etlFlows : List.of();
         identityProviders = identityProviders != null ? identityProviders : List.of();
+        notifications = notifications != null ? notifications : List.of();
+        documents = documents != null ? documents : List.of();
         rags = rags != null ? rags : List.of();
         solutions = solutions != null ? solutions : List.of();
         apis = apis != null ? apis : List.of();

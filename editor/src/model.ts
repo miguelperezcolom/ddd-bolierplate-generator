@@ -623,6 +623,27 @@ export interface IdentityProviderRef {
   publishedByExternalSystemId?: string;
 }
 
+/** When an event happens, tell these roles through these channels. */
+export interface NotificationRef {
+  id: string;
+  name: string;
+  ownerModuleId?: string;
+  eventId?: string;
+  channels?: string[];
+  recipientRoleIds?: string[];
+}
+
+/** A generated document (template + model) or report (query-fed dataset). */
+export interface DocumentRef {
+  id: string;
+  name: string;
+  ownerModuleId?: string;
+  kind?: string;
+  modelId?: string;
+  queryServiceId?: string;
+  queryOperationId?: string;
+}
+
 export interface ModuxModel {
   /** UI apps (UiAdapter) with their menu tree — the UI view's containers. */
   uiApps?: UiAppRef[];
@@ -681,6 +702,8 @@ export interface ModuxModel {
   workflows?: WorkflowRef[];
   etlFlows?: EtlFlowRef[];
   identityProviders?: IdentityProviderRef[];
+  notifications?: NotificationRef[];
+  documents?: DocumentRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */
   useCaseEmissions?: EmissionRef[];

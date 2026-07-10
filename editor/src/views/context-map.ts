@@ -163,7 +163,9 @@ interface ChildDesc {
     | 'api-impl'
     | 'proxy-api'
     | 'scheduled-trigger'
-    | 'etl-flow';
+    | 'etl-flow'
+    | 'notification'
+    | 'document';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -188,6 +190,8 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
   'scheduled-trigger': { symbol: 'clock', fill: '#fffbeb', stroke: '#d97706' },
   'etl-flow': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
+  notification: { symbol: 'event', fill: '#fdf2f8', stroke: '#db2777' },
+  document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -208,6 +212,8 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
   'scheduled-trigger': 'Trigger programado (cron) — dispara un caso de uso',
   'etl-flow': 'Integrador ETL — fuentes (pull/consumidor) → transformación → escrituras',
+  notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
+  document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -274,6 +280,12 @@ function detailedContext(
     ...(model.etlFlows ?? [])
       .filter((f) => f.ownerModuleId === module.id)
       .map((f): ChildDesc => ({ id: f.id, name: f.name, kind: 'etl-flow' })),
+    ...(model.notifications ?? [])
+      .filter((n) => n.ownerModuleId === module.id)
+      .map((n): ChildDesc => ({ id: n.id, name: n.name, kind: 'notification' })),
+    ...(model.documents ?? [])
+      .filter((d) => d.ownerModuleId === module.id)
+      .map((d): ChildDesc => ({ id: d.id, name: d.name, kind: 'document' })),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.
@@ -825,7 +837,9 @@ export function contextMapScene(
       (m.domainServices ?? []).length > 0 ||
       (m.queryServices ?? []).length > 0 ||
       (m.scheduledTriggers ?? []).length > 0 ||
-      (model.etlFlows ?? []).some((f) => f.ownerModuleId === m.id);
+      (model.etlFlows ?? []).some((f) => f.ownerModuleId === m.id) ||
+      (model.notifications ?? []).some((n) => n.ownerModuleId === m.id) ||
+      (model.documents ?? []).some((d) => d.ownerModuleId === m.id);
     const mFoldable = hasDetail || implChildren.length > 0;
     const { form: mForm, collapsed: mCollapsed } = resolveForm(
       toggledIds.has(m.id),
@@ -1300,6 +1314,7 @@ export function contextMapScene(
     for (const u of m.useCases ?? []) moduleOfChild.set(u.id, m.id);
     for (const ev of m.domainEvents ?? []) moduleOfChild.set(ev.id, m.id);
     for (const ev of m.applicationEvents ?? []) moduleOfChild.set(ev.id, m.id);
+    for (const qs of m.queryServices ?? []) moduleOfChild.set(qs.id, m.id);
   }
   const rollUpChild = (id: string) => (nodeIds.has(id) ? id : (moduleOfChild.get(id) ?? id));
   const eventIdByName = new Map<string, string>();
@@ -1364,6 +1379,63 @@ export function contextMapScene(
   for (const x of model.externalSystems) {
     for (const t of x.tables ?? []) tableSystem.set(t.id, x.id);
   }
+  // Notifications: the event firing them and the roles they reach.
+  const notificationEdges: SceneEdge[] = (model.notifications ?? []).flatMap((n): SceneEdge[] => {
+    const el = nodeIds.has(n.id) ? n.id : n.ownerModuleId && nodeIds.has(n.ownerModuleId) ? n.ownerModuleId : null;
+    if (!el) return [];
+    const out: SceneEdge[] = [];
+    if (n.eventId) {
+      const ev = nodeIds.has(n.eventId) ? n.eventId : moduleOfChild.get(n.eventId);
+      if (ev && nodeIds.has(ev) && ev !== el) {
+        out.push({
+          id: `notif:${n.id}`,
+          sourceId: ev,
+          targetId: el,
+          kind: 'notification-trigger',
+          color: '#db2777',
+          label: 'dispara',
+          dashed: true,
+          arrow: true,
+          tooltip: `${n.name}: este evento la dispara — Supr lo desapunta`,
+        });
+      }
+    }
+    for (const roleId of n.recipientRoleIds ?? []) {
+      if (!nodeIds.has(roleId)) continue;
+      out.push({
+        id: `notifto:${n.id}:${roleId}`,
+        sourceId: el,
+        targetId: roleId,
+        kind: 'notification-recipient',
+        color: '#db2777',
+        label: (n.channels ?? [])[0]?.toLowerCase() ?? 'avisa',
+        dashed: true,
+        arrow: true,
+        tooltip: `${n.name} avisa a este rol — Supr lo quita`,
+      });
+    }
+    return out;
+  });
+
+  // Reports fed by a query operation (the qs chip at the detail level).
+  const documentEdges: SceneEdge[] = (model.documents ?? []).flatMap((d): SceneEdge[] => {
+    const el = nodeIds.has(d.id) ? d.id : d.ownerModuleId && nodeIds.has(d.ownerModuleId) ? d.ownerModuleId : null;
+    if (!el || !d.queryServiceId) return [];
+    const qs = nodeIds.has(d.queryServiceId) ? d.queryServiceId : moduleOfChild.get(d.queryServiceId);
+    if (!qs || !nodeIds.has(qs) || qs === el) return [];
+    return [{
+      id: `docq:${d.id}`,
+      sourceId: qs,
+      targetId: el,
+      kind: 'document-query',
+      color: '#475569',
+      label: 'alimenta',
+      dashed: true,
+      arrow: true,
+      tooltip: `${d.name}: esta consulta alimenta el informe — Supr lo desapunta`,
+    }];
+  });
+
   // ETL steps drawn as data lines: sources flow INTO the integrator, writes leave it.
   const etlEdges: SceneEdge[] = (model.etlFlows ?? []).flatMap((f) =>
     (f.steps ?? []).flatMap((s): SceneEdge[] => {
@@ -1881,6 +1953,8 @@ export function contextMapScene(
       ...callEdges,
       ...triggerFireEdges,
       ...idpEdges,
+      ...notificationEdges,
+      ...documentEdges,
       ...etlEdges,
       ...aggCallEdges,
       ...queryEdges,

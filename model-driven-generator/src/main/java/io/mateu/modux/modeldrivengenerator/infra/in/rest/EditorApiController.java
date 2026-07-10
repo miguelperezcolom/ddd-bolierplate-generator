@@ -41,7 +41,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlFlowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DocumentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IdentityProviderEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NotificationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
@@ -261,6 +263,12 @@ public class EditorApiController {
     public record IdentityProviderDto(String id, String name, String type, String issuer,
                                       String publishedByExternalSystemId) {}
 
+    public record NotificationDto(String id, String name, String ownerModuleId, String eventId,
+                                  List<String> channels, List<String> recipientRoleIds) {}
+
+    public record DocumentDto(String id, String name, String ownerModuleId, String kind,
+                              String modelId, String queryServiceId, String queryOperationId) {}
+
     public record EtlStepDto(String id, String name, String type, String externalTableId,
                              String apiId, String operationId, String eventId, String mappingId) {}
     /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
@@ -300,6 +308,8 @@ public class EditorApiController {
             List<WorkflowDto> workflows,
             List<EtlFlowDto> etlFlows,
             List<IdentityProviderDto> identityProviders,
+            List<NotificationDto> notifications,
+            List<DocumentDto> documents,
             List<AggregateCallDto> aggregateCalls,
             List<EmissionDto> useCaseEmissions,
             List<SubscriptionDto> subscriptions,
@@ -916,6 +926,14 @@ public class EditorApiController {
                         .map(x -> new IdentityProviderDto(x.id(), x.name(), x.type(), x.issuer(),
                                 x.publishedByExternalSystemId()))
                         .toList(),
+                repository.findAllOfType(NotificationEntity.class).stream()
+                        .map(x -> new NotificationDto(x.id(), x.name(), x.ownerModuleId(), x.eventId(),
+                                x.channels(), x.recipientRoleIds()))
+                        .toList(),
+                repository.findAllOfType(DocumentEntity.class).stream()
+                        .map(x -> new DocumentDto(x.id(), x.name(), x.ownerModuleId(), x.kind(),
+                                x.modelId(), x.queryServiceId(), x.queryOperationId()))
+                        .toList(),
                 aggregateCalls.stream().distinct().toList(),
                 useCaseEmissions.stream().distinct().toList(),
                 subscriptions,
@@ -1161,6 +1179,16 @@ public class EditorApiController {
             case "set-crud-create" -> setCrudTarget(command, false);
             case "set-app-view-page" -> setAppViewOrEdit(command, true);
             case "set-app-edit-page" -> setAppViewOrEdit(command, false);
+            case "add-notification" -> addNotification(command);
+            case "remove-notification" -> removeNotification(command);
+            case "set-notification-event" -> setNotificationEvent(command);
+            case "add-notification-recipient" -> toggleNotificationRecipient(command, true);
+            case "remove-notification-recipient" -> toggleNotificationRecipient(command, false);
+            case "add-document" -> addDocument(command);
+            case "remove-document" -> removeDocument(command);
+            case "set-document-model" -> setDocumentModel(command);
+            case "set-document-query" -> setDocumentQuery(command);
+            case "set-project-locales" -> setProjectLocales(command);
             case "add-identity-provider" -> addIdentityProvider(command);
             case "remove-identity-provider" -> removeIdentityProvider(command);
             case "set-idp-publisher" -> setIdpPublisher(command);
@@ -3696,6 +3724,108 @@ public class EditorApiController {
         }
         throw new IllegalArgumentException(
                 "El IdP se relaciona con apps, bounded contexts o flujos ETL: " + command.id());
+    }
+
+    /** A notification: when an event happens, tell these roles through these channels. */
+    private void addNotification(EditorCommand command) {
+        if (repository.findById(command.id(), NotificationEntity.class).isPresent()) return;
+        repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var channel = command.type() == null || command.type().isBlank() ? "EMAIL" : command.type();
+        if (!NotificationEntity.CHANNELS.contains(channel)) {
+            throw new IllegalArgumentException("Unknown channel: " + channel);
+        }
+        repository.save(new NotificationEntity(command.id(), command.name(), command.moduleId(),
+                null, List.of(channel), List.of(), null, null, null));
+    }
+
+    private void removeNotification(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), NotificationEntity.class);
+    }
+
+    /** Points (or, with null, unpoints) the notification at the event that fires it. */
+    private void setNotificationEvent(EditorCommand command) {
+        var n = repository.findById(command.id(), NotificationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown notification: " + command.id()));
+        var eventId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        if (eventId != null
+                && repository.findById(eventId, DomainEventEntity.class).isEmpty()
+                && repository.findById(eventId, ApplicationEventEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown event: " + eventId);
+        }
+        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), eventId,
+                n.channels(), n.recipientRoleIds(), n.recipientExpression(), n.subject(), n.body()));
+    }
+
+    /** Adds/removes a recipient role. */
+    private void toggleNotificationRecipient(EditorCommand command, boolean add) {
+        var n = repository.findById(command.id(), NotificationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown notification: " + command.id()));
+        if (add) {
+            repository.findById(command.roleId(), RoleEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + command.roleId()));
+        }
+        var roles = new ArrayList<>(n.recipientRoleIds());
+        if (add && !roles.contains(command.roleId())) roles.add(command.roleId());
+        if (!add) roles.remove(command.roleId());
+        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), n.eventId(),
+                n.channels(), roles, n.recipientExpression(), n.subject(), n.body()));
+    }
+
+    /** A generated document (template + model) or report (query-fed dataset). */
+    private void addDocument(EditorCommand command) {
+        if (repository.findById(command.id(), DocumentEntity.class).isPresent()) return;
+        repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var kind = command.type() == null || command.type().isBlank() ? "DOCUMENT" : command.type();
+        if (!DocumentEntity.KINDS.contains(kind)) {
+            throw new IllegalArgumentException("Unknown document kind: " + kind);
+        }
+        repository.save(new DocumentEntity(command.id(), command.name(), command.moduleId(),
+                kind, null, null, null, null, null));
+    }
+
+    private void removeDocument(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), DocumentEntity.class);
+    }
+
+    /** DOCUMENT: the model that fills the template (null clears). */
+    private void setDocumentModel(EditorCommand command) {
+        var doc = repository.findById(command.id(), DocumentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown document: " + command.id()));
+        var modelId = command.modelId() == null || command.modelId().isBlank() ? null : command.modelId();
+        if (modelId != null) {
+            repository.findById(modelId, ModelEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + modelId));
+        }
+        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
+                modelId, doc.queryServiceId(), doc.queryOperationId(), doc.templateUri(), doc.description()));
+    }
+
+    /** REPORT: the query operation feeding the dataset (nulls clear). */
+    private void setDocumentQuery(EditorCommand command) {
+        var doc = repository.findById(command.id(), DocumentEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown document: " + command.id()));
+        var qs = command.queryServiceId() == null || command.queryServiceId().isBlank() ? null : command.queryServiceId();
+        var op = command.queryOperationId() == null || command.queryOperationId().isBlank() ? null : command.queryOperationId();
+        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
+                doc.modelId(), qs, op, doc.templateUri(), doc.description()));
+    }
+
+    /** i18n: the locales the system speaks. */
+    private void setProjectLocales(EditorCommand command) {
+        var project = currentProject()
+                .orElseThrow(() -> new IllegalArgumentException("No current project"));
+        repository.save(new ProjectEntity(project.id(), project.name(), project.outputPath(),
+                project.packageName(), project.gitRepository(), project.database(),
+                project.dbMigrationTool(), project.terraformProvider(), project.terraformProviderVersion(),
+                project.terraformBackendType(), project.iamProvider(), project.messageBrokerType(),
+                project.tracingProvider(), project.metricsProvider(), project.loggingProvider(),
+                project.llmProvider(), project.cacheProvider(), project.fileStorageProvider(),
+                project.emailProvider(), project.secretsProvider(), project.cicdProvider(),
+                project.environments(), project.serviceIds(), project.contextMap(),
+                project.tenancyStrategy(), project.externalSystems(), project.objective(),
+                command.fieldIds(), command.label()));
     }
 
     private void addEtlFlow(EditorCommand command) {

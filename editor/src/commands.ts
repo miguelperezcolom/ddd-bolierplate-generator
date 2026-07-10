@@ -771,6 +771,40 @@ export type ModuxCommand =
     }
   | { kind: 'remove-identity-provider'; id: string }
   | {
+      /** When an event happens, tell these roles through this channel. */
+      kind: 'add-notification';
+      id: string;
+      name: string;
+      moduleId: string;
+      type?: string;
+    }
+  | { kind: 'remove-notification'; id: string }
+  | { kind: 'set-notification-event'; id: string; targetId: string | null }
+  | { kind: 'add-notification-recipient'; id: string; roleId: string }
+  | { kind: 'remove-notification-recipient'; id: string; roleId: string }
+  | {
+      /** A generated document (DOCUMENT) or report (REPORT). */
+      kind: 'add-document';
+      id: string;
+      name: string;
+      moduleId: string;
+      type?: string;
+    }
+  | { kind: 'remove-document'; id: string }
+  | { kind: 'set-document-model'; id: string; modelId: string | null }
+  | {
+      kind: 'set-document-query';
+      id: string;
+      queryServiceId: string | null;
+      queryOperationId: string | null;
+    }
+  | {
+      /** i18n: the locales the system speaks (fieldIds carries them; label = default). */
+      kind: 'set-project-locales';
+      fieldIds: string[];
+      label?: string;
+    }
+  | {
       /** Federation: the external system publishing the IdP (null = ours). */
       kind: 'set-idp-publisher';
       id: string;
