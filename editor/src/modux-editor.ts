@@ -3588,8 +3588,9 @@ export class ModuxEditor extends LitElement {
           this.command({ kind: 'set-crud-detail', pageId: m[1], targetId: null, toAppId: null });
         } else if ((m = /^crudnew:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-crud-create', pageId: m[1], targetId: null, toAppId: null });
-        } else if ((m = /^wizstep:(.+)->(.+)$/.exec(id))) {
-          this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
+        } else if ((m = /^wizstep:([^:]+):(.+)$/.exec(id))) {
+          // the line is the MAPPING: Supr unmaps the step (the row keeps its place)
+          this.command({ kind: 'set-wizard-step-page', pageId: m[1], itemId: m[2], targetId: null });
         } else if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-page-button', pageId: m[1], useCaseId: m[2] });
         } else if ((m = /^pglist:(.+)->(.+)$/.exec(id))) {

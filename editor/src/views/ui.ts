@@ -359,16 +359,17 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
       const step = (page.wizardSteps ?? [])[i];
       if (!step.pageId) continue;
+      const key = step.id ?? step.pageId;
+      // the line IS the mapping: it leaves the STEP row, not the wizard node
       edges.push({
-        id: `wizstep:${page.id}->${step.pageId}`,
-        sourceId: page.id,
+        id: `wizstep:${page.id}:${key}`,
+        sourceId: `wizrow:${page.id}:${key}`,
         targetId: step.pageId,
         kind: 'wizard-step',
         color: '#7c3aed',
-        label: `paso ${i + 1}`,
         dashed: true,
         arrow: true,
-        tooltip: step.label ? `paso ${i + 1}: ${step.label}` : `paso ${i + 1}`,
+        tooltip: `la página que implementa el paso ${i + 1} — Supr desmapea`,
       });
     }
     if (page.modelId) {
