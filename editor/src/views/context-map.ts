@@ -551,10 +551,36 @@ export function contextMapScene(
         proxy: false,
         etl: true,
       })),
+    ...(model.identityProviders ?? []).map((idp) => ({
+      ref: idp,
+      external: false,
+      api: false,
+      proxy: false,
+      idp: true,
+    })),
   ];
 
   const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if ('idp' in entry && entry.idp) {
+      const idp = entry.ref as NonNullable<ModuxModel['identityProviders']>[number];
+      const federated = !!idp.publishedByExternalSystemId;
+      return [{
+        id: idp.id,
+        label: idp.name,
+        kind: 'identity-provider',
+        symbol: 'key',
+        fill: federated ? '#ffffff' : '#fefce8',
+        stroke: '#ca8a04',
+        dashed: federated,
+        badge: idp.type ?? 'IDP',
+        tooltip: `${idp.name} — emite las identidades que el sistema confía${federated ? ' (federado)' : ''}; arrastra un contexto, app o flujo ETL hasta él`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
+    }
     if ('etl' in entry && entry.etl) {
       const f = entry.ref as NonNullable<ModuxModel['etlFlows']>[number];
       return [{
@@ -1105,6 +1131,53 @@ export function contextMapScene(
           tooltip: 'invoca',
         }))
     : [];
+
+  // Identity: who validates whose tokens, and where federated IdPs come from.
+  const idpEdges: SceneEdge[] = [
+    ...model.modules
+      .filter((mo) => mo.identityProviderId && nodeIds.has(mo.id) && nodeIds.has(mo.identityProviderId))
+      .map((mo): SceneEdge => ({
+        id: `idptrust:${mo.id}`,
+        sourceId: mo.id,
+        targetId: mo.identityProviderId!,
+        kind: 'idp-trust',
+        color: '#ca8a04',
+        label: 'valida tokens de',
+        dashed: true,
+        arrow: true,
+        tooltip: `${mo.name} valida los tokens emitidos por este IdP — Supr lo desconfía`,
+      })),
+    ...(model.etlFlows ?? [])
+      .filter((f) => f.identityProviderId && nodeIds.has(f.identityProviderId))
+      .flatMap((f): SceneEdge[] => {
+        const el = nodeIds.has(f.id) ? f.id : f.ownerModuleId && nodeIds.has(f.ownerModuleId) ? f.ownerModuleId : null;
+        if (!el) return [];
+        return [{
+          id: `idpsvc:${f.id}`,
+          sourceId: el,
+          targetId: f.identityProviderId!,
+          kind: 'idp-service',
+          color: '#ca8a04',
+          label: 'identidad de servicio',
+          dashed: true,
+          arrow: true,
+          tooltip: `${f.name} corre con una identidad de servicio de este IdP`,
+        }];
+      }),
+    ...(model.identityProviders ?? [])
+      .filter((idp) => idp.publishedByExternalSystemId && nodeIds.has(idp.id) && nodeIds.has(idp.publishedByExternalSystemId!))
+      .map((idp): SceneEdge => ({
+        id: `idpfed:${idp.id}`,
+        sourceId: idp.publishedByExternalSystemId!,
+        targetId: idp.id,
+        kind: 'idp-federation',
+        color: '#ca8a04',
+        label: 'publica',
+        dashed: true,
+        arrow: true,
+        tooltip: 'IdP federado: lo publica este sistema externo — Supr lo vuelve propio',
+      })),
+  ];
 
   // Scheduled trigger → the use case (or policy) it fires, on a cron.
   const triggerFireEdges: SceneEdge[] = detailed
@@ -1807,6 +1880,7 @@ export function contextMapScene(
       ...apiWireEdges,
       ...callEdges,
       ...triggerFireEdges,
+      ...idpEdges,
       ...etlEdges,
       ...aggCallEdges,
       ...queryEdges,

@@ -763,6 +763,26 @@ export type ModuxCommand =
     }
   | { kind: 'remove-etl-step'; etlFlowId: string; id: string }
   | {
+      /** An identity provider: who issues the identities the system trusts. */
+      kind: 'add-identity-provider';
+      id: string;
+      name: string;
+      type?: string;
+    }
+  | { kind: 'remove-identity-provider'; id: string }
+  | {
+      /** Federation: the external system publishing the IdP (null = ours). */
+      kind: 'set-idp-publisher';
+      id: string;
+      targetId: string | null;
+    }
+  | {
+      /** Wires (or unwires) an app / bounded context / ETL flow to the IdP `targetId`. */
+      kind: 'set-identity-provider';
+      id: string;
+      targetId: string | null;
+    }
+  | {
       /** CRUD: what opens a row — a page (targetId) or an app (toAppId); nulls clear. */
       kind: 'set-crud-detail';
       pageId: string;

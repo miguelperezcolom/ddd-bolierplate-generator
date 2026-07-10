@@ -29,8 +29,19 @@ public record UiAdapterEntity(
         /** VIEW_EDITOR: the read-only detail view. */
         String viewPageId,
         /** VIEW_EDITOR: the edit view. */
-        String editPageId
+        String editPageId,
+        /** The IdP this app authenticates its users against. */
+        String identityProviderId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
+    public UiAdapterEntity(String id, String name, String serviceId, String title,
+                           String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems,
+                           UiAppType appType, String headerPageId, String homePageId,
+                           String homeAppId, String modelId, String viewPageId, String editPageId) {
+        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
+                homePageId, homeAppId, modelId, viewPageId, editPageId, null);
+    }
 
     /** Backward-compatible constructor (pre-viewPageId callers and stores). */
     public UiAdapterEntity(String id, String name, String serviceId, String title,

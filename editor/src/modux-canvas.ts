@@ -83,6 +83,8 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <path d="M1.5 11.5 C1.5 7.6, 10.5 7.6, 10.5 11.5"></path>`,
   clock: svg`<circle cx="6" cy="6" r="4.4" fill="none"></circle>
     <path d="M6 3.4 L6 6 L7.9 7.4" fill="none" stroke-linecap="round"></path>`,
+  key: svg`<circle cx="4.2" cy="4.2" r="2.6" fill="none"></circle>
+    <path d="M6 6 L10 10 M8 8 L9.6 6.4 M9 9 L10.6 7.4" fill="none" stroke-linecap="round"></path>`,
   gear: svg`<circle cx="6" cy="6" r="2.6"></circle>
     <line x1="6" y1="0.5" x2="6" y2="2.6"></line><line x1="6" y1="9.4" x2="6" y2="11.5"></line>
     <line x1="0.5" y1="6" x2="2.6" y2="6"></line><line x1="9.4" y1="6" x2="11.5" y2="6"></line>`,
@@ -1222,6 +1224,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'api-impl' ||
             node.kind === 'proxy-api'
           : node.kind === 'model' ||
+            node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
             node.kind === 'external-system' ||
             node.kind === 'actor' ||

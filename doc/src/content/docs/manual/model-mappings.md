@@ -11,6 +11,15 @@ A **Model Mapping** defines how to transform data from one model to another. It 
 2. Click **New**
 3. Select the source and target models and add field rules
 
+Or on the **Mapeados** view of the [graphical editor](/manual/graphical-editor/):
+every model is a node, every mapping a labeled edge — **draw a line between two
+models** and the mapping is born (named `Source2Target`; rules grow in its form).
+The view also derives the **mapping debt**: a page button calling a use case whose
+request model differs from the page's viewmodel shows an amber dashed «falta mapear»
+edge; wiring the two models settles it. To APPLY a mapping, **drop it from the
+palette's Catálogo onto a button** in the page designer — the button transforms the
+viewmodel with it before calling its use case.
+
 ## Configuration
 
 ### Basic fields

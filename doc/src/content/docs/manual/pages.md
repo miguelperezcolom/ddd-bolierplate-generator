@@ -32,6 +32,28 @@ A **Page** is the fundamental unit of UI in Modux. In hexagonal architecture ter
 | **Route** | URL path for this page (e.g. `/bookings`) |
 | **Type** | PAGE, CRUD or WIZARD (FORM/DASHBOARD legacy) |
 
+### The four zones
+
+Every page has **header**, **toolbar** (top buttons), **content** and a **bottom
+bar** (closing actions) — the designer's mockup shows all four, and the bars are
+drop zones: dropping a use case from the Catálogo creates its button in THAT bar,
+dropping it on an existing button retargets it (label, bar and mapping survive),
+and dropping a **mapping** on a button transforms the viewmodel before the call.
+
+### CRUD targets
+
+A CRUD wires **detalle** (what opens a row) and **nuevo** (the new-record form)
+from its orange and teal handles — each reaching a page or an app of any archetype
+(a Vista-editor app is the natural detail).
+
+### Wizard steps
+
+A wizard's **steps are first-class**: they exist with a label and an order, and
+**map to the page implementing them** (drag the step row's handle to a page, or
+drop a page on the row; unmapped steps show ⌁). Steps reorder by dragging — rows
+between drop slots on the UI view, or the chips of the mockup's wizard bar — and
+deleting a page **unmaps** its steps instead of losing them.
+
 ### CRUD pages
 
 | Field | Description |

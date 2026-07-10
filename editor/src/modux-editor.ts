@@ -1630,6 +1630,40 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-step':
         return [{ kind: 'remove-use-case-step', useCaseId: c.useCaseId, id: c.id }];
+      case 'add-identity-provider':
+        return [{ kind: 'remove-identity-provider', id: c.id }];
+      case 'remove-identity-provider': {
+        const idp = (this.model.identityProviders ?? []).find((x) => x.id === c.id);
+        if (!idp) return null;
+        const ops: ModuxCommand[] = [
+          { kind: 'add-identity-provider', id: idp.id, name: idp.name, type: idp.type },
+        ];
+        if (idp.publishedByExternalSystemId) {
+          ops.push({ kind: 'set-idp-publisher', id: idp.id, targetId: idp.publishedByExternalSystemId });
+        }
+        for (const mo of this.model.modules) {
+          if (mo.identityProviderId === c.id) ops.push({ kind: 'set-identity-provider', id: mo.id, targetId: c.id });
+        }
+        for (const app of this.model.uiApps ?? []) {
+          if (app.identityProviderId === c.id) ops.push({ kind: 'set-identity-provider', id: app.id, targetId: c.id });
+        }
+        for (const f of this.model.etlFlows ?? []) {
+          if (f.identityProviderId === c.id) ops.push({ kind: 'set-identity-provider', id: f.id, targetId: c.id });
+        }
+        return ops;
+      }
+      case 'set-idp-publisher': {
+        const idp = (this.model.identityProviders ?? []).find((x) => x.id === c.id);
+        return [{ kind: 'set-idp-publisher', id: c.id, targetId: idp?.publishedByExternalSystemId ?? null }];
+      }
+      case 'set-identity-provider': {
+        const prev =
+          this.model.modules.find((mo) => mo.id === c.id)?.identityProviderId ??
+          (this.model.uiApps ?? []).find((a2) => a2.id === c.id)?.identityProviderId ??
+          (this.model.etlFlows ?? []).find((f) => f.id === c.id)?.identityProviderId ??
+          null;
+        return [{ kind: 'set-identity-provider', id: c.id, targetId: prev }];
+      }
       case 'add-etl-flow':
         return [{ kind: 'remove-etl-flow', id: c.id }];
       case 'remove-etl-flow': {
@@ -2664,6 +2698,19 @@ export class ModuxEditor extends LitElement {
         });
         return;
       }
+      // an app wired to an IdP: its users authenticate there (either direction)
+      const idpsUi = this.model.identityProviders ?? [];
+      const isIdp = (id: string) => idpsUi.some((x) => x.id === id);
+      if (isIdp(sourceId) || isIdp(targetId)) {
+        const idpId = isIdp(sourceId) ? sourceId : targetId;
+        const other = isIdp(sourceId) ? targetId : sourceId;
+        if (isApp(other)) {
+          this.command({ kind: 'set-identity-provider', id: other, targetId: idpId });
+        } else {
+          this.emit('modux-notice', { message: 'En la vista UI, el IdP se relaciona con las APPS (quién autentica dónde)' });
+        }
+        return;
+      }
       // a model wired to a page or an app becomes its VIEWMODEL (either direction)
       const isModel = (id: string) => (this.model.models ?? []).some((mo) => mo.id === id);
       if (isModel(sourceId) || isModel(targetId)) {
@@ -3251,6 +3298,31 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    // Identity: wiring an element to an IdP declares the trust — a bounded context
+    // validates its tokens, an ETL flow runs as one of its service identities; and
+    // an IdP wired to an external system becomes FEDERATED (published by it).
+    const idps = this.model.identityProviders ?? [];
+    const idpOf = (id: string) => idps.find((x) => x.id === id);
+    if (idpOf(sourceId) || idpOf(targetId)) {
+      const idp = idpOf(sourceId) ?? idpOf(targetId)!;
+      const other = idpOf(sourceId) ? targetId : sourceId;
+      if (idpOf(sourceId) && this.model.externalSystems.some((x) => x.id === other)) {
+        if (idp.publishedByExternalSystemId !== other) {
+          this.command({ kind: 'set-idp-publisher', id: idp.id, targetId: other });
+        }
+        return;
+      }
+      const isModule = this.model.modules.some((mo) => mo.id === other);
+      const isEtl = (this.model.etlFlows ?? []).some((f) => f.id === other);
+      if (isModule || isEtl) {
+        this.command({ kind: 'set-identity-provider', id: other, targetId: idp.id });
+        return;
+      }
+      this.emit('modux-notice', {
+        message: 'Un IdP se relaciona con contextos y flujos ETL (aquí) o con apps (vista UI); hacia un sistema externo lo federa',
+      });
+      return;
+    }
     // ETL integrator: whatever you wire INTO the flow is a source (a table or an
     // API = pull, an event = consumer); whatever the flow wires OUT to is a write.
     const etlFlowsAll = this.model.etlFlows ?? [];
@@ -3713,7 +3785,9 @@ export class ModuxEditor extends LitElement {
     if (this._view === 'ui') {
       if (elementType === 'edge') {
         let m: RegExpExecArray | null;
-        if ((m = /^appheader:(.+)->(.+)$/.exec(id))) {
+        if ((m = /^idpauth:(.+)$/.exec(id))) {
+          this.command({ kind: 'set-identity-provider', id: m[1], targetId: null });
+        } else if ((m = /^appheader:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-app-header-page', appId: m[1], pageId: null });
         } else if ((m = /^apphome:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-app-home-page', appId: m[1], pageId: null });
@@ -3778,6 +3852,10 @@ export class ModuxEditor extends LitElement {
       }
       if (kind === 'model') {
         this.command({ kind: 'remove-model', id });
+        return;
+      }
+      if (kind === 'identity-provider') {
+        this.command({ kind: 'remove-identity-provider', id });
         return;
       }
       // system chips (use cases, query services, models, actors) are not deletable from here
@@ -3881,6 +3959,25 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && (kind === 'idp-trust' || kind === 'idp-service')) {
+      const match = /^idp(?:trust|svc):(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'set-identity-provider', id: match[1], targetId: null });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'idp-federation') {
+      const match = /^idpfed:(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'set-idp-publisher', id: match[1], targetId: null });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'identity-provider') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-identity-provider', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && (kind === 'etl-source' || kind === 'etl-write')) {
@@ -5106,6 +5203,7 @@ export class ModuxEditor extends LitElement {
     { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
     { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
     { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
+    { type: 'identity-provider', label: 'IdP (identidad)', symbol: 'key', color: '#ca8a04', group: 'Estratégico' },
     { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea', group: 'IA' },
     { type: 'external-ai-agent', label: 'Agente IA externo', symbol: 'robot', color: '#9333ea', group: 'IA' },
     { type: 'mcp-gateway', label: 'Gateway MCP', symbol: 'plug', color: '#7c3aed', group: 'IA' },
@@ -5404,6 +5502,7 @@ export class ModuxEditor extends LitElement {
       (m.workflows ?? []).map((x) => x.id),
       (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
       (m.etlFlows ?? []).map((x) => x.id),
+      (m.identityProviders ?? []).map((x) => x.id),
       (m.uiApps ?? []).map((x) => x.id),
       (m.pages ?? []).map((x) => x.id),
     ]) {
@@ -5570,6 +5669,7 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
+        'identity-provider': 'idp-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5601,6 +5701,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'create-ui-app', id, name, type: 'VIEW_EDITOR' }
                                   : type === 'ui-model'
                                   ? { kind: 'add-model', id, name }
+                                  : type === 'identity-provider'
+                                  ? { kind: 'add-identity-provider', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
@@ -6097,7 +6199,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&

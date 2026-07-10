@@ -458,6 +458,43 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     });
   }
 
+  // ---- identity: the IdPs and who authenticates against them --------------
+  let idpY = 120;
+  for (const idp of model.identityProviders ?? []) {
+    const pos = layout[idp.id] ?? { x: -320, y: idpY };
+    idpY = pos.y + 70 + 40;
+    nodes.push({
+      id: idp.id,
+      label: idp.name,
+      x: pos.x,
+      y: pos.y,
+      w: 168,
+      h: 52,
+      kind: 'identity-provider',
+      symbol: 'key',
+      fill: idp.publishedByExternalSystemId ? '#ffffff' : '#fefce8',
+      stroke: '#ca8a04',
+      dashed: !!idp.publishedByExternalSystemId,
+      badge: idp.type ?? 'IDP',
+      tooltip: `${idp.name} — arrastra una app hasta él: sus usuarios autenticarán aquí`,
+    });
+  }
+  for (const app of apps) {
+    if (!app.identityProviderId) continue;
+    if (!(model.identityProviders ?? []).some((x) => x.id === app.identityProviderId)) continue;
+    edges.push({
+      id: `idpauth:${app.id}`,
+      sourceId: app.id,
+      targetId: app.identityProviderId,
+      kind: 'idp-auth',
+      color: '#ca8a04',
+      label: 'autentica con',
+      dashed: true,
+      arrow: true,
+      tooltip: 'los usuarios de esta app se autentican contra este IdP — Supr lo desconecta',
+    });
+  }
+
   // ---- actors → apps -------------------------------------------------------
   const uses = (model.actorAppUses ?? []).filter(
     (u) => apps.some((a) => a.id === u.appId) && (model.actors ?? []).some((a) => a.id === u.actorId),

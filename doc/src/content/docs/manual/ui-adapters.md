@@ -7,6 +7,22 @@ A **UI Adapter** defines the navigation structure of a frontend application for 
 
 One service can have multiple UI adapters, for example to provide different navigation trees for different user roles or devices.
 
+## Archetypes
+
+Beyond its menu layout (`UiAppVariant`), an app has an **archetype** (`UiAppType`) that says what it IS:
+
+| Archetype | Meaning | Extra wiring |
+|---|---|---|
+| **APP** | A regular application | **home** — the page (or **another app**) it opens first, drawn from the green handle |
+| **ORCHESTRATOR** | Keeps state and shows nothing of its own — only child pages | its **estado**: a data model wired to the app («estado» edge); no home |
+| **MASTER_DETAIL** | A header plus tabs — all of them pages | **cabecera** (blue handle, or the first page dropped on it); the tabs are its menu pages, reorderable with the drop slots; no home |
+| **VIEW_EDITOR** | An orchestrator pairing a read-only detail view with an edit view | **vista** and **edición** handles towards its two pages |
+
+All four are created from the [graphical editor](/manual/graphical-editor/)'s palette
+(UI view); every wiring above is a drawn line, Supr un-draws it, and everything is
+undoable. An app also declares which [identity provider](/manual/identity/) its users
+authenticate against («autentica con»).
+
 ## Creating a UI adapter
 
 1. Open the **Interfaces → UI Adapters** section

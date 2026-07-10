@@ -176,6 +176,8 @@ export interface ModuleRef {
   queryServices?: QueryServiceRef[];
   /** Cron tasks owned by this bounded context. */
   scheduledTriggers?: ScheduledTriggerRef[];
+  /** The IdP whose tokens this bounded context validates. */
+  identityProviderId?: string;
 }
 
 export interface ActorRef {
@@ -519,6 +521,8 @@ export interface UiAppRef {
   viewPageId?: string;
   /** VIEW_EDITOR: the edit view. */
   editPageId?: string;
+  /** The IdP this app authenticates its users against. */
+  identityProviderId?: string;
 }
 
 export interface UiPageButtonRef {
@@ -604,6 +608,19 @@ export interface EtlFlowRef {
   /** The bounded context that owns (generates, operates) the pipeline. */
   ownerModuleId?: string;
   steps?: EtlStepRef[];
+  /** The service identity the pipeline runs as. */
+  identityProviderId?: string;
+}
+
+/** An identity provider: who issues the identities the system trusts. */
+export interface IdentityProviderRef {
+  id: string;
+  name: string;
+  /** CORPORATE, B2C, SOCIAL or PARTNER. */
+  type?: string;
+  issuer?: string;
+  /** Federation: the external system publishing this IdP; null = ours. */
+  publishedByExternalSystemId?: string;
 }
 
 export interface ModuxModel {
@@ -663,6 +680,7 @@ export interface ModuxModel {
   apis?: ApiRef[];
   workflows?: WorkflowRef[];
   etlFlows?: EtlFlowRef[];
+  identityProviders?: IdentityProviderRef[];
   aggregateCalls?: AggregateCallRef[];
   /** Domain events published directly by use cases (PublishDomainEvent steps). */
   useCaseEmissions?: EmissionRef[];

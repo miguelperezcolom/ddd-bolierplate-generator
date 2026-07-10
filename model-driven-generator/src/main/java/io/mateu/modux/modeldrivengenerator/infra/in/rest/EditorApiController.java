@@ -41,6 +41,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlFlowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IdentityProviderEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
@@ -107,7 +108,8 @@ public class EditorApiController {
                             List<ReadModelDto> readModels, List<DomainServiceDto> domainServices,
                             List<ApplicationEventDto> applicationEvents,
                             List<QueryServiceDto> queryServices,
-                            List<ScheduledTriggerDto> scheduledTriggers) {}
+                            List<ScheduledTriggerDto> scheduledTriggers,
+                            String identityProviderId) {}
 
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     public record DomainServiceDto(String id, String name) {}
@@ -236,7 +238,8 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
                            String type, String headerPageId, String homePageId, String homeAppId,
-                           String modelId, String viewPageId, String editPageId) {}
+                           String modelId, String viewPageId, String editPageId,
+                           String identityProviderId) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
     public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
                                   String aggregateId, String queryServiceId, String queryOperationId) {}
@@ -252,7 +255,11 @@ public class EditorApiController {
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
 
-    public record EtlFlowDto(String id, String name, String ownerModuleId, List<EtlStepDto> steps) {}
+    public record EtlFlowDto(String id, String name, String ownerModuleId, List<EtlStepDto> steps,
+                             String identityProviderId) {}
+
+    public record IdentityProviderDto(String id, String name, String type, String issuer,
+                                      String publishedByExternalSystemId) {}
 
     public record EtlStepDto(String id, String name, String type, String externalTableId,
                              String apiId, String operationId, String eventId, String mappingId) {}
@@ -292,6 +299,7 @@ public class EditorApiController {
             List<AgentUseDto> agentUses,
             List<WorkflowDto> workflows,
             List<EtlFlowDto> etlFlows,
+            List<IdentityProviderDto> identityProviders,
             List<AggregateCallDto> aggregateCalls,
             List<EmissionDto> useCaseEmissions,
             List<SubscriptionDto> subscriptions,
@@ -471,7 +479,8 @@ public class EditorApiController {
                                 .map(scheduledTriggersById::get)
                                 .filter(Objects::nonNull)
                                 .map(t -> new ScheduledTriggerDto(t.id(), t.name(), t.cronExpression(), t.useCaseId()))
-                                .toList()))
+                                .toList(),
+                        m.identityProviderId()))
                 .toList();
 
         var projects = repository.findAllOfType(ProjectEntity.class);
@@ -799,7 +808,7 @@ public class EditorApiController {
                                 .map(EditorApiController::toMenuEntry)
                                 .toList(),
                         a.appType().name(), a.headerPageId(), a.homePageId(), a.homeAppId(),
-                        a.modelId(), a.viewPageId(), a.editPageId()))
+                        a.modelId(), a.viewPageId(), a.editPageId(), a.identityProviderId()))
                 .toList();
         var pages = repository.findAllOfType(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
@@ -900,7 +909,12 @@ public class EditorApiController {
                         .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerModuleId(), f.steps().stream()
                                 .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
                                         s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
-                                .toList()))
+                                .toList(),
+                                f.identityProviderId()))
+                        .toList(),
+                repository.findAllOfType(IdentityProviderEntity.class).stream()
+                        .map(x -> new IdentityProviderDto(x.id(), x.name(), x.type(), x.issuer(),
+                                x.publishedByExternalSystemId()))
                         .toList(),
                 aggregateCalls.stream().distinct().toList(),
                 useCaseEmissions.stream().distinct().toList(),
@@ -1147,6 +1161,10 @@ public class EditorApiController {
             case "set-crud-create" -> setCrudTarget(command, false);
             case "set-app-view-page" -> setAppViewOrEdit(command, true);
             case "set-app-edit-page" -> setAppViewOrEdit(command, false);
+            case "add-identity-provider" -> addIdentityProvider(command);
+            case "remove-identity-provider" -> removeIdentityProvider(command);
+            case "set-idp-publisher" -> setIdpPublisher(command);
+            case "set-identity-provider" -> setIdentityProvider(command);
             case "add-etl-flow" -> addEtlFlow(command);
             case "remove-etl-flow" -> removeEtlFlow(command);
             case "add-etl-step" -> addEtlStep(command);
@@ -3602,6 +3620,82 @@ public class EditorApiController {
         repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
                 app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
                 toAppId != null ? null : pageId, toAppId, app.modelId()));
+    }
+
+    /** An identity provider — ours, or federated when published by an external system. */
+    private void addIdentityProvider(EditorCommand command) {
+        if (repository.findById(command.id(), IdentityProviderEntity.class).isPresent()) return;
+        var type = command.type() == null || command.type().isBlank() ? "CORPORATE" : command.type();
+        if (!IdentityProviderEntity.TYPES.contains(type)) {
+            throw new IllegalArgumentException("Unknown IdP type: " + type);
+        }
+        repository.save(new IdentityProviderEntity(command.id(), command.name(), type,
+                null, null, null));
+    }
+
+    /** Deletes the IdP and clears every trust edge pointing at it. */
+    private void removeIdentityProvider(EditorCommand command) {
+        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
+            if (command.id().equals(app.identityProviderId())) {
+                repository.save(app.toBuilder().identityProviderId(null).build());
+            }
+        }
+        for (var mo : repository.findAllOfType(ModuleEntity.class)) {
+            if (command.id().equals(mo.identityProviderId())) {
+                repository.save(mo.toBuilder().identityProviderId(null).build());
+            }
+        }
+        for (var flow : repository.findAllOfType(EtlFlowEntity.class)) {
+            if (command.id().equals(flow.identityProviderId())) {
+                repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
+                        flow.ownerModuleId(), flow.steps(), null));
+            }
+        }
+        repository.deleteAllById(List.of(command.id()), IdentityProviderEntity.class);
+    }
+
+    /** Federation: the external system publishing this IdP (null = ours). */
+    private void setIdpPublisher(EditorCommand command) {
+        var idp = repository.findById(command.id(), IdentityProviderEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown IdP: " + command.id()));
+        if (command.targetId() != null && !command.targetId().isBlank()) {
+            var known = owningProject().externalSystems().stream()
+                    .anyMatch(x -> x.id().equals(command.targetId()));
+            if (!known) {
+                throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
+            }
+        }
+        repository.save(new IdentityProviderEntity(idp.id(), idp.name(), idp.type(), idp.issuer(),
+                command.targetId() == null || command.targetId().isBlank() ? null : command.targetId(),
+                idp.description()));
+    }
+
+    /** Wires (or, with null, unwires) an app / bounded context / ETL flow to its IdP. */
+    private void setIdentityProvider(EditorCommand command) {
+        var idpId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        if (idpId != null) {
+            repository.findById(idpId, IdentityProviderEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown IdP: " + idpId));
+        }
+        var app = repository.findById(command.id(), UiAdapterEntity.class);
+        if (app.isPresent()) {
+            repository.save(app.get().toBuilder().identityProviderId(idpId).build());
+            return;
+        }
+        var mo = repository.findById(command.id(), ModuleEntity.class);
+        if (mo.isPresent()) {
+            repository.save(mo.get().toBuilder().identityProviderId(idpId).build());
+            return;
+        }
+        var flow = repository.findById(command.id(), EtlFlowEntity.class);
+        if (flow.isPresent()) {
+            var f = flow.get();
+            repository.save(new EtlFlowEntity(f.id(), f.name(), f.description(),
+                    f.ownerModuleId(), f.steps(), idpId));
+            return;
+        }
+        throw new IllegalArgumentException(
+                "El IdP se relaciona con apps, bounded contexts o flujos ETL: " + command.id());
     }
 
     private void addEtlFlow(EditorCommand command) {

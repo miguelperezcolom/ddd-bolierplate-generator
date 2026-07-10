@@ -54,8 +54,30 @@ public record ModuleEntity(
         /** Domain services owned by this bounded context (stateless domain logic; they emit domain events). */
         List<String> domainServiceIds,
         /** Application events owned by this bounded context (published by its use cases). */
-        List<String> applicationEventIds
+        List<String> applicationEventIds,
+        /** The IdP whose tokens this bounded context validates. */
+        String identityProviderId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
+    public ModuleEntity(String id, String name, String gitRepository, List<String> aggregateIds,
+                        List<String> entityIds, List<String> valueObjectIds, List<String> useCaseIds,
+                        List<String> domainEventIds, List<String> projectionIds, List<String> readModelIds,
+                        List<String> subscriptionIds, List<String> sagaIds, List<String> scheduledTriggerIds,
+                        List<BddScenarioEntity> bddScenarios, String llmSystemPrompt, String tableNamePrefix,
+                        boolean autoTableNamePrefix, String version, List<BffEntity> bffs, List<AclEntity> acls,
+                        List<DomainPolicyEntity> domainPolicies, List<InvariantEntity> invariants,
+                        SubdomainType subdomainType, List<AccessPolicyEntity> accessPolicies,
+                        List<KpiEntity> kpis, List<String> decisionIds, String description,
+                        String readSideModuleId, String readSideExternalSystemId, String readSideVia,
+                        List<String> domainServiceIds, List<String> applicationEventIds) {
+        this(id, name, gitRepository, aggregateIds, entityIds, valueObjectIds, useCaseIds,
+                domainEventIds, projectionIds, readModelIds, subscriptionIds, sagaIds,
+                scheduledTriggerIds, bddScenarios, llmSystemPrompt, tableNamePrefix,
+                autoTableNamePrefix, version, bffs, acls, domainPolicies, invariants, subdomainType,
+                accessPolicies, kpis, decisionIds, description, readSideModuleId,
+                readSideExternalSystemId, readSideVia, domainServiceIds, applicationEventIds, null);
+    }
 
     /** Backward-compatible constructor (pre-domainServiceIds callers and stores). */
     public ModuleEntity(String id, String name, String gitRepository,
