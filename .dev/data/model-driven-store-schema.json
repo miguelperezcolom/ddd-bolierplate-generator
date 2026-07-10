@@ -925,6 +925,80 @@
       },
       "additionalProperties" : false
     },
+    "EtlFlowEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "ownerModuleId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'ownerModule' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/EtlStepEntity"
+          }
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "EtlStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "apiId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'api' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "eventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'event' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "externalTableId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'externalTable' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "intent" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
     "ExternalApiOperationUseEntity" : {
       "type" : "object",
       "properties" : {
@@ -2120,6 +2194,26 @@
             "$ref" : "#/$defs/UiComponentNodeEntity"
           }
         },
+        "crudCreateAppId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'crudCreateApp' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "crudCreatePageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'crudCreatePage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "crudDetailAppId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'crudDetailApp' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "crudDetailPageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'crudDetailPage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "fieldConfigs" : {
           "type" : "array",
           "items" : {
@@ -2307,6 +2401,11 @@
     "PageWizardStepEntity" : {
       "type" : "object",
       "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "label" : {
           "type" : "string"
         },
@@ -3497,8 +3596,31 @@
     "UiAdapterEntity" : {
       "type" : "object",
       "properties" : {
+        "appType" : {
+          "$ref" : "#/$defs/UiAppType"
+        },
         "appVariant" : {
           "$ref" : "#/$defs/UiAppVariant"
+        },
+        "editPageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'editPage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "headerPageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'headerPage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "homeAppId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'homeApp' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "homePageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'homePage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "id" : {
           "type" : "string",
@@ -3510,6 +3632,11 @@
           "items" : {
             "$ref" : "#/$defs/UiMenuItemEntity"
           }
+        },
+        "modelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
           "type" : "string"
@@ -3524,10 +3651,19 @@
         },
         "title" : {
           "type" : "string"
+        },
+        "viewPageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'viewPage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
       "additionalProperties" : false
+    },
+    "UiAppType" : {
+      "type" : "string",
+      "enum" : [ "APP", "ORCHESTRATOR", "MASTER_DETAIL", "VIEW_EDITOR" ]
     },
     "UiAppVariant" : {
       "type" : "string",
@@ -4159,6 +4295,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EnumEntity"
+      }
+    },
+    "etlFlows" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/EtlFlowEntity"
       }
     },
     "flows" : {

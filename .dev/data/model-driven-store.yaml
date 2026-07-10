@@ -1798,7 +1798,7 @@ diagrams:
     x: 135.0
     "y": 355.9
 - id: "context-map"
-  detail: "detail"
+  detail: "contexts"
   nodes:
   - ref: "mod-frontoffice"
     x: -491.9
@@ -1859,3 +1859,23 @@ diagrams:
   - ref: "mod-master-data"
     x: 1136.2
     "y": 139.3
+  - ref: "api-eded"
+    x: 603.7
+    "y": 78.8
+  - ref: "agent-we"
+    x: 897.8
+    "y": 80.4
+  - ref: "rag-wde"
+    x: 1002.1
+    "y": 214.2
+aiAgents:
+- id: "agent-we"
+  name: "we"
+  ragIds:
+  - "rag-wde"
+rags:
+- id: "rag-wde"
+  name: "wde"
+apis:
+- id: "api-eded"
+  name: "eded"
