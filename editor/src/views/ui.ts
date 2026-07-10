@@ -86,6 +86,12 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: appType === 'ORCHESTRATOR' ? '#c026d3' : '#0ea5e9',
       container: true,
       badge: appType === 'ORCHESTRATOR' ? 'ORQUESTADOR' : appType === 'MASTER_DETAIL' ? 'MAESTRO·DETALLE' : 'APP',
+      extraHandles: [
+        { kind: 'home', title: 'Home: arrastra hasta la página con la que abre la app', color: '#16a34a' },
+        ...(appType === 'MASTER_DETAIL'
+          ? [{ kind: 'header', title: 'Cabecera: arrastra hasta la página que hace de cabecera', color: '#0ea5e9' }]
+          : []),
+      ],
       tooltip:
         appType === 'ORCHESTRATOR'
           ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
@@ -93,6 +99,18 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
             ? `${app.name} — cabecera + pestañas (ambas son páginas)`
             : `App: ${app.name}`,
     });
+    if (app.homePageId) {
+      edges.push({
+        id: `apphome:${app.id}->${app.homePageId}`,
+        sourceId: app.id,
+        targetId: app.homePageId,
+        kind: 'app-home',
+        color: '#16a34a',
+        label: 'home',
+        arrow: true,
+        tooltip: 'la página con la que abre la app',
+      });
+    }
     if (appType === 'MASTER_DETAIL' && app.headerPageId) {
       edges.push({
         id: `appheader:${app.id}->${app.headerPageId}`,
@@ -233,10 +251,28 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       kind: 'page',
       symbol: 'interface',
       badge: page.type ?? 'PAGE',
+      extraHandles:
+        page.type === 'WIZARD'
+          ? [{ kind: 'wizard-step', title: 'Paso: arrastra hasta la página que será el siguiente paso', color: '#7c3aed' }]
+          : undefined,
       fill: '#ffffff',
       stroke: '#0284c7',
       tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),
     });
+    for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
+      const step = (page.wizardSteps ?? [])[i];
+      edges.push({
+        id: `wizstep:${page.id}->${step.pageId}`,
+        sourceId: page.id,
+        targetId: step.pageId,
+        kind: 'wizard-step',
+        color: '#7c3aed',
+        label: `paso ${i + 1}`,
+        dashed: true,
+        arrow: true,
+        tooltip: step.label ? `paso ${i + 1}: ${step.label}` : `paso ${i + 1}`,
+      });
+    }
     if (page.modelId) {
       chipMeta.set(page.modelId, {
         label: page.modelName ?? page.modelId,

@@ -4,6 +4,8 @@
  */
 
 export interface SceneNode {
+  /** Differentiated drag points: each starts a TYPED connect gesture (its kind). */
+  extraHandles?: { kind: string; title: string; color: string }[];
   id: string;
   label: string;
   x: number;

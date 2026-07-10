@@ -788,7 +788,7 @@ export class ModuxCanvas extends LitElement {
 
   // ---- edge drawing (connect gesture) -------------------------------------
 
-  private onHandlePointerDown(e: PointerEvent, node: SceneNode): void {
+  private onHandlePointerDown(e: PointerEvent, node: SceneNode, connectKind?: string): void {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     const p = this.toScene(e);
@@ -818,6 +818,7 @@ export class ModuxCanvas extends LitElement {
           targetId,
           x: ev.clientX,
           y: ev.clientY,
+          connectKind,
         });
       }
       this._pendingLink = null;
@@ -1266,6 +1267,18 @@ export class ModuxCanvas extends LitElement {
                         ? 'Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo'
                         : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
                 </circle>`,
+            )
+          : ''}
+        ${selected && this.connectable && node.extraHandles?.length
+          ? node.extraHandles.map(
+              (h, i) => svg`
+                <g transform="translate(${-hw + 24 + i * 20}, ${-hh})">
+                  <circle data-handle r="7" fill=${h.color} stroke="#ffffff" stroke-width="1.5"
+                          @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node, h.kind)}>
+                    <title>${h.title}</title>
+                  </circle>
+                  <circle r="2.4" fill="#ffffff" pointer-events="none"></circle>
+                </g>`,
             )
           : ''}
         ${isContainer && selected

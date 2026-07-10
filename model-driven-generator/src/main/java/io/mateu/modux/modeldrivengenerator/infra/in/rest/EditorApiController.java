@@ -41,6 +41,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
@@ -232,7 +233,7 @@ public class EditorApiController {
     public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
-                           String type, String headerPageId) {}
+                           String type, String headerPageId, String homePageId) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
     public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
                                   String aggregateId, String queryServiceId, String queryOperationId) {}
@@ -241,7 +242,10 @@ public class EditorApiController {
                             String modelName, String aggregateId, String listingQueryServiceId,
                             List<UiPageButtonDto> buttons,
                             List<UiFieldDto> viewmodelFields,
-                            List<UiComponentNodeDto> content) {}
+                            List<UiComponentNodeDto> content,
+                            List<UiWizardStepDto> wizardSteps) {}
+
+    public record UiWizardStepDto(String pageId, String label) {}
     /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
     public record UiComponentNodeDto(String id, String kind, String title, String text, String label,
                                      String useCaseId, String mappingId, String modelId,
@@ -780,7 +784,7 @@ public class EditorApiController {
                         (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
                                 .map(EditorApiController::toMenuEntry)
                                 .toList(),
-                        a.appType().name(), a.headerPageId()))
+                        a.appType().name(), a.headerPageId(), a.homePageId()))
                 .toList();
         var pages = repository.findAllOfType(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
@@ -796,6 +800,9 @@ public class EditorApiController {
                         uiFields(p),
                         (p.content() == null ? List.<UiComponentNodeEntity>of() : p.content()).stream()
                                 .map(EditorApiController::toComponentNode)
+                                .toList(),
+                        (p.wizardSteps() == null ? List.<PageWizardStepEntity>of() : p.wizardSteps()).stream()
+                                .map(s -> new UiWizardStepDto(s.pageId(), s.label()))
                                 .toList()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
@@ -1109,6 +1116,9 @@ public class EditorApiController {
             case "remove-workflow-dependency" -> removeWorkflowDependency(command);
             case "create-ui-app" -> createUiApp(command);
             case "set-app-header-page" -> setAppHeaderPage(command);
+            case "set-app-home-page" -> setAppHomePage(command);
+            case "add-page-wizard-step" -> addPageWizardStep(command);
+            case "remove-page-wizard-step" -> removePageWizardStep(command);
             case "delete-ui-app" -> deleteUiApp(command);
             case "create-ui-page" -> createUiPage(command);
             case "delete-ui-page" -> deleteUiPage(command);
@@ -3511,7 +3521,7 @@ public class EditorApiController {
                 ? io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP
                 : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
         repository.save(new UiAdapterEntity(command.id(), command.name(), null,
-                command.name(), null, null, List.of(), appType, null));
+                command.name(), null, null, List.of(), appType, null, null));
     }
 
     /** MASTER_DETAIL: the page shown as the header; null clears it. */
@@ -3524,7 +3534,56 @@ public class EditorApiController {
         }
         repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
                 app.path(), app.appVariant(), app.menuItems(), app.appType(),
+                command.pageId() == null || command.pageId().isBlank() ? null : command.pageId(),
+                app.homePageId()));
+    }
+
+    /** The page the app opens first; null clears it. */
+    private void setAppHomePage(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.pageId() != null && !command.pageId().isBlank()) {
+            repository.findById(command.pageId(), PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        }
+        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
+                app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
                 command.pageId() == null || command.pageId().isBlank() ? null : command.pageId()));
+    }
+
+    /** WIZARD: appends the page as a step (or moves it before another step's page). */
+    private void addPageWizardStep(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var step = repository.findById(command.targetId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.targetId()));
+        if (page.id().equals(step.id())) {
+            throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
+        }
+        var steps = new ArrayList<>(page.wizardSteps() == null
+                ? List.<PageWizardStepEntity>of() : page.wizardSteps());
+        if (steps.stream().anyMatch(s -> step.id().equals(s.pageId()))) return;
+        steps.add(new PageWizardStepEntity(step.id(),
+                command.label() != null ? command.label() : step.name()));
+        repository.save(withWizardSteps(page, steps));
+    }
+
+    private void removePageWizardStep(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var steps = (page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps()).stream()
+                .filter(s -> !command.targetId().equals(s.pageId()))
+                .toList();
+        repository.save(withWizardSteps(page, steps));
+    }
+
+    /** Record copy with only wizardSteps replaced. */
+    private static PageEntity withWizardSteps(PageEntity page, List<PageWizardStepEntity> steps) {
+        return new PageEntity(page.id(), page.name(), page.route(), page.type(),
+                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
+                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
+                page.validations(), page.fieldConfigs(), steps, page.completionActions(),
+                page.listingQueryServiceId(), page.content());
     }
 
     /** Removing an app also unlinks it from every actor that used it. */

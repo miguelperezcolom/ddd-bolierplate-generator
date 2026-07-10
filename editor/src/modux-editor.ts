@@ -996,12 +996,27 @@ export class ModuxEditor extends LitElement {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
         return [{ kind: 'set-app-header-page', appId: c.appId, pageId: app?.headerPageId ?? null }];
       }
+      case 'set-app-home-page': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
+        return [{ kind: 'set-app-home-page', appId: c.appId, pageId: app?.homePageId ?? null }];
+      }
+      case 'add-page-wizard-step':
+        return [{ kind: 'remove-page-wizard-step', pageId: c.pageId, targetId: c.targetId }];
+      case 'remove-page-wizard-step': {
+        const step = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
+          .find((s) => s.pageId === c.targetId);
+        if (!step) return null;
+        return [{ kind: 'add-page-wizard-step', pageId: c.pageId, targetId: c.targetId, label: step.label }];
+      }
       case 'delete-ui-app': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.id);
         if (!app) return null;
         const ops: ModuxCommand[] = [{ kind: 'create-ui-app', id: app.id, name: app.name, type: app.type }];
         if (app.headerPageId) {
           ops.push({ kind: 'set-app-header-page', appId: app.id, pageId: app.headerPageId });
+        }
+        if (app.homePageId) {
+          ops.push({ kind: 'set-app-home-page', appId: app.id, pageId: app.homePageId });
         }
         const rebuildMenu = (items: UiMenuEntryRef[] | undefined, parent?: UiMenuEntryRef) => {
           for (const it of items ?? []) {
@@ -1088,6 +1103,9 @@ export class ModuxEditor extends LitElement {
         }
         for (const root of pg.content ?? []) {
           ops.push(...this.rebuildComponentOps(pg.id, root, undefined, null).ops);
+        }
+        for (const s of pg.wizardSteps ?? []) {
+          ops.push({ kind: 'add-page-wizard-step', pageId: pg.id, targetId: s.pageId, label: s.label });
         }
         // Menu entries pointing at the page are pruned server-side and stay pruned.
         return ops;
@@ -2372,12 +2390,18 @@ export class ModuxEditor extends LitElement {
   }
 
   private onConnectRequested(e: CustomEvent): void {
-    const { sourceId, targetId, x, y } = e.detail;
-    this.applyConnection(sourceId, targetId, x, y);
+    const { sourceId, targetId, x, y, connectKind } = e.detail;
+    this.applyConnection(sourceId, targetId, x, y, connectKind);
   }
 
   /** The whole gesture vocabulary, callable from drags AND from palette drops. */
-  private applyConnection(sourceId: string, targetId: string, x?: number, y?: number): void {
+  private applyConnection(
+    sourceId: string,
+    targetId: string,
+    x?: number,
+    y?: number,
+    connectKind?: string,
+  ): void {
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
       const sourceOwner = this.owningWorkflowOf(sourceId);
@@ -2398,6 +2422,22 @@ export class ModuxEditor extends LitElement {
       const apps = this.model.uiApps ?? [];
       const isApp = (id: string) => apps.some((a) => a.id === id);
       const isPage = (id: string) => pages.some((x) => x.id === id);
+      // typed handles first: they say exactly WHAT the line means
+      if (connectKind === 'home' && isApp(sourceId) && isPage(targetId)) {
+        this.command({ kind: 'set-app-home-page', appId: sourceId, pageId: targetId });
+        return;
+      }
+      if (connectKind === 'header' && isApp(sourceId) && isPage(targetId)) {
+        this.command({ kind: 'set-app-header-page', appId: sourceId, pageId: targetId });
+        return;
+      }
+      if (connectKind === 'wizard-step' && isPage(sourceId) && isPage(targetId) && sourceId !== targetId) {
+        const wiz = pages.find((pg) => pg.id === sourceId)!;
+        if ((wiz.wizardSteps ?? []).some((s) => s.pageId === targetId)) return;
+        this.command({ kind: 'add-page-wizard-step', pageId: sourceId, targetId });
+        return;
+      }
+      if (connectKind) return; // a typed line means nothing else
       // a page dropped on an app (drag or catalog): a menu entry that opens it —
       // except on a headerless MASTER-DETAIL, where the first page IS the header
       if (isPage(sourceId) && isApp(targetId)) {
@@ -3379,6 +3419,10 @@ export class ModuxEditor extends LitElement {
         let m: RegExpExecArray | null;
         if ((m = /^appheader:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-app-header-page', appId: m[1], pageId: null });
+        } else if ((m = /^apphome:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-app-home-page', appId: m[1], pageId: null });
+        } else if ((m = /^wizstep:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
         } else if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-page-button', pageId: m[1], useCaseId: m[2] });
         } else if ((m = /^pglist:(.+)->(.+)$/.exec(id))) {

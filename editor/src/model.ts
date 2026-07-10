@@ -507,6 +507,8 @@ export interface UiAppRef {
   type?: string;
   /** MASTER_DETAIL: the page rendered as the header; the tabs are its menu pages. */
   headerPageId?: string;
+  /** The page the app opens first. */
+  homePageId?: string;
 }
 
 export interface UiPageButtonRef {
@@ -556,6 +558,8 @@ export interface UiPageRef {
   viewmodelFields?: UiFieldRef[];
   /** UI-first composition: Mateu layouts with components inside. Empty = fully inferred. */
   content?: UiComponentNodeRef[];
+  /** WIZARD: the pages that compose it, in order. */
+  wizardSteps?: { pageId: string; label?: string }[];
 }
 
 export interface ActorAppUseRef {

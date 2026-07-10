@@ -695,6 +695,20 @@ export type ModuxCommand =
       appId: string;
       pageId: string | null;
     }
+  | {
+      /** The page the app opens first (null clears it). */
+      kind: 'set-app-home-page';
+      appId: string;
+      pageId: string | null;
+    }
+  | {
+      /** WIZARD: the page `targetId` joins `pageId`'s steps. */
+      kind: 'add-page-wizard-step';
+      pageId: string;
+      targetId: string;
+      label?: string;
+    }
+  | { kind: 'remove-page-wizard-step'; pageId: string; targetId: string }
   | { kind: 'delete-ui-app'; id: string }
   | {
       kind: 'create-ui-page';
