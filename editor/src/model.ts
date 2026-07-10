@@ -507,8 +507,10 @@ export interface UiAppRef {
   type?: string;
   /** MASTER_DETAIL: the page rendered as the header; the tabs are its menu pages. */
   headerPageId?: string;
-  /** The page the app opens first. */
+  /** The page the app opens first (exclusive with homeAppId). */
   homePageId?: string;
+  /** The APP it opens first — an app is just another UI component. */
+  homeAppId?: string;
 }
 
 export interface UiPageButtonRef {

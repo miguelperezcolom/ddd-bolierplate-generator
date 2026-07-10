@@ -5,13 +5,13 @@ function qi(e, t = 24) {
     let a = !1;
     for (let r = 0; r < e.length; r++)
       for (let l = r + 1; l < e.length; l++) {
-        const p = e[r], o = e[l], d = i.get(p.id), u = i.get(o.id), f = u.x - d.x, m = u.y - d.y, v = (p.w + o.w) / 2 + t - Math.abs(f), E = (p.h + o.h) / 2 + t - Math.abs(m);
-        if (!(v <= 0 || E <= 0))
-          if (a = !0, v < E) {
+        const p = e[r], o = e[l], d = i.get(p.id), u = i.get(o.id), f = u.x - d.x, m = u.y - d.y, v = (p.w + o.w) / 2 + t - Math.abs(f), S = (p.h + o.h) / 2 + t - Math.abs(m);
+        if (!(v <= 0 || S <= 0))
+          if (a = !0, v < S) {
             const y = (f >= 0 ? 1 : -1) * v / 2;
             d.x -= y, u.x += y;
           } else {
-            const y = (m >= 0 ? 1 : -1) * E / 2;
+            const y = (m >= 0 ? 1 : -1) * S / 2;
             d.y -= y, u.y += y;
           }
       }
@@ -222,12 +222,12 @@ function Js(e, t, i, s, n, a, r = !1) {
 }
 function Gn(e, t, i, s, n, a, r = /* @__PURE__ */ new Set()) {
   const l = a[t.id] ?? Ai(i.length + s.length), p = i.map((m, v) => {
-    const E = n[m.id] ?? Xt(v, l), y = r.has(m.id) ? [] : m.ops, g = a[m.id] ?? Ai(y.length), $ = y.map((C, M) => n[C.id] ?? Xt(M, g)), w = Si(
-      { x: E.x, y: E.y },
-      g,
-      $.map((C) => ({ dx: C.x, dy: C.y, w: $e, h: Ee }))
+    const S = n[m.id] ?? Xt(v, l), y = r.has(m.id) ? [] : m.ops, I = a[m.id] ?? Ai(y.length), E = y.map((C, M) => n[C.id] ?? Xt(M, I)), w = Si(
+      { x: S.x, y: S.y },
+      I,
+      E.map((C) => ({ dx: C.x, dy: C.y, w: $e, h: Ee }))
     );
-    return { a: m, off: E, ops: y, opOffs: $, fit: w };
+    return { a: m, off: S, ops: y, opOffs: E, fit: w };
   }), o = s.map(
     (m, v) => n[m.id] ?? Xt(i.length + v, l)
   ), d = qi(
@@ -248,8 +248,8 @@ function Gn(e, t, i, s, n, a, r = /* @__PURE__ */ new Set()) {
     v && (m.off = { x: m.off.x + (v.x - m.fit.x), y: m.off.y + (v.y - m.fit.y) }, m.fit = { ...m.fit, x: v.x, y: v.y });
   }
   s.forEach((m, v) => {
-    const E = d.get(m.id);
-    E && (o[v] = { x: E.x, y: E.y });
+    const S = d.get(m.id);
+    S && (o[v] = { x: S.x, y: S.y });
   });
   const u = Si(e, l, [
     ...p.map((m) => ({ dx: m.fit.x, dy: m.fit.y, w: m.fit.w, h: m.fit.h })),
@@ -275,7 +275,7 @@ function Gn(e, t, i, s, n, a, r = /* @__PURE__ */ new Set()) {
       w: m.fit.w,
       h: m.fit.h,
       tooltip: m.a.tooltip
-    }), m.ops.forEach((v, E) => {
+    }), m.ops.forEach((v, S) => {
       f.push({
         id: v.id,
         label: v.name,
@@ -284,15 +284,15 @@ function Gn(e, t, i, s, n, a, r = /* @__PURE__ */ new Set()) {
         fill: "#eef2ff",
         stroke: "#4f46e5",
         parentId: m.a.id,
-        x: e.x + m.off.x + m.opOffs[E].x,
-        y: e.y + m.off.y + m.opOffs[E].y,
+        x: e.x + m.off.x + m.opOffs[S].x,
+        y: e.y + m.off.y + m.opOffs[S].y,
         w: $e,
         h: Ee,
         tooltip: `${Ci[m.a.opKind]}: ${v.name}`
       });
     });
   return s.forEach((m, v) => {
-    const E = Wn[m.kind];
+    const S = Wn[m.kind];
     f.push({
       id: m.id,
       label: m.name,
@@ -301,9 +301,9 @@ function Gn(e, t, i, s, n, a, r = /* @__PURE__ */ new Set()) {
       y: e.y + o[v].y,
       w: $e,
       h: Ee,
-      symbol: E.symbol,
-      fill: E.fill,
-      stroke: E.stroke,
+      symbol: S.symbol,
+      fill: S.fill,
+      stroke: S.stroke,
       parentId: t.id,
       tooltip: `${Ci[m.kind]} ${m.name}`
     });
@@ -574,9 +574,9 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
       w: nt,
       h: st
     }];
-  }), E = m.length + (e.actors ?? []).length + (e.aiAgents ?? []).length + (e.rags ?? []).length + (e.mcpGateways ?? []).length;
+  }), S = m.length + (e.actors ?? []).length + (e.aiAgents ?? []).length + (e.rags ?? []).length + (e.mcpGateways ?? []).length;
   (e.actors ?? []).forEach((c, D) => {
-    const V = t[c.id] ?? vt(m.length + D, E);
+    const V = t[c.id] ?? vt(m.length + D, S);
     v.push({
       id: c.id,
       label: c.name,
@@ -592,7 +592,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
       tooltip: `${c.name} (actor)`
     });
   }), (e.aiAgents ?? []).forEach((c, D) => {
-    const V = t[c.id] ?? vt(m.length + (e.actors ?? []).length + D, E);
+    const V = t[c.id] ?? vt(m.length + (e.actors ?? []).length + D, S);
     v.push({
       id: c.id,
       label: c.name,
@@ -611,7 +611,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   }), (e.mcpGateways ?? []).forEach((c, D) => {
     const V = t[c.id] ?? vt(
       m.length + (e.actors ?? []).length + (e.aiAgents ?? []).length + (e.rags ?? []).length + D,
-      E
+      S
     );
     v.push({
       id: c.id,
@@ -632,7 +632,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   (e.rags ?? []).forEach((c, D) => {
     const V = t[c.id] ?? vt(
       m.length + (e.actors ?? []).length + (e.aiAgents ?? []).length + D,
-      E
+      S
     );
     v.push({
       id: c.id,
@@ -674,7 +674,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
       });
     });
   }), v.sort((c, D) => (c.parentId ? 1 : 0) - (D.parentId ? 1 : 0));
-  const g = e.relations.map((c) => ({
+  const I = e.relations.map((c) => ({
     id: Xs(c.sourceId, c.targetId),
     sourceId: c.sourceId,
     targetId: c.targetId,
@@ -684,7 +684,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     dashed: !c.declared,
     arrow: !0,
     tooltip: c.type ? `${c.type} (${c.sourceId} upstream → ${c.targetId} downstream)${c.reasons ? ` — ${c.reasons}` : ""}` : `Relación derivada — doble click para elegir el patrón${c.reasons ? ` — ${c.reasons}` : ""}`
-  })), $ = e.flows.map((c) => {
+  })), E = e.flows.map((c) => {
     var be, ft, Be, gt, et, K;
     const D = Qs(e, c), V = r ? e.modules.find((ne) => ne.id === c.sourceId) : void 0, j = ((be = V == null ? void 0 : V.domainEvents) == null ? void 0 : be.find((ne) => ne.name === c.triggerEvent)) ?? ((ft = V == null ? void 0 : V.applicationEvents) == null ? void 0 : ft.find((ne) => ne.name === c.triggerEvent)), ie = r && c.readModelName ? (gt = (Be = e.modules.find((ne) => ne.id === c.targetId)) == null ? void 0 : Be.readModels) == null ? void 0 : gt.find((ne) => ne.name === c.readModelName) : void 0, ce = r && c.targetUseCaseId ? (K = (et = e.modules.find((ne) => ne.id === c.targetId)) == null ? void 0 : et.useCases) == null ? void 0 : K.find((ne) => ne.id === c.targetUseCaseId) : void 0;
     return {
@@ -721,7 +721,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     dashed: !0,
     arrow: !0,
     tooltip: c.sourceAggregateId ? `Proyección ${c.name}: el estado del agregado se materializa en ${c.readModelName ?? c.readModelId}` : `Proyección ${c.name}: polling hacia ${c.readModelName ?? c.readModelId}`
-  })) : [], U = (e.apis ?? []).flatMap(
+  })) : [], F = (e.apis ?? []).flatMap(
     (c) => c.operations.flatMap((D) => {
       const V = r && D.targetUseCaseId && b.has(D.targetUseCaseId) ? D.targetUseCaseId : D.targetModuleId && b.has(D.targetModuleId) ? D.targetModuleId : (D.targetUseCaseId && !r, null);
       if (!V) return [];
@@ -739,7 +739,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
         }
       ] : [];
     })
-  ), S = r ? (e.useCaseCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
+  ), _ = r ? (e.useCaseCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
     id: `uccall:${c.sourceId}->${c.targetId}`,
     sourceId: c.sourceId,
     targetId: c.targetId,
@@ -758,7 +758,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     dashed: !0,
     arrow: !0,
     tooltip: `dispara según ${c.cronExpression ?? "cron"}`
-  })) : [], A = r ? (e.aggregateCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
+  })) : [], T = r ? (e.aggregateCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
     id: `aggcall:${c.sourceId}->${c.targetId}`,
     sourceId: c.sourceId,
     targetId: c.targetId,
@@ -767,7 +767,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     dashed: !0,
     arrow: !0,
     tooltip: "opera sobre el agregado"
-  })) : [], T = r ? (e.queryCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
+  })) : [], A = r ? (e.queryCalls ?? []).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => ({
     id: `qscall:${c.sourceId}->${c.targetId}`,
     sourceId: c.sourceId,
     targetId: c.targetId,
@@ -784,7 +784,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     color: "#6366f1",
     arrow: !0,
     tooltip: "usa (deriva una UI)"
-  })) : [], I = (e.actorExternalDependencies ?? []).filter((c) => b.has(c.actorId) && b.has(c.externalSystemId)).map((c) => ({
+  })) : [], g = (e.actorExternalDependencies ?? []).filter((c) => b.has(c.actorId) && b.has(c.externalSystemId)).map((c) => ({
     id: `extdep:${c.actorId}->${c.externalSystemId}`,
     sourceId: c.actorId,
     targetId: c.externalSystemId,
@@ -796,11 +796,11 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   })), x = new Map([
     ...(e.apis ?? []).filter((c) => c.publishedByExternalSystemId).map((c) => [c.id, c.publishedByExternalSystemId]),
     ...(e.proxyApis ?? []).filter((c) => c.publishedByExternalSystemId).map((c) => [c.id, c.publishedByExternalSystemId])
-  ]), _ = (c) => b.has(c) ? c : x.get(c) ?? c, O = [
+  ]), k = (c) => b.has(c) ? c : x.get(c) ?? c, O = [
     ...new Map(
       (e.externalSystemDependencies ?? []).map((c) => ({
         sourceId: c.sourceId,
-        targetId: _(c.targetId),
+        targetId: k(c.targetId),
         cqrs: c.type === "CQRS"
       })).filter(
         (c) => b.has(c.sourceId) && b.has(c.targetId) && c.sourceId !== c.targetId
@@ -819,13 +819,13 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
         }
       ])
     ).values()
-  ], F = /* @__PURE__ */ new Map();
+  ], q = /* @__PURE__ */ new Map();
   for (const c of e.modules) {
-    for (const D of c.useCases ?? []) F.set(D.id, c.id);
-    for (const D of c.domainEvents ?? []) F.set(D.id, c.id);
-    for (const D of c.applicationEvents ?? []) F.set(D.id, c.id);
+    for (const D of c.useCases ?? []) q.set(D.id, c.id);
+    for (const D of c.domainEvents ?? []) q.set(D.id, c.id);
+    for (const D of c.applicationEvents ?? []) q.set(D.id, c.id);
   }
-  const z = (c) => b.has(c) ? c : F.get(c) ?? c, N = /* @__PURE__ */ new Map();
+  const U = (c) => b.has(c) ? c : q.get(c) ?? c, N = /* @__PURE__ */ new Map();
   for (const c of e.modules) {
     for (const D of c.domainEvents ?? []) N.set(D.name, D.id);
     for (const D of c.applicationEvents ?? []) N.set(D.name, D.id);
@@ -833,7 +833,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   const H = [
     ...new Map(
       (e.workflows ?? []).flatMap(
-        (c) => (c.steps ?? []).filter((D) => D.targetUseCaseId).map((D) => ({ sourceId: c.id, targetId: z(D.targetUseCaseId) }))
+        (c) => (c.steps ?? []).filter((D) => D.targetUseCaseId).map((D) => ({ sourceId: c.id, targetId: U(D.targetUseCaseId) }))
       ).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => [
         `wfcall:${c.sourceId}->${c.targetId}`,
         {
@@ -851,7 +851,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   ], Q = [
     ...new Map(
       (e.workflows ?? []).filter((c) => c.triggerEvent && N.has(c.triggerEvent)).map((c) => ({
-        sourceId: z(N.get(c.triggerEvent)),
+        sourceId: U(N.get(c.triggerEvent)),
         targetId: c.id,
         label: c.triggerEvent
       })).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => [
@@ -898,7 +898,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     ...new Map(
       (e.rags ?? []).flatMap(
         (c) => (c.sourceApiIds ?? []).map((D) => ({
-          sourceId: _(D),
+          sourceId: k(D),
           targetId: c.id,
           name: c.name
         }))
@@ -937,7 +937,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     ).values()
   ], ke = [
     ...new Map(
-      (e.agentApiUses ?? []).map((c) => ({ sourceId: c.agentId, targetId: _(c.apiId) })).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => [
+      (e.agentApiUses ?? []).map((c) => ({ sourceId: c.agentId, targetId: k(c.apiId) })).filter((c) => b.has(c.sourceId) && b.has(c.targetId)).map((c) => [
         `agapi:${c.sourceId}->${c.targetId}`,
         {
           id: `agapi:${c.sourceId}->${c.targetId}`,
@@ -965,7 +965,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     })) : []
   ), $s = [
     ...new Map(
-      (e.proxyApis ?? []).filter((c) => c.targetApiId).map((c) => ({ sourceId: _(c.id), targetId: _(c.targetApiId) })).filter(
+      (e.proxyApis ?? []).filter((c) => c.targetApiId).map((c) => ({ sourceId: k(c.id), targetId: k(c.targetApiId) })).filter(
         (c) => b.has(c.sourceId) && b.has(c.targetId) && c.sourceId !== c.targetId
       ).map((c) => [
         `pxt:${c.sourceId}->${c.targetId}`,
@@ -986,7 +986,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     if (!b.has(D)) return [];
     const V = [];
     for (const j of (e.proxyApis ?? []).filter((ie) => ie.targetApiId === c.apiId)) {
-      const ie = _(j.id);
+      const ie = k(j.id);
       b.has(ie) && ie !== D && V.push({
         id: `pxr:${ie}->${D}`,
         sourceId: ie,
@@ -1024,7 +1024,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
         let ie = b.has(j) ? j : null;
         if (!ie)
           if (V || (e.proxyApis ?? []).some((ce) => ce.id === c.siteId))
-            ie = _(c.siteId);
+            ie = k(c.siteId);
           else {
             const ce = Ye(D.id, c.siteId);
             ie = b.has(ce) ? ce : c.siteId;
@@ -1047,7 +1047,7 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
     ).values()
   ], As = r ? (e.apiOperationImplementations ?? []).flatMap((c) => {
     if (!b.has(c.useCaseId)) return [];
-    const D = b.has(Ge(c.operationId, c.moduleId)) ? Ge(c.operationId, c.moduleId) : b.has(Ye(c.apiId, c.moduleId)) ? Ye(c.apiId, c.moduleId) : b.has(_(c.moduleId)) ? _(c.moduleId) : null;
+    const D = b.has(Ge(c.operationId, c.moduleId)) ? Ge(c.operationId, c.moduleId) : b.has(Ye(c.apiId, c.moduleId)) ? Ye(c.apiId, c.moduleId) : b.has(k(c.moduleId)) ? k(c.moduleId) : null;
     return D ? [{
       id: `apiimplwire:${c.operationId}@${c.moduleId}`,
       sourceId: D,
@@ -1195,17 +1195,17 @@ function eo(e, t, i = "contexts", s = {}, n = /* @__PURE__ */ new Set()) {
   return {
     nodes: v,
     edges: [
-      ...g,
-      ...$,
+      ...I,
+      ...E,
       ...L,
       ...R,
-      ...U,
-      ...S,
+      ...F,
+      ..._,
       ...P,
-      ...A,
       ...T,
+      ...A,
       ...h,
-      ...I,
+      ...g,
       ...O,
       ...$s,
       ...Es,
@@ -1363,12 +1363,12 @@ function Io(e, t) {
       badge: l.archetype,
       tooltip: `Flow ${l.name} [${l.archetype}]${l.readModelName ? ` → read model ${l.readModelName}` : ""}${l.targetUseCaseId ? ` → use case ${l.targetUseCaseId}` : ""}`
     });
-    const v = go(e, l), E = `tgt:${v.id}`;
-    if (!a.has(E)) {
-      a.add(E);
-      const y = t[E] ?? { x: 790, y: o };
+    const v = go(e, l), S = `tgt:${v.id}`;
+    if (!a.has(S)) {
+      a.add(S);
+      const y = t[S] ?? { x: 790, y: o };
       s.push({
-        id: E,
+        id: S,
         label: v.label,
         x: y.x,
         y: y.y,
@@ -1395,7 +1395,7 @@ function Io(e, t) {
     }), n.push({
       id: `fe:${l.id}:out`,
       sourceId: f,
-      targetId: E,
+      targetId: S,
       kind: "flow-delivery",
       color: d,
       arrow: !0
@@ -1449,12 +1449,12 @@ function nn(e, t) {
         color: "#64748b",
         arrow: !0
       }), d.compensationUseCaseId) {
-        const v = `comp:${d.id}`, E = t[v] ?? { x: m.x, y: m.y + 90 };
+        const v = `comp:${d.id}`, S = t[v] ?? { x: m.x, y: m.y + 90 };
         i.push({
           id: v,
           label: d.compensationUseCaseId,
-          x: E.x,
-          y: E.y,
+          x: S.x,
+          y: S.y,
           w: vi,
           h: 36,
           kind: "compensation",
@@ -1787,7 +1787,7 @@ ot.elementStyles = [], ot.shadowRootOptions = { mode: "open" }, ot[St("elementPr
  */
 const Ct = globalThis, dn = (e) => e, ni = Ct.trustedTypes, ln = ni ? ni.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, jn = "$lit$", Fe = `lit$${Math.random().toFixed(9).slice(2)}$`, Kn = "?" + Fe, Mo = `<${Kn}>`, Ze = document, Pt = () => Ze.createComment(""), Ot = (e) => e === null || typeof e != "object" && typeof e != "function", Vi = Array.isArray, Po = (e) => Vi(e) || typeof (e == null ? void 0 : e[Symbol.iterator]) == "function", wi = `[ 	
 \f\r]`, xt = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, cn = /-->/g, pn = />/g, Ve = RegExp(`>|${wi}(?:([^\\s"'>=/]+)(${wi}*=${wi}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), un = /'/g, hn = /"/g, Xn = /^(?:script|style|textarea|title)$/i, Qn = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), k = Qn(1), G = Qn(2), dt = Symbol.for("lit-noChange"), X = Symbol.for("lit-nothing"), mn = /* @__PURE__ */ new WeakMap(), je = Ze.createTreeWalker(Ze, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), un = /'/g, hn = /"/g, Xn = /^(?:script|style|textarea|title)$/i, Qn = (e) => (t, ...i) => ({ _$litType$: e, strings: t, values: i }), $ = Qn(1), G = Qn(2), dt = Symbol.for("lit-noChange"), X = Symbol.for("lit-nothing"), mn = /* @__PURE__ */ new WeakMap(), je = Ze.createTreeWalker(Ze, 129);
 function Zn(e, t) {
   if (!Vi(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return ln !== void 0 ? ln.createHTML(t) : t;
@@ -2099,7 +2099,7 @@ function J(e) {
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function q(e) {
+function z(e) {
   return J({ ...e, state: !0, attribute: !1 });
 }
 var Mi = "http://www.w3.org/1999/xhtml";
@@ -2259,11 +2259,11 @@ function la(e, t) {
   var i = t ? ra : aa, s = this._parents, n = this._groups;
   typeof e != "function" && (e = oa(e));
   for (var a = n.length, r = new Array(a), l = new Array(a), p = new Array(a), o = 0; o < a; ++o) {
-    var d = s[o], u = n[o], f = u.length, m = ca(e.call(d, d && d.__data__, o, s)), v = m.length, E = l[o] = new Array(v), y = r[o] = new Array(v), g = p[o] = new Array(f);
-    i(d, u, E, y, g, m, t);
-    for (var $ = 0, w = 0, C, M; $ < v; ++$)
-      if (C = E[$]) {
-        for ($ >= w && (w = $ + 1); !(M = y[w]) && ++w < v; ) ;
+    var d = s[o], u = n[o], f = u.length, m = ca(e.call(d, d && d.__data__, o, s)), v = m.length, S = l[o] = new Array(v), y = r[o] = new Array(v), I = p[o] = new Array(f);
+    i(d, u, S, y, I, m, t);
+    for (var E = 0, w = 0, C, M; E < v; ++E)
+      if (C = S[E]) {
+        for (E >= w && (w = E + 1); !(M = y[w]) && ++w < v; ) ;
         C._next = M || null;
       }
   }
@@ -3159,8 +3159,8 @@ function gs(e, t, i, s) {
   }
   function a(o, d, u, f, m, v) {
     if (o !== u || d !== f) {
-      var E = m.push("translate(", null, t, null, i);
-      v.push({ i: E - 4, x: qe(o, u) }, { i: E - 2, x: qe(d, f) });
+      var S = m.push("translate(", null, t, null, i);
+      v.push({ i: S - 4, x: qe(o, u) }, { i: S - 2, x: qe(d, f) });
     } else (u || f) && m.push("translate(" + u + t + f + i);
   }
   function r(o, d, u, f) {
@@ -3171,14 +3171,14 @@ function gs(e, t, i, s) {
   }
   function p(o, d, u, f, m, v) {
     if (o !== u || d !== f) {
-      var E = m.push(n(m) + "scale(", null, ",", null, ")");
-      v.push({ i: E - 4, x: qe(o, u) }, { i: E - 2, x: qe(d, f) });
+      var S = m.push(n(m) + "scale(", null, ",", null, ")");
+      v.push({ i: S - 4, x: qe(o, u) }, { i: S - 2, x: qe(d, f) });
     } else (u !== 1 || f !== 1) && m.push(n(m) + "scale(" + u + "," + f + ")");
   }
   return function(o, d) {
     var u = [], f = [];
     return o = e(o), d = e(d), a(o.translateX, o.translateY, d.translateX, d.translateY, u, f), r(o.rotate, d.rotate, u, f), l(o.skewX, d.skewX, u, f), p(o.scaleX, o.scaleY, d.scaleX, d.scaleY, u, f), o = d = null, function(m) {
-      for (var v = -1, E = f.length, y; ++v < E; ) u[(y = f[v]).i] = y.x(m);
+      for (var v = -1, S = f.length, y; ++v < S; ) u[(y = f[v]).i] = y.x(m);
       return u.join("");
     };
   };
@@ -3195,27 +3195,27 @@ function Kr(e) {
 }
 const Xr = (function e(t, i, s) {
   function n(a, r) {
-    var l = a[0], p = a[1], o = a[2], d = r[0], u = r[1], f = r[2], m = d - l, v = u - p, E = m * m + v * v, y, g;
-    if (E < Yr)
-      g = Math.log(f / o) / t, y = function(L) {
+    var l = a[0], p = a[1], o = a[2], d = r[0], u = r[1], f = r[2], m = d - l, v = u - p, S = m * m + v * v, y, I;
+    if (S < Yr)
+      I = Math.log(f / o) / t, y = function(L) {
         return [
           l + L * m,
           p + L * v,
-          o * Math.exp(t * L * g)
+          o * Math.exp(t * L * I)
         ];
       };
     else {
-      var $ = Math.sqrt(E), w = (f * f - o * o + s * E) / (2 * o * i * $), C = (f * f - o * o - s * E) / (2 * f * i * $), M = Math.log(Math.sqrt(w * w + 1) - w), b = Math.log(Math.sqrt(C * C + 1) - C);
-      g = (b - M) / t, y = function(L) {
-        var R = L * g, U = Sn(M), S = o / (i * $) * (U * Kr(t * R + M) - jr(M));
+      var E = Math.sqrt(S), w = (f * f - o * o + s * S) / (2 * o * i * E), C = (f * f - o * o - s * S) / (2 * f * i * E), M = Math.log(Math.sqrt(w * w + 1) - w), b = Math.log(Math.sqrt(C * C + 1) - C);
+      I = (b - M) / t, y = function(L) {
+        var R = L * I, F = Sn(M), _ = o / (i * E) * (F * Kr(t * R + M) - jr(M));
         return [
-          l + S * m,
-          p + S * v,
-          o * U / Sn(t * R + M)
+          l + _ * m,
+          p + _ * v,
+          o * F / Sn(t * R + M)
         ];
       };
     }
-    return y.duration = g * 1e3 * t / Math.SQRT2, y;
+    return y.duration = I * 1e3 * t / Math.SQRT2, y;
   }
   return n.rho = function(a) {
     var r = Math.max(1e-3, +a), l = r * r, p = l * l;
@@ -3609,8 +3609,8 @@ function Ud(e) {
   for (var s = this._groups, n = s.length, a = [], r = [], l = 0; l < n; ++l)
     for (var p = s[l], o = p.length, d, u = 0; u < o; ++u)
       if (d = p[u]) {
-        for (var f = e.call(d, d.__data__, u, p), m, v = Ae(d, i), E = 0, y = f.length; E < y; ++E)
-          (m = f[E]) && hi(m, t, i, E, f, v);
+        for (var f = e.call(d, d.__data__, u, p), m, v = Ae(d, i), S = 0, y = f.length; S < y; ++S)
+          (m = f[S]) && hi(m, t, i, S, f, v);
         a.push(f), r.push(d);
       }
   return new Ue(a, r, t, i);
@@ -3888,73 +3888,73 @@ function hl(e, t, i) {
   );
 }
 function ml() {
-  var e = ll, t = cl, i = hl, s = pl, n = ul, a = [0, 1 / 0], r = [[-1 / 0, -1 / 0], [1 / 0, 1 / 0]], l = 250, p = Xr, o = Yi("start", "zoom", "end"), d, u, f, m = 500, v = 150, E = 0, y = 10;
-  function g(h) {
-    h.property("__zoom", On).on("wheel.zoom", R, { passive: !1 }).on("mousedown.zoom", U).on("dblclick.zoom", S).filter(n).on("touchstart.zoom", P).on("touchmove.zoom", A).on("touchend.zoom touchcancel.zoom", T).style("-webkit-tap-highlight-color", "rgba(0,0,0,0)");
+  var e = ll, t = cl, i = hl, s = pl, n = ul, a = [0, 1 / 0], r = [[-1 / 0, -1 / 0], [1 / 0, 1 / 0]], l = 250, p = Xr, o = Yi("start", "zoom", "end"), d, u, f, m = 500, v = 150, S = 0, y = 10;
+  function I(h) {
+    h.property("__zoom", On).on("wheel.zoom", R, { passive: !1 }).on("mousedown.zoom", F).on("dblclick.zoom", _).filter(n).on("touchstart.zoom", P).on("touchmove.zoom", T).on("touchend.zoom touchcancel.zoom", A).style("-webkit-tap-highlight-color", "rgba(0,0,0,0)");
   }
-  g.transform = function(h, I, x, _) {
+  I.transform = function(h, g, x, k) {
     var O = h.selection ? h.selection() : h;
-    O.property("__zoom", On), h !== O ? M(h, I, x, _) : O.interrupt().each(function() {
-      b(this, arguments).event(_).start().zoom(null, typeof I == "function" ? I.apply(this, arguments) : I).end();
+    O.property("__zoom", On), h !== O ? M(h, g, x, k) : O.interrupt().each(function() {
+      b(this, arguments).event(k).start().zoom(null, typeof g == "function" ? g.apply(this, arguments) : g).end();
     });
-  }, g.scaleBy = function(h, I, x, _) {
-    g.scaleTo(h, function() {
-      var O = this.__zoom.k, F = typeof I == "function" ? I.apply(this, arguments) : I;
-      return O * F;
-    }, x, _);
-  }, g.scaleTo = function(h, I, x, _) {
-    g.transform(h, function() {
-      var O = t.apply(this, arguments), F = this.__zoom, z = x == null ? C(O) : typeof x == "function" ? x.apply(this, arguments) : x, N = F.invert(z), H = typeof I == "function" ? I.apply(this, arguments) : I;
-      return i(w($(F, H), z, N), O, r);
-    }, x, _);
-  }, g.translateBy = function(h, I, x, _) {
-    g.transform(h, function() {
+  }, I.scaleBy = function(h, g, x, k) {
+    I.scaleTo(h, function() {
+      var O = this.__zoom.k, q = typeof g == "function" ? g.apply(this, arguments) : g;
+      return O * q;
+    }, x, k);
+  }, I.scaleTo = function(h, g, x, k) {
+    I.transform(h, function() {
+      var O = t.apply(this, arguments), q = this.__zoom, U = x == null ? C(O) : typeof x == "function" ? x.apply(this, arguments) : x, N = q.invert(U), H = typeof g == "function" ? g.apply(this, arguments) : g;
+      return i(w(E(q, H), U, N), O, r);
+    }, x, k);
+  }, I.translateBy = function(h, g, x, k) {
+    I.transform(h, function() {
       return i(this.__zoom.translate(
-        typeof I == "function" ? I.apply(this, arguments) : I,
+        typeof g == "function" ? g.apply(this, arguments) : g,
         typeof x == "function" ? x.apply(this, arguments) : x
       ), t.apply(this, arguments), r);
-    }, null, _);
-  }, g.translateTo = function(h, I, x, _, O) {
-    g.transform(h, function() {
-      var F = t.apply(this, arguments), z = this.__zoom, N = _ == null ? C(F) : typeof _ == "function" ? _.apply(this, arguments) : _;
-      return i(At.translate(N[0], N[1]).scale(z.k).translate(
-        typeof I == "function" ? -I.apply(this, arguments) : -I,
+    }, null, k);
+  }, I.translateTo = function(h, g, x, k, O) {
+    I.transform(h, function() {
+      var q = t.apply(this, arguments), U = this.__zoom, N = k == null ? C(q) : typeof k == "function" ? k.apply(this, arguments) : k;
+      return i(At.translate(N[0], N[1]).scale(U.k).translate(
+        typeof g == "function" ? -g.apply(this, arguments) : -g,
         typeof x == "function" ? -x.apply(this, arguments) : -x
-      ), F, r);
-    }, _, O);
+      ), q, r);
+    }, k, O);
   };
-  function $(h, I) {
-    return I = Math.max(a[0], Math.min(a[1], I)), I === h.k ? h : new De(I, h.x, h.y);
+  function E(h, g) {
+    return g = Math.max(a[0], Math.min(a[1], g)), g === h.k ? h : new De(g, h.x, h.y);
   }
-  function w(h, I, x) {
-    var _ = I[0] - x[0] * h.k, O = I[1] - x[1] * h.k;
-    return _ === h.x && O === h.y ? h : new De(h.k, _, O);
+  function w(h, g, x) {
+    var k = g[0] - x[0] * h.k, O = g[1] - x[1] * h.k;
+    return k === h.x && O === h.y ? h : new De(h.k, k, O);
   }
   function C(h) {
     return [(+h[0][0] + +h[1][0]) / 2, (+h[0][1] + +h[1][1]) / 2];
   }
-  function M(h, I, x, _) {
+  function M(h, g, x, k) {
     h.on("start.zoom", function() {
-      b(this, arguments).event(_).start();
+      b(this, arguments).event(k).start();
     }).on("interrupt.zoom end.zoom", function() {
-      b(this, arguments).event(_).end();
+      b(this, arguments).event(k).end();
     }).tween("zoom", function() {
-      var O = this, F = arguments, z = b(O, F).event(_), N = t.apply(O, F), H = x == null ? C(N) : typeof x == "function" ? x.apply(O, F) : x, Q = Math.max(N[1][0] - N[0][0], N[1][1] - N[0][1]), te = O.__zoom, le = typeof I == "function" ? I.apply(O, F) : I, me = p(te.invert(H).concat(Q / te.k), le.invert(H).concat(Q / le.k));
+      var O = this, q = arguments, U = b(O, q).event(k), N = t.apply(O, q), H = x == null ? C(N) : typeof x == "function" ? x.apply(O, q) : x, Q = Math.max(N[1][0] - N[0][0], N[1][1] - N[0][1]), te = O.__zoom, le = typeof g == "function" ? g.apply(O, q) : g, me = p(te.invert(H).concat(Q / te.k), le.invert(H).concat(Q / le.k));
       return function(Ie) {
         if (Ie === 1) Ie = le;
         else {
           var ke = me(Ie), mt = Q / ke[2];
           Ie = new De(mt, H[0] - ke[0] * mt, H[1] - ke[1] * mt);
         }
-        z.zoom(null, Ie);
+        U.zoom(null, Ie);
       };
     });
   }
-  function b(h, I, x) {
-    return !x && h.__zooming || new L(h, I);
+  function b(h, g, x) {
+    return !x && h.__zooming || new L(h, g);
   }
-  function L(h, I) {
-    this.that = h, this.args = I, this.active = 0, this.sourceEvent = null, this.extent = t.apply(h, I), this.taps = 0;
+  function L(h, g) {
+    this.that = h, this.args = g, this.active = 0, this.sourceEvent = null, this.extent = t.apply(h, g), this.taps = 0;
   }
   L.prototype = {
     event: function(h) {
@@ -3963,125 +3963,125 @@ function ml() {
     start: function() {
       return ++this.active === 1 && (this.that.__zooming = this, this.emit("start")), this;
     },
-    zoom: function(h, I) {
-      return this.mouse && h !== "mouse" && (this.mouse[1] = I.invert(this.mouse[0])), this.touch0 && h !== "touch" && (this.touch0[1] = I.invert(this.touch0[0])), this.touch1 && h !== "touch" && (this.touch1[1] = I.invert(this.touch1[0])), this.that.__zoom = I, this.emit("zoom"), this;
+    zoom: function(h, g) {
+      return this.mouse && h !== "mouse" && (this.mouse[1] = g.invert(this.mouse[0])), this.touch0 && h !== "touch" && (this.touch0[1] = g.invert(this.touch0[0])), this.touch1 && h !== "touch" && (this.touch1[1] = g.invert(this.touch1[0])), this.that.__zoom = g, this.emit("zoom"), this;
     },
     end: function() {
       return --this.active === 0 && (delete this.that.__zooming, this.emit("end")), this;
     },
     emit: function(h) {
-      var I = Se(this.that).datum();
+      var g = Se(this.that).datum();
       o.call(
         h,
         this.that,
         new dl(h, {
           sourceEvent: this.sourceEvent,
-          target: g,
+          target: I,
           transform: this.that.__zoom,
           dispatch: o
         }),
-        I
+        g
       );
     }
   };
-  function R(h, ...I) {
+  function R(h, ...g) {
     if (!e.apply(this, arguments)) return;
-    var x = b(this, I).event(h), _ = this.__zoom, O = Math.max(a[0], Math.min(a[1], _.k * Math.pow(2, s.apply(this, arguments)))), F = We(h);
+    var x = b(this, g).event(h), k = this.__zoom, O = Math.max(a[0], Math.min(a[1], k.k * Math.pow(2, s.apply(this, arguments)))), q = We(h);
     if (x.wheel)
-      (x.mouse[0][0] !== F[0] || x.mouse[0][1] !== F[1]) && (x.mouse[1] = _.invert(x.mouse[0] = F)), clearTimeout(x.wheel);
+      (x.mouse[0][0] !== q[0] || x.mouse[0][1] !== q[1]) && (x.mouse[1] = k.invert(x.mouse[0] = q)), clearTimeout(x.wheel);
     else {
-      if (_.k === O) return;
-      x.mouse = [F, _.invert(F)], ti(this), x.start();
+      if (k.k === O) return;
+      x.mouse = [q, k.invert(q)], ti(this), x.start();
     }
-    bt(h), x.wheel = setTimeout(z, v), x.zoom("mouse", i(w($(_, O), x.mouse[0], x.mouse[1]), x.extent, r));
-    function z() {
+    bt(h), x.wheel = setTimeout(U, v), x.zoom("mouse", i(w(E(k, O), x.mouse[0], x.mouse[1]), x.extent, r));
+    function U() {
       x.wheel = null, x.end();
     }
   }
-  function U(h, ...I) {
+  function F(h, ...g) {
     if (f || !e.apply(this, arguments)) return;
-    var x = h.currentTarget, _ = b(this, I, !0).event(h), O = Se(h.view).on("mousemove.zoom", H, !0).on("mouseup.zoom", Q, !0), F = We(h, x), z = h.clientX, N = h.clientY;
-    _r(h.view), Ei(h), _.mouse = [F, this.__zoom.invert(F)], ti(this), _.start();
+    var x = h.currentTarget, k = b(this, g, !0).event(h), O = Se(h.view).on("mousemove.zoom", H, !0).on("mouseup.zoom", Q, !0), q = We(h, x), U = h.clientX, N = h.clientY;
+    _r(h.view), Ei(h), k.mouse = [q, this.__zoom.invert(q)], ti(this), k.start();
     function H(te) {
-      if (bt(te), !_.moved) {
-        var le = te.clientX - z, me = te.clientY - N;
-        _.moved = le * le + me * me > E;
+      if (bt(te), !k.moved) {
+        var le = te.clientX - U, me = te.clientY - N;
+        k.moved = le * le + me * me > S;
       }
-      _.event(te).zoom("mouse", i(w(_.that.__zoom, _.mouse[0] = We(te, x), _.mouse[1]), _.extent, r));
+      k.event(te).zoom("mouse", i(w(k.that.__zoom, k.mouse[0] = We(te, x), k.mouse[1]), k.extent, r));
     }
     function Q(te) {
-      O.on("mousemove.zoom mouseup.zoom", null), kr(te.view, _.moved), bt(te), _.event(te).end();
+      O.on("mousemove.zoom mouseup.zoom", null), kr(te.view, k.moved), bt(te), k.event(te).end();
     }
   }
-  function S(h, ...I) {
+  function _(h, ...g) {
     if (e.apply(this, arguments)) {
-      var x = this.__zoom, _ = We(h.changedTouches ? h.changedTouches[0] : h, this), O = x.invert(_), F = x.k * (h.shiftKey ? 0.5 : 2), z = i(w($(x, F), _, O), t.apply(this, I), r);
-      bt(h), l > 0 ? Se(this).transition().duration(l).call(M, z, _, h) : Se(this).call(g.transform, z, _, h);
+      var x = this.__zoom, k = We(h.changedTouches ? h.changedTouches[0] : h, this), O = x.invert(k), q = x.k * (h.shiftKey ? 0.5 : 2), U = i(w(E(x, q), k, O), t.apply(this, g), r);
+      bt(h), l > 0 ? Se(this).transition().duration(l).call(M, U, k, h) : Se(this).call(I.transform, U, k, h);
     }
   }
-  function P(h, ...I) {
+  function P(h, ...g) {
     if (e.apply(this, arguments)) {
-      var x = h.touches, _ = x.length, O = b(this, I, h.changedTouches.length === _).event(h), F, z, N, H;
-      for (Ei(h), z = 0; z < _; ++z)
-        N = x[z], H = We(N, this), H = [H, this.__zoom.invert(H), N.identifier], O.touch0 ? !O.touch1 && O.touch0[2] !== H[2] && (O.touch1 = H, O.taps = 0) : (O.touch0 = H, F = !0, O.taps = 1 + !!d);
-      d && (d = clearTimeout(d)), F && (O.taps < 2 && (u = H[0], d = setTimeout(function() {
+      var x = h.touches, k = x.length, O = b(this, g, h.changedTouches.length === k).event(h), q, U, N, H;
+      for (Ei(h), U = 0; U < k; ++U)
+        N = x[U], H = We(N, this), H = [H, this.__zoom.invert(H), N.identifier], O.touch0 ? !O.touch1 && O.touch0[2] !== H[2] && (O.touch1 = H, O.taps = 0) : (O.touch0 = H, q = !0, O.taps = 1 + !!d);
+      d && (d = clearTimeout(d)), q && (O.taps < 2 && (u = H[0], d = setTimeout(function() {
         d = null;
       }, m)), ti(this), O.start());
     }
   }
-  function A(h, ...I) {
+  function T(h, ...g) {
     if (this.__zooming) {
-      var x = b(this, I).event(h), _ = h.changedTouches, O = _.length, F, z, N, H;
-      for (bt(h), F = 0; F < O; ++F)
-        z = _[F], N = We(z, this), x.touch0 && x.touch0[2] === z.identifier ? x.touch0[0] = N : x.touch1 && x.touch1[2] === z.identifier && (x.touch1[0] = N);
-      if (z = x.that.__zoom, x.touch1) {
+      var x = b(this, g).event(h), k = h.changedTouches, O = k.length, q, U, N, H;
+      for (bt(h), q = 0; q < O; ++q)
+        U = k[q], N = We(U, this), x.touch0 && x.touch0[2] === U.identifier ? x.touch0[0] = N : x.touch1 && x.touch1[2] === U.identifier && (x.touch1[0] = N);
+      if (U = x.that.__zoom, x.touch1) {
         var Q = x.touch0[0], te = x.touch0[1], le = x.touch1[0], me = x.touch1[1], Ie = (Ie = le[0] - Q[0]) * Ie + (Ie = le[1] - Q[1]) * Ie, ke = (ke = me[0] - te[0]) * ke + (ke = me[1] - te[1]) * ke;
-        z = $(z, Math.sqrt(Ie / ke)), N = [(Q[0] + le[0]) / 2, (Q[1] + le[1]) / 2], H = [(te[0] + me[0]) / 2, (te[1] + me[1]) / 2];
+        U = E(U, Math.sqrt(Ie / ke)), N = [(Q[0] + le[0]) / 2, (Q[1] + le[1]) / 2], H = [(te[0] + me[0]) / 2, (te[1] + me[1]) / 2];
       } else if (x.touch0) N = x.touch0[0], H = x.touch0[1];
       else return;
-      x.zoom("touch", i(w(z, N, H), x.extent, r));
+      x.zoom("touch", i(w(U, N, H), x.extent, r));
     }
   }
-  function T(h, ...I) {
+  function A(h, ...g) {
     if (this.__zooming) {
-      var x = b(this, I).event(h), _ = h.changedTouches, O = _.length, F, z;
+      var x = b(this, g).event(h), k = h.changedTouches, O = k.length, q, U;
       for (Ei(h), f && clearTimeout(f), f = setTimeout(function() {
         f = null;
-      }, m), F = 0; F < O; ++F)
-        z = _[F], x.touch0 && x.touch0[2] === z.identifier ? delete x.touch0 : x.touch1 && x.touch1[2] === z.identifier && delete x.touch1;
+      }, m), q = 0; q < O; ++q)
+        U = k[q], x.touch0 && x.touch0[2] === U.identifier ? delete x.touch0 : x.touch1 && x.touch1[2] === U.identifier && delete x.touch1;
       if (x.touch1 && !x.touch0 && (x.touch0 = x.touch1, delete x.touch1), x.touch0) x.touch0[1] = this.__zoom.invert(x.touch0[0]);
-      else if (x.end(), x.taps === 2 && (z = We(z, this), Math.hypot(u[0] - z[0], u[1] - z[1]) < y)) {
+      else if (x.end(), x.taps === 2 && (U = We(U, this), Math.hypot(u[0] - U[0], u[1] - U[1]) < y)) {
         var N = Se(this).on("dblclick.zoom");
         N && N.apply(this, arguments);
       }
     }
   }
-  return g.wheelDelta = function(h) {
-    return arguments.length ? (s = typeof h == "function" ? h : Yt(+h), g) : s;
-  }, g.filter = function(h) {
-    return arguments.length ? (e = typeof h == "function" ? h : Yt(!!h), g) : e;
-  }, g.touchable = function(h) {
-    return arguments.length ? (n = typeof h == "function" ? h : Yt(!!h), g) : n;
-  }, g.extent = function(h) {
-    return arguments.length ? (t = typeof h == "function" ? h : Yt([[+h[0][0], +h[0][1]], [+h[1][0], +h[1][1]]]), g) : t;
-  }, g.scaleExtent = function(h) {
-    return arguments.length ? (a[0] = +h[0], a[1] = +h[1], g) : [a[0], a[1]];
-  }, g.translateExtent = function(h) {
-    return arguments.length ? (r[0][0] = +h[0][0], r[1][0] = +h[1][0], r[0][1] = +h[0][1], r[1][1] = +h[1][1], g) : [[r[0][0], r[0][1]], [r[1][0], r[1][1]]];
-  }, g.constrain = function(h) {
-    return arguments.length ? (i = h, g) : i;
-  }, g.duration = function(h) {
-    return arguments.length ? (l = +h, g) : l;
-  }, g.interpolate = function(h) {
-    return arguments.length ? (p = h, g) : p;
-  }, g.on = function() {
+  return I.wheelDelta = function(h) {
+    return arguments.length ? (s = typeof h == "function" ? h : Yt(+h), I) : s;
+  }, I.filter = function(h) {
+    return arguments.length ? (e = typeof h == "function" ? h : Yt(!!h), I) : e;
+  }, I.touchable = function(h) {
+    return arguments.length ? (n = typeof h == "function" ? h : Yt(!!h), I) : n;
+  }, I.extent = function(h) {
+    return arguments.length ? (t = typeof h == "function" ? h : Yt([[+h[0][0], +h[0][1]], [+h[1][0], +h[1][1]]]), I) : t;
+  }, I.scaleExtent = function(h) {
+    return arguments.length ? (a[0] = +h[0], a[1] = +h[1], I) : [a[0], a[1]];
+  }, I.translateExtent = function(h) {
+    return arguments.length ? (r[0][0] = +h[0][0], r[1][0] = +h[1][0], r[0][1] = +h[0][1], r[1][1] = +h[1][1], I) : [[r[0][0], r[0][1]], [r[1][0], r[1][1]]];
+  }, I.constrain = function(h) {
+    return arguments.length ? (i = h, I) : i;
+  }, I.duration = function(h) {
+    return arguments.length ? (l = +h, I) : l;
+  }, I.interpolate = function(h) {
+    return arguments.length ? (p = h, I) : p;
+  }, I.on = function() {
     var h = o.on.apply(o, arguments);
-    return h === o ? g : h;
-  }, g.clickDistance = function(h) {
-    return arguments.length ? (E = (h = +h) * h, g) : Math.sqrt(E);
-  }, g.tapDistance = function(h) {
-    return arguments.length ? (y = +h, g) : y;
-  }, g;
+    return h === o ? I : h;
+  }, I.clickDistance = function(h) {
+    return arguments.length ? (S = (h = +h) * h, I) : Math.sqrt(S);
+  }, I.tapDistance = function(h) {
+    return arguments.length ? (y = +h, I) : y;
+  }, I;
 }
 var fl = Object.defineProperty, gl = Object.getOwnPropertyDescriptor, de = (e, t, i, s) => {
   for (var n = s > 1 ? void 0 : s ? gl(t, i) : t, a = e.length - 1, r; a >= 0; a--)
@@ -4239,11 +4239,11 @@ let ae = class extends Pe {
     if (!t.length || !i || !this._zoomBehavior) return;
     const s = this.getBoundingClientRect();
     if (s.width === 0 || s.height === 0) return;
-    const n = this.fitInsets.left ?? 0, a = this.fitInsets.right ?? 0, r = this.fitInsets.top ?? 0, l = this.fitInsets.bottom ?? 0, p = Math.max(80, s.width - n - a), o = Math.max(80, s.height - r - l), d = Math.min(...t.map((y) => y.x - y.w / 2)) - e, u = Math.max(...t.map((y) => y.x + y.w / 2)) + e, f = Math.min(...t.map((y) => y.y - y.h / 2)) - e, m = Math.max(...t.map((y) => y.y + y.h / 2)) + e, v = Math.max(0.15, Math.min(p / (u - d), o / (m - f), 1.25)), E = At.translate(
+    const n = this.fitInsets.left ?? 0, a = this.fitInsets.right ?? 0, r = this.fitInsets.top ?? 0, l = this.fitInsets.bottom ?? 0, p = Math.max(80, s.width - n - a), o = Math.max(80, s.height - r - l), d = Math.min(...t.map((y) => y.x - y.w / 2)) - e, u = Math.max(...t.map((y) => y.x + y.w / 2)) + e, f = Math.min(...t.map((y) => y.y - y.h / 2)) - e, m = Math.max(...t.map((y) => y.y + y.h / 2)) + e, v = Math.max(0.15, Math.min(p / (u - d), o / (m - f), 1.25)), S = At.translate(
       n + p / 2 - v * (d + u) / 2,
       r + o / 2 - v * (f + m) / 2
     ).scale(v);
-    Se(i).call(this._zoomBehavior.transform, E);
+    Se(i).call(this._zoomBehavior.transform, S);
   }
   /** Zoom in/out around the viewport centre (keyboard shortcuts, external buttons). */
   zoomBy(e) {
@@ -4325,85 +4325,85 @@ let ae = class extends Pe {
     const a = new Set(this.selectedIds), r = a.has(t.id) && this.selectedIds.length > 1 ? this.scene.nodes.filter(
       (y) => a.has(y.id) && !(y.parentId && a.has(y.parentId))
     ) : null, l = r ? new Map(r.map((y) => [y.id, this.nodePos(y)])) : null, p = (y) => (y.shiftKey || y.ctrlKey) && (t.kind === "api" || t.kind === "proxy-api") && !r, o = r ? null : t.kind === "menu-item" || t.kind === "menu-group" ? "menu" : t.kind === "wizard-step-row" ? "wizard" : null, d = o !== null, u = o === "menu" ? ["menu-item", "menu-group"] : ["wizard-step-row"], f = () => {
-      const y = [], g = o === "menu" ? this.scene.nodes.filter(($) => $.kind === "ui-app") : this.scene.nodes.filter(($) => $.id === t.parentId);
-      for (const $ of g) {
-        const w = this.scene.nodes.filter((L) => L.parentId === $.id && u.includes(L.kind ?? "") && L.id !== t.id).sort((L, R) => L.y - R.y), C = $.x - $.w / 2 + 10, M = $.x + $.w / 2 - 10;
-        for (const L of w) y.push({ x1: C, x2: M, y: L.y - L.h / 2 - 3, appId: $.id, beforeId: L.id });
+      const y = [], I = o === "menu" ? this.scene.nodes.filter((E) => E.kind === "ui-app") : this.scene.nodes.filter((E) => E.id === t.parentId);
+      for (const E of I) {
+        const w = this.scene.nodes.filter((L) => L.parentId === E.id && u.includes(L.kind ?? "") && L.id !== t.id).sort((L, R) => L.y - R.y), C = E.x - E.w / 2 + 10, M = E.x + E.w / 2 - 10;
+        for (const L of w) y.push({ x1: C, x2: M, y: L.y - L.h / 2 - 3, appId: E.id, beforeId: L.id });
         const b = w[w.length - 1];
         y.push({
           x1: C,
           x2: M,
-          y: b ? b.y + b.h / 2 + 3 : $.y - $.h / 2 + 34 + 8,
-          appId: $.id,
+          y: b ? b.y + b.h / 2 + 3 : E.y - E.h / 2 + 34 + 8,
+          appId: E.id,
           beforeId: null
         });
       }
       return y;
     }, m = (y) => {
-      const g = this.nodeIdAt(y), $ = g && g !== t.id ? this.scene.nodes.find((w) => w.id === g) : void 0;
-      return $ ? $.kind === "external-system" ? $.id : $.parentId ?? null : null;
+      const I = this.nodeIdAt(y), E = I && I !== t.id ? this.scene.nodes.find((w) => w.id === I) : void 0;
+      return E ? E.kind === "external-system" ? E.id : E.parentId ?? null : null;
     }, v = (y) => {
       if ((y.buttons & 1) === 0) {
-        E(y);
+        S(y);
         return;
       }
-      const g = this.toScene(y), $ = g.x - i.x, w = g.y - i.y;
-      if (!(!n && Math.hypot($, w) < 3 / this._t.k))
+      const I = this.toScene(y), E = I.x - i.x, w = I.y - i.y;
+      if (!(!n && Math.hypot(E, w) < 3 / this._t.k))
         if (n = !0, r && l) {
           const C = /* @__PURE__ */ new Map();
           for (const M of r) {
-            const b = l.get(M.id), L = this.clampToParent(M, b.x + $, b.y + w);
+            const b = l.get(M.id), L = this.clampToParent(M, b.x + E, b.y + w);
             C.set(M.id, { x: L.x, y: L.y });
           }
           this._dragGroup = C;
         } else if (d) {
-          this._dragPos = { id: t.id, x: s.x + $, y: s.y + w }, this._menuSlots || (this._menuSlots = { slots: f(), active: null, nestRowId: null });
+          this._dragPos = { id: t.id, x: s.x + E, y: s.y + w }, this._menuSlots || (this._menuSlots = { slots: f(), active: null, nestRowId: null });
           const C = this.scene.nodes.filter(
-            (b) => u.includes(b.kind ?? "") && b.id !== t.id && Math.abs(g.x - b.x) <= b.w / 2 + 8
-          ), M = o === "menu" ? C.find((b) => Math.abs(g.y - b.y) < b.h * 0.28) : void 0;
+            (b) => u.includes(b.kind ?? "") && b.id !== t.id && Math.abs(I.x - b.x) <= b.w / 2 + 8
+          ), M = o === "menu" ? C.find((b) => Math.abs(I.y - b.y) < b.h * 0.28) : void 0;
           if (M)
             this._menuSlots = { ...this._menuSlots, active: null, nestRowId: M.id }, this._hoverNodeId = M.id;
           else {
             let b = -1, L = 14;
-            this._menuSlots.slots.forEach((R, U) => {
-              if (g.x < R.x1 - 24 || g.x > R.x2 + 24) return;
-              const S = Math.abs(g.y - R.y);
-              S < L && (L = S, b = U);
+            this._menuSlots.slots.forEach((R, F) => {
+              if (I.x < R.x1 - 24 || I.x > R.x2 + 24) return;
+              const _ = Math.abs(I.y - R.y);
+              _ < L && (L = _, b = F);
             }), this._menuSlots = { ...this._menuSlots, active: b >= 0 ? b : null, nestRowId: null }, this._hoverNodeId = null;
           }
-        } else p(y) ? (this._dragPos = { id: t.id, x: s.x + $, y: s.y + w }, this._hoverNodeId = m(y)) : (this._dragPos = this.clampToParent(t, s.x + $, s.y + w), this._hoverNodeId = null);
-    }, E = (y) => {
-      if (window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", E), n && this._dragGroup)
+        } else p(y) ? (this._dragPos = { id: t.id, x: s.x + E, y: s.y + w }, this._hoverNodeId = m(y)) : (this._dragPos = this.clampToParent(t, s.x + E, s.y + w), this._hoverNodeId = null);
+    }, S = (y) => {
+      if (window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", S), n && this._dragGroup)
         this.emit("nodes-moved", {
-          moves: [...this._dragGroup.entries()].map(([g, $]) => ({ id: g, x: $.x, y: $.y }))
+          moves: [...this._dragGroup.entries()].map(([I, E]) => ({ id: I, x: E.x, y: E.y }))
         });
       else if (n && this._dragPos && d) {
-        const g = this._menuSlots;
+        const I = this._menuSlots;
         this._menuSlots = null, this._dragPos = null, this._hoverNodeId = null;
-        const $ = o === "wizard" ? "wizard-slot-requested" : "menu-slot-requested";
-        if (g != null && g.nestRowId)
-          this.emit($, { id: t.id, nestRowId: g.nestRowId });
-        else if (g && g.active !== null) {
-          const w = g.slots[g.active];
-          this.emit($, { id: t.id, appId: w.appId, beforeId: w.beforeId });
+        const E = o === "wizard" ? "wizard-slot-requested" : "menu-slot-requested";
+        if (I != null && I.nestRowId)
+          this.emit(E, { id: t.id, nestRowId: I.nestRowId });
+        else if (I && I.active !== null) {
+          const w = I.slots[I.active];
+          this.emit(E, { id: t.id, appId: w.appId, beforeId: w.beforeId });
         }
         return;
       } else if (n && this._dragPos) {
         if (p(y)) {
-          const g = m(y);
+          const I = m(y);
           if (y.ctrlKey && t.kind === "api") {
-            g && g !== (t.parentId ?? null) && this.emit("node-proxy-requested", {
+            I && I !== (t.parentId ?? null) && this.emit("node-proxy-requested", {
               id: t.id,
-              targetId: g,
+              targetId: I,
               x: this._dragPos.x,
               y: this._dragPos.y
             }), this._dragPos = null, this._hoverNodeId = null;
             return;
           }
-          if (g !== (t.parentId ?? null)) {
+          if (I !== (t.parentId ?? null)) {
             this.emit("node-reparent-requested", {
               id: t.id,
-              targetId: g,
+              targetId: I,
               x: this._dragPos.x,
               y: this._dragPos.y
             }), this._hoverNodeId = null;
@@ -4415,7 +4415,7 @@ let ae = class extends Pe {
       } else e.shiftKey ? this.emit("element-multi-toggled", { id: t.id, kind: t.kind }) : this.emit("element-selected", { elementType: "node", id: t.id, kind: t.kind });
       this._hoverNodeId = null;
     };
-    window.addEventListener("pointermove", v), window.addEventListener("pointerup", E);
+    window.addEventListener("pointermove", v), window.addEventListener("pointerup", S);
   }
   // ---- container resize ----------------------------------------------------
   /**
@@ -4427,16 +4427,16 @@ let ae = class extends Pe {
   onResizePointerDown(e, t, i, s) {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation(), this.focus();
-    const n = 160, a = 90, r = { x: t.x, y: t.y, w: t.w, h: t.h }, l = this.scene.nodes.filter((E) => E.parentId === t.id), p = Math.min(...l.map((E) => E.x - E.w / 2)), o = Math.max(...l.map((E) => E.x + E.w / 2)), d = Math.min(...l.map((E) => E.y - E.h / 2)), u = Math.max(...l.map((E) => E.y + E.h / 2)), f = Vs(
-      l.map((E) => ({ dx: E.x - r.x, dy: E.y - r.y, w: E.w, h: E.h })),
+    const n = 160, a = 90, r = { x: t.x, y: t.y, w: t.w, h: t.h }, l = this.scene.nodes.filter((S) => S.parentId === t.id), p = Math.min(...l.map((S) => S.x - S.w / 2)), o = Math.max(...l.map((S) => S.x + S.w / 2)), d = Math.min(...l.map((S) => S.y - S.h / 2)), u = Math.max(...l.map((S) => S.y + S.h / 2)), f = Vs(
+      l.map((S) => ({ dx: S.x - r.x, dy: S.y - r.y, w: S.w, h: S.h })),
       { w: n, h: a }
-    ), m = (E) => {
-      if ((E.buttons & 1) === 0) {
+    ), m = (S) => {
+      if ((S.buttons & 1) === 0) {
         v();
         return;
       }
-      const y = this.toScene(E);
-      if (E.shiftKey) {
+      const y = this.toScene(S);
+      if (S.shiftKey) {
         this._resize = {
           id: t.id,
           x: r.x,
@@ -4446,13 +4446,13 @@ let ae = class extends Pe {
         };
         return;
       }
-      const g = r.x - i * r.w / 2, $ = r.y - s * r.h / 2, w = i > 0 ? Math.max(y.x, g + n, l.length ? o + 10 : -1 / 0) : Math.min(y.x, g - n, l.length ? p - 10 : 1 / 0), C = s > 0 ? Math.max(y.y, $ + a, l.length ? u + 10 : -1 / 0) : Math.min(y.y, $ - a, l.length ? d - 34 : 1 / 0);
+      const I = r.x - i * r.w / 2, E = r.y - s * r.h / 2, w = i > 0 ? Math.max(y.x, I + n, l.length ? o + 10 : -1 / 0) : Math.min(y.x, I - n, l.length ? p - 10 : 1 / 0), C = s > 0 ? Math.max(y.y, E + a, l.length ? u + 10 : -1 / 0) : Math.min(y.y, E - a, l.length ? d - 34 : 1 / 0);
       this._resize = {
         id: t.id,
-        x: (g + w) / 2,
-        y: ($ + C) / 2,
-        w: Math.abs(w - g),
-        h: Math.abs(C - $)
+        x: (I + w) / 2,
+        y: (E + C) / 2,
+        w: Math.abs(w - I),
+        h: Math.abs(C - E)
       };
     }, v = () => {
       window.removeEventListener("pointermove", m), window.removeEventListener("pointerup", v), this._resize && this._resize.id === t.id && this.emit("node-resized", { ...this._resize }), this._resize = null;
@@ -4658,7 +4658,7 @@ let ae = class extends Pe {
     return e.replace(/[^a-zA-Z0-9]/g, "");
   }
   renderNode(e) {
-    var f, m, v, E;
+    var f, m, v, S;
     const { x: t, y: i } = this.nodePos(e), s = this.selectedId === e.id || this.selectedIds.includes(e.id), n = this._hoverNodeId === e.id, a = !!e.container, r = !!e.parentId, l = ((f = this._resize) == null ? void 0 : f.id) === e.id ? this._resize.w : e.w, p = ((m = this._resize) == null ? void 0 : m.id) === e.id ? this._resize.h : e.h, o = l / 2, d = p / 2, u = r && e.label.length > 14 ? `${e.label.slice(0, 13)}…` : e.label;
     return G`
       <g data-node-id=${e.id}
@@ -4728,29 +4728,29 @@ let ae = class extends Pe {
       [0, d],
       [0, -d]
     ].map(
-      ([y, g]) => G`
-                <circle data-handle cx=${y} cy=${g} r="6" fill="#2563eb" stroke="#ffffff"
+      ([y, I]) => G`
+                <circle data-handle cx=${y} cy=${I} r="6" fill="#2563eb" stroke="#ffffff"
                         stroke-width="1.5"
-                        @pointerdown=${($) => this.onHandlePointerDown($, e)}>
+                        @pointerdown=${(E) => this.onHandlePointerDown(E, e)}>
                   <title>${r ? e.kind === "api" ? "Arrastra hasta otro sistema externo: la API se moverá a ese publicador" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o a otro sistema externo para moverlo" : e.kind === "domain-event" || e.kind === "application-event" ? "Arrastra hasta otro contexto o un read model para materializarlo (flow)" : e.kind === "external-use-case" || e.kind === "external-table" ? "Arrastra hasta un read model o un contexto para proyectarlo (polling)" : e.kind === "api-operation" ? "Arrastra hasta el caso de uso, policy o contexto que la implementa" : e.kind === "api-op-occurrence" ? "Arrastra hasta la implementación que sirve esta operación (la API publicada o la de un bounded context)" : e.kind === "use-case" ? "Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo" : "Arrastra hasta un evento de dominio para declarar que lo emite" : e.kind === "actor" ? "Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)" : e.kind === "ai-agent" ? "Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG" : e.kind === "mcp-gateway" ? "Arrastra hasta lo que expone: un servidor MCP, una API, una operación, un caso de uso o un RAG" : e.kind === "rag" ? "Arrastra hasta un read model: el RAG indexará su contenido" : e.kind === "workflow-step" ? "Arrastra hasta otro paso: el destino esperará a que éste complete" : e.kind === "external-system" ? "Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo, una API o un proxy (dependencia)" : e.kind === "api" ? "Arrastra hasta el sistema externo que la publica: la API se anida en él" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja" : e.kind === "workflow" ? "Arrastra hasta un caso de uso: el workflow lo orquestará como un paso" : "Arrastra hasta otro nodo para crear una relación"}</title>
                 </circle>`
     ) : ""}
-        ${s && this.connectable && ((E = e.extraHandles) != null && E.length) ? e.extraHandles.map(
-      (y, g) => G`
-                <g transform="translate(${-o + 24 + g * 20}, ${-d})">
+        ${s && this.connectable && ((S = e.extraHandles) != null && S.length) ? e.extraHandles.map(
+      (y, I) => G`
+                <g transform="translate(${-o + 24 + I * 20}, ${-d})">
                   <circle data-handle r="7" fill=${y.color} stroke="#ffffff" stroke-width="1.5"
-                          @pointerdown=${($) => this.onHandlePointerDown($, e, y.kind)}>
+                          @pointerdown=${(E) => this.onHandlePointerDown(E, e, y.kind)}>
                     <title>${y.title}</title>
                   </circle>
                   <circle r="2.4" fill="#ffffff" pointer-events="none"></circle>
                 </g>`
     ) : ""}
         ${a && s ? [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(
-      ([y, g]) => G`
-                <rect data-resize x=${y * o - 6.5} y=${g * d - 6.5} width="13" height="13" rx="2.5"
+      ([y, I]) => G`
+                <rect data-resize x=${y * o - 6.5} y=${I * d - 6.5} width="13" height="13" rx="2.5"
                       fill="#2563eb" stroke="#ffffff" stroke-width="1.5"
-                      style="cursor: ${y * g > 0 ? "nwse" : "nesw"}-resize"
-                      @pointerdown=${($) => this.onResizePointerDown($, e, y, g)}>
+                      style="cursor: ${y * I > 0 ? "nwse" : "nesw"}-resize"
+                      @pointerdown=${(E) => this.onResizePointerDown(E, e, y, I)}>
                   <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
                 </rect>`
     ) : ""}
@@ -4823,9 +4823,9 @@ let ae = class extends Pe {
   }
   renderMinimap() {
     const e = this.sceneBounds();
-    if (!e || this.scene.nodes.length < 2) return k``;
+    if (!e || this.scene.nodes.length < 2) return $``;
     const t = 160, i = 110, s = Math.min(t / e.w, i / e.h), n = this.getBoundingClientRect(), a = (0 - this._t.x) / this._t.k, r = (0 - this._t.y) / this._t.k, l = n.width / this._t.k, p = n.height / this._t.k;
-    return k`
+    return $`
       <div
         class="minimap"
         title="Minimapa — click o arrastra para navegar"
@@ -4870,7 +4870,7 @@ let ae = class extends Pe {
         i.push(this.renderEdgeHit(n, a)), s.push(this.renderEdgeInk(n, a, [...t]));
         for (let r = 0; r < a.length - 1; r++) t.push([a[r], a[r + 1]]);
       }
-    }), k`
+    }), $`
       <svg
         class="main ${this._pendingLink ? "linking" : ""} ${this._spaceDown ? "panning" : ""}"
         @pointerdown=${(n) => {
@@ -4986,40 +4986,40 @@ de([
   J({ attribute: !1 })
 ], ae.prototype, "edgePoints", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_t", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_dragPos", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_menuSlots", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_dragGroup", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_pendingLink", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_hoverNodeId", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_editingId", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_spaceDown", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_wpDrag", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_selectedWaypoint", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_resize", 2);
 de([
-  q()
+  z()
 ], ae.prototype, "_rubber", 2);
 de([
   J({ attribute: !1 })
@@ -5045,17 +5045,17 @@ function oe(e, t) {
 }
 const it = (e) => e.trim().toLowerCase();
 function xl(e, t) {
-  var U, S, P, A, T;
+  var F, _, P, T, A;
   const i = { nodes: /* @__PURE__ */ new Map(), edges: [] }, s = new Map(e.modules.map((h) => [h.id, h.name])), n = e.modules.flatMap(
-    (h) => (h.useCases ?? []).map((I) => ({ ...I, moduleId: h.id }))
+    (h) => (h.useCases ?? []).map((g) => ({ ...g, moduleId: h.id }))
   ), a = new Set(n.map((h) => h.id)), r = e.aggregates ?? [], l = new Set(
-    e.modules.flatMap((h) => (h.domainServices ?? []).map((I) => I.id))
+    e.modules.flatMap((h) => (h.domainServices ?? []).map((g) => g.id))
   ), p = e.modules.flatMap(
-    (h) => (h.domainEvents ?? []).map((I) => ({ ...I, moduleId: h.id, application: !1 }))
+    (h) => (h.domainEvents ?? []).map((g) => ({ ...g, moduleId: h.id, application: !1 }))
   ), o = e.modules.flatMap(
-    (h) => (h.applicationEvents ?? []).map((I) => ({ ...I, moduleId: h.id, application: !0 }))
+    (h) => (h.applicationEvents ?? []).map((g) => ({ ...g, moduleId: h.id, application: !0 }))
   ), d = e.modules.flatMap(
-    (h) => (h.readModels ?? []).map((I) => ({ ...I, moduleId: h.id }))
+    (h) => (h.readModels ?? []).map((g) => ({ ...g, moduleId: h.id }))
   );
   for (const h of n)
     ye(i, {
@@ -5105,8 +5105,8 @@ function xl(e, t) {
     }), u.set(it(h.name), h.id);
   const f = (h) => {
     if (!h || !h.trim()) return null;
-    const I = u.get(it(h));
-    if (I) return I;
+    const g = u.get(it(h));
+    if (g) return g;
     const x = `evname:${it(h)}`;
     return ye(i, {
       id: x,
@@ -5124,27 +5124,27 @@ function xl(e, t) {
       tooltip: `${h} — referenciado por nombre, sin evento declarado en el catálogo`
     }), x;
   }, m = (h) => {
-    const I = d.find((_) => _.id === h.id) ?? d.find((_) => h.name && it(_.name) === it(h.name)), x = (I == null ? void 0 : I.id) ?? (h.id || (h.name ? `rm:${it(h.name)}` : null));
+    const g = d.find((k) => k.id === h.id) ?? d.find((k) => h.name && it(k.name) === it(h.name)), x = (g == null ? void 0 : g.id) ?? (h.id || (h.name ? `rm:${it(h.name)}` : null));
     return x ? (ye(i, {
       id: x,
-      label: (I == null ? void 0 : I.name) ?? h.name ?? x,
+      label: (g == null ? void 0 : g.name) ?? h.name ?? x,
       x: 0,
       y: 0,
       w: W.readModel.w,
       h: W.readModel.h,
-      kind: I ? "read-model" : "derived-read-model",
+      kind: g ? "read-model" : "derived-read-model",
       fill: W.readModel.fill,
       stroke: W.readModel.stroke,
-      dashed: !I,
+      dashed: !g,
       badge: "READ MODEL"
     }), x) : null;
   };
   for (const h of e.actorUses ?? []) {
     if (!a.has(h.targetId)) continue;
-    const I = (e.actors ?? []).find((x) => x.id === h.actorId);
-    I && (ye(i, {
-      id: I.id,
-      label: I.name,
+    const g = (e.actors ?? []).find((x) => x.id === h.actorId);
+    g && (ye(i, {
+      id: g.id,
+      label: g.name,
       x: 0,
       y: 0,
       w: W.actor.w,
@@ -5155,8 +5155,8 @@ function xl(e, t) {
       stroke: W.actor.stroke,
       badge: "ACTOR"
     }), oe(i, {
-      id: `es-actor:${I.id}->${h.targetId}`,
-      sourceId: I.id,
+      id: `es-actor:${g.id}->${h.targetId}`,
+      sourceId: g.id,
       targetId: h.targetId,
       kind: "es-actor-command",
       color: "#94a3b8",
@@ -5164,8 +5164,8 @@ function xl(e, t) {
     }));
   }
   for (const h of e.aiAgents ?? []) {
-    const I = (e.agentUses ?? []).filter((z) => z.agentId === h.id), x = (e.agentExternalUses ?? []).filter((z) => z.agentId === h.id), _ = (e.agentRags ?? []).filter((z) => z.agentId === h.id), O = (e.agentMcpUses ?? []).filter((z) => z.agentId === h.id), F = (e.agentGatewayUses ?? []).some((z) => z.agentId === h.id) || (e.agentApiOpUses ?? []).some((z) => z.agentId === h.id) || (e.agentQueryUses ?? []).some((z) => z.agentId === h.id) || (e.agentDelegations ?? []).some((z) => z.agentId === h.id) || (e.agentTriggers ?? []).some((z) => z.agentId === h.id);
-    if (!(!I.length && !x.length && !_.length && !O.length && !F)) {
+    const g = (e.agentUses ?? []).filter((U) => U.agentId === h.id), x = (e.agentExternalUses ?? []).filter((U) => U.agentId === h.id), k = (e.agentRags ?? []).filter((U) => U.agentId === h.id), O = (e.agentMcpUses ?? []).filter((U) => U.agentId === h.id), q = (e.agentGatewayUses ?? []).some((U) => U.agentId === h.id) || (e.agentApiOpUses ?? []).some((U) => U.agentId === h.id) || (e.agentQueryUses ?? []).some((U) => U.agentId === h.id) || (e.agentDelegations ?? []).some((U) => U.agentId === h.id) || (e.agentTriggers ?? []).some((U) => U.agentId === h.id);
+    if (!(!g.length && !x.length && !k.length && !O.length && !q)) {
       ye(i, {
         id: h.id,
         label: h.name,
@@ -5180,23 +5180,23 @@ function xl(e, t) {
         badge: "AGENTE IA",
         tooltip: `${h.name} — agente de IA (consume por MCP)`
       });
-      for (const z of I)
-        a.has(z.useCaseId) && oe(i, {
-          id: `es-agent:${h.id}->${z.useCaseId}`,
+      for (const U of g)
+        a.has(U.useCaseId) && oe(i, {
+          id: `es-agent:${h.id}->${U.useCaseId}`,
           sourceId: h.id,
-          targetId: z.useCaseId,
+          targetId: U.useCaseId,
           kind: "es-agent-command",
           color: "#9333ea",
           dashed: !0,
           arrow: !0,
           tooltip: "consume por MCP"
         });
-      for (const z of x) {
+      for (const U of x) {
         const N = e.externalSystems.find(
-          (Q) => (Q.useCases ?? []).some((te) => te.id === z.externalUseCaseId)
+          (Q) => (Q.useCases ?? []).some((te) => te.id === U.externalUseCaseId)
         );
         if (!N) continue;
-        const H = (U = (N.useCases ?? []).find((Q) => Q.id === z.externalUseCaseId)) == null ? void 0 : U.name;
+        const H = (F = (N.useCases ?? []).find((Q) => Q.id === U.externalUseCaseId)) == null ? void 0 : F.name;
         ye(i, {
           id: N.id,
           label: N.name,
@@ -5211,7 +5211,7 @@ function xl(e, t) {
           dashed: !0,
           badge: "EXTERNO"
         }), oe(i, {
-          id: `es-agentx:${h.id}->${z.externalUseCaseId}`,
+          id: `es-agentx:${h.id}->${U.externalUseCaseId}`,
           sourceId: h.id,
           targetId: N.id,
           kind: "es-agent-external",
@@ -5222,12 +5222,12 @@ function xl(e, t) {
           tooltip: H ? `Llama a ${H} del sistema externo` : void 0
         });
       }
-      for (const z of O) {
+      for (const U of O) {
         const N = e.externalSystems.find(
-          (Q) => (Q.mcpServers ?? []).some((te) => te.id === z.mcpServerId)
+          (Q) => (Q.mcpServers ?? []).some((te) => te.id === U.mcpServerId)
         );
         if (!N) continue;
-        const H = (S = (N.mcpServers ?? []).find((Q) => Q.id === z.mcpServerId)) == null ? void 0 : S.name;
+        const H = (_ = (N.mcpServers ?? []).find((Q) => Q.id === U.mcpServerId)) == null ? void 0 : _.name;
         ye(i, {
           id: N.id,
           label: N.name,
@@ -5242,7 +5242,7 @@ function xl(e, t) {
           dashed: !0,
           badge: "EXTERNO"
         }), oe(i, {
-          id: `es-agentmcp:${h.id}->${z.mcpServerId}`,
+          id: `es-agentmcp:${h.id}->${U.mcpServerId}`,
           sourceId: h.id,
           targetId: N.id,
           kind: "es-agent-mcp",
@@ -5253,8 +5253,8 @@ function xl(e, t) {
           tooltip: H ? `Consume las herramientas del servidor MCP ${H}` : void 0
         });
       }
-      for (const z of _) {
-        const N = (e.rags ?? []).find((H) => H.id === z.ragId);
+      for (const U of k) {
+        const N = (e.rags ?? []).find((H) => H.id === U.ragId);
         if (N) {
           ye(i, {
             id: N.id,
@@ -5296,10 +5296,10 @@ function xl(e, t) {
     }
   }
   const v = (h) => {
-    const I = e.externalSystems.find((x) => x.id === h);
-    return I ? (ye(i, {
-      id: I.id,
-      label: I.name,
+    const g = e.externalSystems.find((x) => x.id === h);
+    return g ? (ye(i, {
+      id: g.id,
+      label: g.name,
       x: 0,
       y: 0,
       w: W.external.w,
@@ -5310,13 +5310,13 @@ function xl(e, t) {
       stroke: W.external.stroke,
       dashed: !0,
       badge: "EXTERNO"
-    }), I.id) : null;
+    }), g.id) : null;
   };
   for (const h of e.externalCalls ?? []) {
-    const I = v(h.externalSystemId);
-    !I || !a.has(h.useCaseId) || oe(i, {
-      id: `es-extin:${I}->${h.useCaseId}`,
-      sourceId: I,
+    const g = v(h.externalSystemId);
+    !g || !a.has(h.useCaseId) || oe(i, {
+      id: `es-extin:${g}->${h.useCaseId}`,
+      sourceId: g,
       targetId: h.useCaseId,
       kind: "es-external-command",
       color: "#be185d",
@@ -5326,21 +5326,21 @@ function xl(e, t) {
   }
   for (const h of e.externalUseCaseCalls ?? []) {
     if (!a.has(h.sourceId)) continue;
-    const I = e.externalSystems.find(
-      (O) => (O.useCases ?? []).some((F) => F.id === h.targetId)
-    ), x = I ? v(I.id) : null;
+    const g = e.externalSystems.find(
+      (O) => (O.useCases ?? []).some((q) => q.id === h.targetId)
+    ), x = g ? v(g.id) : null;
     if (!x) continue;
-    const _ = (P = ((I == null ? void 0 : I.useCases) ?? []).find((O) => O.id === h.targetId)) == null ? void 0 : P.name;
+    const k = (P = ((g == null ? void 0 : g.useCases) ?? []).find((O) => O.id === h.targetId)) == null ? void 0 : P.name;
     oe(i, {
       id: `es-extout:${h.sourceId}->${h.targetId}`,
       sourceId: h.sourceId,
       targetId: x,
       kind: "es-command-external",
-      label: _,
+      label: k,
       color: "#be185d",
       dashed: !0,
       arrow: !0,
-      tooltip: _ ? `Llama a ${_} del sistema externo` : void 0
+      tooltip: k ? `Llama a ${k} del sistema externo` : void 0
     });
   }
   for (const h of e.aggregateCalls ?? [])
@@ -5352,11 +5352,11 @@ function xl(e, t) {
       color: "#64748b",
       arrow: !0
     });
-  const E = [
+  const S = [
     ...e.emissions ?? [],
     ...e.useCaseEmissions ?? []
   ];
-  for (const h of E)
+  for (const h of S)
     !i.nodes.has(h.domainEventId) || !(i.nodes.has(h.sourceId) && (a.has(h.sourceId) || r.some((x) => x.id === h.sourceId) || l.has(h.sourceId))) || oe(i, {
       id: `es-emit:${h.sourceId}->${h.domainEventId}`,
       sourceId: h.sourceId,
@@ -5366,9 +5366,9 @@ function xl(e, t) {
       arrow: !0,
       tooltip: "emite"
     });
-  const y = (h, I, x, _, O, F) => (ye(i, {
+  const y = (h, g, x, k, O, q) => (ye(i, {
     id: h,
-    label: I,
+    label: g,
     x: 0,
     y: 0,
     w: W.policy.w,
@@ -5377,56 +5377,56 @@ function xl(e, t) {
     symbol: "flow",
     fill: W.policy.fill,
     stroke: W.policy.stroke,
-    badge: _,
+    badge: k,
     tooltip: O
-  }), h), g = (h, I) => {
+  }), h), I = (h, g) => {
     const x = f(h);
     x && oe(i, {
-      id: `es-trigger:${x}->${I}`,
+      id: `es-trigger:${x}->${g}`,
       sourceId: x,
-      targetId: I,
+      targetId: g,
       kind: "es-trigger",
       color: "#7e22ce",
       dashed: !0,
       arrow: !0
     });
-  }, $ = (h, I) => {
-    !I || !a.has(I) || oe(i, {
-      id: `es-invoke:${h}->${I}`,
+  }, E = (h, g) => {
+    !g || !a.has(g) || oe(i, {
+      id: `es-invoke:${h}->${g}`,
       sourceId: h,
-      targetId: I,
+      targetId: g,
       kind: "es-invoke",
       color: "#1d4ed8",
       arrow: !0
     });
   };
   for (const h of e.subscriptions ?? []) {
-    const I = y(
+    const g = y(
       h.id,
       h.name,
       "subscription",
       "POLICY · SUBSCRIPTION",
       `${h.name}${h.eventName ? ` — reacciona a ${h.eventName}` : ""}${h.consumerGroup ? ` · grupo ${h.consumerGroup}` : ""}`
     );
-    g(h.eventName, I);
+    I(h.eventName, g);
     for (const x of h.actions ?? []) {
-      if (x.type === "CallUseCase" && $(I, x.useCaseId), x.type === "StartSaga" && x.sagaId) {
-        const _ = `saga:${x.sagaId}`;
-        y(_, x.sagaId, "saga", "SAGA"), oe(i, {
-          id: `es-saga:${I}->${_}`,
-          sourceId: I,
-          targetId: _,
+      if (x.type === "CallUseCase" && E(g, x.useCaseId), x.type === "StartSaga" && x.sagaId) {
+        const k = `saga:${x.sagaId}`;
+        y(k, x.sagaId, "saga", "SAGA"), oe(i, {
+          id: `es-saga:${g}->${k}`,
+          sourceId: g,
+          targetId: k,
           kind: "es-invoke",
           color: "#7e22ce",
           arrow: !0
         });
       }
       if (x.type === "UpdateProjection" && x.projectionId) {
-        const _ = (e.projections ?? []).find((O) => O.id === x.projectionId);
-        _ && oe(i, {
-          id: `es-feeds:${I}->${_.id}`,
-          sourceId: I,
-          targetId: _.id,
+        const k = (e.projections ?? []).find((O) => O.id === x.projectionId);
+        k && oe(i, {
+          id: `es-feeds:${g}->${k.id}`,
+          sourceId: g,
+          targetId: k.id,
           kind: "es-invoke",
           color: "#7e22ce",
           arrow: !0
@@ -5435,7 +5435,7 @@ function xl(e, t) {
     }
   }
   for (const h of e.projections ?? []) {
-    const I = y(
+    const g = y(
       h.id,
       h.name,
       "projection",
@@ -5443,11 +5443,11 @@ function xl(e, t) {
       `${h.name}${h.readModelName ? ` — materializa ${h.readModelName}` : ""}`
     );
     for (const O of h.handledEventIds) {
-      const F = i.nodes.has(O) ? O : null;
-      F && oe(i, {
-        id: `es-trigger:${F}->${I}`,
-        sourceId: F,
-        targetId: I,
+      const q = i.nodes.has(O) ? O : null;
+      q && oe(i, {
+        id: `es-trigger:${q}->${g}`,
+        sourceId: q,
+        targetId: g,
         kind: "es-trigger",
         color: "#7e22ce",
         dashed: !0,
@@ -5457,7 +5457,7 @@ function xl(e, t) {
     h.sourceAggregateId && i.nodes.has(h.sourceAggregateId) && oe(i, {
       id: `es-state:${h.id}`,
       sourceId: h.sourceAggregateId,
-      targetId: I,
+      targetId: g,
       kind: "es-projects-state",
       color: "#0d9488",
       dashed: !0,
@@ -5467,28 +5467,28 @@ function xl(e, t) {
     const x = h.sourceExternalUseCaseId ?? h.sourceExternalTableId;
     if (x) {
       const O = e.externalSystems.find(
-        (z) => (z.useCases ?? []).some((N) => N.id === x) || (z.tables ?? []).some((N) => N.id === x)
-      ), F = O ? v(O.id) : null;
-      if (F) {
-        const z = ((A = (O.useCases ?? []).find((N) => N.id === x)) == null ? void 0 : A.name) ?? ((T = (O.tables ?? []).find((N) => N.id === x)) == null ? void 0 : T.name);
+        (U) => (U.useCases ?? []).some((N) => N.id === x) || (U.tables ?? []).some((N) => N.id === x)
+      ), q = O ? v(O.id) : null;
+      if (q) {
+        const U = ((T = (O.useCases ?? []).find((N) => N.id === x)) == null ? void 0 : T.name) ?? ((A = (O.tables ?? []).find((N) => N.id === x)) == null ? void 0 : A.name);
         oe(i, {
           id: `es-poll:${h.id}`,
-          sourceId: F,
-          targetId: I,
+          sourceId: q,
+          targetId: g,
           kind: "es-projects-poll",
-          label: z,
+          label: U,
           color: "#0d9488",
           dashed: !0,
           arrow: !0,
-          tooltip: z ? `polling de ${z}` : "polling"
+          tooltip: U ? `polling de ${U}` : "polling"
         });
       }
     }
-    const _ = m({ id: h.readModelId, name: h.readModelName });
-    _ && oe(i, {
-      id: `es-projects:${I}->${_}`,
-      sourceId: I,
-      targetId: _,
+    const k = m({ id: h.readModelId, name: h.readModelName });
+    k && oe(i, {
+      id: `es-projects:${g}->${k}`,
+      sourceId: g,
+      targetId: k,
       kind: "es-projects",
       color: "#15803d",
       arrow: !0
@@ -5496,11 +5496,11 @@ function xl(e, t) {
   }
   for (const h of e.flows) {
     if (h.archetype === "MATERIALIZES") {
-      const x = f(h.triggerEvent), _ = m({ name: h.readModelName ?? `${h.triggerEvent}View` });
-      x && _ && oe(i, {
+      const x = f(h.triggerEvent), k = m({ name: h.readModelName ?? `${h.triggerEvent}View` });
+      x && k && oe(i, {
         id: `es-mat:${h.id}`,
         sourceId: x,
-        targetId: _,
+        targetId: k,
         kind: "es-materializes",
         label: h.name,
         color: "#0d9488",
@@ -5510,17 +5510,17 @@ function xl(e, t) {
       });
       continue;
     }
-    const I = y(
+    const g = y(
       `flow:${h.id}`,
       h.name,
       "flow",
       `POLICY · ${h.archetype}`,
       `Flow ${h.name} [${h.archetype}]`
     );
-    if (g(h.triggerEvent, I), $(I, h.targetUseCaseId), !h.targetUseCaseId) {
-      const x = v(h.targetId), _ = x ?? `tgt:${h.targetId}`;
+    if (I(h.triggerEvent, g), E(g, h.targetUseCaseId), !h.targetUseCaseId) {
+      const x = v(h.targetId), k = x ?? `tgt:${h.targetId}`;
       !x && s.has(h.targetId) && ye(i, {
-        id: _,
+        id: k,
         label: s.get(h.targetId) ?? h.targetId,
         x: 0,
         y: 0,
@@ -5531,10 +5531,10 @@ function xl(e, t) {
         fill: W.module.fill,
         stroke: W.module.stroke,
         badge: "CONTEXTO"
-      }), i.nodes.has(_) && oe(i, {
+      }), i.nodes.has(k) && oe(i, {
         id: `es-deliver:${h.id}`,
-        sourceId: I,
-        targetId: _,
+        sourceId: g,
+        targetId: k,
         kind: "es-deliver",
         color: "#ea580c",
         arrow: !0
@@ -5542,19 +5542,19 @@ function xl(e, t) {
     }
   }
   for (const h of e.processes ?? []) {
-    const I = y(
+    const g = y(
       h.id,
       h.name,
       "process",
       `PROCESO${h.sla ? ` · SLA ${h.sla}` : ""}`,
       `${h.name}${h.triggerEvent ? ` — arranca con ${h.triggerEvent}` : ""}`
     );
-    g(h.triggerEvent, I);
-    for (const _ of h.steps) $(I, _.useCaseId);
+    I(h.triggerEvent, g);
+    for (const k of h.steps) E(g, k.useCaseId);
     const x = f(h.onCompletionEventName);
     x && oe(i, {
       id: `es-done:${h.id}`,
-      sourceId: I,
+      sourceId: g,
       targetId: x,
       kind: "es-completion",
       color: "#c2410c",
@@ -5563,22 +5563,22 @@ function xl(e, t) {
     });
   }
   for (const h of e.workflows ?? []) {
-    const I = y(
+    const g = y(
       h.id,
       h.name,
       "workflow",
       "WORKFLOW",
       `${h.name}${h.triggerEvent ? ` — arranca con ${h.triggerEvent}` : ""}`
     );
-    g(h.triggerEvent, I);
-    for (const _ of h.steps ?? []) {
-      $(I, _.targetUseCaseId);
-      for (const O of [_.emittedEventName, _.completionEventName]) {
-        const F = f(O);
-        F && oe(i, {
-          id: `es-wfemit:${h.id}:${F}`,
-          sourceId: I,
-          targetId: F,
+    I(h.triggerEvent, g);
+    for (const k of h.steps ?? []) {
+      E(g, k.targetUseCaseId);
+      for (const O of [k.emittedEventName, k.completionEventName]) {
+        const q = f(O);
+        q && oe(i, {
+          id: `es-wfemit:${h.id}:${q}`,
+          sourceId: g,
+          targetId: q,
           kind: "es-completion",
           color: "#c2410c",
           arrow: !0
@@ -5588,7 +5588,7 @@ function xl(e, t) {
     const x = f(h.onCompletionEventName);
     x && oe(i, {
       id: `es-done:${h.id}`,
-      sourceId: I,
+      sourceId: g,
       targetId: x,
       kind: "es-completion",
       color: "#c2410c",
@@ -5599,21 +5599,21 @@ function xl(e, t) {
   for (const h of i.edges)
     C.has(h.targetId) || C.set(h.targetId, []), C.get(h.targetId).push(h.sourceId);
   const M = /* @__PURE__ */ new Map(), b = /* @__PURE__ */ new Set(), L = (h) => {
-    const I = M.get(h);
-    if (I !== void 0) return I;
+    const g = M.get(h);
+    if (g !== void 0) return g;
     if (b.has(h)) return 0;
     b.add(h);
-    const x = C.get(h) ?? [], _ = x.length ? 1 + Math.max(...x.map(L)) : 0;
-    return b.delete(h), M.set(h, _), _;
+    const x = C.get(h) ?? [], k = x.length ? 1 + Math.max(...x.map(L)) : 0;
+    return b.delete(h), M.set(h, k), k;
   }, R = /* @__PURE__ */ new Map();
   for (const h of w) {
-    const I = t[h.id];
-    if (I) {
-      h.x = I.x, h.y = I.y;
+    const g = t[h.id];
+    if (g) {
+      h.x = g.x, h.y = g.y;
       continue;
     }
-    const x = L(h.id), _ = R.get(x) ?? 0;
-    R.set(x, _ + 1), h.x = 140 + x * 260, h.y = 110 + _ * 110;
+    const x = L(h.id), k = R.get(x) ?? 0;
+    R.set(x, k + 1), h.x = 140 + x * 260, h.y = 110 + k * 110;
   }
   return { nodes: w, edges: i.edges };
 }
@@ -5650,20 +5650,20 @@ function Cl(e, t) {
   let r = 140;
   return (e.workflows ?? []).forEach((l) => {
     var y;
-    const p = new Map(l.steps.map((g) => [g.id, g])), o = new Map(l.steps.map((g) => [g.id, El(g, p)])), d = /* @__PURE__ */ new Map();
-    for (const g of l.steps) {
-      const $ = o.get(g.id) ?? 0;
-      d.set($, (d.get($) ?? 0) + 1);
+    const p = new Map(l.steps.map((I) => [I.id, I])), o = new Map(l.steps.map((I) => [I.id, El(I, p)])), d = /* @__PURE__ */ new Map();
+    for (const I of l.steps) {
+      const E = o.get(I.id) ?? 0;
+      d.set(E, (d.get(E) ?? 0) + 1);
     }
     const u = Math.max(1, ...d.values()), f = Sl(e, l);
     if (f && !n.has(f.id)) {
       n.add(f.id);
-      const g = t[f.id] ?? { x: 140, y: r };
+      const I = t[f.id] ?? { x: 140, y: r };
       i.push({
         id: f.id,
         label: f.label,
-        x: g.x,
-        y: g.y,
+        x: I.x,
+        y: I.y,
         w: kl,
         h: $l,
         kind: f.kind,
@@ -5699,19 +5699,19 @@ function Cl(e, t) {
       tooltip: l.triggerEvent ? `Evento: ${l.triggerEvent}` : void 0
     });
     const v = /* @__PURE__ */ new Map();
-    let E = 0;
-    for (const g of l.steps) {
-      const $ = o.get(g.id) ?? 0;
-      E = Math.max(E, $);
-      const w = v.get($) ?? 0;
-      v.set($, w + 1);
-      const C = t[g.id] ?? {
-        x: m.x + ($ + 1) * Nn,
-        y: r + (w - (d.get($) - 1) / 2) * Rn
-      }, M = a(g.targetUseCaseId);
+    let S = 0;
+    for (const I of l.steps) {
+      const E = o.get(I.id) ?? 0;
+      S = Math.max(S, E);
+      const w = v.get(E) ?? 0;
+      v.set(E, w + 1);
+      const C = t[I.id] ?? {
+        x: m.x + (E + 1) * Nn,
+        y: r + (w - (d.get(E) - 1) / 2) * Rn
+      }, M = a(I.targetUseCaseId);
       i.push({
-        id: g.id,
-        label: g.name,
+        id: I.id,
+        label: I.name,
         x: C.x,
         y: C.y,
         w: Tn,
@@ -5721,37 +5721,37 @@ function Cl(e, t) {
         fill: "#ffffff",
         stroke: "#6d28d9",
         badge: M ? `→ ${M}` : "∅ sin use case",
-        tooltip: `${g.name}${g.emittedEventName ? ` · emite ${g.emittedEventName}` : ""}${M ? ` · lanza ${M}` : ""}${g.completionEventName ? ` · espera ${g.completionEventName}` : ""}`
+        tooltip: `${I.name}${I.emittedEventName ? ` · emite ${I.emittedEventName}` : ""}${M ? ` · lanza ${M}` : ""}${I.completionEventName ? ` · espera ${I.completionEventName}` : ""}`
       });
-      const b = (g.dependsOnStepIds ?? []).filter((L) => p.has(L));
+      const b = (I.dependsOnStepIds ?? []).filter((L) => p.has(L));
       b.length === 0 && s.push({
-        id: `wfs:${l.id}:${g.id}`,
+        id: `wfs:${l.id}:${I.id}`,
         sourceId: l.id,
-        targetId: g.id,
+        targetId: I.id,
         kind: "workflow-start",
-        label: g.emittedEventName,
+        label: I.emittedEventName,
         color: "#6d28d9",
         arrow: !0
       });
       for (const L of b)
         s.push({
-          id: `wfdep:${L}->${g.id}`,
+          id: `wfdep:${L}->${I.id}`,
           sourceId: L,
-          targetId: g.id,
+          targetId: I.id,
           kind: "workflow-dependency",
-          label: g.emittedEventName,
+          label: I.emittedEventName,
           color: "#6d28d9",
           arrow: !0,
-          tooltip: `${g.name} espera a ${((y = p.get(L)) == null ? void 0 : y.name) ?? L}`
+          tooltip: `${I.name} espera a ${((y = p.get(L)) == null ? void 0 : y.name) ?? L}`
         });
     }
     if (l.onCompletionEventName) {
-      const g = `done:${l.id}`, $ = t[g] ?? { x: m.x + (E + 2) * Nn, y: r };
+      const I = `done:${l.id}`, E = t[I] ?? { x: m.x + (S + 2) * Nn, y: r };
       i.push({
-        id: g,
+        id: I,
         label: l.onCompletionEventName,
-        x: $.x,
-        y: $.y,
+        x: E.x,
+        y: E.y,
         w: Tn,
         h: 40,
         kind: "completion-event",
@@ -5765,7 +5765,7 @@ function Cl(e, t) {
         s.push({
           id: `wfd:${l.id}:${M.id}`,
           sourceId: M.id,
-          targetId: g,
+          targetId: I,
           kind: "workflow-completion",
           color: "#16a34a",
           arrow: !0
@@ -5773,7 +5773,7 @@ function Cl(e, t) {
       l.steps.length || s.push({
         id: `wfd:${l.id}`,
         sourceId: l.id,
-        targetId: g,
+        targetId: I,
         kind: "workflow-completion",
         color: "#16a34a",
         arrow: !0
@@ -5800,7 +5800,7 @@ function Tl(e) {
   return i(e.menuItems ?? [], [], 0), t;
 }
 function Nl(e, t) {
-  var y, g, $;
+  var y, I, E;
   const i = [], s = [], n = e.uiApps ?? [], a = e.pages ?? [], r = (w) => {
     var C;
     return ((C = e.modules.flatMap((M) => M.useCases ?? []).find((M) => M.id === w)) == null ? void 0 : C.name) ?? w;
@@ -5829,20 +5829,20 @@ function Nl(e, t) {
       stroke: L === "ORCHESTRATOR" ? "#c026d3" : "#0ea5e9",
       container: !0,
       badge: L === "ORCHESTRATOR" ? "ORQUESTADOR" : L === "MASTER_DETAIL" ? "MAESTRO·DETALLE" : "APP",
-      extraHandles: [
-        { kind: "home", title: "Home: arrastra hasta la página con la que abre la app", color: "#16a34a" },
-        ...L === "MASTER_DETAIL" ? [{ kind: "header", title: "Cabecera: arrastra hasta la página que hace de cabecera", color: "#0ea5e9" }] : []
-      ],
+      // a master-detail has no home: only its header and its tabs
+      extraHandles: L === "MASTER_DETAIL" ? [{ kind: "header", title: "Cabecera: arrastra hasta la página que hace de cabecera", color: "#0ea5e9" }] : [{ kind: "home", title: "Home: arrastra hasta la página (o la app) con la que abre", color: "#16a34a" }],
       tooltip: L === "ORCHESTRATOR" ? `${w.name} — orquesta y mantiene estado; solo enseña páginas hijas` : L === "MASTER_DETAIL" ? `${w.name} — cabecera + pestañas (ambas son páginas)` : `App: ${w.name}`
-    }), w.homePageId && s.push({
-      id: `apphome:${w.id}->${w.homePageId}`,
+    });
+    const R = w.homePageId ?? w.homeAppId;
+    R && s.push({
+      id: `apphome:${w.id}->${R}`,
       sourceId: w.id,
-      targetId: w.homePageId,
+      targetId: R,
       kind: "app-home",
       color: "#16a34a",
       label: "home",
       arrow: !0,
-      tooltip: "la página con la que abre la app"
+      tooltip: w.homeAppId ? "la app con la que abre" : "la página con la que abre la app"
     }), L === "MASTER_DETAIL" && w.headerPageId && s.push({
       id: `appheader:${w.id}->${w.headerPageId}`,
       sourceId: w.id,
@@ -5853,49 +5853,49 @@ function Nl(e, t) {
       arrow: !0,
       tooltip: "la página que hace de cabecera; las demás son pestañas"
     });
-    let R = b.y - M / 2 + 34 + 10 + ze / 2;
-    for (const { entry: U, path: S, depth: P } of C) {
-      const A = Ol(w.id, U, S), T = P * Al;
+    let F = b.y - M / 2 + 34 + 10 + ze / 2;
+    for (const { entry: _, path: P, depth: T } of C) {
+      const A = Ol(w.id, _, P), h = T * Al;
       if (i.push({
         id: A,
-        label: U.label,
-        x: b.x + T / 2,
-        y: R,
-        w: Ln - 20 - T,
+        label: _.label,
+        x: b.x + h / 2,
+        y: F,
+        w: Ln - 20 - h,
         h: ze,
         // a parent entry is a pure grouper: it offers no handles and takes no target
-        kind: (y = U.children) != null && y.length ? "menu-group" : "menu-item",
+        kind: (y = _.children) != null && y.length ? "menu-group" : "menu-item",
         symbol: "process",
-        fill: (g = U.children) != null && g.length ? "#f0f9ff" : "#ffffff",
+        fill: (I = _.children) != null && I.length ? "#f0f9ff" : "#ffffff",
         stroke: "#7dd3fc",
         parentId: w.id,
-        tooltip: ($ = U.children) != null && $.length ? "Agrupador (con submenú): no puede abrir nada" : U.pageId ? `Abre ${U.pageId}` : U.uiAdapterId ? `Abre la app ${U.uiAdapterId}` : U.useCaseId ? `Lanza ${U.useCaseId}` : U.aggregateId ? `CRUD inferido sobre ${U.aggregateId}` : U.queryOperationId ? `Listado con filtros de ${U.queryOperationId}` : "Entrada de menú sin destino"
-      }), R += ze + jt, U.uiAdapterId && n.some((h) => h.id === U.uiAdapterId) && s.push({
-        id: `menuapp:${A}->${U.uiAdapterId}`,
+        tooltip: (E = _.children) != null && E.length ? "Agrupador (con submenú): no puede abrir nada" : _.pageId ? `Abre ${_.pageId}` : _.uiAdapterId ? `Abre la app ${_.uiAdapterId}` : _.useCaseId ? `Lanza ${_.useCaseId}` : _.aggregateId ? `CRUD inferido sobre ${_.aggregateId}` : _.queryOperationId ? `Listado con filtros de ${_.queryOperationId}` : "Entrada de menú sin destino"
+      }), F += ze + jt, _.uiAdapterId && n.some((g) => g.id === _.uiAdapterId) && s.push({
+        id: `menuapp:${A}->${_.uiAdapterId}`,
         sourceId: A,
-        targetId: U.uiAdapterId,
+        targetId: _.uiAdapterId,
         kind: "menu-app",
         color: "#64748b",
         arrow: !0
-      }), U.useCaseId && e.modules.some((I) => (I.useCases ?? []).some((x) => x.id === U.useCaseId)) && (p.set(U.useCaseId, {
-        label: r(U.useCaseId),
+      }), _.useCaseId && e.modules.some((x) => (x.useCases ?? []).some((k) => k.id === _.useCaseId)) && (p.set(_.useCaseId, {
+        label: r(_.useCaseId),
         kind: "use-case",
         symbol: "usecase",
         stroke: "#06b6d4"
       }), s.push({
-        id: `menuuc:${A}->${U.useCaseId}`,
+        id: `menuuc:${A}->${_.useCaseId}`,
         sourceId: A,
-        targetId: U.useCaseId,
+        targetId: _.useCaseId,
         kind: "menu-use-case",
         color: "#06b6d4",
         dashed: !0,
         arrow: !0
-      })), U.aggregateId && (e.aggregates ?? []).some((h) => h.id === U.aggregateId)) {
-        const h = (e.aggregates ?? []).find((I) => I.id === U.aggregateId);
-        p.set(h.id, { label: h.name, kind: "aggregate", symbol: "aggregate", stroke: "#8b5cf6" }), s.push({
-          id: `menuagg:${A}->${h.id}`,
+      })), _.aggregateId && (e.aggregates ?? []).some((g) => g.id === _.aggregateId)) {
+        const g = (e.aggregates ?? []).find((x) => x.id === _.aggregateId);
+        p.set(g.id, { label: g.name, kind: "aggregate", symbol: "aggregate", stroke: "#8b5cf6" }), s.push({
+          id: `menuagg:${A}->${g.id}`,
           sourceId: A,
-          targetId: h.id,
+          targetId: g.id,
           kind: "menu-aggregate",
           label: "CRUD",
           color: "#8b5cf6",
@@ -5903,17 +5903,17 @@ function Nl(e, t) {
           arrow: !0
         });
       }
-      if (U.queryOperationId) {
-        const h = e.modules.flatMap((x) => x.queryServices ?? []).find((x) => x.id === U.queryServiceId), I = ((h == null ? void 0 : h.operations) ?? []).find((x) => x.id === U.queryOperationId);
-        h && I && (p.set(I.id, {
-          label: `${I.name} (${h.name})`,
+      if (_.queryOperationId) {
+        const g = e.modules.flatMap((k) => k.queryServices ?? []).find((k) => k.id === _.queryServiceId), x = ((g == null ? void 0 : g.operations) ?? []).find((k) => k.id === _.queryOperationId);
+        g && x && (p.set(x.id, {
+          label: `${x.name} (${g.name})`,
           kind: "query-operation",
           symbol: "lens",
           stroke: "#0284c7"
         }), s.push({
-          id: `menuqop:${A}->${I.id}`,
+          id: `menuqop:${A}->${x.id}`,
           sourceId: A,
-          targetId: I.id,
+          targetId: x.id,
           kind: "menu-query-operation",
           label: "listado",
           color: "#0284c7",
@@ -5921,10 +5921,10 @@ function Nl(e, t) {
           arrow: !0
         }));
       }
-      U.pageId && a.some((h) => h.id === U.pageId) && s.push({
-        id: `menupage:${A}->${U.pageId}`,
+      _.pageId && a.some((g) => g.id === _.pageId) && s.push({
+        id: `menupage:${A}->${_.pageId}`,
         sourceId: A,
-        targetId: U.pageId,
+        targetId: _.pageId,
         kind: "menu-page",
         color: "#64748b",
         arrow: !0
@@ -5955,10 +5955,10 @@ function Nl(e, t) {
       tooltip: w.route ? `${w.type ?? "PAGE"} · ${w.route}` : w.type ?? "PAGE"
     });
     let L = C.y - b / 2 + 34 + 10 + ze / 2;
-    M.forEach((R, U) => {
+    M.forEach((R, F) => {
       i.push({
         id: `wizrow:${w.id}:${R.pageId}`,
-        label: `${U + 1}. ${R.label ?? u(R.pageId)}`,
+        label: `${F + 1}. ${R.label ?? u(R.pageId)}`,
         x: C.x,
         y: L,
         w: Dn - 20,
@@ -5968,21 +5968,21 @@ function Nl(e, t) {
         fill: "#faf5ff",
         stroke: "#c4b5fd",
         parentId: w.id,
-        tooltip: `Paso ${U + 1} del wizard: ${u(R.pageId)} — arrastra a otro hueco para reordenar`
+        tooltip: `Paso ${F + 1} del wizard: ${u(R.pageId)} — arrastra a otro hueco para reordenar`
       }), L += ze + jt;
     });
     for (let R = 0; R < (w.wizardSteps ?? []).length; R++) {
-      const U = (w.wizardSteps ?? [])[R];
+      const F = (w.wizardSteps ?? [])[R];
       s.push({
-        id: `wizstep:${w.id}->${U.pageId}`,
+        id: `wizstep:${w.id}->${F.pageId}`,
         sourceId: w.id,
-        targetId: U.pageId,
+        targetId: F.pageId,
         kind: "wizard-step",
         color: "#7c3aed",
         label: `paso ${R + 1}`,
         dashed: !0,
         arrow: !0,
-        tooltip: U.label ? `paso ${R + 1}: ${U.label}` : `paso ${R + 1}`
+        tooltip: F.label ? `paso ${R + 1}: ${F.label}` : `paso ${R + 1}`
       });
     }
     w.modelId && (p.set(w.modelId, {
@@ -6052,10 +6052,10 @@ function Nl(e, t) {
   const m = (e.actorAppUses ?? []).filter(
     (w) => n.some((C) => C.id === w.appId) && (e.actors ?? []).some((C) => C.id === w.actorId)
   ), v = [...new Set(m.map((w) => w.actorId))];
-  let E = 160;
+  let S = 160;
   for (const w of v) {
-    const C = (e.actors ?? []).find((b) => b.id === w), M = t[w] ?? { x: -60, y: E };
-    E = M.y + Kt + 46, i.push({
+    const C = (e.actors ?? []).find((b) => b.id === w), M = t[w] ?? { x: -60, y: S };
+    S = M.y + Kt + 46, i.push({
       id: w,
       label: C.name,
       x: M.x,
@@ -6278,8 +6278,8 @@ let xe = class extends Pe {
   sceneFromClient(e, t) {
     const i = this.getBoundingClientRect(), s = i.width * 0.5, n = i.height * 0.42, a = new DOMMatrix();
     a.m34 = -1 / 1600;
-    const r = new DOMMatrix().translate(s, n).multiply(a).translate(-s, -n).translate(i.width / 2, i.height / 2).translate(this._pan.x, this._pan.y).scale(this._kUsed, this._kUsed, this._kUsed).rotateAxisAngle(1, 0, 0, this._rx).rotateAxisAngle(0, 0, 1, this._rz).translate(-this._center.x, -this._center.y, 0), l = r.transformPoint(new DOMPoint(0, 0, 0, 1)), p = r.transformPoint(new DOMPoint(1, 0, 0, 0)), o = r.transformPoint(new DOMPoint(0, 1, 0, 0)), d = e - i.left, u = t - i.top, f = p.x - d * p.w, m = o.x - d * o.w, v = p.y - u * p.w, E = o.y - u * o.w, y = d * l.w - l.x, g = u * l.w - l.y, $ = f * E - m * v;
-    return $ ? { x: (y * E - m * g) / $, y: (f * g - y * v) / $ } : { ...this._center };
+    const r = new DOMMatrix().translate(s, n).multiply(a).translate(-s, -n).translate(i.width / 2, i.height / 2).translate(this._pan.x, this._pan.y).scale(this._kUsed, this._kUsed, this._kUsed).rotateAxisAngle(1, 0, 0, this._rx).rotateAxisAngle(0, 0, 1, this._rz).translate(-this._center.x, -this._center.y, 0), l = r.transformPoint(new DOMPoint(0, 0, 0, 1)), p = r.transformPoint(new DOMPoint(1, 0, 0, 0)), o = r.transformPoint(new DOMPoint(0, 1, 0, 0)), d = e - i.left, u = t - i.top, f = p.x - d * p.w, m = o.x - d * o.w, v = p.y - u * p.w, S = o.y - u * o.w, y = d * l.w - l.x, I = u * l.w - l.y, E = f * S - m * v;
+    return E ? { x: (y * S - m * I) / E, y: (f * I - y * v) / E } : { ...this._center };
   }
   /** Containment depth: how many parents above the node (0 = floor plate). */
   depths() {
@@ -6295,11 +6295,11 @@ let xe = class extends Pe {
   render() {
     const e = this.scene.nodes;
     if (!e.length)
-      return k`<div class="hud">Nada que inclinar — el diagrama está vacío</div>`;
+      return $`<div class="hud">Nada que inclinar — el diagrama está vacío</div>`;
     const t = this.depths(), i = new Map(e.map((y) => [y.id, y])), s = Math.min(...e.map((y) => y.x - y.w / 2)) - 60, n = Math.max(...e.map((y) => y.x + y.w / 2)) + 60, a = Math.min(...e.map((y) => y.y - y.h / 2)) - 60, r = Math.max(...e.map((y) => y.y + y.h / 2)) + 60, l = (s + n) / 2, p = (a + r) / 2, o = this.getBoundingClientRect(), d = o.width ? Math.min(o.width / (n - s), o.height / (r - a), 1) * 0.9 : 0.5, u = this._k * d;
     this._kUsed = u, this._center = { x: l, y: p };
-    const f = 30, m = this._liveMove, v = (y) => y.x + ((m == null ? void 0 : m.id) === y.id ? m.dx : 0), E = (y) => y.y + ((m == null ? void 0 : m.id) === y.id ? m.dy : 0);
-    return k`
+    const f = 30, m = this._liveMove, v = (y) => y.x + ((m == null ? void 0 : m.id) === y.id ? m.dx : 0), S = (y) => y.y + ((m == null ? void 0 : m.id) === y.id ? m.dy : 0);
+    return $`
       <div class="stage">
         <div
           class="world"
@@ -6313,46 +6313,46 @@ let xe = class extends Pe {
             viewBox="${s} ${a} ${n - s} ${r - a}"
           >
             ${this.scene.edges.map((y) => {
-      const g = i.get(y.sourceId), $ = i.get(y.targetId);
-      return !g || !$ ? "" : G`<line
-                x1=${v(g)} y1=${E(g)} x2=${v($)} y2=${E($)}
+      const I = i.get(y.sourceId), E = i.get(y.targetId);
+      return !I || !E ? "" : G`<line
+                x1=${v(I)} y1=${S(I)} x2=${v(E)} y2=${S(E)}
                 stroke="#000000" stroke-width="2" opacity="0.22" />`;
     })}
           </svg>
           ${this.scene.edges.map((y) => {
-      const g = i.get(y.sourceId), $ = i.get(y.targetId);
-      if (!g || !$) return "";
-      const w = (t.get(g.id) ?? 0) * f + 2, C = (t.get($.id) ?? 0) * f + 2, M = v($) - v(g), b = E($) - E(g), L = C - w, R = Math.hypot(M, b), U = Math.hypot(R, L), S = Math.atan2(b, M) * 180 / Math.PI, P = Math.atan2(L, R) * 180 / Math.PI, A = y.color ?? "#64748b", T = y.dashed ? `repeating-linear-gradient(90deg, ${A} 0 6px, transparent 6px 10px)` : A;
-      return k`<div
+      const I = i.get(y.sourceId), E = i.get(y.targetId);
+      if (!I || !E) return "";
+      const w = (t.get(I.id) ?? 0) * f + 2, C = (t.get(E.id) ?? 0) * f + 2, M = v(E) - v(I), b = S(E) - S(I), L = C - w, R = Math.hypot(M, b), F = Math.hypot(R, L), _ = Math.atan2(b, M) * 180 / Math.PI, P = Math.atan2(L, R) * 180 / Math.PI, T = y.color ?? "#64748b", A = y.dashed ? `repeating-linear-gradient(90deg, ${T} 0 6px, transparent 6px 10px)` : T;
+      return $`<div
               class="edge3"
               style="
-                left: ${v(g)}px; top: ${E(g)}px; width: ${U}px; height: 1.7px;
-                transform: translateZ(${w}px) rotateZ(${S}deg) rotateY(${-P}deg);
-                background: ${T};
+                left: ${v(I)}px; top: ${S(I)}px; width: ${F}px; height: 1.7px;
+                transform: translateZ(${w}px) rotateZ(${_}deg) rotateY(${-P}deg);
+                background: ${A};
                 opacity: 0.9;
               "
             ></div>`;
     })}
           ${e.map((y) => {
-      const g = t.get(y.id) ?? 0, $ = y.container || g === 0, w = this._hoverTargetId === y.id;
-      return k`
+      const I = t.get(y.id) ?? 0, E = y.container || I === 0, w = this._hoverTargetId === y.id;
+      return $`
               <div
                 class="n3 ${y.container ? "container3" : ""} ${this.selectedId === y.id ? "selected3" : ""} ${w ? "hover3" : ""}"
                 data-node-id=${y.id}
                 data-kind=${y.kind}
                 title=${y.tooltip ?? y.label}
                 style="
-                  left: ${v(y) - y.w / 2}px; top: ${E(y) - y.h / 2}px;
+                  left: ${v(y) - y.w / 2}px; top: ${S(y) - y.h / 2}px;
                   width: ${y.w}px; height: ${y.h}px;
-                  transform: translateZ(${g * f + (w ? 8 : 0)}px)${w ? " scale(1.06)" : ""};
+                  transform: translateZ(${I * f + (w ? 8 : 0)}px)${w ? " scale(1.06)" : ""};
                   background: ${y.container ? "color-mix(in srgb, " + (y.fill ?? "#ffffff") + " 82%, transparent)" : y.fill ?? "#ffffff"};
                   border-color: ${y.stroke ?? "#64748b"};
                   border-style: ${y.dashed ? "dashed" : "solid"};
                   color: #1e293b;
-                  box-shadow: ${$ ? "0 18px 30px rgba(0, 0, 0, 0.45)" : "0 10px 16px rgba(0, 0, 0, 0.35)"};
+                  box-shadow: ${E ? "0 18px 30px rgba(0, 0, 0, 0.45)" : "0 10px 16px rgba(0, 0, 0, 0.35)"};
                 "
               >
-                ${y.badge ? k`<span class="badge3" style="color: ${y.stroke ?? "#94a3b8"}">${y.badge}</span>` : ""}
+                ${y.badge ? $`<span class="badge3" style="color: ${y.stroke ?? "#94a3b8"}">${y.badge}</span>` : ""}
                 <span>${y.label}</span>
               </div>
             `;
@@ -6360,24 +6360,24 @@ let xe = class extends Pe {
           ${(() => {
       const y = this.connectable && this.selectedId ? i.get(this.selectedId) : void 0;
       if (!y || !Ul.has(y.kind)) return "";
-      const g = (t.get(y.id) ?? 0) * f + 4;
+      const I = (t.get(y.id) ?? 0) * f + 4;
       return [
-        [v(y) + y.w / 2, E(y)],
-        [v(y) - y.w / 2, E(y)],
-        [v(y), E(y) + y.h / 2],
-        [v(y), E(y) - y.h / 2]
+        [v(y) + y.w / 2, S(y)],
+        [v(y) - y.w / 2, S(y)],
+        [v(y), S(y) + y.h / 2],
+        [v(y), S(y) - y.h / 2]
       ].map(
-        ([w, C]) => k`<div
+        ([w, C]) => $`<div
                 class="h3"
                 data-source-id=${y.id}
                 title="Arrastra hasta otro nodo para conectar"
-                style="left: ${w}px; top: ${C}px; transform: translateZ(${g}px)"
+                style="left: ${w}px; top: ${C}px; transform: translateZ(${I}px)"
               ></div>`
       );
     })()}
         </div>
       </div>
-      ${this._connect ? k`<svg class="rubber">
+      ${this._connect ? $`<svg class="rubber">
             <line
               x1=${this._connect.x1}
               y1=${this._connect.y1}
@@ -6521,25 +6521,25 @@ Me([
   J({ attribute: !1 })
 ], xe.prototype, "connectable", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_rx", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_rz", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_k", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_pan", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_liveMove", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_connect", 2);
 Me([
-  q()
+  z()
 ], xe.prototype, "_hoverTargetId", 2);
 xe = Me([
   ht("modux-tilt")
@@ -6582,7 +6582,7 @@ let Z = class extends Pe {
   /** The mock control a field renders as — inferred from stereotype, then type. */
   control(e) {
     const t = e.stereotype ?? "";
-    return ["textarea", "richText", "html", "markdown"].includes(t) ? k`<div class="control area">…</div>` : ["checkbox", "toggle"].includes(t) || e.type === "BOOLEAN" ? k`<div class="control check"><span class="box"></span>Sí/No</div>` : ["select", "combobox", "listBox", "radio", "choice"].includes(t) || e.type === "ENUM" ? k`<div class="control"><span>Seleccionar…</span><span>▾</span></div>` : t === "password" ? k`<div class="control">••••••••</div>` : t === "email" ? k`<div class="control">nombre@dominio.com</div>` : t === "money" ? k`<div class="control"><span>0,00</span><span>€</span></div>` : t === "slider" ? k`<div class="control">──────●──</div>` : t === "stars" ? k`<div class="control">★★★☆☆</div>` : ["image", "icon"].includes(t) ? k`<div class="control area">🖼</div>` : t === "link" ? k`<div class="control" style="color:#0284c7">enlace ↗</div>` : e.type === "MODEL" ? k`<div class="nested">${e.name} (modelo anidado)</div>` : ["LOCALDATE", "DATE", "LOCALDATETIME"].includes(e.type ?? "") ? k`<div class="control"><span>dd/mm/aaaa</span><span>📅</span></div>` : ["INT", "INTEGER", "LONG", "DOUBLE", "FLOAT", "DECIMAL", "BIGDECIMAL"].includes(e.type ?? "") ? k`<div class="control" style="justify-content:flex-end">0</div>` : k`<div class="control">Texto…</div>`;
+    return ["textarea", "richText", "html", "markdown"].includes(t) ? $`<div class="control area">…</div>` : ["checkbox", "toggle"].includes(t) || e.type === "BOOLEAN" ? $`<div class="control check"><span class="box"></span>Sí/No</div>` : ["select", "combobox", "listBox", "radio", "choice"].includes(t) || e.type === "ENUM" ? $`<div class="control"><span>Seleccionar…</span><span>▾</span></div>` : t === "password" ? $`<div class="control">••••••••</div>` : t === "email" ? $`<div class="control">nombre@dominio.com</div>` : t === "money" ? $`<div class="control"><span>0,00</span><span>€</span></div>` : t === "slider" ? $`<div class="control">──────●──</div>` : t === "stars" ? $`<div class="control">★★★☆☆</div>` : ["image", "icon"].includes(t) ? $`<div class="control area">🖼</div>` : t === "link" ? $`<div class="control" style="color:#0284c7">enlace ↗</div>` : e.type === "MODEL" ? $`<div class="nested">${e.name} (modelo anidado)</div>` : ["LOCALDATE", "DATE", "LOCALDATETIME"].includes(e.type ?? "") ? $`<div class="control"><span>dd/mm/aaaa</span><span>📅</span></div>` : ["INT", "INTEGER", "LONG", "DOUBLE", "FLOAT", "DECIMAL", "BIGDECIMAL"].includes(e.type ?? "") ? $`<div class="control" style="justify-content:flex-end">0</div>` : $`<div class="control">Texto…</div>`;
   }
   applyRename() {
     var t;
@@ -6689,15 +6689,15 @@ let Z = class extends Pe {
   /** One node of the composed page: a labeled, droppable, clickable mockup. */
   renderComponent(e) {
     var p, o, d;
-    const t = e.children ?? [], i = (u) => u.map((f) => this.renderComponent(f)), s = k`<div class="placeholder">suelta componentes aquí</div>`;
+    const t = e.children ?? [], i = (u) => u.map((f) => this.renderComponent(f)), s = $`<div class="placeholder">suelta componentes aquí</div>`;
     let n;
     switch (e.kind) {
       case "horizontalLayout":
-        n = k`<div class="row-lay">${t.length ? i(t) : s}</div>`;
+        n = $`<div class="row-lay">${t.length ? i(t) : s}</div>`;
         break;
       case "splitLayout": {
         const u = t.slice(0, Math.ceil(t.length / 2)), f = t.slice(Math.ceil(t.length / 2));
-        n = k`<div class="row-lay">
+        n = $`<div class="row-lay">
           <div class="col-lay">${u.length ? i(u) : s}</div>
           <div class="split-divider"></div>
           <div class="col-lay">${f.length ? i(f) : s}</div>
@@ -6705,44 +6705,44 @@ let Z = class extends Pe {
         break;
       }
       case "formLayout":
-        n = k`<div class="grid-lay">${t.length ? i(t) : s}</div>`;
+        n = $`<div class="grid-lay">${t.length ? i(t) : s}</div>`;
         break;
       case "gridLayout":
       case "dashboardLayout":
-        n = k`<div class="grid3-lay">${t.length ? i(t) : s}</div>`;
+        n = $`<div class="grid3-lay">${t.length ? i(t) : s}</div>`;
         break;
       case "tabLayout": {
         const u = t.filter((m) => m.kind === "tab"), f = u.find((m) => m.id === this._activeTabs[e.id]) ?? u[0];
-        n = k`
+        n = $`
           <div class="tabbar">
             ${u.map(
-          (m, v) => k`<span
+          (m, v) => $`<span
                 class=${m === f ? "on" : ""}
                 draggable="true"
                 title="Click: ver y seleccionar la pestaña · doble click: configurarla · arrastra para reordenar"
-                @click=${(E) => {
-            E.stopPropagation(), this._activeTabs = { ...this._activeTabs, [e.id]: m.id }, this.emitEvent("component-selected", { componentId: m.id });
+                @click=${(S) => {
+            S.stopPropagation(), this._activeTabs = { ...this._activeTabs, [e.id]: m.id }, this.emitEvent("component-selected", { componentId: m.id });
           }}
-                @dblclick=${(E) => {
-            E.stopPropagation(), this._cmp = { ...m };
+                @dblclick=${(S) => {
+            S.stopPropagation(), this._cmp = { ...m };
           }}
-                @dragstart=${(E) => {
-            var y, g;
-            E.stopPropagation(), this._dragCmpId = m.id, (g = E.dataTransfer) == null || g.setData(
+                @dragstart=${(S) => {
+            var y, I;
+            S.stopPropagation(), this._dragCmpId = m.id, (I = S.dataTransfer) == null || I.setData(
               "application/x-modux-cmp",
               JSON.stringify({ pageId: (y = this.page) == null ? void 0 : y.id, componentId: m.id })
             );
           }}
-                @dragover=${(E) => {
+                @dragover=${(S) => {
             var y;
-            ((y = this.nodeById(this._dragCmpId ?? "")) == null ? void 0 : y.kind) === "tab" && (E.preventDefault(), E.stopPropagation());
+            ((y = this.nodeById(this._dragCmpId ?? "")) == null ? void 0 : y.kind) === "tab" && (S.preventDefault(), S.stopPropagation());
           }}
-                @drop=${(E) => {
+                @drop=${(S) => {
             var C, M;
             const y = this._dragCmpId;
             if (!y || y === m.id || ((C = this.nodeById(y)) == null ? void 0 : C.kind) !== "tab") return;
-            E.preventDefault(), E.stopPropagation();
-            const g = E.currentTarget.getBoundingClientRect(), w = E.clientX - g.left < g.width / 2 ? m.id : ((M = u[v + 1]) == null ? void 0 : M.id) ?? null;
+            S.preventDefault(), S.stopPropagation();
+            const I = S.currentTarget.getBoundingClientRect(), w = S.clientX - I.left < I.width / 2 ? m.id : ((M = u[v + 1]) == null ? void 0 : M.id) ?? null;
             this._dragCmpId = null, this._overCmpId = null, w !== y && this.emitEvent("component-moved", {
               componentId: y,
               toParentId: e.id,
@@ -6757,12 +6757,12 @@ let Z = class extends Pe {
         break;
       }
       case "tab":
-        n = k`<div class="col-lay">${t.length ? i(t) : s}</div>`;
+        n = $`<div class="col-lay">${t.length ? i(t) : s}</div>`;
         break;
       case "accordionLayout":
-        n = k`<div class="col-lay">
+        n = $`<div class="col-lay">
           ${t.length ? t.map(
-          (u, f) => k`
+          (u, f) => $`
                   <div class="acc-bar"><span>${u.title ?? u.label ?? "Sección"}</span><span>${f === 0 ? "▾" : "▸"}</span></div>
                   ${f === 0 ? this.renderComponent(u) : X}
                 `
@@ -6770,47 +6770,47 @@ let Z = class extends Pe {
         </div>`;
         break;
       case "card":
-        n = k`<div class="card-box">
-          ${e.title ? k`<div class="card-title">${e.title}</div>` : X}
+        n = $`<div class="card-box">
+          ${e.title ? $`<div class="card-title">${e.title}</div>` : X}
           <div class="col-lay">${t.length ? i(t) : s}</div>
         </div>`;
         break;
       case "boardLayout":
-        n = k`<div class="grid3-lay">
-          ${t.length ? t.map((u) => k`<div class="board-col">${this.renderComponent(u)}</div>`) : s}
+        n = $`<div class="grid3-lay">
+          ${t.length ? t.map((u) => $`<div class="board-col">${this.renderComponent(u)}</div>`) : s}
         </div>`;
         break;
       case "masterDetailLayout": {
         const [u, ...f] = t;
-        n = k`<div class="row-lay">
+        n = $`<div class="row-lay">
           <div class="col-lay" style="flex:0 0 38%">
-            ${u ? this.renderComponent(u) : k`<div class="placeholder">maestro</div>`}
+            ${u ? this.renderComponent(u) : $`<div class="placeholder">maestro</div>`}
           </div>
           <div class="split-divider"></div>
-          <div class="col-lay">${f.length ? i(f) : k`<div class="placeholder">detalle</div>`}</div>
+          <div class="col-lay">${f.length ? i(f) : $`<div class="placeholder">detalle</div>`}</div>
         </div>`;
         break;
       }
       case "foldoutLayout":
-        n = k`<div class="acc-bar"><span>${e.title ?? "Foldout"}</span><span>▸</span></div>
+        n = $`<div class="acc-bar"><span>${e.title ?? "Foldout"}</span><span>▸</span></div>
           <div class="col-lay">${t.length ? i(t) : s}</div>`;
         break;
       case "carouselLayout":
-        n = k`<div class="row-lay">${t.length ? i(t) : s}</div>
+        n = $`<div class="row-lay">${t.length ? i(t) : s}</div>
           <div class="dots-nav">●○○</div>`;
         break;
       case "appLayout":
-        n = k`<div class="appbar">⛭ app</div>
+        n = $`<div class="appbar">⛭ app</div>
           <div class="col-lay" style="padding-top:6px">${t.length ? i(t) : s}</div>`;
         break;
       // ---- leaf components: inference works INSIDE the structure ----
       case "form": {
         const f = e.modelId && e.modelId === ((p = this.page) == null ? void 0 : p.modelId) ? ((o = this.page) == null ? void 0 : o.viewmodelFields) ?? [] : [];
-        n = f.length ? k`<div class="grid-lay">
+        n = f.length ? $`<div class="grid-lay">
               ${f.slice(0, 6).map(
-          (m) => k`<div><label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${m.label ?? m.name}</label>${this.control(m)}</div>`
+          (m) => $`<div><label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${m.label ?? m.name}</label>${this.control(m)}</div>`
         )}
-            </div>` : k`<div class="grid-lay">
+            </div>` : $`<div class="grid-lay">
               <div class="control">Texto…</div>
               <div class="control">Texto…</div>
             </div>
@@ -6819,32 +6819,32 @@ let Z = class extends Pe {
       }
       case "listing": {
         const u = (((d = this.page) == null ? void 0 : d.viewmodelFields) ?? []).slice(0, 4);
-        n = k`<table>
-            <tr>${u.length ? u.map((f) => k`<th>${f.label ?? f.name}</th>`) : k`<th>col 1</th><th>col 2</th><th>col 3</th>`}</tr>
-            ${[1, 2].map(() => k`<tr>${(u.length ? u : [1, 2, 3]).map(() => k`<td>···</td>`)}</tr>`)}
+        n = $`<table>
+            <tr>${u.length ? u.map((f) => $`<th>${f.label ?? f.name}</th>`) : $`<th>col 1</th><th>col 2</th><th>col 3</th>`}</tr>
+            ${[1, 2].map(() => $`<tr>${(u.length ? u : [1, 2, 3]).map(() => $`<td>···</td>`)}</tr>`)}
           </table>
-          ${e.queryOperationId ? X : k`<div class="placeholder">sin operación de consulta — click para asignar</div>`}`;
+          ${e.queryOperationId ? X : $`<div class="placeholder">sin operación de consulta — click para asignar</div>`}`;
         break;
       }
       case "button":
-        n = k`<span class="btn" style="display:inline-block">${e.label ?? "Botón"}</span>`;
+        n = $`<span class="btn" style="display:inline-block">${e.label ?? "Botón"}</span>`;
         break;
       case "field": {
         const u = { fieldId: e.fieldId ?? "", name: e.label ?? "campo", stereotype: e.stereotype ?? void 0 };
-        n = k`<label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${e.label ?? "Campo"}</label>${this.control(u)}`;
+        n = $`<label style="display:block;font-size:11px;font-weight:600;color:#334155;margin-bottom:3px">${e.label ?? "Campo"}</label>${this.control(u)}`;
         break;
       }
       case "text":
-        n = k`<div class="text-stub">${e.text ?? "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}</div>`;
+        n = $`<div class="text-stub">${e.text ?? "Lorem ipsum dolor sit amet, consectetur adipiscing elit."}</div>`;
         break;
       case "metricCard":
-        n = k`<div class="card-box metric"><div class="num">123</div><div class="cap">${e.title ?? "Métrica"}</div></div>`;
+        n = $`<div class="card-box metric"><div class="num">123</div><div class="cap">${e.title ?? "Métrica"}</div></div>`;
         break;
       case "menuBar":
-        n = k`<div class="menubar-stub"><span>Inicio</span><span>Reservas</span><span>⋯</span></div>`;
+        n = $`<div class="menubar-stub"><span>Inicio</span><span>Reservas</span><span>⋯</span></div>`;
         break;
       default:
-        n = k`<div class="col-lay">${t.length ? i(t) : s}</div>`;
+        n = $`<div class="col-lay">${t.length ? i(t) : s}</div>`;
     }
     const a = Z.LEAF_KINDS.has(e.kind), r = this._overCmpId === e.id && (this._dragCmpId || this._foreignOver), l = (u) => {
       var f, m;
@@ -6853,7 +6853,7 @@ let Z = class extends Pe {
         JSON.stringify({ pageId: (f = this.page) == null ? void 0 : f.id, componentId: e.id })
       ), u.dataTransfer && (u.dataTransfer.effectAllowed = "move");
     };
-    return k`<div
+    return $`<div
       class="cmp ${a ? "leafcmp" : ""} ${r ? `overcmp over-${this._overCmpPos}` : ""} ${this.selectedCmpId === e.id ? "selcmp" : ""}"
       data-cmp-id=${e.id}
       data-cmp-kind=${e.kind}
@@ -6892,14 +6892,14 @@ let Z = class extends Pe {
   }
   /** The fully inferred body (no content tree): listing stub + viewmodel grid. */
   renderInferredBody(e, t, i) {
-    return k`
-        ${i ? k`<table>
-              <tr>${t.slice(0, 4).map((s) => k`<th>${s.label ?? s.name}</th>`)}</tr>
-              ${[1, 2, 3].map(() => k`<tr>${t.slice(0, 4).map(() => k`<td>···</td>`)}</tr>`)}
+    return $`
+        ${i ? $`<table>
+              <tr>${t.slice(0, 4).map((s) => $`<th>${s.label ?? s.name}</th>`)}</tr>
+              ${[1, 2, 3].map(() => $`<tr>${t.slice(0, 4).map(() => $`<td>···</td>`)}</tr>`)}
             </table>` : X}
-        ${t.length ? k`<div class="grid">
+        ${t.length ? $`<div class="grid">
               ${t.map(
-      (s) => k`
+      (s) => $`
                   <div
                     class="field ${s.colspan === 2 ? "span2" : ""} ${this._overId === s.fieldId ? "dropping" : ""}"
                     draggable="true"
@@ -6922,7 +6922,7 @@ let Z = class extends Pe {
                   </div>
                 `
     )}
-            </div>` : k`<div class="empty">
+            </div>` : $`<div class="empty">
               Esta página aún no tiene viewmodel.<br />
               Asigna un <b>Model</b> en su ficha y el formulario se inferirá solo, al estilo Mateu.
             </div>`}
@@ -6950,29 +6950,29 @@ let Z = class extends Pe {
       "masterDetailLayout",
       "carouselLayout"
     ].includes(i);
-    return k`<div class="pop" @click=${(n) => n.stopPropagation()}>
-      ${s ? k`<label>Título</label>
+    return $`<div class="pop" @click=${(n) => n.stopPropagation()}>
+      ${s ? $`<label>Título</label>
             <input .value=${e.title ?? ""} @input=${(n) => t({ title: n.target.value })} />` : X}
-      ${i === "text" ? k`<label>Texto</label>
+      ${i === "text" ? $`<label>Texto</label>
             <input style="grid-column: 2 / -1" .value=${e.text ?? ""} @input=${(n) => t({ text: n.target.value })} />` : X}
-      ${i === "button" || i === "field" ? k`<label>Etiqueta</label>
+      ${i === "button" || i === "field" ? $`<label>Etiqueta</label>
             <input .value=${e.label ?? ""} @input=${(n) => t({ label: n.target.value })} />` : X}
-      ${i === "button" ? k`<label>Caso de uso</label>
+      ${i === "button" ? $`<label>Caso de uso</label>
             <select @change=${(n) => t({ useCaseId: n.target.value || void 0 })}>
               <option value="" ?selected=${!e.useCaseId}>—</option>
-              ${this.useCases.map((n) => k`<option value=${n.id} ?selected=${n.id === e.useCaseId}>${n.name}</option>`)}
+              ${this.useCases.map((n) => $`<option value=${n.id} ?selected=${n.id === e.useCaseId}>${n.name}</option>`)}
             </select>
             <label>Mapping</label>
             <select style="grid-column: 2 / -1" @change=${(n) => t({ mappingId: n.target.value || void 0 })}>
               <option value="" ?selected=${!e.mappingId}>(el viewmodel viaja tal cual)</option>
-              ${this.mappings.map((n) => k`<option value=${n.id} ?selected=${n.id === e.mappingId}>${n.name}</option>`)}
+              ${this.mappings.map((n) => $`<option value=${n.id} ?selected=${n.id === e.mappingId}>${n.name}</option>`)}
             </select>` : X}
-      ${i === "form" ? k`<label>Model</label>
+      ${i === "form" ? $`<label>Model</label>
             <select style="grid-column: 2 / -1" @change=${(n) => t({ modelId: n.target.value || void 0 })}>
               <option value="" ?selected=${!e.modelId}>—</option>
-              ${this.models.map((n) => k`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`)}
+              ${this.models.map((n) => $`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`)}
             </select>` : X}
-      ${i === "listing" ? k`<label>Consulta</label>
+      ${i === "listing" ? $`<label>Consulta</label>
             <select
               style="grid-column: 2 / -1"
               @change=${(n) => {
@@ -6981,13 +6981,13 @@ let Z = class extends Pe {
     }}
             >
               <option value="" ?selected=${!e.queryOperationId}>—</option>
-              ${this.queryOps.map((n) => k`<option value=${n.id} ?selected=${n.id === e.queryOperationId}>${n.name}</option>`)}
+              ${this.queryOps.map((n) => $`<option value=${n.id} ?selected=${n.id === e.queryOperationId}>${n.name}</option>`)}
             </select>` : X}
-      ${i === "field" ? k`<label>Estereotipo</label>
+      ${i === "field" ? $`<label>Estereotipo</label>
             <select @change=${(n) => t({ stereotype: n.target.value || void 0 })}>
-              ${Un.map((n) => k`<option value=${n} ?selected=${n === (e.stereotype ?? "regular")}>${n}</option>`)}
+              ${Un.map((n) => $`<option value=${n} ?selected=${n === (e.stereotype ?? "regular")}>${n}</option>`)}
             </select>` : X}
-      ${i === "tabLayout" ? k`<label style="grid-column: 1 / -1; color:#94a3b8">Las pestañas son hijos «tab»: configura su título clicándolas</label>` : X}
+      ${i === "tabLayout" ? $`<label style="grid-column: 1 / -1; color:#94a3b8">Las pestañas son hijos «tab»: configura su título clicándolas</label>` : X}
       <div class="actions">
         <button
           @click=${() => {
@@ -7055,10 +7055,10 @@ let Z = class extends Pe {
     const e = this.page;
     if (!e) return X;
     const t = e.viewmodelFields ?? [], i = e.type === "CRUD" || !!e.listingQueryServiceId, s = e.type === "WIZARD";
-    return k`
+    return $`
       <div class="chrome">
         <span class="dots"><span></span><span></span><span></span></span>
-        ${this._rename !== null ? k`<input
+        ${this._rename !== null ? $`<input
               class="inline"
               style="flex:1"
               .value=${this._rename}
@@ -7067,7 +7067,7 @@ let Z = class extends Pe {
       n.key === "Enter" && this.applyRename(), n.key === "Escape" && (this._rename = null);
     }}
               @blur=${() => this.applyRename()}
-            />` : k`<span class="title" title="Doble click para renombrar" @dblclick=${() => this._rename = e.name}
+            />` : $`<span class="title" title="Doble click para renombrar" @dblclick=${() => this._rename = e.name}
               >${e.name}</span
             >`}
         <select
@@ -7082,11 +7082,11 @@ let Z = class extends Pe {
         ["WIZARD", "Wizard"]
       ];
       return n === "FORM" && a.splice(1, 0, ["FORM", "Form (legado)"]), n === "DASHBOARD" && a.push(["DASHBOARD", "Dashboard (legado)"]), a.map(
-        ([r, l]) => k`<option value=${r} ?selected=${n === r}>${l}</option>`
+        ([r, l]) => $`<option value=${r} ?selected=${n === r}>${l}</option>`
       );
     })()}
         </select>
-        ${this._route !== null ? k`<input
+        ${this._route !== null ? $`<input
               class="inline"
               style="width:110px"
               .value=${this._route}
@@ -7095,7 +7095,7 @@ let Z = class extends Pe {
       n.key === "Enter" && this.applyRoute(), n.key === "Escape" && (this._route = null);
     }}
               @blur=${() => this.applyRoute()}
-            />` : k`<span class="route" title="Click para editar la ruta" @click=${() => this._route = e.route ?? "/"}
+            />` : $`<span class="route" title="Click para editar la ruta" @click=${() => this._route = e.route ?? "/"}
               >${e.route ?? "/…"}</span
             >`}
         <button @click=${() => this.emitEvent("open-crud")} title="Abrir la ficha completa de la página">Ficha</button>
@@ -7103,7 +7103,7 @@ let Z = class extends Pe {
       </div>
       <div class="toolbar">
         ${(e.buttons ?? []).map(
-      (n) => k`<span
+      (n) => $`<span
             class="btn"
             title=${n.mappingId ? `${n.useCaseId} · mapping ${n.mappingId}` : n.useCaseId ?? ""}
             @click=${() => this._btn = {
@@ -7120,7 +7120,7 @@ let Z = class extends Pe {
       </div>
       <div class="vm">
         viewmodel:
-        ${e.modelId ? k`<span class="chip">${e.modelName ?? e.modelId}</span>` : k`<span>—</span>`}
+        ${e.modelId ? $`<span class="chip">${e.modelName ?? e.modelId}</span>` : $`<span>—</span>`}
         <select
           title="Asignar el Model que hace de viewmodel"
           @change=${(n) => {
@@ -7130,22 +7130,22 @@ let Z = class extends Pe {
         >
           <option value="" ?selected=${!e.modelId}>(sin viewmodel)</option>
           ${this.models.map(
-      (n) => k`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`
+      (n) => $`<option value=${n.id} ?selected=${n.id === e.modelId}>${n.name}</option>`
     )}
         </select>
       </div>
       <div class="body" @click=${() => this.onBodyClick()}>
-        ${s ? k`<div class="wizbar">
+        ${s ? $`<div class="wizbar">
               <span class="on">① Paso 1</span><span>② Paso 2</span><span>③ Paso 3</span>
               <span class="wiznext">Siguiente ›</span>
             </div>` : X}
-        ${(e.content ?? []).length ? k`<div class="col-lay">${(e.content ?? []).map((n) => this.renderComponent(n))}</div>` : this.renderInferredBody(e, t, i)}
+        ${(e.content ?? []).length ? $`<div class="col-lay">${(e.content ?? []).map((n) => this.renderComponent(n))}</div>` : this.renderInferredBody(e, t, i)}
       </div>
       ${this.renderCmpPop()}
       ${this._btn ? (() => {
       var a;
       const n = (((a = this.page) == null ? void 0 : a.buttons) ?? []).some((r) => r.useCaseId === this._btn.useCaseId);
-      return k`<div class="pop">
+      return $`<div class="pop">
               <label>Caso de uso</label>
               <select
                 ?disabled=${n}
@@ -7153,7 +7153,7 @@ let Z = class extends Pe {
               >
                 <option value="" ?selected=${!this._btn.useCaseId}>elige…</option>
                 ${this.useCases.map(
-        (r) => k`<option value=${r.id} ?selected=${r.id === this._btn.useCaseId}>${r.name}</option>`
+        (r) => $`<option value=${r.id} ?selected=${r.id === this._btn.useCaseId}>${r.name}</option>`
       )}
               </select>
               <label>Etiqueta</label>
@@ -7170,11 +7170,11 @@ let Z = class extends Pe {
               >
                 <option value="" ?selected=${!this._btn.mappingId}>(el viewmodel viaja tal cual)</option>
                 ${this.mappings.map(
-        (r) => k`<option value=${r.id} ?selected=${r.id === this._btn.mappingId}>${r.name}</option>`
+        (r) => $`<option value=${r.id} ?selected=${r.id === this._btn.mappingId}>${r.name}</option>`
       )}
               </select>
               <div class="actions">
-                ${n ? k`<button
+                ${n ? $`<button
                       @click=${() => {
         const r = this._btn.useCaseId;
         this._btn = null, this.emitEvent("button-removed", { useCaseId: r });
@@ -7187,14 +7187,14 @@ let Z = class extends Pe {
               </div>
             </div>`;
     })() : X}
-      ${this._editing ? k`<div class="pop">
+      ${this._editing ? $`<div class="pop">
             <label>Estereotipo</label>
             <select
               .value=${this._editing.stereotype}
               @change=${(n) => this._editing = { ...this._editing, stereotype: n.target.value }}
             >
               ${Un.map(
-      (n) => k`<option value=${n} ?selected=${n === this._editing.stereotype}>${n}</option>`
+      (n) => $`<option value=${n} ?selected=${n === this._editing.stereotype}>${n}</option>`
     )}
             </select>
             <label>Ancho</label>
@@ -7759,40 +7759,40 @@ re([
   J({ attribute: !1 })
 ], Z.prototype, "selectedCmpId", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_editing", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_dragId", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_overId", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_rename", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_route", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_btn", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_cmp", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_dragCmpId", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_overCmpId", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_overCmpPos", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_foreignOver", 2);
 re([
-  q()
+  z()
 ], Z.prototype, "_activeTabs", 2);
 Z = re([
   ht("modux-page-designer")
@@ -7895,10 +7895,10 @@ let ge = class extends Pe {
    * frame's empty body) and the slot — before/after a sibling or inside a layout.
    */
   dropSlotAtClient(e, t) {
-    var f, m, v, E;
+    var f, m, v, S;
     const i = (f = this.shadowRoot) == null ? void 0 : f.elementFromPoint(e, t), s = (m = i == null ? void 0 : i.closest) == null ? void 0 : m.call(i, ".frame");
     if (!s) return null;
-    const n = s.dataset.pageId, a = s.querySelector("modux-page-designer"), r = (v = a == null ? void 0 : a.shadowRoot) == null ? void 0 : v.elementFromPoint(e, t), l = (E = r == null ? void 0 : r.closest) == null ? void 0 : E.call(r, "[data-cmp-id]");
+    const n = s.dataset.pageId, a = s.querySelector("modux-page-designer"), r = (v = a == null ? void 0 : a.shadowRoot) == null ? void 0 : v.elementFromPoint(e, t), l = (S = r == null ? void 0 : r.closest) == null ? void 0 : S.call(r, "[data-cmp-id]");
     if (!l) return { pageId: n, componentId: null, pos: "into" };
     const p = l.dataset.cmpKind ?? "", o = l.getBoundingClientRect(), d = (t - o.top) / Math.max(1, o.height), u = Z.LEAF_KINDS.has(p) ? d < 0.5 ? "before" : "after" : d < 0.2 ? "before" : d > 0.8 ? "after" : "into";
     return { pageId: n, componentId: l.dataset.cmpId, pos: u };
@@ -7909,7 +7909,7 @@ let ge = class extends Pe {
     return ((i = this._live) == null ? void 0 : i.id) === e ? { x: this._live.x, y: this._live.y } : this.layout[e] ?? { x: t % 3 * Vl, y: Math.floor(t / 3) * Wl };
   }
   render() {
-    return k`
+    return $`
       <div
         class="surface"
         style="transform: translate(${this._t.x}px, ${this._t.y}px) scale(${this._t.k})"
@@ -7917,7 +7917,7 @@ let ge = class extends Pe {
         ${this.pages.map((e, t) => {
       var s;
       const i = this.posOf(e.id, t);
-      return k`
+      return $`
             <div
               class="frame ${this.selectedId === e.id || this.selectedIds.includes(e.id) ? "selected" : ""}"
               data-page-id=${e.id}
@@ -7973,7 +7973,7 @@ let ge = class extends Pe {
           `;
     })}
       </div>
-      ${this.pages.length ? "" : k`<div class="empty">
+      ${this.pages.length ? "" : $`<div class="empty">
             No hay páginas todavía.<br />
             Créalas en la vista <b>UI</b> (paleta → Página) y diséñalas aquí.
           </div>`}
@@ -8078,10 +8078,10 @@ _e([
   J({ attribute: !1 })
 ], ge.prototype, "selectedCmp", 2);
 _e([
-  q()
+  z()
 ], ge.prototype, "_t", 2);
 _e([
-  q()
+  z()
 ], ge.prototype, "_live", 2);
 ge = _e([
   ht("modux-figma")
@@ -8134,18 +8134,18 @@ function Kl(e, t, i = 28) {
     for (let m = d; m; m = (f = s.get(m)) == null ? void 0 : f.parentId) u.add(m);
     return u;
   }, a = e.nodes, r = (d) => d.parentId ? Math.min(i, 6) : i, l = /* @__PURE__ */ new Map(), p = (d, u, f) => {
-    const m = r(f), v = { x: f.x, y: f.y, w: f.w + 2 * m, h: f.h + 2 * m }, E = f.w / 2 + m * 1.5, y = f.h / 2 + m * 1.5, g = { x: f.x - E, y: f.y - y }, $ = { x: f.x + E, y: f.y - y }, w = { x: f.x - E, y: f.y + y }, C = { x: f.x + E, y: f.y + y }, M = [];
-    for (const b of [g, $, w, C])
+    const m = r(f), v = { x: f.x, y: f.y, w: f.w + 2 * m, h: f.h + 2 * m }, S = f.w / 2 + m * 1.5, y = f.h / 2 + m * 1.5, I = { x: f.x - S, y: f.y - y }, E = { x: f.x + S, y: f.y - y }, w = { x: f.x - S, y: f.y + y }, C = { x: f.x + S, y: f.y + y }, M = [];
+    for (const b of [I, E, w, C])
       !_t(d, b, v) && !_t(b, u, v) && M.push([b]);
     for (const [b, L] of [
-      [g, $],
-      [$, g],
-      [$, C],
-      [C, $],
+      [I, E],
+      [E, I],
+      [E, C],
+      [C, E],
       [C, w],
       [w, C],
-      [w, g],
-      [g, w]
+      [w, I],
+      [I, w]
     ])
       !_t(d, b, v) && !_t(L, u, v) && M.push([b, L]);
     return M;
@@ -8158,32 +8158,32 @@ function Kl(e, t, i = 28) {
       { x: u.x, y: u.y },
       { x: f.x, y: f.y }
     ];
-    for (let E = 0; E < 12; E++) {
+    for (let S = 0; S < 12; S++) {
       let y = !1;
-      e: for (let g = 0; g < v.length - 1; g++)
-        for (const $ of a) {
-          if (m.has($.id)) continue;
-          const w = r($), C = { x: $.x, y: $.y, w: $.w + 2 * w, h: $.h + 2 * w };
-          if (!_t(v[g], v[g + 1], C)) continue;
-          const M = p(v[g], v[g + 1], $);
+      e: for (let I = 0; I < v.length - 1; I++)
+        for (const E of a) {
+          if (m.has(E.id)) continue;
+          const w = r(E), C = { x: E.x, y: E.y, w: E.w + 2 * w, h: E.h + 2 * w };
+          if (!_t(v[I], v[I + 1], C)) continue;
+          const M = p(v[I], v[I + 1], E);
           if (!M.length) continue;
           const b = (R) => a.some(
-            (U) => U !== $ && !m.has(U.id) && Math.abs(R.x - U.x) < U.w / 2 + r(U) / 2 && Math.abs(R.y - U.y) < U.h / 2 + r(U) / 2
+            (F) => F !== E && !m.has(F.id) && Math.abs(R.x - F.x) < F.w / 2 + r(F) / 2 && Math.abs(R.y - F.y) < F.h / 2 + r(F) / 2
           ), L = (R) => {
-            let U = 0;
-            const S = [v[g], ...R, v[g + 1]];
-            for (let P = 0; P < S.length - 1; P++)
-              U += Math.hypot(S[P + 1].x - S[P].x, S[P + 1].y - S[P].y);
-            return U + (R.some(b) ? 1e4 : 0);
+            let F = 0;
+            const _ = [v[I], ...R, v[I + 1]];
+            for (let P = 0; P < _.length - 1; P++)
+              F += Math.hypot(_[P + 1].x - _[P].x, _[P + 1].y - _[P].y);
+            return F + (R.some(b) ? 1e4 : 0);
           };
-          M.sort((R, U) => L(R) - L(U)), v.splice(g + 1, 0, ...M[0]), y = !0;
+          M.sort((R, F) => L(R) - L(F)), v.splice(I + 1, 0, ...M[0]), y = !0;
           break e;
         }
       if (!y) break;
     }
     v.length > 2 && l.set(
       d.id,
-      v.slice(1, -1).map((E) => ({ x: Math.round(E.x), y: Math.round(E.y) }))
+      v.slice(1, -1).map((S) => ({ x: Math.round(S.x), y: Math.round(S.y) }))
     );
   }
   return l;
@@ -8542,7 +8542,12 @@ let B = class extends Pe {
       }
       case "set-app-home-page": {
         const o = (this.model.uiApps ?? []).find((d) => d.id === e.appId);
-        return [{ kind: "set-app-home-page", appId: e.appId, pageId: (o == null ? void 0 : o.homePageId) ?? null }];
+        return [{
+          kind: "set-app-home-page",
+          appId: e.appId,
+          pageId: (o == null ? void 0 : o.homePageId) ?? null,
+          toAppId: (o == null ? void 0 : o.homeAppId) ?? null
+        }];
       }
       case "add-page-wizard-step":
         return [{ kind: "remove-page-wizard-step", pageId: e.pageId, targetId: e.targetId }];
@@ -8563,7 +8568,12 @@ let B = class extends Pe {
         const o = (this.model.uiApps ?? []).find((f) => f.id === e.id);
         if (!o) return null;
         const d = [{ kind: "create-ui-app", id: o.id, name: o.name, type: o.type }];
-        o.headerPageId && d.push({ kind: "set-app-header-page", appId: o.id, pageId: o.headerPageId }), o.homePageId && d.push({ kind: "set-app-home-page", appId: o.id, pageId: o.homePageId });
+        o.headerPageId && d.push({ kind: "set-app-header-page", appId: o.id, pageId: o.headerPageId }), (o.homePageId || o.homeAppId) && d.push({
+          kind: "set-app-home-page",
+          appId: o.id,
+          pageId: o.homePageId ?? null,
+          toAppId: o.homeAppId ?? null
+        });
         const u = (f, m) => {
           for (const v of f ?? [])
             d.push({
@@ -8711,13 +8721,13 @@ let B = class extends Pe {
       case "set-page-component":
       case "remove-page-component":
       case "move-page-component": {
-        const o = (this.model.pages ?? []).find((E) => E.id === e.pageId);
+        const o = (this.model.pages ?? []).find((S) => S.id === e.pageId);
         let d = null, u = null, f = null;
-        const m = (E, y) => {
-          var $;
-          const g = E ?? [];
-          for (let w = 0; w < g.length; w++)
-            g[w].id === e.componentId && (d = g[w], u = y, f = (($ = g[w + 1]) == null ? void 0 : $.id) ?? null), m(g[w].children, g[w]);
+        const m = (S, y) => {
+          var E;
+          const I = S ?? [];
+          for (let w = 0; w < I.length; w++)
+            I[w].id === e.componentId && (d = I[w], u = y, f = ((E = I[w + 1]) == null ? void 0 : E.id) ?? null), m(I[w].children, I[w]);
         };
         if (m(o == null ? void 0 : o.content, null), !d) return null;
         const v = d;
@@ -9643,81 +9653,84 @@ let B = class extends Pe {
   }
   /** The whole gesture vocabulary, callable from drags AND from palette drops. */
   applyConnection(e, t, i, s, n) {
-    var b, L, R, U;
+    var b, L, R, F;
     if (this._view === "workflows") {
-      const S = this.owningWorkflowOf(e), P = this.owningWorkflowOf(t);
-      if (!S || S !== P || e === t) return;
-      const A = S.steps.find((T) => T.id === t);
-      if (((A == null ? void 0 : A.dependsOnStepIds) ?? []).includes(e)) return;
+      const _ = this.owningWorkflowOf(e), P = this.owningWorkflowOf(t);
+      if (!_ || _ !== P || e === t) return;
+      const T = _.steps.find((A) => A.id === t);
+      if (((T == null ? void 0 : T.dependsOnStepIds) ?? []).includes(e)) return;
       this.command({
         kind: "add-workflow-dependency",
-        workflowId: S.id,
+        workflowId: _.id,
         id: t,
         dependsOnStepId: e
       });
       return;
     }
     if (this._view === "ui") {
-      const S = this.model.pages ?? [], P = this.model.uiApps ?? [], A = (_) => P.some((O) => O.id === _), T = (_) => S.some((O) => O.id === _);
-      if (n === "home" && A(e) && T(t)) {
-        this.command({ kind: "set-app-home-page", appId: e, pageId: t });
+      const _ = this.model.pages ?? [], P = this.model.uiApps ?? [], T = (k) => P.some((O) => O.id === k), A = (k) => _.some((O) => O.id === k);
+      if (n === "home" && T(e) && (A(t) || T(t))) {
+        if (t === e) return;
+        this.command(
+          A(t) ? { kind: "set-app-home-page", appId: e, pageId: t } : { kind: "set-app-home-page", appId: e, pageId: null, toAppId: t }
+        );
         return;
       }
-      if (n === "header" && A(e) && T(t)) {
+      if (n === "header" && T(e) && A(t)) {
         this.command({ kind: "set-app-header-page", appId: e, pageId: t });
         return;
       }
-      if (n === "wizard-step" && T(e) && T(t) && e !== t) {
-        if ((S.find((O) => O.id === e).wizardSteps ?? []).some((O) => O.pageId === t)) return;
+      if (n === "wizard-step" && A(e) && A(t) && e !== t) {
+        if ((_.find((O) => O.id === e).wizardSteps ?? []).some((O) => O.pageId === t)) return;
         this.command({ kind: "add-page-wizard-step", pageId: e, targetId: t });
         return;
       }
       if (n) return;
-      if (T(e) && A(t)) {
-        const _ = S.find((F) => F.id === e), O = P.find((F) => F.id === t);
+      if (A(e) && T(t)) {
+        const k = _.find((q) => q.id === e), O = P.find((q) => q.id === t);
         if (O.type === "MASTER_DETAIL" && !O.headerPageId) {
           this.command({ kind: "set-app-header-page", appId: t, pageId: e }), this.emit("modux-notice", {
-            message: `${_.name} es la cabecera de ${O.name} — las siguientes páginas serán pestañas`
+            message: `${k.name} es la cabecera de ${O.name} — las siguientes páginas serán pestañas`
           });
           return;
         }
         this.command({
           kind: "add-menu-item",
           appId: t,
-          label: _.name,
+          label: k.name,
           pageId: e,
-          itemId: this.newMenuItemId(_.name)
+          itemId: this.newMenuItemId(k.name)
         });
         return;
       }
       const h = pe(e);
-      if (h != null && h.itemId && ((b = pe(t)) != null && b.itemId || A(t))) {
-        const _ = pe(t), O = this.menuEntryIn(h.appId, h.itemId);
+      if (h != null && h.itemId && ((b = pe(t)) != null && b.itemId || T(t))) {
+        const k = pe(t), O = this.menuEntryIn(h.appId, h.itemId);
         if (!O) return;
-        if (_ != null && _.itemId) {
-          const F = this.menuEntryIn(_.appId, _.itemId);
-          if (!F) return;
-          const z = (le) => (le ?? []).some((me) => me.id === _.itemId || z(me.children));
-          if (h.appId === _.appId && (_.itemId === h.itemId || z(O.entry.children)))
+        if (k != null && k.itemId) {
+          const q = this.menuEntryIn(k.appId, k.itemId);
+          if (!q) return;
+          const U = (le) => (le ?? []).some((me) => me.id === k.itemId || U(me.children));
+          if (h.appId === k.appId && (k.itemId === h.itemId || U(O.entry.children)))
             return;
           const N = (L = this.renderRoot.querySelector("modux-canvas")) == null ? void 0 : L.renderRoot.querySelector(`g[data-node-id="${t}"]`), H = N == null ? void 0 : N.getBoundingClientRect(), Q = H && s !== void 0 ? (s - H.top) / Math.max(1, H.height) : 0.5, te = Q < 0.3 ? "before" : Q > 0.7 ? "after" : "nest";
           if (te === "nest")
             this.command({
               kind: "move-menu-item",
               appId: h.appId,
-              toAppId: _.appId,
+              toAppId: k.appId,
               itemId: h.itemId,
-              parentId: _.itemId
+              parentId: k.itemId
             });
           else {
-            const le = te === "before" ? _.itemId : F.beforeId ?? void 0;
-            if (h.appId === _.appId && F.parentId === O.parentId && le === h.itemId) return;
+            const le = te === "before" ? k.itemId : q.beforeId ?? void 0;
+            if (h.appId === k.appId && q.parentId === O.parentId && le === h.itemId) return;
             this.command({
               kind: "move-menu-item",
               appId: h.appId,
-              toAppId: _.appId,
+              toAppId: k.appId,
               itemId: h.itemId,
-              parentId: F.parentId ?? void 0,
+              parentId: q.parentId ?? void 0,
               beforeItemId: le
             });
           }
@@ -9732,85 +9745,85 @@ let B = class extends Pe {
         });
         return;
       }
-      const I = pe(e) ?? pe(t);
-      if (I) {
-        const _ = pe(e) ? e : t, O = pe(e) ? t : e;
-        if (((R = this.sceneFor("ui").nodes.find((H) => H.id === _)) == null ? void 0 : R.kind) === "menu-group") {
+      const g = pe(e) ?? pe(t);
+      if (g) {
+        const k = pe(e) ? e : t, O = pe(e) ? t : e;
+        if (((R = this.sceneFor("ui").nodes.find((H) => H.id === k)) == null ? void 0 : R.kind) === "menu-group") {
           this.emit("modux-notice", { message: "Un agrupador (con submenú) no puede abrir nada" });
           return;
         }
-        const F = this.model.modules.some(
+        const q = this.model.modules.some(
           (H) => (H.useCases ?? []).some((Q) => Q.id === O)
-        ), z = (this.model.aggregates ?? []).some((H) => H.id === O), N = this.model.modules.flatMap((H) => H.queryServices ?? []).find((H) => (H.operations ?? []).some((Q) => Q.id === O));
-        T(O) ? this.command({ kind: "set-menu-page", pageId: O, ...I }) : A(O) && O !== I.appId ? this.command({ kind: "set-menu-app", toAppId: O, ...I }) : F ? this.command({ kind: "set-menu-use-case", useCaseId: O, ...I }) : z ? this.command({ kind: "set-menu-aggregate", aggregateId: O, ...I }) : N && this.command({
+        ), U = (this.model.aggregates ?? []).some((H) => H.id === O), N = this.model.modules.flatMap((H) => H.queryServices ?? []).find((H) => (H.operations ?? []).some((Q) => Q.id === O));
+        A(O) ? this.command({ kind: "set-menu-page", pageId: O, ...g }) : T(O) && O !== g.appId ? this.command({ kind: "set-menu-app", toAppId: O, ...g }) : q ? this.command({ kind: "set-menu-use-case", useCaseId: O, ...g }) : U ? this.command({ kind: "set-menu-aggregate", aggregateId: O, ...g }) : N && this.command({
           kind: "set-menu-query-operation",
           queryServiceId: N.id,
           queryOperationId: O,
-          ...I
+          ...g
         });
         return;
       }
-      if ((this.model.actors ?? []).some((_) => _.id === e) && A(t)) {
-        (this.model.actorAppUses ?? []).some((_) => _.actorId === e && _.appId === t) || this.command({ kind: "add-actor-app", actorId: e, appId: t });
+      if ((this.model.actors ?? []).some((k) => k.id === e) && T(t)) {
+        (this.model.actorAppUses ?? []).some((k) => k.actorId === e && k.appId === t) || this.command({ kind: "add-actor-app", actorId: e, appId: t });
         return;
       }
-      const x = T(e) ? { pageId: e, other: t } : T(t) ? { pageId: t, other: e } : null;
+      const x = A(e) ? { pageId: e, other: t } : A(t) ? { pageId: t, other: e } : null;
       if (x) {
-        const _ = new Set(
-          this.model.modules.flatMap((z) => (z.useCases ?? []).map((N) => N.id))
+        const k = new Set(
+          this.model.modules.flatMap((U) => (U.useCases ?? []).map((N) => N.id))
         ), O = new Set(
-          this.model.modules.flatMap((z) => (z.queryServices ?? []).map((N) => N.id))
-        ), F = S.find((z) => z.id === x.pageId);
-        _.has(x.other) ? (F.buttons ?? []).some((z) => z.useCaseId === x.other) || this.command({ kind: "add-page-button", pageId: x.pageId, useCaseId: x.other }) : O.has(x.other) && this.command({ kind: "set-page-listing", pageId: x.pageId, queryServiceId: x.other });
+          this.model.modules.flatMap((U) => (U.queryServices ?? []).map((N) => N.id))
+        ), q = _.find((U) => U.id === x.pageId);
+        k.has(x.other) ? (q.buttons ?? []).some((U) => U.useCaseId === x.other) || this.command({ kind: "add-page-button", pageId: x.pageId, useCaseId: x.other }) : O.has(x.other) && this.command({ kind: "set-page-listing", pageId: x.pageId, queryServiceId: x.other });
       }
       return;
     }
     if (this._view !== "context-map") return;
     const a = /^apiop:(.+)@(.+)$/.exec(e);
     if (a) {
-      const [, S, P] = a, A = (this.model.proxyApis ?? []).find((_) => _.id === P), T = (A == null ? void 0 : A.targetApiId) ?? ((U = (this.model.apiImplementations ?? []).find(
-        (_) => _.moduleId === P && (this.model.apis ?? []).some(
-          (O) => O.id === _.apiId && O.operations.some((F) => F.id === S)
+      const [, _, P] = a, T = (this.model.proxyApis ?? []).find((k) => k.id === P), A = (T == null ? void 0 : T.targetApiId) ?? ((F = (this.model.apiImplementations ?? []).find(
+        (k) => k.moduleId === P && (this.model.apis ?? []).some(
+          (O) => O.id === k.apiId && O.operations.some((q) => q.id === _)
         )
-      )) == null ? void 0 : U.apiId);
-      if (!T) return;
+      )) == null ? void 0 : F.apiId);
+      if (!A) return;
       if (new Set(
-        this.model.modules.flatMap((_) => (_.useCases ?? []).map((O) => O.id))
+        this.model.modules.flatMap((k) => (k.useCases ?? []).map((O) => O.id))
       ).has(t)) {
         this.command({
           kind: "set-api-operation-implementation",
-          apiId: T,
-          operationId: S,
+          apiId: A,
+          operationId: _,
           moduleId: P,
           targetUseCaseId: t
         });
         return;
       }
-      if (!(A != null && A.targetApiId)) return;
-      let I = null;
-      if (t === A.targetApiId)
-        I = A.targetApiId;
+      if (!(T != null && T.targetApiId)) return;
+      let g = null;
+      if (t === T.targetApiId)
+        g = T.targetApiId;
       else {
-        const _ = /^apiimpl:(.+)@(.+)$/.exec(t);
-        _ && _[1] === A.targetApiId ? I = _[2] : this.model.modules.some((O) => O.id === t) && (this.model.apiImplementations ?? []).some(
-          (O) => O.apiId === A.targetApiId && O.moduleId === t
-        ) && (I = t);
+        const k = /^apiimpl:(.+)@(.+)$/.exec(t);
+        k && k[1] === T.targetApiId ? g = k[2] : this.model.modules.some((O) => O.id === t) && (this.model.apiImplementations ?? []).some(
+          (O) => O.apiId === T.targetApiId && O.moduleId === t
+        ) && (g = t);
       }
-      if (!I) return;
+      if (!g) return;
       (this.model.proxyOperationRoutes ?? []).some(
-        (_) => _.proxyId === A.id && _.operationId === S && _.targetSiteId === I
+        (k) => k.proxyId === T.id && k.operationId === _ && k.targetSiteId === g
       ) || this.command({
         kind: "add-proxy-operation-route",
-        proxyId: A.id,
-        operationId: S,
-        targetSiteId: I
+        proxyId: T.id,
+        operationId: _,
+        targetSiteId: g
       });
       return;
     }
-    const r = new Set((this.model.aiAgents ?? []).map((S) => S.id));
+    const r = new Set((this.model.aiAgents ?? []).map((_) => _.id));
     if (r.has(e)) {
       if (new Set(
-        this.model.modules.flatMap((I) => (I.useCases ?? []).map((x) => x.id))
+        this.model.modules.flatMap((g) => (g.useCases ?? []).map((x) => x.id))
       ).has(t)) {
         (this.model.agentUses ?? []).some(
           (x) => x.agentId === e && x.useCaseId === t
@@ -9818,7 +9831,7 @@ let B = class extends Pe {
         return;
       }
       if (new Set(
-        this.model.externalSystems.flatMap((I) => (I.useCases ?? []).map((x) => x.id))
+        this.model.externalSystems.flatMap((g) => (g.useCases ?? []).map((x) => x.id))
       ).has(t)) {
         (this.model.agentExternalUses ?? []).some(
           (x) => x.agentId === e && x.externalUseCaseId === t
@@ -9826,35 +9839,35 @@ let B = class extends Pe {
         return;
       }
       if (new Set(
-        this.model.externalSystems.flatMap((I) => (I.mcpServers ?? []).map((x) => x.id))
+        this.model.externalSystems.flatMap((g) => (g.mcpServers ?? []).map((x) => x.id))
       ).has(t)) {
         (this.model.agentMcpUses ?? []).some(
           (x) => x.agentId === e && x.mcpServerId === t
         ) || this.command({ kind: "add-agent-mcp", sourceId: e, targetId: t });
         return;
       }
-      if ((this.model.mcpGateways ?? []).some((I) => I.id === t)) {
+      if ((this.model.mcpGateways ?? []).some((g) => g.id === t)) {
         (this.model.agentGatewayUses ?? []).some(
           (x) => x.agentId === e && x.gatewayId === t
         ) || this.command({ kind: "add-agent-gateway", sourceId: e, targetId: t });
         return;
       }
       if (new Set(
-        (this.model.apis ?? []).flatMap((I) => I.operations.map((x) => x.id))
+        (this.model.apis ?? []).flatMap((g) => g.operations.map((x) => x.id))
       ).has(t)) {
         (this.model.agentApiOpUses ?? []).some(
           (x) => x.agentId === e && x.apiOperationId === t
         ) || this.command({ kind: "add-agent-api-operation", sourceId: e, targetId: t });
         return;
       }
-      if ((this.model.apis ?? []).some((I) => I.id === t) || (this.model.proxyApis ?? []).some((I) => I.id === t)) {
+      if ((this.model.apis ?? []).some((g) => g.id === t) || (this.model.proxyApis ?? []).some((g) => g.id === t)) {
         (this.model.agentApiUses ?? []).some(
           (x) => x.agentId === e && x.apiId === t
         ) || this.command({ kind: "add-agent-api", sourceId: e, targetId: t });
         return;
       }
       if (new Set(
-        this.model.modules.flatMap((I) => (I.queryServices ?? []).map((x) => x.id))
+        this.model.modules.flatMap((g) => (g.queryServices ?? []).map((x) => x.id))
       ).has(t)) {
         (this.model.agentQueryUses ?? []).some(
           (x) => x.agentId === e && x.queryServiceId === t
@@ -9867,157 +9880,157 @@ let B = class extends Pe {
         ) || this.command({ kind: "add-agent-delegate", sourceId: e, targetId: t });
         return;
       }
-      (this.model.rags ?? []).some((I) => I.id === t) && ((this.model.agentRags ?? []).some(
+      (this.model.rags ?? []).some((g) => g.id === t) && ((this.model.agentRags ?? []).some(
         (x) => x.agentId === e && x.ragId === t
       ) || this.command({ kind: "add-agent-rag", sourceId: e, targetId: t }));
       return;
     }
-    if ((this.model.mcpGateways ?? []).some((S) => S.id === e)) {
-      const S = (this.model.mcpGateways ?? []).find((T) => T.id === e), P = this.model.externalSystems.some((T) => (T.mcpServers ?? []).some((h) => h.id === t)) || (this.model.apis ?? []).some((T) => T.id === t) || (this.model.apis ?? []).some((T) => T.operations.some((h) => h.id === t)) || this.model.modules.some((T) => (T.useCases ?? []).some((h) => h.id === t)) || (this.model.rags ?? []).some((T) => T.id === t), A = [
-        ...S.mcpServerIds ?? [],
-        ...S.apiIds ?? [],
-        ...S.apiOperationIds ?? [],
-        ...S.useCaseIds ?? [],
-        ...S.ragIds ?? []
+    if ((this.model.mcpGateways ?? []).some((_) => _.id === e)) {
+      const _ = (this.model.mcpGateways ?? []).find((A) => A.id === e), P = this.model.externalSystems.some((A) => (A.mcpServers ?? []).some((h) => h.id === t)) || (this.model.apis ?? []).some((A) => A.id === t) || (this.model.apis ?? []).some((A) => A.operations.some((h) => h.id === t)) || this.model.modules.some((A) => (A.useCases ?? []).some((h) => h.id === t)) || (this.model.rags ?? []).some((A) => A.id === t), T = [
+        ..._.mcpServerIds ?? [],
+        ..._.apiIds ?? [],
+        ..._.apiOperationIds ?? [],
+        ..._.useCaseIds ?? [],
+        ..._.ragIds ?? []
       ].includes(t);
-      P && !A && this.command({ kind: "add-gateway-exposure", sourceId: e, targetId: t });
+      P && !T && this.command({ kind: "add-gateway-exposure", sourceId: e, targetId: t });
       return;
     }
-    if ((this.model.mcpGateways ?? []).some((S) => S.id === t)) return;
-    const l = (this.model.rags ?? []).find((S) => S.id === e);
+    if ((this.model.mcpGateways ?? []).some((_) => _.id === t)) return;
+    const l = (this.model.rags ?? []).find((_) => _.id === e);
     if (l) {
       if (new Set(
-        this.model.modules.flatMap((A) => (A.readModels ?? []).map((T) => T.id))
+        this.model.modules.flatMap((T) => (T.readModels ?? []).map((A) => A.id))
       ).has(t) && !(l.sourceReadModelIds ?? []).includes(t)) {
         this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
         return;
       }
       if (new Set(
-        this.model.externalSystems.flatMap((A) => (A.tables ?? []).map((T) => T.id))
+        this.model.externalSystems.flatMap((T) => (T.tables ?? []).map((A) => A.id))
       ).has(t) && !(l.sourceExternalTableIds ?? []).includes(t)) {
         this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
         return;
       }
-      if (((this.model.apis ?? []).some((A) => A.id === t) || (this.model.proxyApis ?? []).some((A) => A.id === t)) && !(l.sourceApiIds ?? []).includes(t)) {
+      if (((this.model.apis ?? []).some((T) => T.id === t) || (this.model.proxyApis ?? []).some((T) => T.id === t)) && !(l.sourceApiIds ?? []).includes(t)) {
         this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
         return;
       }
-      if (this.model.externalSystems.some((A) => A.id === t) && !(l.sourceExternalSystemIds ?? []).includes(t)) {
+      if (this.model.externalSystems.some((T) => T.id === t) && !(l.sourceExternalSystemIds ?? []).includes(t)) {
         this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
         return;
       }
-      this.model.modules.some((A) => A.id === t) && !(l.sourceModuleIds ?? []).includes(t) && this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
+      this.model.modules.some((T) => T.id === t) && !(l.sourceModuleIds ?? []).includes(t) && this.command({ kind: "add-rag-source", sourceId: e, targetId: t });
       return;
     }
-    if ((this.model.rags ?? []).some((S) => S.id === t)) return;
-    if ((this.model.workflows ?? []).some((S) => S.id === e)) {
-      const S = (this.model.workflows ?? []).find((T) => T.id === e), P = (this.model.workflows ?? []).find(
-        (T) => T.id === t && T.id !== e
+    if ((this.model.rags ?? []).some((_) => _.id === t)) return;
+    if ((this.model.workflows ?? []).some((_) => _.id === e)) {
+      const _ = (this.model.workflows ?? []).find((A) => A.id === e), P = (this.model.workflows ?? []).find(
+        (A) => A.id === t && A.id !== e
       );
       if (P) {
-        const T = S.onCompletionEventName || `${S.name.replace(/\s+/g, "")}Completado`;
-        P.triggerEvent !== T && this.command({ kind: "set-workflow-trigger", id: t, triggerEvent: T });
+        const A = _.onCompletionEventName || `${_.name.replace(/\s+/g, "")}Completado`;
+        P.triggerEvent !== A && this.command({ kind: "set-workflow-trigger", id: t, triggerEvent: A });
         return;
       }
-      const A = this.model.modules.flatMap((T) => T.useCases ?? []).find((T) => T.id === t);
-      if (A && !(S.steps ?? []).some((h) => h.targetUseCaseId === t)) {
-        const h = `wfs-${ee(A.name)}`;
-        let I = h;
-        for (let x = 2; (S.steps ?? []).some((_) => _.id === I); x++)
-          I = `${h}-${x}`;
+      const T = this.model.modules.flatMap((A) => A.useCases ?? []).find((A) => A.id === t);
+      if (T && !(_.steps ?? []).some((h) => h.targetUseCaseId === t)) {
+        const h = `wfs-${ee(T.name)}`;
+        let g = h;
+        for (let x = 2; (_.steps ?? []).some((k) => k.id === g); x++)
+          g = `${h}-${x}`;
         this.command({
           kind: "add-workflow-step",
           workflowId: e,
-          id: I,
-          name: A.name,
+          id: g,
+          name: T.name,
           targetUseCaseId: t
         });
       }
       return;
     }
-    if ((this.model.workflows ?? []).some((S) => S.id === t)) {
-      const S = this.model.modules.flatMap((T) => T.domainEvents ?? []).find((T) => T.id === e), P = this.model.modules.flatMap((T) => T.applicationEvents ?? []).find((T) => T.id === e), A = S ?? P;
-      if (A) {
-        const T = (this.model.emissions ?? []).find((_) => _.domainEventId === e), h = new Set((this.model.aggregates ?? []).map((_) => _.id)), I = new Set(
-          this.model.modules.flatMap((_) => (_.domainServices ?? []).map((O) => O.id))
+    if ((this.model.workflows ?? []).some((_) => _.id === t)) {
+      const _ = this.model.modules.flatMap((A) => A.domainEvents ?? []).find((A) => A.id === e), P = this.model.modules.flatMap((A) => A.applicationEvents ?? []).find((A) => A.id === e), T = _ ?? P;
+      if (T) {
+        const A = (this.model.emissions ?? []).find((k) => k.domainEventId === e), h = new Set((this.model.aggregates ?? []).map((k) => k.id)), g = new Set(
+          this.model.modules.flatMap((k) => (k.domainServices ?? []).map((O) => O.id))
         ), x = new Set(
-          this.model.modules.flatMap((_) => (_.useCases ?? []).map((O) => O.id))
+          this.model.modules.flatMap((k) => (k.useCases ?? []).map((O) => O.id))
         );
         this.command({
           kind: "set-workflow-trigger",
           id: t,
-          triggerEvent: A.name,
-          triggerAggregateId: T && h.has(T.sourceId) ? T.sourceId : void 0,
-          triggerDomainServiceId: T && I.has(T.sourceId) ? T.sourceId : void 0,
-          triggerUseCaseId: T && x.has(T.sourceId) ? T.sourceId : void 0
+          triggerEvent: T.name,
+          triggerAggregateId: A && h.has(A.sourceId) ? A.sourceId : void 0,
+          triggerDomainServiceId: A && g.has(A.sourceId) ? A.sourceId : void 0,
+          triggerUseCaseId: A && x.has(A.sourceId) ? A.sourceId : void 0
         });
       }
       return;
     }
-    if ((this.model.proxyApis ?? []).some((S) => S.id === e)) {
-      const S = (this.model.proxyApis ?? []).find((P) => P.id === e);
+    if ((this.model.proxyApis ?? []).some((_) => _.id === e)) {
+      const _ = (this.model.proxyApis ?? []).find((P) => P.id === e);
       if ((this.model.apis ?? []).some((P) => P.id === t)) {
-        S.targetApiId !== t && this.command({ kind: "set-proxy-target", id: e, targetId: t });
+        _.targetApiId !== t && this.command({ kind: "set-proxy-target", id: e, targetId: t });
         return;
       }
       if (this.model.modules.some((P) => P.id === t)) {
-        if (!S.targetApiId) return;
+        if (!_.targetApiId) return;
         (this.model.apiImplementations ?? []).some(
-          (A) => A.apiId === S.targetApiId && A.moduleId === t
-        ) || this.command({ kind: "add-api-implementation", apiId: S.targetApiId, moduleId: t });
+          (T) => T.apiId === _.targetApiId && T.moduleId === t
+        ) || this.command({ kind: "add-api-implementation", apiId: _.targetApiId, moduleId: t });
         return;
       }
-      this.model.externalSystems.some((P) => P.id === t) && S.publishedByExternalSystemId !== t && this.command({ kind: "set-api-publisher", id: e, targetId: t });
+      this.model.externalSystems.some((P) => P.id === t) && _.publishedByExternalSystemId !== t && this.command({ kind: "set-api-publisher", id: e, targetId: t });
       return;
     }
-    if ((this.model.apis ?? []).some((S) => S.id === e)) {
-      if (this.model.externalSystems.some((S) => S.id === t)) {
+    if ((this.model.apis ?? []).some((_) => _.id === e)) {
+      if (this.model.externalSystems.some((_) => _.id === t)) {
         (this.model.apis ?? []).find((P) => P.id === e).publishedByExternalSystemId !== t && this.command({ kind: "set-api-publisher", id: e, targetId: t });
         return;
       }
-      this.model.modules.some((S) => S.id === t) && ((this.model.apiImplementations ?? []).some(
+      this.model.modules.some((_) => _.id === t) && ((this.model.apiImplementations ?? []).some(
         (P) => P.apiId === e && P.moduleId === t
       ) || this.command({ kind: "add-api-implementation", apiId: e, moduleId: t }));
       return;
     }
-    const p = new Set((this.model.actors ?? []).map((S) => S.id));
+    const p = new Set((this.model.actors ?? []).map((_) => _.id));
     if (r.has(t)) {
       if ((/* @__PURE__ */ new Set([
-        ...this.model.modules.flatMap((P) => (P.domainEvents ?? []).map((A) => A.id)),
-        ...this.model.modules.flatMap((P) => (P.applicationEvents ?? []).map((A) => A.id))
+        ...this.model.modules.flatMap((P) => (P.domainEvents ?? []).map((T) => T.id)),
+        ...this.model.modules.flatMap((P) => (P.applicationEvents ?? []).map((T) => T.id))
       ])).has(e)) {
         (this.model.agentTriggers ?? []).some(
-          (A) => A.eventId === e && A.agentId === t
+          (T) => T.eventId === e && T.agentId === t
         ) || this.command({ kind: "add-agent-trigger", sourceId: e, targetId: t });
         return;
       }
       if (!p.has(e)) return;
     }
     if (p.has(e)) {
-      const S = new Set(
-        this.model.modules.flatMap((A) => (A.useCases ?? []).map((T) => T.id))
+      const _ = new Set(
+        this.model.modules.flatMap((T) => (T.useCases ?? []).map((A) => A.id))
       ), P = new Set(
-        this.model.modules.flatMap((A) => (A.queryServices ?? []).map((T) => T.id))
+        this.model.modules.flatMap((T) => (T.queryServices ?? []).map((A) => A.id))
       );
-      if (S.has(t) || P.has(t)) {
+      if (_.has(t) || P.has(t)) {
         (this.model.actorUses ?? []).some(
-          (T) => T.actorId === e && T.targetId === t
+          (A) => A.actorId === e && A.targetId === t
         ) || this.command({ kind: "add-actor-use", sourceId: e, targetId: t });
         return;
       }
-      if ((this.model.aggregates ?? []).some((A) => A.id === t)) {
+      if ((this.model.aggregates ?? []).some((T) => T.id === t)) {
         this.command({ kind: "add-actor-crud", sourceId: e, targetId: t });
         return;
       }
-      if (this.model.externalSystems.some((A) => A.id === t)) {
+      if (this.model.externalSystems.some((T) => T.id === t)) {
         (this.model.actorExternalDependencies ?? []).some(
-          (T) => T.actorId === e && T.externalSystemId === t
+          (A) => A.actorId === e && A.externalSystemId === t
         ) || this.command({ kind: "add-actor-external", sourceId: e, targetId: t });
         return;
       }
-      if ((this.model.aiAgents ?? []).some((A) => A.id === t)) {
+      if ((this.model.aiAgents ?? []).some((T) => T.id === t)) {
         (this.model.actorAgentUses ?? []).some(
-          (T) => T.actorId === e && T.agentId === t
+          (A) => A.actorId === e && A.agentId === t
         ) || this.command({ kind: "add-actor-agent", sourceId: e, targetId: t });
         return;
       }
@@ -10026,7 +10039,7 @@ let B = class extends Pe {
     const o = this.owningApiOf(e);
     if (o) {
       if (new Set(
-        this.model.modules.flatMap((P) => (P.useCases ?? []).map((A) => A.id))
+        this.model.modules.flatMap((P) => (P.useCases ?? []).map((T) => T.id))
       ).has(t)) {
         this.command({
           kind: "set-api-operation-target",
@@ -10047,56 +10060,56 @@ let B = class extends Pe {
       }
       return;
     }
-    const d = this.model.externalSystems.flatMap((S) => S.useCases ?? []).find((S) => S.id === e), u = this.model.externalSystems.flatMap((S) => S.tables ?? []).find((S) => S.id === e);
+    const d = this.model.externalSystems.flatMap((_) => _.useCases ?? []).find((_) => _.id === e), u = this.model.externalSystems.flatMap((_) => _.tables ?? []).find((_) => _.id === e);
     if (d || u) {
-      const S = (d ?? u).name, P = d ? { externalUseCaseId: e } : { externalTableId: e }, A = (I) => d ? I.sourceExternalUseCaseId === e : I.sourceExternalTableId === e, T = this.model.modules.flatMap((I) => I.readModels ?? []).find((I) => I.id === t);
-      if (T) {
+      const _ = (d ?? u).name, P = d ? { externalUseCaseId: e } : { externalTableId: e }, T = (g) => d ? g.sourceExternalUseCaseId === e : g.sourceExternalTableId === e, A = this.model.modules.flatMap((g) => g.readModels ?? []).find((g) => g.id === t);
+      if (A) {
         (this.model.projections ?? []).some(
-          (x) => A(x) && x.readModelId === t
+          (x) => T(x) && x.readModelId === t
         ) || this.command({
           kind: "add-projection",
-          id: `proj-${ee(S)}-${ee(T.name)}`,
-          name: `${T.name}Projection`,
+          id: `proj-${ee(_)}-${ee(A.name)}`,
+          name: `${A.name}Projection`,
           ...P,
           targetId: t
         });
         return;
       }
-      const h = this.model.modules.find((I) => I.id === t);
+      const h = this.model.modules.find((g) => g.id === t);
       if (h) {
         (this.model.projections ?? []).some(
-          (x) => A(x) && x.moduleId === t
+          (x) => T(x) && x.moduleId === t
         ) || this.command({
           kind: "add-projection",
-          id: `proj-${ee(S)}-${ee(h.name)}`,
-          name: `${S}ViewProjection`,
+          id: `proj-${ee(_)}-${ee(h.name)}`,
+          name: `${_}ViewProjection`,
           ...P,
           moduleId: t,
-          readModelName: `${S}View`
+          readModelName: `${_}View`
         });
         return;
       }
       return;
     }
-    const f = (this.model.aggregates ?? []).find((S) => S.id === e);
+    const f = (this.model.aggregates ?? []).find((_) => _.id === e);
     if (f) {
-      const S = this.model.modules.flatMap((A) => A.readModels ?? []).find((A) => A.id === t);
-      if (S) {
+      const _ = this.model.modules.flatMap((T) => T.readModels ?? []).find((T) => T.id === t);
+      if (_) {
         (this.model.projections ?? []).some(
-          (T) => T.sourceAggregateId === e && T.readModelId === t
+          (A) => A.sourceAggregateId === e && A.readModelId === t
         ) || this.command({
           kind: "add-projection",
-          id: `proj-${ee(f.name)}-${ee(S.name)}`,
-          name: `${S.name}Projection`,
+          id: `proj-${ee(f.name)}-${ee(_.name)}`,
+          name: `${_.name}Projection`,
           aggregateId: e,
           targetId: t
         });
         return;
       }
-      const P = this.model.modules.find((A) => A.id === t);
+      const P = this.model.modules.find((T) => T.id === t);
       if (P) {
         (this.model.projections ?? []).some(
-          (T) => T.sourceAggregateId === e && T.moduleId === t
+          (A) => A.sourceAggregateId === e && A.moduleId === t
         ) || this.command({
           kind: "add-projection",
           id: `proj-${ee(f.name)}-${ee(P.name)}`,
@@ -10109,25 +10122,25 @@ let B = class extends Pe {
       }
     }
     const m = new Set(
-      this.model.modules.flatMap((S) => (S.domainEvents ?? []).map((P) => P.id))
+      this.model.modules.flatMap((_) => (_.domainEvents ?? []).map((P) => P.id))
     ), v = /* @__PURE__ */ new Set([
-      ...(this.model.aggregates ?? []).map((S) => S.id),
-      ...this.model.modules.flatMap((S) => (S.domainServices ?? []).map((P) => P.id))
-    ]), E = new Set(
-      this.model.modules.flatMap((S) => (S.applicationEvents ?? []).map((P) => P.id))
-    ), y = new Set(this.model.modules.flatMap((S) => (S.useCases ?? []).map((P) => P.id))), g = new Set(
-      this.model.modules.flatMap((S) => (S.queryServices ?? []).map((P) => P.id))
+      ...(this.model.aggregates ?? []).map((_) => _.id),
+      ...this.model.modules.flatMap((_) => (_.domainServices ?? []).map((P) => P.id))
+    ]), S = new Set(
+      this.model.modules.flatMap((_) => (_.applicationEvents ?? []).map((P) => P.id))
+    ), y = new Set(this.model.modules.flatMap((_) => (_.useCases ?? []).map((P) => P.id))), I = new Set(
+      this.model.modules.flatMap((_) => (_.queryServices ?? []).map((P) => P.id))
     );
-    if (y.has(e) && g.has(t)) {
+    if (y.has(e) && I.has(t)) {
       (this.model.queryCalls ?? []).some(
         (P) => P.sourceId === e && P.targetId === t
       ) || this.command({ kind: "add-query-call", sourceId: e, targetId: t });
       return;
     }
-    const $ = new Set(
-      this.model.externalSystems.flatMap((S) => (S.useCases ?? []).map((P) => P.id))
+    const E = new Set(
+      this.model.externalSystems.flatMap((_) => (_.useCases ?? []).map((P) => P.id))
     );
-    if (y.has(e) && $.has(t)) {
+    if (y.has(e) && E.has(t)) {
       (this.model.externalUseCaseCalls ?? []).some(
         (P) => P.sourceId === e && P.targetId === t
       ) || this.command({ kind: "add-external-uc-call", sourceId: e, targetId: t });
@@ -10139,90 +10152,90 @@ let B = class extends Pe {
       ) || this.command({ kind: "add-use-case-call", sourceId: e, targetId: t });
       return;
     }
-    const w = this.model.modules.flatMap((S) => S.scheduledTriggers ?? []).find((S) => S.id === e);
+    const w = this.model.modules.flatMap((_) => _.scheduledTriggers ?? []).find((_) => _.id === e);
     if (w && y.has(t)) {
       w.useCaseId !== t && this.command({ kind: "set-scheduled-trigger-target", id: e, targetUseCaseId: t });
       return;
     }
-    if (y.has(e) && (this.model.aggregates ?? []).some((S) => S.id === t)) {
+    if (y.has(e) && (this.model.aggregates ?? []).some((_) => _.id === t)) {
       (this.model.aggregateCalls ?? []).some(
         (P) => P.sourceId === e && P.targetId === t
       ) || this.command({ kind: "add-aggregate-call", sourceId: e, targetId: t });
       return;
     }
-    if (v.has(e) && m.has(t) || y.has(e) && E.has(t)) {
+    if (v.has(e) && m.has(t) || y.has(e) && S.has(t)) {
       (this.model.emissions ?? []).some(
         (P) => P.sourceId === e && P.domainEventId === t
       ) || this.command({ kind: "add-emission", sourceId: e, targetId: t });
       return;
     }
-    if (m.has(e) || E.has(e)) {
-      const S = E.has(e), P = this.model.modules.flatMap((N) => (S ? N.applicationEvents : N.domainEvents) ?? []).find((N) => N.id === e), A = this.model.modules.flatMap((N) => (N.useCases ?? []).map((H) => ({ u: H, module: N }))).find(({ u: N }) => N.id === t), T = this.model.modules.flatMap((N) => (N.readModels ?? []).map((H) => ({ rm: H, module: N }))).find(({ rm: N }) => N.id === t), h = this.model.modules.find((N) => N.id === t) ?? (T == null ? void 0 : T.module) ?? (A == null ? void 0 : A.module);
+    if (m.has(e) || S.has(e)) {
+      const _ = S.has(e), P = this.model.modules.flatMap((N) => (_ ? N.applicationEvents : N.domainEvents) ?? []).find((N) => N.id === e), T = this.model.modules.flatMap((N) => (N.useCases ?? []).map((H) => ({ u: H, module: N }))).find(({ u: N }) => N.id === t), A = this.model.modules.flatMap((N) => (N.readModels ?? []).map((H) => ({ rm: H, module: N }))).find(({ rm: N }) => N.id === t), h = this.model.modules.find((N) => N.id === t) ?? (A == null ? void 0 : A.module) ?? (T == null ? void 0 : T.module);
       if (!P || !h) return;
-      const I = new Set((this.model.aggregates ?? []).map((N) => N.id)), x = new Set(
+      const g = new Set((this.model.aggregates ?? []).map((N) => N.id)), x = new Set(
         this.model.modules.flatMap((N) => (N.domainServices ?? []).map((H) => H.id))
-      ), _ = (this.model.emissions ?? []).find(
-        (N) => N.domainEventId === e && (S ? y.has(N.sourceId) : I.has(N.sourceId) || x.has(N.sourceId))
+      ), k = (this.model.emissions ?? []).find(
+        (N) => N.domainEventId === e && (_ ? y.has(N.sourceId) : g.has(N.sourceId) || x.has(N.sourceId))
       );
-      if (!_) {
+      if (!k) {
         this.emit("modux-notice", {
-          message: S ? `Declara primero qué caso de uso publica ${P.name} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador` : `Declara primero quién emite ${P.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
+          message: _ ? `Declara primero qué caso de uso publica ${P.name} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador` : `Declara primero quién emite ${P.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
           kind: "info"
         });
         return;
       }
-      const O = !S && I.has(_.sourceId);
-      if (A) {
+      const O = !_ && g.has(k.sourceId);
+      if (T) {
         if (this.model.flows.some(
-          (H) => H.archetype === "TRIGGERS" && H.triggerEvent === P.name && H.targetUseCaseId === A.u.id
+          (H) => H.archetype === "TRIGGERS" && H.triggerEvent === P.name && H.targetUseCaseId === T.u.id
         )) return;
         this.command({
           kind: "add-flow",
-          id: `flow-${ee(P.name)}-${ee(A.u.name)}`,
-          name: A.u.name,
+          id: `flow-${ee(P.name)}-${ee(T.u.name)}`,
+          name: T.u.name,
           archetype: "TRIGGERS",
-          triggerAggregateId: O ? _.sourceId : "",
-          triggerDomainServiceId: !S && !O ? _.sourceId : void 0,
-          triggerUseCaseId: S ? _.sourceId : void 0,
+          triggerAggregateId: O ? k.sourceId : "",
+          triggerDomainServiceId: !_ && !O ? k.sourceId : void 0,
+          triggerUseCaseId: _ ? k.sourceId : void 0,
           triggerEvent: P.name,
           targetId: h.id,
-          targetUseCaseId: A.u.id
+          targetUseCaseId: T.u.id
         });
         return;
       }
-      const F = (T == null ? void 0 : T.rm.name) ?? `${P.name}View`;
+      const q = (A == null ? void 0 : A.rm.name) ?? `${P.name}View`;
       if (this.model.flows.some(
-        (N) => N.archetype === "MATERIALIZES" && N.triggerEvent === P.name && N.targetId === h.id && N.readModelName === F
+        (N) => N.archetype === "MATERIALIZES" && N.triggerEvent === P.name && N.targetId === h.id && N.readModelName === q
       )) return;
       this.command({
         kind: "add-flow",
-        id: `flow-${ee(P.name)}-${ee(F)}`,
-        name: F,
+        id: `flow-${ee(P.name)}-${ee(q)}`,
+        name: q,
         archetype: "MATERIALIZES",
-        triggerAggregateId: O ? _.sourceId : "",
-        triggerDomainServiceId: !S && !O ? _.sourceId : void 0,
-        triggerUseCaseId: S ? _.sourceId : void 0,
+        triggerAggregateId: O ? k.sourceId : "",
+        triggerDomainServiceId: !_ && !O ? k.sourceId : void 0,
+        triggerUseCaseId: _ ? k.sourceId : void 0,
         triggerEvent: P.name,
         targetId: h.id,
-        readModelName: F
+        readModelName: q
       });
       return;
     }
     const C = /* @__PURE__ */ new Set([
       ...v,
       ...y,
-      ...g,
-      ...this.model.modules.flatMap((S) => (S.readModels ?? []).map((P) => P.id))
+      ...I,
+      ...this.model.modules.flatMap((_) => (_.readModels ?? []).map((P) => P.id))
     ]);
-    if (C.has(e) || C.has(t) || m.has(t) || E.has(t))
+    if (C.has(e) || C.has(t) || m.has(t) || S.has(t))
       return;
-    const M = new Set(this.model.externalSystems.map((S) => S.id));
+    const M = new Set(this.model.externalSystems.map((_) => _.id));
     if (M.has(e)) {
       if (new Set(
-        this.model.modules.flatMap((h) => (h.useCases ?? []).map((I) => I.id))
+        this.model.modules.flatMap((h) => (h.useCases ?? []).map((g) => g.id))
       ).has(t)) {
         (this.model.externalCalls ?? []).some(
-          (I) => I.externalSystemId === e && I.useCaseId === t
+          (g) => g.externalSystemId === e && g.useCaseId === t
         ) || this.command({ kind: "add-external-call", sourceId: e, targetId: t });
         return;
       }
@@ -10231,22 +10244,22 @@ let B = class extends Pe {
         return;
       }
       const P = (this.model.apis ?? []).find(
-        (h) => h.operations.some((I) => I.id === t)
-      ), A = /^apiop:(.+)@(.+)$/.exec(t), T = P ? { operationId: t, siteId: P.id } : A ? { operationId: A[1], siteId: A[2] } : null;
-      if (T) {
+        (h) => h.operations.some((g) => g.id === t)
+      ), T = /^apiop:(.+)@(.+)$/.exec(t), A = P ? { operationId: t, siteId: P.id } : T ? { operationId: T[1], siteId: T[2] } : null;
+      if (A) {
         (this.model.externalOperationUses ?? []).some(
-          (I) => I.externalSystemId === e && I.operationId === T.operationId && I.siteId === T.siteId
+          (g) => g.externalSystemId === e && g.operationId === A.operationId && g.siteId === A.siteId
         ) || this.command({
           kind: "add-external-operation-use",
           sourceId: e,
-          operationId: T.operationId,
-          targetSiteId: T.siteId
+          operationId: A.operationId,
+          targetSiteId: A.siteId
         });
         return;
       }
       if ((this.model.apis ?? []).some((h) => h.id === t) || (this.model.proxyApis ?? []).some((h) => h.id === t)) {
         (this.model.externalSystemDependencies ?? []).some(
-          (I) => I.sourceId === e && I.targetId === t
+          (g) => g.sourceId === e && g.targetId === t
         ) || this.command({ kind: "add-external-dependency", sourceId: e, targetId: t });
         return;
       }
@@ -10817,7 +10830,7 @@ let B = class extends Pe {
   renderViewTree() {
     const e = (this.model.views ?? []).find((n) => n.id === this._activeViewId);
     if (!e) return "";
-    const t = new Set(e.memberIds), i = (n, a, r = {}) => k`
+    const t = new Set(e.memberIds), i = (n, a, r = {}) => $`
       <label
         class="${r.child ? "child" : ""} ${r.implicit && !t.has(n) ? "implicit" : ""}"
         title=${r.implicit && !t.has(n) ? "Ya se ve por su contenedor; márcalo para que sea miembro explícito" : "Miembro de la vista — desmarcar lo quita de la vista, NO del proyecto"}
@@ -10829,8 +10842,8 @@ let B = class extends Pe {
         />
         ${a}
       </label>
-    `, s = (n, a) => a.length ? k`<h4>${n}</h4>${a}` : "";
-    return k`
+    `, s = (n, a) => a.length ? $`<h4>${n}</h4>${a}` : "";
+    return $`
       <aside class="view-tree" @pointerdown=${(n) => n.stopPropagation()}>
         <div class="tree-title">Vista: ${e.name}</div>
         ${s(
@@ -11139,7 +11152,7 @@ let B = class extends Pe {
   /** The «Diseño» surface: every page as a frame, edited in place (Figma-style). */
   renderFigma() {
     const e = this.viewLayout("design");
-    return k`<modux-figma
+    return $`<modux-figma
       .pages=${this.filteredModel().pages ?? []}
       .layout=${e.nodes}
       .selectedId=${this._selectedId}
@@ -11470,31 +11483,31 @@ let B = class extends Pe {
     return e === "api" ? s.find((l) => this.model.externalSystems.some((p) => p.id === l)) ?? s.find((l) => this.model.modules.some((p) => p.id === l)) ?? null : null;
   }
   createFromPalette(e, t, i, s = null) {
-    var m, v, E, y;
-    const n = B.PALETTE_NEW.find((g) => g.type === e);
+    var m, v, S, y;
+    const n = B.PALETTE_NEW.find((I) => I.type === e);
     if (!n) return;
     if (e.startsWith("cmp:")) {
-      const g = e.slice(4), $ = i ? /^cmp:([^:]+):(.+)$/.exec(i) : null, w = $ ? $[1] : i && (this.model.pages ?? []).some((R) => R.id === i) ? i : null;
+      const I = e.slice(4), E = i ? /^cmp:([^:]+):(.+)$/.exec(i) : null, w = E ? E[1] : i && (this.model.pages ?? []).some((R) => R.id === i) ? i : null;
       if (!w) {
         this.emit("modux-notice", { message: "Suelta el layout/componente sobre una página" });
         return;
       }
-      let C = $ ? $[2] : void 0, M = null;
-      if (g === "tab") {
-        let R = null, U = C ? this.componentIn(w, C) : null;
-        for (; U; ) {
-          if (U.node.kind === "tabLayout") {
-            R = U.node.id;
+      let C = E ? E[2] : void 0, M = null;
+      if (I === "tab") {
+        let R = null, F = C ? this.componentIn(w, C) : null;
+        for (; F; ) {
+          if (F.node.kind === "tabLayout") {
+            R = F.node.id;
             break;
           }
-          U = U.parentId ? this.componentIn(w, U.parentId) : null;
+          F = F.parentId ? this.componentIn(w, F.parentId) : null;
         }
         if (!R) {
           this.emit("modux-notice", { message: "Suelta la pestaña sobre un layout de pestañas" });
           return;
         }
-        const S = this.componentIn(w, R).node, P = this.newComponentId("tab"), A = `Pestaña ${(S.children ?? []).filter((T) => T.kind === "tab").length + 1}`;
-        this.command({ kind: "add-page-component", pageId: w, componentId: P, componentKind: "tab", parentComponentId: R }, !1), this.command({ kind: "set-page-component", pageId: w, componentId: P, title: A }, !1), this.pushUndoEntry([{ kind: "remove-page-component", pageId: w, componentId: P }]);
+        const _ = this.componentIn(w, R).node, P = this.newComponentId("tab"), T = `Pestaña ${(_.children ?? []).filter((A) => A.kind === "tab").length + 1}`;
+        this.command({ kind: "add-page-component", pageId: w, componentId: P, componentKind: "tab", parentComponentId: R }, !1), this.command({ kind: "set-page-component", pageId: w, componentId: P, title: T }, !1), this.pushUndoEntry([{ kind: "remove-page-component", pageId: w, componentId: P }]);
         return;
       }
       if (s != null && s.componentId && s.pos !== "into") {
@@ -11504,11 +11517,11 @@ let B = class extends Pe {
         const R = ((m = this.componentIn(w, C)) == null ? void 0 : m.node) ?? null;
         (R == null ? void 0 : R.kind) === "tabLayout" && (R.children ?? [])[0] && (C = (R.children ?? [])[0].id);
       }
-      const b = this.newComponentId(g), L = {
+      const b = this.newComponentId(I), L = {
         kind: "add-page-component",
         pageId: w,
         componentId: b,
-        componentKind: g,
+        componentKind: I,
         parentComponentId: C
       };
       if (!M) {
@@ -11521,17 +11534,17 @@ let B = class extends Pe {
       ), this.pushUndoEntry([{ kind: "remove-page-component", pageId: w, componentId: b }]);
       return;
     }
-    const a = this._view, r = this.sceneFor(a), l = (g, $) => {
-      const w = this.viewLayout(a), C = $ ? r.nodes.find((b) => b.id === $) : void 0, M = C ? { x: Math.round(t.x - C.x), y: Math.round(t.y - C.y) } : { x: Math.round(t.x), y: Math.round(t.y) };
-      return this.writeViewLayout(a, { ...w, nodes: { ...w.nodes, [g]: M } }), { kind: "move-node", view: a, id: g, pos: null };
-    }, p = (g, $, w) => {
-      const C = this.inverseOf(g) ?? [];
-      this.command(g, !1);
-      const M = l($, w);
+    const a = this._view, r = this.sceneFor(a), l = (I, E) => {
+      const w = this.viewLayout(a), C = E ? r.nodes.find((b) => b.id === E) : void 0, M = C ? { x: Math.round(t.x - C.x), y: Math.round(t.y - C.y) } : { x: Math.round(t.x), y: Math.round(t.y) };
+      return this.writeViewLayout(a, { ...w, nodes: { ...w.nodes, [I]: M } }), { kind: "move-node", view: a, id: I, pos: null };
+    }, p = (I, E, w) => {
+      const C = this.inverseOf(I) ?? [];
+      this.command(I, !1);
+      const M = l(E, w);
       this.pushUndoEntry([...C, M]);
     };
     if (!n.child) {
-      const g = {
+      const I = {
         module: "mod-",
         actor: "",
         "external-system": "ext-",
@@ -11545,17 +11558,17 @@ let B = class extends Pe {
         "ui-app": "app-",
         "ui-app-orchestrator": "app-",
         "ui-app-masterdetail": "app-"
-      }, { id: $, name: w } = this.uniquePaletteName(n.label, g[e] ?? ""), C = e === "module" ? { kind: "add-module", id: $, name: w, subdomainType: "SUPPORTING" } : e === "actor" ? { kind: "add-actor", id: $, name: w } : e === "external-system" ? { kind: "add-external-system", id: $, name: w } : e === "ai-agent" ? { kind: "add-ai-agent", id: $, name: w } : e === "external-ai-agent" ? { kind: "add-ai-agent", id: $, name: w, external: !0 } : e === "mcp-gateway" ? { kind: "add-mcp-gateway", id: $, name: w } : e === "rag" ? { kind: "add-rag", id: $, name: w } : e === "api" ? { kind: "add-api", id: $, name: w } : e === "proxy-api" ? { kind: "add-proxy-api", id: $, name: w } : e === "ui-app" ? { kind: "create-ui-app", id: $, name: w } : e === "ui-app-orchestrator" ? { kind: "create-ui-app", id: $, name: w, type: "ORCHESTRATOR" } : e === "ui-app-masterdetail" ? { kind: "create-ui-app", id: $, name: w, type: "MASTER_DETAIL" } : {
+      }, { id: E, name: w } = this.uniquePaletteName(n.label, I[e] ?? ""), C = e === "module" ? { kind: "add-module", id: E, name: w, subdomainType: "SUPPORTING" } : e === "actor" ? { kind: "add-actor", id: E, name: w } : e === "external-system" ? { kind: "add-external-system", id: E, name: w } : e === "ai-agent" ? { kind: "add-ai-agent", id: E, name: w } : e === "external-ai-agent" ? { kind: "add-ai-agent", id: E, name: w, external: !0 } : e === "mcp-gateway" ? { kind: "add-mcp-gateway", id: E, name: w } : e === "rag" ? { kind: "add-rag", id: E, name: w } : e === "api" ? { kind: "add-api", id: E, name: w } : e === "proxy-api" ? { kind: "add-proxy-api", id: E, name: w } : e === "ui-app" ? { kind: "create-ui-app", id: E, name: w } : e === "ui-app-orchestrator" ? { kind: "create-ui-app", id: E, name: w, type: "ORCHESTRATOR" } : e === "ui-app-masterdetail" ? { kind: "create-ui-app", id: E, name: w, type: "MASTER_DETAIL" } : {
         kind: "add-workflow",
-        id: $,
+        id: E,
         name: w,
         completionEventName: `${w.replace(/\s+/g, "")}Completado`
       };
-      p(C, $);
+      p(C, E);
       return;
     }
     if (e === "page" || e === "ui-page-crud" || e === "ui-page-wizard") {
-      const g = e === "ui-page-crud" ? "CRUD" : e === "ui-page-wizard" ? "WIZARD" : "PAGE", $ = g === "CRUD" ? "CRUD" : g === "WIZARD" ? "Wizard" : "Página", { id: w, name: C } = this.uniquePaletteName($, "page-"), M = [];
+      const I = e === "ui-page-crud" ? "CRUD" : e === "ui-page-wizard" ? "WIZARD" : "PAGE", E = I === "CRUD" ? "CRUD" : I === "WIZARD" ? "Wizard" : "Página", { id: w, name: C } = this.uniquePaletteName(E, "page-"), M = [];
       for (let L = i ?? void 0; L; )
         M.push(L), L = (v = r.nodes.find((R) => R.id === L)) == null ? void 0 : v.parentId;
       const b = M.find((L) => (this.model.uiApps ?? []).some((R) => R.id === L));
@@ -11564,17 +11577,17 @@ let B = class extends Pe {
         L && (t.x = L.x + L.w / 2 + 160, t.y = L.y - L.h / 2 + 40);
       }
       p(
-        b ? { kind: "create-ui-page", id: w, name: C, pageType: g, appId: b, menuLabel: C } : { kind: "create-ui-page", id: w, name: C, pageType: g },
+        b ? { kind: "create-ui-page", id: w, name: C, pageType: I, appId: b, menuLabel: C } : { kind: "create-ui-page", id: w, name: C, pageType: I },
         w
       );
       return;
     }
     if (e === "menu-item") {
-      const g = [];
+      const I = [];
       for (let L = i ?? void 0; L; )
-        g.push(L), L = (E = r.nodes.find((R) => R.id === L)) == null ? void 0 : E.parentId;
-      const $ = g.find((L) => (this.model.uiApps ?? []).some((R) => R.id === L));
-      if (!$) {
+        I.push(L), L = (S = r.nodes.find((R) => R.id === L)) == null ? void 0 : S.parentId;
+      const E = I.find((L) => (this.model.uiApps ?? []).some((R) => R.id === L));
+      if (!E) {
         this.emit("modux-notice", { message: "Suelta la entrada de menú sobre una app" });
         return;
       }
@@ -11585,10 +11598,10 @@ let B = class extends Pe {
       (this.model.uiApps ?? []).forEach((L) => C(L.menuItems));
       let M = "Entrada";
       for (let L = 2; w.has(M); L++) M = `Entrada ${L}`;
-      const b = g.map((L) => pe(L)).find(Boolean);
+      const b = I.map((L) => pe(L)).find(Boolean);
       this.command({
         kind: "add-menu-item",
-        appId: $,
+        appId: E,
         label: M,
         itemId: this.newMenuItemId(M),
         parentId: b == null ? void 0 : b.itemId,
@@ -11597,12 +11610,12 @@ let B = class extends Pe {
       return;
     }
     if (e === "workflow-step") {
-      const g = this.model.workflows ?? [], $ = [];
+      const I = this.model.workflows ?? [], E = [];
       for (let R = i ?? void 0; R; )
-        $.push(R), R = (y = r.nodes.find((U) => U.id === R)) == null ? void 0 : y.parentId;
-      const w = $.map((R) => g.find((U) => U.id === R)).find(Boolean), C = $.map((R) => {
-        const U = g.find((S) => (S.steps ?? []).some((P) => P.id === R));
-        return U ? { owner: U, stepId: R } : null;
+        E.push(R), R = (y = r.nodes.find((F) => F.id === R)) == null ? void 0 : y.parentId;
+      const w = E.map((R) => I.find((F) => F.id === R)).find(Boolean), C = E.map((R) => {
+        const F = I.find((_) => (_.steps ?? []).some((P) => P.id === R));
+        return F ? { owner: F, stepId: R } : null;
       }).find(Boolean), M = w ?? (C == null ? void 0 : C.owner);
       if (!M) {
         this.emit("modux-notice", {
@@ -11626,17 +11639,17 @@ let B = class extends Pe {
       return;
     }
     if (e === "api") {
-      const g = this.dropContainerFor("api", i);
-      if (!g) {
+      const I = this.dropContainerFor("api", i);
+      if (!I) {
         this.emit("modux-notice", {
           message: "Una API vive en un sistema externo o en un contexto: suéltala sobre uno"
         });
         return;
       }
-      const { id: $, name: w } = this.uniquePaletteName("API", "api-"), C = { kind: "add-api", id: $, name: w }, M = this.inverseOf(C) ?? [];
-      this.command(C, !1), this.model.externalSystems.some((U) => U.id === g) ? this.command({ kind: "set-api-publisher", id: $, targetId: g }, !1) : this.command({ kind: "add-api-implementation", apiId: $, moduleId: g }, !1);
-      const b = this.viewLayout(this._view), L = this.sceneFor(this._view).nodes.find((U) => U.id === g), R = L ? { x: Math.round(t.x - L.x), y: Math.round(t.y - L.y) } : { x: Math.round(t.x), y: Math.round(t.y) };
-      this.writeViewLayout(this._view, { ...b, nodes: { ...b.nodes, [$]: R } }), this.pushUndoEntry([...M, { kind: "move-node", view: this._view, id: $, pos: null }]);
+      const { id: E, name: w } = this.uniquePaletteName("API", "api-"), C = { kind: "add-api", id: E, name: w }, M = this.inverseOf(C) ?? [];
+      this.command(C, !1), this.model.externalSystems.some((F) => F.id === I) ? this.command({ kind: "set-api-publisher", id: E, targetId: I }, !1) : this.command({ kind: "add-api-implementation", apiId: E, moduleId: I }, !1);
+      const b = this.viewLayout(this._view), L = this.sceneFor(this._view).nodes.find((F) => F.id === I), R = L ? { x: Math.round(t.x - L.x), y: Math.round(t.y - L.y) } : { x: Math.round(t.x), y: Math.round(t.y) };
+      this.writeViewLayout(this._view, { ...b, nodes: { ...b.nodes, [E]: R } }), this.pushUndoEntry([...M, { kind: "move-node", view: this._view, id: E, pos: null }]);
       return;
     }
     const o = this.dropContainerFor(e, i);
@@ -11681,25 +11694,25 @@ let B = class extends Pe {
         message: "Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara"
       });
     else if (e === "read-model") {
-      const g = (this.model.aggregates ?? []).find(($) => $.id === o);
-      p({ kind: "add-read-model", id: u, name: f, aggregateId: o }, u, (g == null ? void 0 : g.moduleId) ?? o);
+      const I = (this.model.aggregates ?? []).find((E) => E.id === o);
+      p({ kind: "add-read-model", id: u, name: f, aggregateId: o }, u, (I == null ? void 0 : I.moduleId) ?? o);
     } else if (e === "api-operation") {
-      const g = (this.model.apis ?? []).find((b) => b.id === o), $ = new Set(((g == null ? void 0 : g.operations) ?? []).map((b) => b.id));
+      const I = (this.model.apis ?? []).find((b) => b.id === o), E = new Set(((I == null ? void 0 : I.operations) ?? []).map((b) => b.id));
       let w = f, C = `apiop-${o.replace(/^api-/, "")}-${ee(w)}`;
-      for (let b = 2; $.has(C); b++)
+      for (let b = 2; E.has(C); b++)
         w = `${n.label} ${b}`, C = `apiop-${o.replace(/^api-/, "")}-${ee(w)}`;
       p({ kind: "add-api-operation", apiId: o, id: C, name: w }, C, o), r.nodes.some(
         (b) => b.parentId === o && (b.kind === "api-operation" || b.kind === "api-op-occurrence")
       ) || this.emit("modux-notice", {
-        message: `Operación añadida a ${(g == null ? void 0 : g.name) ?? o} — se ve en el nivel «APIs y operaciones»`
+        message: `Operación añadida a ${(I == null ? void 0 : I.name) ?? o} — se ve en el nivel «APIs y operaciones»`
       });
     } else if (e === "use-case-step") {
-      const g = this.model.modules.flatMap((M) => M.useCases ?? []).find((M) => M.id === o), $ = new Set((g == null ? void 0 : g.stepIds) ?? []);
+      const I = this.model.modules.flatMap((M) => M.useCases ?? []).find((M) => M.id === o), E = new Set((I == null ? void 0 : I.stepIds) ?? []);
       let w = f, C = `step-${ee(w)}`;
-      for (let M = 2; $.has(C); M++)
+      for (let M = 2; E.has(C); M++)
         w = `${n.label} ${M}`, C = `step-${ee(w)}`;
       p({ kind: "add-use-case-step", useCaseId: o, id: C, name: w }, C, o), this.emit("modux-notice", {
-        message: `Paso Custom añadido a ${(g == null ? void 0 : g.name) ?? o} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`
+        message: `Paso Custom añadido a ${(I == null ? void 0 : I.name) ?? o} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`
       });
     } else e === "external-use-case" ? p({ kind: "add-external-use-case", id: u, name: f, moduleId: o }, u, o) : e === "external-table" ? p({ kind: "add-external-table", id: u, name: f, moduleId: o }, u, o) : e === "mcp-server" && p({ kind: "add-mcp-server", id: u, name: f, moduleId: o }, u, o);
   }
@@ -11774,7 +11787,7 @@ let B = class extends Pe {
     const e = this._paletteFilter.trim().toLowerCase(), t = B.PALETTE_NEW.filter(
       (s) => (this._view === "workflows" ? ["workflow", "workflow-step"].includes(s.type) : this._view === "ui" ? ["ui-app", "ui-app-orchestrator", "ui-app-masterdetail", "page", "ui-page-crud", "ui-page-wizard", "menu-item"].includes(s.type) : this._view === "design" ? s.type === "page" || s.type.startsWith("cmp:") : !["ui-app", "page", "menu-item"].includes(s.type) && !s.type.startsWith("cmp:")) && (!e || s.label.toLowerCase().includes(e))
     ), i = this._view === "workflows" ? "new" : this._paletteTab;
-    return k`
+    return $`
       <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? "shifted" : ""}">
         <div class="palette-body">
           <input
@@ -11783,14 +11796,14 @@ let B = class extends Pe {
             .value=${this._paletteFilter}
             @input=${(s) => this._paletteFilter = s.target.value}
           />
-          ${i === "new" ? k`
+          ${i === "new" ? $`
                 <div class="palette-h">Nuevos — arrastra al lienzo${""}</div>
                 ${B.PALETTE_GROUPS.map((s) => {
       const n = t.filter((a) => a.group === s);
-      return n.length ? k`
+      return n.length ? $`
                         <div class="palette-g">${s}</div>
                         ${n.map(
-        (a) => k`
+        (a) => $`
                             <div
                               class="palette-item ${a.child ? "palette-child" : ""}"
                               draggable="true"
@@ -11806,13 +11819,13 @@ let B = class extends Pe {
       )}
                       ` : "";
     })}
-              ` : k`
+              ` : $`
                 <div class="palette-h">Catálogo — arrastra para colocar o conectar</div>
                 ${this.paletteCatalog().map(
-      (s) => k`
+      (s) => $`
                     <div class="palette-g">${s.label}</div>
                     ${s.items.map(
-        (n) => k`
+        (n) => $`
                         <div
                           class="palette-item"
                           draggable="true"
@@ -11830,7 +11843,7 @@ let B = class extends Pe {
     )}
               `}
         </div>
-        ${this._view === "workflows" ? "" : k`
+        ${this._view === "workflows" ? "" : $`
               <div class="palette-side">
                 <button
                   class="palette-vtab"
@@ -11946,7 +11959,7 @@ let B = class extends Pe {
   }
   render() {
     const e = this.sceneFor(this._view);
-    return k`
+    return $`
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
@@ -12020,12 +12033,12 @@ let B = class extends Pe {
         >
           <option value="" ?selected=${this._activeViewId === ""}>Vista: todo el modelo</option>
           ${(this.model.views ?? []).filter((t) => t.kind === "CURATED").map(
-      (t) => k`<option value=${t.id} ?selected=${t.id === this._activeViewId}>
+      (t) => $`<option value=${t.id} ?selected=${t.id === this._activeViewId}>
                   Vista: ${t.name}
                 </option>`
     )}
         </select>
-        ${this._activeViewId ? k`
+        ${this._activeViewId ? $`
               <input
                 class="new-name"
                 list="view-member-options"
@@ -12037,7 +12050,7 @@ let B = class extends Pe {
               />
               <datalist id="view-member-options">
                 ${this.viewMemberCandidates().map(
-      (t) => k`<option value="${t.name} (${t.id})">${t.kind}</option>`
+      (t) => $`<option value="${t.name} (${t.id})">${t.kind}</option>`
     )}
               </datalist>
               <button class="tab" title="Añadir el elemento a la vista" @click=${this.addMemberFromToolbar}>
@@ -12053,7 +12066,7 @@ let B = class extends Pe {
               </button>
             ` : ""}
         <div class="spacer"></div>
-        ${this.viewSelection().length ? k`
+        ${this.viewSelection().length ? $`
               <input
                 class="new-name"
                 placeholder="Nombre de la vista…"
@@ -12078,14 +12091,14 @@ let B = class extends Pe {
           @input=${(t) => this._newName = t.target.value}
           @keydown=${(t) => t.key === "Enter" && this.createElementFromToolbar()}
         />
-        ${this._view === "aggregates" || this._view === "processes" ? k`<select
+        ${this._view === "aggregates" || this._view === "processes" ? $`<select
               title=${this._view === "aggregates" ? "Módulo del nuevo agregado" : "Módulo dueño del proceso"}
               @change=${(t) => this._newModuleId = t.target.value}
             >
               ${this.model.modules.map(
       (t) => {
         var i;
-        return k`<option
+        return $`<option
                     value=${t.id}
                     ?selected=${t.id === (this._newModuleId || ((i = this.model.modules[0]) == null ? void 0 : i.id))}
                   >
@@ -12094,13 +12107,13 @@ let B = class extends Pe {
       }
     )}
             </select>` : ""}
-        ${this._view === "flows" || this._view === "processes" ? k`
-              ${this._view === "flows" ? k`<select
+        ${this._view === "flows" || this._view === "processes" ? $`
+              ${this._view === "flows" ? $`<select
                     title="Arquetipo del nuevo flow"
                     @change=${(t) => this._newArchetype = t.target.value}
                   >
                     ${["MATERIALIZES", "TRIGGERS", "ORCHESTRATES", "NOTIFIES"].map(
-      (t) => k`<option value=${t} ?selected=${t === this._newArchetype}>${t}</option>`
+      (t) => $`<option value=${t} ?selected=${t === this._newArchetype}>${t}</option>`
     )}
                   </select>` : ""}
               <select
@@ -12110,7 +12123,7 @@ let B = class extends Pe {
                 ${(this.model.aggregates ?? []).map(
       (t) => {
         var i, s;
-        return k`<option
+        return $`<option
                       value=${t.id}
                       ?selected=${t.id === (this._newTriggerAggId || ((s = (i = this.model.aggregates) == null ? void 0 : i[0]) == null ? void 0 : s.id))}
                     >
@@ -12126,14 +12139,14 @@ let B = class extends Pe {
                 @input=${(t) => this._newTriggerEvent = t.target.value}
                 @keydown=${(t) => t.key === "Enter" && this.createElementFromToolbar()}
               />
-              ${this._view === "flows" ? k`<select
+              ${this._view === "flows" ? $`<select
                     title="Destino del nuevo flow"
                     @change=${(t) => this._newTargetId = t.target.value}
                   >
                     ${[...this.model.modules, ...this.model.externalSystems].map(
       (t) => {
         var i;
-        return k`<option
+        return $`<option
                           value=${t.id}
                           ?selected=${t.id === (this._newTargetId || ((i = this.model.modules[0]) == null ? void 0 : i.id))}
                         >
@@ -12168,14 +12181,14 @@ let B = class extends Pe {
         >
           ⇪ Importar API${this.selectedApiId() ? " aquí" : "…"}
         </button>
-        ${this._view === "context-map" && this._selectedId && (this.model.rags ?? []).some((t) => t.id === this._selectedId) ? k`
+        ${this._view === "context-map" && this._selectedId && (this.model.rags ?? []).some((t) => t.id === this._selectedId) ? $`
               <span class="sep"></span>
               <select
                 title="Tipo de fuente de contenido del RAG"
                 @change=${(t) => this._newRagSourceType = t.target.value}
               >
                 ${["WEB", "REPO", "FTP", "DATABASE", "BUCKET", "SHAREPOINT", "CONFLUENCE", "DRIVE", "FILESYSTEM", "TICKETING", "CRM"].map(
-      (t) => k`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`
+      (t) => $`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`
     )}
               </select>
               <input
@@ -12194,7 +12207,7 @@ let B = class extends Pe {
                 ＋ Fuente
               </button>
             ` : ""}
-        ${this._view === "processes" && this._selectedId && ((this.model.processes ?? []).some((t) => t.id === this._selectedId) || this.owningProcessOf(this._selectedId)) ? k`
+        ${this._view === "processes" && this._selectedId && ((this.model.processes ?? []).some((t) => t.id === this._selectedId) || this.owningProcessOf(this._selectedId)) ? $`
               <span class="sep"></span>
               <input
                 class="new-name evt"
@@ -12208,10 +12221,10 @@ let B = class extends Pe {
                 @change=${(t) => this._newStepType = t.target.value}
               >
                 ${["AUTOMATED", "HUMAN"].map(
-      (t) => k`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`
+      (t) => $`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`
     )}
               </select>
-              ${this._newStepType === "HUMAN" ? k`<input
+              ${this._newStepType === "HUMAN" ? $`<input
                       class="new-name evt"
                       placeholder="Rol…"
                       .value=${this._newStepRole}
@@ -12226,7 +12239,7 @@ let B = class extends Pe {
               <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
                 ＋ Paso
               </button>
-              ${this.owningProcessOf(this._selectedId) ? k`
+              ${this.owningProcessOf(this._selectedId) ? $`
                     <span class="sep"></span>
                     <input
                       class="new-name evt"
@@ -12254,7 +12267,7 @@ let B = class extends Pe {
                     </button>
                   ` : ""}
             ` : ""}
-        ${this._view === "workflows" && this._selectedId && ((this.model.workflows ?? []).some((t) => t.id === this._selectedId) || this.owningWorkflowOf(this._selectedId)) ? k`
+        ${this._view === "workflows" && this._selectedId && ((this.model.workflows ?? []).some((t) => t.id === this._selectedId) || this.owningWorkflowOf(this._selectedId)) ? $`
               <span class="sep"></span>
               <input
                 class="new-name evt"
@@ -12269,7 +12282,7 @@ let B = class extends Pe {
               >
                 <option value="" ?selected=${this._newStepUseCase === ""}>— sin use case —</option>
                 ${this.model.modules.flatMap((t) => t.useCases ?? []).map(
-      (t) => k`<option value=${t.id} ?selected=${t.id === this._newStepUseCase}>
+      (t) => $`<option value=${t.id} ?selected=${t.id === this._newStepUseCase}>
                         ${t.name}
                       </option>`
     )}
@@ -12288,7 +12301,7 @@ let B = class extends Pe {
               >
                 ＋ Paso
               </button>
-              ${this.owningWorkflowOf(this._selectedId) ? k`
+              ${this.owningWorkflowOf(this._selectedId) ? $`
                     <span class="sep"></span>
                     <select
                       title="Caso de uso destino del paso seleccionado"
@@ -12298,7 +12311,7 @@ let B = class extends Pe {
                         — sin use case —
                       </option>
                       ${this.model.modules.flatMap((t) => t.useCases ?? []).map(
-      (t) => k`<option value=${t.id} ?selected=${t.id === this._editStepUseCase}>
+      (t) => $`<option value=${t.id} ?selected=${t.id === this._editStepUseCase}>
                               ${t.name}
                             </option>`
     )}
@@ -12378,7 +12391,7 @@ let B = class extends Pe {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._view === "design" ? k`${this.renderPalette()}${this.renderFigma()}` : this._tilt ? k`
+      ${this._view === "design" ? $`${this.renderPalette()}${this.renderFigma()}` : this._tilt ? $`
       ${this.renderPalette()}
       <modux-tilt
             @dragover=${(t) => t.preventDefault()}
@@ -12396,7 +12409,7 @@ let B = class extends Pe {
             @selection-cleared=${() => {
       this._selectedId = null, this._multi = [], this.emit("modux-select", null);
     }}
-          ></modux-tilt>` : k`
+          ></modux-tilt>` : $`
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ""}
       ${this.renderPalette()}
       <modux-canvas
@@ -12434,14 +12447,14 @@ let B = class extends Pe {
       `}
       </div>
       <div class="hint">
-        ${this._view === "context-map" ? k`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
+        ${this._view === "context-map" ? $`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
-            · rueda para zoom` : this._view === "eventstorming" ? k`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
+            · rueda para zoom` : this._view === "eventstorming" ? $`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
               policy lila → read model verde · se edita desde las otras vistas o los CRUD (doble
-              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom` : this._view === "workflows" ? k`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
+              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom` : this._view === "workflows" ? $`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
                 · Supr borra el paso o la dependencia seleccionada · F2 renombra · doble click abre
-                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom` : k`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
+                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom` : $`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
@@ -12452,7 +12465,7 @@ let B = class extends Pe {
   }
   /** The keyboard cheatsheet (toggled with ? and closed with Esc or a click outside). */
   renderHelpPopover() {
-    return this._helpOpen ? k`
+    return this._helpOpen ? $`
       <div class="picker-backdrop" @pointerdown=${() => this._helpOpen = !1}></div>
       <div
         class="relation-picker help-pop"
@@ -12477,7 +12490,7 @@ let B = class extends Pe {
       ["Shift+click / arrastrar", "Multi-selección / banda elástica"],
       ["?", "Esta ayuda"]
     ].map(
-      ([t, i]) => k`
+      ([t, i]) => $`
             <div class="help-row"><span class="help-keys">${t}</span><span>${i}</span></div>
           `
     )}
@@ -12488,7 +12501,7 @@ let B = class extends Pe {
   renderDeletePicker() {
     if (!this._deletePicker) return "";
     const t = (this.model.views ?? []).find((i) => i.id === this._activeViewId);
-    return k`
+    return $`
       <div class="picker-backdrop" @pointerdown=${() => this._deletePicker = null}></div>
       <div
         class="relation-picker"
@@ -12546,7 +12559,7 @@ let B = class extends Pe {
       { type: "DEPENDS", abbr: "DEP", name: "Dependencia simple" },
       { type: "CQRS", abbr: "CQRS", name: "CQRS — consulta sobre sus datos" }
     ];
-    return k`
+    return $`
       <div class="picker-backdrop" @pointerdown=${() => this._extDepPicker = null}></div>
       <div
         class="relation-picker"
@@ -12555,7 +12568,7 @@ let B = class extends Pe {
       >
         <div class="picker-title">Tipo de dependencia</div>
         ${i.map(
-      (n) => k`
+      (n) => $`
             <button
               class="picker-item ${n.type === (t ?? "") ? "current" : ""}"
               title=${n.name}
@@ -12576,7 +12589,7 @@ let B = class extends Pe {
     const t = e.mode === "edit" ? (i = this.model.relations.find(
       (s) => s.sourceId === e.sourceId && s.targetId === e.targetId
     )) == null ? void 0 : i.type : this._relationType;
-    return k`
+    return $`
       <div class="picker-backdrop" @pointerdown=${() => this._relationPicker = null}></div>
       <div
         class="relation-picker"
@@ -12587,7 +12600,7 @@ let B = class extends Pe {
           ${e.mode === "create" ? "Tipo de relación" : "Cambiar tipo"}
         </div>
         ${jl.map(
-      (s) => k`
+      (s) => $`
             <button
               class="picker-item ${s === t ? "current" : ""}"
               title=${s}
@@ -13011,127 +13024,127 @@ Y([
   J({ attribute: !1 })
 ], B.prototype, "diff", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_view", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_detail", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_relationType", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_relationPicker", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_extDepPicker", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_selectedId", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_paletteOpen", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_paletteFilter", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_paletteTab", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_selectedCmp", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_fullscreen", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_tilt", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_helpOpen", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newName", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newModuleId", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newArchetype", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newTriggerAggId", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newTriggerEvent", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newTargetId", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_undoStack", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_redoStack", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepName", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepType", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepRole", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepDeadline", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepRole", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepDeadline", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepComp", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepUseCase", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newStepEmits", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepUseCase", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepEmits", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_editStepAwaits", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_multi", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newViewName", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_activeViewId", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newRagSourceType", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_newRagSourceUri", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_addMemberKey", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_treeOpen", 2);
 Y([
-  q()
+  z()
 ], B.prototype, "_deletePicker", 2);
 B = Y([
   ht("modux-editor")
@@ -13274,7 +13287,7 @@ let ue = class extends Pe {
       { kind: "MODIFIED", title: "Modificados", mark: "～", cls: "modified" },
       { kind: "REMOVED", title: "Eliminados", mark: "－", cls: "removed" }
     ], t = (s) => ue.TYPE_LABELS[s] ?? s;
-    return k`
+    return $`
       <div class="diff-panel">
         <div class="diff-head">
           <span>Cambios de la solución respecto al sistema</span>
@@ -13282,10 +13295,10 @@ let ue = class extends Pe {
         </div>
         ${e.map(({ kind: s, title: n, mark: a, cls: r }) => {
       const l = this._diff.changes.filter((p) => p.kind === s);
-      return l.length ? k`
+      return l.length ? $`
             <div class="diff-group">${n} (${l.length})</div>
             ${l.map(
-        (p) => k`
+        (p) => $`
                 <div class="diff-row">
                   <span class="diff-mark ${r}">${a}</span>
                   <span class="diff-type">${t(p.type)}</span>
@@ -13457,14 +13470,14 @@ let ue = class extends Pe {
   }
   render() {
     var e, t;
-    return this._error ? k`<div class="status error">modux editor: ${this._error}</div>` : this._model ? k`
-      ${this._workspace ? k`
+    return this._error ? $`<div class="status error">modux editor: ${this._error}</div>` : this._model ? $`
+      ${this._workspace ? $`
             <div class="workspace">
               <label>Modelo:</label>
               <span title="El modelo activo se cambia desde el selector «Modelo» de la cabecera">
                 ${this._workspace.system ? "Sistema (as-is)" : `Solución: ${((e = this._workspace.solutions.find((i) => i.branch === this._workspace.current)) == null ? void 0 : e.name) ?? this._workspace.current}`}
               </span>
-              ${this._creatingSolution ? "" : k`<button @click=${() => this._creatingSolution = !0}>
+              ${this._creatingSolution ? "" : $`<button @click=${() => this._creatingSolution = !0}>
                     ＋ Nueva solución…
                   </button>`}
               <span class="badge ${this._workspace.system ? "" : "solution"}">
@@ -13472,7 +13485,7 @@ let ue = class extends Pe {
               </span>
               ${this._diff && !this._workspace.system ? (() => {
       const i = (s) => this._diff.changes.filter((n) => n.kind === s).length;
-      return k`<button
+      return $`<button
                       class="badge solution diff-badge"
                       ?data-open=${this._diffListOpen}
                       title="Cambios respecto al sistema — click para ver el listado"
@@ -13481,7 +13494,7 @@ let ue = class extends Pe {
                       ＋${i("ADDED")} ～${i("MODIFIED")} －${i("REMOVED")}
                     </button>`;
     })() : ""}
-              ${this._creatingSolution ? k`
+              ${this._creatingSolution ? $`
                     <input
                       placeholder="Nombre de la solución…"
                       .value=${this._newSolutionName}
@@ -13496,20 +13509,20 @@ let ue = class extends Pe {
       const i = (s = this._workspace.solutions.find(
         (n) => n.branch === this._workspace.current
       )) == null ? void 0 : s.status;
-      return k`
-                      ${i === "EXPLORING" ? k`<button
+      return $`
+                      ${i === "EXPLORING" ? $`<button
                             title="La solución queda propuesta para revisión"
                             @click=${() => void this.solutionOp("status", { status: "PROPOSED" })}
                           >
                             → Proponer
                           </button>` : ""}
-                      ${i === "PROPOSED" ? k`<button
+                      ${i === "PROPOSED" ? $`<button
                             title="Aprueba la solución — exige lint verde y ninguna decisión abierta"
                             @click=${() => void this.solutionOp("status", { status: "APPROVED" })}
                           >
                             ✓ Aprobar
                           </button>` : ""}
-                      ${i === "APPROVED" ? k`<button
+                      ${i === "APPROVED" ? $`<button
                             title="Merge semántico al sistema: la solución pasa a ser el nuevo as-is"
                             @click=${() => void this.startMergeFlow("merge")}
                           >
@@ -13532,14 +13545,14 @@ let ue = class extends Pe {
             </div>
           ` : ""}
       ${this.renderDiffList()}
-      ${this._mergeFlow ? k`
+      ${this._mergeFlow ? $`
             <div class="merge-panel">
               <div class="merge-title">
                 ${this._mergeFlow.conflicts.length} elemento(s) cambiados en el sistema Y en la
                 solución — elige qué versión queda:
               </div>
               ${this._mergeFlow.conflicts.map(
-      (i) => k`
+      (i) => $`
                   <div class="merge-row">
                     <span class="merge-el">${i.type} · ${i.name ?? i.id}</span>
                     <label title=${i.system ?? "(eliminado en el sistema)"}>
@@ -13594,14 +13607,14 @@ let ue = class extends Pe {
         @modux-notice=${(i) => this.showToast(i.detail.message, i.detail.kind ?? "info")}
         style=${this._saving ? "opacity: 0.7" : ""}
       ></modux-editor>
-      ${this._toast ? k`<div
+      ${this._toast ? $`<div
             class="toast ${this._toast.kind}"
             role="alert"
             @click=${() => this._toast = null}
           >
             ${this._toast.kind === "error" ? "⚠" : "ℹ"} ${this._toast.message}
           </div>` : ""}
-    ` : k`<div class="status">Cargando el modelo…</div>`;
+    ` : $`<div class="status">Cargando el modelo…</div>`;
   }
 };
 ue.styles = ut`
@@ -13861,37 +13874,37 @@ we([
   J()
 ], ue.prototype, "base", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_model", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_layout", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_error", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_saving", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_toast", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_workspace", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_creatingSolution", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_newSolutionName", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_diff", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_diffListOpen", 2);
 we([
-  q()
+  z()
 ], ue.prototype, "_mergeFlow", 2);
 ue = we([
   ht("modux-editor-connected")

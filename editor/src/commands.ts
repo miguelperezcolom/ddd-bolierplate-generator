@@ -696,10 +696,11 @@ export type ModuxCommand =
       pageId: string | null;
     }
   | {
-      /** The page the app opens first (null clears it). */
+      /** What the app opens first: a page (pageId) or another app (toAppId); nulls clear. */
       kind: 'set-app-home-page';
       appId: string;
       pageId: string | null;
+      toAppId?: string | null;
     }
   | {
       /** WIZARD: the page `targetId` joins `pageId`'s steps. */

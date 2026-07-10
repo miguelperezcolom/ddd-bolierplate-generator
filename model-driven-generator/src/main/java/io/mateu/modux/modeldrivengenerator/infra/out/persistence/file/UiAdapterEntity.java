@@ -18,15 +18,26 @@ public record UiAdapterEntity(
         UiAppType appType,
         /** MASTER_DETAIL: the page rendered as the header (the tabs are its menu pages). */
         String headerPageId,
-        /** The page the app opens first. */
-        String homePageId
+        /** The page the app opens first (exclusive with homeAppId). */
+        String homePageId,
+        /** The APP it opens first — an app is just another UI component, like a page. */
+        String homeAppId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-homeAppId callers and stores). */
+    public UiAdapterEntity(String id, String name, String serviceId, String title,
+                           String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems,
+                           UiAppType appType, String headerPageId, String homePageId) {
+        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
+                homePageId, null);
+    }
 
     /** Backward-compatible constructor (pre-homePageId callers and stores). */
     public UiAdapterEntity(String id, String name, String serviceId, String title,
                            String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems,
                            UiAppType appType, String headerPageId) {
-        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId, null);
+        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
+                null, null);
     }
 
     /** Backward-compatible constructor (pre-appType callers and stores). */

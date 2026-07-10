@@ -233,7 +233,7 @@ public class EditorApiController {
     public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
-                           String type, String headerPageId, String homePageId) {}
+                           String type, String headerPageId, String homePageId, String homeAppId) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
     public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
                                   String aggregateId, String queryServiceId, String queryOperationId) {}
@@ -784,7 +784,7 @@ public class EditorApiController {
                         (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
                                 .map(EditorApiController::toMenuEntry)
                                 .toList(),
-                        a.appType().name(), a.headerPageId(), a.homePageId()))
+                        a.appType().name(), a.headerPageId(), a.homePageId(), a.homeAppId()))
                 .toList();
         var pages = repository.findAllOfType(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
@@ -3522,7 +3522,7 @@ public class EditorApiController {
                 ? io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP
                 : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
         repository.save(new UiAdapterEntity(command.id(), command.name(), null,
-                command.name(), null, null, List.of(), appType, null, null));
+                command.name(), null, null, List.of(), appType, null, null, null));
     }
 
     /** MASTER_DETAIL: the page shown as the header; null clears it. */
@@ -3536,20 +3536,33 @@ public class EditorApiController {
         repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
                 app.path(), app.appVariant(), app.menuItems(), app.appType(),
                 command.pageId() == null || command.pageId().isBlank() ? null : command.pageId(),
-                app.homePageId()));
+                app.homePageId(), app.homeAppId()));
     }
 
-    /** The page the app opens first; null clears it. */
+    /** What the app opens first — a page (pageId) or another app (toAppId); null clears. */
     private void setAppHomePage(EditorCommand command) {
         var app = repository.findById(command.appId(), UiAdapterEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.pageId() != null && !command.pageId().isBlank()) {
-            repository.findById(command.pageId(), PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (app.appType() == io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.MASTER_DETAIL) {
+            throw new IllegalArgumentException(
+                    "Un maestro-detalle no tiene home: solo cabecera y pestañas");
+        }
+        var pageId = command.pageId() == null || command.pageId().isBlank() ? null : command.pageId();
+        var toAppId = command.toAppId() == null || command.toAppId().isBlank() ? null : command.toAppId();
+        if (pageId != null) {
+            repository.findById(pageId, PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + pageId));
+        }
+        if (toAppId != null) {
+            if (toAppId.equals(app.id())) {
+                throw new IllegalArgumentException("Una app no puede ser su propia home");
+            }
+            repository.findById(toAppId, UiAdapterEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + toAppId));
         }
         repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
                 app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
-                command.pageId() == null || command.pageId().isBlank() ? null : command.pageId()));
+                toAppId != null ? null : pageId, toAppId));
     }
 
     /** WIZARD: appends the page as a step (or moves it before another step's page). */
@@ -3615,6 +3628,13 @@ public class EditorApiController {
             if (other.id().equals(command.id())) continue;
             var cleared = withoutMenuAppRefs(other.menuItems(), command.id());
             if (cleared != null) repository.save(withMenuItems(other, cleared));
+            var reloaded = repository.findById(other.id(), UiAdapterEntity.class).orElse(other);
+            if (command.id().equals(reloaded.homeAppId())) {
+                repository.save(new UiAdapterEntity(reloaded.id(), reloaded.name(),
+                        reloaded.serviceId(), reloaded.title(), reloaded.path(),
+                        reloaded.appVariant(), reloaded.menuItems(), reloaded.appType(),
+                        reloaded.headerPageId(), reloaded.homePageId(), null));
+            }
         }
         repository.deleteAllById(List.of(command.id()), UiAdapterEntity.class);
     }
@@ -3663,8 +3683,23 @@ public class EditorApiController {
         for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
             var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
             var pruned = withoutMenuEntriesFor(items, command.id());
-            if (!pruned.equals(items)) {
-                repository.save(withMenuItems(app, pruned));
+            var header = command.id().equals(app.headerPageId()) ? null : app.headerPageId();
+            var home = command.id().equals(app.homePageId()) ? null : app.homePageId();
+            if (!pruned.equals(items)
+                    || !java.util.Objects.equals(header, app.headerPageId())
+                    || !java.util.Objects.equals(home, app.homePageId())) {
+                repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(),
+                        app.title(), app.path(), app.appVariant(), pruned, app.appType(),
+                        header, home, app.homeAppId()));
+            }
+        }
+        // wizard pages lose the deleted page as a step
+        for (var pg : repository.findAllOfType(PageEntity.class)) {
+            if (pg.id().equals(command.id()) || pg.wizardSteps() == null) continue;
+            var kept = pg.wizardSteps().stream()
+                    .filter(s -> !command.id().equals(s.pageId())).toList();
+            if (kept.size() != pg.wizardSteps().size()) {
+                repository.save(withWizardSteps(pg, kept));
             }
         }
         repository.deleteAllById(List.of(command.id()), PageEntity.class);

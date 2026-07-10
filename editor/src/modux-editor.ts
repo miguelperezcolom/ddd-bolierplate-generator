@@ -998,7 +998,12 @@ export class ModuxEditor extends LitElement {
       }
       case 'set-app-home-page': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
-        return [{ kind: 'set-app-home-page', appId: c.appId, pageId: app?.homePageId ?? null }];
+        return [{
+          kind: 'set-app-home-page',
+          appId: c.appId,
+          pageId: app?.homePageId ?? null,
+          toAppId: app?.homeAppId ?? null,
+        }];
       }
       case 'add-page-wizard-step':
         return [{ kind: 'remove-page-wizard-step', pageId: c.pageId, targetId: c.targetId }];
@@ -1027,8 +1032,13 @@ export class ModuxEditor extends LitElement {
         if (app.headerPageId) {
           ops.push({ kind: 'set-app-header-page', appId: app.id, pageId: app.headerPageId });
         }
-        if (app.homePageId) {
-          ops.push({ kind: 'set-app-home-page', appId: app.id, pageId: app.homePageId });
+        if (app.homePageId || app.homeAppId) {
+          ops.push({
+            kind: 'set-app-home-page',
+            appId: app.id,
+            pageId: app.homePageId ?? null,
+            toAppId: app.homeAppId ?? null,
+          });
         }
         const rebuildMenu = (items: UiMenuEntryRef[] | undefined, parent?: UiMenuEntryRef) => {
           for (const it of items ?? []) {
@@ -2435,8 +2445,13 @@ export class ModuxEditor extends LitElement {
       const isApp = (id: string) => apps.some((a) => a.id === id);
       const isPage = (id: string) => pages.some((x) => x.id === id);
       // typed handles first: they say exactly WHAT the line means
-      if (connectKind === 'home' && isApp(sourceId) && isPage(targetId)) {
-        this.command({ kind: 'set-app-home-page', appId: sourceId, pageId: targetId });
+      if (connectKind === 'home' && isApp(sourceId) && (isPage(targetId) || isApp(targetId))) {
+        if (targetId === sourceId) return;
+        this.command(
+          isPage(targetId)
+            ? { kind: 'set-app-home-page', appId: sourceId, pageId: targetId }
+            : { kind: 'set-app-home-page', appId: sourceId, pageId: null, toAppId: targetId },
+        );
         return;
       }
       if (connectKind === 'header' && isApp(sourceId) && isPage(targetId)) {

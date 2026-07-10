@@ -86,12 +86,11 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: appType === 'ORCHESTRATOR' ? '#c026d3' : '#0ea5e9',
       container: true,
       badge: appType === 'ORCHESTRATOR' ? 'ORQUESTADOR' : appType === 'MASTER_DETAIL' ? 'MAESTRO·DETALLE' : 'APP',
-      extraHandles: [
-        { kind: 'home', title: 'Home: arrastra hasta la página con la que abre la app', color: '#16a34a' },
-        ...(appType === 'MASTER_DETAIL'
+      // a master-detail has no home: only its header and its tabs
+      extraHandles:
+        appType === 'MASTER_DETAIL'
           ? [{ kind: 'header', title: 'Cabecera: arrastra hasta la página que hace de cabecera', color: '#0ea5e9' }]
-          : []),
-      ],
+          : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
       tooltip:
         appType === 'ORCHESTRATOR'
           ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
@@ -99,16 +98,17 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
             ? `${app.name} — cabecera + pestañas (ambas son páginas)`
             : `App: ${app.name}`,
     });
-    if (app.homePageId) {
+    const home = app.homePageId ?? app.homeAppId;
+    if (home) {
       edges.push({
-        id: `apphome:${app.id}->${app.homePageId}`,
+        id: `apphome:${app.id}->${home}`,
         sourceId: app.id,
-        targetId: app.homePageId,
+        targetId: home,
         kind: 'app-home',
         color: '#16a34a',
         label: 'home',
         arrow: true,
-        tooltip: 'la página con la que abre la app',
+        tooltip: app.homeAppId ? 'la app con la que abre' : 'la página con la que abre la app',
       });
     }
     if (appType === 'MASTER_DETAIL' && app.headerPageId) {
