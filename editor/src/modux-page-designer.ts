@@ -50,6 +50,8 @@ export class ModuxPageDesigner extends LitElement {
   @state() private _cmp: UiComponentNodeRef | null = null;
   @state() private _dragCmpId: string | null = null;
   @state() private _overCmpId: string | null = null;
+  /** Where the drop lands relative to the hovered node: a sibling slot or inside it. */
+  @state() private _overCmpPos: 'before' | 'after' | 'into' = 'into';
 
   private emitEvent(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -302,9 +304,18 @@ export class ModuxPageDesigner extends LitElement {
     .cmp:hover {
       border-color: #38bdf8;
     }
-    .cmp.overcmp {
+    .cmp.overcmp.over-into {
       border-color: #0284c7;
       background: #f0f9ff;
+    }
+    .cmp.overcmp.over-before {
+      box-shadow: 0 -3px 0 0 #0284c7;
+    }
+    .cmp.overcmp.over-after {
+      box-shadow: 0 3px 0 0 #0284c7;
+    }
+    .cmp {
+      cursor: grab;
     }
     .cmp .kindchip {
       position: absolute;
@@ -591,26 +602,63 @@ export class ModuxPageDesigner extends LitElement {
     return found;
   }
 
-  private onCmpDrop(target: UiComponentNodeRef): void {
+  /** True when `id` lives inside the subtree rooted at `rootId` (or IS it). */
+  private isWithin(id: string, rootId: string): boolean {
+    let hit = false;
+    const walk = (n: UiComponentNodeRef) => {
+      if (n.id === id) hit = true;
+      for (const c of n.children ?? []) walk(c);
+    };
+    const find = (items: UiComponentNodeRef[] | undefined) => {
+      for (const it of items ?? []) {
+        if (it.id === rootId) walk(it);
+        else find(it.children);
+      }
+    };
+    find(this.page?.content);
+    return hit;
+  }
+
+  /** The sibling right after `componentId` under its parent (null when it closes the list). */
+  private nextSiblingOf(componentId: string): UiComponentNodeRef | null {
+    const parent = this.parentOf(componentId);
+    const siblings = parent ? (parent.children ?? []) : (this.page?.content ?? []);
+    const i = siblings.findIndex((s) => s.id === componentId);
+    return i >= 0 ? (siblings[i + 1] ?? null) : null;
+  }
+
+  /** Sibling slot vs inside, from where the pointer is over the node's box. */
+  private dropPosFor(node: UiComponentNodeRef, e: DragEvent): 'before' | 'after' | 'into' {
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = (e.clientY - box.top) / Math.max(1, box.height);
+    if (ModuxPageDesigner.LEAF_KINDS.has(node.kind)) return y < 0.5 ? 'before' : 'after';
+    // layouts: the edges slot a sibling, the body drops inside
+    return y < 0.2 ? 'before' : y > 0.8 ? 'after' : 'into';
+  }
+
+  private onCmpDrop(target: UiComponentNodeRef, pos: 'before' | 'after' | 'into'): void {
     const source = this._dragCmpId;
     this._dragCmpId = null;
     this._overCmpId = null;
     if (!source || source === target.id) return;
-    if (target.kind === 'tabLayout' && (target.children ?? [])[0]) {
+    // A node never lands inside its own subtree.
+    if (this.isWithin(target.id, source)) return;
+    if (pos === 'into' && target.kind === 'tabLayout' && (target.children ?? [])[0]) {
       target = (target.children ?? [])[0]; // tabs hold the content — land in the active one
     }
-    if (!ModuxPageDesigner.LEAF_KINDS.has(target.kind)) {
-      // dropped on a layout: the node moves inside it
+    if (pos === 'into' && !ModuxPageDesigner.LEAF_KINDS.has(target.kind)) {
       this.emitEvent('component-moved', { componentId: source, toParentId: target.id, beforeComponentId: null });
-    } else {
-      // dropped on a sibling-ish component: the node slots in before it
-      const parent = this.parentOf(target.id);
-      this.emitEvent('component-moved', {
-        componentId: source,
-        toParentId: parent?.id ?? null,
-        beforeComponentId: target.id,
-      });
+      return;
     }
+    // A sibling slot, before or after the hovered node.
+    const parent = this.parentOf(target.id);
+    const before = pos === 'after' ? (this.nextSiblingOf(target.id)?.id ?? null) : target.id;
+    if (before === source) return; // already there
+    this.emitEvent('component-moved', {
+      componentId: source,
+      toParentId: parent?.id ?? null,
+      beforeComponentId: before,
+    });
   }
 
   /** One node of the composed page: a labeled, droppable, clickable mockup. */
@@ -748,24 +796,36 @@ export class ModuxPageDesigner extends LitElement {
         body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;
     }
     const leaf = ModuxPageDesigner.LEAF_KINDS.has(node.kind);
+    const over = this._overCmpId === node.id && this._dragCmpId;
     return html`<div
-      class="cmp ${leaf ? 'leafcmp' : ''} ${this._overCmpId === node.id ? 'overcmp' : ''}"
+      class="cmp ${leaf ? 'leafcmp' : ''} ${over ? `overcmp over-${this._overCmpPos}` : ''}"
       data-cmp-id=${node.id}
+      draggable="true"
       @click=${(e: Event) => {
         e.stopPropagation();
         this._cmp = { ...node };
+      }}
+      @dragstart=${(e: DragEvent) => {
+        // The whole node is the handle; the innermost one wins over its ancestors.
+        e.stopPropagation();
+        this._dragCmpId = node.id;
+      }}
+      @dragend=${() => {
+        this._dragCmpId = null;
+        this._overCmpId = null;
       }}
       @dragover=${(e: DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         this._overCmpId = node.id;
+        this._overCmpPos = this._dragCmpId ? this.dropPosFor(node, e) : 'into';
       }}
       @dragleave=${() => (this._overCmpId = null)}
       @drop=${(e: DragEvent) => {
         if (!this._dragCmpId) return; // palette drops bubble up to the surface
         e.preventDefault();
         e.stopPropagation();
-        this.onCmpDrop(node);
+        this.onCmpDrop(node, this._overCmpPos);
       }}
     >
       <span
@@ -801,7 +861,10 @@ export class ModuxPageDesigner extends LitElement {
                     data-field-id=${f.fieldId}
                     title="Click: editar declaración · arrastra para reordenar"
                     @click=${() => this.onFieldClick(f)}
-                    @dragstart=${() => (this._dragId = f.fieldId)}
+                    @dragstart=${(e: DragEvent) => {
+                      e.stopPropagation();
+                      this._dragId = f.fieldId;
+                    }}
                     @dragover=${(e: DragEvent) => {
                       e.preventDefault();
                       this._overId = f.fieldId;
