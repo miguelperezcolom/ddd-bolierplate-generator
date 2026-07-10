@@ -1024,6 +1024,25 @@ export class ModuxEditor extends LitElement {
         }
         return ops;
       }
+      case 'set-crud-detail':
+      case 'set-crud-create': {
+        const pg = (this.model.pages ?? []).find((x) => x.id === c.pageId);
+        const detail = c.kind === 'set-crud-detail';
+        return [{
+          kind: c.kind,
+          pageId: c.pageId,
+          targetId: (detail ? pg?.crudDetailPageId : pg?.crudCreatePageId) ?? null,
+          toAppId: (detail ? pg?.crudDetailAppId : pg?.crudCreateAppId) ?? null,
+        }];
+      }
+      case 'set-app-view-page': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
+        return [{ kind: 'set-app-view-page', appId: c.appId, pageId: app?.viewPageId ?? null }];
+      }
+      case 'set-app-edit-page': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
+        return [{ kind: 'set-app-edit-page', appId: c.appId, pageId: app?.editPageId ?? null }];
+      }
       case 'set-app-home-page': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
         return [{
@@ -1062,6 +1081,12 @@ export class ModuxEditor extends LitElement {
         }
         if (app.modelId) {
           ops.push({ kind: 'set-app-model', appId: app.id, modelId: app.modelId });
+        }
+        if (app.viewPageId) {
+          ops.push({ kind: 'set-app-view-page', appId: app.id, pageId: app.viewPageId });
+        }
+        if (app.editPageId) {
+          ops.push({ kind: 'set-app-edit-page', appId: app.id, pageId: app.editPageId });
         }
         if (app.homePageId || app.homeAppId) {
           ops.push({
@@ -1159,6 +1184,12 @@ export class ModuxEditor extends LitElement {
         }
         for (const s of pg.wizardSteps ?? []) {
           ops.push({ kind: 'add-page-wizard-step', pageId: pg.id, targetId: s.pageId, label: s.label });
+        }
+        if (pg.crudDetailPageId || pg.crudDetailAppId) {
+          ops.push({ kind: 'set-crud-detail', pageId: pg.id, targetId: pg.crudDetailPageId ?? null, toAppId: pg.crudDetailAppId ?? null });
+        }
+        if (pg.crudCreatePageId || pg.crudCreateAppId) {
+          ops.push({ kind: 'set-crud-create', pageId: pg.id, targetId: pg.crudCreatePageId ?? null, toAppId: pg.crudCreateAppId ?? null });
         }
         // Menu entries pointing at the page are pruned server-side and stay pruned.
         return ops;
@@ -2489,6 +2520,28 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'set-app-header-page', appId: sourceId, pageId: targetId });
         return;
       }
+      if (
+        (connectKind === 'crud-detail' || connectKind === 'crud-create') &&
+        isPage(sourceId) &&
+        (isPage(targetId) || isApp(targetId)) &&
+        targetId !== sourceId
+      ) {
+        const kind = connectKind === 'crud-detail' ? 'set-crud-detail' : 'set-crud-create';
+        this.command(
+          isPage(targetId)
+            ? { kind, pageId: sourceId, targetId, toAppId: null }
+            : { kind, pageId: sourceId, targetId: null, toAppId: targetId },
+        );
+        return;
+      }
+      if ((connectKind === 'view' || connectKind === 'edit') && isApp(sourceId) && isPage(targetId)) {
+        this.command({
+          kind: connectKind === 'view' ? 'set-app-view-page' : 'set-app-edit-page',
+          appId: sourceId,
+          pageId: targetId,
+        });
+        return;
+      }
       if (connectKind === 'wizard-step' && isPage(sourceId) && isPage(targetId) && sourceId !== targetId) {
         const wiz = pages.find((pg) => pg.id === sourceId)!;
         if ((wiz.wizardSteps ?? []).some((s) => s.pageId === targetId)) return;
@@ -3496,6 +3549,14 @@ export class ModuxEditor extends LitElement {
           this.command({ kind: 'set-app-home-page', appId: m[1], pageId: null });
         } else if ((m = /^appmodel:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-app-model', appId: m[1], modelId: null });
+        } else if ((m = /^appview:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-app-view-page', appId: m[1], pageId: null });
+        } else if ((m = /^appedit:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-app-edit-page', appId: m[1], pageId: null });
+        } else if ((m = /^cruddetail:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-crud-detail', pageId: m[1], targetId: null, toAppId: null });
+        } else if ((m = /^crudnew:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-crud-create', pageId: m[1], targetId: null, toAppId: null });
         } else if ((m = /^wizstep:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
         } else if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
@@ -4859,6 +4920,7 @@ export class ModuxEditor extends LitElement {
     { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-app-orchestrator', label: 'Orquestador', symbol: 'process', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },
+    { type: 'ui-app-vieweditor', label: 'Vista-editor', symbol: 'process', color: '#c026d3', group: 'UI' },
     { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7', group: 'UI' },
     { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-page-crud', label: 'CRUD', child: true, symbol: 'lens', color: '#0284c7', group: 'UI' },
@@ -5286,7 +5348,7 @@ export class ModuxEditor extends LitElement {
         module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
-        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-model': 'model-',
+        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5314,7 +5376,9 @@ export class ModuxEditor extends LitElement {
                               ? { kind: 'create-ui-app', id, name, type: 'ORCHESTRATOR' }
                               : type === 'ui-app-masterdetail'
                                 ? { kind: 'create-ui-app', id, name, type: 'MASTER_DETAIL' }
-                                : type === 'ui-model'
+                                : type === 'ui-app-vieweditor'
+                                  ? { kind: 'create-ui-app', id, name, type: 'VIEW_EDITOR' }
+                                  : type === 'ui-model'
                                   ? { kind: 'add-model', id, name }
                                   : {
                                 kind: 'add-workflow',
@@ -5667,7 +5731,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item', 'ui-model'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item', 'ui-model'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&

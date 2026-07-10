@@ -81,18 +81,30 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       w: APP_W,
       h,
       kind: 'ui-app',
-      symbol: appType === 'ORCHESTRATOR' ? 'process' : 'component',
-      fill: appType === 'ORCHESTRATOR' ? '#fdf4ff' : '#f0f9ff',
-      stroke: appType === 'ORCHESTRATOR' ? '#c026d3' : '#0ea5e9',
+      symbol: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? 'process' : 'component',
+      fill: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? '#fdf4ff' : '#f0f9ff',
+      stroke: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? '#c026d3' : '#0ea5e9',
       container: true,
-      badge: appType === 'ORCHESTRATOR' ? 'ORQUESTADOR' : appType === 'MASTER_DETAIL' ? 'MAESTRO·DETALLE' : 'APP',
+      badge:
+        appType === 'ORCHESTRATOR'
+          ? 'ORQUESTADOR'
+          : appType === 'MASTER_DETAIL'
+            ? 'MAESTRO·DETALLE'
+            : appType === 'VIEW_EDITOR'
+              ? 'VISTA·EDITOR'
+              : 'APP',
       // only a plain APP has a home; MD is header+tabs, the orchestrator only child pages
       extraHandles:
         appType === 'MASTER_DETAIL'
           ? [{ kind: 'header', title: 'Cabecera: arrastra hasta la página que hace de cabecera', color: '#0ea5e9' }]
-          : appType === 'ORCHESTRATOR'
-            ? undefined
-            : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
+          : appType === 'VIEW_EDITOR'
+            ? [
+                { kind: 'view', title: 'Vista: arrastra hasta la página de detalle (solo lectura)', color: '#0891b2' },
+                { kind: 'edit', title: 'Edición: arrastra hasta la página de edición', color: '#e11d48' },
+              ]
+            : appType === 'ORCHESTRATOR'
+              ? undefined
+              : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
       tooltip:
         appType === 'ORCHESTRATOR'
           ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
@@ -117,6 +129,22 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         dashed: true,
         arrow: true,
         tooltip: 'el viewmodel de la app: el estado que mantiene y comparte con sus páginas',
+      });
+    }
+    for (const [pid, kindName, label, color, tip] of [
+      [app.viewPageId, 'app-view', 'vista', '#0891b2', 'el detalle solo lectura'],
+      [app.editPageId, 'app-edit', 'edición', '#e11d48', 'la vista de edición'],
+    ] as const) {
+      if (!pid) continue;
+      edges.push({
+        id: `${kindName === 'app-view' ? 'appview' : 'appedit'}:${app.id}->${pid}`,
+        sourceId: app.id,
+        targetId: pid,
+        kind: kindName,
+        color,
+        label,
+        arrow: true,
+        tooltip: tip,
       });
     }
     const home = app.homePageId ?? app.homeAppId;
@@ -282,7 +310,12 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       extraHandles:
         page.type === 'WIZARD'
           ? [{ kind: 'wizard-step', title: 'Paso: arrastra hasta la página que será el siguiente paso', color: '#7c3aed' }]
-          : undefined,
+          : page.type === 'CRUD'
+            ? [
+                { kind: 'crud-detail', title: 'Detalle: arrastra hasta la página o app que abre una fila', color: '#ea580c' },
+                { kind: 'crud-create', title: 'Alta: arrastra hasta la página o app del nuevo registro', color: '#0d9488' },
+              ]
+            : undefined,
       fill: '#ffffff',
       stroke: '#0284c7',
       tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),
@@ -305,6 +338,23 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       });
       stepY += ENTRY_H + ENTRY_GAP;
     });
+    for (const [target, kindName, label, color] of [
+      [page.crudDetailPageId ?? page.crudDetailAppId, 'crud-detail', 'detalle', '#ea580c'],
+      [page.crudCreatePageId ?? page.crudCreateAppId, 'crud-create', 'nuevo', '#0d9488'],
+    ] as const) {
+      if (!target) continue;
+      edges.push({
+        id: `${kindName === 'crud-detail' ? 'cruddetail' : 'crudnew'}:${page.id}->${target}`,
+        sourceId: page.id,
+        targetId: target,
+        kind: kindName,
+        color,
+        label,
+        dashed: true,
+        arrow: true,
+        tooltip: kindName === 'crud-detail' ? 'lo que abre una fila del CRUD' : 'el formulario de nuevo registro',
+      });
+    }
     for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
       const step = (page.wizardSteps ?? [])[i];
       edges.push({

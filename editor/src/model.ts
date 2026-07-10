@@ -513,6 +513,10 @@ export interface UiAppRef {
   homeAppId?: string;
   /** The app's viewmodel: the state an orchestrator keeps, shared with its pages. */
   modelId?: string;
+  /** VIEW_EDITOR: the read-only detail view. */
+  viewPageId?: string;
+  /** VIEW_EDITOR: the edit view. */
+  editPageId?: string;
 }
 
 export interface UiPageButtonRef {
@@ -564,6 +568,12 @@ export interface UiPageRef {
   content?: UiComponentNodeRef[];
   /** WIZARD: the pages that compose it, in order. */
   wizardSteps?: { pageId: string; label?: string }[];
+  /** CRUD: what opens a row — a page or an app of any archetype. */
+  crudDetailPageId?: string;
+  crudDetailAppId?: string;
+  /** CRUD: the new-record form — a page or an app. */
+  crudCreatePageId?: string;
+  crudCreateAppId?: string;
 }
 
 export interface ActorAppUseRef {

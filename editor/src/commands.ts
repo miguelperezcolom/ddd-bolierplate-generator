@@ -724,6 +724,32 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model'; id: string }
   | {
+      /** CRUD: what opens a row — a page (targetId) or an app (toAppId); nulls clear. */
+      kind: 'set-crud-detail';
+      pageId: string;
+      targetId?: string | null;
+      toAppId?: string | null;
+    }
+  | {
+      /** CRUD: the new-record form — a page (targetId) or an app (toAppId); nulls clear. */
+      kind: 'set-crud-create';
+      pageId: string;
+      targetId?: string | null;
+      toAppId?: string | null;
+    }
+  | {
+      /** VIEW_EDITOR: the read-only detail view (null clears it). */
+      kind: 'set-app-view-page';
+      appId: string;
+      pageId: string | null;
+    }
+  | {
+      /** VIEW_EDITOR: the edit view (null clears it). */
+      kind: 'set-app-edit-page';
+      appId: string;
+      pageId: string | null;
+    }
+  | {
       /** WIZARD: re-slots the step before another step's page (null = the end). */
       kind: 'move-page-wizard-step';
       pageId: string;

@@ -8,5 +8,7 @@ package io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo;
 public enum UiAppType {
     APP,
     ORCHESTRATOR,
-    MASTER_DETAIL
+    MASTER_DETAIL,
+    /** An orchestrator pairing a read-only detail view with an edit view. */
+    VIEW_EDITOR
 }

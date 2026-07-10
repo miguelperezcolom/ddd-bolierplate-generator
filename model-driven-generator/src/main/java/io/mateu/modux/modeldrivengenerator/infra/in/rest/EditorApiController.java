@@ -234,7 +234,7 @@ public class EditorApiController {
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
                            String type, String headerPageId, String homePageId, String homeAppId,
-                           String modelId) {}
+                           String modelId, String viewPageId, String editPageId) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
     public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
                                   String aggregateId, String queryServiceId, String queryOperationId) {}
@@ -244,7 +244,9 @@ public class EditorApiController {
                             List<UiPageButtonDto> buttons,
                             List<UiFieldDto> viewmodelFields,
                             List<UiComponentNodeDto> content,
-                            List<UiWizardStepDto> wizardSteps) {}
+                            List<UiWizardStepDto> wizardSteps,
+                            String crudDetailPageId, String crudDetailAppId,
+                            String crudCreatePageId, String crudCreateAppId) {}
 
     public record UiWizardStepDto(String pageId, String label) {}
     /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
@@ -786,7 +788,7 @@ public class EditorApiController {
                                 .map(EditorApiController::toMenuEntry)
                                 .toList(),
                         a.appType().name(), a.headerPageId(), a.homePageId(), a.homeAppId(),
-                        a.modelId()))
+                        a.modelId(), a.viewPageId(), a.editPageId()))
                 .toList();
         var pages = repository.findAllOfType(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
@@ -805,7 +807,9 @@ public class EditorApiController {
                                 .toList(),
                         (p.wizardSteps() == null ? List.<PageWizardStepEntity>of() : p.wizardSteps()).stream()
                                 .map(s -> new UiWizardStepDto(s.pageId(), s.label()))
-                                .toList()))
+                                .toList(),
+                        p.crudDetailPageId(), p.crudDetailAppId(),
+                        p.crudCreatePageId(), p.crudCreateAppId()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
@@ -1120,6 +1124,10 @@ public class EditorApiController {
             case "set-app-header-page" -> setAppHeaderPage(command);
             case "set-app-home-page" -> setAppHomePage(command);
             case "set-app-model" -> setAppModel(command);
+            case "set-crud-detail" -> setCrudTarget(command, true);
+            case "set-crud-create" -> setCrudTarget(command, false);
+            case "set-app-view-page" -> setAppViewOrEdit(command, true);
+            case "set-app-edit-page" -> setAppViewOrEdit(command, false);
             case "add-model" -> addModel(command);
             case "remove-model" -> removeModel(command);
             case "add-page-wizard-step" -> addPageWizardStep(command);
@@ -3636,6 +3644,46 @@ public class EditorApiController {
                 command.modelId() == null || command.modelId().isBlank() ? null : command.modelId()));
     }
 
+    /** CRUD: what opens a row / the new-record form — a page OR an app; nulls clear. */
+    private void setCrudTarget(EditorCommand command, boolean detail) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        if (!"CRUD".equalsIgnoreCase(page.type() == null ? "" : page.type())) {
+            throw new IllegalArgumentException("Solo un CRUD tiene detalle y formulario de alta");
+        }
+        var targetPage = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        var targetApp = command.toAppId() == null || command.toAppId().isBlank() ? null : command.toAppId();
+        if (targetPage != null) {
+            repository.findById(targetPage, PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + targetPage));
+        }
+        if (targetApp != null) {
+            repository.findById(targetApp, UiAdapterEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + targetApp));
+        }
+        var pageRef = targetApp != null ? null : targetPage;
+        repository.save(detail
+                ? page.toBuilder().crudDetailPageId(pageRef).crudDetailAppId(targetApp).build()
+                : page.toBuilder().crudCreatePageId(pageRef).crudCreateAppId(targetApp).build());
+    }
+
+    /** VIEW_EDITOR: the read-only view / the edit view; null clears. */
+    private void setAppViewOrEdit(EditorCommand command, boolean view) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (app.appType() != io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.VIEW_EDITOR) {
+            throw new IllegalArgumentException("Solo un vista-editor tiene vista y edición");
+        }
+        var pageId = command.pageId() == null || command.pageId().isBlank() ? null : command.pageId();
+        if (pageId != null) {
+            repository.findById(pageId, PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + pageId));
+        }
+        repository.save(view
+                ? app.toBuilder().viewPageId(pageId).build()
+                : app.toBuilder().editPageId(pageId).build());
+    }
+
     /** WIZARD: appends the page as a step (or moves it before another step's page). */
     private void addPageWizardStep(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
@@ -3701,10 +3749,16 @@ public class EditorApiController {
             if (cleared != null) repository.save(withMenuItems(other, cleared));
             var reloaded = repository.findById(other.id(), UiAdapterEntity.class).orElse(other);
             if (command.id().equals(reloaded.homeAppId())) {
-                repository.save(new UiAdapterEntity(reloaded.id(), reloaded.name(),
-                        reloaded.serviceId(), reloaded.title(), reloaded.path(),
-                        reloaded.appVariant(), reloaded.menuItems(), reloaded.appType(),
-                        reloaded.headerPageId(), reloaded.homePageId(), null, reloaded.modelId()));
+                repository.save(reloaded.toBuilder().homeAppId(null).build());
+            }
+        }
+        // CRUDs pointing at the deleted app (detail/create) lose the ref
+        for (var pg : repository.findAllOfType(PageEntity.class)) {
+            if (command.id().equals(pg.crudDetailAppId()) || command.id().equals(pg.crudCreateAppId())) {
+                repository.save(pg.toBuilder()
+                        .crudDetailAppId(command.id().equals(pg.crudDetailAppId()) ? null : pg.crudDetailAppId())
+                        .crudCreateAppId(command.id().equals(pg.crudCreateAppId()) ? null : pg.crudCreateAppId())
+                        .build());
             }
         }
         repository.deleteAllById(List.of(command.id()), UiAdapterEntity.class);
@@ -3762,6 +3816,24 @@ public class EditorApiController {
                 repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(),
                         app.title(), app.path(), app.appVariant(), pruned, app.appType(),
                         header, home, app.homeAppId(), app.modelId()));
+            }
+        }
+        // CRUDs pointing at the deleted page (detail/create) and view-editors lose the ref
+        for (var pg : repository.findAllOfType(PageEntity.class)) {
+            if (pg.id().equals(command.id())) continue;
+            if (command.id().equals(pg.crudDetailPageId()) || command.id().equals(pg.crudCreatePageId())) {
+                repository.save(pg.toBuilder()
+                        .crudDetailPageId(command.id().equals(pg.crudDetailPageId()) ? null : pg.crudDetailPageId())
+                        .crudCreatePageId(command.id().equals(pg.crudCreatePageId()) ? null : pg.crudCreatePageId())
+                        .build());
+            }
+        }
+        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
+            if (command.id().equals(app.viewPageId()) || command.id().equals(app.editPageId())) {
+                repository.save(app.toBuilder()
+                        .viewPageId(command.id().equals(app.viewPageId()) ? null : app.viewPageId())
+                        .editPageId(command.id().equals(app.editPageId()) ? null : app.editPageId())
+                        .build());
             }
         }
         // wizard pages lose the deleted page as a step
