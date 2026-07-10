@@ -561,18 +561,26 @@ export class ModuxCanvas extends LitElement {
     // on another external system re-homes the API (the handle stays for relations).
     const freeDrag = (ev: PointerEvent) =>
       (ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group;
-    // Menu rows drag FREE between apps, landing on explicit slots between the options.
-    const menuRow = (node.kind === 'menu-item' || node.kind === 'menu-group') && !group;
+    // Row nodes drag FREE, landing on explicit slots between their siblings: menu
+    // entries travel across apps; wizard steps reorder inside their own wizard.
+    const rowFamily = group
+      ? null
+      : node.kind === 'menu-item' || node.kind === 'menu-group'
+        ? 'menu'
+        : node.kind === 'wizard-step-row'
+          ? 'wizard'
+          : null;
+    const menuRow = rowFamily !== null;
+    const rowKinds = rowFamily === 'menu' ? ['menu-item', 'menu-group'] : ['wizard-step-row'];
     const menuSlotsOf = () => {
       const slots: { x1: number; x2: number; y: number; appId: string; beforeId: string | null }[] = [];
-      for (const app of this.scene.nodes.filter((n) => n.kind === 'ui-app')) {
+      const containers =
+        rowFamily === 'menu'
+          ? this.scene.nodes.filter((n) => n.kind === 'ui-app')
+          : this.scene.nodes.filter((n) => n.id === node.parentId);
+      for (const app of containers) {
         const rows = this.scene.nodes
-          .filter(
-            (n) =>
-              n.parentId === app.id &&
-              (n.kind === 'menu-item' || n.kind === 'menu-group') &&
-              n.id !== node.id,
-          )
+          .filter((n) => n.parentId === app.id && rowKinds.includes(n.kind ?? '') && n.id !== node.id)
           .sort((r1, r2) => r1.y - r2.y);
         const x1 = app.x - app.w / 2 + CONTAINER_INSET;
         const x2 = app.x + app.w / 2 - CONTAINER_INSET;
@@ -624,11 +632,11 @@ export class ModuxCanvas extends LitElement {
         // nearest slot line (within reach) takes the drop.
         const rows = this.scene.nodes.filter(
           (n) =>
-            (n.kind === 'menu-item' || n.kind === 'menu-group') &&
+            rowKinds.includes(n.kind ?? '') &&
             n.id !== node.id &&
             Math.abs(p.x - n.x) <= n.w / 2 + 8,
         );
-        const nest = rows.find((n) => Math.abs(p.y - n.y) < n.h * 0.28);
+        const nest = rowFamily === 'menu' ? rows.find((n) => Math.abs(p.y - n.y) < n.h * 0.28) : undefined;
         if (nest) {
           this._menuSlots = { ...this._menuSlots, active: null, nestRowId: nest.id };
           this._hoverNodeId = nest.id;
@@ -666,11 +674,12 @@ export class ModuxCanvas extends LitElement {
         this._menuSlots = null;
         this._dragPos = null;
         this._hoverNodeId = null;
+        const slotEvent = rowFamily === 'wizard' ? 'wizard-slot-requested' : 'menu-slot-requested';
         if (state?.nestRowId) {
-          this.emit('menu-slot-requested', { id: node.id, nestRowId: state.nestRowId });
+          this.emit(slotEvent, { id: node.id, nestRowId: state.nestRowId });
         } else if (state && state.active !== null) {
           const slot = state.slots[state.active];
-          this.emit('menu-slot-requested', { id: node.id, appId: slot.appId, beforeId: slot.beforeId });
+          this.emit(slotEvent, { id: node.id, appId: slot.appId, beforeId: slot.beforeId });
         }
         return;
       } else if (moved && this._dragPos) {

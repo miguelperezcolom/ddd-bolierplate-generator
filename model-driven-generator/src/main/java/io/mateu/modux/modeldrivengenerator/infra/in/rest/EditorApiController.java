@@ -1119,6 +1119,7 @@ public class EditorApiController {
             case "set-app-home-page" -> setAppHomePage(command);
             case "add-page-wizard-step" -> addPageWizardStep(command);
             case "remove-page-wizard-step" -> removePageWizardStep(command);
+            case "move-page-wizard-step" -> movePageWizardStep(command);
             case "delete-ui-app" -> deleteUiApp(command);
             case "create-ui-page" -> createUiPage(command);
             case "delete-ui-page" -> deleteUiPage(command);
@@ -3575,6 +3576,23 @@ public class EditorApiController {
                 .filter(s -> !command.targetId().equals(s.pageId()))
                 .toList();
         repository.save(withWizardSteps(page, steps));
+    }
+
+    /** WIZARD: re-slots the step `targetId` before `beforeItemId` (append when null). */
+    private void movePageWizardStep(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var steps = page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps();
+        var moving = steps.stream().filter(s -> command.targetId().equals(s.pageId())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown wizard step: " + command.targetId()));
+        var rest = new ArrayList<>(steps.stream()
+                .filter(s -> !command.targetId().equals(s.pageId())).toList());
+        var at = command.beforeItemId() == null ? -1
+                : java.util.stream.IntStream.range(0, rest.size())
+                        .filter(i -> command.beforeItemId().equals(rest.get(i).pageId()))
+                        .findFirst().orElse(-1);
+        if (at < 0) rest.add(moving); else rest.add(at, moving);
+        repository.save(withWizardSteps(page, rest));
     }
 
     /** Record copy with only wizardSteps replaced. */

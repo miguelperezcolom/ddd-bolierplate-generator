@@ -1002,6 +1002,18 @@ export class ModuxEditor extends LitElement {
       }
       case 'add-page-wizard-step':
         return [{ kind: 'remove-page-wizard-step', pageId: c.pageId, targetId: c.targetId }];
+      case 'move-page-wizard-step': {
+        const steps = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
+          .map((s) => s.pageId);
+        const at = steps.indexOf(c.targetId);
+        if (at < 0) return null;
+        return [{
+          kind: 'move-page-wizard-step',
+          pageId: c.pageId,
+          targetId: c.targetId,
+          beforeItemId: steps[at + 1] ?? null,
+        }];
+      }
       case 'remove-page-wizard-step': {
         const step = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
           .find((s) => s.pageId === c.targetId);
@@ -3464,6 +3476,11 @@ export class ModuxEditor extends LitElement {
         if (ref) this.command({ kind: 'remove-menu-item', ...ref });
         return;
       }
+      if (kind === 'wizard-step-row') {
+        const m = /^wizrow:([^:]+):(.+)$/.exec(id);
+        if (m) this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
+        return;
+      }
       // system chips (use cases, query services, models, actors) are not deletable from here
       return;
     }
@@ -4504,6 +4521,20 @@ export class ModuxEditor extends LitElement {
     }
     if (!appId) return;
     this.command({ kind: 'move-menu-item', appId: src.appId, toAppId: appId, itemId: src.itemId });
+  };
+
+  /** A wizard step row dropped on a slot: re-slot it before the target step. */
+  private onWizardSlotRequested = (e: CustomEvent): void => {
+    const { id, beforeId } = e.detail as { id: string; beforeId?: string | null };
+    const src = /^wizrow:([^:]+):(.+)$/.exec(id);
+    if (!src) return;
+    const before = beforeId ? /^wizrow:[^:]+:(.+)$/.exec(beforeId)?.[1] ?? null : null;
+    if (before === src[2]) return;
+    // already exactly there? the slot before the NEXT step is this step's own place
+    const steps = ((this.model.pages ?? []).find((pg) => pg.id === src[1])?.wizardSteps ?? []).map((s) => s.pageId);
+    const at = steps.indexOf(src[2]);
+    if (at >= 0 && (before ? steps[at + 1] === before : at === steps.length - 1)) return;
+    this.command({ kind: 'move-page-wizard-step', pageId: src[1], targetId: src[2], beforeItemId: before });
   };
 
   /** A menu entry (with its parent and next sibling) inside an app's tree, by id. */
@@ -6335,6 +6366,7 @@ export class ModuxEditor extends LitElement {
         @node-reparent-requested=${this.onNodeReparentRequested}
         @node-collapse-toggled=${this.onNodeCollapseToggled}
         @menu-slot-requested=${this.onMenuSlotRequested}
+        @wizard-slot-requested=${this.onWizardSlotRequested}
         @node-proxy-requested=${this.onNodeProxyRequested}
         @node-resized=${this.onNodeResized}
         @connect-requested=${this.onConnectRequested}

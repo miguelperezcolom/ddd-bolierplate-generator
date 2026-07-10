@@ -709,6 +709,13 @@ export type ModuxCommand =
       label?: string;
     }
   | { kind: 'remove-page-wizard-step'; pageId: string; targetId: string }
+  | {
+      /** WIZARD: re-slots the step before another step's page (null = the end). */
+      kind: 'move-page-wizard-step';
+      pageId: string;
+      targetId: string;
+      beforeItemId?: string | null;
+    }
   | { kind: 'delete-ui-app'; id: string }
   | {
       kind: 'create-ui-page';

@@ -238,19 +238,26 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
 
   // ---- pages, each with its MVVM satellites -------------------------------
   let pageY = 160;
+  const pageNameOf = (pid: string) => pages.find((x) => x.id === pid)?.name ?? pid;
   for (const page of pages) {
     const pos = layout[page.id] ?? { x: 640, y: pageY };
-    pageY = pos.y + PAGE_H + 90;
+    const wizSteps = page.type === 'WIZARD' ? (page.wizardSteps ?? []) : [];
+    // a wizard with steps is a CONTAINER: its steps stack inside as ordered rows
+    const h = wizSteps.length
+      ? CONTAINER_HEADER + CONTAINER_INSET * 2 + wizSteps.length * (ENTRY_H + ENTRY_GAP)
+      : PAGE_H;
+    pageY = pos.y + h + 90;
     nodes.push({
       id: page.id,
       label: page.name,
       x: pos.x,
       y: pos.y,
       w: PAGE_W,
-      h: PAGE_H,
+      h,
       kind: 'page',
       symbol: 'interface',
       badge: page.type ?? 'PAGE',
+      container: wizSteps.length > 0,
       extraHandles:
         page.type === 'WIZARD'
           ? [{ kind: 'wizard-step', title: 'Paso: arrastra hasta la página que será el siguiente paso', color: '#7c3aed' }]
@@ -258,6 +265,24 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       fill: '#ffffff',
       stroke: '#0284c7',
       tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),
+    });
+    let stepY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
+    wizSteps.forEach((step, i) => {
+      nodes.push({
+        id: `wizrow:${page.id}:${step.pageId}`,
+        label: `${i + 1}. ${step.label ?? pageNameOf(step.pageId)}`,
+        x: pos.x,
+        y: stepY,
+        w: PAGE_W - CONTAINER_INSET * 2,
+        h: ENTRY_H,
+        kind: 'wizard-step-row',
+        symbol: 'flow',
+        fill: '#faf5ff',
+        stroke: '#c4b5fd',
+        parentId: page.id,
+        tooltip: `Paso ${i + 1} del wizard: ${pageNameOf(step.pageId)} — arrastra a otro hueco para reordenar`,
+      });
+      stepY += ENTRY_H + ENTRY_GAP;
     });
     for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
       const step = (page.wizardSteps ?? [])[i];
