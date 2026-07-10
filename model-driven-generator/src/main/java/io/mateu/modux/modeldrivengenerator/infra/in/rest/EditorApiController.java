@@ -38,6 +38,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntit
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
@@ -102,7 +103,10 @@ public class EditorApiController {
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
                             List<ReadModelDto> readModels, List<DomainServiceDto> domainServices,
                             List<ApplicationEventDto> applicationEvents,
-                            List<QueryServiceDto> queryServices) {}
+                            List<QueryServiceDto> queryServices,
+                            List<ScheduledTriggerDto> scheduledTriggers) {}
+
+    public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
@@ -388,6 +392,8 @@ public class EditorApiController {
         var queryServicesByModule = repository.findAllOfType(QueryServiceEntity.class).stream()
                 .filter(qs -> qs.moduleId() != null)
                 .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
+        var scheduledTriggersById = repository.findAllOfType(ScheduledTriggerEntity.class).stream()
+                .collect(Collectors.toMap(ScheduledTriggerEntity::id, t -> t, (a, b) -> a));
         // The editor works on the current project: its services' modules, plus any
         // module not wired to a service yet (legacy orphans stay visible).
         var currentProject = currentProject().orElse(null);
@@ -441,6 +447,11 @@ public class EditorApiController {
                                         (qs.operations() == null ? List.<QueryOperationEntity>of() : qs.operations()).stream()
                                                 .map(op -> new QueryOperationDto(op.id(), op.name()))
                                                 .toList()))
+                                .toList(),
+                        (m.scheduledTriggerIds() == null ? List.<String>of() : m.scheduledTriggerIds()).stream()
+                                .map(scheduledTriggersById::get)
+                                .filter(Objects::nonNull)
+                                .map(t -> new ScheduledTriggerDto(t.id(), t.name(), t.cronExpression(), t.useCaseId()))
                                 .toList()))
                 .toList();
 
@@ -940,7 +951,8 @@ public class EditorApiController {
                                 String itemId, String parentId, String toAppId,
                                 String queryOperationId, String mappingId,
                                 String componentId, String parentComponentId, String componentKind,
-                                String beforeComponentId, String title, String text) {}
+                                String beforeComponentId, String title, String text,
+                                String cronExpression) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1036,6 +1048,9 @@ public class EditorApiController {
             case "add-use-case-call" -> addUseCaseCall(command);
             case "remove-use-case-call" -> removeUseCaseCall(command);
             case "add-use-case-step" -> addUseCaseStep(command);
+            case "add-scheduled-trigger" -> addScheduledTrigger(command);
+            case "remove-scheduled-trigger" -> removeScheduledTrigger(command);
+            case "set-scheduled-trigger-target" -> setScheduledTriggerTarget(command);
             case "remove-use-case-step" -> removeUseCaseStep(command);
             case "add-aggregate-call" -> addAggregateCall(command);
             case "remove-aggregate-call" -> removeAggregateCall(command);
@@ -1817,6 +1832,43 @@ public class EditorApiController {
                                 || st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate)
                                 && command.targetId().equals(st.aggregateId())))
                         .toList())));
+    }
+
+    /** A cron task inside a bounded context; the use case it fires is its target. */
+    private void addScheduledTrigger(EditorCommand command) {
+        if (repository.findById(command.id(), ScheduledTriggerEntity.class).isPresent()) return;
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new ScheduledTriggerEntity(command.id(), command.name(),
+                command.cronExpression() != null ? command.cronExpression() : "0 0 * * *",
+                null, command.targetUseCaseId(), null, null, null, null, null, null, null, false, false, null));
+        var ids = new ArrayList<>(module.scheduledTriggerIds() == null ? List.of() : module.scheduledTriggerIds());
+        ids.add(command.id());
+        repository.save(module.toBuilder().scheduledTriggerIds(ids).build());
+    }
+
+    private void removeScheduledTrigger(EditorCommand command) {
+        for (var module : repository.findAllOfType(ModuleEntity.class)) {
+            var ids = module.scheduledTriggerIds();
+            if (ids != null && ids.contains(command.id())) {
+                repository.save(module.toBuilder()
+                        .scheduledTriggerIds(without(ids, command.id())).build());
+            }
+        }
+        repository.deleteAllById(List.of(command.id()), ScheduledTriggerEntity.class);
+    }
+
+    private void setScheduledTriggerTarget(EditorCommand command) {
+        var t = repository.findById(command.id(), ScheduledTriggerEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown scheduled trigger: " + command.id()));
+        if (command.targetUseCaseId() != null) {
+            repository.findById(command.targetUseCaseId(), UseCaseEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetUseCaseId()));
+        }
+        repository.save(new ScheduledTriggerEntity(t.id(), t.name(), t.cronExpression(), t.timezone(),
+                command.targetUseCaseId(), t.modelMappingId(), t.description(), t.executionEnvironment(),
+                t.lockProvider(), t.maxExecutionTimeMs(), t.failureNotificationEmail(), t.misfirePolicy(),
+                t.allowConcurrentExecution(), t.retryOnFailure(), t.retryCount()));
     }
 
     private void addQueryService(EditorCommand command) {

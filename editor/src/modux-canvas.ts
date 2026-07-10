@@ -81,6 +81,8 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   process: svg`<path d="M0.5 3 H7 V0.8 L11.5 6 L7 11.2 V9 H0.5 Z"></path>`,
   person: svg`<circle cx="6" cy="3.2" r="2.4"></circle>
     <path d="M1.5 11.5 C1.5 7.6, 10.5 7.6, 10.5 11.5"></path>`,
+  clock: svg`<circle cx="6" cy="6" r="4.4" fill="none"></circle>
+    <path d="M6 3.4 L6 6 L7.9 7.4" fill="none" stroke-linecap="round"></path>`,
   gear: svg`<circle cx="6" cy="6" r="2.6"></circle>
     <line x1="6" y1="0.5" x2="6" y2="2.6"></line><line x1="6" y1="9.4" x2="6" y2="11.5"></line>
     <line x1="0.5" y1="6" x2="2.6" y2="6"></line><line x1="9.4" y1="6" x2="11.5" y2="6"></line>`,
@@ -1119,6 +1121,7 @@ export class ModuxCanvas extends LitElement {
         this.connectable &&
         (isChild
           ? node.kind === 'menu-item' ||
+            node.kind === 'scheduled-trigger' ||
             node.kind === 'aggregate' ||
             node.kind === 'domain-service' ||
             node.kind === 'use-case' ||

@@ -161,7 +161,8 @@ interface ChildDesc {
     | 'api-op-occurrence'
     | 'api'
     | 'api-impl'
-    | 'proxy-api';
+    | 'proxy-api'
+    | 'scheduled-trigger';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -184,6 +185,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   api: { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'api-impl': { symbol: 'interface', fill: '#eef2ff', stroke: '#4f46e5' },
   'proxy-api': { symbol: 'interface', fill: '#ecfeff', stroke: '#0e7490' },
+  'scheduled-trigger': { symbol: 'clock', fill: '#fffbeb', stroke: '#d97706' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -202,6 +204,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   api: 'API publicada por este sistema',
   'api-impl': 'La misma API, implementada también en este contexto',
   'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
+  'scheduled-trigger': 'Trigger programado (cron) — dispara un caso de uso',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -261,6 +264,9 @@ function detailedContext(
     ),
     ...(module.queryServices ?? []).map(
       (qs): ChildDesc => ({ id: qs.id, name: qs.name, kind: 'query-service' }),
+    ),
+    ...(module.scheduledTriggers ?? []).map(
+      (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'scheduled-trigger' }),
     ),
   ];
   if (!children.length) {
@@ -757,7 +763,8 @@ export function contextMapScene(
       (m.applicationEvents ?? []).length > 0 ||
       (m.readModels ?? []).length > 0 ||
       (m.domainServices ?? []).length > 0 ||
-      (m.queryServices ?? []).length > 0;
+      (m.queryServices ?? []).length > 0 ||
+      (m.scheduledTriggers ?? []).length > 0;
     const mFoldable = hasDetail || implChildren.length > 0;
     const { form: mForm, collapsed: mCollapsed } = resolveForm(
       toggledIds.has(m.id),
@@ -1061,6 +1068,24 @@ export function contextMapScene(
           dashed: true,
           arrow: true,
           tooltip: 'invoca',
+        }))
+    : [];
+
+  // Scheduled trigger → the use case (or policy) it fires, on a cron.
+  const triggerFireEdges: SceneEdge[] = detailed
+    ? model.modules
+        .flatMap((mo) => mo.scheduledTriggers ?? [])
+        .filter((t) => t.useCaseId && nodeIds.has(t.id) && nodeIds.has(t.useCaseId))
+        .map((t) => ({
+          id: `stfire:${t.id}->${t.useCaseId}`,
+          sourceId: t.id,
+          targetId: t.useCaseId!,
+          kind: 'st-fire',
+          color: '#d97706',
+          label: t.cronExpression ?? 'cron',
+          dashed: true,
+          arrow: true,
+          tooltip: `dispara según ${t.cronExpression ?? 'cron'}`,
         }))
     : [];
 
@@ -1710,6 +1735,7 @@ export function contextMapScene(
       ...projectionEdges,
       ...apiWireEdges,
       ...callEdges,
+      ...triggerFireEdges,
       ...aggCallEdges,
       ...queryEdges,
       ...actorUseEdges,

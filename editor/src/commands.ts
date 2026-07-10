@@ -534,6 +534,22 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** A cron task in a bounded context (its target use case may come later). */
+      kind: 'add-scheduled-trigger';
+      id: string;
+      name: string;
+      moduleId: string;
+      cronExpression?: string;
+      targetUseCaseId?: string;
+    }
+  | { kind: 'remove-scheduled-trigger'; id: string }
+  | {
+      /** Points (or, with null, unpoints) the trigger at the use case it fires. */
+      kind: 'set-scheduled-trigger-target';
+      id: string;
+      targetUseCaseId: string | null;
+    }
+  | {
       /** Use case A operates on aggregate B (a CallAggregateOperation step in A). */
       kind: 'add-aggregate-call';
       sourceId: string;

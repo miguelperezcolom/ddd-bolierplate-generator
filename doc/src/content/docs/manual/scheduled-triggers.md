@@ -11,6 +11,12 @@ A **Scheduled Trigger** defines a task that runs automatically on a schedule, li
 2. Click **New**
 3. Configure and save
 
+Or on the [context map](/manual/graphical-editor/): drag **Trigger programado** from
+the palette onto a bounded context (it starts with a daily cron), then **drag the
+trigger's handle onto the use case or policy it fires** — an amber dashed edge
+labelled with the cron shows the wiring at the detail level. Supr on the edge
+unpoints it, Supr on the chip deletes the trigger; both undoable.
+
 ## Configuration
 
 | Field | Description |

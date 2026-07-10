@@ -147,6 +147,14 @@ export interface ApiOperationImplementationRef {
   useCaseId: string;
 }
 
+/** A cron task owned by a bounded context; its target is the use case it fires. */
+export interface ScheduledTriggerRef {
+  id: string;
+  name: string;
+  cronExpression?: string;
+  useCaseId?: string;
+}
+
 export interface ModuleRef {
   id: string;
   name: string;
@@ -164,6 +172,8 @@ export interface ModuleRef {
   applicationEvents?: ApplicationEventRef[];
   /** Query services owned by this bounded context. */
   queryServices?: QueryServiceRef[];
+  /** Cron tasks owned by this bounded context. */
+  scheduledTriggers?: ScheduledTriggerRef[];
 }
 
 export interface ActorRef {

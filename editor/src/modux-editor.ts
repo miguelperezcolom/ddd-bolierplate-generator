@@ -1479,6 +1479,30 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'add-use-case-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case-step':
         return [{ kind: 'remove-use-case-step', useCaseId: c.useCaseId, id: c.id }];
+      case 'add-scheduled-trigger':
+        return [{ kind: 'remove-scheduled-trigger', id: c.id }];
+      case 'remove-scheduled-trigger': {
+        const owner = this.model.modules.find((mo) =>
+          (mo.scheduledTriggers ?? []).some((t) => t.id === c.id),
+        );
+        const t = (owner?.scheduledTriggers ?? []).find((x) => x.id === c.id);
+        if (!owner || !t) return null;
+        return [{
+          kind: 'add-scheduled-trigger',
+          id: t.id,
+          name: t.name,
+          moduleId: owner.id,
+          cronExpression: t.cronExpression,
+          targetUseCaseId: t.useCaseId,
+        }];
+      }
+      case 'set-scheduled-trigger-target': {
+        const t = this.model.modules
+          .flatMap((mo) => mo.scheduledTriggers ?? [])
+          .find((x) => x.id === c.id);
+        if (!t) return null;
+        return [{ kind: 'set-scheduled-trigger-target', id: c.id, targetUseCaseId: t.useCaseId ?? null }];
+      }
       case 'add-aggregate-call':
         return [{ kind: 'remove-aggregate-call', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-aggregate-call':
@@ -2998,6 +3022,16 @@ export class ModuxEditor extends LitElement {
       if (!already) this.command({ kind: 'add-use-case-call', sourceId, targetId });
       return;
     }
+    // Scheduled trigger → use case (or policy): the cron fires it.
+    const sourceTrigger = this.model.modules
+      .flatMap((mo) => mo.scheduledTriggers ?? [])
+      .find((t) => t.id === sourceId);
+    if (sourceTrigger && ucIds.has(targetId)) {
+      if (sourceTrigger.useCaseId !== targetId) {
+        this.command({ kind: 'set-scheduled-trigger-target', id: sourceId, targetUseCaseId: targetId });
+      }
+      return;
+    }
     // Use case → aggregate: the use case operates on it (a CallAggregateOperation
     // step; the aggregate's single operation wires itself, more stay for the form).
     if (ucIds.has(sourceId) && (this.model.aggregates ?? []).some((a) => a.id === targetId)) {
@@ -3395,6 +3429,18 @@ export class ModuxEditor extends LitElement {
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-use-case-call', sourceId: match[1], targetId: match[2] });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'st-fire') {
+      const match = /^stfire:(.+)->(.+)$/.exec(id);
+      if (!match) return;
+      this._selectedId = null;
+      this.command({ kind: 'set-scheduled-trigger-target', id: match[1], targetUseCaseId: null });
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'scheduled-trigger') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-scheduled-trigger', id });
       return;
     }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'agg-call') {
@@ -4507,6 +4553,7 @@ export class ModuxEditor extends LitElement {
     { type: 'read-model', label: 'Read model', child: true, symbol: 'readmodel', color: '#10b981', group: 'Dominio' },
     { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e', group: 'Dominio' },
     { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7', group: 'Dominio' },
+    { type: 'scheduled-trigger', label: 'Trigger programado', child: true, symbol: 'clock', color: '#d97706', group: 'Dominio' },
     { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5', group: 'APIs' },
     { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
     { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
@@ -4577,6 +4624,14 @@ export class ModuxEditor extends LitElement {
         symbol: 'readmodel',
         color: '#0369a1',
         items: (m.models ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
+        label: 'Triggers programados',
+        symbol: 'clock',
+        color: '#d97706',
+        items: m.modules.flatMap((mod) =>
+          (mod.scheduledTriggers ?? []).map((t) => ({ id: t.id, name: t.name })),
+        ),
       },
       {
         label: 'Casos de uso',
@@ -4767,7 +4822,7 @@ export class ModuxEditor extends LitElement {
     }
     const needsModule = [
       'aggregate', 'use-case', 'policy', 'domain-event',
-      'application-event', 'domain-service', 'query-service',
+      'application-event', 'domain-service', 'query-service', 'scheduled-trigger',
     ].includes(type);
     if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
     if (type === 'read-model') {
@@ -5108,6 +5163,12 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'query-service') {
       const id = `qs-${slug(name)}`;
       issue({ kind: 'add-query-service', id, name, moduleId: container }, id, container);
+    } else if (type === 'scheduled-trigger') {
+      const id = `st-${slug(name)}`;
+      issue({ kind: 'add-scheduled-trigger', id, name, moduleId: container }, id, container);
+      this.emit('modux-notice', {
+        message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
+      });
     } else if (type === 'read-model') {
       const id = `rm-${slug(name)}`;
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
