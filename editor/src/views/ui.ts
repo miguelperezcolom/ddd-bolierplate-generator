@@ -86,11 +86,13 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: appType === 'ORCHESTRATOR' ? '#c026d3' : '#0ea5e9',
       container: true,
       badge: appType === 'ORCHESTRATOR' ? 'ORQUESTADOR' : appType === 'MASTER_DETAIL' ? 'MAESTRO·DETALLE' : 'APP',
-      // a master-detail has no home: only its header and its tabs
+      // only a plain APP has a home; MD is header+tabs, the orchestrator only child pages
       extraHandles:
         appType === 'MASTER_DETAIL'
           ? [{ kind: 'header', title: 'Cabecera: arrastra hasta la página que hace de cabecera', color: '#0ea5e9' }]
-          : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
+          : appType === 'ORCHESTRATOR'
+            ? undefined
+            : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
       tooltip:
         appType === 'ORCHESTRATOR'
           ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
@@ -98,6 +100,25 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
             ? `${app.name} — cabecera + pestañas (ambas son páginas)`
             : `App: ${app.name}`,
     });
+    if (app.modelId) {
+      chipMeta.set(app.modelId, {
+        label: (model.models ?? []).find((mo) => mo.id === app.modelId)?.name ?? app.modelId,
+        kind: 'model',
+        symbol: 'readmodel',
+        stroke: '#8b5cf6',
+      });
+      edges.push({
+        id: `appmodel:${app.id}->${app.modelId}`,
+        sourceId: app.id,
+        targetId: app.modelId,
+        kind: 'app-model',
+        label: 'estado',
+        color: '#8b5cf6',
+        dashed: true,
+        arrow: true,
+        tooltip: 'el viewmodel de la app: el estado que mantiene y comparte con sus páginas',
+      });
+    }
     const home = app.homePageId ?? app.homeAppId;
     if (home) {
       edges.push({
@@ -360,6 +381,11 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
 
   // referenced system pieces, drawn once as satellite chips
   let chipY = 160;
+  for (const mo of model.models ?? []) {
+    if (!chipMeta.has(mo.id)) {
+      chipMeta.set(mo.id, { label: mo.name, kind: 'model', symbol: 'readmodel', stroke: '#8b5cf6' });
+    }
+  }
   for (const [id, meta] of chipMeta) {
     const pos = layout[id] ?? { x: 1050, y: chipY };
     chipY = pos.y + CHIP_H + 46;

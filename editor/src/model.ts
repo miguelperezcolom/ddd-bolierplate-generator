@@ -511,6 +511,8 @@ export interface UiAppRef {
   homePageId?: string;
   /** The APP it opens first — an app is just another UI component. */
   homeAppId?: string;
+  /** The app's viewmodel: the state an orchestrator keeps, shared with its pages. */
+  modelId?: string;
 }
 
 export interface UiPageButtonRef {

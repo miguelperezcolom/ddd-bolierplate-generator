@@ -711,6 +711,19 @@ export type ModuxCommand =
     }
   | { kind: 'remove-page-wizard-step'; pageId: string; targetId: string }
   | {
+      /** The app's viewmodel — the orchestrator's state (null clears it). */
+      kind: 'set-app-model';
+      appId: string;
+      modelId: string | null;
+    }
+  | {
+      /** A fresh empty data model, ready to be a viewmodel. */
+      kind: 'add-model';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-model'; id: string }
+  | {
       /** WIZARD: re-slots the step before another step's page (null = the end). */
       kind: 'move-page-wizard-step';
       pageId: string;

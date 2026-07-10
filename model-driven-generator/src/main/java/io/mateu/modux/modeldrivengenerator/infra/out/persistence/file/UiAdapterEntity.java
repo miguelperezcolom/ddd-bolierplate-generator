@@ -21,15 +21,25 @@ public record UiAdapterEntity(
         /** The page the app opens first (exclusive with homeAppId). */
         String homePageId,
         /** The APP it opens first — an app is just another UI component, like a page. */
-        String homeAppId
+        String homeAppId,
+        /** The app's viewmodel: the state an ORCHESTRATOR keeps, shared with its pages. */
+        String modelId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-modelId callers and stores). */
+    public UiAdapterEntity(String id, String name, String serviceId, String title,
+                           String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems,
+                           UiAppType appType, String headerPageId, String homePageId, String homeAppId) {
+        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
+                homePageId, homeAppId, null);
+    }
 
     /** Backward-compatible constructor (pre-homeAppId callers and stores). */
     public UiAdapterEntity(String id, String name, String serviceId, String title,
                            String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems,
                            UiAppType appType, String headerPageId, String homePageId) {
         this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
-                homePageId, null);
+                homePageId, null, null);
     }
 
     /** Backward-compatible constructor (pre-homePageId callers and stores). */

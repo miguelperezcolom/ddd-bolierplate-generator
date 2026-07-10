@@ -996,6 +996,34 @@ export class ModuxEditor extends LitElement {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
         return [{ kind: 'set-app-header-page', appId: c.appId, pageId: app?.headerPageId ?? null }];
       }
+      case 'set-app-model': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
+        return [{ kind: 'set-app-model', appId: c.appId, modelId: app?.modelId ?? null }];
+      }
+      case 'add-model':
+        return [{ kind: 'remove-model', id: c.id }];
+      case 'remove-model': {
+        const mo = (this.model.models ?? []).find((x) => x.id === c.id);
+        if (!mo) return null;
+        const ops: ModuxCommand[] = [{ kind: 'add-model', id: mo.id, name: mo.name }];
+        // re-wire whoever used it as viewmodel (fields stay CRUD territory)
+        for (const pg of this.model.pages ?? []) {
+          if (pg.modelId === c.id) ops.push({ kind: 'set-page-model', pageId: pg.id, modelId: c.id });
+          const walk = (items?: UiComponentNodeRef[]) => {
+            for (const it of items ?? []) {
+              if (it.modelId === c.id) {
+                ops.push({ kind: 'set-page-component', pageId: pg.id, componentId: it.id, modelId: c.id });
+              }
+              walk(it.children);
+            }
+          };
+          walk(pg.content);
+        }
+        for (const app of this.model.uiApps ?? []) {
+          if (app.modelId === c.id) ops.push({ kind: 'set-app-model', appId: app.id, modelId: c.id });
+        }
+        return ops;
+      }
       case 'set-app-home-page': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
         return [{
@@ -1031,6 +1059,9 @@ export class ModuxEditor extends LitElement {
         const ops: ModuxCommand[] = [{ kind: 'create-ui-app', id: app.id, name: app.name, type: app.type }];
         if (app.headerPageId) {
           ops.push({ kind: 'set-app-header-page', appId: app.id, pageId: app.headerPageId });
+        }
+        if (app.modelId) {
+          ops.push({ kind: 'set-app-model', appId: app.id, modelId: app.modelId });
         }
         if (app.homePageId || app.homeAppId) {
           ops.push({
@@ -2486,6 +2517,21 @@ export class ModuxEditor extends LitElement {
         });
         return;
       }
+      // a model wired to a page or an app becomes its VIEWMODEL (either direction)
+      const isModel = (id: string) => (this.model.models ?? []).some((mo) => mo.id === id);
+      if (isModel(sourceId) || isModel(targetId)) {
+        const modelId = isModel(sourceId) ? sourceId : targetId;
+        const other = isModel(sourceId) ? targetId : sourceId;
+        if (isPage(other)) {
+          this.command({ kind: 'set-page-model', pageId: other, modelId });
+          return;
+        }
+        if (isApp(other)) {
+          this.command({ kind: 'set-app-model', appId: other, modelId });
+          return;
+        }
+        return;
+      }
       // an entry dragged onto ANOTHER entry moves it: the edges slot it as a sibling,
       // the middle nests it (the target becomes a grouper); onto an app, to its root —
       // including another app's. The subtree travels whole.
@@ -3448,6 +3494,8 @@ export class ModuxEditor extends LitElement {
           this.command({ kind: 'set-app-header-page', appId: m[1], pageId: null });
         } else if ((m = /^apphome:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-app-home-page', appId: m[1], pageId: null });
+        } else if ((m = /^appmodel:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-app-model', appId: m[1], modelId: null });
         } else if ((m = /^wizstep:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
         } else if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
@@ -3494,6 +3542,10 @@ export class ModuxEditor extends LitElement {
       if (kind === 'wizard-step-row') {
         const m = /^wizrow:([^:]+):(.+)$/.exec(id);
         if (m) this.command({ kind: 'remove-page-wizard-step', pageId: m[1], targetId: m[2] });
+        return;
+      }
+      if (kind === 'model') {
+        this.command({ kind: 'remove-model', id });
         return;
       }
       // system chips (use cases, query services, models, actors) are not deletable from here
@@ -4811,6 +4863,7 @@ export class ModuxEditor extends LitElement {
     { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-page-crud', label: 'CRUD', child: true, symbol: 'lens', color: '#0284c7', group: 'UI' },
     { type: 'ui-page-wizard', label: 'Wizard', child: true, symbol: 'flow', color: '#0284c7', group: 'UI' },
+    { type: 'ui-model', label: 'Modelo', symbol: 'readmodel', color: '#8b5cf6', group: 'UI' },
     // Diseño: the Mateu layout vocabulary…
     { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -5233,7 +5286,7 @@ export class ModuxEditor extends LitElement {
         module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
-        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-',
+        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-model': 'model-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5261,7 +5314,9 @@ export class ModuxEditor extends LitElement {
                               ? { kind: 'create-ui-app', id, name, type: 'ORCHESTRATOR' }
                               : type === 'ui-app-masterdetail'
                                 ? { kind: 'create-ui-app', id, name, type: 'MASTER_DETAIL' }
-                                : {
+                                : type === 'ui-model'
+                                  ? { kind: 'add-model', id, name }
+                                  : {
                                 kind: 'add-workflow',
                                 id,
                                 name,
@@ -5612,7 +5667,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item', 'ui-model'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
