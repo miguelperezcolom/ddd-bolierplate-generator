@@ -183,6 +183,8 @@ export class ModuxFigma extends LitElement {
     const pageId = frame.dataset.pageId!;
     const designer = frame.querySelector('modux-page-designer');
     const inner = designer?.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const btn = inner?.closest?.('[data-btn-uc]') as HTMLElement | null;
+    if (btn?.dataset.btnUc) return `btn:${pageId}:${btn.dataset.btnUc}`;
     const cmp = inner?.closest?.('[data-cmp-id]') as HTMLElement | null;
     return cmp ? `cmp:${pageId}:${cmp.dataset.cmpId}` : pageId;
   }

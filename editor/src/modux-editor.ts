@@ -5213,6 +5213,12 @@ export class ModuxEditor extends LitElement {
         ),
       },
       {
+        label: 'Mapeados',
+        symbol: 'flow',
+        color: '#7c3aed',
+        items: (m.modelMappings ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
         label: 'Casos de uso',
         symbol: 'usecase',
         color: '#06b6d4',
@@ -5913,6 +5919,24 @@ export class ModuxEditor extends LitElement {
     targetId: string | null,
     slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null,
   ): void {
+    // a mapping dropped on a BUTTON transforms its viewmodel into the use case's request
+    const btnHit = targetId ? /^btn:([^:]+):(.+)$/.exec(targetId) : null;
+    if (btnHit) {
+      const mapping = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
+      if (mapping) {
+        this.command({
+          kind: 'set-page-button',
+          pageId: btnHit[1],
+          useCaseId: btnHit[2],
+          label: null,
+          mappingId: id,
+        });
+        this.emit('modux-notice', { message: `El botón mapea con ${mapping.name}` });
+      } else {
+        this.emit('modux-notice', { message: 'Sobre un botón se sueltan MAPEADOS del Catálogo' });
+      }
+      return;
+    }
     const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
     const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
     if (!pageId) {
@@ -5940,6 +5964,12 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'set-page-model', pageId, modelId: id });
         this.emit('modux-notice', { message: `${model.name} es el viewmodel de la página` });
       }
+      return;
+    }
+    const mappingDrop = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
+    if (mappingDrop && cmp?.kind === 'button') {
+      this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, mappingId: id });
+      this.emit('modux-notice', { message: `El botón mapea con ${mappingDrop.name}` });
       return;
     }
     const queryOp = this.model.modules

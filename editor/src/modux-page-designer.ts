@@ -1119,10 +1119,14 @@ export class ModuxPageDesigner extends LitElement {
               ${this.useCases.map((u) => html`<option value=${u.id} ?selected=${u.id === draft.useCaseId}>${u.name}</option>`)}
             </select>
             <label>Mapping</label>
-            <select style="grid-column: 2 / -1" @change=${(e: Event) => set({ mappingId: (e.target as HTMLSelectElement).value || undefined })}>
-              <option value="" ?selected=${!draft.mappingId}>(el viewmodel viaja tal cual)</option>
-              ${this.mappings.map((mm) => html`<option value=${mm.id} ?selected=${mm.id === draft.mappingId}>${mm.name}</option>`)}
-            </select>`
+            <span>
+              ${draft.mappingId
+                ? html`<span class="chip"
+                      >${this.mappings.find((mm) => mm.id === draft.mappingId)?.name ?? draft.mappingId}
+                      <span class="chipx" title="Quitar el mapping" @click=${() => set({ mappingId: undefined })}>✕</span></span
+                    >`
+                : html`<span class="vmhint">el viewmodel viaja tal cual — suelta un mapeado del Catálogo sobre el botón</span>`}
+            </span>`
         : nothing}
       ${kind === 'form'
         ? html`<label>Model</label>
@@ -1308,7 +1312,8 @@ export class ModuxPageDesigner extends LitElement {
         ${(page.buttons ?? []).filter((b) => (b.bar ?? 'toolbar') === 'toolbar').map(
           (b) => html`<span
             class="btn"
-            title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : (b.useCaseId ?? '')}
+            data-btn-uc=${b.useCaseId ?? ''}
+            title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : `${b.useCaseId ?? ''} — suelta un mapeado del Catálogo para transformar el viewmodel`}
             @click=${() =>
               (this._btn = {
                 useCaseId: b.useCaseId ?? '',
@@ -1389,7 +1394,8 @@ export class ModuxPageDesigner extends LitElement {
           .map(
             (b) => html`<span
               class="btn"
-              title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : (b.useCaseId ?? '')}
+              data-btn-uc=${b.useCaseId ?? ''}
+              title=${b.mappingId ? `${b.useCaseId} · mapping ${b.mappingId}` : `${b.useCaseId ?? ''} — suelta un mapeado del Catálogo para transformar el viewmodel`}
               @click=${() =>
                 (this._btn = {
                   useCaseId: b.useCaseId ?? '',
@@ -1430,17 +1436,14 @@ export class ModuxPageDesigner extends LitElement {
                 @input=${(e: Event) => (this._btn = { ...this._btn!, label: (e.target as HTMLInputElement).value })}
               />
               <label>Mapping</label>
-              <select
-                style="grid-column: 2 / -1"
-                title="ModelMapping del viewmodel al request del caso de uso"
-                @change=${(e: Event) =>
-                  (this._btn = { ...this._btn!, mappingId: (e.target as HTMLSelectElement).value })}
-              >
-                <option value="" ?selected=${!this._btn.mappingId}>(el viewmodel viaja tal cual)</option>
-                ${this.mappings.map(
-                  (mm) => html`<option value=${mm.id} ?selected=${mm.id === this._btn!.mappingId}>${mm.name}</option>`,
-                )}
-              </select>
+              <span style="grid-column: 2 / -1">
+                ${this._btn.mappingId
+                  ? html`<span class="chip"
+                        >${this.mappings.find((mm) => mm.id === this._btn!.mappingId)?.name ?? this._btn.mappingId}
+                        <span class="chipx" title="Quitar el mapping" @click=${() => (this._btn = { ...this._btn!, mappingId: '' })}>✕</span></span
+                      >`
+                  : html`<span class="vmhint">el viewmodel viaja tal cual — suelta un mapeado del Catálogo sobre el botón</span>`}
+              </span>
               <div class="actions">
                 ${existing
                   ? html`<button
