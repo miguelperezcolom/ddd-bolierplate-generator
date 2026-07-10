@@ -199,6 +199,8 @@ export class ModuxExplorer extends LitElement {
   private reducedMotion = false;
   /** Keeps expand/collapse + positions across model refreshes. */
   private prevByKey = new Map<string, XNode>();
+  /** Cross-relations by model id (symmetric) — the faint threads on hover. */
+  private related = new Map<string, Set<string>>();
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -327,6 +329,41 @@ export class ModuxExplorer extends LitElement {
     this.root.y = 0;
     if (!this.prevByKey.has(this.root.key)) this.root.expanded = true;
     this.materialize(this.root);
+    this.buildRelations();
+  }
+
+  /** Everything that relates two model elements across the tree's branches. */
+  private buildRelations(): void {
+    const m = this.model;
+    this.related = new Map();
+    const link = (a?: string, b?: string) => {
+      if (!a || !b || a === b) return;
+      if (!this.related.has(a)) this.related.set(a, new Set());
+      if (!this.related.has(b)) this.related.set(b, new Set());
+      this.related.get(a)!.add(b);
+      this.related.get(b)!.add(a);
+    };
+    for (const r of m.relations ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.useCaseCalls ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.queryCalls ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.aggregateCalls ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.aggregateReferences ?? []) link(r.sourceAggregateId, r.targetAggregateId);
+    for (const r of m.emissions ?? []) link(r.sourceId, r.domainEventId);
+    for (const r of m.useCaseEmissions ?? []) link(r.sourceId, r.domainEventId);
+    for (const r of m.actorUses ?? []) link(r.actorId, r.targetId);
+    for (const r of m.actorAppUses ?? []) link(r.actorId, r.appId);
+    for (const r of m.actorExternalDependencies ?? []) link(r.actorId, r.externalSystemId);
+    for (const r of m.actorAgentUses ?? []) link(r.actorId, r.agentId);
+    for (const r of m.externalSystemDependencies ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.externalCalls ?? []) link(r.externalSystemId, r.useCaseId);
+    for (const r of m.externalUseCaseCalls ?? []) link(r.sourceId, r.targetId);
+    for (const r of m.agentUses ?? []) link(r.agentId, r.useCaseId);
+    for (const r of m.agentExternalUses ?? []) link(r.agentId, r.externalUseCaseId);
+    for (const r of m.agentDelegations ?? []) link(r.agentId, r.delegateAgentId);
+    for (const app of m.uiApps ?? []) link(app.id, app.identityProviderId);
+    for (const mod of m.modules) link(mod.id, mod.identityProviderId);
+    for (const f of m.etlFlows ?? []) link(f.id, f.identityProviderId);
+    for (const idp of m.identityProviders ?? []) link(idp.id, (idp as { publishedByExternalSystemId?: string }).publishedByExternalSystemId);
   }
 
   private rememberSubtree(n: XNode): void {
@@ -601,11 +638,49 @@ export class ModuxExplorer extends LitElement {
       }
     }
 
+    if (this.hover) this.drawThreads(ctx, this.hover, nodes);
     if (this.hover && !this.hover.expanded && this.hover.children?.length) {
       this.drawGhosts(ctx, this.hover);
     }
     ctx.restore();
     if (this.hover) this.drawCard(ctx, this.hover, w, h);
+  }
+
+  /**
+   * Cross-relations as faint threads: hovering a node reveals what it talks
+   * to across the tree (calls, events, actor uses, IdP trust…) without
+   * cluttering the resting picture. Only threads to visible nodes are drawn.
+   */
+  private drawThreads(ctx: CanvasRenderingContext2D, n: XNode, nodes: XNode[]): void {
+    const rel = this.related.get(n.refId);
+    if (!rel?.size) return;
+    const alpha = Math.min(0.65, (this.t - this.hoverAt) * 2.2);
+    if (alpha <= 0.02) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 1.4 / this.cam.k;
+    for (const v of nodes) {
+      if (v === n || !rel.has(v.refId)) continue;
+      if (v === n.parent || v.parent === n) continue; // the tree already draws these
+      const mx = (n.x + v.x) / 2;
+      const my = (n.y + v.y) / 2;
+      const dx = v.x - n.x;
+      const dy = v.y - n.y;
+      const bend = 0.18;
+      ctx.strokeStyle = v.color;
+      ctx.beginPath();
+      ctx.moveTo(n.x, n.y);
+      ctx.quadraticCurveTo(mx - dy * bend, my + dx * bend, v.x, v.y);
+      ctx.stroke();
+      // A soft halo on the far end, so the eye finds it.
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(v.x, v.y, this.radiusOf(v) + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([6, 5]);
+    }
+    ctx.restore();
   }
 
   /** Ghost preview: a hovered, folded node whispers its children around it. */

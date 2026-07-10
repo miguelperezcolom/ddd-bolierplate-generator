@@ -8671,7 +8671,7 @@ let lt = class extends Ne {
       externalSystems: [],
       relations: [],
       flows: []
-    }, this.raf = 0, this.t = 0, this.cam = { x: 0, y: 0, k: 1 }, this.hoverAt = 0, this.panning = !1, this.downAt = { x: 0, y: 0 }, this.moved = !1, this.reducedMotion = !1, this.prevByKey = /* @__PURE__ */ new Map(), this.frame = 0;
+    }, this.raf = 0, this.t = 0, this.cam = { x: 0, y: 0, k: 1 }, this.hoverAt = 0, this.panning = !1, this.downAt = { x: 0, y: 0 }, this.moved = !1, this.reducedMotion = !1, this.prevByKey = /* @__PURE__ */ new Map(), this.related = /* @__PURE__ */ new Map(), this.frame = 0;
   }
   connectedCallback() {
     super.connectedCallback(), this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -8747,7 +8747,36 @@ let lt = class extends Ne {
   }
   // ── Tree construction (lazy children per node kind) ──────────────────
   buildTree() {
-    this.root && this.rememberSubtree(this.root), this.root = this.makeNode("root", "root", "Sistema", 0, void 0), this.root.x = 0, this.root.y = 0, this.prevByKey.has(this.root.key) || (this.root.expanded = !0), this.materialize(this.root);
+    this.root && this.rememberSubtree(this.root), this.root = this.makeNode("root", "root", "Sistema", 0, void 0), this.root.x = 0, this.root.y = 0, this.prevByKey.has(this.root.key) || (this.root.expanded = !0), this.materialize(this.root), this.buildRelations();
+  }
+  /** Everything that relates two model elements across the tree's branches. */
+  buildRelations() {
+    const e = this.model;
+    this.related = /* @__PURE__ */ new Map();
+    const t = (i, n) => {
+      !i || !n || i === n || (this.related.has(i) || this.related.set(i, /* @__PURE__ */ new Set()), this.related.has(n) || this.related.set(n, /* @__PURE__ */ new Set()), this.related.get(i).add(n), this.related.get(n).add(i));
+    };
+    for (const i of e.relations ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.useCaseCalls ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.queryCalls ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.aggregateCalls ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.aggregateReferences ?? []) t(i.sourceAggregateId, i.targetAggregateId);
+    for (const i of e.emissions ?? []) t(i.sourceId, i.domainEventId);
+    for (const i of e.useCaseEmissions ?? []) t(i.sourceId, i.domainEventId);
+    for (const i of e.actorUses ?? []) t(i.actorId, i.targetId);
+    for (const i of e.actorAppUses ?? []) t(i.actorId, i.appId);
+    for (const i of e.actorExternalDependencies ?? []) t(i.actorId, i.externalSystemId);
+    for (const i of e.actorAgentUses ?? []) t(i.actorId, i.agentId);
+    for (const i of e.externalSystemDependencies ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.externalCalls ?? []) t(i.externalSystemId, i.useCaseId);
+    for (const i of e.externalUseCaseCalls ?? []) t(i.sourceId, i.targetId);
+    for (const i of e.agentUses ?? []) t(i.agentId, i.useCaseId);
+    for (const i of e.agentExternalUses ?? []) t(i.agentId, i.externalUseCaseId);
+    for (const i of e.agentDelegations ?? []) t(i.agentId, i.delegateAgentId);
+    for (const i of e.uiApps ?? []) t(i.id, i.identityProviderId);
+    for (const i of e.modules) t(i.id, i.identityProviderId);
+    for (const i of e.etlFlows ?? []) t(i.id, i.identityProviderId);
+    for (const i of e.identityProviders ?? []) t(i.id, i.publishedByExternalSystemId);
   }
   rememberSubtree(e) {
     this.prevByKey.set(e.key, e);
@@ -8917,7 +8946,26 @@ let lt = class extends Ne {
         t.font = r === this.hover ? `600 ${s(12)}` : s(r.depth <= 1 ? 12 : 10.5), t.fillStyle = r === this.hover ? "#0f172a" : "#475569", t.textAlign = "center", t.textBaseline = "top", t.fillText(m, r.x, r.y + c + 4);
       }
     }
-    this.hover && !this.hover.expanded && ((a = this.hover.children) != null && a.length) && this.drawGhosts(t, this.hover), t.restore(), this.hover && this.drawCard(t, this.hover, i, n);
+    this.hover && this.drawThreads(t, this.hover, e), this.hover && !this.hover.expanded && ((a = this.hover.children) != null && a.length) && this.drawGhosts(t, this.hover), t.restore(), this.hover && this.drawCard(t, this.hover, i, n);
+  }
+  /**
+   * Cross-relations as faint threads: hovering a node reveals what it talks
+   * to across the tree (calls, events, actor uses, IdP trust…) without
+   * cluttering the resting picture. Only threads to visible nodes are drawn.
+   */
+  drawThreads(e, t, i) {
+    const n = this.related.get(t.refId);
+    if (!(n != null && n.size)) return;
+    const s = Math.min(0.65, (this.t - this.hoverAt) * 2.2);
+    if (!(s <= 0.02)) {
+      e.save(), e.globalAlpha = s, e.setLineDash([6, 5]), e.lineWidth = 1.4 / this.cam.k;
+      for (const o of i) {
+        if (o === t || !n.has(o.refId) || o === t.parent || o.parent === t) continue;
+        const a = (t.x + o.x) / 2, r = (t.y + o.y) / 2, c = o.x - t.x, p = o.y - t.y, g = 0.18;
+        e.strokeStyle = o.color, e.beginPath(), e.moveTo(t.x, t.y), e.quadraticCurveTo(a - p * g, r + c * g, o.x, o.y), e.stroke(), e.setLineDash([]), e.beginPath(), e.arc(o.x, o.y, this.radiusOf(o) + 4, 0, Math.PI * 2), e.stroke(), e.setLineDash([6, 5]);
+      }
+      e.restore();
+    }
   }
   /** Ghost preview: a hovered, folded node whispers its children around it. */
   drawGhosts(e, t) {
