@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppVariant;
 import io.mateu.uidl.interfaces.Identifiable;
 
@@ -12,6 +13,20 @@ public record UiAdapterEntity(
         String title,
         String path,
         UiAppVariant appVariant,
-        List<UiMenuItemEntity> menuItems
+        List<UiMenuItemEntity> menuItems,
+        /** The app's archetype: regular, orchestrator or master-detail. */
+        UiAppType appType,
+        /** MASTER_DETAIL: the page rendered as the header (the tabs are its menu pages). */
+        String headerPageId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-appType callers and stores). */
+    public UiAdapterEntity(String id, String name, String serviceId, String title,
+                           String path, UiAppVariant appVariant, List<UiMenuItemEntity> menuItems) {
+        this(id, name, serviceId, title, path, appVariant, menuItems, UiAppType.APP, null);
+    }
+
+    public UiAppType appType() {
+        return appType != null ? appType : UiAppType.APP;
+    }
 }

@@ -688,7 +688,13 @@ export type ModuxCommand =
       targetUseCaseId?: string;
       completionEventName?: string;
     }
-  | { kind: 'create-ui-app'; id: string; name: string }
+  | { kind: 'create-ui-app'; id: string; name: string; type?: string }
+  | {
+      /** MASTER_DETAIL: the page shown as the header (null clears it). */
+      kind: 'set-app-header-page';
+      appId: string;
+      pageId: string | null;
+    }
   | { kind: 'delete-ui-app'; id: string }
   | {
       kind: 'create-ui-page';

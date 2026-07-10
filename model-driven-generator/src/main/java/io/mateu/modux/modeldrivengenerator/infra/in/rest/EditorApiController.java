@@ -231,7 +231,8 @@ public class EditorApiController {
     /** The use case implementing one operation at one implementation site. */
     public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
-    public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems) {}
+    public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
+                           String type, String headerPageId) {}
     /** One entry of a UI app's menu tree — Mateu menus are trees, hence the recursion. */
     public record UiMenuEntryDto(String label, String icon, String pageId, List<UiMenuEntryDto> children, String id, String uiAdapterId, String useCaseId,
                                   String aggregateId, String queryServiceId, String queryOperationId) {}
@@ -778,7 +779,8 @@ public class EditorApiController {
                 .map(a -> new UiAppDto(a.id(), a.name(), a.title(),
                         (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
                                 .map(EditorApiController::toMenuEntry)
-                                .toList()))
+                                .toList(),
+                        a.appType().name(), a.headerPageId()))
                 .toList();
         var pages = repository.findAllOfType(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
@@ -1106,6 +1108,7 @@ public class EditorApiController {
             case "set-workflow-trigger" -> setWorkflowTrigger(command);
             case "remove-workflow-dependency" -> removeWorkflowDependency(command);
             case "create-ui-app" -> createUiApp(command);
+            case "set-app-header-page" -> setAppHeaderPage(command);
             case "delete-ui-app" -> deleteUiApp(command);
             case "create-ui-page" -> createUiPage(command);
             case "delete-ui-page" -> deleteUiPage(command);
@@ -3504,8 +3507,24 @@ public class EditorApiController {
 
     private void createUiApp(EditorCommand command) {
         if (repository.findById(command.id(), UiAdapterEntity.class).isPresent()) return;
+        var appType = command.type() == null || command.type().isBlank()
+                ? io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP
+                : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
         repository.save(new UiAdapterEntity(command.id(), command.name(), null,
-                command.name(), null, null, List.of()));
+                command.name(), null, null, List.of(), appType, null));
+    }
+
+    /** MASTER_DETAIL: the page shown as the header; null clears it. */
+    private void setAppHeaderPage(EditorCommand command) {
+        var app = repository.findById(command.appId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
+        if (command.pageId() != null && !command.pageId().isBlank()) {
+            repository.findById(command.pageId(), PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        }
+        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
+                app.path(), app.appVariant(), app.menuItems(), app.appType(),
+                command.pageId() == null || command.pageId().isBlank() ? null : command.pageId()));
     }
 
     /** Removing an app also unlinks it from every actor that used it. */
@@ -3796,7 +3815,7 @@ public class EditorApiController {
     /** Record copy with only menuItems replaced — every other field preserved verbatim. */
     private static UiAdapterEntity withMenuItems(UiAdapterEntity app, List<UiMenuItemEntity> menuItems) {
         return new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), menuItems);
+                app.path(), app.appVariant(), menuItems, app.appType(), app.headerPageId());
     }
 
     /** Record copy with only toolbar/bottomBar replaced — every other field preserved verbatim. */

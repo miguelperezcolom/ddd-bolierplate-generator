@@ -72,6 +72,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     );
     const pos = layout[app.id] ?? { x: 190, y: appY + h / 2 };
     appY = pos.y + h / 2 + 70;
+    const appType = app.type ?? 'APP';
     nodes.push({
       id: app.id,
       label: app.title || app.name,
@@ -80,12 +81,30 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       w: APP_W,
       h,
       kind: 'ui-app',
-      symbol: 'component',
-      fill: '#f0f9ff',
-      stroke: '#0ea5e9',
+      symbol: appType === 'ORCHESTRATOR' ? 'process' : 'component',
+      fill: appType === 'ORCHESTRATOR' ? '#fdf4ff' : '#f0f9ff',
+      stroke: appType === 'ORCHESTRATOR' ? '#c026d3' : '#0ea5e9',
       container: true,
-      tooltip: `App: ${app.name}`,
+      badge: appType === 'ORCHESTRATOR' ? 'ORQUESTADOR' : appType === 'MASTER_DETAIL' ? 'MAESTRO·DETALLE' : 'APP',
+      tooltip:
+        appType === 'ORCHESTRATOR'
+          ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
+          : appType === 'MASTER_DETAIL'
+            ? `${app.name} — cabecera + pestañas (ambas son páginas)`
+            : `App: ${app.name}`,
     });
+    if (appType === 'MASTER_DETAIL' && app.headerPageId) {
+      edges.push({
+        id: `appheader:${app.id}->${app.headerPageId}`,
+        sourceId: app.id,
+        targetId: app.headerPageId,
+        kind: 'app-header',
+        color: '#0ea5e9',
+        label: 'cabecera',
+        arrow: true,
+        tooltip: 'la página que hace de cabecera; las demás son pestañas',
+      });
+    }
     let entryY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
     for (const { entry, path, depth } of entries) {
       const id = menuNodeId(app.id, entry, path);

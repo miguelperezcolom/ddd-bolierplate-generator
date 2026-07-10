@@ -503,6 +503,10 @@ export interface UiAppRef {
   name: string;
   title?: string;
   menuItems?: UiMenuEntryRef[];
+  /** APP (regular), ORCHESTRATOR (state + child pages, no own UI) or MASTER_DETAIL. */
+  type?: string;
+  /** MASTER_DETAIL: the page rendered as the header; the tabs are its menu pages. */
+  headerPageId?: string;
 }
 
 export interface UiPageButtonRef {

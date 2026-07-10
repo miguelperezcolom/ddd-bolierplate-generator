@@ -992,10 +992,17 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'delete-ui-app', id: c.id }];
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
+      case 'set-app-header-page': {
+        const app = (this.model.uiApps ?? []).find((x) => x.id === c.appId);
+        return [{ kind: 'set-app-header-page', appId: c.appId, pageId: app?.headerPageId ?? null }];
+      }
       case 'delete-ui-app': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.id);
         if (!app) return null;
-        const ops: ModuxCommand[] = [{ kind: 'create-ui-app', id: app.id, name: app.name }];
+        const ops: ModuxCommand[] = [{ kind: 'create-ui-app', id: app.id, name: app.name, type: app.type }];
+        if (app.headerPageId) {
+          ops.push({ kind: 'set-app-header-page', appId: app.id, pageId: app.headerPageId });
+        }
         const rebuildMenu = (items: UiMenuEntryRef[] | undefined, parent?: UiMenuEntryRef) => {
           for (const it of items ?? []) {
             ops.push({
@@ -2381,9 +2388,18 @@ export class ModuxEditor extends LitElement {
       const apps = this.model.uiApps ?? [];
       const isApp = (id: string) => apps.some((a) => a.id === id);
       const isPage = (id: string) => pages.some((x) => x.id === id);
-      // a page dropped on an app (drag or catalog): a menu entry that opens it
+      // a page dropped on an app (drag or catalog): a menu entry that opens it —
+      // except on a headerless MASTER-DETAIL, where the first page IS the header
       if (isPage(sourceId) && isApp(targetId)) {
         const page = pages.find((x) => x.id === sourceId)!;
+        const app = apps.find((a) => a.id === targetId)!;
+        if (app.type === 'MASTER_DETAIL' && !app.headerPageId) {
+          this.command({ kind: 'set-app-header-page', appId: targetId, pageId: sourceId });
+          this.emit('modux-notice', {
+            message: `${page.name} es la cabecera de ${app.name} — las siguientes páginas serán pestañas`,
+          });
+          return;
+        }
         this.command({
           kind: 'add-menu-item',
           appId: targetId,
@@ -3295,7 +3311,9 @@ export class ModuxEditor extends LitElement {
     if (this._view === 'ui') {
       if (elementType === 'edge') {
         let m: RegExpExecArray | null;
-        if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
+        if ((m = /^appheader:(.+)->(.+)$/.exec(id))) {
+          this.command({ kind: 'set-app-header-page', appId: m[1], pageId: null });
+        } else if ((m = /^pgbtn:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'remove-page-button', pageId: m[1], useCaseId: m[2] });
         } else if ((m = /^pglist:(.+)->(.+)$/.exec(id))) {
           this.command({ kind: 'set-page-listing', pageId: m[1], queryServiceId: null });
@@ -4559,8 +4577,12 @@ export class ModuxEditor extends LitElement {
     { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
     { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
     { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
+    { type: 'ui-app-orchestrator', label: 'Orquestador', symbol: 'process', color: '#0ea5e9', group: 'UI' },
+    { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },
     { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7', group: 'UI' },
-    { type: 'menu-item', label: 'Entrada de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
+    { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
+    { type: 'ui-page-crud', label: 'CRUD', child: true, symbol: 'lens', color: '#0284c7', group: 'UI' },
+    { type: 'ui-page-wizard', label: 'Wizard', child: true, symbol: 'flow', color: '#0284c7', group: 'UI' },
     // Diseño: the Mateu layout vocabulary…
     { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -4964,6 +4986,7 @@ export class ModuxEditor extends LitElement {
         module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
+        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -4987,7 +5010,11 @@ export class ModuxEditor extends LitElement {
                           ? { kind: 'add-proxy-api', id, name }
                           : type === 'ui-app'
                             ? { kind: 'create-ui-app', id, name }
-                            : {
+                            : type === 'ui-app-orchestrator'
+                              ? { kind: 'create-ui-app', id, name, type: 'ORCHESTRATOR' }
+                              : type === 'ui-app-masterdetail'
+                                ? { kind: 'create-ui-app', id, name, type: 'MASTER_DETAIL' }
+                                : {
                                 kind: 'add-workflow',
                                 id,
                                 name,
@@ -4996,8 +5023,10 @@ export class ModuxEditor extends LitElement {
       issue(cmd, id);
       return;
     }
-    if (type === 'page') {
-      const { id, name } = this.uniquePaletteName('Página', 'page-');
+    if (type === 'page' || type === 'ui-page-crud' || type === 'ui-page-wizard') {
+      const pageType = type === 'ui-page-crud' ? 'CRUD' : type === 'ui-page-wizard' ? 'WIZARD' : 'PAGE';
+      const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : 'Página';
+      const { id, name } = this.uniquePaletteName(base, 'page-');
       // Dropped on an app (or on one of its menu entries): the page hangs from its menu.
       const chain: string[] = [];
       for (let cur: string | undefined = targetId ?? undefined; cur; ) {
@@ -5015,8 +5044,8 @@ export class ModuxEditor extends LitElement {
       }
       issue(
         appId
-          ? { kind: 'create-ui-page', id, name, pageType: 'PAGE', appId, menuLabel: name }
-          : { kind: 'create-ui-page', id, name, pageType: 'PAGE' },
+          ? { kind: 'create-ui-page', id, name, pageType, appId, menuLabel: name }
+          : { kind: 'create-ui-page', id, name, pageType },
         id,
       );
       return;
@@ -5341,7 +5370,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'page', 'menu-item'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
