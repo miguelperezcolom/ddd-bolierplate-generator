@@ -703,11 +703,19 @@ export type ModuxCommand =
       toAppId?: string | null;
     }
   | {
-      /** WIZARD: the page `targetId` joins `pageId`'s steps. */
+      /** WIZARD: a new step — mapped to the page `targetId`, or bare (itemId + label). */
       kind: 'add-page-wizard-step';
       pageId: string;
-      targetId: string;
+      targetId?: string | null;
       label?: string;
+      itemId?: string;
+    }
+  | {
+      /** WIZARD: maps (or unmaps) the step `itemId` onto the page implementing it. */
+      kind: 'set-wizard-step-page';
+      pageId: string;
+      itemId: string;
+      targetId: string | null;
     }
   | { kind: 'remove-page-wizard-step'; pageId: string; targetId: string }
   | {

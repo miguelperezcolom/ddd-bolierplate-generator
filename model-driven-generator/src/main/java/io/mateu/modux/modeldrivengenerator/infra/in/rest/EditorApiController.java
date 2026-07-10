@@ -248,7 +248,7 @@ public class EditorApiController {
                             String crudDetailPageId, String crudDetailAppId,
                             String crudCreatePageId, String crudCreateAppId) {}
 
-    public record UiWizardStepDto(String pageId, String label) {}
+    public record UiWizardStepDto(String pageId, String label, String id) {}
     /** A node of a page's content tree: a Mateu layout (with children) or a leaf component. */
     public record UiComponentNodeDto(String id, String kind, String title, String text, String label,
                                      String useCaseId, String mappingId, String modelId,
@@ -806,7 +806,7 @@ public class EditorApiController {
                                 .map(EditorApiController::toComponentNode)
                                 .toList(),
                         (p.wizardSteps() == null ? List.<PageWizardStepEntity>of() : p.wizardSteps()).stream()
-                                .map(s -> new UiWizardStepDto(s.pageId(), s.label()))
+                                .map(s -> new UiWizardStepDto(s.pageId(), s.label(), s.key()))
                                 .toList(),
                         p.crudDetailPageId(), p.crudDetailAppId(),
                         p.crudCreatePageId(), p.crudCreateAppId()))
@@ -1131,6 +1131,7 @@ public class EditorApiController {
             case "add-model" -> addModel(command);
             case "remove-model" -> removeModel(command);
             case "add-page-wizard-step" -> addPageWizardStep(command);
+            case "set-wizard-step-page" -> setWizardStepPage(command);
             case "remove-page-wizard-step" -> removePageWizardStep(command);
             case "move-page-wizard-step" -> movePageWizardStep(command);
             case "delete-ui-app" -> deleteUiApp(command);
@@ -3684,20 +3685,55 @@ public class EditorApiController {
                 : app.toBuilder().editPageId(pageId).build());
     }
 
-    /** WIZARD: appends the page as a step (or moves it before another step's page). */
+    /** WIZARD: a new step — mapped to a page (targetId) or bare (itemId + label). */
     private void addPageWizardStep(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var step = repository.findById(command.targetId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.targetId()));
-        if (page.id().equals(step.id())) {
-            throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
+        var targetId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        PageEntity mapped = null;
+        if (targetId != null) {
+            mapped = repository.findById(targetId, PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.targetId()));
+            if (page.id().equals(mapped.id())) {
+                throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
+            }
         }
         var steps = new ArrayList<>(page.wizardSteps() == null
                 ? List.<PageWizardStepEntity>of() : page.wizardSteps());
-        if (steps.stream().anyMatch(s -> step.id().equals(s.pageId()))) return;
-        steps.add(new PageWizardStepEntity(step.id(),
-                command.label() != null ? command.label() : step.name()));
+        if (targetId != null && steps.stream().anyMatch(s -> targetId.equals(s.pageId()))) return;
+        var id = command.itemId() != null && !command.itemId().isBlank()
+                ? command.itemId() : "wzs-" + (steps.size() + 1) + "-" + Math.abs(page.id().hashCode() % 1000);
+        if (steps.stream().anyMatch(s -> id.equals(s.key()))) return;
+        steps.add(new PageWizardStepEntity(targetId,
+                command.label() != null ? command.label()
+                        : mapped != null ? mapped.name() : "Paso " + (steps.size() + 1),
+                id));
+        repository.save(withWizardSteps(page, steps));
+    }
+
+    /** WIZARD: maps (or, with null, unmaps) the step onto the page implementing it. */
+    private void setWizardStepPage(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var targetId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        if (targetId != null) {
+            if (page.id().equals(targetId)) {
+                throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
+            }
+            repository.findById(targetId, PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + targetId));
+        }
+        var found = false;
+        var steps = new ArrayList<PageWizardStepEntity>();
+        for (var s : page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps()) {
+            if (command.itemId().equals(s.key())) {
+                found = true;
+                steps.add(new PageWizardStepEntity(targetId, s.label(), s.id()));
+            } else {
+                steps.add(s);
+            }
+        }
+        if (!found) throw new IllegalArgumentException("Unknown wizard step: " + command.itemId());
         repository.save(withWizardSteps(page, steps));
     }
 
@@ -3705,7 +3741,7 @@ public class EditorApiController {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
         var steps = (page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps()).stream()
-                .filter(s -> !command.targetId().equals(s.pageId()))
+                .filter(s -> !command.targetId().equals(s.key()))
                 .toList();
         repository.save(withWizardSteps(page, steps));
     }
@@ -3715,13 +3751,13 @@ public class EditorApiController {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
         var steps = page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps();
-        var moving = steps.stream().filter(s -> command.targetId().equals(s.pageId())).findFirst()
+        var moving = steps.stream().filter(s -> command.targetId().equals(s.key())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown wizard step: " + command.targetId()));
         var rest = new ArrayList<>(steps.stream()
-                .filter(s -> !command.targetId().equals(s.pageId())).toList());
+                .filter(s -> !command.targetId().equals(s.key())).toList());
         var at = command.beforeItemId() == null ? -1
                 : java.util.stream.IntStream.range(0, rest.size())
-                        .filter(i -> command.beforeItemId().equals(rest.get(i).pageId()))
+                        .filter(i -> command.beforeItemId().equals(rest.get(i).key()))
                         .findFirst().orElse(-1);
         if (at < 0) rest.add(moving); else rest.add(at, moving);
         repository.save(withWizardSteps(page, rest));
@@ -3836,13 +3872,16 @@ public class EditorApiController {
                         .build());
             }
         }
-        // wizard pages lose the deleted page as a step
+        // wizard steps mapped to the deleted page survive, unmapped
         for (var pg : repository.findAllOfType(PageEntity.class)) {
             if (pg.id().equals(command.id()) || pg.wizardSteps() == null) continue;
-            var kept = pg.wizardSteps().stream()
-                    .filter(s -> !command.id().equals(s.pageId())).toList();
-            if (kept.size() != pg.wizardSteps().size()) {
-                repository.save(withWizardSteps(pg, kept));
+            var touched = pg.wizardSteps().stream().anyMatch(s -> command.id().equals(s.pageId()));
+            if (touched) {
+                repository.save(withWizardSteps(pg, pg.wizardSteps().stream()
+                        .map(s -> command.id().equals(s.pageId())
+                                ? new PageWizardStepEntity(null, s.label(), s.key())
+                                : s)
+                        .toList()));
             }
         }
         repository.deleteAllById(List.of(command.id()), PageEntity.class);

@@ -1053,10 +1053,16 @@ export class ModuxEditor extends LitElement {
         }];
       }
       case 'add-page-wizard-step':
-        return [{ kind: 'remove-page-wizard-step', pageId: c.pageId, targetId: c.targetId }];
+        return [{ kind: 'remove-page-wizard-step', pageId: c.pageId, targetId: c.itemId ?? c.targetId! }];
+      case 'set-wizard-step-page': {
+        const step = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
+          .find((s) => (s.id ?? s.pageId) === c.itemId);
+        if (!step) return null;
+        return [{ kind: 'set-wizard-step-page', pageId: c.pageId, itemId: c.itemId, targetId: step.pageId ?? null }];
+      }
       case 'move-page-wizard-step': {
         const steps = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
-          .map((s) => s.pageId);
+          .map((s) => s.id ?? s.pageId!);
         const at = steps.indexOf(c.targetId);
         if (at < 0) return null;
         return [{
@@ -1068,9 +1074,15 @@ export class ModuxEditor extends LitElement {
       }
       case 'remove-page-wizard-step': {
         const step = ((this.model.pages ?? []).find((pg) => pg.id === c.pageId)?.wizardSteps ?? [])
-          .find((s) => s.pageId === c.targetId);
+          .find((s) => (s.id ?? s.pageId) === c.targetId);
         if (!step) return null;
-        return [{ kind: 'add-page-wizard-step', pageId: c.pageId, targetId: c.targetId, label: step.label }];
+        return [{
+          kind: 'add-page-wizard-step',
+          pageId: c.pageId,
+          targetId: step.pageId ?? null,
+          label: step.label,
+          itemId: step.id,
+        }];
       }
       case 'delete-ui-app': {
         const app = (this.model.uiApps ?? []).find((x) => x.id === c.id);
@@ -1183,7 +1195,13 @@ export class ModuxEditor extends LitElement {
           ops.push(...this.rebuildComponentOps(pg.id, root, undefined, null).ops);
         }
         for (const s of pg.wizardSteps ?? []) {
-          ops.push({ kind: 'add-page-wizard-step', pageId: pg.id, targetId: s.pageId, label: s.label });
+          ops.push({
+            kind: 'add-page-wizard-step',
+            pageId: pg.id,
+            targetId: s.pageId ?? null,
+            label: s.label,
+            itemId: s.id,
+          });
         }
         if (pg.crudDetailPageId || pg.crudDetailAppId) {
           ops.push({ kind: 'set-crud-detail', pageId: pg.id, targetId: pg.crudDetailPageId ?? null, toAppId: pg.crudDetailAppId ?? null });
@@ -2542,16 +2560,20 @@ export class ModuxEditor extends LitElement {
         });
         return;
       }
-      if (connectKind === 'wizard-step' && isPage(sourceId) && isPage(targetId) && sourceId !== targetId) {
-        const wiz = pages.find((pg) => pg.id === sourceId)!;
-        if ((wiz.wizardSteps ?? []).some((s) => s.pageId === targetId)) return;
-        this.command({ kind: 'add-page-wizard-step', pageId: sourceId, targetId });
+
+      if (connectKind) return; // a typed line means nothing else
+      // a step row wired to a page MAPS the step onto it (either direction)
+      const rowRef = (id: string) => /^wizrow:([^:]+):(.+)$/.exec(id);
+      const rowSide = rowRef(sourceId) ?? rowRef(targetId);
+      if (rowSide) {
+        const other = rowRef(sourceId) ? targetId : sourceId;
+        if (isPage(other) && other !== rowSide[1]) {
+          this.command({ kind: 'set-wizard-step-page', pageId: rowSide[1], itemId: rowSide[2], targetId: other });
+        }
         return;
       }
-      if (connectKind) return; // a typed line means nothing else
-      // a page dropped on a WIZARD (or on one of its step rows) joins it as a step
-      const wizTargetId = /^wizrow:([^:]+):/.exec(targetId)?.[1] ?? targetId;
-      const wizTarget = pages.find((pg) => pg.id === wizTargetId && pg.type === 'WIZARD');
+      // a page dropped on the WIZARD body joins it as a new (mapped) step
+      const wizTarget = pages.find((pg) => pg.id === targetId && pg.type === 'WIZARD');
       if (isPage(sourceId) && wizTarget && sourceId !== wizTarget.id) {
         if (!(wizTarget.wizardSteps ?? []).some((s) => s.pageId === sourceId)) {
           this.command({ kind: 'add-page-wizard-step', pageId: wizTarget.id, targetId: sourceId });
@@ -4668,7 +4690,7 @@ export class ModuxEditor extends LitElement {
     const before = beforeId ? /^wizrow:[^:]+:(.+)$/.exec(beforeId)?.[1] ?? null : null;
     if (before === src[2]) return;
     // already exactly there? the slot before the NEXT step is this step's own place
-    const steps = ((this.model.pages ?? []).find((pg) => pg.id === src[1])?.wizardSteps ?? []).map((s) => s.pageId);
+    const steps = ((this.model.pages ?? []).find((pg) => pg.id === src[1])?.wizardSteps ?? []).map((s) => s.id ?? s.pageId!);
     const at = steps.indexOf(src[2]);
     if (at >= 0 && (before ? steps[at + 1] === before : at === steps.length - 1)) return;
     this.command({ kind: 'move-page-wizard-step', pageId: src[1], targetId: src[2], beforeItemId: before });
@@ -4934,6 +4956,7 @@ export class ModuxEditor extends LitElement {
     { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-page-crud', label: 'CRUD', child: true, symbol: 'lens', color: '#0284c7', group: 'UI' },
     { type: 'ui-page-wizard', label: 'Wizard', child: true, symbol: 'flow', color: '#0284c7', group: 'UI' },
+    { type: 'ui-wizard-step', label: 'Paso de wizard', child: true, symbol: 'flow', color: '#7c3aed', group: 'UI' },
     { type: 'ui-model', label: 'Modelo', symbol: 'readmodel', color: '#8b5cf6', group: 'UI' },
     // Diseño: the Mateu layout vocabulary…
     { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -5398,6 +5421,27 @@ export class ModuxEditor extends LitElement {
       issue(cmd, id);
       return;
     }
+    if (type === 'ui-wizard-step') {
+      const chain: string[] = [];
+      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+        chain.push(cur);
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      const wizardId = chain
+        .map((cid) => /^wizrow:([^:]+):/.exec(cid)?.[1] ?? cid)
+        .find((cid) => (this.model.pages ?? []).some((pg) => pg.id === cid && pg.type === 'WIZARD'));
+      if (!wizardId) {
+        this.emit('modux-notice', { message: 'Suelta el paso sobre un wizard' });
+        return;
+      }
+      const steps = (this.model.pages ?? []).find((pg) => pg.id === wizardId)?.wizardSteps ?? [];
+      const taken = new Set(steps.map((s) => s.id ?? s.pageId));
+      let n = steps.length + 1;
+      while (taken.has(`wzs-${n}`)) n++;
+      this.command({ kind: 'add-page-wizard-step', pageId: wizardId, itemId: `wzs-${n}`, label: `Paso ${n}` });
+      this.emit('modux-notice', { message: 'Paso creado — arrastra su asa hasta la página que lo implementa' });
+      return;
+    }
     if (type === 'page' || type === 'ui-page-crud' || type === 'ui-page-wizard') {
       const pageType = type === 'ui-page-crud' ? 'CRUD' : type === 'ui-page-wizard' ? 'WIZARD' : 'PAGE';
       const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : 'Página';
@@ -5757,7 +5801,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'menu-item', 'ui-model'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&

@@ -566,8 +566,8 @@ export interface UiPageRef {
   viewmodelFields?: UiFieldRef[];
   /** UI-first composition: Mateu layouts with components inside. Empty = fully inferred. */
   content?: UiComponentNodeRef[];
-  /** WIZARD: the pages that compose it, in order. */
-  wizardSteps?: { pageId: string; label?: string }[];
+  /** WIZARD: its steps in order — each maps to the page implementing it (or none yet). */
+  wizardSteps?: { pageId?: string; label?: string; id?: string }[];
   /** CRUD: what opens a row — a page or an app of any archetype. */
   crudDetailPageId?: string;
   crudDetailAppId?: string;

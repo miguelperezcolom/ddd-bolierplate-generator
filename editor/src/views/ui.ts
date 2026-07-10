@@ -308,9 +308,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       badge: page.type ?? 'PAGE',
       container: wizSteps.length > 0,
       extraHandles:
-        page.type === 'WIZARD'
-          ? [{ kind: 'wizard-step', title: 'Paso: arrastra hasta la página que será el siguiente paso', color: '#7c3aed' }]
-          : page.type === 'CRUD'
+        page.type === 'CRUD'
             ? [
                 { kind: 'crud-detail', title: 'Detalle: arrastra hasta la página o app que abre una fila', color: '#ea580c' },
                 { kind: 'crud-create', title: 'Alta: arrastra hasta la página o app del nuevo registro', color: '#0d9488' },
@@ -322,19 +320,22 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     });
     let stepY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
     wizSteps.forEach((step, i) => {
+      const key = step.id ?? step.pageId ?? String(i);
       nodes.push({
-        id: `wizrow:${page.id}:${step.pageId}`,
-        label: `${i + 1}. ${step.label ?? pageNameOf(step.pageId)}`,
+        id: `wizrow:${page.id}:${key}`,
+        label: `${i + 1}. ${step.label ?? (step.pageId ? pageNameOf(step.pageId) : 'Paso')}${step.pageId ? '' : ' ⌁'}`,
         x: pos.x,
         y: stepY,
         w: PAGE_W - CONTAINER_INSET * 2,
         h: ENTRY_H,
         kind: 'wizard-step-row',
         symbol: 'flow',
-        fill: '#faf5ff',
+        fill: step.pageId ? '#faf5ff' : '#ffffff',
         stroke: '#c4b5fd',
         parentId: page.id,
-        tooltip: `Paso ${i + 1} del wizard: ${pageNameOf(step.pageId)} — arrastra a otro hueco para reordenar`,
+        tooltip: step.pageId
+          ? `Paso ${i + 1}: ${pageNameOf(step.pageId)} — arrastra el asa hasta otra página para re-mapearlo`
+          : `Paso ${i + 1}, sin página — arrastra el asa hasta la página que lo implementa`,
       });
       stepY += ENTRY_H + ENTRY_GAP;
     });
@@ -357,6 +358,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     }
     for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
       const step = (page.wizardSteps ?? [])[i];
+      if (!step.pageId) continue;
       edges.push({
         id: `wizstep:${page.id}->${step.pageId}`,
         sourceId: page.id,
