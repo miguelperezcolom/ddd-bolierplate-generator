@@ -31,6 +31,8 @@ export class ModuxPageDesigner extends LitElement {
   @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
   @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
   @property({ attribute: false }) queryOps: { id: string; name: string; queryServiceId: string }[] = [];
+  /** The selected content node (owned by the shell, like the canvas selection). */
+  @property({ attribute: false }) selectedCmpId: string | null = null;
 
   /** The field whose declaration is being edited, with the draft values. */
   @state() private _editing: {
@@ -52,6 +54,8 @@ export class ModuxPageDesigner extends LitElement {
   @state() private _overCmpId: string | null = null;
   /** Where the drop lands relative to the hovered node: a sibling slot or inside it. */
   @state() private _overCmpPos: 'before' | 'after' | 'into' = 'into';
+  /** A drag from outside this designer (palette or another frame) hovering us. */
+  @state() private _foreignOver = false;
 
   private emitEvent(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -310,12 +314,19 @@ export class ModuxPageDesigner extends LitElement {
     }
     .cmp.overcmp.over-before {
       box-shadow: 0 -3px 0 0 #0284c7;
+      margin-top: 16px;
     }
     .cmp.overcmp.over-after {
       box-shadow: 0 3px 0 0 #0284c7;
+      margin-bottom: 16px;
     }
     .cmp {
       cursor: grab;
+      transition: margin 0.12s ease;
+    }
+    .cmp.selcmp {
+      outline: 2px solid #0284c7;
+      outline-offset: 1px;
     }
     .cmp .kindchip {
       position: absolute;
@@ -585,7 +596,7 @@ export class ModuxPageDesigner extends LitElement {
     field: 'Campo', text: 'Texto', metricCard: 'Métrica', menuBar: 'Menú',
   };
 
-  private static readonly LEAF_KINDS = new Set([
+  static readonly LEAF_KINDS = new Set([
     'form', 'listing', 'button', 'field', 'text', 'metricCard', 'menuBar',
   ]);
 
@@ -636,29 +647,43 @@ export class ModuxPageDesigner extends LitElement {
     return y < 0.2 ? 'before' : y > 0.8 ? 'after' : 'into';
   }
 
-  private onCmpDrop(target: UiComponentNodeRef, pos: 'before' | 'after' | 'into'): void {
-    const source = this._dragCmpId;
-    this._dragCmpId = null;
-    this._overCmpId = null;
-    if (!source || source === target.id) return;
-    // A node never lands inside its own subtree.
-    if (this.isWithin(target.id, source)) return;
+  /** The landing slot for a drop on `target`: a parent + the sibling to slot before. */
+  private slotFor(
+    target: UiComponentNodeRef,
+    pos: 'before' | 'after' | 'into',
+  ): { toParentId: string | null; beforeComponentId: string | null } {
     if (pos === 'into' && target.kind === 'tabLayout' && (target.children ?? [])[0]) {
       target = (target.children ?? [])[0]; // tabs hold the content — land in the active one
     }
     if (pos === 'into' && !ModuxPageDesigner.LEAF_KINDS.has(target.kind)) {
-      this.emitEvent('component-moved', { componentId: source, toParentId: target.id, beforeComponentId: null });
-      return;
+      return { toParentId: target.id, beforeComponentId: null };
     }
-    // A sibling slot, before or after the hovered node.
     const parent = this.parentOf(target.id);
     const before = pos === 'after' ? (this.nextSiblingOf(target.id)?.id ?? null) : target.id;
-    if (before === source) return; // already there
-    this.emitEvent('component-moved', {
-      componentId: source,
-      toParentId: parent?.id ?? null,
-      beforeComponentId: before,
-    });
+    return { toParentId: parent?.id ?? null, beforeComponentId: before };
+  }
+
+  private onCmpDrop(target: UiComponentNodeRef, pos: 'before' | 'after' | 'into', e?: DragEvent): void {
+    const source = this._dragCmpId;
+    this._dragCmpId = null;
+    this._overCmpId = null;
+    if (!source) {
+      // A node dragged from ANOTHER frame: the payload travels in the DataTransfer.
+      const raw = e?.dataTransfer?.getData('application/x-modux-cmp');
+      if (!raw) return;
+      let payload: { pageId?: string; componentId?: string };
+      try { payload = JSON.parse(raw); } catch { return; }
+      if (!payload.componentId || !payload.pageId || payload.pageId === this.page?.id) return;
+      const slot = this.slotFor(target, pos);
+      this.emitEvent('component-transferred', { fromPageId: payload.pageId, componentId: payload.componentId, ...slot });
+      return;
+    }
+    if (source === target.id) return;
+    // A node never lands inside its own subtree.
+    if (this.isWithin(target.id, source)) return;
+    const slot = this.slotFor(target, pos);
+    if (slot.beforeComponentId === source) return; // already there
+    this.emitEvent('component-moved', { componentId: source, ...slot });
   }
 
   /** One node of the composed page: a labeled, droppable, clickable mockup. */
@@ -796,46 +821,62 @@ export class ModuxPageDesigner extends LitElement {
         body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;
     }
     const leaf = ModuxPageDesigner.LEAF_KINDS.has(node.kind);
-    const over = this._overCmpId === node.id && this._dragCmpId;
+    const over = this._overCmpId === node.id && (this._dragCmpId || this._foreignOver);
+    const startDrag = (e: DragEvent) => {
+      // The whole node is the handle; the innermost one wins over its ancestors.
+      e.stopPropagation();
+      this._dragCmpId = node.id;
+      e.dataTransfer?.setData(
+        'application/x-modux-cmp',
+        JSON.stringify({ pageId: this.page?.id, componentId: node.id }),
+      );
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    };
     return html`<div
-      class="cmp ${leaf ? 'leafcmp' : ''} ${over ? `overcmp over-${this._overCmpPos}` : ''}"
+      class="cmp ${leaf ? 'leafcmp' : ''} ${over ? `overcmp over-${this._overCmpPos}` : ''} ${
+        this.selectedCmpId === node.id ? 'selcmp' : ''}"
       data-cmp-id=${node.id}
+      data-cmp-kind=${node.kind}
       draggable="true"
       @click=${(e: Event) => {
         e.stopPropagation();
+        this.emitEvent('component-selected', { componentId: node.id });
+      }}
+      @dblclick=${(e: Event) => {
+        e.stopPropagation();
         this._cmp = { ...node };
       }}
-      @dragstart=${(e: DragEvent) => {
-        // The whole node is the handle; the innermost one wins over its ancestors.
-        e.stopPropagation();
-        this._dragCmpId = node.id;
-      }}
+      @dragstart=${startDrag}
       @dragend=${() => {
         this._dragCmpId = null;
         this._overCmpId = null;
+        this._foreignOver = false;
       }}
       @dragover=${(e: DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        const types = e.dataTransfer?.types ?? [];
+        this._foreignOver =
+          !this._dragCmpId &&
+          ([...types].includes('application/x-modux-cmp') || [...types].includes('application/x-modux-palette'));
         this._overCmpId = node.id;
-        this._overCmpPos = this._dragCmpId ? this.dropPosFor(node, e) : 'into';
+        this._overCmpPos = this._dragCmpId || this._foreignOver ? this.dropPosFor(node, e) : 'into';
       }}
       @dragleave=${() => (this._overCmpId = null)}
       @drop=${(e: DragEvent) => {
-        if (!this._dragCmpId) return; // palette drops bubble up to the surface
+        this._foreignOver = false;
+        // palette drops bubble up to the surface (which asks us for the slot)
+        if (!this._dragCmpId && !e.dataTransfer?.types?.includes?.('application/x-modux-cmp')) return;
         e.preventDefault();
         e.stopPropagation();
-        this.onCmpDrop(node, this._overCmpPos);
+        this.onCmpDrop(node, this._overCmpPos, e);
       }}
     >
       <span
         class="kindchip"
         draggable="true"
-        title="Arrastra para mover · click para configurar"
-        @dragstart=${(e: DragEvent) => {
-          e.stopPropagation();
-          this._dragCmpId = node.id;
-        }}
+        title="Arrastra para mover · click selecciona · doble click configura"
+        @dragstart=${startDrag}
         >${ModuxPageDesigner.KIND_LABELS[node.kind] ?? node.kind}${node.title ? ` · ${node.title}` : ''}</span
       >
       ${body}
@@ -898,7 +939,7 @@ export class ModuxPageDesigner extends LitElement {
     const titled = ['tab', 'card', 'accordionLayout', 'foldoutLayout', 'metricCard', 'appLayout',
       'verticalLayout', 'horizontalLayout', 'formLayout', 'splitLayout', 'tabLayout', 'gridLayout',
       'boardLayout', 'dashboardLayout', 'masterDetailLayout', 'carouselLayout'].includes(kind);
-    return html`<div class="pop">
+    return html`<div class="pop" @click=${(e: Event) => e.stopPropagation()}>
       ${titled
         ? html`<label>Título</label>
             <input .value=${draft.title ?? ''} @input=${(e: Event) => set({ title: (e.target as HTMLInputElement).value })} />`
@@ -989,6 +1030,11 @@ export class ModuxPageDesigner extends LitElement {
         </button>
       </div>
     </div>`;
+  }
+
+  /** Clicking outside every node clears the selection (the pop stops its clicks). */
+  private onBodyClick(): void {
+    this.emitEvent('component-selected', { componentId: null });
   }
 
   private onFieldClick(field: UiFieldRef): void {
@@ -1112,7 +1158,7 @@ export class ModuxPageDesigner extends LitElement {
           )}
         </select>
       </div>
-      <div class="body">
+      <div class="body" @click=${() => this.onBodyClick()}>
         ${(page.content ?? []).length
           ? html`<div class="col-lay">${(page.content ?? []).map((n) => this.renderComponent(n))}</div>`
           : this.renderInferredBody(page, fields, listing)}

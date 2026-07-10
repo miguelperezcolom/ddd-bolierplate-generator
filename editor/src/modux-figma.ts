@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { UiPageRef } from './model.js';
 import type { Point } from './scene.js';
 import './modux-page-designer.js';
+import { ModuxPageDesigner } from './modux-page-designer.js';
 
 /**
  * The «Diseño» surface: every page of the model as a FRAME on an infinite
@@ -34,6 +35,8 @@ export class ModuxFigma extends LitElement {
   @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
   @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
   @property({ attribute: false }) queryOps: { id: string; name: string; queryServiceId: string }[] = [];
+  /** The selected content node across every frame (owned by the shell). */
+  @property({ attribute: false }) selectedCmp: { pageId: string; componentId: string } | null = null;
 
   /** Camera: screen-space pan + zoom. */
   @state() private _t = { x: 40, y: 40, k: 0.85 };
@@ -157,6 +160,31 @@ export class ModuxFigma extends LitElement {
     return cmp ? `cmp:${pageId}:${cmp.dataset.cmpId}` : pageId;
   }
 
+  /**
+   * Where a drop at a client point lands: the page, the hovered node (null on the
+   * frame's empty body) and the slot — before/after a sibling or inside a layout.
+   */
+  dropSlotAtClient(
+    clientX: number,
+    clientY: number,
+  ): { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null {
+    const el = this.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const frame = el?.closest?.('.frame') as HTMLElement | null;
+    if (!frame) return null;
+    const pageId = frame.dataset.pageId!;
+    const designer = frame.querySelector('modux-page-designer');
+    const inner = designer?.shadowRoot?.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const cmp = inner?.closest?.('[data-cmp-id]') as HTMLElement | null;
+    if (!cmp) return { pageId, componentId: null, pos: 'into' };
+    const kind = cmp.dataset.cmpKind ?? '';
+    const box = cmp.getBoundingClientRect();
+    const y = (clientY - box.top) / Math.max(1, box.height);
+    const pos = ModuxPageDesigner.LEAF_KINDS.has(kind)
+      ? y < 0.5 ? 'before' : 'after'
+      : y < 0.2 ? 'before' : y > 0.8 ? 'after' : 'into';
+    return { pageId, componentId: cmp.dataset.cmpId!, pos };
+  }
+
   /** The frame's top-left in surface coordinates (layout, live drag, or default grid). */
   private posOf(id: string, index: number): Point {
     if (this._live?.id === id) return { x: this._live.x, y: this._live.y };
@@ -255,6 +283,9 @@ export class ModuxFigma extends LitElement {
               <modux-page-designer
                 framed
                 .page=${page}
+                .selectedCmpId=${this.selectedCmp?.pageId === page.id
+                  ? this.selectedCmp.componentId
+                  : null}
                 .models=${this.models}
                 .mappings=${this.mappings}
                 .useCases=${this.useCases}
@@ -270,6 +301,14 @@ export class ModuxFigma extends LitElement {
                 @component-moved=${(e: CustomEvent) => {
                   e.stopPropagation();
                   this.emit('page-component-moved', { pageId: page.id, ...e.detail });
+                }}
+                @component-selected=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-component-selected', { pageId: page.id, ...e.detail });
+                }}
+                @component-transferred=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-component-transferred', { toPageId: page.id, ...e.detail });
                 }}
                 @page-renamed=${(e: CustomEvent) => {
                   e.stopPropagation();
@@ -307,7 +346,7 @@ export class ModuxFigma extends LitElement {
             Créalas en la vista <b>UI</b> (paleta → Página) y diséñalas aquí.
           </div>`}
       <div class="hud">
-        arrastra el título para mover un frame · fondo panea · rueda zoom · click en un campo edita su declaración
+        arrastra el título para mover un frame · fondo panea · rueda zoom · click selecciona · doble click configura · arrastra nodos entre frames · Ctrl+C/V copia y pega · Supr borra
       </div>
     `;
   }

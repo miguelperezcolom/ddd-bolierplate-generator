@@ -16,6 +16,7 @@ import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
 import './modux-figma.js';
+import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
@@ -300,6 +301,10 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
+  /** The selected content node on the Diseño surface (one across every frame). */
+  @state() private _selectedCmp: { pageId: string; componentId: string } | null = null;
+  /** Ctrl+C on a node: its subtree, deep-copied, pasteable on any frame. */
+  private _cmpClipboard: UiComponentNodeRef | null = null;
   /** Mirrors document.fullscreenElement — the editor host in fullscreen. */
   @state() private _fullscreen = false;
   /** Tilt mode: the diagram as stacked 3D plates (a read-only lens). */
@@ -1144,32 +1149,13 @@ export class ModuxEditor extends LitElement {
             beforeComponentId: before,
           }];
         }
-        // remove: recreate the node (its config, not its subtree) where it was
-        return [
-          {
-            kind: 'add-page-component',
-            pageId: c.pageId,
-            componentId: c.componentId,
-            componentKind: found.kind,
-            parentComponentId: parent === null ? undefined : (parent as UiComponentNodeRef).id,
-          },
-          {
-            kind: 'set-page-component',
-            pageId: c.pageId,
-            componentId: c.componentId,
-            title: found.title ?? null,
-            text: found.text ?? null,
-            label: found.label ?? null,
-            useCaseId: found.useCaseId ?? null,
-            mappingId: found.mappingId ?? null,
-            modelId: found.modelId ?? null,
-            queryServiceId: found.queryServiceId ?? null,
-            queryOperationId: found.queryOperationId ?? null,
-            fieldId: found.fieldId ?? null,
-            stereotype: found.stereotype ?? null,
-            colspan: found.colspan ?? null,
-          },
-        ];
+        // remove: recreate the WHOLE subtree where it was
+        return this.rebuildComponentOps(
+          c.pageId,
+          found,
+          parent === null ? undefined : (parent as UiComponentNodeRef).id,
+          before,
+        ).ops;
       }
       case 'set-page-listing': {
         const page = (this.model.pages ?? []).find((x) => x.id === c.pageId);
@@ -4091,6 +4077,102 @@ export class ModuxEditor extends LitElement {
   }
 
   /** A fresh content-node id, unique across every page's tree (client-generated). */
+  /** A node (and its parent + next sibling) inside a page's content tree. */
+  private componentIn(pageId: string, componentId: string): {
+    node: UiComponentNodeRef;
+    parentId: string | null;
+    beforeId: string | null;
+  } | null {
+    const page = (this.model.pages ?? []).find((x) => x.id === pageId);
+    let found: { node: UiComponentNodeRef; parentId: string | null; beforeId: string | null } | null = null;
+    const walk = (items: UiComponentNodeRef[] | undefined, up: string | null) => {
+      const list = items ?? [];
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].id === componentId) {
+          found = { node: list[i], parentId: up, beforeId: list[i + 1]?.id ?? null };
+        }
+        walk(list[i].children, list[i].id);
+      }
+    };
+    walk(page?.content, null);
+    return found;
+  }
+
+  /**
+   * Commands that recreate `node` (whole subtree) on a page. With `fresh`, every id is
+   * newly allocated (paste/duplicate); without it the original ids are kept (undo,
+   * cross-page moves). Returns the ops plus the id the root ended up with.
+   */
+  private rebuildComponentOps(
+    pageId: string,
+    node: UiComponentNodeRef,
+    parentComponentId: string | undefined,
+    beforeComponentId: string | null,
+    fresh = false,
+    used?: Set<string>,
+  ): { ops: ModuxCommand[]; rootId: string } {
+    const usedIds = used ?? this.allComponentIds();
+    const idFor = (n: UiComponentNodeRef): string => {
+      if (!fresh) return n.id;
+      const base = `cmp-${slug(n.kind)}`;
+      let id = base;
+      for (let k = 2; usedIds.has(id) || usedIds.has(`${id}-tab-1`); k++) id = `${base}-${k}`;
+      usedIds.add(id);
+      return id;
+    };
+    const ops: ModuxCommand[] = [];
+    const emitNode = (n: UiComponentNodeRef, parent: string | undefined): string => {
+      const id = idFor(n);
+      ops.push({ kind: 'add-page-component', pageId, componentId: id, componentKind: n.kind, parentComponentId: parent });
+      // add-page-component seeds a tabLayout with «<id>-tab-1/2»: clear them, OUR tabs follow
+      if (n.kind === 'tabLayout') {
+        ops.push({ kind: 'remove-page-component', pageId, componentId: `${id}-tab-1` });
+        ops.push({ kind: 'remove-page-component', pageId, componentId: `${id}-tab-2` });
+      }
+      ops.push({
+        kind: 'set-page-component',
+        pageId,
+        componentId: id,
+        title: n.title ?? null,
+        text: n.text ?? null,
+        label: n.label ?? null,
+        useCaseId: n.useCaseId ?? null,
+        mappingId: n.mappingId ?? null,
+        modelId: n.modelId ?? null,
+        queryServiceId: n.queryServiceId ?? null,
+        queryOperationId: n.queryOperationId ?? null,
+        fieldId: n.fieldId ?? null,
+        stereotype: n.stereotype ?? null,
+        colspan: n.colspan ?? null,
+      });
+      for (const c of n.children ?? []) emitNode(c, id);
+      return id;
+    };
+    const rootId = emitNode(node, parentComponentId);
+    if (beforeComponentId) {
+      ops.push({
+        kind: 'move-page-component',
+        pageId,
+        componentId: rootId,
+        parentComponentId: parentComponentId ?? null,
+        beforeComponentId,
+      });
+    }
+    return { ops, rootId };
+  }
+
+  private allComponentIds(): Set<string> {
+    const used = new Set<string>();
+    const walk = (items?: UiComponentNodeRef[]) => {
+      for (const it of items ?? []) {
+        used.add(it.id);
+        walk(it.children);
+      }
+    };
+    (this.model.pages ?? []).forEach((x) => walk(x.content));
+    return used;
+  }
+
   private newComponentId(kind: string): string {
     const used = new Set<string>();
     const walk = (items?: { id: string; children?: [] }[]) => {
@@ -4106,6 +4188,85 @@ export class ModuxEditor extends LitElement {
     return id;
   }
 
+  /** Supr borra, Ctrl+C copia el subárbol, Ctrl+V lo pega bajo la selección. */
+  private onDesignKeydown = (e: KeyboardEvent): void => {
+    const t = e.target as HTMLElement;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this._selectedCmp) {
+      const { pageId, componentId } = this._selectedCmp;
+      this._selectedCmp = null;
+      this.command({ kind: 'remove-page-component', pageId, componentId });
+      e.preventDefault();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && this._selectedCmp) {
+      const found = this.componentIn(this._selectedCmp.pageId, this._selectedCmp.componentId);
+      if (found) {
+        this._cmpClipboard = JSON.parse(JSON.stringify(found.node));
+        this.emit('modux-notice', { message: `Copiado: ${found.node.kind} y sus hijos — Ctrl+V lo pega bajo la selección` });
+      }
+      e.preventDefault();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && this._cmpClipboard) {
+      this.pasteComponent();
+      e.preventDefault();
+    }
+  };
+
+  /** Paste under the selected node (inside a layout, after a leaf) or on the selected frame. */
+  private pasteComponent(): void {
+    const clip = this._cmpClipboard;
+    if (!clip) return;
+    let pageId: string | null = null;
+    let parentComponentId: string | undefined;
+    let beforeComponentId: string | null = null;
+    if (this._selectedCmp) {
+      const found = this.componentIn(this._selectedCmp.pageId, this._selectedCmp.componentId);
+      if (!found) return;
+      pageId = this._selectedCmp.pageId;
+      const leaf = ModuxPageDesigner.LEAF_KINDS.has(found.node.kind);
+      if (leaf) {
+        parentComponentId = found.parentId ?? undefined;
+        beforeComponentId = found.beforeId;
+      } else {
+        parentComponentId =
+          found.node.kind === 'tabLayout' ? (found.node.children ?? [])[0]?.id : found.node.id;
+      }
+    } else if (this._selectedId && (this.model.pages ?? []).some((x) => x.id === this._selectedId)) {
+      pageId = this._selectedId;
+    }
+    if (!pageId) {
+      this.emit('modux-notice', { message: 'Selecciona el nodo (o el frame) donde pegar' });
+      return;
+    }
+    const { ops, rootId } = this.rebuildComponentOps(pageId, clip, parentComponentId, beforeComponentId, true);
+    for (const op of ops) this.command(op, false);
+    this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId: rootId }]);
+    this._selectedCmp = { pageId, componentId: rootId };
+  }
+
+  /** A node dragged from another frame: recreated there, removed here — one undo. */
+  private onComponentTransferred = (e: CustomEvent): void => {
+    const { fromPageId, toPageId, componentId, toParentId, beforeComponentId } = e.detail as {
+      fromPageId: string; toPageId: string; componentId: string;
+      toParentId: string | null; beforeComponentId: string | null;
+    };
+    const found = this.componentIn(fromPageId, componentId);
+    if (!found || fromPageId === toPageId) return;
+    const node: UiComponentNodeRef = JSON.parse(JSON.stringify(found.node));
+    const { ops } = this.rebuildComponentOps(toPageId, node, toParentId ?? undefined, beforeComponentId);
+    for (const op of ops) this.command(op, false);
+    this.command({ kind: 'remove-page-component', pageId: fromPageId, componentId }, false);
+    this.pushUndoEntry([
+      { kind: 'remove-page-component', pageId: toPageId, componentId },
+      ...this.rebuildComponentOps(fromPageId, node, found.parentId ?? undefined, found.beforeId).ops,
+    ]);
+    this._selectedCmp = { pageId: toPageId, componentId };
+  };
+
   /** The «Diseño» surface: every page as a frame, edited in place (Figma-style). */
   private renderFigma() {
     const vl = this.viewLayout('design');
@@ -4114,6 +4275,14 @@ export class ModuxEditor extends LitElement {
       .layout=${vl.nodes}
       .selectedId=${this._selectedId}
       .selectedIds=${this._multi}
+      .selectedCmp=${this._selectedCmp}
+      @keydown=${this.onDesignKeydown}
+      @page-component-selected=${(e: CustomEvent) => {
+        this._selectedCmp = e.detail.componentId
+          ? { pageId: e.detail.pageId, componentId: e.detail.componentId }
+          : null;
+      }}
+      @page-component-transferred=${this.onComponentTransferred}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
       .useCases=${this.model.modules.flatMap((mod) =>
@@ -4296,6 +4465,12 @@ export class ModuxEditor extends LitElement {
         items: (m.pages ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
+        label: 'Modelos',
+        symbol: 'readmodel',
+        color: '#0369a1',
+        items: (m.models ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
         label: 'Casos de uso',
         symbol: 'usecase',
         color: '#06b6d4',
@@ -4431,15 +4606,19 @@ export class ModuxEditor extends LitElement {
     if (!surface) return;
     const pos = surface.sceneFromClient(e.clientX, e.clientY);
     const targetId = surface.nodeIdAtClient(e.clientX, e.clientY);
+    const slot =
+      this._view === 'design' && 'dropSlotAtClient' in surface
+        ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(e.clientX, e.clientY)
+        : null;
     let payload: { new?: string; existing?: string };
     try {
       payload = JSON.parse(raw);
     } catch {
       return;
     }
-    if (payload.new) this.createFromPalette(payload.new, pos, targetId);
+    if (payload.new) this.createFromPalette(payload.new, pos, targetId, slot);
     else if (payload.existing) {
-      this.placeExistingFromPalette(payload.existing, pos, targetId, e.clientX, e.clientY);
+      this.placeExistingFromPalette(payload.existing, pos, targetId, e.clientX, e.clientY, slot);
     }
   }
 
@@ -4521,7 +4700,12 @@ export class ModuxEditor extends LitElement {
     return null;
   }
 
-  private createFromPalette(type: string, pos: Point, targetId: string | null): void {
+  private createFromPalette(
+    type: string,
+    pos: Point,
+    targetId: string | null,
+    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null = null,
+  ): void {
     const def = ModuxEditor.PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
     if (type.startsWith('cmp:')) {
@@ -4533,28 +4717,39 @@ export class ModuxEditor extends LitElement {
         return;
       }
       let parentComponentId = m ? m[2] : undefined;
-      if (parentComponentId) {
+      let beforeComponentId: string | null = null;
+      if (slot?.componentId && slot.pos !== 'into') {
+        // the drop opened a sibling slot: land beside the hovered node, not inside it
+        const hovered = this.componentIn(pageId, slot.componentId);
+        if (hovered) {
+          parentComponentId = hovered.parentId ?? undefined;
+          beforeComponentId = slot.pos === 'before' ? slot.componentId : hovered.beforeId;
+        }
+      } else if (parentComponentId) {
         // a tabLayout holds only tabs: dropping on it lands in its active (first) tab
-        let parentNode: UiComponentNodeRef | null = null;
-        const walk = (items?: UiComponentNodeRef[]) => {
-          for (const it of items ?? []) {
-            if (it.id === parentComponentId) parentNode = it;
-            walk(it.children);
-          }
-        };
-        walk((this.model.pages ?? []).find((x) => x.id === pageId)?.content);
-        const found = parentNode as UiComponentNodeRef | null;
+        const found = this.componentIn(pageId, parentComponentId)?.node ?? null;
         if (found?.kind === 'tabLayout' && (found.children ?? [])[0]) {
           parentComponentId = (found.children ?? [])[0].id;
         }
       }
-      this.command({
+      const componentId = this.newComponentId(componentKind);
+      const addCmd: ModuxCommand = {
         kind: 'add-page-component',
         pageId,
-        componentId: this.newComponentId(componentKind),
+        componentId,
         componentKind,
         parentComponentId,
-      });
+      };
+      if (!beforeComponentId) {
+        this.command(addCmd);
+        return;
+      }
+      this.command(addCmd, false);
+      this.command(
+        { kind: 'move-page-component', pageId, componentId, parentComponentId: parentComponentId ?? null, beforeComponentId },
+        false,
+      );
+      this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId }]);
       return;
     }
 
@@ -4835,13 +5030,82 @@ export class ModuxEditor extends LitElement {
   }
 
   /** Dropping an EXISTING element: onto a node = the connect gesture; onto empty = place it. */
+  /**
+   * A catalog element dropped on the Diseño surface WIRES the declaration: a use case
+   * on a button (its action), a model on a form or the frame (the viewmodel), a query
+   * operation on a listing or the frame (what it lists). The map's connect gesture,
+   * spelled for pages.
+   */
+  private dropCatalogOnDesign(
+    id: string,
+    targetId: string | null,
+    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null,
+  ): void {
+    const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
+    const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
+    if (!pageId) {
+      this.emit('modux-notice', { message: 'Suelta el elemento sobre una página o uno de sus componentes' });
+      return;
+    }
+    const cmp = m ? this.componentIn(pageId, m[2])?.node ?? null : null;
+    const uc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+    if (uc) {
+      if (cmp?.kind === 'button') {
+        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, useCaseId: id, label: cmp.label ?? uc.name });
+        this.emit('modux-notice', { message: `El botón lanza ${uc.name}` });
+      } else {
+        this.command({ kind: 'add-page-button', pageId, useCaseId: id });
+        this.emit('modux-notice', { message: `Botón de ${uc.name} añadido a la página` });
+      }
+      return;
+    }
+    const model = (this.model.models ?? []).find((x) => x.id === id);
+    if (model) {
+      if (cmp?.kind === 'form') {
+        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, modelId: id });
+        this.emit('modux-notice', { message: `El formulario edita ${model.name}` });
+      } else {
+        this.command({ kind: 'set-page-model', pageId, modelId: id });
+        this.emit('modux-notice', { message: `${model.name} es el viewmodel de la página` });
+      }
+      return;
+    }
+    const queryOp = this.model.modules
+      .flatMap((mo) => (mo.queryServices ?? []).flatMap((qs) => (qs.operations ?? []).map((op) => ({ op, qs }))))
+      .find(({ op }) => op.id === id);
+    if (queryOp) {
+      if (cmp?.kind === 'listing') {
+        this.command({
+          kind: 'set-page-component',
+          pageId,
+          componentId: cmp.id,
+          queryOperationId: queryOp.op.id,
+          queryServiceId: queryOp.qs.id,
+        });
+      } else {
+        this.command({ kind: 'set-page-listing', pageId, queryServiceId: queryOp.qs.id });
+      }
+      this.emit('modux-notice', { message: `Listado alimentado por ${queryOp.op.name}` });
+      return;
+    }
+    void slot;
+    this.emit('modux-notice', {
+      message: 'En Diseño se sueltan casos de uso (botones), modelos (viewmodel) y consultas (listados)',
+    });
+  }
+
   private placeExistingFromPalette(
     id: string,
     pos: Point,
     targetId: string | null,
     clientX: number,
     clientY: number,
+    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null = null,
   ): void {
+    if (this._view === 'design') {
+      this.dropCatalogOnDesign(id, targetId, slot);
+      return;
+    }
     if (targetId && targetId !== id) {
       this.applyConnection(id, targetId, clientX, clientY);
       return;
