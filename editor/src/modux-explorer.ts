@@ -41,6 +41,12 @@ interface XNode {
   f2: number;
 }
 
+declare global {
+  interface HTMLElementTagNameMap {
+    'modux-explorer': ModuxExplorer;
+  }
+}
+
 const KIND_COLOR: Record<string, string> = {
   root: '#334155',
   module: '#0369a1',
@@ -199,18 +205,97 @@ export class ModuxExplorer extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    this.saveState();
     cancelAnimationFrame(this.raf);
     this.ro?.disconnect();
+  }
+
+  // ── State persistence (double click navigates to a CRUD and remounts us:
+  //    coming back must restore the exploded picture, not reset it) ───────
+
+  private static readonly STORE_KEY = 'modux-explorer-state';
+
+  private saveState(): void {
+    if (!this.root) return;
+    const nodes: Record<string, { e: number; x: number; y: number }> = {};
+    const walk = (n: XNode) => {
+      nodes[n.key] = { e: n.expanded ? 1 : 0, x: Math.round(n.x), y: Math.round(n.y) };
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(this.root);
+    try {
+      sessionStorage.setItem(ModuxExplorer.STORE_KEY, JSON.stringify({ cam: this.cam, nodes }));
+    } catch {
+      /* quota/private mode: state is just a nicety */
+    }
+  }
+
+  private loadState(): void {
+    try {
+      const raw = sessionStorage.getItem(ModuxExplorer.STORE_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as {
+        cam?: { x: number; y: number; k: number };
+        nodes?: Record<string, { e: number; x: number; y: number }>;
+      };
+      if (s.cam && s.cam.k > 0) this.cam = s.cam;
+      for (const [key, v] of Object.entries(s.nodes ?? {})) {
+        const ghost: XNode = {
+          key,
+          refId: '',
+          kind: '',
+          label: '',
+          color: '',
+          depth: 0,
+          expanded: v.e === 1,
+          x: v.x,
+          y: v.y,
+          vx: 0,
+          vy: 0,
+          scale: 1,
+          p1: Math.random() * Math.PI * 2,
+          p2: Math.random() * Math.PI * 2,
+          f1: 0.35 + Math.random() * 0.4,
+          f2: 0.3 + Math.random() * 0.45,
+        };
+        if (!this.prevByKey.has(key)) this.prevByKey.set(key, ghost);
+      }
+    } catch {
+      /* corrupt state: start fresh */
+    }
   }
 
   protected firstUpdated(): void {
     this.canvas = this.renderRoot.querySelector('canvas') ?? undefined;
     this.ctx = this.canvas?.getContext('2d') ?? undefined;
+    this.loadState();
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(this);
     this.resize();
     this.buildTree();
     this.raf = requestAnimationFrame(() => this.tick());
+  }
+
+  /** Centers the visible tree in the viewport (the toolbar's «Ajustar»). */
+  fit(): void {
+    const nodes = this.visible();
+    if (!nodes.length) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of nodes) {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x);
+      maxY = Math.max(maxY, n.y);
+    }
+    const pad = 70;
+    const w = this.clientWidth || 800;
+    const h = this.clientHeight || 600;
+    const bw = maxX - minX + pad * 2;
+    const bh = maxY - minY + pad * 2;
+    const k = Math.min(1.5, Math.max(0.25, Math.min(w / bw, h / bh)));
+    this.cam.k = k;
+    this.cam.x = w / 2 - ((minX + maxX) / 2) * k;
+    this.cam.y = h / 2 - ((minY + maxY) / 2) * k;
   }
 
   protected updated(changed: Map<string, unknown>): void {
@@ -368,8 +453,13 @@ export class ModuxExplorer extends LitElement {
     const nodes = this.visible();
     this.step(nodes);
     this.draw(nodes);
+    // Lazy persistence: a full reload (activation navigates) skips
+    // disconnectedCallback, so checkpoint about once per second.
+    if ((this.frame = (this.frame + 1) % 60) === 0) this.saveState();
     this.raf = requestAnimationFrame(() => this.tick());
   }
+
+  private frame = 0;
 
   private step(nodes: XNode[]): void {
     const t = this.t;
@@ -481,6 +571,7 @@ export class ModuxExplorer extends LitElement {
       ctx.lineWidth = (n === this.hover ? 2.6 : 1.8) / this.cam.k;
       ctx.strokeStyle = n.color;
       ctx.stroke();
+      this.drawGlyph(ctx, n, r);
       const kids = n.children?.length ?? 0;
       if (!n.expanded && kids > 0) {
         // Collapsed hub: a count badge so you can tell there is more inside.
@@ -497,7 +588,7 @@ export class ModuxExplorer extends LitElement {
         ctx.textBaseline = 'middle';
         ctx.fillText(String(kids), bx, by + 0.5);
       }
-      const showLabel = n.depth <= 1 || n === this.hover || this.cam.k > 0.8;
+      const showLabel = n.depth <= 1 || n === this.hover || this.cam.k > 0.65;
       if (showLabel) {
         const label = n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label;
         ctx.font = n === this.hover ? `600 ${fontPx(12)}` : fontPx(n.depth <= 1 ? 12 : 10.5);
@@ -510,6 +601,200 @@ export class ModuxExplorer extends LitElement {
 
     ctx.restore();
     if (this.hover) this.drawCard(ctx, this.hover, w, h);
+  }
+
+  /** A tiny kind glyph inside the circle, so the tree reads without hovering. */
+  private drawGlyph(ctx: CanvasRenderingContext2D, n: XNode, r: number): void {
+    const s = r * 0.42; // glyph half-size
+    if (s < 3.2) return; // too small to read: leave the circle clean
+    const { x, y } = n;
+    ctx.save();
+    ctx.strokeStyle = n.color;
+    ctx.fillStyle = n.color;
+    ctx.lineWidth = Math.max(1, s * 0.22);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    switch (n.kind) {
+      case 'root': // concentric target
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.moveTo(x + s * 0.35, y);
+        ctx.arc(x, y, s * 0.35, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      case 'module': // cluster of three dots
+        for (const [dx, dy] of [[-0.55, 0.4], [0.55, 0.4], [0, -0.55]]) {
+          ctx.moveTo(x + dx * s + s * 0.3, y + dy * s);
+          ctx.arc(x + dx * s, y + dy * s, s * 0.3, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        break;
+      case 'aggregate': // diamond
+        ctx.moveTo(x, y - s);
+        ctx.lineTo(x + s, y);
+        ctx.lineTo(x, y + s);
+        ctx.lineTo(x - s, y);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 'entity':
+      case 'external-table':
+      case 'read-model': // card with header line
+        ctx.rect(x - s, y - s * 0.8, s * 2, s * 1.6);
+        ctx.moveTo(x - s, y - s * 0.25);
+        ctx.lineTo(x + s, y - s * 0.25);
+        ctx.stroke();
+        break;
+      case 'use-case':
+      case 'external-use-case': // play triangle
+        ctx.moveTo(x - s * 0.6, y - s * 0.85);
+        ctx.lineTo(x + s * 0.85, y);
+        ctx.lineTo(x - s * 0.6, y + s * 0.85);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 'policy':
+      case 'domain-event':
+      case 'application-event': // lightning bolt
+        ctx.moveTo(x + s * 0.3, y - s);
+        ctx.lineTo(x - s * 0.5, y + s * 0.15);
+        ctx.lineTo(x + s * 0.05, y + s * 0.15);
+        ctx.lineTo(x - s * 0.3, y + s);
+        ctx.lineTo(x + s * 0.5, y - s * 0.15);
+        ctx.lineTo(x - s * 0.05, y - s * 0.15);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 'domain-service':
+      case 'etl-flow': { // gear: circle + spokes
+        ctx.arc(x, y, s * 0.5, 0, Math.PI * 2);
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3;
+          ctx.moveTo(x + Math.cos(a) * s * 0.55, y + Math.sin(a) * s * 0.55);
+          ctx.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s);
+        }
+        ctx.stroke();
+        break;
+      }
+      case 'query-service': // magnifier
+        ctx.arc(x - s * 0.25, y - s * 0.25, s * 0.6, 0, Math.PI * 2);
+        ctx.moveTo(x + s * 0.25, y + s * 0.25);
+        ctx.lineTo(x + s, y + s);
+        ctx.stroke();
+        break;
+      case 'scheduled-trigger': // clock
+        ctx.arc(x, y, s, 0, Math.PI * 2);
+        ctx.moveTo(x, y - s * 0.55);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + s * 0.45, y + s * 0.25);
+        ctx.stroke();
+        break;
+      case 'notification': // bell
+        ctx.moveTo(x - s * 0.85, y + s * 0.45);
+        ctx.quadraticCurveTo(x - s * 0.85, y - s, x, y - s);
+        ctx.quadraticCurveTo(x + s * 0.85, y - s, x + s * 0.85, y + s * 0.45);
+        ctx.closePath();
+        ctx.moveTo(x + s * 0.25, y + s * 0.75);
+        ctx.arc(x, y + s * 0.75, s * 0.25, 0, Math.PI);
+        ctx.stroke();
+        break;
+      case 'document': // page with folded corner
+        ctx.moveTo(x - s * 0.7, y - s);
+        ctx.lineTo(x + s * 0.25, y - s);
+        ctx.lineTo(x + s * 0.7, y - s * 0.55);
+        ctx.lineTo(x + s * 0.7, y + s);
+        ctx.lineTo(x - s * 0.7, y + s);
+        ctx.closePath();
+        ctx.moveTo(x + s * 0.25, y - s);
+        ctx.lineTo(x + s * 0.25, y - s * 0.55);
+        ctx.lineTo(x + s * 0.7, y - s * 0.55);
+        ctx.stroke();
+        break;
+      case 'workflow': // chevrons
+        for (const dx of [-0.7, 0.1]) {
+          ctx.moveTo(x + dx * s, y - s * 0.7);
+          ctx.lineTo(x + (dx + 0.6) * s, y);
+          ctx.lineTo(x + dx * s, y + s * 0.7);
+        }
+        ctx.stroke();
+        break;
+      case 'identity-provider': // key
+        ctx.arc(x - s * 0.45, y - s * 0.45, s * 0.45, 0, Math.PI * 2);
+        ctx.moveTo(x - s * 0.1, y - s * 0.1);
+        ctx.lineTo(x + s * 0.9, y + s * 0.9);
+        ctx.moveTo(x + s * 0.45, y + s * 0.45);
+        ctx.lineTo(x + s * 0.85, y + s * 0.05);
+        ctx.stroke();
+        break;
+      case 'actor': // person
+        ctx.arc(x, y - s * 0.5, s * 0.42, 0, Math.PI * 2);
+        ctx.moveTo(x - s * 0.8, y + s);
+        ctx.quadraticCurveTo(x, y - s * 0.1, x + s * 0.8, y + s);
+        ctx.stroke();
+        break;
+      case 'ai-agent': // spark
+        for (let i = 0; i < 4; i++) {
+          const a = (i * Math.PI) / 2 + Math.PI / 4;
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s);
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + Math.cos(a + Math.PI / 4) * s * 0.5, y + Math.sin(a + Math.PI / 4) * s * 0.5);
+        }
+        ctx.stroke();
+        break;
+      case 'external-system': // cloud
+        ctx.arc(x - s * 0.45, y + s * 0.15, s * 0.45, Math.PI * 0.4, Math.PI * 1.45);
+        ctx.arc(x + s * 0.1, y - s * 0.35, s * 0.5, Math.PI * 0.95, Math.PI * 1.95);
+        ctx.arc(x + s * 0.55, y + s * 0.2, s * 0.4, Math.PI * 1.45, Math.PI * 0.55);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 'ui-app': // 2×2 grid
+        for (const [dx, dy] of [[-1, -1], [0.15, -1], [-1, 0.15], [0.15, 0.15]]) {
+          ctx.rect(x + dx * s, y + dy * s, s * 0.85, s * 0.85);
+        }
+        ctx.stroke();
+        break;
+      case 'page': // browser window
+        ctx.rect(x - s, y - s * 0.8, s * 2, s * 1.6);
+        ctx.moveTo(x - s, y - s * 0.35);
+        ctx.lineTo(x + s, y - s * 0.35);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x - s * 0.7, y - s * 0.57, s * 0.09, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'api': // angle brackets
+        ctx.moveTo(x - s * 0.25, y - s);
+        ctx.lineTo(x - s, y);
+        ctx.lineTo(x - s * 0.25, y + s);
+        ctx.moveTo(x + s * 0.25, y - s);
+        ctx.lineTo(x + s, y);
+        ctx.lineTo(x + s * 0.25, y + s);
+        ctx.stroke();
+        break;
+      case 'api-operation': // arrow
+        ctx.moveTo(x - s, y);
+        ctx.lineTo(x + s * 0.7, y);
+        ctx.moveTo(x + s * 0.1, y - s * 0.5);
+        ctx.lineTo(x + s * 0.8, y);
+        ctx.lineTo(x + s * 0.1, y + s * 0.5);
+        ctx.stroke();
+        break;
+      case 'mcp-server': // plug
+        ctx.arc(x, y + s * 0.25, s * 0.6, 0, Math.PI);
+        ctx.closePath();
+        ctx.moveTo(x - s * 0.35, y + s * 0.25);
+        ctx.lineTo(x - s * 0.35, y - s * 0.7);
+        ctx.moveTo(x + s * 0.35, y + s * 0.25);
+        ctx.lineTo(x + s * 0.35, y - s * 0.7);
+        ctx.stroke();
+        break;
+      default:
+        ctx.arc(x, y, s * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
   }
 
   /** Hover card: what the node is, what it holds, how to enter. Screen space, clamped to the canvas. */

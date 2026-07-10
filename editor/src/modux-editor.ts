@@ -738,6 +738,7 @@ export class ModuxEditor extends LitElement {
       case '0':
         e.preventDefault();
         canvas?.fit();
+        this.renderRoot.querySelector('modux-explorer')?.fit();
         break;
       case '+':
       case '=':
@@ -7048,7 +7049,10 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           title="Ajustar el diagrama a la ventana"
-          @click=${() => this.renderRoot.querySelector('modux-canvas')?.fit()}
+          @click=${() => {
+            this.renderRoot.querySelector('modux-canvas')?.fit();
+            this.renderRoot.querySelector('modux-explorer')?.fit();
+          }}
         >
           ⌖ Ajustar
         </button>
