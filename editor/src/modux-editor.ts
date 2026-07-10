@@ -2549,6 +2549,15 @@ export class ModuxEditor extends LitElement {
         return;
       }
       if (connectKind) return; // a typed line means nothing else
+      // a page dropped on a WIZARD (or on one of its step rows) joins it as a step
+      const wizTargetId = /^wizrow:([^:]+):/.exec(targetId)?.[1] ?? targetId;
+      const wizTarget = pages.find((pg) => pg.id === wizTargetId && pg.type === 'WIZARD');
+      if (isPage(sourceId) && wizTarget && sourceId !== wizTarget.id) {
+        if (!(wizTarget.wizardSteps ?? []).some((s) => s.pageId === sourceId)) {
+          this.command({ kind: 'add-page-wizard-step', pageId: wizTarget.id, targetId: sourceId });
+        }
+        return;
+      }
       // a page dropped on an app (drag or catalog): a menu entry that opens it —
       // except on a headerless MASTER-DETAIL, where the first page IS the header
       if (isPage(sourceId) && isApp(targetId)) {
@@ -5400,6 +5409,23 @@ export class ModuxEditor extends LitElement {
         cur = scene.nodes.find((n) => n.id === cur)?.parentId;
       }
       const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
+      const wizardId = chain
+        .map((cid) => /^wizrow:([^:]+):/.exec(cid)?.[1] ?? cid)
+        .find((cid) => (this.model.pages ?? []).some((pg) => pg.id === cid && pg.type === 'WIZARD'));
+      if (wizardId) {
+        // Born INSIDE a wizard: the page and its step arrive together.
+        const wizNode = scene.nodes.find((n) => n.id === wizardId);
+        if (wizNode) {
+          pos.x = wizNode.x + wizNode.w / 2 + 160;
+          pos.y = wizNode.y - wizNode.h / 2 + 40;
+        }
+        this.command({ kind: 'create-ui-page', id, name, pageType }, false);
+        this.command({ kind: 'add-page-wizard-step', pageId: wizardId, targetId: id }, false);
+        const moveOp = place(id);
+        this.pushUndoEntry([{ kind: 'delete-ui-page', id }, moveOp]);
+        this.emit('modux-notice', { message: `${name} creada como paso del wizard` });
+        return;
+      }
       if (appId) {
         // Born from an app's menu: park the page beside the app, not on top of it.
         const appNode = scene.nodes.find((n) => n.id === appId);
