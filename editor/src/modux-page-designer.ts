@@ -51,6 +51,8 @@ export class ModuxPageDesigner extends LitElement {
   /** The content-tree node whose declaration is being edited (draft copy). */
   @state() private _cmp: UiComponentNodeRef | null = null;
   @state() private _dragCmpId: string | null = null;
+  /** The wizard step being dragged along the wizbar (its stable key). */
+  @state() private _dragWizKey: string | null = null;
   @state() private _overCmpId: string | null = null;
   /** Where the drop lands relative to the hovered node: a sibling slot or inside it. */
   @state() private _overCmpPos: 'before' | 'after' | 'into' = 'into';
@@ -402,6 +404,10 @@ export class ModuxPageDesigner extends LitElement {
       border-bottom: 1.5px dashed #cbd5e1;
       font-size: 11px;
       color: #94a3b8;
+    }
+    .wizbar span[draggable='true'] {
+      cursor: grab;
+      user-select: none;
     }
     .wizbar .on {
       color: #0369a1;
@@ -1269,7 +1275,40 @@ export class ModuxPageDesigner extends LitElement {
       <div class="body" @click=${() => this.onBodyClick()}>
         ${wizard
           ? html`<div class="wizbar">
-              <span class="on">① Paso 1</span><span>② Paso 2</span><span>③ Paso 3</span>
+              ${(page.wizardSteps ?? []).length
+                ? (page.wizardSteps ?? []).map((s, i) => {
+                    const keys = (page.wizardSteps ?? []).map((x, j) => x.id ?? x.pageId ?? String(j));
+                    const key = keys[i];
+                    return html`<span
+                      class=${i === 0 ? 'on' : ''}
+                      draggable="true"
+                      title="Paso ${i + 1}${s.pageId ? '' : ' (sin página)'} — arrastra para reordenar"
+                      @dragstart=${(e: DragEvent) => {
+                        e.stopPropagation();
+                        this._dragWizKey = key;
+                      }}
+                      @dragover=${(e: DragEvent) => {
+                        if (!this._dragWizKey) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      @drop=${(e: DragEvent) => {
+                        const src = this._dragWizKey;
+                        this._dragWizKey = null;
+                        if (!src || src === key) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const beforeThis = e.clientX - box.left < box.width / 2;
+                        const beforeStepKey = beforeThis ? key : (keys[i + 1] ?? null);
+                        if (beforeStepKey === src) return;
+                        this.emitEvent('wizard-step-moved', { stepKey: src, beforeStepKey });
+                      }}
+                      @dragend=${() => (this._dragWizKey = null)}
+                      >${'①②③④⑤⑥⑦⑧⑨⑩'[i] ?? `${i + 1}.`} ${s.label ?? 'Paso'}${s.pageId ? '' : ' ⌁'}</span
+                    >`;
+                  })
+                : html`<span class="on">① Paso 1</span><span>② Paso 2</span><span>③ Paso 3</span>`}
               <span class="wiznext">Siguiente ›</span>
             </div>`
           : nothing}

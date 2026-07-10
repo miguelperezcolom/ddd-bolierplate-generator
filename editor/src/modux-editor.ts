@@ -4682,18 +4682,23 @@ export class ModuxEditor extends LitElement {
     this.command({ kind: 'move-menu-item', appId: src.appId, toAppId: appId, itemId: src.itemId });
   };
 
+  /** Re-slots a wizard step unless it already sits exactly there. */
+  private moveWizardStep(pageId: string, stepKey: string, beforeKey: string | null): void {
+    if (beforeKey === stepKey) return;
+    const steps = ((this.model.pages ?? []).find((pg) => pg.id === pageId)?.wizardSteps ?? [])
+      .map((s) => s.id ?? s.pageId!);
+    const at = steps.indexOf(stepKey);
+    if (at >= 0 && (beforeKey ? steps[at + 1] === beforeKey : at === steps.length - 1)) return;
+    this.command({ kind: 'move-page-wizard-step', pageId, targetId: stepKey, beforeItemId: beforeKey });
+  }
+
   /** A wizard step row dropped on a slot: re-slot it before the target step. */
   private onWizardSlotRequested = (e: CustomEvent): void => {
     const { id, beforeId } = e.detail as { id: string; beforeId?: string | null };
     const src = /^wizrow:([^:]+):(.+)$/.exec(id);
     if (!src) return;
     const before = beforeId ? /^wizrow:[^:]+:(.+)$/.exec(beforeId)?.[1] ?? null : null;
-    if (before === src[2]) return;
-    // already exactly there? the slot before the NEXT step is this step's own place
-    const steps = ((this.model.pages ?? []).find((pg) => pg.id === src[1])?.wizardSteps ?? []).map((s) => s.id ?? s.pageId!);
-    const at = steps.indexOf(src[2]);
-    if (at >= 0 && (before ? steps[at + 1] === before : at === steps.length - 1)) return;
-    this.command({ kind: 'move-page-wizard-step', pageId: src[1], targetId: src[2], beforeItemId: before });
+    this.moveWizardStep(src[1], src[2], before);
   };
 
   /** A menu entry (with its parent and next sibling) inside an app's tree, by id. */
@@ -4826,6 +4831,8 @@ export class ModuxEditor extends LitElement {
           : null;
       }}
       @page-component-transferred=${this.onComponentTransferred}
+      @page-wizard-step-moved=${(e: CustomEvent) =>
+        this.moveWizardStep(e.detail.pageId, e.detail.stepKey, e.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
       .useCases=${this.model.modules.flatMap((mod) =>

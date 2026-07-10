@@ -322,6 +322,10 @@ export class ModuxFigma extends LitElement {
                   e.stopPropagation();
                   this.emit('page-component-transferred', { toPageId: page.id, ...e.detail });
                 }}
+                @wizard-step-moved=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this.emit('page-wizard-step-moved', { pageId: page.id, ...e.detail });
+                }}
                 @page-renamed=${(e: CustomEvent) => {
                   e.stopPropagation();
                   this.emit('page-renamed', { pageId: page.id, ...e.detail });
