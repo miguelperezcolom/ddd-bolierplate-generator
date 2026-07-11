@@ -8,20 +8,39 @@ description: How to boot and drive this repo's app (modux) to verify changes end
 ## Backend (model-driven-generator, Spring Boot)
 
 - The app serves everything on **port 8192** (`application.properties`); the user
-  usually has their own instance running there — never reuse it. Boot an isolated one:
+  usually has their own instance running there — never reuse it.
+- The model is read from **repositories** configured in `~/.modux` (the user's home):
+  `repositories.yaml` is the catalog (LOCAL folder / GIT url / DATABASE jdbc) and
+  `current.yaml` records which repository+project is open, reopened on startup.
+  Opening a repository WRITES `current.yaml` — an isolated instance MUST get its own
+  home via `-Dmodux.home`, or it will mutate the user's real state.
+- Boot an isolated one:
 
 ```bash
-# Copy the store so verification never mutates the user's data
-cp .dev/data/model-driven-store.yaml <scratch>/verify-data/
+# Own modux home + seed data, so verification never touches ~/.modux or the user's files
+mkdir -p <scratch>/verify-home <scratch>/verify-data
+# Seed: copy the user's current repo folder (find it via ~/.modux/repositories.yaml
+# + current.yaml) or, if ~/.modux is absent, use sample/hla-booking/model-driven-store.yaml
+cat > <scratch>/verify-home/repositories.yaml <<EOF
+repositories:
+  - id: "verify"
+    name: "verify"
+    type: "LOCAL"
+    folder: "<scratch>/verify-data"
+EOF
+printf 'repositoryId: "verify"\n' > <scratch>/verify-home/current.yaml
 
 # spring-boot.run.jvmArguments is IGNORED by this plugin version — use JAVA_TOOL_OPTIONS
 cd model-driven-generator && JAVA_TOOL_OPTIONS="-Dserver.port=8193 \
-  -Dmodux.model-file=<scratch>/verify-data/model-driven-store.yaml" mvn spring-boot:run
+  -Dmodux.home=<scratch>/verify-home" mvn spring-boot:run
 ```
 
 - Boots in ~15 s. Readiness probe: `curl http://localhost:8193/modux/editor/version`.
-- `.dev/data` paths resolve relative to the **cwd** — run from repo root or pass
-  `modux.model-file` explicitly.
+- The store inside a repository folder is its `model-driven-store.yaml` when present,
+  or the folder itself as a granular store (one file per element).
+- `-Dmodux.model-file=<path>` still works as fallback when no repository was opened,
+  but repositories are the primary path now (`RepositoryStoreOpener`,
+  `ReopenCurrentRepositoryOnStartup`).
 - Editor API surface: `GET/PUT /modux/editor/layout`, `GET /modux/editor/model`,
   `POST /modux/editor/commands`, SSE `/modux/editor/events`.
 

@@ -7,5 +7,5 @@ sample/*
 !sample/hla-booking/
 sample/hla-booking/generated/
 model-driven-generator/src/test/resources/examples/model-driven-store-schema.json
-# local dev store — the model is read from elsewhere now; kept on disk as seed for the verify skill
+# local dev store — the model is read from repositories (~/.modux) now
 .dev/data/
