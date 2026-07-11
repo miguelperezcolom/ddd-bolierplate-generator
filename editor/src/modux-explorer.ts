@@ -205,10 +205,14 @@ export class ModuxExplorer extends LitElement {
     .controls button:hover {
       background: #f1f5f9;
     }
+    :host([shifted]) .search {
+      left: 268px;
+    }
     .search {
       position: absolute;
       left: 12px;
       top: 10px;
+      transition: left 0.15s;
       width: 260px;
       font: 12px system-ui, sans-serif;
     }
@@ -275,6 +279,9 @@ export class ModuxExplorer extends LitElement {
       cursor: default;
     }
   `;
+
+  /** The host palette is open: the search box slides right, out from under it. */
+  @property({ type: Boolean, reflect: true }) shifted = false;
 
   @property({ attribute: false }) model: ModuxModel = {
     modules: [],

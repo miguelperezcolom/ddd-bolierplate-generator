@@ -7693,6 +7693,7 @@ export class ModuxEditor extends LitElement {
         : this._view === 'explorer'
         ? html`${this.renderPalette()}<modux-explorer
             .model=${this.model}
+            ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
             @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
