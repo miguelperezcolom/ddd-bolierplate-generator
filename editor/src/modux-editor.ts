@@ -36,7 +36,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'explorer' | 'integrations';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations';
 
 
 /**
@@ -278,8 +278,8 @@ export class ModuxEditor extends LitElement {
   /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
   @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
-  /** The explorer is the front door: graphics-first, the CRUDs behind it. */
-  @state() private _view: ViewId = 'explorer';
+  /** The front door is graphics-first: the context map on the yugo surface. */
+  @state() private _view: ViewId = 'context-map';
   /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
   @state() private _detail: 'contexts' | 'detail' | 'operations' | 'distribution' = 'contexts';
   /** Last chosen relation type — the default pre-selection in the picker. */
@@ -305,7 +305,7 @@ export class ModuxEditor extends LitElement {
   /** The element whose ficha shows in the right drawer (double click opens it). */
   @state() private _drawer: { elementType: string; id: string } | null = null;
   /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
-  @state() private _yugo = false;
+  @state() private _yugo = true;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
   @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
   /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
@@ -783,14 +783,14 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)) {
+        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
         break;
       case 'y':
       case 'Y':
-        if (!['explorer', 'design'].includes(this._view)) {
+        if (this._view !== 'design') {
           e.preventDefault();
           this._yugo = !this._yugo;
           if (this._yugo) this._tilt = false;
@@ -6128,7 +6128,7 @@ export class ModuxEditor extends LitElement {
     const surface =
       this._view === 'design'
         ? this.renderRoot.querySelector('modux-figma')
-        : this._view === 'explorer' || this._yugo
+        : this._yugo
           ? this.renderRoot.querySelector('modux-explorer')
           : this._tilt
             ? this.renderRoot.querySelector('modux-tilt')
@@ -6210,7 +6210,7 @@ export class ModuxEditor extends LitElement {
   /** The container chain at a drop target: scene parents — or the explorer's tree. */
   private dropChain(targetId: string | null | undefined): string[] {
     if (!targetId) return [];
-    if (this._view === 'explorer' || this._yugo) {
+    if (this._yugo) {
       const ex = this.renderRoot.querySelector('modux-explorer') as
         | (HTMLElement & { chainOf(id: string): string[] })
         | null;
@@ -6977,7 +6977,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
@@ -6988,8 +6988,6 @@ export class ModuxEditor extends LitElement {
             ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
-              : this._view === 'explorer'
-                ? !k.type.startsWith('cmp:')
               : this._view === 'integrations'
                 ? ['etl-flow', 'etl-transform', 'external-system', 'external-table'].includes(k.type)
               : this._view === 'mappings'
@@ -7240,7 +7238,7 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)}
+          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -7270,11 +7268,6 @@ export class ModuxEditor extends LitElement {
             title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
             @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
           >
-            <optgroup label="Explorar">
-              <option value="view:explorer" ?selected=${this._view === 'explorer'}>
-                Explorador del modelo
-              </option>
-            </optgroup>
             <optgroup label="Context map">
               <option value="level:contexts"
                 ?selected=${this._view === 'context-map' && this._detail === 'contexts'}>
@@ -7710,7 +7703,7 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           title="Recolocar los nodos automáticamente (deshacible)"
-          ?disabled=${this._view === 'explorer'}
+          ?disabled=${this._yugo}
           @click=${() => void this.runAutoLayout()}
         >
           ✨ Auto-layout
@@ -7739,7 +7732,6 @@ export class ModuxEditor extends LitElement {
           : ''}
         <button
           class="tab"
-          ?disabled=${this._view === 'explorer'}
           ?data-active=${this._tilt}
           title=${this._tilt
             ? 'Volver al lienzo editable (V)'
@@ -7753,7 +7745,7 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${['explorer', 'design'].includes(this._view)}
+          ?disabled=${this._view === 'design'}
           ?data-active=${this._yugo}
           title=${this._yugo
             ? 'Volver al lienzo editable (Y)'
@@ -7780,23 +7772,24 @@ export class ModuxEditor extends LitElement {
       ${this.renderDrawer()}
       ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
-        : this._view === 'explorer'
+        : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
-            .model=${this.model}
+            class="yugo"
+            .scene=${this.sceneFor(this._view)}
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
             @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
-              const kind = e.detail.kind === 'policy' ? 'use-case' : e.detail.kind;
-              const mapped = normalizeActivation(e.detail.id, kind);
-              if (mapped) this.openInDrawer(mapped);
+              this.onElementActivated(new CustomEvent('element-activated', {
+                detail: { elementType: 'node', id: e.detail.id, kind: e.detail.kind },
+              }));
             }}
             @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string; x?: number; y?: number }>) => {
               const { sourceId, targetId, x, y } = e.detail;
               // Two bounded contexts: the strategic relation needs its TYPE — the
               // picker opens at the drop point (create, or retype if declared).
               const isModule = (id: string) => this.model.modules.some((mo) => mo.id === id);
-              if (isModule(sourceId) && isModule(targetId)) {
+              if (this._view === 'context-map' && isModule(sourceId) && isModule(targetId)) {
                 const declared = this.model.relations.find(
                   (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
                 );
@@ -7809,15 +7802,8 @@ export class ModuxEditor extends LitElement {
                 };
                 return;
               }
-              // Everything else draws the SAME relations as the context map: reuse
-              // its semantics by applying the connection under that view's rules.
-              const prev = this._view;
-              this._view = 'context-map';
-              try {
-                this.applyConnection(sourceId, targetId);
-              } finally {
-                this._view = prev;
-              }
+              // the lines mean whatever the ACTIVE view says they mean
+              this.applyConnection(sourceId, targetId, x, y);
             }}
             @explorer-create-view=${(e: CustomEvent<{ name: string; members: { id: string; kind: string }[] }>) => {
               // Members are the VIEW-able kinds; finer elements ride along with
@@ -7839,23 +7825,6 @@ export class ModuxEditor extends LitElement {
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });
-            }}
-          ></modux-explorer>`
-        : this._yugo
-        ? html`${this.renderPalette()}<modux-explorer
-            class="yugo"
-            .scene=${this.sceneFor(this._view)}
-            ?shifted=${this._paletteOpen}
-            @dragover=${(e: DragEvent) => e.preventDefault()}
-            @drop=${this.onPaletteDrop}
-            @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
-              this.onElementActivated(new CustomEvent('element-activated', {
-                detail: { elementType: 'node', id: e.detail.id, kind: e.detail.kind },
-              }));
-            }}
-            @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string; x?: number; y?: number }>) => {
-              // the lines mean whatever the ACTIVE view says they mean
-              this.applyConnection(e.detail.sourceId, e.detail.targetId, e.detail.x, e.detail.y);
             }}
           ></modux-explorer>`
         : this._tilt
