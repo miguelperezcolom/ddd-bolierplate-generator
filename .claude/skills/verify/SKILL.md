@@ -52,9 +52,13 @@ cd model-driven-generator && JAVA_TOOL_OPTIONS="-Dserver.port=8193 \
 
 ## Driving the real UI
 
-- Playwright resolves from `/home/mperezco/IdeaProjects/node_modules/playwright/index.mjs`
-  (a parent dir of the repo — NOT in editor/node_modules; plain `import 'playwright'`
-  only resolves if the script lives under ~/IdeaProjects).
+- Playwright is NOT in editor/node_modules. On the Linux box it resolves from
+  `/home/mperezco/IdeaProjects/node_modules/playwright`; on the Mac there is none —
+  `npm i playwright && npx playwright install chromium` in the scratch dir (~1 min)
+  and run the script from there.
+- The editor opens on the radial EXPLORER, not a canvas: switch views through the
+  toolbar's combined selector (values `view:ui`, `view:aggregates`… and
+  `level:contexts|detail|operations` for the context map at each level).
 - No need to find the Mateu page route: navigate anywhere on `http://localhost:8193`
   (same origin), then inject the component:
 
