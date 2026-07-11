@@ -64,8 +64,14 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
     @Help("Event published when every step completes. Defaults to <Name>Completed.")
     String onCompletionEventName;
 
+    @Tab("Ramas")
+    @Help("Las ramas de los splits EXCLUSIVOS de este workflow, con la condición que elige cada una. Las ramas se trazan en el diagrama; aquí se editan sus expresiones (vacía = sin condición).")
+    List<WorkflowBranchConditionViewModel> branchConditions = new ArrayList<>();
+
     final CreateWorkflowUseCase createUseCase;
     final SaveWorkflowUseCase saveUseCase;
+    final io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore modelStore;
+    final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
 
     @Override
     public String create(HttpRequest httpRequest) {
@@ -80,6 +86,28 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
         saveUseCase.handle(new SaveWorkflowCommand(id, name, description,
                 triggerAggregateId, triggerDomainServiceId, triggerUseCaseId, triggerEvent,
                 toStepDtos(steps), onCompletionEventName));
+        saveBranchConditions();
+    }
+
+    /** Persists the edited expressions onto their gateways (full replace per gateway). */
+    private void saveBranchConditions() {
+        var byGateway = (branchConditions == null
+                ? List.<WorkflowBranchConditionViewModel>of() : branchConditions).stream()
+                .filter(c -> c.gatewayId != null)
+                .collect(Collectors.groupingBy(c -> c.gatewayId));
+        for (var entry : byGateway.entrySet()) {
+            var gateway = modelStore.findById(entry.getKey(),
+                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity.class)
+                    .orElse(null);
+            if (gateway == null) continue;
+            var conditions = entry.getValue().stream()
+                    .filter(c -> c.expression != null && !c.expression.isBlank())
+                    .filter(c -> gateway.targetIds().contains(c.targetId))
+                    .map(c -> new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file
+                            .GatewayBranchConditionEntity(c.targetId, c.expression.trim()))
+                    .toList();
+            modelStore.save(gateway.toBuilder().branchConditions(conditions).build());
+        }
     }
 
     @Override
@@ -109,6 +137,20 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                     return vm;
                 }).collect(Collectors.toCollection(ArrayList::new));
         onCompletionEventName = model.onCompletionEventName();
+        // the EXCLUSIVE splits belonging (by inference) to this workflow, one row per branch
+        branchConditions = modelStore.findAllOfType(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity.class)
+                .stream()
+                .filter(g -> "SPLIT".equals(g.type()) && "EXCLUSIVE".equals(g.semantics()))
+                .filter(g -> id.equals(workflowGraph.workflowOf(g.id()).orElse(null)))
+                .flatMap(g -> g.targetIds().stream()
+                        .map(t -> new WorkflowBranchConditionViewModel(g.id(), g.name(), t,
+                                g.branchConditions().stream()
+                                        .filter(c -> t.equals(c.targetId()))
+                                        .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file
+                                                .GatewayBranchConditionEntity::expression)
+                                        .findFirst().orElse(null))))
+                .collect(Collectors.toCollection(ArrayList::new));
         return this;
     }
 

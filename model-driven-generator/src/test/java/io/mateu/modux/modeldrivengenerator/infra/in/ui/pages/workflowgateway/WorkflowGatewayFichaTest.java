@@ -101,4 +101,5 @@ class WorkflowGatewayFichaTest {
 
         repository.deleteAllById(List.of("gw-1", "gw-2"), WorkflowGatewayEntity.class);
     }
+
 }

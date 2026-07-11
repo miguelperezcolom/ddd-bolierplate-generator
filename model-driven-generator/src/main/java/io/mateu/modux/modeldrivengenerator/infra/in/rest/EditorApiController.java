@@ -112,6 +112,7 @@ public class EditorApiController {
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.ProjectReferenceService projectReferences;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
 
     // ---- projection -------------------------------------------------------
 
@@ -1610,29 +1611,6 @@ public class EditorApiController {
         repository.deleteAllById(List.of(command.id()), WorkflowGatewayEntity.class);
     }
 
-    /** The workflow a flow node belongs to (null while a gateway is still loose). */
-    private String workflowOf(String nodeId, java.util.Set<String> visiting) {
-        if (repository.findById(nodeId, WorkflowEntity.class).isPresent()) return nodeId;
-        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
-            if (wf.steps().stream().anyMatch(st -> st.id().equals(nodeId))) return wf.id();
-        }
-        if (!visiting.add(nodeId)) return null;
-        var gateway = repository.findById(nodeId, WorkflowGatewayEntity.class).orElse(null);
-        if (gateway == null) return null;
-        // membership flows in from the sources; a WORKFLOW target is a hand-off, so
-        // only non-workflow targets vote.
-        for (var src : gateway.sourceIds()) {
-            var wf = workflowOf(src, visiting);
-            if (wf != null) return wf;
-        }
-        for (var tgt : gateway.targetIds()) {
-            if (repository.findById(tgt, WorkflowEntity.class).isPresent()) continue;
-            var wf = workflowOf(tgt, visiting);
-            if (wf != null) return wf;
-        }
-        return null;
-    }
-
     /** Whether a step or workflow already flows somewhere (their single outgoing). */
     private boolean hasOutgoing(String nodeId) {
         for (var g : repository.findAllOfType(WorkflowGatewayEntity.class)) {
@@ -1657,8 +1635,8 @@ public class EditorApiController {
         var sourceGw = repository.findById(command.sourceId(), WorkflowGatewayEntity.class).orElse(null);
         var targetGw = repository.findById(command.targetId(), WorkflowGatewayEntity.class).orElse(null);
         var targetIsWorkflow = repository.findById(command.targetId(), WorkflowEntity.class).isPresent();
-        var srcWf = workflowOf(command.sourceId(), new java.util.HashSet<>());
-        var tgtWf = targetIsWorkflow ? null : workflowOf(command.targetId(), new java.util.HashSet<>());
+        var srcWf = workflowGraph.workflowOf(command.sourceId()).orElse(null);
+        var tgtWf = targetIsWorkflow ? null : workflowGraph.workflowOf(command.targetId()).orElse(null);
         if (srcWf != null && tgtWf != null && !srcWf.equals(tgtWf)) {
             throw new IllegalArgumentException(
                     "Los dos extremos ya pertenecen a workflows distintos: a otro workflow solo se llega apuntando al workflow");
