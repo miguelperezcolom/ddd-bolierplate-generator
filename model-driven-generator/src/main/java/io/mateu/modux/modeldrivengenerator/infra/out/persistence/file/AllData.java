@@ -48,7 +48,8 @@ public record AllData(
         List<IdentityProviderEntity> identityProviders,
         List<NotificationEntity> notifications,
         List<DocumentEntity> documents,
-        List<CodeModuleEntity> codeModules
+        List<CodeModuleEntity> codeModules,
+        List<TransformationEntity> transformations
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -56,7 +57,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -106,5 +107,6 @@ public record AllData(
         proxyApis = proxyApis != null ? proxyApis : List.of();
         mcpGateways = mcpGateways != null ? mcpGateways : List.of();
         codeModules = codeModules != null ? codeModules : List.of();
+        transformations = transformations != null ? transformations : List.of();
     }
 }

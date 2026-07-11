@@ -669,9 +669,23 @@ export interface ModuxModel {
   pages?: UiPageRef[];
   /** Actor → app links (Role.uiAdapterIds). */
   actorAppUses?: ActorAppUseRef[];
-  /** id+name catalogs for the designer's pickers. */
-  models?: { id: string; name: string }[];
-  modelMappings?: { id: string; name: string; sourceModelId?: string; targetModelId?: string }[];
+  /** Data models with their fields — the mappings view edits them in place. */
+  models?: { id: string; name: string; fields?: { id: string; name: string; type?: string }[] }[];
+  modelMappings?: {
+    id: string;
+    name: string;
+    sourceModelId?: string;
+    targetModelId?: string;
+    /** Field-to-field rules, drawn as thin edges between the two fields. */
+    rules?: { id: string; sourceFieldId?: string; targetFieldId?: string }[];
+  }[];
+  /** Transformations: models/fields in, a model or field out — wired on the mappings map. */
+  transformations?: {
+    id: string;
+    name: string;
+    inputs?: { modelId: string; fieldId?: string | null }[];
+    output?: { modelId: string; fieldId?: string | null } | null;
+  }[];
   /** Code modules: how each bounded context DISTRIBUTES its elements into buildable units. */
   codeModules?: CodeModuleRef[];
   /** Deployables: a service says where code modules are DEPLOYED. */

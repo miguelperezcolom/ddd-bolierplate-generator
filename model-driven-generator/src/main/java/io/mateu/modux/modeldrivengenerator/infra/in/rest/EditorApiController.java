@@ -37,6 +37,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
@@ -291,6 +294,14 @@ public class EditorApiController {
     public record ActorAppUseDto(String actorId, String appId) {}
     /** A bare id+name reference (models, mappings…) for the designer's pickers. */
     public record NamedRefDto(String id, String name) {}
+    public record ModelFieldDto(String id, String name, String type) {}
+    /** A data model with its fields — the mappings view edits them in place. */
+    public record ModelRefDto(String id, String name, List<ModelFieldDto> fields) {}
+    public record MappingRuleDto(String id, String sourceFieldId, String targetFieldId) {}
+    /** What a transformation reads or writes: a whole model (fieldId null) or one field. */
+    public record TransformationRefDto(String modelId, String fieldId) {}
+    public record TransformationDto(String id, String name, List<TransformationRefDto> inputs,
+                                    TransformationRefDto output) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -343,12 +354,14 @@ public class EditorApiController {
             List<UiAppDto> uiApps,
             List<UiPageDto> pages,
             List<ActorAppUseDto> actorAppUses,
-            List<NamedRefDto> models,
+            List<ModelRefDto> models,
             List<CodeModuleDto> codeModules,
             List<ServiceDto> services,
+            List<TransformationDto> transformations,
             List<MappingRefDto> modelMappings) {}
 
-    public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId) {}
+    public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
+                                List<MappingRuleDto> rules) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -971,15 +984,31 @@ public class EditorApiController {
                 pages,
                 actorAppUses.stream().distinct().toList(),
                 repository.findAllOfType(ModelEntity.class).stream()
-                        .map(x -> new NamedRefDto(x.id(), x.name())).toList(),
+                        .map(x -> new ModelRefDto(x.id(), x.name(),
+                                (x.fields() == null ? List.<ModelFieldEntity>of() : x.fields()).stream()
+                                        .map(f -> new ModelFieldDto(f.id(), f.name(),
+                                                f.type() == null ? null : f.type().name()))
+                                        .toList()))
+                        .toList(),
                 repository.findAllOfType(CodeModuleEntity.class).stream()
                         .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
                         .toList(),
                 services.stream()
                         .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds()))
                         .toList(),
+                repository.findAllOfType(TransformationEntity.class).stream()
+                        .map(t -> new TransformationDto(t.id(), t.name(),
+                                t.inputs().stream()
+                                        .map(r -> new TransformationRefDto(r.modelId(), r.fieldId()))
+                                        .toList(),
+                                t.output() == null ? null
+                                        : new TransformationRefDto(t.output().modelId(), t.output().fieldId())))
+                        .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
-                        .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId()))
+                        .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
+                                (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
+                                        .map(r -> new MappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId()))
+                                        .toList()))
                         .toList());
     }
 
@@ -1063,6 +1092,17 @@ public class EditorApiController {
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
+            case "add-transformation" -> addTransformation(command);
+            case "remove-transformation" -> removeTransformation(command);
+            case "add-transformation-input" -> addTransformationInput(command);
+            case "remove-transformation-input" -> removeTransformationInput(command);
+            case "set-transformation-output" -> setTransformationOutput(command);
+            case "add-model-field" -> addModelField(command);
+            case "remove-model-field" -> removeModelField(command);
+            case "set-model-field" -> setModelField(command);
+            case "move-model-field" -> moveModelField(command);
+            case "add-model-mapping-rule" -> addModelMappingRule(command);
+            case "remove-model-mapping-rule" -> removeModelMappingRule(command);
             case "add-code-module" -> addCodeModule(command);
             case "remove-code-module" -> removeCodeModule(command);
             case "add-code-module-element" -> addCodeModuleElement(command);
@@ -3952,6 +3992,156 @@ public class EditorApiController {
     }
 
     /** A declarative mapping between two models; its rules grow in its form. */
+    private void addTransformation(EditorCommand command) {
+        if (repository.findById(command.id(), TransformationEntity.class).isPresent()) return;
+        repository.save(new TransformationEntity(command.id(), command.name(), List.of(), null));
+    }
+
+    private void removeTransformation(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), TransformationEntity.class);
+    }
+
+    private TransformationRefEntity refOf(EditorCommand command) {
+        repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        return new TransformationRefEntity(command.modelId(),
+                command.fieldId() == null || command.fieldId().isBlank() ? null : command.fieldId());
+    }
+
+    private void addTransformationInput(EditorCommand command) {
+        var t = repository.findById(command.id(), TransformationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
+        var ref = refOf(command);
+        if (t.inputs().contains(ref)) return;
+        var inputs = new ArrayList<>(t.inputs());
+        inputs.add(ref);
+        repository.save(t.toBuilder().inputs(inputs).build());
+    }
+
+    private void removeTransformationInput(EditorCommand command) {
+        var t = repository.findById(command.id(), TransformationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
+        var fieldId = command.fieldId() == null || command.fieldId().isBlank() ? null : command.fieldId();
+        repository.save(t.toBuilder()
+                .inputs(t.inputs().stream()
+                        .filter(r -> !(r.modelId().equals(command.modelId())
+                                && java.util.Objects.equals(r.fieldId(), fieldId)))
+                        .toList())
+                .build());
+    }
+
+    /** The model or field the transformation produces; without modelId it just unwires. */
+    private void setTransformationOutput(EditorCommand command) {
+        var t = repository.findById(command.id(), TransformationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
+        var output = command.modelId() == null || command.modelId().isBlank() ? null : refOf(command);
+        repository.save(t.toBuilder().output(output).build());
+    }
+
+    private void addModelField(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
+        if (fields.stream().anyMatch(f -> f.id().equals(command.fieldId()))) return;
+        var type = command.type() == null || command.type().isBlank()
+                ? io.mateu.uidl.data.FieldDataType.string
+                : io.mateu.uidl.data.FieldDataType.valueOf(command.type());
+        var grown = new ArrayList<>(fields);
+        grown.add(new ModelFieldEntity(command.fieldId(), command.name(), true, type,
+                null, false, null, List.of()));
+        repository.save(new ModelEntity(model.id(), model.name(), grown, model.validations()));
+    }
+
+    private void removeModelField(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
+        repository.save(new ModelEntity(model.id(), model.name(),
+                fields.stream().filter(f -> !f.id().equals(command.fieldId())).toList(),
+                model.validations()));
+        pruneMappingRulesReferencing(model.id(), command.fieldId());
+    }
+
+    private void setModelField(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
+                .map(f -> f.id().equals(command.fieldId())
+                        ? new ModelFieldEntity(f.id(),
+                                command.name() == null || command.name().isBlank() ? f.name() : command.name(),
+                                f.basicType(),
+                                command.type() == null || command.type().isBlank()
+                                        ? f.type() : io.mateu.uidl.data.FieldDataType.valueOf(command.type()),
+                                f.modelId(), f.isEnum(), f.enumId(), f.validations(),
+                                f.piiClassification(), f.anonymizationStrategy())
+                        : f)
+                .toList();
+        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations()));
+    }
+
+    /** Moves a field to another model; the rules that mapped it no longer apply and drop. */
+    private void moveModelField(EditorCommand command) {
+        var source = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var target = repository.findById(command.targetId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.targetId()));
+        var moving = (source.fields() == null ? List.<ModelFieldEntity>of() : source.fields()).stream()
+                .filter(f -> f.id().equals(command.fieldId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown field: " + command.fieldId()));
+        var targetFields = target.fields() == null ? List.<ModelFieldEntity>of() : target.fields();
+        if (targetFields.stream().anyMatch(f -> f.id().equals(moving.id()))) {
+            throw new IllegalArgumentException(
+                    "El modelo destino ya tiene un campo con id " + moving.id());
+        }
+        repository.save(new ModelEntity(source.id(), source.name(),
+                source.fields().stream().filter(f -> !f.id().equals(moving.id())).toList(),
+                source.validations()));
+        var grown = new ArrayList<>(targetFields);
+        grown.add(moving);
+        repository.save(new ModelEntity(target.id(), target.name(), grown, target.validations()));
+        pruneMappingRulesReferencing(source.id(), moving.id());
+    }
+
+    /** Drops every rule of the model's mappings that references the given field. */
+    private void pruneMappingRulesReferencing(String modelId, String fieldId) {
+        for (var mm : repository.findAllOfType(ModelMappingEntity.class)) {
+            if (!modelId.equals(mm.sourceModelId()) && !modelId.equals(mm.targetModelId())) continue;
+            var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
+            var kept = rules.stream()
+                    .filter(r -> !fieldId.equals(r.sourceFieldId()) && !fieldId.equals(r.targetFieldId()))
+                    .toList();
+            if (kept.size() != rules.size()) {
+                repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
+                        mm.targetModelId(), mm.hasCustomPart(), kept));
+            }
+        }
+    }
+
+    private void addModelMappingRule(EditorCommand command) {
+        var mm = repository.findById(command.id(), ModelMappingEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
+        var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
+        if (rules.stream().anyMatch(r -> command.sourceId().equals(r.sourceFieldId())
+                && command.targetId().equals(r.targetFieldId()))) return;
+        var taken = rules.stream().map(ModelMappingRuleEntity::id).collect(java.util.stream.Collectors.toSet());
+        var n = rules.size() + 1;
+        while (taken.contains("mr-" + n)) n++;
+        var grown = new ArrayList<>(rules);
+        grown.add(new ModelMappingRuleEntity("mr-" + n, command.sourceId(), command.targetId(), List.of()));
+        repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
+                mm.targetModelId(), mm.hasCustomPart(), grown));
+    }
+
+    private void removeModelMappingRule(EditorCommand command) {
+        var mm = repository.findById(command.id(), ModelMappingEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
+        var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
+        repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
+                mm.targetModelId(), mm.hasCustomPart(),
+                rules.stream().filter(r -> !r.id().equals(command.itemId())).toList()));
+    }
+
     private void addModelMapping(EditorCommand command) {
         if (repository.findById(command.id(), ModelMappingEntity.class).isPresent()) return;
         repository.findById(command.sourceId(), ModelEntity.class)

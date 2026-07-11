@@ -11,7 +11,7 @@ import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { uiScene, parseMenuNodeId } from './views/ui.js';
-import { mappingsScene } from './views/mappings.js';
+import { mappingsScene, parseFieldNodeId } from './views/mappings.js';
 import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
@@ -998,6 +998,10 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'delete-ui-app', id: c.id }];
       case 'add-code-module':
         return [{ kind: 'remove-code-module', id: c.id }];
+      case 'add-transformation':
+        return [{ kind: 'remove-transformation', id: c.id }];
+      case 'add-model-field':
+        return [{ kind: 'remove-model-field', modelId: c.modelId, fieldId: c.fieldId }];
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
       case 'set-app-header-page': {
@@ -2928,6 +2932,66 @@ export class ModuxEditor extends LitElement {
     }
     if (this._view === 'mappings') {
       const models = this.model.models ?? [];
+      const srcField = parseFieldNodeId(sourceId);
+      const tgtField = parseFieldNodeId(targetId);
+      const transformations = this.model.transformations ?? [];
+      // modelo/campo → transformación: una ENTRADA más; transformación → modelo/campo: su SALIDA.
+      if (transformations.some((t) => t.id === targetId)) {
+        if (tgtField || transformations.some((t) => t.id === sourceId)) return;
+        const input = srcField
+          ? { modelId: srcField.modelId, fieldId: srcField.fieldId }
+          : models.some((m) => m.id === sourceId)
+            ? { modelId: sourceId }
+            : null;
+        if (input) this.command({ kind: 'add-transformation-input', id: targetId, ...input });
+        return;
+      }
+      if (transformations.some((t) => t.id === sourceId)) {
+        const output = tgtField
+          ? { modelId: tgtField.modelId, fieldId: tgtField.fieldId }
+          : models.some((m) => m.id === targetId)
+            ? { modelId: targetId }
+            : null;
+        if (output) this.command({ kind: 'set-transformation-output', id: sourceId, ...output });
+        return;
+      }
+      // campo → campo (de OTRO modelo): una regla del mapeado entre sus modelos,
+      // creando el mapeado en el mismo gesto si aún no existe.
+      if (srcField && tgtField) {
+        if (srcField.modelId === tgtField.modelId) {
+          this.emit('modux-notice', { message: 'Las reglas mapean campos de modelos DISTINTOS' });
+          return;
+        }
+        let mapping = (this.model.modelMappings ?? []).find(
+          (mm) => mm.sourceModelId === srcField.modelId && mm.targetModelId === tgtField.modelId,
+        );
+        if (!mapping) {
+          const src = models.find((m) => m.id === srcField.modelId);
+          const tgt = models.find((m) => m.id === tgtField.modelId);
+          if (!src || !tgt) return;
+          const clean = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '');
+          const taken = new Set((this.model.modelMappings ?? []).map((mm) => mm.id));
+          let mid = `mapping-${slug(src.name)}-${slug(tgt.name)}`;
+          for (let n = 2; taken.has(mid); n++) mid = `mapping-${slug(src.name)}-${slug(tgt.name)}-${n}`;
+          this.command(
+            { kind: 'add-model-mapping', id: mid, name: `${clean(src.name)}2${clean(tgt.name)}`, sourceId: src.id, targetId: tgt.id },
+            false,
+          );
+          mapping = { id: mid, name: '', sourceModelId: src.id, targetModelId: tgt.id };
+        }
+        this.command({
+          kind: 'add-model-mapping-rule',
+          id: mapping.id,
+          sourceId: srcField.fieldId,
+          targetId: tgtField.fieldId,
+        });
+        return;
+      }
+      // campo → otro modelo: el campo se MUEVE allí (sus reglas caducan).
+      if (srcField && models.some((m) => m.id === targetId) && targetId !== srcField.modelId) {
+        this.command({ kind: 'move-model-field', modelId: srcField.modelId, fieldId: srcField.fieldId, targetId });
+        return;
+      }
       if (!models.some((m) => m.id === sourceId) || !models.some((m) => m.id === targetId)) return;
       if (sourceId === targetId) return;
       if ((this.model.modelMappings ?? []).some((mm) => mm.sourceModelId === sourceId && mm.targetModelId === targetId)) {
@@ -3998,6 +4062,53 @@ export class ModuxEditor extends LitElement {
       if (match) {
         this._selectedId = null;
         this.command({ kind: 'remove-model-mapping', id: match[1] });
+      }
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'mapping-rule') {
+      const match = /^maprule:([^:]+):(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-model-mapping-rule', id: match[1], itemId: match[2] });
+      }
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'node' && kind === 'model-field') {
+      const ref = parseFieldNodeId(id);
+      if (ref) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-model-field', modelId: ref.modelId, fieldId: ref.fieldId });
+      }
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'node' && kind === 'model') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-model', id });
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'node' && kind === 'transformation') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-transformation', id });
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'transform-input') {
+      const match = /^tfin:([^:]+):([^:]+):(.*)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({
+          kind: 'remove-transformation-input',
+          id: match[1],
+          modelId: match[2],
+          ...(match[3] ? { fieldId: match[3] } : {}),
+        });
+      }
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'transform-output') {
+      const match = /^tfout:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'set-transformation-output', id: match[1] });
       }
       return;
     }
@@ -5438,6 +5549,8 @@ export class ModuxEditor extends LitElement {
     { type: 'ui-page-wizard', label: 'Wizard', child: true, symbol: 'flow', color: '#0284c7', group: 'UI' },
     { type: 'ui-wizard-step', label: 'Paso de wizard', child: true, symbol: 'flow', color: '#7c3aed', group: 'UI' },
     { type: 'ui-model', label: 'Modelo', symbol: 'readmodel', color: '#8b5cf6', group: 'UI' },
+    { type: 'model-field', label: 'Campo', child: true, symbol: 'gear', color: '#a78bfa', group: 'Modelos' },
+    { type: 'transformation', label: 'Transformación', symbol: 'gear', color: '#ea580c', group: 'Modelos' },
     // Diseño: the Mateu layout vocabulary…
     { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -5709,6 +5822,7 @@ export class ModuxEditor extends LitElement {
       (m.pages ?? []).map((x) => x.id),
       (m.codeModules ?? []).map((x) => x.id),
       (m.services ?? []).map((x) => x.id),
+      (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -5742,6 +5856,9 @@ export class ModuxEditor extends LitElement {
     }
     if (['external-use-case', 'external-table', 'mcp-server'].includes(type)) {
       return chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ?? null;
+    }
+    if (type === 'model-field') {
+      return chain.find((id) => (this.model.models ?? []).some((mo) => mo.id === id)) ?? null;
     }
     if (type === 'use-case-step') {
       return (
@@ -5874,7 +5991,7 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
-        'identity-provider': 'idp-',
+        'identity-provider': 'idp-', transformation: 'tf-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -5906,6 +6023,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'create-ui-app', id, name, type: 'VIEW_EDITOR' }
                                   : type === 'ui-model'
                                   ? { kind: 'add-model', id, name }
+                                  : type === 'transformation'
+                                  ? { kind: 'add-transformation', id, name }
                                   : type === 'identity-provider'
                                   ? { kind: 'add-identity-provider', id, name }
                                   : {
@@ -6148,10 +6267,14 @@ export class ModuxEditor extends LitElement {
       'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
       'read-model': 'rm-', 'external-use-case': 'xuc-',
       'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'code-module': 'cm-',
+      'model-field': 'f-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+    } else if (type === 'model-field') {
+      // the chip's scene id is fld:<modelId>:<fieldId> and its spot is fixed — no layout write
+      this.command({ kind: 'add-model-field', modelId: container, fieldId: id, name });
     } else if (type === 'code-module') {
       issue({ kind: 'add-code-module', id, name, moduleId: container }, id, container);
       this.emit('modux-notice', {
@@ -6425,7 +6548,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
@@ -6436,7 +6559,9 @@ export class ModuxEditor extends LitElement {
             ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
-              : !['page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
+              : this._view === 'mappings'
+                ? ['ui-model', 'model-field', 'transformation'].includes(k.type)
+                : !['page', 'menu-item', 'model-field', 'transformation'].includes(k.type) && !k.type.startsWith('cmp:')) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.

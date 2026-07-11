@@ -2,16 +2,31 @@ import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 
 /**
- * Mapeados view: every data model as a node, every model mapping as a labeled
- * edge between its source and its target — plus the mappings the model NEEDS
+ * Mapeados view: every data model as a container with its FIELDS stacked inside,
+ * every model mapping as a labeled edge between models, and every mapping RULE as
+ * a thin edge between the two fields it joins — plus the mappings the model NEEDS
  * and does not have yet, derived from usage: a page button calling a use case
  * must map the page's viewmodel onto the use case's request model. Those show
  * as amber dashed «falta mapear» edges; wiring the two models creates the
  * mapping and the debt disappears.
  */
 
-const MODEL_W = 168;
-const MODEL_H = 48;
+const MODEL_W = 188;
+const MODEL_HEADER = 34;
+const MODEL_PAD = 10;
+const FIELD_H = 24;
+const FIELD_GAP = 6;
+
+/** The scene id of a field chip — field ids are only unique within their model. */
+export function fieldNodeId(modelId: string, fieldId: string): string {
+  return `fld:${modelId}:${fieldId}`;
+}
+
+/** Parses a field chip id back into its parts (null for non-field ids). */
+export function parseFieldNodeId(id: string): { modelId: string; fieldId: string } | null {
+  const m = /^fld:([^:]+):(.+)$/.exec(id);
+  return m ? { modelId: m[1], fieldId: m[2] } : null;
+}
 
 export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const nodes: SceneNode[] = [];
@@ -21,23 +36,92 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const nameOf = (id?: string) => models.find((m) => m.id === id)?.name ?? id ?? '?';
 
   models.forEach((m, i) => {
-    const pos = layout[m.id] ?? { x: 200 + (i % 5) * 260, y: 140 + Math.floor(i / 5) * 150 };
+    const pos = layout[m.id] ?? { x: 200 + (i % 5) * 260, y: 160 + Math.floor(i / 5) * 220 };
+    const fields = m.fields ?? [];
+    const h = MODEL_HEADER + (fields.length ? fields.length * FIELD_H + (fields.length - 1) * FIELD_GAP : 10) + MODEL_PAD;
     nodes.push({
       id: m.id,
       label: m.name,
       x: pos.x,
       y: pos.y,
       w: MODEL_W,
-      h: MODEL_H,
+      h,
       kind: 'model',
       symbol: 'readmodel',
       fill: '#ffffff',
       stroke: '#8b5cf6',
       badge: 'MODEL',
-      tooltip: `${m.name} — arrastra el asa hasta otro modelo para crear un mapeado`,
+      container: true,
+      tooltip: `${m.name} — arrastra el asa hasta otro modelo para crear un mapeado; la paleta añade campos`,
+    });
+    fields.forEach((f, j) => {
+      nodes.push({
+        id: fieldNodeId(m.id, f.id),
+        label: f.name,
+        x: pos.x,
+        y: pos.y - h / 2 + MODEL_HEADER + j * (FIELD_H + FIELD_GAP) + FIELD_H / 2,
+        w: MODEL_W - 2 * MODEL_PAD,
+        h: FIELD_H,
+        kind: 'model-field',
+        fill: '#faf5ff',
+        stroke: '#a78bfa',
+        badge: f.type ?? undefined,
+        parentId: m.id,
+        tooltip: `${f.name}${f.type ? ` (${f.type})` : ''} — arrastra su asa hasta un campo de otro modelo para mapearlos, o hasta otro modelo para moverlo; Supr lo elimina`,
+      });
+    });
+  });
+  // Transformations: a diamond-ish node; inputs arrive from models/fields, the
+  // output leaves towards a model or a field.
+  (model.transformations ?? []).forEach((t, i) => {
+    const pos = layout[t.id] ?? { x: 200 + (i % 5) * 260, y: 60 };
+    nodes.push({
+      id: t.id,
+      label: t.name,
+      x: pos.x,
+      y: pos.y,
+      w: 150,
+      h: 44,
+      kind: 'transformation',
+      symbol: 'gear',
+      fill: '#fff7ed',
+      stroke: '#ea580c',
+      badge: 'TRANSFORM',
+      dashed: !t.output,
+      tooltip: `${t.name} — transformación: arrastra modelos o campos hasta ella (entradas) y su asa hasta un modelo o campo (salida)${t.output ? '' : ' · aún sin salida'}`,
     });
   });
   const nodeIds = new Set(nodes.map((n) => n.id));
+  const refNodeId = (r: { modelId: string; fieldId?: string | null }) =>
+    r.fieldId ? fieldNodeId(r.modelId, r.fieldId) : r.modelId;
+
+  for (const t of model.transformations ?? []) {
+    for (const r of t.inputs ?? []) {
+      const sid = refNodeId(r);
+      if (!nodeIds.has(sid)) continue;
+      edges.push({
+        id: `tfin:${t.id}:${r.modelId}:${r.fieldId ?? ''}`,
+        sourceId: sid,
+        targetId: t.id,
+        kind: 'transform-input',
+        color: '#ea580c',
+        dashed: true,
+        arrow: true,
+        tooltip: `entrada de ${t.name} — Supr la desconecta`,
+      });
+    }
+    if (t.output && nodeIds.has(refNodeId(t.output))) {
+      edges.push({
+        id: `tfout:${t.id}`,
+        sourceId: t.id,
+        targetId: refNodeId(t.output),
+        kind: 'transform-output',
+        color: '#ea580c',
+        arrow: true,
+        tooltip: `salida de ${t.name} — Supr la desconecta`,
+      });
+    }
+  }
 
   for (const mm of mappings) {
     if (!mm.sourceModelId || !mm.targetModelId) continue;
@@ -50,8 +134,24 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       color: '#7c3aed',
       label: mm.name,
       arrow: true,
-      tooltip: `${mm.name} — las reglas campo a campo viven en su ficha; Supr lo elimina`,
+      tooltip: `${mm.name} — las reglas campo a campo son las líneas finas entre campos; Supr lo elimina`,
     });
+    // Every rule joins two concrete fields: a thin violet thread chip to chip.
+    for (const r of mm.rules ?? []) {
+      const sid = fieldNodeId(mm.sourceModelId, r.sourceFieldId ?? '');
+      const tid = fieldNodeId(mm.targetModelId, r.targetFieldId ?? '');
+      if (!nodeIds.has(sid) || !nodeIds.has(tid)) continue;
+      edges.push({
+        id: `maprule:${mm.id}:${r.id}`,
+        sourceId: sid,
+        targetId: tid,
+        kind: 'mapping-rule',
+        color: '#a78bfa',
+        dashed: true,
+        arrow: true,
+        tooltip: `Regla de ${mm.name} — Supr la elimina`,
+      });
+    }
   }
 
   // The mapping DEBT: page buttons (toolbar or bottom) calling a use case whose

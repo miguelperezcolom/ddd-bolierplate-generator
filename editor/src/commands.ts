@@ -747,6 +747,41 @@ export type ModuxCommand =
       targetId: string;
     }
   | { kind: 'remove-model-mapping'; id: string }
+  | { kind: 'add-model-field'; modelId: string; fieldId: string; name: string; type?: string }
+  | { kind: 'remove-model-field'; modelId: string; fieldId: string }
+  | { kind: 'set-model-field'; modelId: string; fieldId: string; name?: string; type?: string }
+  | {
+      /** Moves the field to another model; the rules that mapped it drop. */
+      kind: 'move-model-field';
+      modelId: string;
+      fieldId: string;
+      targetId: string;
+    }
+  | {
+      /** A field-to-field rule of an existing mapping (source/target are FIELD ids). */
+      kind: 'add-model-mapping-rule';
+      id: string;
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-model-mapping-rule'; id: string; itemId: string }
+  | { kind: 'add-transformation'; id: string; name: string }
+  | { kind: 'remove-transformation'; id: string }
+  | {
+      /** An input of the transformation: a whole model (no fieldId) or one field. */
+      kind: 'add-transformation-input';
+      id: string;
+      modelId: string;
+      fieldId?: string;
+    }
+  | { kind: 'remove-transformation-input'; id: string; modelId: string; fieldId?: string }
+  | {
+      /** The model or field the transformation produces; without modelId it unwires. */
+      kind: 'set-transformation-output';
+      id: string;
+      modelId?: string;
+      fieldId?: string;
+    }
   | {
       /** A code module: the bounded context distributes its elements into it. */
       kind: 'add-code-module';
