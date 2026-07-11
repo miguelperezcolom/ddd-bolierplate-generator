@@ -66,6 +66,10 @@ export class ModuxEditorConnected extends LitElement {
   private _interacting = false;
   private _sse: EventSource | undefined;
 
+  /** Mirrors mateu's dark mode: <html theme="dark"> + localStorage 'mateu-theme'. */
+  @state() private _dark = false;
+  private _themeObserver: MutationObserver | undefined;
+
   private _onPointerDown = () => (this._interacting = true);
   private _onPointerUp = () => {
     this._interacting = false;
@@ -289,6 +293,13 @@ export class ModuxEditorConnected extends LitElement {
       background: #1e3a8a;
       color: #eff6ff;
     }
+    /* ── Dark mode: the workspace chrome inverts hue-preservingly, like the
+       editor below it; the toast is dark-on-dark already and stays as is. */
+    :host([dark]) .workspace,
+    :host([dark]) .diff-panel,
+    :host([dark]) .status {
+      filter: invert(1) hue-rotate(180deg);
+    }
   `;
 
   connectedCallback(): void {
@@ -299,12 +310,27 @@ export class ModuxEditorConnected extends LitElement {
     void this.reload();
     void this.loadWorkspace();
     this.startLiveUpdates();
+    // Coordinated with mateu: same flag, live when its top-bar toggle flips it.
+    this._dark = (document.documentElement.getAttribute('theme')
+      ?? localStorage.getItem('mateu-theme')) === 'dark';
+    this._themeObserver = new MutationObserver(() => {
+      this._dark = document.documentElement.getAttribute('theme') === 'dark';
+    });
+    this._themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['theme'],
+    });
+  }
+
+  protected updated(): void {
+    this.toggleAttribute('dark', this._dark);
   }
 
   disconnectedCallback(): void {
     window.clearTimeout(this._layoutTimer);
     window.clearInterval(this._pollTimer);
     this._sse?.close();
+    this._themeObserver?.disconnect();
     this.removeEventListener('pointerdown', this._onPointerDown, true);
     window.removeEventListener('pointerup', this._onPointerUp, true);
     window.removeEventListener('pagehide', this._onPageHide);
@@ -1000,6 +1026,7 @@ export class ModuxEditorConnected extends LitElement {
           `
         : ''}
       <modux-editor
+        ?dark=${this._dark}
         .model=${this._model}
         .layout=${this._layout}
         .repositories=${this._repositories}

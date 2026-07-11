@@ -308,6 +308,9 @@ export class ModuxEditor extends LitElement {
   @state() private _yugo = true;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
   @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
+
+  /** Mirrors mateu's <html theme="dark"> flag — set by the connected host. */
+  @property({ type: Boolean, reflect: true }) dark = false;
   /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
   @state() private _repoPicker: { pos: Point } | null = null;
   /** Open picker: a loose step drop asking WHICH workflow adopts it. */
@@ -625,6 +628,52 @@ export class ModuxEditor extends LitElement {
     }
     [hidden] {
       display: none !important;
+    }
+    /* ── Dark mode: the editor inverts hue-preservingly; the 3D surface is
+       dark by design, so the SAME filter applied twice restores it. The
+       popovers are position:fixed (outside the filtered subtrees) and get
+       their dark clothes by hand. */
+    :host([dark]) {
+      background: #0f172a;
+      border-color: #334155;
+    }
+    :host([dark]) .toolbar,
+    :host([dark]) .canvas-wrap,
+    :host([dark]) .hint {
+      filter: invert(1) hue-rotate(180deg);
+    }
+    :host([dark]) modux-tilt {
+      filter: invert(1) hue-rotate(180deg);
+    }
+    :host([dark]) .relation-picker {
+      background: #1e293b;
+      border-color: #334155;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    }
+    :host([dark]) .picker-item {
+      color: #e2e8f0;
+    }
+    :host([dark]) .picker-item:hover {
+      background: #334155;
+    }
+    :host([dark]) .picker-item.current {
+      background: #1e3a5f;
+    }
+    :host([dark]) .picker-title {
+      color: #94a3b8;
+    }
+    :host([dark]) .picker-item .abbr,
+    :host([dark]) .help-keys {
+      color: #60a5fa;
+    }
+    :host([dark]) .help-row {
+      color: #e2e8f0;
+    }
+    :host([dark]) .relation-picker input,
+    :host([dark]) .relation-picker select {
+      background: #0f172a;
+      border-color: #334155;
+      color: #e2e8f0;
     }
     .hint {
       font-size: 12px;
