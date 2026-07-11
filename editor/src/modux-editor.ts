@@ -7660,13 +7660,26 @@ export class ModuxEditor extends LitElement {
         >
           ✨ Auto-layout
         </button>
-        ${this._view === 'workflows' && (this.model.processes ?? []).length
+        ${this._view === 'workflows'
+          && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length)
           ? html`<button
               class="tab"
-              title="Los procesos se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
-              @click=${() => this.command({ kind: 'migrate-processes-to-workflows' })}
+              title="Procesos y sagas se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
+              @click=${() => {
+                if ((this.model.processes ?? []).length) {
+                  this.command({ kind: 'migrate-processes-to-workflows' }, false);
+                }
+                if ((this.model.sagas ?? []).length) {
+                  this.command({ kind: 'migrate-sagas-to-workflows' }, false);
+                }
+              }}
             >
-              ⇪ Migrar ${(this.model.processes ?? []).length} procesos
+              ⇪ Migrar ${[
+                (this.model.processes ?? []).length
+                  ? `${(this.model.processes ?? []).length} procesos` : '',
+                (this.model.sagas ?? []).length
+                  ? `${(this.model.sagas ?? []).length} sagas` : '',
+              ].filter(Boolean).join(' y ')}
             </button>`
           : ''}
         <button

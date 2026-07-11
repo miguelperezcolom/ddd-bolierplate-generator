@@ -735,6 +735,8 @@ export interface ModuxModel {
     /** The hand-written code that implements it. */
     customCodeId?: string;
   }[];
+  /** Legacy sagas awaiting their fusion into workflows (the migrate button counts them). */
+  sagas?: { id: string; name: string }[];
   /** Code modules: how each bounded context DISTRIBUTES its elements into buildable units. */
   codeModules?: CodeModuleRef[];
   /** Deployables: a service says where code modules are DEPLOYED. */

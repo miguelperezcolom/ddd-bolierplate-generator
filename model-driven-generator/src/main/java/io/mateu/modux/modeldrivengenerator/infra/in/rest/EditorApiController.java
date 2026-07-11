@@ -9,6 +9,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GroupButtonEntity;
@@ -384,6 +386,7 @@ public class EditorApiController {
             List<UiPageDto> pages,
             List<ActorAppUseDto> actorAppUses,
             List<ModelRefDto> models,
+            List<NamedRefDto> sagas,
             List<CodeModuleDto> codeModules,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
@@ -1043,6 +1046,9 @@ public class EditorApiController {
                                                 f.type() == null ? null : f.type().name()))
                                         .toList()))
                         .toList(),
+                repository.findAllOfType(SagaEntity.class).stream()
+                        .map(x -> new NamedRefDto(x.id(), x.name()))
+                        .toList(),
                 repository.findAllOfType(CodeModuleEntity.class).stream()
                         .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
                         .toList(),
@@ -1332,6 +1338,7 @@ public class EditorApiController {
             case "add-workflow-step" -> addWorkflowStep(command);
             case "move-workflow-step" -> moveWorkflowStep(command);
             case "migrate-processes-to-workflows" -> migrateProcessesToWorkflows();
+            case "migrate-sagas-to-workflows" -> migrateSagasToWorkflows();
             case "add-workflow-gateway" -> addWorkflowGateway(command);
             case "set-gateway-semantics" -> setGatewaySemantics(command);
             case "set-gateway-branch-condition" -> setGatewayBranchCondition(command);
@@ -1589,6 +1596,68 @@ public class EditorApiController {
                     process.triggerAggregateId(), null, null, process.triggerEvent(),
                     steps, process.onCompletionEventName(), process.decisionIds()));
             repository.deleteAllById(List.of(process.id()), ProcessEntity.class);
+        }
+    }
+
+    /**
+     * The other half of the fusion: every saga becomes a workflow — same id, its
+     * sequence as a linear chain, and each step's compensation resolved to the
+     * USE CASE of its compensating step. Pure compensation steps leave the chain.
+     */
+    private void migrateSagasToWorkflows() {
+        for (var saga : repository.findAllOfType(SagaEntity.class)) {
+            if (repository.findById(saga.id(), WorkflowEntity.class).isPresent()) continue;
+            var steps = saga.steps() == null ? List.<SagaStepEntity>of() : saga.steps();
+            var byId = new java.util.HashMap<String, SagaStepEntity>();
+            steps.forEach(st -> byId.put(st.id(), st));
+            var compensators = steps.stream()
+                    .map(SagaStepEntity::compensatingStepId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+            var chain = new ArrayList<WorkflowStepEntity>();
+            String previous = null;
+            for (var st : steps) {
+                if (compensators.contains(st.id())) continue; // pure compensation: lives on the step it undoes
+                var compensating = st.compensatingStepId() == null ? null : byId.get(st.compensatingStepId());
+                var detail = new java.util.ArrayList<String>();
+                if (st.aggregateId() != null) {
+                    detail.add("opera sobre " + st.aggregateId()
+                            + (st.operationId() != null ? "." + st.operationId() : ""));
+                }
+                if (st.gatewayId() != null) detail.add("llama al gateway " + st.gatewayId());
+                if (compensating != null && compensating.useCaseId() == null) {
+                    detail.add("compensaba con el paso " + compensating.name());
+                }
+                chain.add(WorkflowStepEntity.builder()
+                        .id(st.id())
+                        .name(st.name())
+                        .targetUseCaseId(st.useCaseId())
+                        .dependsOnStepIds(previous == null ? List.of() : List.of(previous))
+                        .compensationUseCaseId(compensating == null ? null : compensating.useCaseId())
+                        .description(detail.isEmpty() ? null : String.join(" · ", detail))
+                        .build());
+                previous = st.id();
+            }
+            var triggers = saga.triggeringEventIds() == null
+                    ? List.<String>of() : saga.triggeringEventIds();
+            var notes = new java.util.ArrayList<String>();
+            if (triggers.size() > 1) {
+                notes.add("también la disparaban: " + String.join(", ", triggers.subList(1, triggers.size())));
+            }
+            if (saga.timeoutMs() != null) notes.add("timeout de la saga: " + saga.timeoutMs() + " ms");
+            if (saga.maxRetries() != null) notes.add("reintentos: " + saga.maxRetries());
+            if (saga.deadLetterQueue() != null) notes.add("DLQ: " + saga.deadLetterQueue());
+            repository.save(new WorkflowEntity(saga.id(), saga.name(),
+                    notes.isEmpty() ? null : String.join(" · ", notes),
+                    null, null, null,
+                    triggers.isEmpty() ? null : triggers.get(0),
+                    chain, null, List.of()));
+            // the owning contexts let go: workflows live outside every context
+            repository.findAllOfType(ModuleEntity.class).stream()
+                    .filter(mo -> mo.sagaIds() != null && mo.sagaIds().contains(saga.id()))
+                    .forEach(mo -> repository.save(mo.toBuilder()
+                            .sagaIds(without(mo.sagaIds(), saga.id())).build()));
+            repository.deleteAllById(List.of(saga.id()), SagaEntity.class);
         }
     }
 

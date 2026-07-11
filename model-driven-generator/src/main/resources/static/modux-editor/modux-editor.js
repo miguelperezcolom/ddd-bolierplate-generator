@@ -15421,12 +15421,17 @@ let j = class extends Fe {
         >
           ✨ Auto-layout
         </button>
-        ${this._view === "workflows" && (this.model.processes ?? []).length ? S`<button
+        ${this._view === "workflows" && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length) ? S`<button
               class="tab"
-              title="Los procesos se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
-              @click=${() => this.command({ kind: "migrate-processes-to-workflows" })}
+              title="Procesos y sagas se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
+              @click=${() => {
+      (this.model.processes ?? []).length && this.command({ kind: "migrate-processes-to-workflows" }, !1), (this.model.sagas ?? []).length && this.command({ kind: "migrate-sagas-to-workflows" }, !1);
+    }}
             >
-              ⇪ Migrar ${(this.model.processes ?? []).length} procesos
+              ⇪ Migrar ${[
+      (this.model.processes ?? []).length ? `${(this.model.processes ?? []).length} procesos` : "",
+      (this.model.sagas ?? []).length ? `${(this.model.sagas ?? []).length} sagas` : ""
+    ].filter(Boolean).join(" y ")}
             </button>` : ""}
         <button
           class="tab"

@@ -698,6 +698,10 @@ export type ModuxCommand =
       kind: 'migrate-processes-to-workflows';
     }
   | {
+      /** The other half: every saga becomes a workflow, compensation on the step. */
+      kind: 'migrate-sagas-to-workflows';
+    }
+  | {
       /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split (null back to default). */
       kind: 'set-gateway-semantics';
       id: string;

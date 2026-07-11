@@ -21,9 +21,6 @@ public class ModelMenu {
     BehaviourMenu behaviour;
 
     @Menu
-    TransversalMenu transversal;
-
-    @Menu
     PatronesMenu patrones;
 
     @Menu
