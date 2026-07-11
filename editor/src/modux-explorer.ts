@@ -50,6 +50,7 @@ declare global {
 const KIND_COLOR: Record<string, string> = {
   root: '#334155',
   module: '#0369a1',
+  group: '#6366f1',
   'external-system': '#9333ea',
   'ui-app': '#16a34a',
   page: '#22c55e',
@@ -80,6 +81,7 @@ const KIND_COLOR: Record<string, string> = {
 const KIND_LABEL: Record<string, string> = {
   root: 'Sistema',
   module: 'Bounded context',
+  group: 'Grupo',
   'external-system': 'Sistema externo',
   'ui-app': 'App',
   page: 'Página',
@@ -507,10 +509,19 @@ export class ModuxExplorer extends LitElement {
       case 'module': {
         const mod = m.modules.find((x) => x.id === n.refId);
         if (!mod) return [];
+        const aggs = (m.aggregates ?? []).filter((a) => a.moduleId === n.refId);
+        const ucs = mod.useCases ?? [];
+        // Events emitted by one of this BC's aggregates hang off the aggregate, not the BC.
+        const aggIds = new Set(aggs.map((a) => a.id));
+        const emittedByAggregate = new Set(
+          (m.emissions ?? []).filter((e) => aggIds.has(e.sourceId)).map((e) => e.domainEventId),
+        );
         return [
-          ...(m.aggregates ?? []).filter((a) => a.moduleId === n.refId).map((x) => mk('aggregate', x.id, x.name)),
-          ...(mod.useCases ?? []).map((x) => mk(x.policy ? 'policy' : 'use-case', x.id, x.name)),
-          ...(mod.domainEvents ?? []).map((x) => mk('domain-event', x.id, x.name)),
+          ...(aggs.length ? [mk('group', `aggregates:${n.refId}`, `Agregados · ${aggs.length}`)] : []),
+          ...(ucs.length ? [mk('group', `use-cases:${n.refId}`, `Casos de uso · ${ucs.length}`)] : []),
+          ...(mod.domainEvents ?? [])
+            .filter((x) => !emittedByAggregate.has(x.id))
+            .map((x) => mk('domain-event', x.id, x.name)),
           ...(mod.applicationEvents ?? []).map((x) => mk('application-event', x.id, x.name)),
           ...(mod.readModels ?? []).map((x) => mk('read-model', x.id, x.name)),
           ...(mod.domainServices ?? []).map((x) => mk('domain-service', x.id, x.name)),
@@ -521,8 +532,32 @@ export class ModuxExplorer extends LitElement {
           ...(m.documents ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('document', x.id, x.name)),
         ];
       }
-      case 'aggregate':
-        return (m.entities ?? []).filter((e) => e.aggregateId === n.refId).map((x) => mk('entity', x.id, x.name));
+      case 'group': {
+        const sep = n.refId.indexOf(':');
+        const what = n.refId.slice(0, sep);
+        const moduleId = n.refId.slice(sep + 1);
+        const mod = m.modules.find((x) => x.id === moduleId);
+        if (!mod) return [];
+        if (what === 'aggregates') {
+          return (m.aggregates ?? [])
+            .filter((a) => a.moduleId === moduleId)
+            .map((x) => mk('aggregate', x.id, x.name));
+        }
+        return (mod.useCases ?? []).map((x) => mk(x.policy ? 'policy' : 'use-case', x.id, x.name));
+      }
+      case 'aggregate': {
+        // The events this aggregate emits are its offspring, like its entities.
+        const emitted = new Set(
+          (m.emissions ?? []).filter((e) => e.sourceId === n.refId).map((e) => e.domainEventId),
+        );
+        return [
+          ...(m.entities ?? []).filter((e) => e.aggregateId === n.refId).map((x) => mk('entity', x.id, x.name)),
+          ...m.modules
+            .flatMap((mo) => mo.domainEvents ?? [])
+            .filter((ev) => emitted.has(ev.id))
+            .map((x) => mk('domain-event', x.id, x.name)),
+        ];
+      }
       case 'external-system': {
         const ext = m.externalSystems.find((x) => x.id === n.refId);
         if (!ext) return [];
@@ -844,6 +879,21 @@ export class ModuxExplorer extends LitElement {
     ctx.lineJoin = 'round';
     ctx.beginPath();
     switch (n.kind) {
+      case 'group': {
+        // a cluster in brackets: three dots between two arcs
+        ctx.arc(x - s * 0.45, y, s * 0.16, 0, Math.PI * 2);
+        ctx.moveTo(x + s * 0.16, y);
+        ctx.arc(x, y, s * 0.16, 0, Math.PI * 2);
+        ctx.moveTo(x + s * 0.61, y);
+        ctx.arc(x + s * 0.45, y, s * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, s, -Math.PI * 0.35, Math.PI * 0.35);
+        ctx.moveTo(x - s * Math.cos(Math.PI * 0.35), y + s * Math.sin(Math.PI * 0.35));
+        ctx.arc(x, y, s, Math.PI * 0.65, Math.PI * 1.35);
+        ctx.stroke();
+        break;
+      }
       case 'root': // concentric target
         ctx.arc(x, y, s, 0, Math.PI * 2);
         ctx.moveTo(x + s * 0.35, y);
@@ -1027,8 +1077,13 @@ export class ModuxExplorer extends LitElement {
 
   /** Hover card: what the node is, what it holds, how to enter. Screen space, clamped to the canvas. */
   private drawCard(ctx: CanvasRenderingContext2D, n: XNode, w: number, h: number): void {
+    // The summary looks THROUGH groups: the card teaches what is inside, the
+    // group only adds a step when expanding.
+    const contents = (n.children ?? []).flatMap((c) =>
+      c.kind === 'group' ? (c.children ??= this.childrenOf(c)) : [c],
+    );
     const counts = new Map<string, number>();
-    for (const c of n.children ?? []) counts.set(c.kind, (counts.get(c.kind) ?? 0) + 1);
+    for (const c of contents) counts.set(c.kind, (counts.get(c.kind) ?? 0) + 1);
     const lines: string[] = [];
     for (const [kind, count] of counts) {
       lines.push(`${count} ${count === 1 ? (KIND_LABEL[kind] ?? kind).toLowerCase() : (KIND_PLURAL[kind] ?? kind)}`);
@@ -1039,10 +1094,10 @@ export class ModuxExplorer extends LitElement {
       }
     }
     // A taste of what is inside, by name — colored bullet per kind.
-    const names: { label: string; color: string }[] = (n.children ?? [])
+    const names: { label: string; color: string }[] = contents
       .slice(0, 6)
       .map((c) => ({ label: c.label.length > 30 ? c.label.slice(0, 29) + '…' : c.label, color: c.color }));
-    const more = (n.children?.length ?? 0) - names.length;
+    const more = contents.length - names.length;
     const title = n.label;
     const sub = KIND_LABEL[n.kind] ?? n.kind;
     const hint =
