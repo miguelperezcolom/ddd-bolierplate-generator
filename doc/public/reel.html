@@ -123,7 +123,40 @@
   .prob .punch { font-family: var(--mono); font-size: clamp(15px, 2vw, 22px); color: var(--ink); opacity: 0; transition: opacity .5s ease; }
   .prob .punch.show { opacity: 1; }
 
-  /* ── Scene 2 & 3: the model → the system ────────────────────────────── */
+  /* ── Scene 2: natural language → spec (AI-assisted) ─────────────────── */
+  .spec { gap: 24px; justify-items: start; }
+  .spec h2 { font-size: clamp(20px, 3.2vw, 40px); }
+  .chat {
+    font-family: var(--sans); font-size: clamp(13px, 1.6vw, 18px); line-height: 1.5;
+    max-width: 52ch; color: var(--ink);
+    background: linear-gradient(180deg, var(--ground-2), var(--ground));
+    border: 1px solid var(--line); border-radius: 14px 14px 14px 4px;
+    padding: 14px 18px;
+    box-shadow: 0 24px 50px -26px rgba(0,0,0,.7);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .chat.show { opacity: 1; transform: none; }
+  .chat .who { font-family: var(--mono); font-size: .72em; color: var(--faint); letter-spacing: .12em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+  .chat q { quotes: "\201C" "\201D"; color: var(--muted); }
+  .chat q b { color: var(--ink); }
+  .specflow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: clamp(11px, 1.35vw, 15px); }
+  .specflow .stage {
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
+    opacity: 0; transform: translateY(6px);
+  }
+  .spec.active .specflow .stage { animation: pop .45s ease forwards; }
+  .specflow .stage.ai { color: var(--amber); border-color: rgba(246,178,60,.5); }
+  .specflow .stage.gen { color: var(--good); border-color: rgba(57,217,138,.5); }
+  .specflow .arr { color: var(--faint); opacity: 0; }
+  .spec.active .specflow .arr { animation: pop .3s ease forwards; }
+  .specflow .lbl { font-size: .78em; color: var(--faint); display: block; text-align: center; margin-top: 4px; }
+  .spec .punchline { font-family: var(--mono); font-size: clamp(14px, 1.9vw, 21px); color: var(--ink); opacity: 0; transition: opacity .5s ease; }
+  .spec .punchline.show { opacity: 1; }
+  .spec .punchline b { color: var(--violet); }
+  .spec .punchline .ai-b { color: var(--amber); }
+
+  /* ── Scene 3 & 4: the model → the system ────────────────────────────── */
   .build { padding: clamp(16px, 3.4%, 44px); }
   .split { display: grid; grid-template-columns: 1fr; gap: 22px; width: 100%; max-width: 940px; align-items: center; }
   .split.two { grid-template-columns: 1.05fr .95fr; }
@@ -317,8 +350,26 @@
       <div class="punch" id="probPunch">Weeks of boilerplate before the first business rule.</div>
     </section>
 
-    <!-- Scene 2 — the model -->
-    <section class="scene build" data-scene="2">
+    <!-- Scene 2 — natural language → spec: AI writes the spec, not the code -->
+    <section class="scene spec" data-scene="2">
+      <div class="eyebrow">Spec-driven, AI-assisted</div>
+      <h2>Describe the business.<br><span class="vio">AI writes the spec.</span></h2>
+      <div class="chat" id="specChat">
+        <span class="who">you — to any AI, via MCP</span>
+        <q>We rent holiday homes. <b>Overbooking must be impossible.</b> Backoffice approves each booking <b>within 48 hours</b>.</q>
+      </div>
+      <div class="specflow">
+        <span class="stage" style="animation-delay:1.6s">natural language</span>
+        <span class="arr" style="animation-delay:1.9s">→ AI →</span>
+        <span class="stage ai" style="animation-delay:2.1s">modux spec</span>
+        <span class="arr" style="animation-delay:2.4s">→ generator →</span>
+        <span class="stage gen" style="animation-delay:2.6s">running system</span>
+      </div>
+      <div class="punchline" id="specPunch"><span class="ai-b">AI writes the spec</span> — <b>a deterministic generator writes the code.</b> Reproducible, auditable, cheap.</div>
+    </section>
+
+    <!-- Scene 3 — the model -->
+    <section class="scene build" data-scene="3">
       <div class="split">
         <div>
           <div class="eyebrow">The Modux way</div>
@@ -326,13 +377,13 @@
             <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="fn">model-driven-store.yaml</span></div>
             <div id="codeBody"></div>
           </div>
-          <div class="codecap" id="codeCap" style="opacity:0">Declare <b>intent</b> — contexts, invariants, human tasks. Modux infers the mechanism.</div>
+          <div class="codecap" id="codeCap" style="opacity:0">The spec declares <b>intent</b> — contexts, invariants, human tasks. Modux infers the mechanism.</div>
         </div>
       </div>
     </section>
 
-    <!-- Scene 3 — the generated system -->
-    <section class="scene build" data-scene="3">
+    <!-- Scene 4 — the generated system -->
+    <section class="scene build" data-scene="4">
       <div class="split two">
         <div>
           <div class="eyebrow">One command later</div>
@@ -359,8 +410,8 @@
       </div>
     </section>
 
-    <!-- Scene 4 — the living model -->
-    <section class="scene alive" data-scene="4">
+    <!-- Scene 5 — the living model -->
+    <section class="scene alive" data-scene="5">
       <div class="eyebrow">The visual editor</div>
       <h2>Your architecture, <span class="vio">alive</span>.</h2>
       <div class="organism">
@@ -375,16 +426,16 @@
       <div class="surfrow"><span class="s1">2D</span><span class="s2">3D</span><span class="s3">∿ Yugo</span></div>
     </section>
 
-    <!-- Scene 5 — capabilities -->
-    <section class="scene caps" data-scene="5">
+    <!-- Scene 6 — capabilities -->
+    <section class="scene caps" data-scene="6">
       <div class="eyebrow">Derived from real requirements</div>
       <h2>Everything an <span class="accent">enterprise system</span> needs.</h2>
       <div class="grid" id="capGrid"></div>
       <div class="polyglot">Model it once — <b>diagrams, code, workflows and forms</b> stay coherent.</div>
     </section>
 
-    <!-- Scene 6 — close -->
-    <section class="scene close" data-scene="6">
+    <!-- Scene 7 — close -->
+    <section class="scene close" data-scene="7">
       <svg class="mark" viewBox="0 0 128 128" aria-hidden="true"><path fill-rule="evenodd" d="M81 36 64 0 47 36l-1 2-9-10a6 6 0 0 0-9 9l10 10h-2L0 64l36 17h2L28 91a6 6 0 1 0 9 9l9-10 1 2 17 36 17-36v-2l9 10a6 6 0 1 0 9-9l-9-9 2-1 36-17-36-17-2-1 9-9a6 6 0 1 0-9-9l-9 10v-2Zm-17 2-2 5c-4 8-11 15-19 19l-5 2 5 2c8 4 15 11 19 19l2 5 2-5c4-8 11-15 19-19l5-2-5-2c-8-4-15-11-19-19l-2-5Z" clip-rule="evenodd"/></svg>
       <h1>modux</h1>
       <div class="sub">Model first. Everything else is generated.</div>
@@ -399,7 +450,7 @@
   <div class="controls">
     <button class="btn-ctl" id="playBtn" aria-label="Pause">❚❚ Pause</button>
     <div class="track" aria-hidden="true"><div class="bar-fill" id="barFill"></div></div>
-    <span class="counter" id="counter">1 / 7</span>
+    <span class="counter" id="counter">1 / 8</span>
     <button class="btn-ctl" id="replayBtn" aria-label="Replay">↺</button>
   </div>
 </div>
@@ -471,8 +522,8 @@
   // ── timeline ─────────────────────────────────────────────────────────
   const scenes = [...document.querySelectorAll('.scene')];
   const durations = reduce
-    ? [2600, 3200, 5600, 4600, 4200, 4200, 6000]
-    : [3400, 3900, 7000, 5400, 5400, 5100, 6000];
+    ? [2600, 3200, 4600, 5600, 4600, 4200, 4200, 6000]
+    : [3400, 3900, 6200, 7000, 5400, 5400, 5100, 6000];
   const total = durations.reduce((a, b) => a + b, 0);
 
   const barFill = document.getElementById('barFill');
@@ -491,8 +542,9 @@
     counter.textContent = (i + 1) + ' / ' + scenes.length;
 
     if (i === 1) animateProblem();
-    if (i === 2) animateCode();
-    if (i === 3) animateSvc();
+    if (i === 2) animateSpec();
+    if (i === 3) animateCode();
+    if (i === 4) animateSvc();
 
     remaining = durations[i];
     startAt = performance.now();
@@ -531,6 +583,15 @@
     chipEls.forEach((c, i) => choreoTimers.push(setTimeout(() => c.classList.add('show'), 150 + i * 170)));
     choreoTimers.push(setTimeout(() => chipEls.forEach(c => c.classList.add('struck')), 150 + chipEls.length * 170 + 550));
     choreoTimers.push(setTimeout(() => document.getElementById('probPunch').classList.add('show'), 150 + chipEls.length * 170 + 800));
+  }
+  function animateSpec() {
+    clearChoreo();
+    const chat = document.getElementById('specChat');
+    const punch = document.getElementById('specPunch');
+    chat.classList.remove('show'); punch.classList.remove('show');
+    if (reduce) { chat.classList.add('show'); punch.classList.add('show'); return; }
+    choreoTimers.push(setTimeout(() => chat.classList.add('show'), 250));
+    choreoTimers.push(setTimeout(() => punch.classList.add('show'), 3300));
   }
   function animateCode() {
     clearChoreo();
