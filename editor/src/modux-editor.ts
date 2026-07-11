@@ -4126,6 +4126,11 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-etl-flow', id });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'ui-app') {
+      this._selectedId = null;
+      this.command({ kind: 'delete-ui-app', id });
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'st-fire') {
       const match = /^stfire:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -5848,6 +5853,19 @@ export class ModuxEditor extends LitElement {
                                 name,
                                 completionEventName: `${name.replace(/\s+/g, '')}Completado`,
                               };
+      if (cmd.kind === 'create-ui-app') {
+        // Dropped inside a bounded context: the module owns the app from the start.
+        const chain: string[] = [];
+        for (let cur: string | undefined = targetId ?? undefined; cur; ) {
+          chain.push(cur);
+          cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+        }
+        const moduleId = chain.find((cid) => this.model.modules.some((mo) => mo.id === cid));
+        if (moduleId) {
+          issue({ ...cmd, moduleId }, id, moduleId);
+          return;
+        }
+      }
       issue(cmd, id);
       return;
     }
@@ -6352,7 +6370,7 @@ export class ModuxEditor extends LitElement {
             ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
-              : !['ui-app', 'page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
+              : !['page', 'menu-item'].includes(k.type) && !k.type.startsWith('cmp:')) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.

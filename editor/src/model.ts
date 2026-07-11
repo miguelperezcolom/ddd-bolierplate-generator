@@ -178,6 +178,8 @@ export interface ModuleRef {
   scheduledTriggers?: ScheduledTriggerRef[];
   /** The IdP whose tokens this bounded context validates. */
   identityProviderId?: string;
+  /** UI apps owned by this bounded context (the apps themselves live in model.uiApps). */
+  uiAppIds?: string[];
 }
 
 export interface ActorRef {

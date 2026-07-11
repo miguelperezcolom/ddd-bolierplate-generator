@@ -688,7 +688,14 @@ export type ModuxCommand =
       targetUseCaseId?: string;
       completionEventName?: string;
     }
-  | { kind: 'create-ui-app'; id: string; name: string; type?: string }
+  | {
+      kind: 'create-ui-app';
+      id: string;
+      name: string;
+      type?: string;
+      /** Born inside a bounded context: the module owns the app from the start. */
+      moduleId?: string;
+    }
   | {
       /** MASTER_DETAIL: the page shown as the header (null clears it). */
       kind: 'set-app-header-page';

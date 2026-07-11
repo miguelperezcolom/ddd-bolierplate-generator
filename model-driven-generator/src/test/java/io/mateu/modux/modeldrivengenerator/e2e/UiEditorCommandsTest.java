@@ -145,6 +145,32 @@ class UiEditorCommandsTest {
         assertThat(model.actorAppUses()).noneMatch(u -> "test-app".equals(u.appId()));
     }
 
+    @Test
+    void an_app_born_inside_a_bounded_context_belongs_to_it_until_deleted() throws Exception {
+        var dir = Files.createTempDirectory("ui-editor-commands-bc");
+        repository.loadFrom(dir.resolve("model-driven-store.yaml").toAbsolutePath().toString());
+
+        apply("""
+                {"kind":"add-module","id":"test-mod","name":"Reservas"}""");
+        // dropped INSIDE the bounded context: the module owns the app from the start
+        apply("""
+                {"kind":"create-ui-app","id":"test-app","name":"Recepción App","moduleId":"test-mod"}""");
+
+        var model = controller.model();
+        var module = model.modules().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
+        assertThat(module.uiAppIds()).containsExactly("test-app");
+        assertThat(model.uiApps()).anyMatch(a -> "test-app".equals(a.id()));
+
+        // deleting the app: the bounded context lets go of it
+        apply("""
+                {"kind":"delete-ui-app","id":"test-app"}""");
+
+        model = controller.model();
+        module = model.modules().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
+        assertThat(module.uiAppIds()).isEmpty();
+        assertThat(model.uiApps()).noneMatch(a -> "test-app".equals(a.id()));
+    }
+
     private void apply(String commandJson) throws Exception {
         controller.apply(mapper.readValue(commandJson, EditorApiController.EditorCommand.class));
     }

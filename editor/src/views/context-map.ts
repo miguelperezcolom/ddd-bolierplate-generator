@@ -165,7 +165,8 @@ interface ChildDesc {
     | 'scheduled-trigger'
     | 'etl-flow'
     | 'notification'
-    | 'document';
+    | 'document'
+    | 'ui-app';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -192,6 +193,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'etl-flow': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
   notification: { symbol: 'event', fill: '#fdf2f8', stroke: '#db2777' },
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
+  'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -214,6 +216,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'etl-flow': 'Integrador ETL — fuentes (pull/consumidor) → transformación → escrituras',
   notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
+  'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -286,6 +289,9 @@ function detailedContext(
     ...(model.documents ?? [])
       .filter((d) => d.ownerModuleId === module.id)
       .map((d): ChildDesc => ({ id: d.id, name: d.name, kind: 'document' })),
+    ...(model.uiApps ?? [])
+      .filter((a) => (module.uiAppIds ?? []).includes(a.id))
+      .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'ui-app' })),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.

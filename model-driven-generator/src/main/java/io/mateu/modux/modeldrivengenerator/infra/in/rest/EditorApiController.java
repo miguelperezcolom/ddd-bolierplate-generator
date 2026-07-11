@@ -111,7 +111,9 @@ public class EditorApiController {
                             List<ApplicationEventDto> applicationEvents,
                             List<QueryServiceDto> queryServices,
                             List<ScheduledTriggerDto> scheduledTriggers,
-                            String identityProviderId) {}
+                            String identityProviderId,
+                            /** UI apps owned by this bounded context (the apps themselves travel in uiApps). */
+                            List<String> uiAppIds) {}
 
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     public record DomainServiceDto(String id, String name) {}
@@ -490,7 +492,8 @@ public class EditorApiController {
                                 .filter(Objects::nonNull)
                                 .map(t -> new ScheduledTriggerDto(t.id(), t.name(), t.cronExpression(), t.useCaseId()))
                                 .toList(),
-                        m.identityProviderId()))
+                        m.identityProviderId(),
+                        m.uiAdapterIds()))
                 .toList();
 
         var projects = repository.findAllOfType(ProjectEntity.class);
@@ -3608,6 +3611,14 @@ public class EditorApiController {
                 : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
         repository.save(new UiAdapterEntity(command.id(), command.name(), null,
                 command.name(), null, null, List.of(), appType, null, null, null, null));
+        if (command.moduleId() == null || command.moduleId().isBlank()) return;
+        // Born inside a bounded context: the module owns the app from the start.
+        var module = repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        if (module.uiAdapterIds().contains(command.id())) return;
+        var ids = new ArrayList<>(module.uiAdapterIds());
+        ids.add(command.id());
+        repository.save(module.toBuilder().uiAdapterIds(ids).build());
     }
 
     /** MASTER_DETAIL: the page shown as the header; null clears it. */
@@ -4078,6 +4089,11 @@ public class EditorApiController {
                 .filter(r -> r.uiAdapterIds().contains(command.id()))
                 .forEach(r -> repository.save(r.withUiAdapterIds(
                         without(r.uiAdapterIds(), command.id()))));
+        // the bounded context that owned the app lets go of it
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> m.uiAdapterIds().contains(command.id()))
+                .forEach(m -> repository.save(m.toBuilder()
+                        .uiAdapterIds(without(m.uiAdapterIds(), command.id())).build()));
         // menu entries of OTHER apps pointing at this one lose their target, not their place
         for (var other : repository.findAllOfType(UiAdapterEntity.class)) {
             if (other.id().equals(command.id())) continue;
