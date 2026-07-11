@@ -510,27 +510,35 @@ function distributionContext(
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
+  toggledIds: ReadonlySet<string> = new Set(),
 ): SceneNode[] {
   const elements = moduleElementDescs(model, module);
   const byId = new Map(elements.map((e) => [e.id, e]));
   const codeModules = (model.codeModules ?? []).filter((cm) => cm.moduleId === module.id);
   const assignedElsewhere = new Set(codeModules.flatMap((cm) => cm.elementIds ?? []));
-  const plain = elements.filter((e) => !assignedElsewhere.has(e.id));
+  // Deployment is topology, not content: boxes stay COMPACT by default — the
+  // chevron unfolds one to package elements looking inside, and only then the
+  // context's unassigned elements join as loose chips to wire in.
+  const anyExpanded = codeModules.some((cm) => toggledIds.has(cm.id));
+  const plain = anyExpanded ? elements.filter((e) => !assignedElsewhere.has(e.id)) : [];
 
   const mSize = sizes[base.id] ?? defaultContainerSize(codeModules.length + plain.length);
   const boxes = codeModules.map((cm, i) => {
-    const chips = (cm.elementIds ?? [])
+    const expanded = toggledIds.has(cm.id);
+    const chips = !expanded ? [] : (cm.elementIds ?? [])
       .map((id) => byId.get(id))
       .filter((c): c is ChildDesc => !!c);
-    const bands = HEX_LAYERS.map((l) => {
+    const bands = !expanded ? [] : HEX_LAYERS.map((l) => {
       const own = chips.filter((c) => l.kinds.includes(c.kind));
       const rows = Math.ceil(own.length / CHILD_COLS);
       const h = LAYER_HEADER + (rows ? rows * CHILD_H + (rows - 1) * CHILD_GAP_Y + 8 : 8);
       return { layer: l, chips: own, rows, h };
     });
-    const boxH = BOX_HEADER + bands.reduce((a, b) => a + b.h, 0) + BOX_PAD;
+    const boxH = expanded
+      ? BOX_HEADER + bands.reduce((a, b) => a + b.h, 0) + BOX_PAD
+      : 56;
     const off = layout[cm.id] ?? defaultChildOffset(i, mSize);
-    return { cm, bands, boxH, off };
+    return { cm, expanded, bands, boxH, off };
   });
   const plainOffs = plain.map(
     (c, i) => layout[c.id] ?? defaultChildOffset(boxes.length + i, mSize),
@@ -570,13 +578,18 @@ function distributionContext(
       stroke: '#334155',
       badge: 'MÓDULO',
       container: true,
+      collapsible: true,
+      collapsed: !b.expanded,
       parentId: base.id,
       x: bx,
       y: by,
       w: BOX_W,
       h: b.boxH,
-      tooltip: `${b.cm.name} — módulo: empaqueta elementos del contexto en sus capas; arrastra el asa de un elemento hasta él para asignarlo`,
+      tooltip: b.expanded
+        ? `${b.cm.name} — módulo desplegado: arrastra el asa de un elemento suelto hasta él para empaquetarlo; el chevron lo pliega`
+        : `${b.cm.name} — módulo: el chevron lo abre para ver y empaquetar su contenido`,
     });
+    if (!b.expanded) continue;
     let cursor = -b.boxH / 2 + BOX_HEADER;
     for (const band of b.bands) {
       const bandId = `hexlayer:${b.cm.id}:${band.layer.key}`;
@@ -726,7 +739,7 @@ export function contextMapScene(
   // other levels.
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
-    ...(distributionLevel ? [] : model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false }))),
+    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(bareLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
       .map((a) => ({ ref: a, external: false, api: true, proxy: false }))),
@@ -921,7 +934,8 @@ export function contextMapScene(
       const xFoldable = hasChips || richChildren.length > 0;
       const { form: xForm, collapsed: xCollapsed } = resolveForm(
         toggledIds.has(x.id),
-        detailed ? 'full' : hasChips ? 'coarse' : 'compact',
+        // Deployment is topology: external systems join compact, like the modules.
+        distributionLevel ? 'compact' : detailed ? 'full' : hasChips ? 'coarse' : 'compact',
         richChildren.length > 0 || (operationsLevel && hasChips),
       );
       const plainChildren: ChildDesc[] = [
@@ -1039,7 +1053,7 @@ export function contextMapScene(
       return distributionContext(
         model, m, pos,
         { ...base, collapsible: false, collapsed: false },
-        layout, sizes,
+        layout, sizes, toggledIds,
       );
     }
     if (mForm === 'full' && mFoldable) {
