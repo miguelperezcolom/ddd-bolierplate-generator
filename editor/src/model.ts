@@ -706,6 +706,8 @@ export interface ModuxModel {
     id: string;
     name: string;
     type?: string;
+    /** JOIN: ALL (default) | ANY · SPLIT: PARALLEL (default) | EXCLUSIVE. */
+    semantics?: string;
     sourceIds?: string[];
     targetIds?: string[];
   }[];

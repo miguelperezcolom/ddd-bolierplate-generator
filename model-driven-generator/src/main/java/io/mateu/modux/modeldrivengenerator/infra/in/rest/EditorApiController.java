@@ -176,7 +176,7 @@ public class EditorApiController {
                                   List<String> dependsOnStepIds, String type,
                                   String handoffWorkflowId) {}
     /** A LOOSE gateway: its workflow is inferred from its links. */
-    public record WorkflowGatewayDto(String id, String name, String type,
+    public record WorkflowGatewayDto(String id, String name, String type, String semantics,
                                      List<String> sourceIds, List<String> targetIds) {}
     /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
     public record WorkflowDto(String id, String name, String triggerAggregateId,
@@ -1065,7 +1065,7 @@ public class EditorApiController {
                                 g.groupIds()))
                         .toList(),
                 repository.findAllOfType(WorkflowGatewayEntity.class).stream()
-                        .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(),
+                        .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(), g.semantics(),
                                 g.sourceIds(), g.targetIds()))
                         .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
@@ -1323,6 +1323,7 @@ public class EditorApiController {
             case "add-workflow-step" -> addWorkflowStep(command);
             case "move-workflow-step" -> moveWorkflowStep(command);
             case "add-workflow-gateway" -> addWorkflowGateway(command);
+            case "set-gateway-semantics" -> setGatewaySemantics(command);
             case "remove-workflow-gateway" -> removeWorkflowGateway(command);
             case "add-workflow-link" -> addWorkflowLink(command);
             case "remove-workflow-link" -> removeWorkflowLink(command);
@@ -1554,6 +1555,22 @@ public class EditorApiController {
         var type = "SPLIT".equals(command.stepType()) ? "SPLIT" : "JOIN";
         repository.save(new WorkflowGatewayEntity(command.id(), command.name(), type,
                 List.of(), List.of()));
+    }
+
+    /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split (null back to default). */
+    private void setGatewaySemantics(EditorCommand command) {
+        var g = repository.findById(command.id(), WorkflowGatewayEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown gateway: " + command.id()));
+        var semantics = command.type() == null || command.type().isBlank() ? null : command.type();
+        if (semantics != null) {
+            var valid = "JOIN".equals(g.type())
+                    ? java.util.Set.of("ALL", "ANY")
+                    : java.util.Set.of("PARALLEL", "EXCLUSIVE");
+            if (!valid.contains(semantics)) {
+                throw new IllegalArgumentException("Semántica inválida para un " + g.type() + ": " + semantics);
+            }
+        }
+        repository.save(g.toBuilder().semantics(semantics).build());
     }
 
     private void removeWorkflowGateway(EditorCommand command) {

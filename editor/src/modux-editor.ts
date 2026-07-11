@@ -5333,6 +5333,17 @@ export class ModuxEditor extends LitElement {
   }
 
   private onElementActivated(e: CustomEvent): void {
+    // Double-clicking a gateway flips its semantics: join TODAS↔CUALQUIERA,
+    // split PARALELO↔EXCLUSIVO — the badge tells which one rules.
+    if (this._view === 'workflows' && e.detail.kind === 'workflow-gateway') {
+      const g = (this.model.workflowGateways ?? []).find((x) => x.id === e.detail.id);
+      if (!g) return;
+      const next = g.type === 'SPLIT'
+        ? (g.semantics === 'EXCLUSIVE' ? 'PARALLEL' : 'EXCLUSIVE')
+        : (g.semantics === 'ANY' ? 'ALL' : 'ANY');
+      this.command({ kind: 'set-gateway-semantics', id: g.id, type: next });
+      return;
+    }
     if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
       this._view = 'design';
       this._selectedId = e.detail.id;

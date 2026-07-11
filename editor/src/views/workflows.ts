@@ -243,10 +243,12 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
       fill: '#f5f3ff',
       stroke: '#6d28d9',
       dashed: true,
-      badge: g.type === 'SPLIT' ? '⑃ SPLIT' : '⨝ JOIN',
+      badge: g.type === 'SPLIT'
+        ? (g.semantics === 'EXCLUSIVE' ? '⑃ EXCLUSIVO' : '⑃ PARALELO')
+        : (g.semantics === 'ANY' ? '⨝ CUALQUIERA' : '⨝ TODAS'),
       tooltip: g.type === 'SPLIT'
-        ? `${g.name} — split: UNA entrada, varias salidas en paralelo; arrastra su asa hasta los pasos que abre`
-        : `${g.name} — join: espera a TODAS sus entradas y sale a UN nodo; arrastra desde los pasos que espera`,
+        ? `${g.name} — split ${g.semantics === 'EXCLUSIVE' ? 'exclusivo: elige UNA rama' : 'paralelo: abre TODAS las ramas'}; doble click cambia la semántica`
+        : `${g.name} — join que ${g.semantics === 'ANY' ? 'arranca con CUALQUIER entrada' : 'espera a TODAS sus entradas'}; doble click cambia la semántica`,
     });
     nodeIds.add(g.id);
   });

@@ -690,6 +690,12 @@ export type ModuxCommand =
     }
   | { kind: 'remove-workflow-gateway'; id: string }
   | {
+      /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split (null back to default). */
+      kind: 'set-gateway-semantics';
+      id: string;
+      type: string | null;
+    }
+  | {
       /** A flow link touching a gateway, or a step's hand-off to another workflow. */
       kind: 'add-workflow-link';
       sourceId: string;

@@ -18,9 +18,22 @@ public record WorkflowGatewayEntity(
         String name,
         /** JOIN or SPLIT. */
         String type,
+        /**
+         * How the gateway behaves: a JOIN waits for ALL (default) or fires on ANY
+         * input; a SPLIT opens every branch in PARALLEL (default) or EXCLUSIVEly
+         * picks one. The pair completes the algebra: an EXCLUSIVE split must
+         * converge on an ANY join, or the flow would wait for branches never run.
+         */
+        String semantics,
         List<String> sourceIds,
         List<String> targetIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-semantics callers and stores). */
+    public WorkflowGatewayEntity(String id, String name, String type,
+                                 List<String> sourceIds, List<String> targetIds) {
+        this(id, name, type, null, sourceIds, targetIds);
+    }
 
     public WorkflowGatewayEntity {
         if (sourceIds == null) sourceIds = List.of();
