@@ -309,6 +309,8 @@ export class ModuxEditor extends LitElement {
   @state() private _repoPicker: { pos: Point } | null = null;
   /** Open picker: a loose step drop asking WHICH workflow adopts it. */
   @state() private _wfStepPicker: { pos: Point; stepType?: string } | null = null;
+  /** Editing the condition of one EXCLUSIVE-split branch. */
+  @state() private _branchCondEditor: { gatewayId: string; targetId: string; value: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
@@ -5335,6 +5337,16 @@ export class ModuxEditor extends LitElement {
   private onElementActivated(e: CustomEvent): void {
     // Double-clicking a gateway flips its semantics: join TODAS↔CUALQUIERA,
     // split PARALELO↔EXCLUSIVO — the badge tells which one rules.
+    if (this._view === 'workflows' && e.detail.elementType === 'edge' && e.detail.kind === 'wf-link') {
+      // doble click en una rama de un split EXCLUSIVO: se edita su condición
+      const m = /^wflink:(.+)->(.+)$/.exec(e.detail.id);
+      const g = m ? (this.model.workflowGateways ?? []).find((x) => x.id === m[1]) : null;
+      if (m && g && g.type === 'SPLIT' && g.semantics === 'EXCLUSIVE') {
+        const current = (g.branchConditions ?? []).find((c) => c.targetId === m[2])?.expression ?? '';
+        this._branchCondEditor = { gatewayId: g.id, targetId: m[2], value: current };
+      }
+      return;
+    }
     if (this._view === 'workflows' && e.detail.kind === 'workflow-gateway') {
       const g = (this.model.workflowGateways ?? []).find((x) => x.id === e.detail.id);
       if (!g) return;
@@ -7818,7 +7830,7 @@ export class ModuxEditor extends LitElement {
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
       </div>
-      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
       ${this.renderHelpPopover()}
     `;
   }
@@ -7989,6 +8001,44 @@ export class ModuxEditor extends LitElement {
             </button>
           `,
         )}
+      </div>
+    `;
+  }
+
+  /** The condition editor of one EXCLUSIVE-split branch. */
+  private renderBranchCondEditor() {
+    const p = this._branchCondEditor;
+    if (!p) return '';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._branchCondEditor = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${this.clientWidth / 2}px; top:120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">Condición de la rama (vacío la quita)</div>
+        <input
+          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: 12px system-ui;"
+          placeholder="p. ej. importe > 1000"
+          .value=${p.value}
+          @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+              this.command({ kind: 'set-gateway-branch-condition', id: p.gatewayId, targetId: p.targetId, text: p.value });
+              this._branchCondEditor = null;
+            }
+            if (e.key === 'Escape') this._branchCondEditor = null;
+          }}
+        />
+        <button
+          class="picker-item"
+          @click=${() => {
+            this.command({ kind: 'set-gateway-branch-condition', id: p.gatewayId, targetId: p.targetId, text: p.value });
+            this._branchCondEditor = null;
+          }}
+        >
+          Guardar
+        </button>
       </div>
     `;
   }

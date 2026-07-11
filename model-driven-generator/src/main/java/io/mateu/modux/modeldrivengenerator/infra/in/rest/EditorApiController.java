@@ -12,6 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModule
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GroupButtonEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayBranchConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
@@ -176,8 +177,10 @@ public class EditorApiController {
                                   List<String> dependsOnStepIds, String type,
                                   String handoffWorkflowId) {}
     /** A LOOSE gateway: its workflow is inferred from its links. */
+    public record GatewayBranchConditionDto(String targetId, String expression) {}
     public record WorkflowGatewayDto(String id, String name, String type, String semantics,
-                                     List<String> sourceIds, List<String> targetIds) {}
+                                     List<String> sourceIds, List<String> targetIds,
+                                     List<GatewayBranchConditionDto> branchConditions) {}
     /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
     public record WorkflowDto(String id, String name, String triggerAggregateId,
                               String triggerDomainServiceId, String triggerUseCaseId,
@@ -1066,7 +1069,10 @@ public class EditorApiController {
                         .toList(),
                 repository.findAllOfType(WorkflowGatewayEntity.class).stream()
                         .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(), g.semantics(),
-                                g.sourceIds(), g.targetIds()))
+                                g.sourceIds(), g.targetIds(),
+                                g.branchConditions().stream()
+                                        .map(c -> new GatewayBranchConditionDto(c.targetId(), c.expression()))
+                                        .toList()))
                         .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
@@ -1324,6 +1330,7 @@ public class EditorApiController {
             case "move-workflow-step" -> moveWorkflowStep(command);
             case "add-workflow-gateway" -> addWorkflowGateway(command);
             case "set-gateway-semantics" -> setGatewaySemantics(command);
+            case "set-gateway-branch-condition" -> setGatewayBranchCondition(command);
             case "remove-workflow-gateway" -> removeWorkflowGateway(command);
             case "add-workflow-link" -> addWorkflowLink(command);
             case "remove-workflow-link" -> removeWorkflowLink(command);
@@ -1571,6 +1578,25 @@ public class EditorApiController {
             }
         }
         repository.save(g.toBuilder().semantics(semantics).build());
+    }
+
+    /** The condition guarding ONE branch of an EXCLUSIVE split (blank clears it). */
+    private void setGatewayBranchCondition(EditorCommand command) {
+        var g = repository.findById(command.id(), WorkflowGatewayEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown gateway: " + command.id()));
+        if (!"SPLIT".equals(g.type()) || !"EXCLUSIVE".equals(g.semantics())) {
+            throw new IllegalArgumentException("Las condiciones por rama son del split EXCLUSIVO");
+        }
+        if (!g.targetIds().contains(command.targetId())) {
+            throw new IllegalArgumentException("Esa rama no sale de este split: " + command.targetId());
+        }
+        var kept = g.branchConditions().stream()
+                .filter(c -> !c.targetId().equals(command.targetId()))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        if (command.text() != null && !command.text().isBlank()) {
+            kept.add(new GatewayBranchConditionEntity(command.targetId(), command.text().trim()));
+        }
+        repository.save(g.toBuilder().branchConditions(kept).build());
     }
 
     private void removeWorkflowGateway(EditorCommand command) {

@@ -265,16 +265,24 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
         tooltip: 'fluye al gateway — Supr lo desconecta',
       });
     }
+    const exclusive = g.type === 'SPLIT' && g.semantics === 'EXCLUSIVE';
     for (const tgt of g.targetIds ?? []) {
       if (!nodeIds.has(tgt)) continue;
+      const condition = exclusive
+        ? (g.branchConditions ?? []).find((c) => c.targetId === tgt)?.expression
+        : undefined;
       edges.push({
         id: `wflink:${g.id}->${tgt}`,
         sourceId: g.id,
         targetId: tgt,
         kind: 'wf-link',
         color: '#6d28d9',
+        dashed: exclusive && !condition,
         arrow: true,
-        tooltip: 'el gateway fluye aquí — Supr lo desconecta',
+        label: condition ?? (exclusive ? '¿condición?' : undefined),
+        tooltip: exclusive
+          ? `${condition ? `Rama si: ${condition}` : 'Rama sin condición aún'} — doble click la edita; Supr desconecta`
+          : 'el gateway fluye aquí — Supr lo desconecta',
       });
     }
   }

@@ -710,6 +710,8 @@ export interface ModuxModel {
     semantics?: string;
     sourceIds?: string[];
     targetIds?: string[];
+    /** EXCLUSIVE split: the condition guarding each outgoing branch. */
+    branchConditions?: { targetId: string; expression?: string }[];
   }[];
   /** Reusable button groups: pages hook them to a bar; groups nest groups. */
   buttonGroups?: {

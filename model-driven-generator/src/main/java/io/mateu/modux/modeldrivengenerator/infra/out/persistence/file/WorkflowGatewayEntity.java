@@ -26,17 +26,26 @@ public record WorkflowGatewayEntity(
          */
         String semantics,
         List<String> sourceIds,
-        List<String> targetIds
+        List<String> targetIds,
+        /** EXCLUSIVE split: the condition guarding each outgoing branch. */
+        List<GatewayBranchConditionEntity> branchConditions
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-branchConditions callers and stores). */
+    public WorkflowGatewayEntity(String id, String name, String type, String semantics,
+                                 List<String> sourceIds, List<String> targetIds) {
+        this(id, name, type, semantics, sourceIds, targetIds, null);
+    }
 
     /** Backward-compatible constructor (pre-semantics callers and stores). */
     public WorkflowGatewayEntity(String id, String name, String type,
                                  List<String> sourceIds, List<String> targetIds) {
-        this(id, name, type, null, sourceIds, targetIds);
+        this(id, name, type, null, sourceIds, targetIds, null);
     }
 
     public WorkflowGatewayEntity {
         if (sourceIds == null) sourceIds = List.of();
         if (targetIds == null) targetIds = List.of();
+        if (branchConditions == null) branchConditions = List.of();
     }
 }

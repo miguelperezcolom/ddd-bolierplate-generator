@@ -696,6 +696,13 @@ export type ModuxCommand =
       type: string | null;
     }
   | {
+      /** The condition guarding ONE branch of an EXCLUSIVE split (blank clears). */
+      kind: 'set-gateway-branch-condition';
+      id: string;
+      targetId: string;
+      text: string;
+    }
+  | {
       /** A flow link touching a gateway, or a step's hand-off to another workflow. */
       kind: 'add-workflow-link';
       sourceId: string;
