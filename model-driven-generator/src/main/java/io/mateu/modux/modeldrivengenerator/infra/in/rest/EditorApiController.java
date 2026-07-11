@@ -12,6 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModule
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GroupButtonEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
@@ -172,7 +173,11 @@ public class EditorApiController {
                              List<ProcessStepDto> steps) {}
     public record WorkflowStepDto(String id, String name, String emittedEventName,
                                   String targetUseCaseId, String completionEventName,
-                                  List<String> dependsOnStepIds, String type) {}
+                                  List<String> dependsOnStepIds, String type,
+                                  String handoffWorkflowId) {}
+    /** A LOOSE gateway: its workflow is inferred from its links. */
+    public record WorkflowGatewayDto(String id, String name, String type,
+                                     List<String> sourceIds, List<String> targetIds) {}
     /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
     public record WorkflowDto(String id, String name, String triggerAggregateId,
                               String triggerDomainServiceId, String triggerUseCaseId,
@@ -379,6 +384,7 @@ public class EditorApiController {
             List<TransformationDto> transformations,
             List<CustomCodeDto> customCodes,
             List<ButtonGroupDto> buttonGroups,
+            List<WorkflowGatewayDto> workflowGateways,
             List<MappingRefDto> modelMappings) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
@@ -637,7 +643,7 @@ public class EditorApiController {
                         w.steps().stream()
                                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                                         s.targetUseCaseId(), s.completionEventName(),
-                                        s.dependsOnStepIds(), s.type()))
+                                        s.dependsOnStepIds(), s.type(), s.handoffWorkflowId()))
                                 .toList()))
                 .toList();
 
@@ -1058,6 +1064,10 @@ public class EditorApiController {
                                         .toList(),
                                 g.groupIds()))
                         .toList(),
+                repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                        .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(),
+                                g.sourceIds(), g.targetIds()))
+                        .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
                                 (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
@@ -1312,6 +1322,10 @@ public class EditorApiController {
             case "remove-workflow" -> removeWorkflow(command);
             case "add-workflow-step" -> addWorkflowStep(command);
             case "move-workflow-step" -> moveWorkflowStep(command);
+            case "add-workflow-gateway" -> addWorkflowGateway(command);
+            case "remove-workflow-gateway" -> removeWorkflowGateway(command);
+            case "add-workflow-link" -> addWorkflowLink(command);
+            case "remove-workflow-link" -> removeWorkflowLink(command);
             case "remove-workflow-step" -> removeWorkflowStep(command);
             case "update-workflow-step" -> updateWorkflowStep(command);
             case "add-workflow-dependency" -> addWorkflowDependency(command);
@@ -1535,6 +1549,160 @@ public class EditorApiController {
                 wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
     }
 
+    private void addWorkflowGateway(EditorCommand command) {
+        if (repository.findById(command.id(), WorkflowGatewayEntity.class).isPresent()) return;
+        var type = "SPLIT".equals(command.stepType()) ? "SPLIT" : "JOIN";
+        repository.save(new WorkflowGatewayEntity(command.id(), command.name(), type,
+                List.of(), List.of()));
+    }
+
+    private void removeWorkflowGateway(EditorCommand command) {
+        // other gateways let go of it on both sides
+        repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                .filter(g -> g.sourceIds().contains(command.id()) || g.targetIds().contains(command.id()))
+                .forEach(g -> repository.save(g.toBuilder()
+                        .sourceIds(without(g.sourceIds(), command.id()))
+                        .targetIds(without(g.targetIds(), command.id()))
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), WorkflowGatewayEntity.class);
+    }
+
+    /** The workflow a flow node belongs to (null while a gateway is still loose). */
+    private String workflowOf(String nodeId, java.util.Set<String> visiting) {
+        if (repository.findById(nodeId, WorkflowEntity.class).isPresent()) return nodeId;
+        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
+            if (wf.steps().stream().anyMatch(st -> st.id().equals(nodeId))) return wf.id();
+        }
+        if (!visiting.add(nodeId)) return null;
+        var gateway = repository.findById(nodeId, WorkflowGatewayEntity.class).orElse(null);
+        if (gateway == null) return null;
+        // membership flows in from the sources; a WORKFLOW target is a hand-off, so
+        // only non-workflow targets vote.
+        for (var src : gateway.sourceIds()) {
+            var wf = workflowOf(src, visiting);
+            if (wf != null) return wf;
+        }
+        for (var tgt : gateway.targetIds()) {
+            if (repository.findById(tgt, WorkflowEntity.class).isPresent()) continue;
+            var wf = workflowOf(tgt, visiting);
+            if (wf != null) return wf;
+        }
+        return null;
+    }
+
+    /** Whether a step or workflow already flows somewhere (their single outgoing). */
+    private boolean hasOutgoing(String nodeId) {
+        for (var g : repository.findAllOfType(WorkflowGatewayEntity.class)) {
+            if (g.sourceIds().contains(nodeId)) return true;
+        }
+        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
+            for (var st : wf.steps()) {
+                if (st.id().equals(nodeId) && st.handoffWorkflowId() != null) return true;
+                if (st.dependsOnStepIds().contains(nodeId)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A flow link between workflow nodes: gateways store their own ends; a step
+     * whose target is a WORKFLOW records the hand-off. Enforces the grammar:
+     * JOIN n→1, SPLIT 1→n, steps/workflows flow to ONE node, and a gateway never
+     * mixes workflows (reaching ANOTHER workflow as target is the exception).
+     */
+    private void addWorkflowLink(EditorCommand command) {
+        var sourceGw = repository.findById(command.sourceId(), WorkflowGatewayEntity.class).orElse(null);
+        var targetGw = repository.findById(command.targetId(), WorkflowGatewayEntity.class).orElse(null);
+        var targetIsWorkflow = repository.findById(command.targetId(), WorkflowEntity.class).isPresent();
+        var srcWf = workflowOf(command.sourceId(), new java.util.HashSet<>());
+        var tgtWf = targetIsWorkflow ? null : workflowOf(command.targetId(), new java.util.HashSet<>());
+        if (srcWf != null && tgtWf != null && !srcWf.equals(tgtWf)) {
+            throw new IllegalArgumentException(
+                    "Los dos extremos ya pertenecen a workflows distintos: a otro workflow solo se llega apuntando al workflow");
+        }
+        if (targetGw != null) {
+            if ("SPLIT".equals(targetGw.type()) && !targetGw.sourceIds().isEmpty()
+                    && !targetGw.sourceIds().contains(command.sourceId())) {
+                throw new IllegalArgumentException("Un split solo tiene UNA entrada");
+            }
+            if (sourceGw == null && hasOutgoing(command.sourceId())) {
+                throw new IllegalArgumentException("Ese nodo ya fluye hacia otro sitio: un paso o workflow solo sale a UN nodo");
+            }
+            if (sourceGw != null) {
+                if ("JOIN".equals(sourceGw.type()) && !sourceGw.targetIds().isEmpty()
+                        && !sourceGw.targetIds().contains(command.targetId())) {
+                    throw new IllegalArgumentException("Un join solo tiene UNA salida");
+                }
+                if (!sourceGw.targetIds().contains(command.targetId())) {
+                    var ids = new ArrayList<>(sourceGw.targetIds());
+                    ids.add(command.targetId());
+                    repository.save(sourceGw.toBuilder().targetIds(ids).build());
+                }
+            }
+            if (!targetGw.sourceIds().contains(command.sourceId())) {
+                var ids = new ArrayList<>(targetGw.sourceIds());
+                ids.add(command.sourceId());
+                repository.save(targetGw.toBuilder().sourceIds(ids).build());
+            }
+            return;
+        }
+        if (sourceGw != null) {
+            if ("JOIN".equals(sourceGw.type()) && !sourceGw.targetIds().isEmpty()
+                    && !sourceGw.targetIds().contains(command.targetId())) {
+                throw new IllegalArgumentException("Un join solo tiene UNA salida");
+            }
+            if (!sourceGw.targetIds().contains(command.targetId())) {
+                var ids = new ArrayList<>(sourceGw.targetIds());
+                ids.add(command.targetId());
+                repository.save(sourceGw.toBuilder().targetIds(ids).build());
+            }
+            return;
+        }
+        // step → workflow: the hand-off, recorded on the step
+        if (targetIsWorkflow) {
+            for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
+                var hit = wf.steps().stream().filter(st -> st.id().equals(command.sourceId())).findFirst();
+                if (hit.isEmpty()) continue;
+                if (hasOutgoing(command.sourceId())) {
+                    throw new IllegalArgumentException("Ese paso ya fluye hacia otro sitio: un paso solo sale a UN nodo");
+                }
+                repository.save(withWorkflowSteps(wf, wf.steps().stream()
+                        .map(st -> st.id().equals(command.sourceId())
+                                ? new WorkflowStepEntity(st.id(), st.name(), st.emittedEventName(),
+                                        st.targetUseCaseId(), st.completionEventName(),
+                                        st.dependsOnStepIds(), st.description(), st.type(),
+                                        command.targetId())
+                                : st)
+                        .toList()));
+                return;
+            }
+            throw new IllegalArgumentException("Unknown step: " + command.sourceId());
+        }
+        throw new IllegalArgumentException("Ese enlace no involucra a un gateway ni a un workflow");
+    }
+
+    private void removeWorkflowLink(EditorCommand command) {
+        repository.findById(command.targetId(), WorkflowGatewayEntity.class)
+                .filter(g -> g.sourceIds().contains(command.sourceId()))
+                .ifPresent(g -> repository.save(g.toBuilder()
+                        .sourceIds(without(g.sourceIds(), command.sourceId())).build()));
+        repository.findById(command.sourceId(), WorkflowGatewayEntity.class)
+                .filter(g -> g.targetIds().contains(command.targetId()))
+                .ifPresent(g -> repository.save(g.toBuilder()
+                        .targetIds(without(g.targetIds(), command.targetId())).build()));
+        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
+            if (wf.steps().stream().noneMatch(st -> st.id().equals(command.sourceId())
+                    && command.targetId().equals(st.handoffWorkflowId()))) continue;
+            repository.save(withWorkflowSteps(wf, wf.steps().stream()
+                    .map(st -> st.id().equals(command.sourceId())
+                            ? new WorkflowStepEntity(st.id(), st.name(), st.emittedEventName(),
+                                    st.targetUseCaseId(), st.completionEventName(),
+                                    st.dependsOnStepIds(), st.description(), st.type(), null)
+                            : st)
+                    .toList()));
+        }
+    }
+
     /** The step moves to ANOTHER workflow; dependencies on steps left behind drop. */
     private void moveWorkflowStep(EditorCommand command) {
         var from = requireWorkflow(command.workflowId());
@@ -1549,14 +1717,14 @@ public class EditorApiController {
                 .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(),
                         s.dependsOnStepIds().stream().filter(d -> !d.equals(command.id())).toList(),
-                        s.description(), s.type()))
+                        s.description(), s.type(), s.handoffWorkflowId()))
                 .toList()));
         var targetIds = new java.util.HashSet<String>();
         to.steps().forEach(s -> targetIds.add(s.id()));
         var landed = new WorkflowStepEntity(moving.id(), moving.name(), moving.emittedEventName(),
                 moving.targetUseCaseId(), moving.completionEventName(),
                 moving.dependsOnStepIds().stream().filter(targetIds::contains).toList(),
-                moving.description(), moving.type());
+                moving.description(), moving.type(), moving.handoffWorkflowId());
         var steps = new ArrayList<>(to.steps());
         steps.add(landed);
         repository.save(withWorkflowSteps(to, steps));

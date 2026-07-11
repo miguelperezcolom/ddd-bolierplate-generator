@@ -18,8 +18,18 @@ public record WorkflowStepEntity(
         List<String> dependsOnStepIds,
         String description,
         /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
-        String type
+        String type,
+        /** The step's single outgoing link when it is ANOTHER workflow (hand-off). */
+        String handoffWorkflowId
 ) {
+
+    /** Backward-compatible constructor (pre-handoffWorkflowId callers and stores). */
+    public WorkflowStepEntity(String id, String name, String emittedEventName,
+                              String targetUseCaseId, String completionEventName,
+                              List<String> dependsOnStepIds, String description, String type) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName,
+                dependsOnStepIds, description, type, null);
+    }
 
     public WorkflowStepEntity {
         if (dependsOnStepIds == null) dependsOnStepIds = List.of();

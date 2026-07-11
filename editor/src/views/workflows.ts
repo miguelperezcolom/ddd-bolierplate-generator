@@ -227,5 +227,71 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
     rowY += Math.max(2, bandRows + 1) * ROW + 60;
   });
 
+  // ---- LOOSE gateways: joins/splits wired by hand; membership is inferred ---
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  (model.workflowGateways ?? []).forEach((g, i) => {
+    const pos = layout[g.id] ?? { x: 200 + (i % 5) * 220, y: 60 };
+    nodes.push({
+      id: g.id,
+      label: g.name,
+      x: pos.x,
+      y: pos.y,
+      w: 100,
+      h: 48,
+      kind: 'workflow-gateway',
+      symbol: 'flow',
+      fill: '#f5f3ff',
+      stroke: '#6d28d9',
+      dashed: true,
+      badge: g.type === 'SPLIT' ? '⑃ SPLIT' : '⨝ JOIN',
+      tooltip: g.type === 'SPLIT'
+        ? `${g.name} — split: UNA entrada, varias salidas en paralelo; arrastra su asa hasta los pasos que abre`
+        : `${g.name} — join: espera a TODAS sus entradas y sale a UN nodo; arrastra desde los pasos que espera`,
+    });
+    nodeIds.add(g.id);
+  });
+  for (const g of model.workflowGateways ?? []) {
+    for (const src of g.sourceIds ?? []) {
+      if (!nodeIds.has(src)) continue;
+      edges.push({
+        id: `wflink:${src}->${g.id}`,
+        sourceId: src,
+        targetId: g.id,
+        kind: 'wf-link',
+        color: '#6d28d9',
+        arrow: true,
+        tooltip: 'fluye al gateway — Supr lo desconecta',
+      });
+    }
+    for (const tgt of g.targetIds ?? []) {
+      if (!nodeIds.has(tgt)) continue;
+      edges.push({
+        id: `wflink:${g.id}->${tgt}`,
+        sourceId: g.id,
+        targetId: tgt,
+        kind: 'wf-link',
+        color: '#6d28d9',
+        arrow: true,
+        tooltip: 'el gateway fluye aquí — Supr lo desconecta',
+      });
+    }
+  }
+  // step → ANOTHER workflow: the hand-off
+  for (const wf of model.workflows ?? []) {
+    for (const step of wf.steps ?? []) {
+      if (!step.handoffWorkflowId || !nodeIds.has(step.handoffWorkflowId) || !nodeIds.has(step.id)) continue;
+      edges.push({
+        id: `wflink:${step.id}->${step.handoffWorkflowId}`,
+        sourceId: step.id,
+        targetId: step.handoffWorkflowId,
+        kind: 'wf-link',
+        color: '#0e7490',
+        dashed: true,
+        arrow: true,
+        tooltip: 'el paso entrega a OTRO workflow — Supr lo desconecta',
+      });
+    }
+  }
+
   return { nodes, edges };
 }

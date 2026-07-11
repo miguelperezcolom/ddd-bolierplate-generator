@@ -1057,6 +1057,8 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-custom-code', id: c.id }];
       case 'add-button-group':
         return [{ kind: 'remove-button-group', id: c.id }];
+      case 'add-workflow-gateway':
+        return [{ kind: 'remove-workflow-gateway', id: c.id }];
       case 'add-model-field':
         return [{ kind: 'remove-model-field', modelId: c.modelId, fieldId: c.fieldId }];
       case 'create-ui-page':
@@ -2755,13 +2757,16 @@ export class ModuxEditor extends LitElement {
     }
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
-      const sourceOwner = this.owningWorkflowOf(sourceId);
-      const targetWorkflow = (this.model.workflows ?? []).find((w) => w.id === targetId);
-      // paso → OTRO workflow: el paso se muda allí (sus dependencias locales caducan)
-      if (sourceOwner && targetWorkflow && sourceOwner.id !== targetWorkflow.id) {
-        this.command({ kind: 'move-workflow-step', workflowId: sourceOwner.id, id: sourceId, targetId: targetWorkflow.id });
+      const gateways = this.model.workflowGateways ?? [];
+      const isGateway = (id: string) => gateways.some((g) => g.id === id);
+      // gateways y saltos a otro workflow: un solo comando, el backend valida la gramática
+      if (isGateway(sourceId) || isGateway(targetId)
+          || (this.model.workflows ?? []).some((w) => w.id === targetId)) {
+        if (sourceId === targetId) return;
+        this.command({ kind: 'add-workflow-link', sourceId, targetId });
         return;
       }
+      const sourceOwner = this.owningWorkflowOf(sourceId);
       const targetOwner = this.owningWorkflowOf(targetId);
       if (!sourceOwner || sourceOwner !== targetOwner || sourceId === targetId) return;
       const target = sourceOwner.steps.find((s) => s.id === targetId);
@@ -4352,6 +4357,19 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
+    if (this._view === 'workflows' && elementType === 'node' && kind === 'workflow-gateway') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-workflow-gateway', id });
+      return;
+    }
+    if (this._view === 'workflows' && elementType === 'edge' && kind === 'wf-link') {
+      const match = /^wflink:(.+)->(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-workflow-link', sourceId: match[1], targetId: match[2] });
+      }
+      return;
+    }
     if (elementType === 'node' && kind === 'workflow') {
       this._selectedId = null;
       this.command({ kind: 'remove-workflow', id });
@@ -5799,8 +5817,8 @@ export class ModuxEditor extends LitElement {
     { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490', group: 'APIs' },
     { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9', group: 'Orquestación' },
     { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9', group: 'Orquestación' },
-    { type: 'workflow-join', label: 'Join', child: true, symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
-    { type: 'workflow-split', label: 'Split', child: true, symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'workflow-join', label: 'Join', symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'workflow-split', label: 'Split', symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
     { type: 'etl-flow', label: 'Flujo ETL (integrador)', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'etl-transform', label: 'Transformación ETL', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
@@ -6111,6 +6129,7 @@ export class ModuxEditor extends LitElement {
       (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
       (m.customCodes ?? []).map((x) => x.id),
       (m.buttonGroups ?? []).map((x) => x.id),
+      (m.workflowGateways ?? []).map((x) => x.id),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -6494,11 +6513,21 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    if (type === 'workflow-step' || type === 'workflow-join' || type === 'workflow-split') {
+    if (type === 'workflow-join' || type === 'workflow-split') {
+      // Gateways are born LOOSE: no workflow declared — their links will say.
+      const { id, name } = this.uniquePaletteName(type === 'workflow-join' ? 'Join' : 'Split', 'wfg-');
+      issue({ kind: 'add-workflow-gateway', id, name,
+        stepType: type === 'workflow-join' ? 'JOIN' : 'SPLIT' }, id);
+      this.emit('modux-notice', {
+        message: 'Gateway creado suelto — sus líneas dirán de qué workflow es (join: n entradas → 1 salida; split: 1 → n)',
+      });
+      return;
+    }
+    if (type === 'workflow-step') {
       // A step lives in a workflow, but it lands WHEREVER you drop it: on the
       // workflow or one of its steps it chains; in the open, the only workflow
       // adopts it — or a picker asks which one.
-      const stepType = type === 'workflow-join' ? 'JOIN' : type === 'workflow-split' ? 'SPLIT' : undefined;
+      const stepType = undefined as string | undefined;
       const workflows = this.model.workflows ?? [];
       const chain = this.dropChain(targetId);
       const wfDirect = chain.map((cid) => workflows.find((w) => w.id === cid)).find(Boolean);

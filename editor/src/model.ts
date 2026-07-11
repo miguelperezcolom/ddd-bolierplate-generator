@@ -474,6 +474,8 @@ export interface WorkflowStepRef {
   name: string;
   /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
   type?: string;
+  /** The step's single outgoing link when it is ANOTHER workflow (hand-off). */
+  handoffWorkflowId?: string;
   emittedEventName?: string;
   targetUseCaseId?: string;
   completionEventName?: string;
@@ -699,6 +701,14 @@ export interface ModuxModel {
   }[];
   /** Hand-written code, first-class: mappings, transformations, steps, pages and components point at it. */
   customCodes?: { id: string; name: string; usedElementIds?: string[] }[];
+  /** LOOSE gateways: their workflow is inferred from their links (JOIN n→1, SPLIT 1→n). */
+  workflowGateways?: {
+    id: string;
+    name: string;
+    type?: string;
+    sourceIds?: string[];
+    targetIds?: string[];
+  }[];
   /** Reusable button groups: pages hook them to a bar; groups nest groups. */
   buttonGroups?: {
     id: string;

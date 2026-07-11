@@ -51,7 +51,8 @@ public record AllData(
         List<CodeModuleEntity> codeModules,
         List<TransformationEntity> transformations,
         List<CustomCodeEntity> customCodes,
-        List<ButtonGroupEntity> buttonGroups
+        List<ButtonGroupEntity> buttonGroups,
+        List<WorkflowGatewayEntity> workflowGateways
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -59,7 +60,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -112,5 +113,6 @@ public record AllData(
         transformations = transformations != null ? transformations : List.of();
         customCodes = customCodes != null ? customCodes : List.of();
         buttonGroups = buttonGroups != null ? buttonGroups : List.of();
+        workflowGateways = workflowGateways != null ? workflowGateways : List.of();
     }
 }

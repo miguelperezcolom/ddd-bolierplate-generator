@@ -1,0 +1,29 @@
+package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
+
+import io.mateu.uidl.interfaces.Identifiable;
+import lombok.Builder;
+
+import java.util.List;
+
+/**
+ * A workflow gateway, first-class and initially LOOSE: which workflow it belongs
+ * to is inferred from its links, never declared. A JOIN takes many sources and
+ * ONE target; a SPLIT takes ONE source and many targets. Sources/targets are
+ * step ids, other gateway ids, or workflow ids (a workflow as target is the
+ * hand-off to another workflow).
+ */
+@Builder(toBuilder = true)
+public record WorkflowGatewayEntity(
+        String id,
+        String name,
+        /** JOIN or SPLIT. */
+        String type,
+        List<String> sourceIds,
+        List<String> targetIds
+) implements Identifiable {
+
+    public WorkflowGatewayEntity {
+        if (sourceIds == null) sourceIds = List.of();
+        if (targetIds == null) targetIds = List.of();
+    }
+}

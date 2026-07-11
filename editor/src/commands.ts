@@ -682,6 +682,21 @@ export type ModuxCommand =
     }
   | { kind: 'remove-workflow-step'; workflowId: string; id: string }
   | {
+      /** A LOOSE gateway: JOIN or SPLIT — its workflow is inferred from its links. */
+      kind: 'add-workflow-gateway';
+      id: string;
+      name: string;
+      stepType: 'JOIN' | 'SPLIT';
+    }
+  | { kind: 'remove-workflow-gateway'; id: string }
+  | {
+      /** A flow link touching a gateway, or a step's hand-off to another workflow. */
+      kind: 'add-workflow-link';
+      sourceId: string;
+      targetId: string;
+    }
+  | { kind: 'remove-workflow-link'; sourceId: string; targetId: string }
+  | {
       /** The step moves to ANOTHER workflow; dependencies left behind drop. */
       kind: 'move-workflow-step';
       workflowId: string;
