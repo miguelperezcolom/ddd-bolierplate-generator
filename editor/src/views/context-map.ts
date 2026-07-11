@@ -887,8 +887,10 @@ export function contextMapScene(
         fill: '#ffffff',
         stroke: '#64748b',
         dashed: true,
-        badge: 'EXTERNAL',
-        tooltip: `${x.name} (sistema externo)`,
+        badge: x.referencedRepositoryId ? 'PROYECTO' : 'EXTERNAL',
+        tooltip: x.referencedRepositoryId
+          ? `${x.name} — otro proyecto modux (repositorio ${x.referencedRepositoryId}), referenciado del catálogo`
+          : `${x.name} (sistema externo)`,
       };
       // Published APIs and proxies are strategic-level elements: they are the system's
       // chip (coarse) form; operations and tables only unfold in the full form.

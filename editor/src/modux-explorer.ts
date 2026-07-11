@@ -313,6 +313,8 @@ export class ModuxExplorer extends LitElement {
   @state() private _active = 0;
   /** The constant breathing of the map — the toggle stops it, not the springs. */
   @state() private _motion = true;
+  /** Cross-relation threads: always on, or only for the hovered node. */
+  @state() private _threads = false;
   /** Naming a curated view built from what is unfolded right now. */
   @state() private _viewNaming = false;
   @state() private _viewName = '';
@@ -885,7 +887,11 @@ export class ModuxExplorer extends LitElement {
         ctx.restore();
       }
     }
-    if (this.hover) this.drawThreads(ctx, this.hover, nodes);
+    if (this._threads) {
+      for (const n of nodes) this.drawThreads(ctx, n, nodes);
+    } else if (this.hover) {
+      this.drawThreads(ctx, this.hover, nodes);
+    }
     if (this.hover && !this.hover.expanded && this.hover.children?.length) {
       this.drawGhosts(ctx, this.hover);
     }
@@ -901,33 +907,11 @@ export class ModuxExplorer extends LitElement {
       ctx.lineTo(this.linking.x, this.linking.y);
       ctx.stroke();
       ctx.restore();
-    } else if (this.hover && this.hover.kind !== 'root') {
-      const hc = this.handleCenter(this.hover);
-      const hr = 6 / this.cam.k;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(hc.x, hc.y, hr, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.lineWidth = 1.6 / this.cam.k;
-      ctx.strokeStyle = '#475569';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(hc.x - hr * 0.45, hc.y);
-      ctx.lineTo(hc.x + hr * 0.45, hc.y);
-      ctx.moveTo(hc.x, hc.y - hr * 0.45);
-      ctx.lineTo(hc.x, hc.y + hr * 0.45);
-      ctx.stroke();
-      ctx.restore();
     }
     ctx.restore();
     if (this.hover && !this.linking) this.drawCard(ctx, this.hover, w, h);
   }
 
-  /** The relation handle sits just outside the node, to its right. */
-  private handleCenter(n: XNode): { x: number; y: number } {
-    return { x: n.x + this.radiusOf(n) + 10 / this.cam.k, y: n.y };
-  }
 
   /**
    * Cross-relations as faint threads: hovering a node reveals what it talks
@@ -1398,21 +1382,18 @@ export class ModuxExplorer extends LitElement {
     const w = this.toWorld(e);
     this.downAt = { x: e.clientX, y: e.clientY };
     this.moved = false;
-    // The hover handle wins over dragging: pressing it starts drawing a relation.
-    if (this.hover && this.hover.kind !== 'root') {
-      const hc = this.handleCenter(this.hover);
-      const hr = 6 / this.cam.k + 4 / this.cam.k;
-      if ((w.x - hc.x) ** 2 + (w.y - hc.y) ** 2 <= hr * hr) {
-        this.linking = { source: this.hover, x: w.x, y: w.y };
-        try {
-          (e.target as Element).setPointerCapture(e.pointerId);
-        } catch {
-          /* synthetic events */
-        }
-        return;
-      }
-    }
     const n = this.nodeAt(w.x, w.y);
+    // shift/ctrl + drag FROM a node draws a relation — the node is a big target,
+    // no aiming at a moving handle.
+    if (n && n.kind !== 'root' && (e.shiftKey || e.ctrlKey)) {
+      this.linking = { source: n, x: w.x, y: w.y };
+      try {
+        (e.target as Element).setPointerCapture(e.pointerId);
+      } catch {
+        /* synthetic events */
+      }
+      return;
+    }
     if (n) {
       this.dragNode = n;
     } else {
@@ -1447,17 +1428,7 @@ export class ModuxExplorer extends LitElement {
     }
     const w = this.toWorld(e);
     const prev = this.hover;
-    let next = this.nodeAt(w.x, w.y);
-    // Sticky hover: crossing the gap towards the handle must not lose it (the
-    // node shrinks and the handle vanishes right when you reach for it).
-    if (!next && prev && prev.kind !== 'root') {
-      const hc = this.handleCenter(prev);
-      const reach = this.radiusOf(prev) + 22 / this.cam.k;
-      const nearNode = (w.x - prev.x) ** 2 + (w.y - prev.y) ** 2 <= reach * reach;
-      const nearHandle = (w.x - hc.x) ** 2 + (w.y - hc.y) ** 2 <= (12 / this.cam.k) ** 2;
-      if (nearNode || nearHandle) next = prev;
-    }
-    this.hover = next;
+    this.hover = this.nodeAt(w.x, w.y);
     if (this.hover !== prev) this.hoverAt = this.t;
     if (this.canvas) this.canvas.style.cursor = this.hover ? 'pointer' : 'default';
   }
@@ -1601,6 +1572,14 @@ export class ModuxExplorer extends LitElement {
         >
           ${this._motion ? '⏸ Quieto' : '▶ Movimiento'}
         </button>
+        <button
+          title=${this._threads
+            ? 'Enseñar los hilos de relaciones solo al hacer hover'
+            : 'Enseñar SIEMPRE los hilos de relaciones'}
+          @click=${() => (this._threads = !this._threads)}
+        >
+          ${this._threads ? '∿ Hilos: siempre' : '∿ Hilos: hover'}
+        </button>
         ${this._viewNaming
           ? html`
               <input
@@ -1626,7 +1605,7 @@ export class ModuxExplorer extends LitElement {
       </div>
       <div class="hud">
         click: expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
-        hover: ver contenido, y su asa dibuja una relación hasta otro nodo<br />
+        shift+arrastrar desde un nodo: trazar una relación hasta otro<br />
         buscar: expande el camino y vuela hasta el nodo<br />
         arrastrar nodo: tirar del subárbol · fondo: mover · rueda: zoom
       </div>

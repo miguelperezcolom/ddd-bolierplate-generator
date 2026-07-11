@@ -303,6 +303,10 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteOpen = false;
   /** The element whose ficha shows in the right drawer (double click opens it). */
   @state() private _drawer: { elementType: string; id: string } | null = null;
+  /** The ~/.modux repository catalog, handed down by the host (project references). */
+  @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
+  /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
+  @state() private _repoPicker: { pos: Point } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
@@ -1047,6 +1051,8 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-transformation', id: c.id }];
       case 'add-custom-code':
         return [{ kind: 'remove-custom-code', id: c.id }];
+      case 'add-button-group':
+        return [{ kind: 'remove-button-group', id: c.id }];
       case 'add-model-field':
         return [{ kind: 'remove-model-field', modelId: c.modelId, fieldId: c.fieldId }];
       case 'create-ui-page':
@@ -2776,6 +2782,29 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-custom-code-use', id: ccId, elementId: other });
         return;
       }
+      const groups = this.model.buttonGroups ?? [];
+      const isGroup = (id: string) => groups.some((g) => g.id === id);
+      // grupo → página con asa tipada: engancha a la barra elegida
+      if ((connectKind === 'toolbar' || connectKind === 'bottom') && isGroup(sourceId) && isPage(targetId)) {
+        this.command({ kind: 'add-page-bar-group', pageId: targetId, id: sourceId, bar: connectKind });
+        return;
+      }
+      // grupo → grupo: se anida como subgrupo
+      if (isGroup(sourceId) && isGroup(targetId) && sourceId !== targetId) {
+        this.command({ kind: 'add-group-subgroup', id: targetId, targetId: sourceId });
+        return;
+      }
+      // botón del grupo → caso de uso o policy: eso es lo que dispara
+      const gbtn = /^gbtn:([^:]+):(.+)$/.exec(sourceId);
+      if (gbtn) {
+        const isUseCase = this.model.modules.some((mo) => (mo.useCases ?? []).some((u) => u.id === targetId));
+        if (isUseCase) {
+          this.command({ kind: 'set-group-button-target', id: gbtn[1], itemId: gbtn[2], useCaseId: targetId });
+        } else {
+          this.emit('modux-notice', { message: 'El botón se cablea a un caso de uso o una policy' });
+        }
+        return;
+      }
       // typed handles first: they say exactly WHAT the line means
       if (connectKind === 'home' && isApp(sourceId) && (isPage(targetId) || isApp(targetId))) {
         if (targetId === sourceId) return;
@@ -4184,6 +4213,30 @@ export class ModuxEditor extends LitElement {
       }
       if (kind === 'custom-code') {
         this.command({ kind: 'remove-custom-code', id });
+        return;
+      }
+      if (kind === 'button-group') {
+        this.command({ kind: 'remove-button-group', id });
+        return;
+      }
+      if (kind === 'group-button') {
+        const m2 = /^gbtn:([^:]+):(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'remove-group-button', id: m2[1], itemId: m2[2] });
+        return;
+      }
+      if (kind === 'group-subgroup') {
+        const m2 = /^gsub:([^:]+):(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'remove-group-subgroup', id: m2[1], targetId: m2[2] });
+        return;
+      }
+      if (elementType === 'edge' && kind === 'bar-group') {
+        const m2 = /^bargrp:([^:]+):[^:]+:(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'remove-page-bar-group', pageId: m2[1], id: m2[2] });
+        return;
+      }
+      if (elementType === 'edge' && kind === 'gbtn-target') {
+        const m2 = /^gbtnt:([^:]+):(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'set-group-button-target', id: m2[1], itemId: m2[2], useCaseId: null });
         return;
       }
       if (elementType === 'edge' && kind === 'ui-custom-page') {
@@ -5725,6 +5778,7 @@ export class ModuxEditor extends LitElement {
   }[] = [
     { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
     { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
+    { type: 'project-reference', label: 'Proyecto (catálogo)', symbol: 'component', color: '#334155', group: 'Estratégico' },
     { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
     { type: 'identity-provider', label: 'IdP (identidad)', symbol: 'key', color: '#ca8a04', group: 'Estratégico' },
     { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea', group: 'IA' },
@@ -5760,6 +5814,8 @@ export class ModuxEditor extends LitElement {
     { type: 'ui-app-vieweditor', label: 'Vista-editor', symbol: 'process', color: '#c026d3', group: 'UI' },
     { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7', group: 'UI' },
     { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
+    { type: 'button-group', label: 'Grupo de botones', symbol: 'usecase', color: '#0e7490', group: 'UI' },
+    { type: 'ui-button', label: 'Botón', child: true, symbol: 'usecase', color: '#0e7490', group: 'UI' },
     { type: 'ui-page-crud', label: 'CRUD', child: true, symbol: 'lens', color: '#0284c7', group: 'UI' },
     { type: 'ui-page-wizard', label: 'Wizard', child: true, symbol: 'flow', color: '#0284c7', group: 'UI' },
     { type: 'ui-wizard-step', label: 'Paso de wizard', child: true, symbol: 'flow', color: '#7c3aed', group: 'UI' },
@@ -6040,6 +6096,7 @@ export class ModuxEditor extends LitElement {
       (m.services ?? []).map((x) => x.id),
       (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
       (m.customCodes ?? []).map((x) => x.id),
+      (m.buttonGroups ?? []).map((x) => x.id),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -6076,6 +6133,9 @@ export class ModuxEditor extends LitElement {
     }
     if (type === 'model-field') {
       return chain.find((id) => (this.model.models ?? []).some((mo) => mo.id === id)) ?? null;
+    }
+    if (type === 'ui-button') {
+      return chain.find((id) => (this.model.buttonGroups ?? []).some((g) => g.id === id)) ?? null;
     }
     if (type === 'use-case-step') {
       return (
@@ -6114,6 +6174,14 @@ export class ModuxEditor extends LitElement {
   ): void {
     const def = ModuxEditor.PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
+    if (type === 'project-reference') {
+      if (!this.repositories.length) {
+        this.emit('modux-notice', { message: 'No hay repositorios en ~/.modux que referenciar' });
+        return;
+      }
+      this._repoPicker = { pos };
+      return;
+    }
     if (type === 'custom-code' && this._view === 'design') {
       // dropped ON a component (or a page frame): that piece becomes CUSTOM,
       // delegating in a freshly created piece of hand-written code.
@@ -6230,6 +6298,7 @@ export class ModuxEditor extends LitElement {
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
         'identity-provider': 'idp-', transformation: 'tf-', 'custom-code': 'cc-',
+        'button-group': 'bg-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -6265,6 +6334,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'add-transformation', id, name }
                                   : type === 'custom-code'
                                   ? { kind: 'add-custom-code', id, name }
+                                  : type === 'button-group'
+                                  ? { kind: 'add-button-group', id, name }
                                   : type === 'identity-provider'
                                   ? { kind: 'add-identity-provider', id, name }
                                   : {
@@ -6512,6 +6583,15 @@ export class ModuxEditor extends LitElement {
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+    } else if (type === 'ui-button') {
+      const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);
+      const taken = new Set((group?.buttons ?? []).map((bt) => bt.id));
+      let n2 = (group?.buttons ?? []).length + 1;
+      while (taken.has(`btn-${n2}`)) n2++;
+      this.command({ kind: 'add-group-button', id: container, itemId: `btn-${n2}`, label: name });
+      this.emit('modux-notice', {
+        message: 'Botón creado — arrastra su asa hasta un caso de uso o policy para fijar qué dispara',
+      });
     } else if (type === 'model-field') {
       // the chip's scene id is fld:<modelId>:<fieldId> and its spot is fixed — no layout write
       this.command({ kind: 'add-model-field', modelId: container, fieldId: id, name });
@@ -6796,12 +6876,12 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
-                : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code'].includes(k.type) && !k.type.startsWith('cmp:')) &&
+                : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code', 'ui-button'].includes(k.type) && !k.type.startsWith('cmp:')) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
@@ -7684,7 +7764,7 @@ export class ModuxEditor extends LitElement {
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
       </div>
-      ${this.renderRelationPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
       ${this.renderHelpPopover()}
     `;
   }
@@ -7812,6 +7892,46 @@ export class ModuxEditor extends LitElement {
             >
               <span class="abbr">${o.abbr}</span>
               <span class="name">${o.name}</span>
+            </button>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  /** The «which project?» picker: one button per ~/.modux repository. */
+  private renderRepoPicker() {
+    const p = this._repoPicker;
+    if (!p) return '';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._repoPicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${this.clientWidth / 2}px; top:120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">Referenciar proyecto del catálogo</div>
+        ${this.repositories.map(
+          (r) => html`
+            <button
+              class="picker-item"
+              title=${r.id}
+              @click=${() => {
+                this._repoPicker = null;
+                const id = `proj-${r.id}`;
+                this.command({ kind: 'add-project-reference', targetId: r.id, id }, false);
+                const current = this.viewLayout(this._view);
+                this.writeViewLayout(this._view, {
+                  ...current,
+                  nodes: { ...current.nodes, [id]: { x: Math.round(p.pos.x), y: Math.round(p.pos.y) } },
+                });
+                this.pushUndoEntry([
+                  { kind: 'remove-external-system', id },
+                  { kind: 'move-node', view: this._view, id, pos: null },
+                ]);
+              }}
+            >
+              ${r.name}
             </button>
           `,
         )}

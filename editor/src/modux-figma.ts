@@ -343,7 +343,7 @@ export class ModuxFigma extends LitElement {
         style="transform: translate(${this._t.x}px, ${this._t.y}px) scale(${this._t.k})"
       >
         ${this.pages.map((page, i) => {
-          const at = this.posOf(page.id, i);
+          const at = this._live?.id === page.id ? this._live : this.posOf(page.id, i);
           const size = this.sizeOf(page.id);
           return html`
             <div

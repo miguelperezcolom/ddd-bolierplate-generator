@@ -765,6 +765,37 @@ export type ModuxCommand =
       targetId: string;
     }
   | { kind: 'remove-model-mapping-rule'; id: string; itemId: string }
+  | {
+      /** References ANOTHER project (~/.modux repository) as an external system. */
+      kind: 'add-project-reference';
+      targetId: string;
+      id?: string;
+    }
+  | { kind: 'add-button-group'; id: string; name: string }
+  | { kind: 'remove-button-group'; id: string }
+  | { kind: 'add-group-button'; id: string; itemId: string; label: string }
+  | { kind: 'remove-group-button'; id: string; itemId: string }
+  | {
+      /** What the button FIRES: a use case/policy, or one API operation (both null clears). */
+      kind: 'set-group-button-target';
+      id: string;
+      itemId: string;
+      useCaseId?: string | null;
+      apiId?: string | null;
+      operationId?: string | null;
+      mappingId?: string | null;
+      label?: string;
+    }
+  | { kind: 'add-group-subgroup'; id: string; targetId: string }
+  | { kind: 'remove-group-subgroup'; id: string; targetId: string }
+  | {
+      /** Hooks the group to the page's toolbar or bottom bar. */
+      kind: 'add-page-bar-group';
+      pageId: string;
+      id: string;
+      bar: 'toolbar' | 'bottom';
+    }
+  | { kind: 'remove-page-bar-group'; pageId: string; id: string }
   | { kind: 'add-custom-code'; id: string; name: string }
   | { kind: 'remove-custom-code'; id: string }
   | {

@@ -36,6 +36,8 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _newTagName = '';
   @state() private _tagsOpen = false;
   @state() private _tags: { name: string; date: string; message: string }[] = [];
+  /** The ~/.modux repository catalog, for «Proyecto (catálogo)» references. */
+  @state() private _repositories: { id: string; name: string }[] = [];
   /** Semantic diff of the checked-out solution vs the system (null on the system). */
   @state() private _diff: {
     branch: string;
@@ -430,6 +432,12 @@ export class ModuxEditorConnected extends LitElement {
   }
 
   private async loadWorkspace(): Promise<void> {
+    try {
+      const repos = await fetch(`${this.base}/repositories`);
+      if (repos.ok) this._repositories = await repos.json();
+    } catch {
+      /* the palette item just reports there is nothing to reference */
+    }
     try {
       const res = await fetch(`${this.base}/solutions`);
       if (res.ok) this._workspace = await res.json();
@@ -994,6 +1002,7 @@ export class ModuxEditorConnected extends LitElement {
       <modux-editor
         .model=${this._model}
         .layout=${this._layout}
+        .repositories=${this._repositories}
         .diff=${this._diff && !this._workspace?.system
           ? Object.fromEntries(
               this._diff.changes

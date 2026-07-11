@@ -342,6 +342,8 @@ export interface ExternalSystemRef {
   tables?: ExternalTableRef[];
   /** MCP servers it publishes — consumable by AI agents. */
   mcpServers?: McpServerRef[];
+  /** Set when the system IS another modux project (catalog reference). */
+  referencedRepositoryId?: string;
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */
@@ -590,6 +592,9 @@ export interface UiPageRef {
   crudCreateAppId?: string;
   /** The hand-written code the page delegates to (the page is CUSTOM). */
   customCodeId?: string;
+  /** Button groups hooked to the page's bars. */
+  toolbarGroupIds?: string[];
+  bottomBarGroupIds?: string[];
 }
 
 export interface ActorAppUseRef {
@@ -689,6 +694,13 @@ export interface ModuxModel {
   }[];
   /** Hand-written code, first-class: mappings, transformations, steps, pages and components point at it. */
   customCodes?: { id: string; name: string; usedElementIds?: string[] }[];
+  /** Reusable button groups: pages hook them to a bar; groups nest groups. */
+  buttonGroups?: {
+    id: string;
+    name: string;
+    buttons?: { id: string; label?: string; useCaseId?: string; apiId?: string; apiOperationId?: string; mappingId?: string }[];
+    groupIds?: string[];
+  }[];
   /** Transformations: models/fields in, a model or field out — wired on the mappings map. */
   transformations?: {
     id: string;

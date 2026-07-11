@@ -50,7 +50,8 @@ public record AllData(
         List<DocumentEntity> documents,
         List<CodeModuleEntity> codeModules,
         List<TransformationEntity> transformations,
-        List<CustomCodeEntity> customCodes
+        List<CustomCodeEntity> customCodes,
+        List<ButtonGroupEntity> buttonGroups
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -58,7 +59,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -110,5 +111,6 @@ public record AllData(
         codeModules = codeModules != null ? codeModules : List.of();
         transformations = transformations != null ? transformations : List.of();
         customCodes = customCodes != null ? customCodes : List.of();
+        buttonGroups = buttonGroups != null ? buttonGroups : List.of();
     }
 }

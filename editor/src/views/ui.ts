@@ -434,6 +434,118 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     }
   }
 
+  // ---- button groups: reusable bars-to-be, hooked to pages by wiring ------
+  const groups = model.buttonGroups ?? [];
+  const groupName = (id: string) => groups.find((g) => g.id === id)?.name ?? id;
+  let grpY = 520;
+  for (const g of groups) {
+    const buttons = g.buttons ?? [];
+    const subs = g.groupIds ?? [];
+    const rows = buttons.length + subs.length;
+    const pos = layout[g.id] ?? { x: 1000, y: grpY };
+    const h = Math.max(70, CONTAINER_HEADER + CONTAINER_INSET * 2 + rows * (ENTRY_H + ENTRY_GAP));
+    grpY = pos.y + h + 80;
+    nodes.push({
+      id: g.id,
+      label: g.name,
+      x: pos.x,
+      y: pos.y,
+      w: PAGE_W,
+      h,
+      kind: 'button-group',
+      symbol: 'usecase',
+      badge: 'BOTONES',
+      container: true,
+      fill: '#ffffff',
+      stroke: '#0e7490',
+      extraHandles: [
+        { kind: 'toolbar', title: 'Toolbar: arrastra hasta una página para engancharlo arriba', color: '#0284c7' },
+        { kind: 'bottom', title: 'Botonera: arrastra hasta una página para engancharlo abajo', color: '#7c3aed' },
+      ],
+      tooltip: `${g.name} — grupo de botones: la paleta añade botones dentro; sus asas lo enganchan al toolbar o la botonera de una página`,
+    });
+    let rowY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
+    for (const bt of buttons) {
+      nodes.push({
+        id: `gbtn:${g.id}:${bt.id}`,
+        label: bt.label ?? bt.id,
+        x: pos.x,
+        y: rowY,
+        w: PAGE_W - CONTAINER_INSET * 2,
+        h: ENTRY_H,
+        kind: 'group-button',
+        symbol: 'usecase',
+        fill: bt.useCaseId || bt.apiOperationId ? '#ecfeff' : '#ffffff',
+        stroke: '#0e7490',
+        dashed: !bt.useCaseId && !bt.apiOperationId,
+        parentId: g.id,
+        tooltip: `${bt.label ?? bt.id} — arrastra su asa hasta un caso de uso o policy para fijar qué dispara; Supr lo quita del grupo`,
+      });
+      rowY += ENTRY_H + ENTRY_GAP;
+    }
+    for (const sub of subs) {
+      nodes.push({
+        id: `gsub:${g.id}:${sub}`,
+        label: `▸ ${groupName(sub)}`,
+        x: pos.x,
+        y: rowY,
+        w: PAGE_W - CONTAINER_INSET * 2,
+        h: ENTRY_H,
+        kind: 'group-subgroup',
+        symbol: 'process',
+        fill: '#f0fdfa',
+        stroke: '#0e7490',
+        parentId: g.id,
+        tooltip: `Subgrupo ${groupName(sub)} — Supr lo desanida (el grupo sigue existiendo)`,
+      });
+      rowY += ENTRY_H + ENTRY_GAP;
+    }
+  }
+  for (const g of groups) {
+    for (const bt of g.buttons ?? []) {
+      if (!bt.useCaseId) continue;
+      const known = model.modules.some((mod) => (mod.useCases ?? []).some((u) => u.id === bt.useCaseId));
+      if (!known) continue;
+      chipMeta.set(bt.useCaseId, {
+        label: useCaseName(bt.useCaseId),
+        kind: 'use-case',
+        symbol: 'usecase',
+        stroke: '#06b6d4',
+      });
+      edges.push({
+        id: `gbtnt:${g.id}:${bt.id}`,
+        sourceId: `gbtn:${g.id}:${bt.id}`,
+        targetId: bt.useCaseId,
+        kind: 'gbtn-target',
+        color: '#06b6d4',
+        arrow: true,
+        tooltip: `«${bt.label ?? bt.id}» dispara este caso de uso — Supr lo desconecta`,
+      });
+    }
+  }
+  for (const page of pages) {
+    const hooks: [string, string[]][] = [
+      ['toolbar', page.toolbarGroupIds ?? []],
+      ['botonera', page.bottomBarGroupIds ?? []],
+    ];
+    for (const [bar, ids] of hooks) {
+      for (const gid of ids) {
+        if (!groups.some((g) => g.id === gid)) continue;
+        edges.push({
+          id: `bargrp:${page.id}:${bar}:${gid}`,
+          sourceId: gid,
+          targetId: page.id,
+          kind: 'bar-group',
+          color: bar === 'toolbar' ? '#0284c7' : '#7c3aed',
+          label: bar,
+          dashed: true,
+          arrow: true,
+          tooltip: `Grupo enganchado a la ${bar} de ${page.name} — Supr lo desengancha`,
+        });
+      }
+    }
+  }
+
   // referenced system pieces, drawn once as satellite chips
   let chipY = 160;
   for (const mo of model.models ?? []) {

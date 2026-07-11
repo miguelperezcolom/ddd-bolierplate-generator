@@ -36,8 +36,29 @@ public record PageEntity(
         /** …or an app. */
         String crudCreateAppId,
         /** The hand-written code this page delegates to (the page is CUSTOM). */
-        String customCodeId
+        String customCodeId,
+        /** Button groups hooked to the page's toolbar. */
+        List<String> toolbarGroupIds,
+        /** Button groups hooked to the page's bottom bar. */
+        List<String> bottomBarGroupIds
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-buttonGroups callers and stores). */
+    public PageEntity(String id, String name, String route, String type, String aggregateId,
+                      String modelId, List<String> componentIds, String listingDataSourceType,
+                      String listingGatewayId, List<PageButtonEntity> toolbar,
+                      List<PageButtonEntity> bottomBar, List<PageTriggerEntity> triggers,
+                      List<PageRuleEntity> rules, List<PageValidationEntity> validations,
+                      List<PageFieldConfigEntity> fieldConfigs, List<PageWizardStepEntity> wizardSteps,
+                      List<PageButtonEntity> completionActions, String listingQueryServiceId,
+                      List<UiComponentNodeEntity> content, String crudDetailPageId,
+                      String crudDetailAppId, String crudCreatePageId, String crudCreateAppId,
+                      String customCodeId) {
+        this(id, name, route, type, aggregateId, modelId, componentIds, listingDataSourceType,
+                listingGatewayId, toolbar, bottomBar, triggers, rules, validations, fieldConfigs,
+                wizardSteps, completionActions, listingQueryServiceId, content, crudDetailPageId,
+                crudDetailAppId, crudCreatePageId, crudCreateAppId, customCodeId, null, null);
+    }
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */
     public PageEntity(String id, String name, String route, String type, String aggregateId,

@@ -9,7 +9,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GroupButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
@@ -107,6 +109,7 @@ public class EditorApiController {
     private final FlowContextMapCoherenceService coherenceService;
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.ProjectReferenceService projectReferences;
 
     // ---- projection -------------------------------------------------------
 
@@ -132,7 +135,9 @@ public class EditorApiController {
     public record EmissionDto(String sourceId, String domainEventId) {}
     public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases,
                                     List<ExternalTableDto> tables,
-                                    List<McpServerDto> mcpServers) {}
+                                    List<McpServerDto> mcpServers,
+                                    /** Set when the system IS another modux project (catalog reference). */
+                                    String referencedRepositoryId) {}
     /** A table/dataset owned by an external system — pollable into a read model. */
     public record ExternalTableDto(String id, String name) {}
     /** An MCP server published by an external system — a tool surface for AI agents. */
@@ -268,7 +273,8 @@ public class EditorApiController {
                             String crudDetailPageId, String crudDetailAppId,
                             String crudCreatePageId, String crudCreateAppId,
                             /** The hand-written code the page delegates to (CUSTOM page). */
-                            String customCodeId) {}
+                            String customCodeId,
+                            List<String> toolbarGroupIds, List<String> bottomBarGroupIds) {}
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
 
@@ -307,6 +313,11 @@ public class EditorApiController {
     /** What a transformation reads or writes: a whole model (fieldId null) or one field. */
     public record TransformationRefDto(String modelId, String fieldId) {}
     public record CustomCodeDto(String id, String name, List<String> usedElementIds) {}
+    public record GroupButtonDto(String id, String label, String useCaseId, String apiId,
+                                 String apiOperationId, String mappingId) {}
+    /** A reusable group of buttons; pages hook it to a bar, groups nest groups. */
+    public record ButtonGroupDto(String id, String name, List<GroupButtonDto> buttons,
+                                 List<String> groupIds) {}
     public record TransformationDto(String id, String name, List<TransformationRefDto> inputs,
                                     TransformationRefDto output, String customCodeId) {}
 
@@ -366,6 +377,7 @@ public class EditorApiController {
             List<ServiceDto> services,
             List<TransformationDto> transformations,
             List<CustomCodeDto> customCodes,
+            List<ButtonGroupDto> buttonGroups,
             List<MappingRefDto> modelMappings) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
@@ -539,7 +551,8 @@ public class EditorApiController {
                                 .toList(),
                         x.mcpServers().stream()
                                 .map(s -> new McpServerDto(s.id(), s.name(), s.uri()))
-                                .toList()))
+                                .toList(),
+                        x.referencedRepositoryId()))
                 .toList();
         var flowEntities = repository.findAllOfType(FlowEntity.class);
         var flows = coherenceService.analyze().stream()
@@ -875,7 +888,9 @@ public class EditorApiController {
                                 .map(s -> new UiWizardStepDto(s.pageId(), s.label(), s.key()))
                                 .toList(),
                         p.crudDetailPageId(), p.crudDetailAppId(),
-                        p.crudCreatePageId(), p.crudCreateAppId(), p.customCodeId()))
+                        p.crudCreatePageId(), p.crudCreateAppId(), p.customCodeId(),
+                        p.toolbarGroupIds() == null ? List.of() : p.toolbarGroupIds(),
+                        p.bottomBarGroupIds() == null ? List.of() : p.bottomBarGroupIds()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
@@ -1033,6 +1048,14 @@ public class EditorApiController {
                 repository.findAllOfType(CustomCodeEntity.class).stream()
                         .map(x -> new CustomCodeDto(x.id(), x.name(), x.usedElementIds()))
                         .toList(),
+                repository.findAllOfType(ButtonGroupEntity.class).stream()
+                        .map(g -> new ButtonGroupDto(g.id(), g.name(),
+                                g.buttons().stream()
+                                        .map(bt -> new GroupButtonDto(bt.id(), bt.label(), bt.useCaseId(),
+                                                bt.apiId(), bt.apiOperationId(), bt.mappingId()))
+                                        .toList(),
+                                g.groupIds()))
+                        .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
                                 (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
@@ -1094,7 +1117,7 @@ public class EditorApiController {
                                 String componentId, String parentComponentId, String componentKind,
                                 String beforeComponentId, String title, String text,
                                 String cronExpression, String beforeItemId, String etlFlowId,
-                                String serviceId, String elementId) {}
+                                String serviceId, String elementId, String bar) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1116,6 +1139,14 @@ public class EditorApiController {
         return java.util.Map.of("apiId", apiId);
     }
 
+    /** The ~/.modux repository catalog — other projects referenceable as systems. */
+    @org.springframework.web.bind.annotation.GetMapping("/repositories")
+    public List<NamedRefDto> repositories() {
+        return projectReferences.repositories().stream()
+                .map(r -> new NamedRefDto(r.id(), r.name() == null ? r.id() : r.name()))
+                .toList();
+    }
+
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
         switch (Objects.requireNonNull(command.kind(), "command.kind")) {
@@ -1125,6 +1156,15 @@ public class EditorApiController {
             case "add-module" -> addModule(command);
             case "add-transformation" -> addTransformation(command);
             case "add-custom-code" -> addCustomCode(command);
+            case "add-button-group" -> addButtonGroup(command);
+            case "remove-button-group" -> removeButtonGroup(command);
+            case "add-group-button" -> addGroupButton(command);
+            case "remove-group-button" -> removeGroupButton(command);
+            case "set-group-button-target" -> setGroupButtonTarget(command);
+            case "add-group-subgroup" -> addGroupSubgroup(command);
+            case "remove-group-subgroup" -> removeGroupSubgroup(command);
+            case "add-page-bar-group" -> addPageBarGroup(command);
+            case "remove-page-bar-group" -> removePageBarGroup(command);
             case "remove-custom-code" -> removeCustomCode(command);
             case "set-mapping-custom-code" -> setMappingCustomCode(command);
             case "set-transformation-custom-code" -> setTransformationCustomCode(command);
@@ -1150,6 +1190,7 @@ public class EditorApiController {
             case "add-service-code-module" -> addServiceCodeModule(command);
             case "remove-service-code-module" -> removeServiceCodeModule(command);
             case "add-external-system" -> addExternalSystem(command);
+            case "add-project-reference" -> addProjectReference(command);
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
             case "remove-actor" -> removeActor(command);
@@ -3105,6 +3146,32 @@ public class EditorApiController {
         repository.save(withContextMap(project, relations));
     }
 
+    /**
+     * References ANOTHER project (a ~/.modux repository) as an external system:
+     * its name and public surface (exposed use cases) land as the system's use
+     * cases, re-readable later. Every project is a system — this is the seed of
+     * the organisation-wide catalog.
+     */
+    private void addProjectReference(EditorCommand command) {
+        var summary = projectReferences.read(command.targetId());
+        var id = command.id() == null || command.id().isBlank()
+                ? "proj-" + command.targetId() : command.id();
+        var project = owningProject();
+        var externalSystems = new ArrayList<>(project.externalSystems().stream()
+                .filter(x -> !x.id().equals(id))
+                .toList());
+        externalSystems.add(new ExternalSystemEntity(
+                id, summary.name(), "Proyecto modux referenciado (repositorio "
+                        + command.targetId() + ")",
+                null, null, null, null, List.of(),
+                summary.useCases().stream()
+                        .map(uc -> new ExternalSystemUseCaseEntity(id + "-" + uc.id(), uc.name(), null))
+                        .toList(),
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                command.targetId()));
+        repository.save(withExternalSystems(project, externalSystems));
+    }
+
     private void addExternalSystem(EditorCommand command) {
         var project = owningProject();
         if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
@@ -4076,6 +4143,108 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
         var output = command.modelId() == null || command.modelId().isBlank() ? null : refOf(command);
         repository.save(t.toBuilder().output(output).build());
+    }
+
+    private void addButtonGroup(EditorCommand command) {
+        if (repository.findById(command.id(), ButtonGroupEntity.class).isPresent()) return;
+        repository.save(new ButtonGroupEntity(command.id(), command.name(), List.of(), List.of()));
+    }
+
+    private void removeButtonGroup(EditorCommand command) {
+        // pages unhook it, parent groups let go of it
+        for (var pg : repository.findAllOfType(PageEntity.class)) {
+            var tb = pg.toolbarGroupIds() == null ? List.<String>of() : pg.toolbarGroupIds();
+            var bb = pg.bottomBarGroupIds() == null ? List.<String>of() : pg.bottomBarGroupIds();
+            if (tb.contains(command.id()) || bb.contains(command.id())) {
+                repository.save(pg.toBuilder()
+                        .toolbarGroupIds(without(tb, command.id()))
+                        .bottomBarGroupIds(without(bb, command.id()))
+                        .build());
+            }
+        }
+        repository.findAllOfType(ButtonGroupEntity.class).stream()
+                .filter(g -> g.groupIds().contains(command.id()))
+                .forEach(g -> repository.save(g.toBuilder()
+                        .groupIds(without(g.groupIds(), command.id())).build()));
+        repository.deleteAllById(List.of(command.id()), ButtonGroupEntity.class);
+    }
+
+    private void addGroupButton(EditorCommand command) {
+        var g = repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        if (g.buttons().stream().anyMatch(bt -> bt.id().equals(command.itemId()))) return;
+        var buttons = new ArrayList<>(g.buttons());
+        buttons.add(new GroupButtonEntity(command.itemId(), command.label(), null, null, null, null));
+        repository.save(g.toBuilder().buttons(buttons).build());
+    }
+
+    private void removeGroupButton(EditorCommand command) {
+        var g = repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        repository.save(g.toBuilder()
+                .buttons(g.buttons().stream().filter(bt -> !bt.id().equals(command.itemId())).toList())
+                .build());
+    }
+
+    /** What the button FIRES: a use case/policy, or one API operation (both null clears). */
+    private void setGroupButtonTarget(EditorCommand command) {
+        var g = repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        repository.save(g.toBuilder()
+                .buttons(g.buttons().stream()
+                        .map(bt -> bt.id().equals(command.itemId())
+                                ? new GroupButtonEntity(bt.id(),
+                                        command.label() == null || command.label().isBlank()
+                                                ? bt.label() : command.label(),
+                                        command.useCaseId(), command.apiId(), command.operationId(),
+                                        command.mappingId())
+                                : bt)
+                        .toList())
+                .build());
+    }
+
+    private void addGroupSubgroup(EditorCommand command) {
+        var g = repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        repository.findById(command.targetId(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.targetId()));
+        if (command.id().equals(command.targetId()) || g.groupIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(g.groupIds());
+        ids.add(command.targetId());
+        repository.save(g.toBuilder().groupIds(ids).build());
+    }
+
+    private void removeGroupSubgroup(EditorCommand command) {
+        var g = repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        repository.save(g.toBuilder().groupIds(without(g.groupIds(), command.targetId())).build());
+    }
+
+    /** Hooks the group to the page's toolbar or bottom bar (command.bar()). */
+    private void addPageBarGroup(EditorCommand command) {
+        var pg = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        repository.findById(command.id(), ButtonGroupEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
+        var toolbar = "toolbar".equals(command.bar());
+        var current = toolbar
+                ? (pg.toolbarGroupIds() == null ? List.<String>of() : pg.toolbarGroupIds())
+                : (pg.bottomBarGroupIds() == null ? List.<String>of() : pg.bottomBarGroupIds());
+        if (current.contains(command.id())) return;
+        var grown = new ArrayList<>(current);
+        grown.add(command.id());
+        repository.save(toolbar
+                ? pg.toBuilder().toolbarGroupIds(grown).build()
+                : pg.toBuilder().bottomBarGroupIds(grown).build());
+    }
+
+    private void removePageBarGroup(EditorCommand command) {
+        var pg = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        repository.save(pg.toBuilder()
+                .toolbarGroupIds(without(pg.toolbarGroupIds() == null ? List.of() : pg.toolbarGroupIds(), command.id()))
+                .bottomBarGroupIds(without(pg.bottomBarGroupIds() == null ? List.of() : pg.bottomBarGroupIds(), command.id()))
+                .build());
     }
 
     private void addCustomCode(EditorCommand command) {
