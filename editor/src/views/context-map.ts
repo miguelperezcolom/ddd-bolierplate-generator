@@ -701,6 +701,10 @@ export function contextMapScene(
   toggledIds: ReadonlySet<string> = new Set(),
 ): Scene {
   const distributionLevel = detail === 'distribution';
+  // The CONTEXTS level is the strategic map: contexts, external systems and their
+  // relations — everything else lives on the deeper levels.
+  const strategicLevel = detail === 'contexts';
+  const bareLevel = distributionLevel || strategicLevel;
   // The per-node chevron OVERRIDES the level's default: it expands a node the
   // level draws compact, and folds one the level draws unfolded.
   const collapsedIds = toggledIds; // sub-boxes at the operations level: same semantics
@@ -723,13 +727,13 @@ export function contextMapScene(
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
     ...(distributionLevel ? [] : model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false }))),
-    ...(distributionLevel ? [] : (model.apis ?? [])
+    ...(bareLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
       .map((a) => ({ ref: a, external: false, api: true, proxy: false }))),
-    ...(distributionLevel ? [] : (model.proxyApis ?? [])
+    ...(bareLevel ? [] : (model.proxyApis ?? [])
       .filter((px) => !nestedProxyIds.has(px.id))
       .map((px) => ({ ref: px, external: false, api: false, proxy: true }))),
-    ...(distributionLevel ? [] : (model.workflows ?? []).map((w) => ({
+    ...(bareLevel ? [] : (model.workflows ?? []).map((w) => ({
       ref: w,
       external: false,
       api: false,
@@ -737,7 +741,7 @@ export function contextMapScene(
       workflow: true,
     }))),
     // ETL flows without owner (legacy) still float; owned ones nest in their context.
-    ...(distributionLevel ? [] : (model.etlFlows ?? [])
+    ...(bareLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerModuleId)
       .map((f) => ({
         ref: f,
@@ -746,7 +750,7 @@ export function contextMapScene(
         proxy: false,
         etl: true,
       }))),
-    ...(model.identityProviders ?? []).map((idp) => ({
+    ...(strategicLevel ? [] : (model.identityProviders ?? [])).map((idp) => ({
       ref: idp,
       external: false,
       api: false,
@@ -1065,7 +1069,7 @@ export function contextMapScene(
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
   // context — and outside the distribution level, which is about packaging.
-  const actorsAndAgents = distributionLevel
+  const actorsAndAgents = bareLevel
     ? { actors: [], aiAgents: [], rags: [], mcpGateways: [] }
     : {
         actors: model.actors ?? [],
@@ -1262,13 +1266,19 @@ export function contextMapScene(
     sourceId: r.sourceId,
     targetId: r.targetId,
     kind: 'relation',
-    label: r.type ? RELATION_ABBREV[r.type] : '?',
+    label: r.type
+      ? RELATION_ABBREV[r.type]
+      : r.inferredType
+        ? `≈${RELATION_ABBREV[r.inferredType]}`
+        : '?',
     color: r.declared ? '#475569' : '#94a3b8',
     dashed: !r.declared,
     arrow: true,
     tooltip: r.type
       ? `${r.type} (${r.sourceId} upstream → ${r.targetId} downstream)${r.reasons ? ` — ${r.reasons}` : ''}`
-      : `Relación derivada — doble click para elegir el patrón${r.reasons ? ` — ${r.reasons}` : ''}`,
+      : r.inferredType
+        ? `≈ ${r.inferredType} INFERIDO de las dependencias — doble click para declararlo (o corregirlo)${r.reasons ? ` — ${r.reasons}` : ''}`
+        : `Relación derivada — doble click para elegir el patrón${r.reasons ? ` — ${r.reasons}` : ''}`,
   }));
 
   const flowEdges: SceneEdge[] = model.flows.map((f) => {

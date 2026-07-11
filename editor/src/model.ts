@@ -364,6 +364,8 @@ export interface ContextMapRelation {
   targetId: string;
   /** The annotated DDD pattern; null while the derived relation is unannotated. */
   type: ContextMapRelationType | null;
+  /** The pattern READ OFF the dependencies (partnership, shared kernel, events…). */
+  inferredType?: ContextMapRelationType | null;
   /** Whether the pair carries a type annotation (contextMap entry). */
   declared?: boolean;
   /** The concrete dependencies this relation derives from (tooltip). */

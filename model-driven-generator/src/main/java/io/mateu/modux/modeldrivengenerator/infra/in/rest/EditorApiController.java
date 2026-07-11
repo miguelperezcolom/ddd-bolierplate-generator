@@ -159,6 +159,7 @@ public class EditorApiController {
      * entries only ANNOTATE the strategic type; `declared` says whether the pair has one.
      */
     public record RelationDto(String sourceId, String targetId, String type,
+                              String inferredType,
                               boolean declared, String reasons) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
@@ -956,6 +957,21 @@ public class EditorApiController {
         }
         var annotations = currentProject == null
                 ? List.<ContextMapRelationEntity>of() : currentProject.contextMap();
+        // The PATTERN of a derived pair can often be read off its dependencies: mutual
+        // → partnership; embedded aggregates → shared kernel; events only → published
+        // language; one upstream serving many → open host service; direct calls →
+        // customer/supplier. The annotation (declared by hand) always wins.
+        java.util.function.BiFunction<List<String>, List<String>, String> inferType = (pair, reasons) -> {
+            if (dependencyReasons.containsKey(List.of(pair.get(1), pair.get(0)))) return "PARTNERSHIP";
+            if (reasons.stream().anyMatch(r -> r.startsWith("referencia "))) return "SHARED_KERNEL";
+            var onlyEvents = reasons.stream().allMatch(r -> r.startsWith("flow "));
+            if (onlyEvents) return "PUBLISHED_LANGUAGE";
+            var downstreamsOfUpstream = dependencyReasons.keySet().stream()
+                    .filter(k -> k.get(0).equals(pair.get(0)))
+                    .count();
+            if (downstreamsOfUpstream >= 2) return "OPEN_HOST_SERVICE";
+            return "CUSTOMER_SUPPLIER";
+        };
         var relations = new ArrayList<>(dependencyReasons.entrySet().stream()
                 .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
                 .map(e -> {
@@ -965,6 +981,7 @@ public class EditorApiController {
                             .findFirst().orElse(null);
                     return new RelationDto(e.getKey().get(0), e.getKey().get(1),
                             annotation != null ? annotation.type() : null,
+                            inferType.apply(e.getKey(), e.getValue()),
                             annotation != null,
                             String.join(" · ", e.getValue()));
                 })
@@ -980,7 +997,7 @@ public class EditorApiController {
                 .filter(a -> repository.findById(a.sourceModuleId(), ModuleEntity.class).isPresent()
                         && repository.findById(a.targetModuleId(), ModuleEntity.class).isPresent())
                 .forEach(a -> relations.add(new RelationDto(a.sourceModuleId(), a.targetModuleId(),
-                        a.type(), true, "declarada a mano — aún sin dependencia concreta")));
+                        a.type(), null, true, "declarada a mano — aún sin dependencia concreta")));
 
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
