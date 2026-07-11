@@ -1267,28 +1267,6 @@ export class ModuxPageDesigner extends LitElement {
           : html`<span class="title" title="Doble click para renombrar" @dblclick=${() => (this._rename = page.name)}
               >${page.name}</span
             >`}
-        <select
-          class="type"
-          title="Tipo de página: Página (el contenido decide), CRUD (listado + ficha) o Wizard (pasos)"
-          @change=${(e: Event) =>
-            this.emitEvent('page-type-changed', { pageType: (e.target as HTMLSelectElement).value })}
-        >
-          ${(() => {
-            const current = page.type ?? 'PAGE';
-            const kinds: [string, string][] = [
-              ['PAGE', 'Página'],
-              ['CRUD', 'CRUD'],
-              ['WIZARD', 'Wizard'],
-            ];
-            // Legacy store values keep showing until the user re-types the page;
-            // FORM and DASHBOARD are composition now (form component, dashboard layout).
-            if (current === 'FORM') kinds.splice(1, 0, ['FORM', 'Form (legado)']);
-            if (current === 'DASHBOARD') kinds.push(['DASHBOARD', 'Dashboard (legado)']);
-            return kinds.map(
-              ([v, label]) => html`<option value=${v} ?selected=${current === v}>${label}</option>`,
-            );
-          })()}
-        </select>
         ${this._route !== null
           ? html`<input
               class="inline"
@@ -1304,7 +1282,6 @@ export class ModuxPageDesigner extends LitElement {
           : html`<span class="route" title="Click para editar la ruta" @click=${() => (this._route = page.route ?? '/')}
               >${page.route ?? '/…'}</span
             >`}
-        <button @click=${() => this.emitEvent('open-crud')} title="Abrir la ficha completa de la página">Ficha</button>
         <button class="close" @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
       </div>
       <div class="zone zhdr" title="Cabecera de la página: título y descripción se infieren de la declaración">

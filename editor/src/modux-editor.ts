@@ -301,6 +301,8 @@ export class ModuxEditor extends LitElement {
   @state() private _selectedId: string | null = null;
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = false;
+  /** The element whose ficha shows in the right drawer (double click opens it). */
+  @state() private _drawer: { elementType: string; id: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
@@ -630,6 +632,49 @@ export class ModuxEditor extends LitElement {
       flex: 1;
       min-height: 0;
       display: flex;
+    }
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 460px;
+      max-width: 55%;
+      background: #ffffff;
+      border-left: 1px solid #e2e8f0;
+      box-shadow: -10px 0 24px rgba(15, 23, 42, 0.08);
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font: 600 12px system-ui, sans-serif;
+      color: #0f172a;
+    }
+    .drawer header .spacer {
+      flex: 1;
+    }
+    .drawer header button {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font: 11px system-ui, sans-serif;
+      color: #475569;
+      cursor: pointer;
+    }
+    .drawer header button:hover {
+      background: #f1f5f9;
+    }
+    .drawer iframe {
+      flex: 1;
+      width: 100%;
+      border: 0;
     }
     .view-tree {
       position: absolute;
@@ -5036,6 +5081,52 @@ export class ModuxEditor extends LitElement {
     });
   }
 
+  /** elementType → CRUD listing route (mirror of GraphicalEditorPage.CRUD_ROUTES). */
+  private static readonly CRUD_ROUTES: Record<string, string> = {
+    module: '/organizacion/modules',
+    aggregate: '/domainModel/aggregates',
+    entity: '/domainModel/entities',
+    flow: '/patrones/flows',
+    process: '/patrones/processes',
+    workflow: '/patrones/workflows',
+    'use-case': '/behaviour/useCases',
+    'domain-event': '/domainModel/domainEvents',
+    subscription: '/inbound/subscriptions',
+    projection: '/behaviour/projections',
+    'read-model': '/patrones/readModels',
+  };
+
+  /** Opening an element shows its ficha in the right drawer; unmapped kinds still navigate. */
+  private openInDrawer(ref: { elementType: string; id: string }): void {
+    if (ModuxEditor.CRUD_ROUTES[ref.elementType]) this._drawer = ref;
+    else this.emit('modux-activate', ref);
+  }
+
+  private renderDrawer() {
+    if (!this._drawer) return null;
+    const route = ModuxEditor.CRUD_ROUTES[this._drawer.elementType];
+    const ref = this._drawer;
+    return html`
+      <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <header>
+          <span>${ref.id}</span>
+          <span class="spacer"></span>
+          <button
+            title="Abrir la ficha completa en su página"
+            @click=${() => {
+              this._drawer = null;
+              this.emit('modux-activate', ref);
+            }}
+          >
+            Abrir ficha
+          </button>
+          <button title="Cerrar" @click=${() => (this._drawer = null)}>✕</button>
+        </header>
+        <iframe src=${`${route}/${ref.id}`} title=${ref.id}></iframe>
+      </aside>
+    `;
+  }
+
   private onElementActivated(e: CustomEvent): void {
     if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
       this._view = 'design';
@@ -5065,7 +5156,7 @@ export class ModuxEditor extends LitElement {
               return owner ? { elementType: 'workflow', id: owner.id } : null;
             })()
           : normalizeActivation(e.detail.id, e.detail.kind);
-    if (mapped) this.emit('modux-activate', mapped);
+    if (mapped) this.openInDrawer(mapped);
   }
 
   /** A fresh menu-entry id, unique across every app's tree (client-generated, like node ids). */
@@ -7303,6 +7394,7 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
+      ${this.renderDrawer()}
       ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
         : this._view === 'explorer'
@@ -7311,7 +7403,18 @@ export class ModuxEditor extends LitElement {
             @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
               const kind = e.detail.kind === 'policy' ? 'use-case' : e.detail.kind;
               const mapped = normalizeActivation(e.detail.id, kind);
-              if (mapped) this.emit('modux-activate', mapped);
+              if (mapped) this.openInDrawer(mapped);
+            }}
+            @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string }>) => {
+              // The handle draws the SAME relations as the context map: reuse its
+              // semantics by applying the connection under that view's rules.
+              const prev = this._view;
+              this._view = 'context-map';
+              try {
+                this.applyConnection(e.detail.sourceId, e.detail.targetId);
+              } finally {
+                this._view = prev;
+              }
             }}
           ></modux-explorer>`
         : this._tilt

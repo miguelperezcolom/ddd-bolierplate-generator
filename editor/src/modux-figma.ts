@@ -355,7 +355,7 @@ export class ModuxFigma extends LitElement {
             >
               <div class="frame-title">
                 ${page.name}
-                <span class="route">${page.route ?? ''} · ${page.type ?? 'PAGE'}</span>
+                <span class="route">${page.route ?? ''}</span>
               </div>
               <modux-page-designer
                 framed

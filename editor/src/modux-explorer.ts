@@ -175,6 +175,36 @@ export class ModuxExplorer extends LitElement {
       pointer-events: none;
       text-align: right;
     }
+    .controls {
+      position: absolute;
+      right: 12px;
+      top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: 11px system-ui, sans-serif;
+      color: #64748b;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    .controls input[type='range'] {
+      width: 90px;
+      accent-color: #6366f1;
+    }
+    .controls button {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font: 11px system-ui, sans-serif;
+      color: #475569;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background: #f1f5f9;
+    }
     .search {
       position: absolute;
       left: 12px;
@@ -281,6 +311,12 @@ export class ModuxExplorer extends LitElement {
   @state() private _q = '';
   @state() private _sugs: XNode[] = [];
   @state() private _active = 0;
+  /** The constant breathing of the map — the toggle stops it, not the springs. */
+  @state() private _motion = true;
+  /** alt+click focus: only these keys render; undefined = everything. */
+  private focusKeys?: Set<string>;
+  /** A relation being drawn from the hover handle towards the pointer. */
+  private linking?: { source: XNode; x: number; y: number };
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -601,11 +637,49 @@ export class ModuxExplorer extends LitElement {
   private visible(): XNode[] {
     const out: XNode[] = [];
     const walk = (n: XNode) => {
+      if (this.focusKeys && !this.focusKeys.has(n.key)) return;
       out.push(n);
       if (n.expanded) for (const c of n.children ?? []) walk(c);
     };
     if (this.root) walk(this.root);
     return out;
+  }
+
+  /** Every node expanded down to `levels` (0 = todo plegado); focus clears. */
+  private applyLevels(levels: number): void {
+    this.focusKeys = undefined;
+    const walk = (n: XNode) => {
+      if (!n.children) n.children = this.childrenOf(n);
+      n.expanded = n.depth < levels && n.children.length > 0;
+      if (n.expanded) for (const c of n.children) walk(c);
+    };
+    if (this.root) walk(this.root);
+    this.saveState();
+  }
+
+  /**
+   * alt+click: the node expands and the map narrows to what matters to it — its
+   * subtree, its ancestors, and whatever it talks to through cross-relations.
+   */
+  private focusOn(n: XNode): void {
+    if (!n.expanded && n.children?.length) this.toggle(n);
+    const keep = new Set<string>();
+    const withAncestors = (x: XNode) => {
+      for (let cur: XNode | undefined = x; cur; cur = cur.parent) keep.add(cur.key);
+    };
+    const withSubtree = (x: XNode) => {
+      keep.add(x.key);
+      for (const c of x.children ?? []) withSubtree(c);
+    };
+    withAncestors(n);
+    withSubtree(n);
+    const rel = this.related.get(n.refId);
+    if (rel) {
+      for (const other of this.allNodes) {
+        if (other.refId && rel.has(other.refId)) withAncestors(other);
+      }
+    }
+    this.focusKeys = keep;
   }
 
   private tick(): void {
@@ -650,7 +724,7 @@ export class ModuxExplorer extends LitElement {
         n.vx -= n.x * ANCHOR_K;
         n.vy -= n.y * ANCHOR_K;
       }
-      if (!this.reducedMotion) {
+      if (!this.reducedMotion && this._motion) {
         n.vx += Math.sin(t * n.f1 * Math.PI * 2 + n.p1) * NOISE_AMP;
         n.vy += Math.cos(t * n.f2 * Math.PI * 2 + n.p2) * NOISE_AMP;
       }
@@ -786,8 +860,44 @@ export class ModuxExplorer extends LitElement {
     if (this.hover && !this.hover.expanded && this.hover.children?.length) {
       this.drawGhosts(ctx, this.hover);
     }
+    // The relation being drawn from the handle, and the handle itself on hover.
+    if (this.linking) {
+      const s = this.linking.source;
+      ctx.save();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.6 / this.cam.k;
+      ctx.setLineDash([5 / this.cam.k, 4 / this.cam.k]);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(this.linking.x, this.linking.y);
+      ctx.stroke();
+      ctx.restore();
+    } else if (this.hover && this.hover.kind !== 'root') {
+      const hc = this.handleCenter(this.hover);
+      const hr = 6 / this.cam.k;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hc.x, hc.y, hr, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 1.6 / this.cam.k;
+      ctx.strokeStyle = '#475569';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hc.x - hr * 0.45, hc.y);
+      ctx.lineTo(hc.x + hr * 0.45, hc.y);
+      ctx.moveTo(hc.x, hc.y - hr * 0.45);
+      ctx.lineTo(hc.x, hc.y + hr * 0.45);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.restore();
-    if (this.hover) this.drawCard(ctx, this.hover, w, h);
+    if (this.hover && !this.linking) this.drawCard(ctx, this.hover, w, h);
+  }
+
+  /** The relation handle sits just outside the node, to its right. */
+  private handleCenter(n: XNode): { x: number; y: number } {
+    return { x: n.x + this.radiusOf(n) + 10 / this.cam.k, y: n.y };
   }
 
   /**
@@ -1259,6 +1369,20 @@ export class ModuxExplorer extends LitElement {
     const w = this.toWorld(e);
     this.downAt = { x: e.clientX, y: e.clientY };
     this.moved = false;
+    // The hover handle wins over dragging: pressing it starts drawing a relation.
+    if (this.hover && this.hover.kind !== 'root') {
+      const hc = this.handleCenter(this.hover);
+      const hr = 6 / this.cam.k + 4 / this.cam.k;
+      if ((w.x - hc.x) ** 2 + (w.y - hc.y) ** 2 <= hr * hr) {
+        this.linking = { source: this.hover, x: w.x, y: w.y };
+        try {
+          (e.target as Element).setPointerCapture(e.pointerId);
+        } catch {
+          /* synthetic events */
+        }
+        return;
+      }
+    }
     const n = this.nodeAt(w.x, w.y);
     if (n) {
       this.dragNode = n;
@@ -1274,6 +1398,13 @@ export class ModuxExplorer extends LitElement {
 
   private onPointerMove(e: PointerEvent): void {
     if (Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y) > 4) this.moved = true;
+    if (this.linking) {
+      const w = this.toWorld(e);
+      this.linking.x = w.x;
+      this.linking.y = w.y;
+      this.hover = this.nodeAt(w.x, w.y); // highlight the target under the line
+      return;
+    }
     if (this.dragNode) {
       const w = this.toWorld(e);
       this.dragNode.x = w.x;
@@ -1292,11 +1423,33 @@ export class ModuxExplorer extends LitElement {
     if (this.canvas) this.canvas.style.cursor = this.hover ? 'pointer' : 'default';
   }
 
-  private onPointerUp(): void {
+  private onPointerUp(e: PointerEvent): void {
+    if (this.linking) {
+      const w = this.toWorld(e);
+      const target = this.nodeAt(w.x, w.y);
+      const source = this.linking.source;
+      this.linking = undefined;
+      if (target && target !== source && target.kind !== 'root' && source.refId && target.refId) {
+        this.dispatchEvent(
+          new CustomEvent('explorer-connect', {
+            detail: { sourceId: source.refId, targetId: target.refId },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+      return;
+    }
     const n = this.dragNode;
     this.dragNode = undefined;
     this.panning = false;
-    if (n && !this.moved) this.toggle(n);
+    if (n && !this.moved) {
+      if (e.altKey) this.focusOn(n);
+      else this.toggle(n);
+    } else if (!n && !this.moved && this.focusKeys) {
+      // a plain click on the background lets go of the focus
+      this.focusKeys = undefined;
+    }
   }
 
   /** Click: the node explodes — children burst out from it and the springs settle. */
@@ -1388,8 +1541,30 @@ export class ModuxExplorer extends LitElement {
             ? html`<ul class="sugs"><li class="empty">sin resultados</li></ul>`
             : null}
       </div>
+      <div class="controls" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <span>Niveles</span>
+        <input
+          type="range"
+          min="0"
+          max="5"
+          step="1"
+          value="1"
+          title="Cuántos niveles se ven abiertos"
+          @input=${(e: Event) => this.applyLevels(Number((e.target as HTMLInputElement).value))}
+        />
+        <button title="Plegarlo todo y volver a empezar" @click=${() => this.applyLevels(0)}>
+          Replegar
+        </button>
+        <button
+          title=${this._motion ? 'Parar el movimiento constante' : 'Reanudar el movimiento'}
+          @click=${() => (this._motion = !this._motion)}
+        >
+          ${this._motion ? '⏸ Quieto' : '▶ Movimiento'}
+        </button>
+      </div>
       <div class="hud">
-        click: expandir / plegar · doble click: abrir · hover: ver contenido<br />
+        click: expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
+        hover: ver contenido, y su asa dibuja una relación hasta otro nodo<br />
         buscar: expande el camino y vuela hasta el nodo<br />
         arrastrar nodo: tirar del subárbol · fondo: mover · rueda: zoom
       </div>
