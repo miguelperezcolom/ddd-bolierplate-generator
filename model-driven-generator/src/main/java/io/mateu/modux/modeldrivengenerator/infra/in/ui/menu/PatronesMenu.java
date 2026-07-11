@@ -28,6 +28,9 @@ public class PatronesMenu {
     WorkflowCrudOrchestrator workflows;
 
     @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workflowgateway.WorkflowGatewayCrudOrchestrator workflowGateways;
+
+    @Menu
     ReadModelCrudOrchestrator readModels;
 
 }
