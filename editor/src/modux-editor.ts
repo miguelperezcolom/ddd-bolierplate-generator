@@ -12,6 +12,7 @@ import { eventstormingScene } from './views/eventstorming.js';
 import { workflowsScene } from './views/workflows.js';
 import { uiScene, parseMenuNodeId } from './views/ui.js';
 import { mappingsScene, parseFieldNodeId } from './views/mappings.js';
+import { integrationsScene } from './views/integrations.js';
 import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import './modux-canvas.js';
@@ -35,7 +36,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'explorer';
+type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'explorer' | 'integrations';
 
 
 /**
@@ -779,7 +780,7 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)) {
+        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
@@ -2735,6 +2736,18 @@ export class ModuxEditor extends LitElement {
         }
       }
     }
+    // Integraciones: las líneas significan lo mismo que en el mapa de contextos
+    // (fuentes, escrituras, eventos) — se aplican bajo sus reglas.
+    if (this._view === 'integrations') {
+      const prev = this._view;
+      this._view = 'context-map';
+      try {
+        this.applyConnection(sourceId, targetId, x, y, connectKind);
+      } finally {
+        this._view = prev;
+      }
+      return;
+    }
     // EventStorming: a step dropped on a CODE sticky delegates in that hand-written code.
     if (this._view === 'eventstorming') {
       const isCC = (id: string) => (this.model.customCodes ?? []).some((cc) => cc.id === id);
@@ -4503,14 +4516,14 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'remove-identity-provider', id });
       return;
     }
-    if (this._view === 'context-map' && elementType === 'edge' && (kind === 'etl-source' || kind === 'etl-write')) {
+    if ((this._view === 'context-map' || this._view === 'integrations') && elementType === 'edge' && (kind === 'etl-source' || kind === 'etl-write')) {
       const match = /^etl:([^:]+):(.+)$/.exec(id);
       if (!match) return;
       this._selectedId = null;
       this.command({ kind: 'remove-etl-step', etlFlowId: match[1], id: match[2] });
       return;
     }
-    if (this._view === 'context-map' && elementType === 'node' && kind === 'etl-flow') {
+    if ((this._view === 'context-map' || this._view === 'integrations') && elementType === 'node' && kind === 'etl-flow') {
       this._selectedId = null;
       this.command({ kind: 'remove-etl-flow', id });
       return;
@@ -6202,6 +6215,9 @@ export class ModuxEditor extends LitElement {
     if (type === 'model-field') {
       return chain.find((id) => (this.model.models ?? []).some((mo) => mo.id === id)) ?? null;
     }
+    if (type === 'etl-flow' && this._view === 'integrations' && this.model.modules.length === 1) {
+      return this.model.modules[0].id;
+    }
     if (type === 'ui-button') {
       return chain.find((id) => (this.model.buttonGroups ?? []).some((g) => g.id === id)) ?? null;
     }
@@ -6929,7 +6945,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
@@ -6942,6 +6958,8 @@ export class ModuxEditor extends LitElement {
               ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
               : this._view === 'explorer'
                 ? !k.type.startsWith('cmp:')
+              : this._view === 'integrations'
+                ? ['etl-flow', 'etl-transform', 'external-system', 'external-table'].includes(k.type)
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
                 : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code', 'ui-button'].includes(k.type) && !k.type.startsWith('cmp:')) &&
@@ -7093,6 +7111,8 @@ export class ModuxEditor extends LitElement {
                 ? uiScene(model, vl.nodes)
                 : view === 'design'
                   ? { nodes: [], edges: [] }
+              : view === 'integrations'
+                ? integrationsScene(model, vl.nodes)
               : view === 'mappings'
                 ? mappingsScene(model, vl.nodes)
                 : view === 'eventstorming'
@@ -7188,7 +7208,7 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)}
+          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -7250,6 +7270,9 @@ export class ModuxEditor extends LitElement {
                 Workflows
               </option>
               <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
+              <option value="view:integrations" ?selected=${this._view === 'integrations'}>
+                Integraciones
+              </option>
               <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
               <option value="view:design" ?selected=${this._view === 'design'}>
                 Diseño (páginas)
