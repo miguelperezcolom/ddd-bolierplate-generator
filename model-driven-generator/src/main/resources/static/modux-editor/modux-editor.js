@@ -10350,7 +10350,7 @@ let j = class extends Fe {
       switch (e.key) {
         case "p":
         case "P":
-          ["context-map", "workflows", "ui", "design"].includes(this._view) && (e.preventDefault(), this._paletteOpen = !this._paletteOpen);
+          ["context-map", "workflows", "ui", "design", "mappings", "explorer"].includes(this._view) && (e.preventDefault(), this._paletteOpen = !this._paletteOpen);
           break;
         case "f":
         case "F":
@@ -14998,7 +14998,7 @@ let j = class extends Fe {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${!["context-map", "workflows", "ui", "design"].includes(this._view)}
+          ?hidden=${!["context-map", "workflows", "ui", "design", "mappings", "explorer"].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => this._paletteOpen = !this._paletteOpen}

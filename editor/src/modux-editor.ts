@@ -779,7 +779,7 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'workflows', 'ui', 'design'].includes(this._view)) {
+        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
@@ -7189,7 +7189,7 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'workflows', 'ui', 'design'].includes(this._view)}
+          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
