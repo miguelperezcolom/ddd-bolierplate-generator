@@ -9,13 +9,18 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.Reposito
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.specsearch.SpecSearchCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace.WorkspaceCrudOrchestrator;
+import io.mateu.uidl.annotations.App;
 import io.mateu.uidl.annotations.AppContext;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
+import io.mateu.uidl.fluent.AppVariant;
 
 @UI("")
 @Title("Modux")
+// The nested «Modelo» menu made the menu DEEP, and the AUTO variant renders deep
+// menus as a tiles hub; the classic top bar shows them as cascading dropdowns.
+@App(AppVariant.MENU_ON_TOP)
 public class ModelDrivenGeneratorHome {
 
     /** Modux works on ONE repository + ONE project at a time — both are app-level context. */
