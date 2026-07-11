@@ -146,6 +146,45 @@ public class SolutionGitService {
         return git(args);
     }
 
+    public static final String VERSION_TAG_PREFIX = "version/";
+
+    /**
+     * Tags the current branch's HEAD as a named version of the diagrams. Uncommitted
+     * work commits first, so the tag captures exactly what the user is looking at.
+     */
+    public void tagVersion(String name, String message) {
+        ensureRepo();
+        commitAll("wip: " + currentBranch());
+        var tag = VERSION_TAG_PREFIX + slug(name);
+        if (message == null || message.isBlank()) {
+            git("tag", "-f", tag, "HEAD");
+        } else {
+            git("-c", "user.name=modux", "-c", "user.email=modux@modux.local",
+                    "tag", "-f", "-a", tag, "-m", message, "HEAD");
+        }
+        log.info("versión etiquetada: {} en {}", tag, currentBranch());
+    }
+
+    /** The user's version tags, newest first: name · date · annotation. */
+    public List<VersionTag> versionTags() {
+        if (!isRepo() || !hasCommits()) return List.of();
+        var out = git("tag", "--list", VERSION_TAG_PREFIX + "*",
+                "--sort=-creatordate",
+                "--format=%(refname:short)\t%(creatordate:short)\t%(subject)");
+        return out.lines()
+                .filter(l -> !l.isBlank())
+                .map(l -> {
+                    var parts = l.split("\t", 3);
+                    return new VersionTag(
+                            parts[0].substring(VERSION_TAG_PREFIX.length()),
+                            parts.length > 1 ? parts[1] : "",
+                            parts.length > 2 ? parts[2] : "");
+                })
+                .toList();
+    }
+
+    public record VersionTag(String name, String date, String message) {}
+
     /** Public form of {@link #commitAll} for the merge machinery. */
     public void commitAllPublic(String message) {
         commitAll(message);

@@ -32,6 +32,7 @@ public class SolutionApiController {
     final io.mateu.modux.modeldrivengenerator.application.usecases.repository.copy.CopyRepositoryUseCase copyUseCase;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
     final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService mergeService;
+    final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionGitService git;
 
     public record SolutionRef(String branch, String name, String status) {}
     public record WorkspaceDto(String current, boolean system, List<SolutionRef> solutions) {}
@@ -92,6 +93,25 @@ public class SolutionApiController {
     public WorkspaceDto discard(@RequestBody SolutionCommand command) {
         workspace.discard(command.branch());
         return workspace();
+    }
+
+    public record TagCommand(String name, String message) {}
+
+    /** Tags the current branch's HEAD as a named version of the diagrams. */
+    @PostMapping("/tag")
+    public List<io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionGitService.VersionTag> tag(
+            @RequestBody TagCommand command) {
+        if (command.name() == null || command.name().isBlank()) {
+            throw new IllegalArgumentException("La versión necesita un nombre");
+        }
+        git.tagVersion(command.name().trim(), command.message());
+        return git.versionTags();
+    }
+
+    /** The named versions, newest first. */
+    @GetMapping("/tags")
+    public List<io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionGitService.VersionTag> tags() {
+        return git.versionTags();
     }
 
     // ---- F3: approval and semantic merge -----------------------------------

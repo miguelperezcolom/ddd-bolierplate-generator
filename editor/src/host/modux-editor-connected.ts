@@ -31,6 +31,11 @@ export class ModuxEditorConnected extends LitElement {
   } | null = null;
   @state() private _creatingSolution = false;
   @state() private _newSolutionName = '';
+  /** Version tags: naming the current state of the diagrams (git tag on the branch). */
+  @state() private _taggingVersion = false;
+  @state() private _newTagName = '';
+  @state() private _tagsOpen = false;
+  @state() private _tags: { name: string; date: string; message: string }[] = [];
   /** Semantic diff of the checked-out solution vs the system (null on the system). */
   @state() private _diff: {
     branch: string;
@@ -595,6 +600,64 @@ export class ModuxEditorConnected extends LitElement {
     void this.solutionOp('create', { name });
   }
 
+  /** Tags the current branch's HEAD as a named version of the diagrams. */
+  private async createTag(): Promise<void> {
+    const name = this._newTagName.trim();
+    if (!name) return;
+    this._taggingVersion = false;
+    this._newTagName = '';
+    try {
+      const res = await fetch(`${this.base}/solutions/tag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        this.showToast(`No se pudo etiquetar la versión (${res.status})`);
+        return;
+      }
+      this._tags = await res.json();
+      this.showToast(`Versión «${name}» etiquetada`, 'info');
+    } catch (e) {
+      this.showToast(`No se pudo etiquetar la versión: ${(e as Error).message}`);
+    }
+  }
+
+  private async toggleTags(): Promise<void> {
+    this._tagsOpen = !this._tagsOpen;
+    if (!this._tagsOpen) return;
+    try {
+      const res = await fetch(`${this.base}/solutions/tags`);
+      if (res.ok) this._tags = await res.json();
+    } catch {
+      /* the panel just shows empty */
+    }
+  }
+
+  /** The named versions of the diagrams — opened from the «Versiones» button. */
+  private renderTagsPanel() {
+    if (!this._tagsOpen) return '';
+    return html`
+      <div class="diff-panel">
+        <div class="diff-head">
+          <span>Versiones etiquetadas</span>
+          <button title="Cerrar el listado" @click=${() => (this._tagsOpen = false)}>✕</button>
+        </div>
+        ${this._tags.length
+          ? this._tags.map(
+              (t) => html`
+                <div class="diff-row">
+                  <span class="diff-mark added">🏷</span>
+                  <span class="diff-type">${t.date}</span>
+                  <span class="diff-name" title=${t.message || t.name}>${t.name}</span>
+                </div>
+              `,
+            )
+          : html`<div class="diff-row"><span class="diff-name">Sin versiones aún — «Etiquetar…» nombra el estado actual</span></div>`}
+      </div>
+    `;
+  }
+
   /** merge/update start with a dry run; conflicts open the per-element panel. */
   private async startMergeFlow(op: 'merge' | 'update'): Promise<void> {
     try {
@@ -770,6 +833,29 @@ export class ModuxEditorConnected extends LitElement {
                 : html`<button @click=${() => (this._creatingSolution = true)}>
                     ＋ Nueva solución…
                   </button>`}
+              ${this._taggingVersion
+                ? html`
+                    <input
+                      placeholder="Nombre de la versión…"
+                      .value=${this._newTagName}
+                      @input=${(e: Event) => (this._newTagName = (e.target as HTMLInputElement).value)}
+                      @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && void this.createTag()}
+                    />
+                    <button @click=${() => void this.createTag()}>Etiquetar</button>
+                    <button @click=${() => (this._taggingVersion = false)}>Cancelar</button>
+                  `
+                : html`<button
+                    title="Etiqueta el estado actual de la rama como una versión con nombre (git tag)"
+                    @click=${() => (this._taggingVersion = true)}
+                  >
+                    🏷 Etiquetar…
+                  </button>`}
+              <button
+                title="Las versiones etiquetadas de los diagramas"
+                @click=${() => void this.toggleTags()}
+              >
+                Versiones
+              </button>
               <span class="badge ${this._workspace.system ? '' : 'solution'}">
                 ${this._workspace.system ? 'AS-IS' : 'TO-BE'}
               </span>
@@ -850,6 +936,7 @@ export class ModuxEditorConnected extends LitElement {
           `
         : ''}
       ${this.renderDiffList()}
+      ${this.renderTagsPanel()}
       ${this._mergeFlow
         ? html`
             <div class="merge-panel">
