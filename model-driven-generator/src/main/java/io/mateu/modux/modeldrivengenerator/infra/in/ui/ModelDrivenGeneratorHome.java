@@ -45,27 +45,6 @@ public class ModelDrivenGeneratorHome {
     ModelHealthPage modelHealth;
 
     @Menu
-    OrganizacionMenu organizacion;
-
-    @Menu
-    DomainModelMenu domainModel;
-
-    @Menu
-    BehaviourMenu behaviour;
-
-    @Menu
-    TransversalMenu transversal;
-
-    @Menu
-    PatronesMenu patrones;
-
-    @Menu
-    InboundMenu inbound;
-
-    @Menu
-    OutboundMenu outbound;
-
-    @Menu
-    SecurityMenu security;
+    ModelMenu modelo;
 
 }

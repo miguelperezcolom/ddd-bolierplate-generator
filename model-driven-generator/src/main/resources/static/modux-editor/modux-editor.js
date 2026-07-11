@@ -15922,17 +15922,17 @@ K.styles = It`
     }
   `;
 K.CRUD_ROUTES = {
-  module: "/organizacion/modules",
-  aggregate: "/domainModel/aggregates",
-  entity: "/domainModel/entities",
-  flow: "/patrones/flows",
-  process: "/patrones/processes",
-  workflow: "/patrones/workflows",
-  "use-case": "/behaviour/useCases",
-  "domain-event": "/domainModel/domainEvents",
-  subscription: "/inbound/subscriptions",
-  projection: "/behaviour/projections",
-  "read-model": "/patrones/readModels"
+  module: "/modelo/organizacion/modules",
+  aggregate: "/modelo/domainModel/aggregates",
+  entity: "/modelo/domainModel/entities",
+  flow: "/modelo/patrones/flows",
+  process: "/modelo/patrones/processes",
+  workflow: "/modelo/patrones/workflows",
+  "use-case": "/modelo/behaviour/useCases",
+  "domain-event": "/modelo/domainModel/domainEvents",
+  subscription: "/modelo/inbound/subscriptions",
+  projection: "/modelo/behaviour/projections",
+  "read-model": "/modelo/patrones/readModels"
 };
 K.PALETTE_GROUPS = [
   "Estratégico",

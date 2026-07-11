@@ -32,17 +32,17 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
 
     /** elementType (as emitted by the editor views) → CRUD listing route. */
     private static final Map<String, String> CRUD_ROUTES = Map.ofEntries(
-            Map.entry("module", "/organizacion/modules"),
-            Map.entry("aggregate", "/domainModel/aggregates"),
-            Map.entry("entity", "/domainModel/entities"),
-            Map.entry("flow", "/patrones/flows"),
-            Map.entry("process", "/patrones/processes"),
-            Map.entry("workflow", "/patrones/workflows"),
-            Map.entry("use-case", "/behaviour/useCases"),
-            Map.entry("domain-event", "/domainModel/domainEvents"),
-            Map.entry("subscription", "/inbound/subscriptions"),
-            Map.entry("projection", "/behaviour/projections"),
-            Map.entry("read-model", "/patrones/readModels"));
+            Map.entry("module", "/modelo/organizacion/modules"),
+            Map.entry("aggregate", "/modelo/domainModel/aggregates"),
+            Map.entry("entity", "/modelo/domainModel/entities"),
+            Map.entry("flow", "/modelo/patrones/flows"),
+            Map.entry("process", "/modelo/patrones/processes"),
+            Map.entry("workflow", "/modelo/patrones/workflows"),
+            Map.entry("use-case", "/modelo/behaviour/useCases"),
+            Map.entry("domain-event", "/modelo/domainModel/domainEvents"),
+            Map.entry("subscription", "/modelo/inbound/subscriptions"),
+            Map.entry("projection", "/modelo/behaviour/projections"),
+            Map.entry("read-model", "/modelo/patrones/readModels"));
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so

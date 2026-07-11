@@ -5260,17 +5260,17 @@ export class ModuxEditor extends LitElement {
 
   /** elementType → CRUD listing route (mirror of GraphicalEditorPage.CRUD_ROUTES). */
   private static readonly CRUD_ROUTES: Record<string, string> = {
-    module: '/organizacion/modules',
-    aggregate: '/domainModel/aggregates',
-    entity: '/domainModel/entities',
-    flow: '/patrones/flows',
-    process: '/patrones/processes',
-    workflow: '/patrones/workflows',
-    'use-case': '/behaviour/useCases',
-    'domain-event': '/domainModel/domainEvents',
-    subscription: '/inbound/subscriptions',
-    projection: '/behaviour/projections',
-    'read-model': '/patrones/readModels',
+    module: '/modelo/organizacion/modules',
+    aggregate: '/modelo/domainModel/aggregates',
+    entity: '/modelo/domainModel/entities',
+    flow: '/modelo/patrones/flows',
+    process: '/modelo/patrones/processes',
+    workflow: '/modelo/patrones/workflows',
+    'use-case': '/modelo/behaviour/useCases',
+    'domain-event': '/modelo/domainModel/domainEvents',
+    subscription: '/modelo/inbound/subscriptions',
+    projection: '/modelo/behaviour/projections',
+    'read-model': '/modelo/patrones/readModels',
   };
 
   /** Opening an element shows its ficha in the right drawer; unmapped kinds still navigate. */

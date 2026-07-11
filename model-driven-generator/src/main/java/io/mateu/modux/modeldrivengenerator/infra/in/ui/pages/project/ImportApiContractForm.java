@@ -67,7 +67,7 @@ public class ImportApiContractForm {
         } else {
             openApiInbound.handle(new ImportOpenApiInboundCommand(moduleId, filePath));
         }
-        return URI.create(hasExternal ? "/graphicalEditor" : "/behaviour/useCases");
+        return URI.create(hasExternal ? "/graphicalEditor" : "/modelo/behaviour/useCases");
     }
 
     @SneakyThrows
