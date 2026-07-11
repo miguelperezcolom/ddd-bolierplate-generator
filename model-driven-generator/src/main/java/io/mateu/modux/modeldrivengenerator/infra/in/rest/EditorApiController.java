@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
@@ -301,7 +302,7 @@ public class EditorApiController {
     /** What a transformation reads or writes: a whole model (fieldId null) or one field. */
     public record TransformationRefDto(String modelId, String fieldId) {}
     public record TransformationDto(String id, String name, List<TransformationRefDto> inputs,
-                                    TransformationRefDto output) {}
+                                    TransformationRefDto output, String customCodeId) {}
 
     public record EditorModelDto(
             List<ModuleDto> modules,
@@ -358,10 +359,11 @@ public class EditorApiController {
             List<CodeModuleDto> codeModules,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
+            List<NamedRefDto> customCodes,
             List<MappingRefDto> modelMappings) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
-                                List<MappingRuleDto> rules) {}
+                                List<MappingRuleDto> rules, String customCodeId) {}
 
     /**
      * Cheap, order-independent fingerprint of the whole store. The editor
@@ -912,7 +914,7 @@ public class EditorApiController {
         }
         var annotations = currentProject == null
                 ? List.<ContextMapRelationEntity>of() : currentProject.contextMap();
-        var relations = dependencyReasons.entrySet().stream()
+        var relations = new ArrayList<>(dependencyReasons.entrySet().stream()
                 .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
                 .map(e -> {
                     var annotation = annotations.stream()
@@ -924,7 +926,19 @@ public class EditorApiController {
                             annotation != null,
                             String.join(" · ", e.getValue()));
                 })
-                .toList();
+                .toList());
+        // Hand-declared relations with no derived dependency yet (e.g. drawn from the
+        // explorer between two still-unwired contexts) surface too: intent shows first.
+        var derivedPairs = relations.stream()
+                .map(r -> r.sourceId() + "->" + r.targetId())
+                .collect(java.util.stream.Collectors.toSet());
+        annotations.stream()
+                .filter(a -> a.type() != null)
+                .filter(a -> !derivedPairs.contains(a.sourceModuleId() + "->" + a.targetModuleId()))
+                .filter(a -> repository.findById(a.sourceModuleId(), ModuleEntity.class).isPresent()
+                        && repository.findById(a.targetModuleId(), ModuleEntity.class).isPresent())
+                .forEach(a -> relations.add(new RelationDto(a.sourceModuleId(), a.targetModuleId(),
+                        a.type(), true, "declarada a mano — aún sin dependencia concreta")));
 
         return new EditorModelDto(
                 modules, externalSystems, relations, flows, aggregates, entities, references, processes,
@@ -1002,13 +1016,18 @@ public class EditorApiController {
                                         .map(r -> new TransformationRefDto(r.modelId(), r.fieldId()))
                                         .toList(),
                                 t.output() == null ? null
-                                        : new TransformationRefDto(t.output().modelId(), t.output().fieldId())))
+                                        : new TransformationRefDto(t.output().modelId(), t.output().fieldId()),
+                                t.customCodeId()))
+                        .toList(),
+                repository.findAllOfType(CustomCodeEntity.class).stream()
+                        .map(x -> new NamedRefDto(x.id(), x.name()))
                         .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
                                 (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
                                         .map(r -> new MappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId()))
-                                        .toList()))
+                                        .toList(),
+                                x.customCodeId()))
                         .toList());
     }
 
@@ -1093,6 +1112,11 @@ public class EditorApiController {
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
             case "add-transformation" -> addTransformation(command);
+            case "add-custom-code" -> addCustomCode(command);
+            case "remove-custom-code" -> removeCustomCode(command);
+            case "set-mapping-custom-code" -> setMappingCustomCode(command);
+            case "set-transformation-custom-code" -> setTransformationCustomCode(command);
+            case "set-use-case-step-custom-code" -> setUseCaseStepCustomCode(command);
             case "remove-transformation" -> removeTransformation(command);
             case "add-transformation-input" -> addTransformationInput(command);
             case "remove-transformation-input" -> removeTransformationInput(command);
@@ -4038,6 +4062,72 @@ public class EditorApiController {
         repository.save(t.toBuilder().output(output).build());
     }
 
+    private void addCustomCode(EditorCommand command) {
+        if (repository.findById(command.id(), CustomCodeEntity.class).isPresent()) return;
+        repository.save(new CustomCodeEntity(command.id(), command.name(), null, null));
+    }
+
+    private void removeCustomCode(EditorCommand command) {
+        // whoever delegated to this code lets go of it
+        repository.findAllOfType(ModelMappingEntity.class).stream()
+                .filter(mm -> command.id().equals(mm.customCodeId()))
+                .forEach(mm -> repository.save(mm.toBuilder().customCodeId(null).build()));
+        repository.findAllOfType(TransformationEntity.class).stream()
+                .filter(t -> command.id().equals(t.customCodeId()))
+                .forEach(t -> repository.save(t.toBuilder().customCodeId(null).build()));
+        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+            if (uc.steps() == null
+                    || uc.steps().stream().noneMatch(st -> command.id().equals(st.customCodeId()))) {
+                continue;
+            }
+            repository.save(withSteps(uc, uc.steps().stream()
+                    .map(st -> command.id().equals(st.customCodeId()) ? stepWithCustomCode(st, null) : st)
+                    .toList()));
+        }
+        repository.deleteAllById(List.of(command.id()), CustomCodeEntity.class);
+    }
+
+    private String customCodeRefOf(EditorCommand command) {
+        var ccId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
+        if (ccId != null) {
+            repository.findById(ccId, CustomCodeEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + ccId));
+        }
+        return ccId;
+    }
+
+    /** The mapping delegates to hand-written code (targetId null unwires). */
+    private void setMappingCustomCode(EditorCommand command) {
+        var mm = repository.findById(command.id(), ModelMappingEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
+        repository.save(mm.toBuilder().customCodeId(customCodeRefOf(command)).build());
+    }
+
+    /** The transformation delegates to hand-written code (targetId null unwires). */
+    private void setTransformationCustomCode(EditorCommand command) {
+        var t = repository.findById(command.id(), TransformationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
+        repository.save(t.toBuilder().customCodeId(customCodeRefOf(command)).build());
+    }
+
+    /** The use case operation (step) delegates to hand-written code. */
+    private void setUseCaseStepCustomCode(EditorCommand command) {
+        var uc = repository.findById(command.useCaseId(), UseCaseEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.useCaseId()));
+        var ccId = customCodeRefOf(command);
+        repository.save(withSteps(uc,
+                (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                        .map(st -> st.id().equals(command.id()) ? stepWithCustomCode(st, ccId) : st)
+                        .toList()));
+    }
+
+    private static UseCaseStepEntity stepWithCustomCode(UseCaseStepEntity s, String customCodeId) {
+        return new UseCaseStepEntity(s.id(), s.name(), s.type(), s.aggregateId(), s.operationId(),
+                s.gatewayId(), s.gatewayOperationId(), s.domainEventId(), s.useCaseId(),
+                s.modelMappingId(), s.queryServiceId(), s.queryOperationId(), s.intent(),
+                s.applicationEventId(), s.externalUseCaseId(), customCodeId);
+    }
+
     private void addModelField(EditorCommand command) {
         var model = repository.findById(command.modelId(), ModelEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
@@ -4112,8 +4202,7 @@ public class EditorApiController {
                     .filter(r -> !fieldId.equals(r.sourceFieldId()) && !fieldId.equals(r.targetFieldId()))
                     .toList();
             if (kept.size() != rules.size()) {
-                repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
-                        mm.targetModelId(), mm.hasCustomPart(), kept));
+                repository.save(mm.toBuilder().rules(kept).build());
             }
         }
     }
@@ -4129,17 +4218,16 @@ public class EditorApiController {
         while (taken.contains("mr-" + n)) n++;
         var grown = new ArrayList<>(rules);
         grown.add(new ModelMappingRuleEntity("mr-" + n, command.sourceId(), command.targetId(), List.of()));
-        repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
-                mm.targetModelId(), mm.hasCustomPart(), grown));
+        repository.save(mm.toBuilder().rules(grown).build());
     }
 
     private void removeModelMappingRule(EditorCommand command) {
         var mm = repository.findById(command.id(), ModelMappingEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
         var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
-        repository.save(new ModelMappingEntity(mm.id(), mm.name(), mm.sourceModelId(),
-                mm.targetModelId(), mm.hasCustomPart(),
-                rules.stream().filter(r -> !r.id().equals(command.itemId())).toList()));
+        repository.save(mm.toBuilder()
+                .rules(rules.stream().filter(r -> !r.id().equals(command.itemId())).toList())
+                .build());
     }
 
     private void addModelMapping(EditorCommand command) {

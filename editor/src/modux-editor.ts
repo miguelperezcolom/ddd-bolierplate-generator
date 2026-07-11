@@ -1045,6 +1045,8 @@ export class ModuxEditor extends LitElement {
         return [{ kind: 'remove-code-module', id: c.id }];
       case 'add-transformation':
         return [{ kind: 'remove-transformation', id: c.id }];
+      case 'add-custom-code':
+        return [{ kind: 'remove-custom-code', id: c.id }];
       case 'add-model-field':
         return [{ kind: 'remove-model-field', modelId: c.modelId, fieldId: c.fieldId }];
       case 'create-ui-page':
@@ -2980,6 +2982,38 @@ export class ModuxEditor extends LitElement {
       const srcField = parseFieldNodeId(sourceId);
       const tgtField = parseFieldNodeId(targetId);
       const transformations = this.model.transformations ?? [];
+      const customCodes = this.model.customCodes ?? [];
+      const isCustomCode = (id: string) => customCodes.some((cc) => cc.id === id);
+      // custom code ↔ transformación: la transformación delega en ese código.
+      if (isCustomCode(sourceId) && transformations.some((t) => t.id === targetId)) {
+        this.command({ kind: 'set-transformation-custom-code', id: targetId, targetId: sourceId });
+        return;
+      }
+      if (isCustomCode(targetId) && transformations.some((t) => t.id === sourceId)) {
+        this.command({ kind: 'set-transformation-custom-code', id: sourceId, targetId });
+        return;
+      }
+      // custom code → un modelo mapeado: el MAPEADO de ese modelo delega en el código
+      // (si participa en varios, se elige desde la ficha del mapeado).
+      if (isCustomCode(sourceId)) {
+        const overModel = tgtField?.modelId ?? (models.some((m) => m.id === targetId) ? targetId : null);
+        if (overModel) {
+          const involved = (this.model.modelMappings ?? []).filter(
+            (mm) => mm.sourceModelId === overModel || mm.targetModelId === overModel,
+          );
+          if (involved.length === 1) {
+            this.command({ kind: 'set-mapping-custom-code', id: involved[0].id, targetId: sourceId });
+          } else {
+            this.emit('modux-notice', {
+              message: involved.length
+                ? 'El modelo participa en varios mapeados: elige el mapeado desde su ficha'
+                : 'Ese modelo no tiene mapeados donde delegar el código',
+            });
+          }
+          return;
+        }
+        return;
+      }
       // modelo/campo → transformación: una ENTRADA más; transformación → modelo/campo: su SALIDA.
       if (transformations.some((t) => t.id === targetId)) {
         if (tgtField || transformations.some((t) => t.id === sourceId)) return;
@@ -4129,6 +4163,27 @@ export class ModuxEditor extends LitElement {
     if (this._view === 'mappings' && elementType === 'node' && kind === 'model') {
       this._selectedId = null;
       this.command({ kind: 'remove-model', id });
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'node' && kind === 'custom-code') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-custom-code', id });
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'custom-of-transformation') {
+      const match = /^cctf:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'set-transformation-custom-code', id: match[1], targetId: null });
+      }
+      return;
+    }
+    if (this._view === 'mappings' && elementType === 'edge' && kind === 'custom-of-mapping') {
+      const match = /^ccmap:(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'set-mapping-custom-code', id: match[1], targetId: null });
+      }
       return;
     }
     if (this._view === 'mappings' && elementType === 'node' && kind === 'transformation') {
@@ -5586,8 +5641,8 @@ export class ModuxEditor extends LitElement {
   /** Palette entries carry the SAME glyph and stroke colour their node wears on the canvas. */
   /** Section order for the «Nuevos» tab. */
   private static readonly PALETTE_GROUPS = [
-    'Estratégico', 'Dominio', 'APIs', 'Sistema externo', 'IA',
-    'Orquestación', 'UI', 'Layouts', 'Componentes',
+    'Estratégico', 'Dominio', 'Distribución', 'APIs', 'Sistema externo', 'IA',
+    'Orquestación', 'UI', 'Modelos', 'Layouts', 'Componentes',
   ];
 
   private static readonly PALETTE_NEW: {
@@ -5642,6 +5697,7 @@ export class ModuxEditor extends LitElement {
     { type: 'ui-model', label: 'Modelo', symbol: 'readmodel', color: '#8b5cf6', group: 'UI' },
     { type: 'model-field', label: 'Campo', child: true, symbol: 'gear', color: '#a78bfa', group: 'Modelos' },
     { type: 'transformation', label: 'Transformación', symbol: 'gear', color: '#ea580c', group: 'Modelos' },
+    { type: 'custom-code', label: 'Custom code', symbol: 'gear', color: '#0f172a', group: 'Modelos' },
     // Diseño: the Mateu layout vocabulary…
     { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
     { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -6082,7 +6138,7 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
-        'identity-provider': 'idp-', transformation: 'tf-',
+        'identity-provider': 'idp-', transformation: 'tf-', 'custom-code': 'cc-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -6116,6 +6172,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'add-model', id, name }
                                   : type === 'transformation'
                                   ? { kind: 'add-transformation', id, name }
+                                  : type === 'custom-code'
+                                  ? { kind: 'add-custom-code', id, name }
                                   : type === 'identity-provider'
                                   ? { kind: 'add-identity-provider', id, name }
                                   : {
@@ -6651,8 +6709,8 @@ export class ModuxEditor extends LitElement {
             : this._view === 'design'
               ? k.type === 'page' || k.type.startsWith('cmp:')
               : this._view === 'mappings'
-                ? ['ui-model', 'model-field', 'transformation'].includes(k.type)
-                : !['page', 'menu-item', 'model-field', 'transformation'].includes(k.type) && !k.type.startsWith('cmp:')) &&
+                ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
+                : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code'].includes(k.type) && !k.type.startsWith('cmp:')) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
@@ -7405,16 +7463,54 @@ export class ModuxEditor extends LitElement {
               const mapped = normalizeActivation(e.detail.id, kind);
               if (mapped) this.openInDrawer(mapped);
             }}
-            @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string }>) => {
-              // The handle draws the SAME relations as the context map: reuse its
-              // semantics by applying the connection under that view's rules.
+            @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string; x?: number; y?: number }>) => {
+              const { sourceId, targetId, x, y } = e.detail;
+              // Two bounded contexts: the strategic relation needs its TYPE — the
+              // picker opens at the drop point (create, or retype if declared).
+              const isModule = (id: string) => this.model.modules.some((mo) => mo.id === id);
+              if (isModule(sourceId) && isModule(targetId)) {
+                const declared = this.model.relations.find(
+                  (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
+                );
+                this._relationPicker = {
+                  sourceId,
+                  targetId,
+                  mode: declared ? 'edit' : 'create',
+                  x: x ?? this.clientWidth / 2,
+                  y: y ?? 120,
+                };
+                return;
+              }
+              // Everything else draws the SAME relations as the context map: reuse
+              // its semantics by applying the connection under that view's rules.
               const prev = this._view;
               this._view = 'context-map';
               try {
-                this.applyConnection(e.detail.sourceId, e.detail.targetId);
+                this.applyConnection(sourceId, targetId);
               } finally {
                 this._view = prev;
               }
+            }}
+            @explorer-create-view=${(e: CustomEvent<{ name: string; members: { id: string; kind: string }[] }>) => {
+              // Members are the VIEW-able kinds; finer elements ride along with
+              // their (also visible) owning container, like in canvas selections.
+              const MEMBER_KINDS = new Set([
+                'module', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
+                'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'page', 'ui-app',
+              ]);
+              const memberIds = [...new Set(
+                e.detail.members.filter((m) => MEMBER_KINDS.has(m.kind)).map((m) => m.id),
+              )];
+              if (!memberIds.length) {
+                this.emit('modux-notice', { message: 'Despliega algo antes de crear la vista' });
+                return;
+              }
+              const id = `view-${slug(e.detail.name)}`;
+              this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
+              this._activeViewId = id;
+              this.emit('modux-notice', {
+                message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
+              });
             }}
           ></modux-explorer>`
         : this._tilt

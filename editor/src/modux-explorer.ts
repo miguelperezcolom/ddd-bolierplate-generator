@@ -313,6 +313,9 @@ export class ModuxExplorer extends LitElement {
   @state() private _active = 0;
   /** The constant breathing of the map — the toggle stops it, not the springs. */
   @state() private _motion = true;
+  /** Naming a curated view built from what is unfolded right now. */
+  @state() private _viewNaming = false;
+  @state() private _viewName = '';
   /** alt+click focus: only these keys render; undefined = everything. */
   private focusKeys?: Set<string>;
   /** A relation being drawn from the hover handle towards the pointer. */
@@ -655,6 +658,24 @@ export class ModuxExplorer extends LitElement {
     };
     if (this.root) walk(this.root);
     this.saveState();
+  }
+
+  /** A curated view out of the CURRENT picture: whatever is unfolded, as members. */
+  private createViewFromVisible(): void {
+    const name = this._viewName.trim();
+    if (!name) return;
+    const members = this.visible()
+      .filter((n) => n.kind !== 'root' && n.kind !== 'group' && n.refId)
+      .map((n) => ({ id: n.refId, kind: n.kind }));
+    this._viewNaming = false;
+    this._viewName = '';
+    this.dispatchEvent(
+      new CustomEvent('explorer-create-view', {
+        detail: { name, members },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /**
@@ -1432,7 +1453,8 @@ export class ModuxExplorer extends LitElement {
       if (target && target !== source && target.kind !== 'root' && source.refId && target.refId) {
         this.dispatchEvent(
           new CustomEvent('explorer-connect', {
-            detail: { sourceId: source.refId, targetId: target.refId },
+            // client coords travel along: pickers (fixed-position) open at the drop point
+            detail: { sourceId: source.refId, targetId: target.refId, x: e.clientX, y: e.clientY },
             bubbles: true,
             composed: true,
           }),
@@ -1561,6 +1583,28 @@ export class ModuxExplorer extends LitElement {
         >
           ${this._motion ? '⏸ Quieto' : '▶ Movimiento'}
         </button>
+        ${this._viewNaming
+          ? html`
+              <input
+                type="text"
+                style="width: 130px"
+                placeholder="Nombre de la vista…"
+                .value=${this._viewName}
+                @input=${(e: Event) => (this._viewName = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => {
+                  if (e.key === 'Enter') this.createViewFromVisible();
+                  if (e.key === 'Escape') this._viewNaming = false;
+                }}
+              />
+              <button @click=${() => this.createViewFromVisible()}>Crear</button>
+              <button @click=${() => (this._viewNaming = false)}>✕</button>
+            `
+          : html`<button
+              title="Crea una vista modux con los elementos desplegados ahora mismo"
+              @click=${() => (this._viewNaming = true)}
+            >
+              ⊞ Vista…
+            </button>`}
       </div>
       <div class="hud">
         click: expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
