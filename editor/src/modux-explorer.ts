@@ -311,8 +311,11 @@ export class ModuxExplorer extends LitElement {
   @state() private _q = '';
   @state() private _sugs: XNode[] = [];
   @state() private _active = 0;
-  /** The constant breathing of the map — the toggle stops it, not the springs. */
-  @state() private _motion = true;
+  /**
+   * How ALIVE the map is, 0..1: scales the breathing noise, and below 1 raises
+   * the friction and widens the dead band until, at 0, nodes park in equilibrium.
+   */
+  @state() private _motion = 1;
   /** Cross-relation threads: always on, or only for the hovered node. */
   @state() private _threads = false;
   /** Naming a curated view built from what is unfolded right now. */
@@ -747,9 +750,9 @@ export class ModuxExplorer extends LitElement {
         n.vx -= n.x * ANCHOR_K;
         n.vy -= n.y * ANCHOR_K;
       }
-      if (!this.reducedMotion && this._motion) {
-        n.vx += Math.sin(t * n.f1 * Math.PI * 2 + n.p1) * NOISE_AMP;
-        n.vy += Math.cos(t * n.f2 * Math.PI * 2 + n.p2) * NOISE_AMP;
+      if (!this.reducedMotion && this._motion > 0) {
+        n.vx += Math.sin(t * n.f1 * Math.PI * 2 + n.p1) * NOISE_AMP * this._motion;
+        n.vy += Math.cos(t * n.f2 * Math.PI * 2 + n.p2) * NOISE_AMP * this._motion;
       }
     }
     // Pairwise repulsion within a cutoff; hubs (low depth) push harder.
@@ -773,23 +776,25 @@ export class ModuxExplorer extends LitElement {
         b.vy += fy;
       }
     }
-    // Paused: the springs still settle whatever just moved, but the energy drains
-    // fast and a dead band PARKS the node — equilibrium, not perpetual push.
-    const calm = !this._motion;
+    // Below full motion the map turns viscous: friction rises and the dead band
+    // widens until, at 0, nodes PARK in equilibrium instead of pushing forever.
+    const m = this._motion;
+    const drag = DAMPING * m + 0.5 * (1 - m);
+    const dead = (1 - m) * 0.7;
     for (const n of nodes) {
       if (n === this.dragNode) {
         n.vx = 0;
         n.vy = 0;
         continue;
       }
-      n.vx *= calm ? 0.75 : DAMPING;
-      n.vy *= calm ? 0.75 : DAMPING;
+      n.vx *= drag;
+      n.vy *= drag;
       const v = Math.hypot(n.vx, n.vy);
       if (v > 14) {
         n.vx = (n.vx / v) * 14;
         n.vy = (n.vy / v) * 14;
       }
-      if (calm && v < 0.35) {
+      if (dead > 0 && v < dead) {
         n.vx = 0;
         n.vy = 0;
         continue;
@@ -1566,11 +1571,21 @@ export class ModuxExplorer extends LitElement {
         <button title="Plegarlo todo y volver a empezar" @click=${() => this.applyLevels(0)}>
           Replegar
         </button>
+        <span>Física</span>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          .value=${String(Math.round(this._motion * 100))}
+          title="Cuánto se mueve el mapa: 0 aparca los nodos en equilibrio"
+          @input=${(e: Event) => (this._motion = Number((e.target as HTMLInputElement).value) / 100)}
+        />
         <button
-          title=${this._motion ? 'Parar el movimiento constante' : 'Reanudar el movimiento'}
-          @click=${() => (this._motion = !this._motion)}
+          title=${this._motion > 0 ? 'Parar del todo (física a 0)' : 'Reanudar el movimiento'}
+          @click=${() => (this._motion = this._motion > 0 ? 0 : 1)}
         >
-          ${this._motion ? '⏸ Quieto' : '▶ Movimiento'}
+          ${this._motion > 0 ? '⏸' : '▶'}
         </button>
         <button
           title=${this._threads
