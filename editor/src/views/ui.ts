@@ -305,7 +305,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       h,
       kind: 'page',
       symbol: 'interface',
-      badge: page.type ?? 'PAGE',
+      badge: page.customCodeId ? 'CODE' : page.type ?? 'PAGE',
       container: wizSteps.length > 0,
       extraHandles: [
         { kind: 'viewmodel', title: 'Viewmodel: arrastra hasta el modelo de datos de la página', color: '#8b5cf6' },
@@ -527,6 +527,56 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       color: '#6366f1',
       arrow: true,
     });
+  }
+
+  // ---- custom code: hand-written pieces pages/components delegate to ------
+  (model.customCodes ?? []).forEach((cc, i) => {
+    const pos = layout[cc.id] ?? { x: 1200, y: 120 + i * 90 };
+    nodes.push({
+      id: cc.id,
+      label: cc.name,
+      x: pos.x,
+      y: pos.y,
+      w: 150,
+      h: 44,
+      kind: 'custom-code',
+      symbol: 'gear',
+      fill: '#f8fafc',
+      stroke: '#0f172a',
+      badge: 'CODE',
+      dashed: true,
+      tooltip: `${cc.name} — código a mano: arrastra una página hasta él para hacerla custom, y su asa hasta cualquier elemento que use`,
+    });
+  });
+  const uiNodeIds = new Set(nodes.map((n) => n.id));
+  for (const page of pages) {
+    if (page.customCodeId && uiNodeIds.has(page.customCodeId)) {
+      edges.push({
+        id: `ccpage:${page.id}`,
+        sourceId: page.customCodeId,
+        targetId: page.id,
+        kind: 'ui-custom-page',
+        color: '#0f172a',
+        dashed: true,
+        arrow: true,
+        tooltip: `La página ${page.name} es CUSTOM: delega en este código — Supr lo desconecta`,
+      });
+    }
+  }
+  for (const cc of model.customCodes ?? []) {
+    for (const used of cc.usedElementIds ?? []) {
+      if (!uiNodeIds.has(used)) continue;
+      edges.push({
+        id: `ccuse:${cc.id}->${used}`,
+        sourceId: cc.id,
+        targetId: used,
+        kind: 'cc-uses',
+        color: '#64748b',
+        dashed: true,
+        arrow: true,
+        tooltip: `${cc.name} usa este elemento — Supr lo desconecta`,
+      });
+    }
   }
 
   return { nodes, edges };

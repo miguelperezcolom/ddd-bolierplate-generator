@@ -786,6 +786,26 @@ export type ModuxCommand =
       id: string;
       targetId: string | null;
     }
+  | {
+      /** The page delegates to hand-written code — the page is CUSTOM (null unwires). */
+      kind: 'set-page-custom-code';
+      id: string;
+      targetId: string | null;
+    }
+  | {
+      /** The component delegates to hand-written code — the component is CUSTOM. */
+      kind: 'set-page-component-custom-code';
+      pageId: string;
+      componentId: string;
+      targetId: string | null;
+    }
+  | {
+      /** The custom code TOUCHES an element (UI, use case, model… free-form intent). */
+      kind: 'add-custom-code-use';
+      id: string;
+      elementId: string;
+    }
+  | { kind: 'remove-custom-code-use'; id: string; elementId: string }
   | { kind: 'add-transformation'; id: string; name: string }
   | { kind: 'remove-transformation'; id: string }
   | {

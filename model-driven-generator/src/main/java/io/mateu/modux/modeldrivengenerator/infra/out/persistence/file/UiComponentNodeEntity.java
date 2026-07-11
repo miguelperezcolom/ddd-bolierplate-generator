@@ -35,8 +35,20 @@ public record UiComponentNodeEntity(
         /** Columns spanned inside a form/grid layout. */
         Integer colspan,
         /** Nested content — layouts are trees. */
-        List<UiComponentNodeEntity> children
+        List<UiComponentNodeEntity> children,
+        /** The hand-written code this component delegates to (the component is CUSTOM). */
+        String customCodeId
 ) {
+
+    /** Backward-compatible constructor (pre-customCodeId callers and stores). */
+    public UiComponentNodeEntity(String id, String kind, String title, String text, String label,
+                                 String useCaseId, String mappingId, String modelId,
+                                 String queryServiceId, String queryOperationId, String fieldId,
+                                 String stereotype, Integer colspan,
+                                 List<UiComponentNodeEntity> children) {
+        this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
+                queryOperationId, fieldId, stereotype, colspan, children, null);
+    }
 
     /** Kinds that lay out other nodes — only these carry children. */
     public static final Set<String> LAYOUT_KINDS = Set.of(

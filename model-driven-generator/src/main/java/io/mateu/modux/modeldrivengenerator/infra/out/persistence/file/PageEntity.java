@@ -34,8 +34,26 @@ public record PageEntity(
         /** CRUD: the new-record form — a page… */
         String crudCreatePageId,
         /** …or an app. */
-        String crudCreateAppId
+        String crudCreateAppId,
+        /** The hand-written code this page delegates to (the page is CUSTOM). */
+        String customCodeId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-customCodeId callers and stores). */
+    public PageEntity(String id, String name, String route, String type, String aggregateId,
+                      String modelId, List<String> componentIds, String listingDataSourceType,
+                      String listingGatewayId, List<PageButtonEntity> toolbar,
+                      List<PageButtonEntity> bottomBar, List<PageTriggerEntity> triggers,
+                      List<PageRuleEntity> rules, List<PageValidationEntity> validations,
+                      List<PageFieldConfigEntity> fieldConfigs, List<PageWizardStepEntity> wizardSteps,
+                      List<PageButtonEntity> completionActions, String listingQueryServiceId,
+                      List<UiComponentNodeEntity> content, String crudDetailPageId,
+                      String crudDetailAppId, String crudCreatePageId, String crudCreateAppId) {
+        this(id, name, route, type, aggregateId, modelId, componentIds, listingDataSourceType,
+                listingGatewayId, toolbar, bottomBar, triggers, rules, validations, fieldConfigs,
+                wizardSteps, completionActions, listingQueryServiceId, content, crudDetailPageId,
+                crudDetailAppId, crudCreatePageId, crudCreateAppId, null);
+    }
 
     /** Backward-compatible constructor (pre-crud-targets callers and stores). */
     public PageEntity(String id, String name, String route, String type, String aggregateId,

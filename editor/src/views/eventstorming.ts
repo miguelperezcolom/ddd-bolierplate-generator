@@ -78,6 +78,68 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
     });
   }
 
+  // ---- the pipeline: each command's steps chain under it; CODE stickies ----
+  for (const uc of useCases) {
+    (uc.steps ?? []).forEach((st, i) => {
+      addNode(b, {
+        id: st.id,
+        label: `${i + 1}. ${st.name || st.type || 'paso'}`,
+        x: 0,
+        y: 0,
+        w: STICKY.command.w,
+        h: 30,
+        kind: 'use-case-step',
+        symbol: 'gear',
+        fill: '#eff6ff',
+        stroke: '#1d4ed8',
+        dashed: !!st.customCodeId,
+        tooltip: `Paso de ${uc.name}${st.customCodeId ? ' — delega en código a mano' : ''} — arrastra su asa hasta un CODE para delegar en él`,
+      });
+      addEdge(b, {
+        id: `esstep:${i === 0 ? uc.id : (uc.steps ?? [])[i - 1].id}->${st.id}`,
+        sourceId: i === 0 ? uc.id : (uc.steps ?? [])[i - 1].id,
+        targetId: st.id,
+        kind: 'es-step',
+        color: '#94a3b8',
+        dashed: true,
+        arrow: true,
+        tooltip: `pipeline de ${uc.name}`,
+      });
+    });
+  }
+  for (const cc of model.customCodes ?? []) {
+    addNode(b, {
+      id: cc.id,
+      label: cc.name,
+      x: 0,
+      y: 0,
+      w: 150,
+      h: 44,
+      kind: 'custom-code',
+      symbol: 'gear',
+      fill: '#f8fafc',
+      stroke: '#0f172a',
+      badge: 'CODE',
+      dashed: true,
+      tooltip: `${cc.name} — código a mano: los pasos Custom delegan en él`,
+    });
+  }
+  for (const uc of useCases) {
+    for (const st of uc.steps ?? []) {
+      if (!st.customCodeId) continue;
+      addEdge(b, {
+        id: `escc:${st.id}`,
+        sourceId: st.id,
+        targetId: st.customCodeId,
+        kind: 'es-custom',
+        color: '#0f172a',
+        dashed: true,
+        arrow: true,
+        tooltip: `El paso delega en código a mano — Supr lo desconecta`,
+      });
+    }
+  }
+
   // ---- aggregates ----------------------------------------------------------
   for (const agg of aggregates) {
     addNode(b, {

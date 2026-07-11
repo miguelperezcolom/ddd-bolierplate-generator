@@ -25,6 +25,8 @@ export interface UseCaseRef {
   policy?: boolean;
   /** Ids of the use case's steps (typed step editing stays in its form). */
   stepIds?: string[];
+  /** The pipeline steps, enough to draw them (full editing stays in the form). */
+  steps?: { id: string; name?: string; type?: string; customCodeId?: string }[];
   /** The request/command model this use case receives. */
   inputModelId?: string;
 }
@@ -560,6 +562,8 @@ export interface UiComponentNodeRef {
   stereotype?: string;
   colspan?: number;
   children?: UiComponentNodeRef[];
+  /** The hand-written code this component delegates to (the component is CUSTOM). */
+  customCodeId?: string;
 }
 
 export interface UiPageRef {
@@ -584,6 +588,8 @@ export interface UiPageRef {
   /** CRUD: the new-record form — a page or an app. */
   crudCreatePageId?: string;
   crudCreateAppId?: string;
+  /** The hand-written code the page delegates to (the page is CUSTOM). */
+  customCodeId?: string;
 }
 
 export interface ActorAppUseRef {
@@ -681,8 +687,8 @@ export interface ModuxModel {
     /** The hand-written code this mapping delegates to. */
     customCodeId?: string;
   }[];
-  /** Hand-written code, first-class: mappings, transformations and Custom steps point at it. */
-  customCodes?: { id: string; name: string }[];
+  /** Hand-written code, first-class: mappings, transformations, steps, pages and components point at it. */
+  customCodes?: { id: string; name: string; usedElementIds?: string[] }[];
   /** Transformations: models/fields in, a model or field out — wired on the mappings map. */
   transformations?: {
     id: string;

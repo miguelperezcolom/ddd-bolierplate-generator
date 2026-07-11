@@ -16,6 +16,17 @@ public record CustomCodeEntity(
         /** e.g. java, sql, python — informative for now. */
         String language,
         /** What the code does, in natural language (feeds ai-complete). */
-        String description
+        String description,
+        /** The elements this code touches (UI, use cases, models… — free-form intent). */
+        java.util.List<String> usedElementIds
 ) implements Identifiable {
+
+    public CustomCodeEntity {
+        if (usedElementIds == null) usedElementIds = java.util.List.of();
+    }
+
+    /** Backward-compatible constructor (pre-usedElementIds callers and stores). */
+    public CustomCodeEntity(String id, String name, String language, String description) {
+        this(id, name, language, description, null);
+    }
 }

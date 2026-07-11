@@ -152,7 +152,10 @@ public class EditorApiController {
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
-    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds, String inputModelId) {}
+    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds, String inputModelId,
+                             List<UseCaseStepDto> steps) {}
+    /** An operation of a use case — the pipeline step, with its custom-code delegation. */
+    public record UseCaseStepDto(String id, String name, String type, String customCodeId) {}
     public record AggregateDto(String id, String name, String moduleId) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
@@ -263,7 +266,9 @@ public class EditorApiController {
                             List<UiComponentNodeDto> content,
                             List<UiWizardStepDto> wizardSteps,
                             String crudDetailPageId, String crudDetailAppId,
-                            String crudCreatePageId, String crudCreateAppId) {}
+                            String crudCreatePageId, String crudCreateAppId,
+                            /** The hand-written code the page delegates to (CUSTOM page). */
+                            String customCodeId) {}
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
 
@@ -286,7 +291,7 @@ public class EditorApiController {
                                      String useCaseId, String mappingId, String modelId,
                                      String queryServiceId, String queryOperationId,
                                      String fieldId, String stereotype, Integer colspan,
-                                     List<UiComponentNodeDto> children) {}
+                                     List<UiComponentNodeDto> children, String customCodeId) {}
     /** A viewmodel field as the page designer sees it: model field + its PageFieldConfig. */
     public record UiFieldDto(String fieldId, String name, String type, String stereotype,
                              Integer colspan, String label, String help) {}
@@ -301,6 +306,7 @@ public class EditorApiController {
     public record MappingRuleDto(String id, String sourceFieldId, String targetFieldId) {}
     /** What a transformation reads or writes: a whole model (fieldId null) or one field. */
     public record TransformationRefDto(String modelId, String fieldId) {}
+    public record CustomCodeDto(String id, String name, List<String> usedElementIds) {}
     public record TransformationDto(String id, String name, List<TransformationRefDto> inputs,
                                     TransformationRefDto output, String customCodeId) {}
 
@@ -359,7 +365,7 @@ public class EditorApiController {
             List<CodeModuleDto> codeModules,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
-            List<NamedRefDto> customCodes,
+            List<CustomCodeDto> customCodes,
             List<MappingRefDto> modelMappings) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
@@ -480,7 +486,12 @@ public class EditorApiController {
                                 .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy(),
                                         (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
                                                 .map(UseCaseStepEntity::id).toList(),
-                                        uc.inputModelId()))
+                                        uc.inputModelId(),
+                                        (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
+                                                .map(st -> new UseCaseStepDto(st.id(), st.name(),
+                                                        st.type() == null ? null : st.type().name(),
+                                                        st.customCodeId()))
+                                                .toList()))
                                 .toList(),
                         (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
                                 .map(domainEventsById::get)
@@ -864,7 +875,7 @@ public class EditorApiController {
                                 .map(s -> new UiWizardStepDto(s.pageId(), s.label(), s.key()))
                                 .toList(),
                         p.crudDetailPageId(), p.crudDetailAppId(),
-                        p.crudCreatePageId(), p.crudCreateAppId()))
+                        p.crudCreatePageId(), p.crudCreateAppId(), p.customCodeId()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
         for (var role : repository.findAllOfType(RoleEntity.class)) {
@@ -1020,7 +1031,7 @@ public class EditorApiController {
                                 t.customCodeId()))
                         .toList(),
                 repository.findAllOfType(CustomCodeEntity.class).stream()
-                        .map(x -> new NamedRefDto(x.id(), x.name()))
+                        .map(x -> new CustomCodeDto(x.id(), x.name(), x.usedElementIds()))
                         .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
@@ -1038,7 +1049,8 @@ public class EditorApiController {
                 node.fieldId(), node.stereotype(), node.colspan(),
                 (node.children() == null ? List.<UiComponentNodeEntity>of() : node.children()).stream()
                         .map(EditorApiController::toComponentNode)
-                        .toList());
+                        .toList(),
+                node.customCodeId());
     }
 
     private static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
@@ -1117,6 +1129,10 @@ public class EditorApiController {
             case "set-mapping-custom-code" -> setMappingCustomCode(command);
             case "set-transformation-custom-code" -> setTransformationCustomCode(command);
             case "set-use-case-step-custom-code" -> setUseCaseStepCustomCode(command);
+            case "set-page-custom-code" -> setPageCustomCode(command);
+            case "set-page-component-custom-code" -> setPageComponentCustomCode(command);
+            case "add-custom-code-use" -> addCustomCodeUse(command);
+            case "remove-custom-code-use" -> removeCustomCodeUse(command);
             case "remove-transformation" -> removeTransformation(command);
             case "add-transformation-input" -> addTransformationInput(command);
             case "remove-transformation-input" -> removeTransformationInput(command);
@@ -4084,6 +4100,16 @@ public class EditorApiController {
                     .map(st -> command.id().equals(st.customCodeId()) ? stepWithCustomCode(st, null) : st)
                     .toList()));
         }
+        for (var pg : repository.findAllOfType(PageEntity.class)) {
+            var content = withoutComponentCustomCode(pg.content(), command.id());
+            var pageLinked = command.id().equals(pg.customCodeId());
+            if (pageLinked || content != null) {
+                repository.save(pg.toBuilder()
+                        .customCodeId(pageLinked ? null : pg.customCodeId())
+                        .content(content != null ? content : pg.content())
+                        .build());
+            }
+        }
         repository.deleteAllById(List.of(command.id()), CustomCodeEntity.class);
     }
 
@@ -4126,6 +4152,71 @@ public class EditorApiController {
                 s.gatewayId(), s.gatewayOperationId(), s.domainEventId(), s.useCaseId(),
                 s.modelMappingId(), s.queryServiceId(), s.queryOperationId(), s.intent(),
                 s.applicationEventId(), s.externalUseCaseId(), customCodeId);
+    }
+
+    /** The page delegates to hand-written code — the page is CUSTOM (targetId null unwires). */
+    private void setPageCustomCode(EditorCommand command) {
+        var page = repository.findById(command.id(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.id()));
+        repository.save(page.toBuilder().customCodeId(customCodeRefOf(command)).build());
+    }
+
+    /** The component delegates to hand-written code — the component is CUSTOM. */
+    private void setPageComponentCustomCode(EditorCommand command) {
+        var page = repository.findById(command.pageId(), PageEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
+        var ccId = customCodeRefOf(command);
+        repository.save(page.toBuilder()
+                .content(withComponentCustomCode(page.content(), command.componentId(), ccId))
+                .build());
+    }
+
+    private static List<UiComponentNodeEntity> withComponentCustomCode(
+            List<UiComponentNodeEntity> nodes, String componentId, String customCodeId) {
+        if (nodes == null) return null;
+        return nodes.stream()
+                .map(n -> new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
+                        n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
+                        n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
+                        withComponentCustomCode(n.children(), componentId, customCodeId),
+                        n.id().equals(componentId) ? customCodeId : n.customCodeId()))
+                .toList();
+    }
+
+    /** The content tree with every reference to the given code cleared, or null when untouched. */
+    private static List<UiComponentNodeEntity> withoutComponentCustomCode(
+            List<UiComponentNodeEntity> nodes, String customCodeId) {
+        if (nodes == null) return null;
+        var changed = false;
+        var copy = new ArrayList<UiComponentNodeEntity>();
+        for (var n : nodes) {
+            var children = withoutComponentCustomCode(n.children(), customCodeId);
+            var hit = customCodeId.equals(n.customCodeId());
+            if (hit || children != null) changed = true;
+            copy.add(new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
+                    n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
+                    n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
+                    children != null ? children : n.children(),
+                    hit ? null : n.customCodeId()));
+        }
+        return changed ? copy : null;
+    }
+
+    /** The custom code TOUCHES an element (UI, use case, model… free-form intent). */
+    private void addCustomCodeUse(EditorCommand command) {
+        var cc = repository.findById(command.id(), CustomCodeEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + command.id()));
+        if (cc.usedElementIds().contains(command.elementId())) return;
+        var ids = new ArrayList<>(cc.usedElementIds());
+        ids.add(command.elementId());
+        repository.save(cc.toBuilder().usedElementIds(ids).build());
+    }
+
+    private void removeCustomCodeUse(EditorCommand command) {
+        var cc = repository.findById(command.id(), CustomCodeEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + command.id()));
+        repository.save(cc.toBuilder()
+                .usedElementIds(without(cc.usedElementIds(), command.elementId())).build());
     }
 
     private void addModelField(EditorCommand command) {

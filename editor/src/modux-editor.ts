@@ -2721,6 +2721,28 @@ export class ModuxEditor extends LitElement {
         }
       }
     }
+    // EventStorming: a step dropped on a CODE sticky delegates in that hand-written code.
+    if (this._view === 'eventstorming') {
+      const isCC = (id: string) => (this.model.customCodes ?? []).some((cc) => cc.id === id);
+      const pair = isCC(targetId)
+        ? { stepId: sourceId, ccId: targetId }
+        : isCC(sourceId)
+          ? { stepId: targetId, ccId: sourceId }
+          : null;
+      if (pair) {
+        const owner = this.owningUseCaseOf(pair.stepId);
+        if (owner) {
+          this.command({
+            kind: 'set-use-case-step-custom-code',
+            useCaseId: owner.id,
+            id: pair.stepId,
+            targetId: pair.ccId,
+          });
+        }
+        return;
+      }
+      return;
+    }
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
       const sourceOwner = this.owningWorkflowOf(sourceId);
@@ -2741,6 +2763,19 @@ export class ModuxEditor extends LitElement {
       const apps = this.model.uiApps ?? [];
       const isApp = (id: string) => apps.some((a) => a.id === id);
       const isPage = (id: string) => pages.some((x) => x.id === id);
+      const isCC = (id: string) => (this.model.customCodes ?? []).some((cc) => cc.id === id);
+      // custom code: página ↔ CODE la hace custom; CODE → cualquier otro elemento = «lo usa»
+      if (isCC(sourceId) || isCC(targetId)) {
+        const ccId = isCC(sourceId) ? sourceId : targetId;
+        const other = isCC(sourceId) ? targetId : sourceId;
+        if (isCC(other)) return;
+        if (isPage(other)) {
+          this.command({ kind: 'set-page-custom-code', id: other, targetId: ccId });
+          return;
+        }
+        this.command({ kind: 'add-custom-code-use', id: ccId, elementId: other });
+        return;
+      }
       // typed handles first: they say exactly WHAT the line means
       if (connectKind === 'home' && isApp(sourceId) && (isPage(targetId) || isApp(targetId))) {
         if (targetId === sourceId) return;
@@ -4057,6 +4092,20 @@ export class ModuxEditor extends LitElement {
   }
 
   private performDelete(elementType: string, id: string, kind: string): void {
+    if (this._view === 'eventstorming' && elementType === 'edge' && kind === 'es-custom') {
+      const match = /^escc:(.+)$/.exec(id);
+      const owner = match ? this.owningUseCaseOf(match[1]) : null;
+      if (match && owner) {
+        this._selectedId = null;
+        this.command({ kind: 'set-use-case-step-custom-code', useCaseId: owner.id, id: match[1], targetId: null });
+      }
+      return;
+    }
+    if (this._view === 'eventstorming' && elementType === 'node' && kind === 'custom-code') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-custom-code', id });
+      return;
+    }
     if (this._view === 'ui') {
       if (elementType === 'edge') {
         let m: RegExpExecArray | null;
@@ -4131,6 +4180,20 @@ export class ModuxEditor extends LitElement {
       }
       if (kind === 'identity-provider') {
         this.command({ kind: 'remove-identity-provider', id });
+        return;
+      }
+      if (kind === 'custom-code') {
+        this.command({ kind: 'remove-custom-code', id });
+        return;
+      }
+      if (elementType === 'edge' && kind === 'ui-custom-page') {
+        const m2 = /^ccpage:(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'set-page-custom-code', id: m2[1], targetId: null });
+        return;
+      }
+      if (elementType === 'edge' && kind === 'cc-uses') {
+        const m2 = /^ccuse:(.+)->(.+)$/.exec(id);
+        if (m2) this.command({ kind: 'remove-custom-code-use', id: m2[1], elementId: m2[2] });
         return;
       }
       // system chips (use cases, query services, models, actors) are not deletable from here
@@ -4731,6 +4794,12 @@ export class ModuxEditor extends LitElement {
 
   private owningProcessOf(stepId: string) {
     return (this.model.processes ?? []).find((p) => p.steps.some((s) => s.id === stepId));
+  }
+
+  private owningUseCaseOf(stepId: string) {
+    return this.model.modules
+      .flatMap((mo) => mo.useCases ?? [])
+      .find((uc) => (uc.steps ?? []).some((st) => st.id === stepId));
   }
 
   private owningWorkflowOf(stepId: string) {
@@ -5970,6 +6039,7 @@ export class ModuxEditor extends LitElement {
       (m.codeModules ?? []).map((x) => x.id),
       (m.services ?? []).map((x) => x.id),
       (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
+      (m.customCodes ?? []).map((x) => x.id),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -6044,6 +6114,27 @@ export class ModuxEditor extends LitElement {
   ): void {
     const def = ModuxEditor.PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
+    if (type === 'custom-code' && this._view === 'design') {
+      // dropped ON a component (or a page frame): that piece becomes CUSTOM,
+      // delegating in a freshly created piece of hand-written code.
+      const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
+      const pageId = m ? m[1]
+        : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
+      if (!pageId) {
+        this.emit('modux-notice', { message: 'Suelta el custom code sobre una página o un componente' });
+        return;
+      }
+      const { id, name } = this.uniquePaletteName('Custom code', 'cc-');
+      this.command({ kind: 'add-custom-code', id, name }, false);
+      if (m) {
+        this.command({ kind: 'set-page-component-custom-code', pageId, componentId: m[2], targetId: id });
+        this.emit('modux-notice', { message: 'Componente CUSTOM — su código se declara en el nodo CODE (vista UI/Mapeados)' });
+      } else {
+        this.command({ kind: 'set-page-custom-code', id: pageId, targetId: id });
+        this.emit('modux-notice', { message: 'Página CUSTOM — cablea desde su CODE lo que usa (vista UI)' });
+      }
+      return;
+    }
     if (type.startsWith('cmp:')) {
       const componentKind = type.slice(4);
       const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
@@ -6705,9 +6796,9 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider'].includes(k.type)
+            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code'].includes(k.type)
             : this._view === 'design'
-              ? k.type === 'page' || k.type.startsWith('cmp:')
+              ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
                 : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code'].includes(k.type) && !k.type.startsWith('cmp:')) &&

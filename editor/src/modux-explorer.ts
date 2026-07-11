@@ -771,18 +771,26 @@ export class ModuxExplorer extends LitElement {
         b.vy += fy;
       }
     }
+    // Paused: the springs still settle whatever just moved, but the energy drains
+    // fast and a dead band PARKS the node — equilibrium, not perpetual push.
+    const calm = !this._motion;
     for (const n of nodes) {
       if (n === this.dragNode) {
         n.vx = 0;
         n.vy = 0;
         continue;
       }
-      n.vx *= DAMPING;
-      n.vy *= DAMPING;
+      n.vx *= calm ? 0.75 : DAMPING;
+      n.vy *= calm ? 0.75 : DAMPING;
       const v = Math.hypot(n.vx, n.vy);
       if (v > 14) {
         n.vx = (n.vx / v) * 14;
         n.vy = (n.vy / v) * 14;
+      }
+      if (calm && v < 0.35) {
+        n.vx = 0;
+        n.vy = 0;
+        continue;
       }
       n.x += n.vx;
       n.y += n.vy;
@@ -1439,7 +1447,17 @@ export class ModuxExplorer extends LitElement {
     }
     const w = this.toWorld(e);
     const prev = this.hover;
-    this.hover = this.nodeAt(w.x, w.y);
+    let next = this.nodeAt(w.x, w.y);
+    // Sticky hover: crossing the gap towards the handle must not lose it (the
+    // node shrinks and the handle vanishes right when you reach for it).
+    if (!next && prev && prev.kind !== 'root') {
+      const hc = this.handleCenter(prev);
+      const reach = this.radiusOf(prev) + 22 / this.cam.k;
+      const nearNode = (w.x - prev.x) ** 2 + (w.y - prev.y) ** 2 <= reach * reach;
+      const nearHandle = (w.x - hc.x) ** 2 + (w.y - hc.y) ** 2 <= (12 / this.cam.k) ** 2;
+      if (nearNode || nearHandle) next = prev;
+    }
+    this.hover = next;
     if (this.hover !== prev) this.hoverAt = this.t;
     if (this.canvas) this.canvas.style.cursor = this.hover ? 'pointer' : 'default';
   }
