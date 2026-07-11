@@ -717,24 +717,27 @@ export function contextMapScene(
     (px) => px.publishedByExternalSystemId && externalIds.has(px.publishedByExternalSystemId),
   );
   const nestedProxyIds = new Set(nestedProxies.map((px) => px.id));
+  // The distribution level narrows the cast: modules, services and infrastructure —
+  // the strategic nodes (externals, APIs, workflows, floating ETLs) stay on the
+  // other levels.
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
-    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false })),
-    ...(model.apis ?? [])
+    ...(distributionLevel ? [] : model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false }))),
+    ...(distributionLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
-      .map((a) => ({ ref: a, external: false, api: true, proxy: false })),
-    ...(model.proxyApis ?? [])
+      .map((a) => ({ ref: a, external: false, api: true, proxy: false }))),
+    ...(distributionLevel ? [] : (model.proxyApis ?? [])
       .filter((px) => !nestedProxyIds.has(px.id))
-      .map((px) => ({ ref: px, external: false, api: false, proxy: true })),
-    ...(model.workflows ?? []).map((w) => ({
+      .map((px) => ({ ref: px, external: false, api: false, proxy: true }))),
+    ...(distributionLevel ? [] : (model.workflows ?? []).map((w) => ({
       ref: w,
       external: false,
       api: false,
       proxy: false,
       workflow: true,
-    })),
+    }))),
     // ETL flows without owner (legacy) still float; owned ones nest in their context.
-    ...(model.etlFlows ?? [])
+    ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerModuleId)
       .map((f) => ({
         ref: f,
@@ -742,7 +745,7 @@ export function contextMapScene(
         api: false,
         proxy: false,
         etl: true,
-      })),
+      }))),
     ...(model.identityProviders ?? []).map((idp) => ({
       ref: idp,
       external: false,
@@ -1060,14 +1063,23 @@ export function contextMapScene(
       h: NODE_H,
     }];
   });
-  // Business actors, AI agents, knowledge bases and MCP gateways live outside every context.
+  // Business actors, AI agents, knowledge bases and MCP gateways live outside every
+  // context — and outside the distribution level, which is about packaging.
+  const actorsAndAgents = distributionLevel
+    ? { actors: [], aiAgents: [], rags: [], mcpGateways: [] }
+    : {
+        actors: model.actors ?? [],
+        aiAgents: model.aiAgents ?? [],
+        rags: model.rags ?? [],
+        mcpGateways: model.mcpGateways ?? [],
+      };
   const totalTop =
     allNodes.length +
-    (model.actors ?? []).length +
-    (model.aiAgents ?? []).length +
-    (model.rags ?? []).length +
-    (model.mcpGateways ?? []).length;
-  (model.actors ?? []).forEach((a, i) => {
+    actorsAndAgents.actors.length +
+    actorsAndAgents.aiAgents.length +
+    actorsAndAgents.rags.length +
+    actorsAndAgents.mcpGateways.length;
+  actorsAndAgents.actors.forEach((a, i) => {
     const pos = layout[a.id] ?? defaultPosition(allNodes.length + i, totalTop);
     nodes.push({
       id: a.id,
@@ -1084,7 +1096,7 @@ export function contextMapScene(
       tooltip: `${a.name} (actor)`,
     });
   });
-  (model.aiAgents ?? []).forEach((a, i) => {
+  actorsAndAgents.aiAgents.forEach((a, i) => {
     const pos =
       layout[a.id] ??
       defaultPosition(allNodes.length + (model.actors ?? []).length + i, totalTop);
@@ -1106,7 +1118,7 @@ export function contextMapScene(
         : `${a.name} (agente de IA — consume por MCP)`,
     });
   });
-  (model.mcpGateways ?? []).forEach((g, i) => {
+  actorsAndAgents.mcpGateways.forEach((g, i) => {
     const pos =
       layout[g.id] ??
       defaultPosition(
@@ -1133,7 +1145,7 @@ export function contextMapScene(
     });
   });
   const ragContentEdges: SceneEdge[] = [];
-  (model.rags ?? []).forEach((r, i) => {
+  actorsAndAgents.rags.forEach((r, i) => {
     const pos =
       layout[r.id] ??
       defaultPosition(
@@ -1184,10 +1196,12 @@ export function contextMapScene(
       });
     });
   });
-  // Distribution level: the services join the map — they say WHERE modules deploy.
+  // Distribution level: the services join the map — they say WHERE modules deploy —
+  // and the infrastructure they lean on shows up too (db, broker, engines).
   if (distributionLevel) {
-    (model.services ?? []).forEach((svc, i) => {
-      const pos = layout[svc.id] ?? defaultPosition(allNodes.length + i, allNodes.length + (model.services ?? []).length);
+    const services = model.services ?? [];
+    services.forEach((svc, i) => {
+      const pos = layout[svc.id] ?? defaultPosition(allNodes.length + i, allNodes.length + services.length);
       nodes.push({
         id: svc.id,
         label: svc.name,
@@ -1197,6 +1211,41 @@ export function contextMapScene(
         stroke: '#334155',
         badge: 'SERVICIO',
         tooltip: `${svc.name} — deployable: arrastra su asa hasta un módulo para desplegarlo aquí`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+    });
+    const infra: { id: string; label: string; badge: string; symbol: string; tooltip: string }[] = [];
+    [...new Set(services.filter((sv) => sv.database).map((sv) => sv.database as string))].forEach((db) =>
+      infra.push({ id: `infra-db:${db}`, label: db, badge: 'BD', symbol: 'readmodel',
+        tooltip: `Base de datos ${db} — la usan los servicios que declaran database=${db}` }));
+    if (services.some((sv) => sv.outboxEnabled)) {
+      infra.push({ id: 'infra-broker', label: 'Broker de eventos', badge: 'BROKER', symbol: 'event',
+        tooltip: 'Broker (Kafka/…) — lo alimentan los servicios con outbox' });
+    }
+    if ((model.workflows ?? []).length) {
+      infra.push({ id: 'infra-workflow-engine', label: 'Workflow engine', badge: 'ENGINE', symbol: 'process',
+        tooltip: 'Motor de workflows — ejecuta los workflows del modelo' });
+    }
+    if ((model.pages ?? []).length) {
+      infra.push({ id: 'infra-forms-engine', label: 'Forms engine', badge: 'ENGINE', symbol: 'interface',
+        tooltip: 'Motor de formularios (Mateu) — sirve las páginas declaradas' });
+    }
+    infra.forEach((inf, i) => {
+      const pos = layout[inf.id] ?? defaultPosition(allNodes.length + services.length + i,
+        allNodes.length + services.length + infra.length);
+      nodes.push({
+        id: inf.id,
+        label: inf.label,
+        kind: 'infrastructure',
+        symbol: inf.symbol,
+        fill: '#fffbeb',
+        stroke: '#92400e',
+        dashed: true,
+        badge: inf.badge,
+        tooltip: inf.tooltip,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1269,22 +1318,53 @@ export function contextMapScene(
   // level, where publisher and event both render as children.
   const nodeIds = new Set(nodes.map((n) => n.id));
 
-  // Deployment wiring (distribution level): service → the code modules it deploys.
+  // Deployment wiring (distribution level): service → the code modules it deploys,
+  // plus the infrastructure each service leans on.
   const deployEdges: SceneEdge[] = distributionLevel
-    ? (model.services ?? []).flatMap((svc) =>
-        (svc.codeModuleIds ?? [])
-          .filter((cmId) => nodeIds.has(cmId) && nodeIds.has(svc.id))
-          .map((cmId): SceneEdge => ({
-            id: `deploy:${svc.id}->${cmId}`,
-            sourceId: svc.id,
-            targetId: cmId,
-            kind: 'deploys',
-            color: '#334155',
-            dashed: true,
-            arrow: true,
-            tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
-          })),
-      )
+    ? [
+        ...(model.services ?? []).flatMap((svc) =>
+          (svc.codeModuleIds ?? [])
+            .filter((cmId) => nodeIds.has(cmId) && nodeIds.has(svc.id))
+            .map((cmId): SceneEdge => ({
+              id: `deploy:${svc.id}->${cmId}`,
+              sourceId: svc.id,
+              targetId: cmId,
+              kind: 'deploys',
+              color: '#334155',
+              dashed: true,
+              arrow: true,
+              tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
+            })),
+        ),
+        ...(model.services ?? []).flatMap((svc): SceneEdge[] => {
+          const out: SceneEdge[] = [];
+          if (svc.database && nodeIds.has(`infra-db:${svc.database}`) && nodeIds.has(svc.id)) {
+            out.push({
+              id: `infradb:${svc.id}`,
+              sourceId: svc.id,
+              targetId: `infra-db:${svc.database}`,
+              kind: 'infra-uses',
+              color: '#92400e',
+              dashed: true,
+              arrow: true,
+              tooltip: `${svc.name} persiste en ${svc.database}`,
+            });
+          }
+          if (svc.outboxEnabled && nodeIds.has('infra-broker') && nodeIds.has(svc.id)) {
+            out.push({
+              id: `infrabroker:${svc.id}`,
+              sourceId: svc.id,
+              targetId: 'infra-broker',
+              kind: 'infra-uses',
+              color: '#92400e',
+              dashed: true,
+              arrow: true,
+              tooltip: `${svc.name} publica eventos por el outbox`,
+            });
+          }
+          return out;
+        }),
+      ]
     : [];
   const emissionEdges: SceneEdge[] = detailed
     ? (model.emissions ?? [])

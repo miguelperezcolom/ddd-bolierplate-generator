@@ -16,10 +16,20 @@ public record WorkflowStepEntity(
         String targetUseCaseId,
         String completionEventName,
         List<String> dependsOnStepIds,
-        String description
+        String description,
+        /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
+        String type
 ) {
 
     public WorkflowStepEntity {
         if (dependsOnStepIds == null) dependsOnStepIds = List.of();
+    }
+
+    /** Backward-compatible constructor (pre-type callers and stores). */
+    public WorkflowStepEntity(String id, String name, String emittedEventName,
+                              String targetUseCaseId, String completionEventName,
+                              List<String> dependsOnStepIds, String description) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName,
+                dependsOnStepIds, description, null);
     }
 }

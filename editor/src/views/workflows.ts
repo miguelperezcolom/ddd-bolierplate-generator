@@ -141,14 +141,21 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
         label: step.name,
         x: pos.x,
         y: pos.y,
-        w: STEP_W,
-        h: STEP_H,
+        w: step.type === 'JOIN' || step.type === 'SPLIT' ? 100 : STEP_W,
+        h: step.type === 'JOIN' || step.type === 'SPLIT' ? 48 : STEP_H,
         kind: 'workflow-step',
-        symbol: 'event',
-        fill: '#ffffff',
+        symbol: step.type === 'JOIN' || step.type === 'SPLIT' ? 'flow' : 'event',
+        fill: step.type === 'JOIN' || step.type === 'SPLIT' ? '#f5f3ff' : '#ffffff',
         stroke: '#6d28d9',
-        badge: target ? `→ ${target}` : '∅ sin use case',
-        tooltip: `${step.name}${step.emittedEventName ? ` · emite ${step.emittedEventName}` : ''}${target ? ` · lanza ${target}` : ''}${step.completionEventName ? ` · espera ${step.completionEventName}` : ''}`,
+        dashed: step.type === 'JOIN' || step.type === 'SPLIT',
+        badge: step.type === 'JOIN' ? '⨝ JOIN'
+          : step.type === 'SPLIT' ? '⑃ SPLIT'
+          : target ? `→ ${target}` : '∅ sin use case',
+        tooltip: step.type === 'JOIN'
+          ? `${step.name} — espera a TODAS sus dependencias antes de seguir`
+          : step.type === 'SPLIT'
+            ? `${step.name} — abre ramas paralelas: los pasos que dependan de él arrancan a la vez`
+            : `${step.name}${step.emittedEventName ? ` · emite ${step.emittedEventName}` : ''}${target ? ` · lanza ${target}` : ''}${step.completionEventName ? ` · espera ${step.completionEventName}` : ''}`,
       });
       const deps = (step.dependsOnStepIds ?? []).filter((id) => byId.has(id));
       if (deps.length === 0) {

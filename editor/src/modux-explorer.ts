@@ -1363,6 +1363,32 @@ export class ModuxExplorer extends LitElement {
 
   // ── Interaction ───────────────────────────────────────────────────────
 
+  /** A client point → world coordinates (palette drops share the canvas contract). */
+  sceneFromClient(clientX: number, clientY: number): { x: number; y: number } {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - this.cam.x) / this.cam.k,
+      y: (clientY - rect.top - this.cam.y) / this.cam.k,
+    };
+  }
+
+  /** The MODEL element under a client point (its refId), for palette drops. */
+  nodeIdAtClient(clientX: number, clientY: number): string | null {
+    const w = this.sceneFromClient(clientX, clientY);
+    const n = this.nodeAt(w.x, w.y);
+    return n && n.kind !== 'root' && n.kind !== 'group' && n.refId ? n.refId : null;
+  }
+
+  /** The refId chain from the element up to the root (grouping nodes skipped). */
+  chainOf(refId: string): string[] {
+    const node = this.allNodes.find((n) => n.refId === refId);
+    const out: string[] = [];
+    for (let cur: XNode | undefined = node; cur; cur = cur.parent) {
+      if (cur.refId && cur.kind !== 'group' && cur.kind !== 'root') out.push(cur.refId);
+    }
+    return out.length ? out : [refId];
+  }
+
   private toWorld(e: PointerEvent | WheelEvent): { x: number; y: number } {
     const rect = this.getBoundingClientRect();
     return {

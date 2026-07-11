@@ -677,8 +677,17 @@ export type ModuxCommand =
       dependsOnStepIds?: string[];
       /** Insert after this step; append when omitted. */
       afterStepId?: string;
+      /** TASK (default), JOIN or SPLIT. */
+      stepType?: string;
     }
   | { kind: 'remove-workflow-step'; workflowId: string; id: string }
+  | {
+      /** The step moves to ANOTHER workflow; dependencies left behind drop. */
+      kind: 'move-workflow-step';
+      workflowId: string;
+      id: string;
+      targetId: string;
+    }
   | {
       /** Replaces emittedEventName/targetUseCaseId/completionEventName wholesale (omitted clears). */
       kind: 'update-workflow-step';

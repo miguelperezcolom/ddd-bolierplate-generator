@@ -126,7 +126,8 @@ public class EditorApiController {
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     /** A code module: distribution unit inside a bounded context; services deploy them. */
     public record CodeModuleDto(String id, String name, String moduleId, List<String> elementIds) {}
-    public record ServiceDto(String id, String name, List<String> moduleIds, List<String> codeModuleIds) {}
+    public record ServiceDto(String id, String name, List<String> moduleIds, List<String> codeModuleIds,
+                             String database, boolean outboxEnabled) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
@@ -171,7 +172,7 @@ public class EditorApiController {
                              List<ProcessStepDto> steps) {}
     public record WorkflowStepDto(String id, String name, String emittedEventName,
                                   String targetUseCaseId, String completionEventName,
-                                  List<String> dependsOnStepIds) {}
+                                  List<String> dependsOnStepIds, String type) {}
     /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
     public record WorkflowDto(String id, String name, String triggerAggregateId,
                               String triggerDomainServiceId, String triggerUseCaseId,
@@ -636,7 +637,7 @@ public class EditorApiController {
                         w.steps().stream()
                                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                                         s.targetUseCaseId(), s.completionEventName(),
-                                        s.dependsOnStepIds()))
+                                        s.dependsOnStepIds(), s.type()))
                                 .toList()))
                 .toList();
 
@@ -1034,7 +1035,8 @@ public class EditorApiController {
                         .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
                         .toList(),
                 services.stream()
-                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds()))
+                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds(),
+                                s.database(), s.outboxEnabled()))
                         .toList(),
                 repository.findAllOfType(TransformationEntity.class).stream()
                         .map(t -> new TransformationDto(t.id(), t.name(),
@@ -1309,6 +1311,7 @@ public class EditorApiController {
             case "add-workflow" -> addWorkflow(command);
             case "remove-workflow" -> removeWorkflow(command);
             case "add-workflow-step" -> addWorkflowStep(command);
+            case "move-workflow-step" -> moveWorkflowStep(command);
             case "remove-workflow-step" -> removeWorkflowStep(command);
             case "update-workflow-step" -> updateWorkflowStep(command);
             case "add-workflow-dependency" -> addWorkflowDependency(command);
@@ -1532,13 +1535,41 @@ public class EditorApiController {
                 wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
     }
 
+    /** The step moves to ANOTHER workflow; dependencies on steps left behind drop. */
+    private void moveWorkflowStep(EditorCommand command) {
+        var from = requireWorkflow(command.workflowId());
+        var to = requireWorkflow(command.targetId());
+        if (from.id().equals(to.id())) return;
+        var moving = from.steps().stream()
+                .filter(s -> s.id().equals(command.id()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown step: " + command.id()));
+        repository.save(withWorkflowSteps(from, from.steps().stream()
+                .filter(s -> !s.id().equals(command.id()))
+                .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
+                        s.targetUseCaseId(), s.completionEventName(),
+                        s.dependsOnStepIds().stream().filter(d -> !d.equals(command.id())).toList(),
+                        s.description(), s.type()))
+                .toList()));
+        var targetIds = new java.util.HashSet<String>();
+        to.steps().forEach(s -> targetIds.add(s.id()));
+        var landed = new WorkflowStepEntity(moving.id(), moving.name(), moving.emittedEventName(),
+                moving.targetUseCaseId(), moving.completionEventName(),
+                moving.dependsOnStepIds().stream().filter(targetIds::contains).toList(),
+                moving.description(), moving.type());
+        var steps = new ArrayList<>(to.steps());
+        steps.add(landed);
+        repository.save(withWorkflowSteps(to, steps));
+    }
+
     private void addWorkflowStep(EditorCommand command) {
         var workflow = requireWorkflow(command.workflowId());
         if (workflow.steps().stream().anyMatch(s -> s.id().equals(command.id()))) return;
         var step = new WorkflowStepEntity(
                 command.id(), command.name(), command.emittedEventName(),
                 command.targetUseCaseId(), command.completionEventName(),
-                command.dependsOnStepIds(), null);
+                command.dependsOnStepIds(), null,
+                command.stepType() == null || command.stepType().isBlank() ? null : command.stepType());
         var steps = new ArrayList<>(workflow.steps());
         var index = command.afterStepId() == null ? steps.size()
                 : indexAfterWorkflowStep(steps, command.afterStepId());

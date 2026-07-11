@@ -472,6 +472,8 @@ export interface ProjectionRef {
 export interface WorkflowStepRef {
   id: string;
   name: string;
+  /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
+  type?: string;
   emittedEventName?: string;
   targetUseCaseId?: string;
   completionEventName?: string;
@@ -671,6 +673,9 @@ export interface ServiceRef {
   name: string;
   moduleIds?: string[];
   codeModuleIds?: string[];
+  /** Infrastructure it leans on (drawn at the distribution level). */
+  database?: string;
+  outboxEnabled?: boolean;
 }
 
 export interface ModuxModel {

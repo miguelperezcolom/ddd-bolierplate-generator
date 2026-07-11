@@ -307,6 +307,8 @@ export class ModuxEditor extends LitElement {
   @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
   /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
   @state() private _repoPicker: { pos: Point } | null = null;
+  /** Open picker: a loose step drop asking WHICH workflow adopts it. */
+  @state() private _wfStepPicker: { pos: Point; stepType?: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
@@ -894,6 +896,8 @@ export class ModuxEditor extends LitElement {
     const targetKey = detail === 'contexts' ? 'context-map' : `context-map@${detail}`;
     const raw = normalizeViewLayout(this.layout[targetKey]);
     this._detail = detail;
+    // Each level is a working surface: arriving opens the palette, ready to drop.
+    this._paletteOpen = true;
     if (!Object.keys(raw.nodes).length && !Object.keys(raw.sizes ?? {}).length) {
       this.writeViewLayout('context-map', {
         nodes: { ...seed.nodes },
@@ -2752,6 +2756,12 @@ export class ModuxEditor extends LitElement {
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
       const sourceOwner = this.owningWorkflowOf(sourceId);
+      const targetWorkflow = (this.model.workflows ?? []).find((w) => w.id === targetId);
+      // paso → OTRO workflow: el paso se muda allí (sus dependencias locales caducan)
+      if (sourceOwner && targetWorkflow && sourceOwner.id !== targetWorkflow.id) {
+        this.command({ kind: 'move-workflow-step', workflowId: sourceOwner.id, id: sourceId, targetId: targetWorkflow.id });
+        return;
+      }
       const targetOwner = this.owningWorkflowOf(targetId);
       if (!sourceOwner || sourceOwner !== targetOwner || sourceId === targetId) return;
       const target = sourceOwner.steps.find((s) => s.id === targetId);
@@ -5789,6 +5799,8 @@ export class ModuxEditor extends LitElement {
     { type: 'proxy-api', label: 'Proxy API', symbol: 'interface', color: '#0e7490', group: 'APIs' },
     { type: 'workflow', label: 'Workflow', symbol: 'process', color: '#6d28d9', group: 'Orquestación' },
     { type: 'workflow-step', label: 'Paso de workflow', child: true, symbol: 'gear', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'workflow-join', label: 'Join', child: true, symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
+    { type: 'workflow-split', label: 'Split', child: true, symbol: 'flow', color: '#6d28d9', group: 'Orquestación' },
     { type: 'etl-flow', label: 'Flujo ETL (integrador)', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'etl-transform', label: 'Transformación ETL', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
     { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
@@ -6031,9 +6043,11 @@ export class ModuxEditor extends LitElement {
     const surface =
       this._view === 'design'
         ? this.renderRoot.querySelector('modux-figma')
-        : this._tilt
-          ? this.renderRoot.querySelector('modux-tilt')
-          : this.renderRoot.querySelector('modux-canvas');
+        : this._view === 'explorer'
+          ? this.renderRoot.querySelector('modux-explorer')
+          : this._tilt
+            ? this.renderRoot.querySelector('modux-tilt')
+            : this.renderRoot.querySelector('modux-canvas');
     if (!surface) return;
     const pos = surface.sceneFromClient(e.clientX, e.clientY);
     const targetId = surface.nodeIdAtClient(e.clientX, e.clientY);
@@ -6107,15 +6121,28 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  /** The container a child kind needs, resolved from whatever the drop landed on. */
-  private dropContainerFor(type: string, targetId: string | null): string | null {
-    if (!targetId) return null;
+  /** The container chain at a drop target: scene parents — or the explorer's tree. */
+  private dropChain(targetId: string | null | undefined): string[] {
+    if (!targetId) return [];
+    if (this._view === 'explorer') {
+      const ex = this.renderRoot.querySelector('modux-explorer') as
+        | (HTMLElement & { chainOf(id: string): string[] })
+        | null;
+      return ex?.chainOf(targetId) ?? [targetId];
+    }
     const scene = this.sceneFor(this._view);
     const chain: string[] = [];
     for (let cur: string | undefined = targetId; cur; ) {
       chain.push(cur);
       cur = scene.nodes.find((n) => n.id === cur)?.parentId;
     }
+    return chain;
+  }
+
+  /** The container a child kind needs, resolved from whatever the drop landed on. */
+  private dropContainerFor(type: string, targetId: string | null): string | null {
+    if (!targetId) return null;
+    const chain = this.dropChain(targetId);
     const needsModule = [
       'aggregate', 'use-case', 'policy', 'domain-event',
       'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
@@ -6346,11 +6373,7 @@ export class ModuxEditor extends LitElement {
                               };
       if (cmd.kind === 'create-ui-app') {
         // Dropped inside a bounded context: the module owns the app from the start.
-        const chain: string[] = [];
-        for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-          chain.push(cur);
-          cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-        }
+        const chain = this.dropChain(targetId);
         const moduleId = chain.find((cid) => this.model.modules.some((mo) => mo.id === cid));
         if (moduleId) {
           issue({ ...cmd, moduleId }, id, moduleId);
@@ -6361,11 +6384,7 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (type === 'ui-wizard-step') {
-      const chain: string[] = [];
-      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-        chain.push(cur);
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-      }
+      const chain = this.dropChain(targetId);
       const wizardId = chain
         .map((cid) => /^wizrow:([^:]+):/.exec(cid)?.[1] ?? cid)
         .find((cid) => (this.model.pages ?? []).some((pg) => pg.id === cid && pg.type === 'WIZARD'));
@@ -6386,11 +6405,7 @@ export class ModuxEditor extends LitElement {
       const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : 'Página';
       const { id, name } = this.uniquePaletteName(base, 'page-');
       // Dropped on an app (or on one of its menu entries): the page hangs from its menu.
-      const chain: string[] = [];
-      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-        chain.push(cur);
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-      }
+      const chain = this.dropChain(targetId);
       const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
       const wizardId = chain
         .map((cid) => /^wizrow:([^:]+):/.exec(cid)?.[1] ?? cid)
@@ -6426,11 +6441,7 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (type === 'menu-item') {
-      const chain: string[] = [];
-      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-        chain.push(cur);
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-      }
+      const chain = this.dropChain(targetId);
       const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
       if (!appId) {
         this.emit('modux-notice', { message: 'Suelta la entrada de menú sobre una app' });
@@ -6460,11 +6471,7 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (type === 'etl-transform') {
-      const chain: string[] = [];
-      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-        chain.push(cur);
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-      }
+      const chain = this.dropChain(targetId);
       const flow = chain
         .map((cid) => (this.model.etlFlows ?? []).find((f) => f.id === cid))
         .find(Boolean);
@@ -6487,15 +6494,13 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    if (type === 'workflow-step') {
-      // A step lives in a workflow: drop it on the workflow node, or on one of its
-      // steps (workflows view) to declare the dependency at the same time.
+    if (type === 'workflow-step' || type === 'workflow-join' || type === 'workflow-split') {
+      // A step lives in a workflow, but it lands WHEREVER you drop it: on the
+      // workflow or one of its steps it chains; in the open, the only workflow
+      // adopts it — or a picker asks which one.
+      const stepType = type === 'workflow-join' ? 'JOIN' : type === 'workflow-split' ? 'SPLIT' : undefined;
       const workflows = this.model.workflows ?? [];
-      const chain: string[] = [];
-      for (let cur: string | undefined = targetId ?? undefined; cur; ) {
-        chain.push(cur);
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
-      }
+      const chain = this.dropChain(targetId);
       const wfDirect = chain.map((cid) => workflows.find((w) => w.id === cid)).find(Boolean);
       const stepHit = chain
         .map((cid) => {
@@ -6503,14 +6508,18 @@ export class ModuxEditor extends LitElement {
           return owner ? { owner, stepId: cid } : null;
         })
         .find(Boolean);
-      const wf = wfDirect ?? stepHit?.owner;
+      let wf = wfDirect ?? stepHit?.owner;
+      if (!wf && workflows.length === 1) wf = workflows[0];
       if (!wf) {
-        this.emit('modux-notice', {
-          message: 'Suelta el paso sobre un workflow (o sobre uno de sus pasos para encadenarlo)',
-        });
+        if (!workflows.length) {
+          this.emit('modux-notice', { message: 'Crea antes un workflow: los pasos viven en uno' });
+          return;
+        }
+        this._wfStepPicker = { pos, stepType };
         return;
       }
-      const { id, name } = this.uniquePaletteName('Paso', 'wfs-');
+      const { id, name } = this.uniquePaletteName(
+        stepType === 'JOIN' ? 'Join' : stepType === 'SPLIT' ? 'Split' : 'Paso', 'wfs-');
       // Chained onto a step: land beside it, downstream (dependencies flow left→right).
       if (stepHit) pos = { x: pos.x + 190, y: pos.y };
       issue(
@@ -6519,6 +6528,7 @@ export class ModuxEditor extends LitElement {
           workflowId: wf.id,
           id,
           name,
+          ...(stepType ? { stepType } : {}),
           ...(stepHit ? { dependsOnStepIds: [stepHit.stepId], afterStepId: stepHit.stepId } : {}),
         },
         id,
@@ -6868,17 +6878,19 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = ModuxEditor.PALETTE_NEW.filter(
       (k) =>
         (this._view === 'workflows'
-          ? ['workflow', 'workflow-step'].includes(k.type)
+          ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'
             ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
+              : this._view === 'explorer'
+                ? !k.type.startsWith('cmp:')
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
                 : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code', 'ui-button'].includes(k.type) && !k.type.startsWith('cmp:')) &&
@@ -7627,8 +7639,10 @@ export class ModuxEditor extends LitElement {
       ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
         : this._view === 'explorer'
-        ? html`<modux-explorer
+        ? html`${this.renderPalette()}<modux-explorer
             .model=${this.model}
+            @dragover=${(e: DragEvent) => e.preventDefault()}
+            @drop=${this.onPaletteDrop}
             @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
               const kind = e.detail.kind === 'policy' ? 'use-case' : e.detail.kind;
               const mapped = normalizeActivation(e.detail.id, kind);
@@ -7764,7 +7778,7 @@ export class ModuxEditor extends LitElement {
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
       </div>
-      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
       ${this.renderHelpPopover()}
     `;
   }
@@ -7932,6 +7946,52 @@ export class ModuxEditor extends LitElement {
               }}
             >
               ${r.name}
+            </button>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  /** The «which workflow?» picker for steps dropped in the open. */
+  private renderWfStepPicker() {
+    const p = this._wfStepPicker;
+    if (!p) return '';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._wfStepPicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${this.clientWidth / 2}px; top:120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">¿De qué workflow es el paso?</div>
+        ${(this.model.workflows ?? []).map(
+          (w) => html`
+            <button
+              class="picker-item"
+              @click=${() => {
+                const picked = p;
+                this._wfStepPicker = null;
+                const { id, name } = this.uniquePaletteName(
+                  picked.stepType === 'JOIN' ? 'Join' : picked.stepType === 'SPLIT' ? 'Split' : 'Paso',
+                  'wfs-');
+                this.command(
+                  { kind: 'add-workflow-step', workflowId: w.id, id, name,
+                    ...(picked.stepType ? { stepType: picked.stepType } : {}) },
+                  false,
+                );
+                const current = this.viewLayout(this._view);
+                this.writeViewLayout(this._view, {
+                  ...current,
+                  nodes: { ...current.nodes, [id]: { x: Math.round(picked.pos.x), y: Math.round(picked.pos.y) } },
+                });
+                this.pushUndoEntry([
+                  { kind: 'remove-workflow-step', workflowId: w.id, id },
+                  { kind: 'move-node', view: this._view, id, pos: null },
+                ]);
+              }}
+            >
+              ${w.name}
             </button>
           `,
         )}
