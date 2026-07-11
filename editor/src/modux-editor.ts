@@ -304,6 +304,8 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteOpen = false;
   /** The element whose ficha shows in the right drawer (double click opens it). */
   @state() private _drawer: { elementType: string; id: string } | null = null;
+  /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
+  @state() private _yugo = false;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
   @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
   /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
@@ -632,7 +634,8 @@ export class ModuxEditor extends LitElement {
     }
     modux-canvas,
     modux-tilt,
-    modux-figma {
+    modux-figma,
+    modux-explorer {
       flex: 1;
       min-height: 0;
     }
@@ -783,6 +786,14 @@ export class ModuxEditor extends LitElement {
         if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'explorer', 'integrations'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
+        }
+        break;
+      case 'y':
+      case 'Y':
+        if (!['explorer', 'design'].includes(this._view)) {
+          e.preventDefault();
+          this._yugo = !this._yugo;
+          if (this._yugo) this._tilt = false;
         }
         break;
       case 'f':
@@ -6096,7 +6107,7 @@ export class ModuxEditor extends LitElement {
     const surface =
       this._view === 'design'
         ? this.renderRoot.querySelector('modux-figma')
-        : this._view === 'explorer'
+        : this._view === 'explorer' || this._yugo
           ? this.renderRoot.querySelector('modux-explorer')
           : this._tilt
             ? this.renderRoot.querySelector('modux-tilt')
@@ -6178,7 +6189,7 @@ export class ModuxEditor extends LitElement {
   /** The container chain at a drop target: scene parents — or the explorer's tree. */
   private dropChain(targetId: string | null | undefined): string[] {
     if (!targetId) return [];
-    if (this._view === 'explorer') {
+    if (this._view === 'explorer' || this._yugo) {
       const ex = this.renderRoot.querySelector('modux-explorer') as
         | (HTMLElement & { chainOf(id: string): string[] })
         | null;
@@ -7712,9 +7723,26 @@ export class ModuxEditor extends LitElement {
           title=${this._tilt
             ? 'Volver al lienzo editable (V)'
             : 'Vista 3D: el diagrama como placas apiladas por contención (V)'}
-          @click=${() => (this._tilt = !this._tilt)}
+          @click=${() => {
+            this._tilt = !this._tilt;
+            if (this._tilt) this._yugo = false;
+          }}
         >
           ⬦ 3D
+        </button>
+        <button
+          class="tab"
+          ?disabled=${['explorer', 'design'].includes(this._view)}
+          ?data-active=${this._yugo}
+          title=${this._yugo
+            ? 'Volver al lienzo editable (Y)'
+            : 'Superficie yugo: la vista como organismo físico — click expande, shift+arrastrar relaciona (Y)'}
+          @click=${() => {
+            this._yugo = !this._yugo;
+            if (this._yugo) this._tilt = false;
+          }}
+        >
+          ∿ Yugo
         </button>
         <button
           class="tab"
@@ -7790,6 +7818,23 @@ export class ModuxEditor extends LitElement {
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });
+            }}
+          ></modux-explorer>`
+        : this._yugo
+        ? html`${this.renderPalette()}<modux-explorer
+            class="yugo"
+            .scene=${this.sceneFor(this._view)}
+            ?shifted=${this._paletteOpen}
+            @dragover=${(e: DragEvent) => e.preventDefault()}
+            @drop=${this.onPaletteDrop}
+            @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
+              this.onElementActivated(new CustomEvent('element-activated', {
+                detail: { elementType: 'node', id: e.detail.id, kind: e.detail.kind },
+              }));
+            }}
+            @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string; x?: number; y?: number }>) => {
+              // the lines mean whatever the ACTIVE view says they mean
+              this.applyConnection(e.detail.sourceId, e.detail.targetId, e.detail.x, e.detail.y);
             }}
           ></modux-explorer>`
         : this._tilt

@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import type { Scene } from './scene.js';
 import type { ModuxModel, UiMenuEntryRef } from './model.js';
 
 /**
@@ -283,6 +284,13 @@ export class ModuxExplorer extends LitElement {
   /** The host palette is open: the search box slides right, out from under it. */
   @property({ type: Boolean, reflect: true }) shifted = false;
 
+  /**
+   * Scene mode — the YUGO surface: instead of walking the model, the tree comes
+   * from any view's Scene (containment via parentId; edges become the threads).
+   * The physics, focus, palette drops and gestures stay exactly the same.
+   */
+  @property({ attribute: false }) scene: Scene | null = null;
+
   @property({ attribute: false }) model: ModuxModel = {
     modules: [],
     externalSystems: [],
@@ -434,7 +442,7 @@ export class ModuxExplorer extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    if (changed.has('model')) this.buildTree();
+    if (changed.has('model') || changed.has('scene')) this.buildTree();
   }
 
   private resize(): void {
@@ -476,12 +484,18 @@ export class ModuxExplorer extends LitElement {
     const m = this.model;
     this.related = new Map();
     const link = (a?: string, b?: string) => {
+      void m;
       if (!a || !b || a === b) return;
       if (!this.related.has(a)) this.related.set(a, new Set());
       if (!this.related.has(b)) this.related.set(b, new Set());
       this.related.get(a)!.add(b);
       this.related.get(b)!.add(a);
     };
+    if (this.scene) {
+      // Scene mode: the view's edges ARE the threads.
+      for (const e of this.scene.edges) link(e.sourceId, e.targetId);
+      return;
+    }
     for (const r of m.relations ?? []) link(r.sourceId, r.targetId);
     for (const r of m.useCaseCalls ?? []) link(r.sourceId, r.targetId);
     for (const r of m.queryCalls ?? []) link(r.sourceId, r.targetId);
@@ -546,6 +560,16 @@ export class ModuxExplorer extends LitElement {
     const m = this.model;
     const d = n.depth + 1;
     const mk = (kind: string, id: string, label: string) => this.makeNode(kind, id, label, d, n);
+    if (this.scene) {
+      // Scene mode: containment comes straight from the view (parentId chains).
+      return this.scene.nodes
+        .filter((sn) => (n.kind === 'root' ? !sn.parentId : sn.parentId === n.refId))
+        .map((sn) => {
+          const node = mk(sn.kind || 'node', sn.id, sn.label);
+          if (sn.stroke) node.color = sn.stroke;
+          return node;
+        });
+    }
     switch (n.kind) {
       case 'root':
         return [

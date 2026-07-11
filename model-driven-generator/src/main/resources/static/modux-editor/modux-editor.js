@@ -80,7 +80,7 @@ const Nn = {
   REVERSED: "#d97706",
   EXTERNAL: "#64748b",
   INTERNAL: "#94a3b8"
-}, Ve = 168, He = 56;
+}, He = 168, Ge = 56;
 function ut(e, t) {
   return `apiimpl:${e}@${t}`;
 }
@@ -100,7 +100,7 @@ function To(e, t) {
     kind: "api-impl"
   }));
 }
-const Oo = 34, No = 14, Ln = 14, xe = 108, we = 32, bs = 12, Pi = 10, ot = 2, Ro = ot * xe + (ot - 1) * bs + 2 * No;
+const Oo = 34, No = 14, Ln = 14, ke = 108, we = 32, bs = 12, Pi = 10, ot = 2, Ro = ot * ke + (ot - 1) * bs + 2 * No;
 function Dn(e, t) {
   return `rel:${e}->${t}`;
 }
@@ -169,7 +169,7 @@ function Oi(e) {
 function St(e, t) {
   const i = e % ot, s = Math.floor(e / ot);
   return {
-    x: -t.w / 2 + No + i * (xe + bs) + xe / 2,
+    x: -t.w / 2 + No + i * (ke + bs) + ke / 2,
     y: -t.h / 2 + Oo + s * (we + Pi) + we / 2
   };
 }
@@ -211,7 +211,7 @@ function zn(e, t, i, s, o, a, n = !1) {
     ...Lo(e, t)
   ];
   if (!r.length)
-    return [{ ...s, x: i.x, y: i.y, w: Ve, h: He }];
+    return [{ ...s, x: i.x, y: i.y, w: He, h: Ge }];
   if (n) {
     const u = new Map((e.apis ?? []).map((g) => [g.id, g])), l = (e.apiImplementations ?? []).filter((g) => g.moduleId === t.id && u.has(g.apiId)).map((g) => {
       const I = u.get(g.apiId);
@@ -242,7 +242,7 @@ function Do(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
     const c = o[f.id] ?? St(d, r), m = n.has(f.id) ? [] : f.ops, w = a[f.id] ?? Oi(m.length), $ = m.map((P, R) => o[P.id] ?? St(R, w)), b = Mi(
       { x: c.x, y: c.y },
       w,
-      $.map((P) => ({ dx: P.x, dy: P.y, w: xe, h: we }))
+      $.map((P) => ({ dx: P.x, dy: P.y, w: ke, h: we }))
     );
     return { a: f, off: c, ops: m, opOffs: $, fit: b };
   }), l = s.map(
@@ -254,7 +254,7 @@ function Do(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
         id: f.id,
         x: l[d].x,
         y: l[d].y,
-        w: xe,
+        w: ke,
         h: we
       }))
     ],
@@ -270,7 +270,7 @@ function Do(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
   });
   const I = Mi(e, r, [
     ...u.map((f) => ({ dx: f.fit.x, dy: f.fit.y, w: f.fit.w, h: f.fit.h })),
-    ...l.map((f) => ({ dx: f.x, dy: f.y, w: xe, h: we }))
+    ...l.map((f) => ({ dx: f.x, dy: f.y, w: ke, h: we }))
   ]), h = [
     { ...t, x: I.x, y: I.y, w: I.w, h: I.h, container: !0 }
   ];
@@ -303,7 +303,7 @@ function Do(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
         parentId: f.a.id,
         x: e.x + f.off.x + f.opOffs[c].x,
         y: e.y + f.off.y + f.opOffs[c].y,
-        w: xe,
+        w: ke,
         h: we,
         tooltip: `${Xt[f.a.opKind]}: ${d.name}`
       });
@@ -316,7 +316,7 @@ function Do(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
       kind: f.kind,
       x: e.x + l[d].x,
       y: e.y + l[d].y,
-      w: xe,
+      w: ke,
       h: we,
       symbol: c.symbol,
       fill: c.fill,
@@ -353,7 +353,7 @@ function Fn(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
   ), m = Bi(
     [
       ...d.map((b) => ({ id: b.cm.id, x: b.off.x, y: b.off.y, w: Dt, h: b.boxH })),
-      ...h.map((b, P) => ({ id: b.id, x: c[P].x, y: c[P].y, w: xe, h: we }))
+      ...h.map((b, P) => ({ id: b.id, x: c[P].x, y: c[P].y, w: ke, h: we }))
     ],
     24
   );
@@ -367,7 +367,7 @@ function Fn(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
   });
   const w = Mi(i, f, [
     ...d.map((b) => ({ dx: b.off.x, dy: b.off.y, w: Dt, h: b.boxH })),
-    ...c.map((b) => ({ dx: b.x, dy: b.y, w: xe, h: we }))
+    ...c.map((b) => ({ dx: b.x, dy: b.y, w: ke, h: we }))
   ]), $ = [
     { ...s, x: w.x, y: w.y, w: w.w, h: w.h, container: !0 }
   ];
@@ -414,9 +414,9 @@ function Fn(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
           id: k.id,
           label: k.name,
           kind: k.kind,
-          x: P - (Dt - 2 * Wt) / 2 + Wt + B * (xe + bs) + xe / 2,
+          x: P - (Dt - 2 * Wt) / 2 + Wt + B * (ke + bs) + ke / 2,
           y: R + N + Us + ie * (we + Pi) + we / 2,
-          w: xe,
+          w: ke,
           h: we,
           symbol: ee.symbol,
           fill: ee.fill,
@@ -435,7 +435,7 @@ function Fn(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
       kind: b.kind,
       x: i.x + c[P].x,
       y: i.y + c[P].y,
-      w: xe,
+      w: ke,
       h: we,
       symbol: R.symbol,
       fill: R.fill,
@@ -447,7 +447,7 @@ function Fn(e, t, i, s, o, a, n = /* @__PURE__ */ new Set()) {
 }
 function Vt(e, t, i, s, o) {
   const a = o[t.id] ?? Oi(i.length), n = i.map((I, h) => s[I.id] ?? St(h, a)), r = Bi(
-    i.map((I, h) => ({ id: I.id, x: n[h].x, y: n[h].y, w: xe, h: we })),
+    i.map((I, h) => ({ id: I.id, x: n[h].x, y: n[h].y, w: ke, h: we })),
     10
   );
   i.forEach((I, h) => {
@@ -457,7 +457,7 @@ function Vt(e, t, i, s, o) {
   const u = Mi(
     e,
     a,
-    n.map((I) => ({ dx: I.x, dy: I.y, w: xe, h: we }))
+    n.map((I) => ({ dx: I.x, dy: I.y, w: ke, h: we }))
   ), l = {
     ...t,
     x: u.x,
@@ -473,7 +473,7 @@ function Vt(e, t, i, s, o) {
       kind: I.kind,
       x: e.x + f.x,
       y: e.y + f.y,
-      w: xe,
+      w: ke,
       h: we,
       symbol: d.symbol,
       fill: d.fill,
@@ -532,8 +532,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: `${K.name} — emite las identidades que el sistema confía${le ? " (federado)" : ""}; arrastra un contexto, app o flujo ETL hasta él`,
         x: F.x,
         y: F.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       }];
     }
     if ("etl" in p && p.etl) {
@@ -550,8 +550,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: `${K.name} — integrador: fuentes (pull/consumidor) → transformación → escrituras (API/BD/evento)`,
         x: F.x,
         y: F.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       }];
     }
     if ("workflow" in p && p.workflow) {
@@ -568,8 +568,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: `${K.name} — workflow${K.triggerEvent ? ` · arranca con ${K.triggerEvent}` : ""}`,
         x: F.x,
         y: F.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       }];
     }
     if (p.proxy) {
@@ -598,7 +598,7 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
             s
           );
       }
-      return [{ ...le, x: F.x, y: F.y, w: Ve, h: He }];
+      return [{ ...le, x: F.x, y: F.y, w: He, h: Ge }];
     }
     if (p.api) {
       const K = p.ref, le = {
@@ -625,8 +625,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         collapsed: K.operations.length > 0,
         x: F.x,
         y: F.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       }];
     }
     if (p.external) {
@@ -721,8 +721,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         collapsed: Ki && Xi,
         x: F.x,
         y: F.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       }];
     }
     const X = p.ref, Y = X.subdomainType ?? "GENERIC", ue = {
@@ -767,8 +767,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
       collapsed: at && xt,
       x: F.x,
       y: F.y,
-      w: Ve,
-      h: He
+      w: He,
+      h: Ge
     }];
   }), $ = r ? { actors: [], aiAgents: [], rags: [], mcpGateways: [] } : {
     actors: e.actors ?? [],
@@ -889,8 +889,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: `${F.name} — deployable: arrastra su asa hasta un módulo para desplegarlo aquí`,
         x: Y.x,
         y: Y.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       });
     });
     const O = [];
@@ -935,8 +935,8 @@ function Bn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: F.tooltip,
         x: Y.x,
         y: Y.y,
-        w: Ve,
-        h: He
+        w: He,
+        h: Ge
       });
     });
   }
@@ -3193,7 +3193,7 @@ function sn(e, t) {
 }
 function ai() {
 }
-var ei = 0.7, Di = 1 / ei, Ct = "\\s*([+-]?\\d+)\\s*", ti = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)\\s*", Ge = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)%\\s*", ud = /^#([0-9a-f]{3,8})$/, md = new RegExp(`^rgb\\(${Ct},${Ct},${Ct}\\)$`), hd = new RegExp(`^rgb\\(${Ge},${Ge},${Ge}\\)$`), fd = new RegExp(`^rgba\\(${Ct},${Ct},${Ct},${ti}\\)$`), gd = new RegExp(`^rgba\\(${Ge},${Ge},${Ge},${ti}\\)$`), Id = new RegExp(`^hsl\\(${ti},${Ge},${Ge}\\)$`), yd = new RegExp(`^hsla\\(${ti},${Ge},${Ge},${ti}\\)$`), eo = {
+var ei = 0.7, Di = 1 / ei, Ct = "\\s*([+-]?\\d+)\\s*", ti = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)\\s*", je = "\\s*([+-]?(?:\\d*\\.)?\\d+(?:[eE][+-]?\\d+)?)%\\s*", ud = /^#([0-9a-f]{3,8})$/, md = new RegExp(`^rgb\\(${Ct},${Ct},${Ct}\\)$`), hd = new RegExp(`^rgb\\(${je},${je},${je}\\)$`), fd = new RegExp(`^rgba\\(${Ct},${Ct},${Ct},${ti}\\)$`), gd = new RegExp(`^rgba\\(${je},${je},${je},${ti}\\)$`), Id = new RegExp(`^hsl\\(${ti},${je},${je}\\)$`), yd = new RegExp(`^hsla\\(${ti},${je},${je},${ti}\\)$`), eo = {
   aliceblue: 15792383,
   antiquewhite: 16444375,
   aqua: 65535,
@@ -3723,7 +3723,7 @@ function Ps(e, t) {
   if (i.state > un) throw new Error("too late; already scheduled");
   return i;
 }
-function je(e, t) {
+function Ye(e, t) {
   var i = Be(e, t);
   if (i.state > Si) throw new Error("too late; already running");
   return i;
@@ -3788,7 +3788,7 @@ function Hd(e) {
 function Gd(e, t) {
   var i, s;
   return function() {
-    var o = je(this, e), a = o.tween;
+    var o = Ye(this, e), a = o.tween;
     if (a !== i) {
       s = i = a;
       for (var n = 0, r = s.length; n < r; ++n)
@@ -3804,7 +3804,7 @@ function jd(e, t, i) {
   var s, o;
   if (typeof i != "function") throw new Error();
   return function() {
-    var a = je(this, e), n = a.tween;
+    var a = Ye(this, e), n = a.tween;
     if (n !== s) {
       o = (s = n).slice();
       for (var r = { name: t, value: i }, u = 0, l = o.length; u < l; ++u)
@@ -3830,7 +3830,7 @@ function Yd(e, t) {
 function Ts(e, t, i) {
   var s = e._id;
   return e.each(function() {
-    var o = je(this, s);
+    var o = Ye(this, s);
     (o.value || (o.value = {}))[t] = i.apply(this, arguments);
   }), function(o) {
     return Be(o, s).value[t];
@@ -3932,12 +3932,12 @@ function ll(e) {
 }
 function cl(e, t) {
   return function() {
-    je(this, e).duration = +t.apply(this, arguments);
+    Ye(this, e).duration = +t.apply(this, arguments);
   };
 }
 function pl(e, t) {
   return t = +t, function() {
-    je(this, e).duration = t;
+    Ye(this, e).duration = t;
   };
 }
 function ul(e) {
@@ -3947,7 +3947,7 @@ function ul(e) {
 function ml(e, t) {
   if (typeof t != "function") throw new Error();
   return function() {
-    je(this, e).ease = t;
+    Ye(this, e).ease = t;
   };
 }
 function hl(e) {
@@ -3958,7 +3958,7 @@ function fl(e, t) {
   return function() {
     var i = t.apply(this, arguments);
     if (typeof i != "function") throw new Error();
-    je(this, e).ease = i;
+    Ye(this, e).ease = i;
   };
 }
 function gl(e) {
@@ -3988,7 +3988,7 @@ function vl(e) {
   });
 }
 function wl(e, t, i) {
-  var s, o, a = vl(t) ? Ps : je;
+  var s, o, a = vl(t) ? Ps : Ye;
   return function() {
     var n = a(this, e), r = n.on;
     r !== s && (o = (s = r).copy()).on(t, i), n.on = o;
@@ -4061,7 +4061,7 @@ function Ml(e, t, i) {
 function Pl(e, t) {
   var i, s, o, a = "style." + t, n = "end." + a, r;
   return function() {
-    var u = je(this, e), l = u.on, g = u.value[a] == null ? r || (r = hn(t)) : void 0;
+    var u = Ye(this, e), l = u.on, g = u.value[a] == null ? r || (r = hn(t)) : void 0;
     (l !== i || o !== g) && (s = (i = l).copy()).on(n, o = g), u.on = s;
   };
 }
@@ -4144,7 +4144,7 @@ function Wl() {
       --o === 0 && a();
     } };
     i.each(function() {
-      var l = je(this, s), g = l.on;
+      var l = Ye(this, s), g = l.on;
       g !== e && (t = (e = g).copy(), t._.cancel.push(r), t._.interrupt.push(r), t._.end.push(u)), l.on = t;
     }), o === 0 && a();
   });
@@ -9330,7 +9330,7 @@ Oe([
 Se = Oe([
   wt("modux-figma")
 ], Se);
-var Lc = Object.defineProperty, Dc = Object.getOwnPropertyDescriptor, Ye = (e, t, i, s) => {
+var Lc = Object.defineProperty, Dc = Object.getOwnPropertyDescriptor, Ve = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Dc(t, i) : t, a = e.length - 1, n; a >= 0; a--)
     (n = e[a]) && (o = (s ? n(t, i, o) : n(o)) || o);
   return s && o && Lc(t, i, o), o;
@@ -9421,9 +9421,9 @@ const Uc = {
   "external-table": "tablas externas",
   "mcp-server": "MCPs"
 }, Eo = [30, 20, 13, 9.5, 7.5], So = [0, 180, 118, 80, 58], qc = 0.055, Fc = 0.86, Bc = 2600, _i = 240, Co = 0.16, Ao = 0.015;
-let ke = class extends Fe {
+let be = class extends Fe {
   constructor() {
-    super(...arguments), this.shifted = !1, this.model = {
+    super(...arguments), this.shifted = !1, this.scene = null, this.model = {
       modules: [],
       externalSystems: [],
       relations: [],
@@ -9445,13 +9445,13 @@ let ke = class extends Fe {
     };
     t(this.root);
     try {
-      sessionStorage.setItem(ke.STORE_KEY, JSON.stringify({ cam: this.cam, nodes: e }));
+      sessionStorage.setItem(be.STORE_KEY, JSON.stringify({ cam: this.cam, nodes: e }));
     } catch {
     }
   }
   loadState() {
     try {
-      const e = sessionStorage.getItem(ke.STORE_KEY);
+      const e = sessionStorage.getItem(be.STORE_KEY);
       if (!e) return;
       const t = JSON.parse(e);
       t.cam && t.cam.k > 0 && (this.cam = t.cam);
@@ -9494,7 +9494,7 @@ let ke = class extends Fe {
     this.cam.k = g, this.cam.x = n / 2 - (t + s) / 2 * g, this.cam.y = r / 2 - (i + o) / 2 * g;
   }
   updated(e) {
-    e.has("model") && this.buildTree();
+    (e.has("model") || e.has("scene")) && this.buildTree();
   }
   resize() {
     var s;
@@ -9518,6 +9518,10 @@ let ke = class extends Fe {
     const t = (i, s) => {
       !i || !s || i === s || (this.related.has(i) || this.related.set(i, /* @__PURE__ */ new Set()), this.related.has(s) || this.related.set(s, /* @__PURE__ */ new Set()), this.related.get(i).add(s), this.related.get(s).add(i));
     };
+    if (this.scene) {
+      for (const i of this.scene.edges) t(i.sourceId, i.targetId);
+      return;
+    }
     for (const i of e.relations ?? []) t(i.sourceId, i.targetId);
     for (const i of e.useCaseCalls ?? []) t(i.sourceId, i.targetId);
     for (const i of e.queryCalls ?? []) t(i.sourceId, i.targetId);
@@ -9572,6 +9576,11 @@ let ke = class extends Fe {
   }
   childrenOf(e) {
     const t = this.model, i = e.depth + 1, s = (o, a, n) => this.makeNode(o, a, n, i, e);
+    if (this.scene)
+      return this.scene.nodes.filter((o) => e.kind === "root" ? !o.parentId : o.parentId === e.refId).map((o) => {
+        const a = s(o.kind || "node", o.id, o.label);
+        return o.stroke && (a.color = o.stroke), a;
+      });
     switch (e.kind) {
       case "root":
         return [
@@ -9961,8 +9970,8 @@ let ke = class extends Fe {
   }
   onSearchInput(e) {
     this._q = e.target.value;
-    const t = ke.fold(this._q.trim());
-    this._active = 0, this._sugs = t.length < 2 ? [] : this.allNodes.filter((i) => i.kind !== "root" && ke.fold(i.label).includes(t)).slice(0, 8);
+    const t = be.fold(this._q.trim());
+    this._active = 0, this._sugs = t.length < 2 ? [] : this.allNodes.filter((i) => i.kind !== "root" && be.fold(i.label).includes(t)).slice(0, 8);
   }
   onSearchKeydown(e) {
     e.key === "ArrowDown" ? (e.preventDefault(), this._active = Math.min(this._active + 1, this._sugs.length - 1)) : e.key === "ArrowUp" ? (e.preventDefault(), this._active = Math.max(this._active - 1, 0)) : e.key === "Enter" && this._sugs.length ? (this.flyToNode(this._sugs[this._active]), e.target.blur()) : e.key === "Escape" && (this._q = "", this._sugs = [], e.target.blur());
@@ -10201,7 +10210,7 @@ let ke = class extends Fe {
     `;
   }
 };
-ke.styles = vt`
+be.styles = vt`
     :host {
       display: block;
       position: relative;
@@ -10330,37 +10339,40 @@ ke.styles = vt`
       cursor: default;
     }
   `;
-ke.STORE_KEY = "modux-explorer-state";
-Ye([
+be.STORE_KEY = "modux-explorer-state";
+Ve([
   ae({ type: Boolean, reflect: !0 })
-], ke.prototype, "shifted", 2);
-Ye([
+], be.prototype, "shifted", 2);
+Ve([
   ae({ attribute: !1 })
-], ke.prototype, "model", 2);
-Ye([
+], be.prototype, "scene", 2);
+Ve([
+  ae({ attribute: !1 })
+], be.prototype, "model", 2);
+Ve([
   U()
-], ke.prototype, "_q", 2);
-Ye([
+], be.prototype, "_q", 2);
+Ve([
   U()
-], ke.prototype, "_sugs", 2);
-Ye([
+], be.prototype, "_sugs", 2);
+Ve([
   U()
-], ke.prototype, "_active", 2);
-Ye([
+], be.prototype, "_active", 2);
+Ve([
   U()
-], ke.prototype, "_motion", 2);
-Ye([
+], be.prototype, "_motion", 2);
+Ve([
   U()
-], ke.prototype, "_threads", 2);
-Ye([
+], be.prototype, "_threads", 2);
+Ve([
   U()
-], ke.prototype, "_viewNaming", 2);
-Ye([
+], be.prototype, "_viewNaming", 2);
+Ve([
   U()
-], ke.prototype, "_viewName", 2);
-ke = Ye([
+], be.prototype, "_viewName", 2);
+be = Ve([
   wt("modux-explorer")
-], ke);
+], be);
 var Wc = Object.defineProperty, Vc = Object.getOwnPropertyDescriptor, Z = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Vc(t, i) : t, a = e.length - 1, n; a >= 0; a--)
     (n = e[a]) && (o = (s ? n(t, i, o) : n(o)) || o);
@@ -10507,7 +10519,7 @@ let G = class extends Fe {
       externalSystems: [],
       relations: [],
       flows: []
-    }, this.layout = {}, this.diff = null, this._view = "explorer", this._detail = "contexts", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !1, this._drawer = null, this.repositories = [], this._repoPicker = null, this._wfStepPicker = null, this._branchCondEditor = null, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newModuleId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._activeViewId = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
+    }, this.layout = {}, this.diff = null, this._view = "explorer", this._detail = "contexts", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !1, this._drawer = null, this._yugo = !1, this.repositories = [], this._repoPicker = null, this._wfStepPicker = null, this._branchCondEditor = null, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newModuleId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._activeViewId = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
       this._fullscreen = this.matches(":fullscreen");
     }, this.hostKeydown = (e) => {
       var a;
@@ -10520,6 +10532,10 @@ let G = class extends Fe {
         case "p":
         case "P":
           ["context-map", "workflows", "ui", "design", "mappings", "explorer", "integrations"].includes(this._view) && (e.preventDefault(), this._paletteOpen = !this._paletteOpen);
+          break;
+        case "y":
+        case "Y":
+          ["explorer", "design"].includes(this._view) || (e.preventDefault(), this._yugo = !this._yugo, this._yugo && (this._tilt = !1));
           break;
         case "f":
         case "F":
@@ -14399,7 +14415,7 @@ let G = class extends Fe {
     const t = (r = e.dataTransfer) == null ? void 0 : r.getData("application/x-modux-palette");
     if (!t) return;
     e.preventDefault();
-    const i = this._view === "design" ? this.renderRoot.querySelector("modux-figma") : this._view === "explorer" ? this.renderRoot.querySelector("modux-explorer") : this._tilt ? this.renderRoot.querySelector("modux-tilt") : this.renderRoot.querySelector("modux-canvas");
+    const i = this._view === "design" ? this.renderRoot.querySelector("modux-figma") : this._view === "explorer" || this._yugo ? this.renderRoot.querySelector("modux-explorer") : this._tilt ? this.renderRoot.querySelector("modux-tilt") : this.renderRoot.querySelector("modux-canvas");
     if (!i) return;
     const s = i.sceneFromClient(e.clientX, e.clientY), o = i.nodeIdAtClient(e.clientX, e.clientY), a = this._view === "design" && "dropSlotAtClient" in i ? i.dropSlotAtClient(e.clientX, e.clientY) : null;
     let n;
@@ -14465,7 +14481,7 @@ let G = class extends Fe {
   dropChain(e) {
     var s;
     if (!e) return [];
-    if (this._view === "explorer") {
+    if (this._view === "explorer" || this._yugo) {
       const o = this.renderRoot.querySelector("modux-explorer");
       return (o == null ? void 0 : o.chainOf(e)) ?? [e];
     }
@@ -15615,9 +15631,22 @@ let G = class extends Fe {
           ?disabled=${this._view === "explorer"}
           ?data-active=${this._tilt}
           title=${this._tilt ? "Volver al lienzo editable (V)" : "Vista 3D: el diagrama como placas apiladas por contención (V)"}
-          @click=${() => this._tilt = !this._tilt}
+          @click=${() => {
+      this._tilt = !this._tilt, this._tilt && (this._yugo = !1);
+    }}
         >
           ⬦ 3D
+        </button>
+        <button
+          class="tab"
+          ?disabled=${["explorer", "design"].includes(this._view)}
+          ?data-active=${this._yugo}
+          title=${this._yugo ? "Volver al lienzo editable (Y)" : "Superficie yugo: la vista como organismo físico — click expande, shift+arrastrar relaciona (Y)"}
+          @click=${() => {
+      this._yugo = !this._yugo, this._yugo && (this._tilt = !1);
+    }}
+        >
+          ∿ Yugo
         </button>
         <button
           class="tab"
@@ -15688,6 +15717,20 @@ let G = class extends Fe {
       this.command({ kind: "add-view", id: o, name: t.detail.name, memberIds: s }), this._activeViewId = o, this.emit("modux-notice", {
         message: `Vista «${t.detail.name}» creada con lo desplegado (${s.length} miembros)`
       });
+    }}
+          ></modux-explorer>` : this._yugo ? C`${this.renderPalette()}<modux-explorer
+            class="yugo"
+            .scene=${this.sceneFor(this._view)}
+            ?shifted=${this._paletteOpen}
+            @dragover=${(t) => t.preventDefault()}
+            @drop=${this.onPaletteDrop}
+            @node-activated=${(t) => {
+      this.onElementActivated(new CustomEvent("element-activated", {
+        detail: { elementType: "node", id: t.detail.id, kind: t.detail.kind }
+      }));
+    }}
+            @explorer-connect=${(t) => {
+      this.applyConnection(t.detail.sourceId, t.detail.targetId, t.detail.x, t.detail.y);
     }}
           ></modux-explorer>` : this._tilt ? C`
       ${this.renderPalette()}
@@ -16305,7 +16348,8 @@ G.styles = vt`
     }
     modux-canvas,
     modux-tilt,
-    modux-figma {
+    modux-figma,
+    modux-explorer {
       flex: 1;
       min-height: 0;
     }
@@ -16537,6 +16581,9 @@ Z([
   U()
 ], G.prototype, "_drawer", 2);
 Z([
+  U()
+], G.prototype, "_yugo", 2);
+Z([
   ae({ attribute: !1 })
 ], G.prototype, "repositories", 2);
 Z([
@@ -16653,7 +16700,7 @@ Z([
 G = Z([
   wt("modux-editor")
 ], G);
-var Yc = Object.defineProperty, Kc = Object.getOwnPropertyDescriptor, be = (e, t, i, s) => {
+var Yc = Object.defineProperty, Kc = Object.getOwnPropertyDescriptor, xe = (e, t, i, s) => {
   for (var o = s > 1 ? void 0 : s ? Kc(t, i) : t, a = e.length - 1, n; a >= 0; a--)
     (n = e[a]) && (o = (s ? n(t, i, o) : n(o)) || o);
   return s && o && Yc(t, i, o), o;
@@ -17451,58 +17498,58 @@ fe.TYPE_LABELS = {
   uiAdapters: "UI adapter",
   uiShells: "UI shell"
 };
-be([
+xe([
   ae()
 ], fe.prototype, "base", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_model", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_layout", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_error", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_saving", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_toast", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_workspace", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_creatingSolution", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_newSolutionName", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_taggingVersion", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_newTagName", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_tagsOpen", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_tags", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_repositories", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_diff", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_diffListOpen", 2);
-be([
+xe([
   U()
 ], fe.prototype, "_mergeFlow", 2);
-fe = be([
+fe = xe([
   wt("modux-editor-connected")
 ], fe);
 export {
