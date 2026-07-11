@@ -35,4 +35,24 @@ public class WorkflowStepViewModel {
     List<String> dependsOnStepIds = new ArrayList<>();
 
     String description;
+
+    @Help("Paso HUMANO: rol cuya lista de tareas recibe este paso (vacío = paso de sistema).")
+    String roleId;
+
+    @Help("Paso humano: plazo como duración ISO-8601, p. ej. PT48H.")
+    String deadline;
+
+    @Help("Paso humano: rol al que escala la tarea si vence el plazo.")
+    String escalationRoleId;
+
+    @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
+    @Help("Caso de uso que DESHACE este paso si el workflow compensa.")
+    String compensationUseCaseId;
+
+    /** Carried through so saving the ficha never wipes what the diagram declared. */
+    @Hidden
+    String type;
+
+    @Hidden
+    String handoffWorkflowId;
 }

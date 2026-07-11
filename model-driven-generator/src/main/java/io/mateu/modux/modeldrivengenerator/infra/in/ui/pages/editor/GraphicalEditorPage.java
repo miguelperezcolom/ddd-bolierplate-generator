@@ -36,7 +36,6 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("aggregate", "/modelo/domainModel/aggregates"),
             Map.entry("entity", "/modelo/domainModel/entities"),
             Map.entry("flow", "/modelo/patrones/flows"),
-            Map.entry("process", "/modelo/patrones/processes"),
             Map.entry("workflow", "/modelo/patrones/workflows"),
             Map.entry("use-case", "/modelo/behaviour/useCases"),
             Map.entry("domain-event", "/modelo/domainModel/domainEvents"),

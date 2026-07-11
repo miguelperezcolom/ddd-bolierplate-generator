@@ -679,6 +679,10 @@ export type ModuxCommand =
       afterStepId?: string;
       /** TASK (default), JOIN or SPLIT. */
       stepType?: string;
+      /** HUMAN step: role, deadline and compensation travel with it. */
+      roleId?: string;
+      deadline?: string;
+      compensationUseCaseId?: string;
     }
   | { kind: 'remove-workflow-step'; workflowId: string; id: string }
   | {
@@ -689,6 +693,10 @@ export type ModuxCommand =
       stepType: 'JOIN' | 'SPLIT';
     }
   | { kind: 'remove-workflow-gateway'; id: string }
+  | {
+      /** The FUSION: every business process becomes a workflow (same id). */
+      kind: 'migrate-processes-to-workflows';
+    }
   | {
       /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split (null back to default). */
       kind: 'set-gateway-semantics';

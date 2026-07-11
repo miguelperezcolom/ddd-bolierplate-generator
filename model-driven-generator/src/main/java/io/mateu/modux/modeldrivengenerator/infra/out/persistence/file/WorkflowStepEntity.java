@@ -9,6 +9,7 @@ import java.util.List;
  * declares the step's predecessors in the dependency graph; a step with none starts when the
  * workflow's trigger event arrives.
  */
+@lombok.Builder(toBuilder = true)
 public record WorkflowStepEntity(
         String id,
         String name,
@@ -20,8 +21,25 @@ public record WorkflowStepEntity(
         /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
         String type,
         /** The step's single outgoing link when it is ANOTHER workflow (hand-off). */
-        String handoffWorkflowId
+        String handoffWorkflowId,
+        /** HUMAN step: the role whose worklist gets the task (a step with role is human). */
+        String roleId,
+        /** HUMAN step: ISO-8601 duration bound (e.g. PT48H). */
+        String deadline,
+        /** HUMAN step: who the task escalates to when the deadline passes. */
+        String escalationRoleId,
+        /** Use case run to UNDO this step when the workflow compensates. */
+        String compensationUseCaseId
 ) {
+
+    /** Backward-compatible constructor (pre-human-fields callers and stores). */
+    public WorkflowStepEntity(String id, String name, String emittedEventName,
+                              String targetUseCaseId, String completionEventName,
+                              List<String> dependsOnStepIds, String description, String type,
+                              String handoffWorkflowId) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName,
+                dependsOnStepIds, description, type, handoffWorkflowId, null, null, null, null);
+    }
 
     /** Backward-compatible constructor (pre-handoffWorkflowId callers and stores). */
     public WorkflowStepEntity(String id, String name, String emittedEventName,

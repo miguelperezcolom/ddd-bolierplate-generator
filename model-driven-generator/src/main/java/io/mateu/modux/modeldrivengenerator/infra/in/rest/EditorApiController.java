@@ -176,7 +176,8 @@ public class EditorApiController {
     public record WorkflowStepDto(String id, String name, String emittedEventName,
                                   String targetUseCaseId, String completionEventName,
                                   List<String> dependsOnStepIds, String type,
-                                  String handoffWorkflowId) {}
+                                  String handoffWorkflowId, String roleId, String deadline,
+                                  String compensationUseCaseId) {}
     /** A LOOSE gateway: its workflow is inferred from its links. */
     public record GatewayBranchConditionDto(String targetId, String expression) {}
     public record WorkflowGatewayDto(String id, String name, String type, String semantics,
@@ -647,7 +648,8 @@ public class EditorApiController {
                         w.steps().stream()
                                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                                         s.targetUseCaseId(), s.completionEventName(),
-                                        s.dependsOnStepIds(), s.type(), s.handoffWorkflowId()))
+                                        s.dependsOnStepIds(), s.type(), s.handoffWorkflowId(),
+                                        s.roleId(), s.deadline(), s.compensationUseCaseId()))
                                 .toList()))
                 .toList();
 
@@ -1329,6 +1331,7 @@ public class EditorApiController {
             case "remove-workflow" -> removeWorkflow(command);
             case "add-workflow-step" -> addWorkflowStep(command);
             case "move-workflow-step" -> moveWorkflowStep(command);
+            case "migrate-processes-to-workflows" -> migrateProcessesToWorkflows();
             case "add-workflow-gateway" -> addWorkflowGateway(command);
             case "set-gateway-semantics" -> setGatewaySemantics(command);
             case "set-gateway-branch-condition" -> setGatewayBranchCondition(command);
@@ -1558,6 +1561,37 @@ public class EditorApiController {
                 wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
     }
 
+    /**
+     * The FUSION: every business process becomes a workflow — same id (references
+     * survive), steps as a linear dependency chain, human steps carrying role,
+     * deadline, escalation and compensation. The process disappears.
+     */
+    private void migrateProcessesToWorkflows() {
+        for (var process : repository.findAllOfType(ProcessEntity.class)) {
+            if (repository.findById(process.id(), WorkflowEntity.class).isPresent()) continue;
+            var steps = new ArrayList<WorkflowStepEntity>();
+            String previous = null;
+            for (var st : process.steps()) {
+                steps.add(WorkflowStepEntity.builder()
+                        .id(st.id())
+                        .name(st.name())
+                        .targetUseCaseId(st.useCaseId())
+                        .dependsOnStepIds(previous == null ? List.of() : List.of(previous))
+                        .description(st.description())
+                        .roleId(st.roleId())
+                        .deadline(st.deadline())
+                        .escalationRoleId(st.escalationRoleId())
+                        .compensationUseCaseId(st.compensationUseCaseId())
+                        .build());
+                previous = st.id();
+            }
+            repository.save(new WorkflowEntity(process.id(), process.name(), process.description(),
+                    process.triggerAggregateId(), null, null, process.triggerEvent(),
+                    steps, process.onCompletionEventName(), process.decisionIds()));
+            repository.deleteAllById(List.of(process.id()), ProcessEntity.class);
+        }
+    }
+
     private void addWorkflowGateway(EditorCommand command) {
         if (repository.findById(command.id(), WorkflowGatewayEntity.class).isPresent()) return;
         var type = "SPLIT".equals(command.stepType()) ? "SPLIT" : "JOIN";
@@ -1689,10 +1723,7 @@ public class EditorApiController {
                 }
                 repository.save(withWorkflowSteps(wf, wf.steps().stream()
                         .map(st -> st.id().equals(command.sourceId())
-                                ? new WorkflowStepEntity(st.id(), st.name(), st.emittedEventName(),
-                                        st.targetUseCaseId(), st.completionEventName(),
-                                        st.dependsOnStepIds(), st.description(), st.type(),
-                                        command.targetId())
+                                ? st.toBuilder().handoffWorkflowId(command.targetId()).build()
                                 : st)
                         .toList()));
                 return;
@@ -1716,9 +1747,7 @@ public class EditorApiController {
                     && command.targetId().equals(st.handoffWorkflowId()))) continue;
             repository.save(withWorkflowSteps(wf, wf.steps().stream()
                     .map(st -> st.id().equals(command.sourceId())
-                            ? new WorkflowStepEntity(st.id(), st.name(), st.emittedEventName(),
-                                    st.targetUseCaseId(), st.completionEventName(),
-                                    st.dependsOnStepIds(), st.description(), st.type(), null)
+                            ? st.toBuilder().handoffWorkflowId(null).build()
                             : st)
                     .toList()));
         }
@@ -1735,17 +1764,17 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown step: " + command.id()));
         repository.save(withWorkflowSteps(from, from.steps().stream()
                 .filter(s -> !s.id().equals(command.id()))
-                .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
-                        s.targetUseCaseId(), s.completionEventName(),
-                        s.dependsOnStepIds().stream().filter(d -> !d.equals(command.id())).toList(),
-                        s.description(), s.type(), s.handoffWorkflowId()))
+                .map(s -> s.toBuilder()
+                        .dependsOnStepIds(s.dependsOnStepIds().stream()
+                                .filter(d -> !d.equals(command.id())).toList())
+                        .build())
                 .toList()));
         var targetIds = new java.util.HashSet<String>();
         to.steps().forEach(s -> targetIds.add(s.id()));
-        var landed = new WorkflowStepEntity(moving.id(), moving.name(), moving.emittedEventName(),
-                moving.targetUseCaseId(), moving.completionEventName(),
-                moving.dependsOnStepIds().stream().filter(targetIds::contains).toList(),
-                moving.description(), moving.type(), moving.handoffWorkflowId());
+        var landed = moving.toBuilder()
+                .dependsOnStepIds(moving.dependsOnStepIds().stream()
+                        .filter(targetIds::contains).toList())
+                .build();
         var steps = new ArrayList<>(to.steps());
         steps.add(landed);
         repository.save(withWorkflowSteps(to, steps));
@@ -1754,11 +1783,18 @@ public class EditorApiController {
     private void addWorkflowStep(EditorCommand command) {
         var workflow = requireWorkflow(command.workflowId());
         if (workflow.steps().stream().anyMatch(s -> s.id().equals(command.id()))) return;
-        var step = new WorkflowStepEntity(
-                command.id(), command.name(), command.emittedEventName(),
-                command.targetUseCaseId(), command.completionEventName(),
-                command.dependsOnStepIds(), null,
-                command.stepType() == null || command.stepType().isBlank() ? null : command.stepType());
+        var step = WorkflowStepEntity.builder()
+                .id(command.id())
+                .name(command.name())
+                .emittedEventName(command.emittedEventName())
+                .targetUseCaseId(command.targetUseCaseId())
+                .completionEventName(command.completionEventName())
+                .dependsOnStepIds(command.dependsOnStepIds() == null ? List.of() : command.dependsOnStepIds())
+                .type(command.stepType() == null || command.stepType().isBlank() ? null : command.stepType())
+                .roleId(command.roleId())
+                .deadline(command.deadline())
+                .compensationUseCaseId(command.compensationUseCaseId())
+                .build();
         var steps = new ArrayList<>(workflow.steps());
         var index = command.afterStepId() == null ? steps.size()
                 : indexAfterWorkflowStep(steps, command.afterStepId());

@@ -15,7 +15,8 @@ public final class WorkflowStepMapper {
         return dtos.stream()
                 .map(s -> new WorkflowStep(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
-                        s.description()))
+                        s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
                 .toList();
     }
 
@@ -24,7 +25,8 @@ public final class WorkflowStepMapper {
         return steps.stream()
                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
-                        s.description()))
+                        s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
                 .toList();
     }
 }

@@ -57,7 +57,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
         return steps.stream()
                 .map(s -> new WorkflowStep(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
-                        s.description()))
+                        s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
                 .toList();
     }
 
@@ -66,7 +67,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
         return steps.stream()
                 .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
-                        s.description()))
+                        s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
                 .toList();
     }
 }

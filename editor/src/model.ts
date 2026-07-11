@@ -476,6 +476,12 @@ export interface WorkflowStepRef {
   type?: string;
   /** The step's single outgoing link when it is ANOTHER workflow (hand-off). */
   handoffWorkflowId?: string;
+  /** HUMAN step: the role whose worklist gets the task (a step with role is human). */
+  roleId?: string;
+  /** HUMAN step: ISO-8601 duration bound (e.g. PT48H). */
+  deadline?: string;
+  /** Use case run to UNDO this step when the workflow compensates. */
+  compensationUseCaseId?: string;
   emittedEventName?: string;
   targetUseCaseId?: string;
   completionEventName?: string;

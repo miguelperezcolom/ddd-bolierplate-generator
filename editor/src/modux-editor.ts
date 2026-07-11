@@ -5294,7 +5294,6 @@ export class ModuxEditor extends LitElement {
     aggregate: '/modelo/domainModel/aggregates',
     entity: '/modelo/domainModel/entities',
     flow: '/modelo/patrones/flows',
-    process: '/modelo/patrones/processes',
     workflow: '/modelo/patrones/workflows',
     'use-case': '/modelo/behaviour/useCases',
     'domain-event': '/modelo/domainModel/domainEvents',
@@ -7247,9 +7246,6 @@ export class ModuxEditor extends LitElement {
                 Agregados y referencias
               </option>
               <option value="view:flows" ?selected=${this._view === 'flows'}>Flows</option>
-              <option value="view:processes" ?selected=${this._view === 'processes'}>
-                Procesos
-              </option>
               <option value="view:workflows" ?selected=${this._view === 'workflows'}>
                 Workflows
               </option>
@@ -7664,6 +7660,15 @@ export class ModuxEditor extends LitElement {
         >
           ✨ Auto-layout
         </button>
+        ${this._view === 'workflows' && (this.model.processes ?? []).length
+          ? html`<button
+              class="tab"
+              title="Los procesos se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
+              @click=${() => this.command({ kind: 'migrate-processes-to-workflows' })}
+            >
+              ⇪ Migrar ${(this.model.processes ?? []).length} procesos
+            </button>`
+          : ''}
         <button
           class="tab"
           ?disabled=${this._view === 'explorer'}

@@ -144,18 +144,21 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
         w: step.type === 'JOIN' || step.type === 'SPLIT' ? 100 : STEP_W,
         h: step.type === 'JOIN' || step.type === 'SPLIT' ? 48 : STEP_H,
         kind: 'workflow-step',
-        symbol: step.type === 'JOIN' || step.type === 'SPLIT' ? 'flow' : 'event',
-        fill: step.type === 'JOIN' || step.type === 'SPLIT' ? '#f5f3ff' : '#ffffff',
-        stroke: '#6d28d9',
+        symbol: step.type === 'JOIN' || step.type === 'SPLIT' ? 'flow'
+          : step.roleId ? 'actor' : 'event',
+        fill: step.type === 'JOIN' || step.type === 'SPLIT' ? '#f5f3ff'
+          : step.roleId ? '#fef9c3' : '#ffffff',
+        stroke: step.roleId && step.type !== 'JOIN' && step.type !== 'SPLIT' ? '#ca8a04' : '#6d28d9',
         dashed: step.type === 'JOIN' || step.type === 'SPLIT',
         badge: step.type === 'JOIN' ? '⨝ JOIN'
           : step.type === 'SPLIT' ? '⑃ SPLIT'
+          : step.roleId ? `👤 ${step.roleId}${step.deadline ? ` · ${step.deadline}` : ''}`
           : target ? `→ ${target}` : '∅ sin use case',
         tooltip: step.type === 'JOIN'
           ? `${step.name} — espera a TODAS sus dependencias antes de seguir`
           : step.type === 'SPLIT'
             ? `${step.name} — abre ramas paralelas: los pasos que dependan de él arrancan a la vez`
-            : `${step.name}${step.emittedEventName ? ` · emite ${step.emittedEventName}` : ''}${target ? ` · lanza ${target}` : ''}${step.completionEventName ? ` · espera ${step.completionEventName}` : ''}`,
+            : `${step.name}${step.roleId ? ` · tarea HUMANA de ${step.roleId}${step.deadline ? ` (plazo ${step.deadline})` : ''}` : ''}${step.emittedEventName ? ` · emite ${step.emittedEventName}` : ''}${target ? ` · lanza ${target}` : ''}${step.completionEventName ? ` · espera ${step.completionEventName}` : ''}${step.compensationUseCaseId ? ' · ⎌ compensable' : ''}`,
       });
       const deps = (step.dependsOnStepIds ?? []).filter((id) => byId.has(id));
       if (deps.length === 0) {

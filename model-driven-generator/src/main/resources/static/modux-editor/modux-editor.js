@@ -6183,12 +6183,12 @@ function nc(e, t) {
         w: k.type === "JOIN" || k.type === "SPLIT" ? 100 : ro,
         h: k.type === "JOIN" || k.type === "SPLIT" ? 48 : ec,
         kind: "workflow-step",
-        symbol: k.type === "JOIN" || k.type === "SPLIT" ? "flow" : "event",
-        fill: k.type === "JOIN" || k.type === "SPLIT" ? "#f5f3ff" : "#ffffff",
-        stroke: "#6d28d9",
+        symbol: k.type === "JOIN" || k.type === "SPLIT" ? "flow" : k.roleId ? "actor" : "event",
+        fill: k.type === "JOIN" || k.type === "SPLIT" ? "#f5f3ff" : k.roleId ? "#fef9c3" : "#ffffff",
+        stroke: k.roleId && k.type !== "JOIN" && k.type !== "SPLIT" ? "#ca8a04" : "#6d28d9",
         dashed: k.type === "JOIN" || k.type === "SPLIT",
-        badge: k.type === "JOIN" ? "⨝ JOIN" : k.type === "SPLIT" ? "⑃ SPLIT" : L ? `→ ${L}` : "∅ sin use case",
-        tooltip: k.type === "JOIN" ? `${k.name} — espera a TODAS sus dependencias antes de seguir` : k.type === "SPLIT" ? `${k.name} — abre ramas paralelas: los pasos que dependan de él arrancan a la vez` : `${k.name}${k.emittedEventName ? ` · emite ${k.emittedEventName}` : ""}${L ? ` · lanza ${L}` : ""}${k.completionEventName ? ` · espera ${k.completionEventName}` : ""}`
+        badge: k.type === "JOIN" ? "⨝ JOIN" : k.type === "SPLIT" ? "⑃ SPLIT" : k.roleId ? `👤 ${k.roleId}${k.deadline ? ` · ${k.deadline}` : ""}` : L ? `→ ${L}` : "∅ sin use case",
+        tooltip: k.type === "JOIN" ? `${k.name} — espera a TODAS sus dependencias antes de seguir` : k.type === "SPLIT" ? `${k.name} — abre ramas paralelas: los pasos que dependan de él arrancan a la vez` : `${k.name}${k.roleId ? ` · tarea HUMANA de ${k.roleId}${k.deadline ? ` (plazo ${k.deadline})` : ""}` : ""}${k.emittedEventName ? ` · emite ${k.emittedEventName}` : ""}${L ? ` · lanza ${L}` : ""}${k.completionEventName ? ` · espera ${k.completionEventName}` : ""}${k.compensationUseCaseId ? " · ⎌ compensable" : ""}`
       });
       const M = (k.dependsOnStepIds ?? []).filter((x) => g.has(x));
       M.length === 0 && s.push({
@@ -15063,9 +15063,6 @@ let j = class extends Fe {
                 Agregados y referencias
               </option>
               <option value="view:flows" ?selected=${this._view === "flows"}>Flows</option>
-              <option value="view:processes" ?selected=${this._view === "processes"}>
-                Procesos
-              </option>
               <option value="view:workflows" ?selected=${this._view === "workflows"}>
                 Workflows
               </option>
@@ -15424,6 +15421,13 @@ let j = class extends Fe {
         >
           ✨ Auto-layout
         </button>
+        ${this._view === "workflows" && (this.model.processes ?? []).length ? S`<button
+              class="tab"
+              title="Los procesos se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
+              @click=${() => this.command({ kind: "migrate-processes-to-workflows" })}
+            >
+              ⇪ Migrar ${(this.model.processes ?? []).length} procesos
+            </button>` : ""}
         <button
           class="tab"
           ?disabled=${this._view === "explorer"}
@@ -16222,7 +16226,6 @@ j.CRUD_ROUTES = {
   aggregate: "/modelo/domainModel/aggregates",
   entity: "/modelo/domainModel/entities",
   flow: "/modelo/patrones/flows",
-  process: "/modelo/patrones/processes",
   workflow: "/modelo/patrones/workflows",
   "use-case": "/modelo/behaviour/useCases",
   "domain-event": "/modelo/domainModel/domainEvents",

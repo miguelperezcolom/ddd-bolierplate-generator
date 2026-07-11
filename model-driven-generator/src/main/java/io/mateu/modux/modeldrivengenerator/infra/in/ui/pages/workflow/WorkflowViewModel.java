@@ -134,6 +134,12 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                     vm.dependsOnStepIds = s.dependsOnStepIds() == null
                             ? new ArrayList<>() : new ArrayList<>(s.dependsOnStepIds());
                     vm.description = s.description();
+                    vm.roleId = s.roleId();
+                    vm.deadline = s.deadline();
+                    vm.escalationRoleId = s.escalationRoleId();
+                    vm.compensationUseCaseId = s.compensationUseCaseId();
+                    vm.type = s.type();
+                    vm.handoffWorkflowId = s.handoffWorkflowId();
                     return vm;
                 }).collect(Collectors.toCollection(ArrayList::new));
         onCompletionEventName = model.onCompletionEventName();
@@ -158,7 +164,9 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
         if (steps == null) return List.of();
         return steps.stream()
                 .map(s -> new WorkflowStepDto(s.id, s.name, s.emittedEventName, s.targetUseCaseId,
-                        s.completionEventName, s.dependsOnStepIds, s.description))
+                        s.completionEventName, s.dependsOnStepIds, s.description,
+                        s.type, s.handoffWorkflowId, s.roleId, s.deadline, s.escalationRoleId,
+                        s.compensationUseCaseId))
                 .toList();
     }
 
