@@ -1,6 +1,8 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workflow;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.PageIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.PageIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -48,6 +50,10 @@ public class WorkflowStepViewModel {
     @Lookup(search = UseCaseIdOptionsSupplier.class, label = UseCaseIdLabelSupplier.class)
     @Help("Caso de uso que DESHACE este paso si el workflow compensa.")
     String compensationUseCaseId;
+
+    @Lookup(search = PageIdOptionsSupplier.class, label = PageIdLabelSupplier.class)
+    @Help("Paso humano: página que el forms engine presenta como formulario de la tarea.")
+    String formPageId;
 
     /** Carried through so saving the ficha never wipes what the diagram declared. */
     @Hidden

@@ -27,8 +27,20 @@ public record WorkflowStep(
         /** HUMAN step: escalation target when the deadline passes. */
         String escalationRoleId,
         /** Use case run to UNDO this step when the workflow compensates. */
-        String compensationUseCaseId
+        String compensationUseCaseId,
+        /** HUMAN step: the declared PAGE the forms engine renders as the task's form. */
+        String formPageId
 ) {
+
+    /** Backward-compatible constructor (pre-formPageId callers). */
+    public WorkflowStep(String id, String name, String emittedEventName, String targetUseCaseId,
+                        String completionEventName, List<String> dependsOnStepIds,
+                        String description, String type, String handoffWorkflowId, String roleId,
+                        String deadline, String escalationRoleId, String compensationUseCaseId) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName, dependsOnStepIds,
+                description, type, handoffWorkflowId, roleId, deadline, escalationRoleId,
+                compensationUseCaseId, null);
+    }
 
     public WorkflowStep {
         if (dependsOnStepIds == null) dependsOnStepIds = List.of();

@@ -686,6 +686,13 @@ export type ModuxCommand =
     }
   | { kind: 'remove-workflow-step'; workflowId: string; id: string }
   | {
+      /** HUMAN step ⇆ its form: targetId is the PAGE the forms engine renders (omit to clear). */
+      kind: 'set-workflow-step-form';
+      workflowId: string;
+      id: string;
+      targetId?: string;
+    }
+  | {
       /** A LOOSE gateway: JOIN or SPLIT — its workflow is inferred from its links. */
       kind: 'add-workflow-gateway';
       id: string;

@@ -55,7 +55,8 @@ public class WorkflowFileQueryService implements WorkflowQueryService {
                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
-                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
+                        s.formPageId()))
                 .toList();
     }
 }

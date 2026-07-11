@@ -180,7 +180,7 @@ public class EditorApiController {
                                   String targetUseCaseId, String completionEventName,
                                   List<String> dependsOnStepIds, String type,
                                   String handoffWorkflowId, String roleId, String deadline,
-                                  String compensationUseCaseId) {}
+                                  String compensationUseCaseId, String formPageId) {}
     /** A LOOSE gateway: its workflow is inferred from its links. */
     public record GatewayBranchConditionDto(String targetId, String expression) {}
     public record WorkflowGatewayDto(String id, String name, String type, String semantics,
@@ -653,7 +653,8 @@ public class EditorApiController {
                                 .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
                                         s.targetUseCaseId(), s.completionEventName(),
                                         s.dependsOnStepIds(), s.type(), s.handoffWorkflowId(),
-                                        s.roleId(), s.deadline(), s.compensationUseCaseId()))
+                                        s.roleId(), s.deadline(), s.compensationUseCaseId(),
+                                        s.formPageId()))
                                 .toList()))
                 .toList();
 
@@ -1364,6 +1365,7 @@ public class EditorApiController {
             case "remove-workflow-link" -> removeWorkflowLink(command);
             case "remove-workflow-step" -> removeWorkflowStep(command);
             case "update-workflow-step" -> updateWorkflowStep(command);
+            case "set-workflow-step-form" -> setWorkflowStepForm(command);
             case "add-workflow-dependency" -> addWorkflowDependency(command);
             case "set-workflow-trigger" -> setWorkflowTrigger(command);
             case "remove-workflow-dependency" -> removeWorkflowDependency(command);
@@ -1906,10 +1908,29 @@ public class EditorApiController {
         var workflow = requireWorkflow(command.workflowId());
         repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
                 .map(s -> s.id().equals(command.id())
-                        ? new WorkflowStepEntity(s.id(), s.name(), command.emittedEventName(),
-                                command.targetUseCaseId(), command.completionEventName(),
-                                s.dependsOnStepIds(), s.description())
+                        ? s.toBuilder()
+                                .emittedEventName(command.emittedEventName())
+                                .targetUseCaseId(command.targetUseCaseId())
+                                .completionEventName(command.completionEventName())
+                                .build()
                         : s)
+                .toList()));
+    }
+
+    /** HUMAN step ⇆ its form: the PAGE the forms engine renders as the task (null clears). */
+    private void setWorkflowStepForm(EditorCommand command) {
+        var workflow = requireWorkflow(command.workflowId());
+        if (workflow.steps().stream().noneMatch(st -> st.id().equals(command.id()))) {
+            throw new IllegalArgumentException("Paso desconocido: " + command.id());
+        }
+        if (command.targetId() != null
+                && repository.findById(command.targetId(), PageEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Página desconocida: " + command.targetId());
+        }
+        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
+                .map(st -> st.id().equals(command.id())
+                        ? st.toBuilder().formPageId(command.targetId()).build()
+                        : st)
                 .toList()));
     }
 
@@ -2155,10 +2176,7 @@ public class EditorApiController {
                     .findFirst()
                     .ifPresent(w -> repository.save(withWorkflowSteps(w, w.steps().stream()
                             .map(s -> s.id().equals(command.id())
-                                    ? new WorkflowStepEntity(s.id(), command.name(),
-                                            s.emittedEventName(), s.targetUseCaseId(),
-                                            s.completionEventName(), s.dependsOnStepIds(),
-                                            s.description())
+                                    ? s.toBuilder().name(command.name()).build()
                                     : s)
                             .toList())));
             default -> throw new IllegalArgumentException(

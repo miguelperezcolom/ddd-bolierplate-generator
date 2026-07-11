@@ -15,8 +15,19 @@ public record WorkflowStepDto(
         String roleId,
         String deadline,
         String escalationRoleId,
-        String compensationUseCaseId
+        String compensationUseCaseId,
+        String formPageId
 ) {
+
+    /** Backward-compatible constructor (pre-formPageId callers). */
+    public WorkflowStepDto(String id, String name, String emittedEventName, String targetUseCaseId,
+                           String completionEventName, java.util.List<String> dependsOnStepIds,
+                           String description, String type, String handoffWorkflowId, String roleId,
+                           String deadline, String escalationRoleId, String compensationUseCaseId) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName, dependsOnStepIds,
+                description, type, handoffWorkflowId, roleId, deadline, escalationRoleId,
+                compensationUseCaseId, null);
+    }
 
     /** Backward-compatible constructor (pre-human-fields callers). */
     public WorkflowStepDto(String id, String name, String emittedEventName, String targetUseCaseId,

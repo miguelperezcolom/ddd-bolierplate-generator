@@ -58,7 +58,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 .map(s -> new WorkflowStep(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
-                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
+                        s.formPageId()))
                 .toList();
     }
 
@@ -68,7 +69,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 .map(s -> new WorkflowStepEntity(s.id(), s.name(), s.emittedEventName(),
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
-                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId()))
+                        s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
+                        s.formPageId()))
                 .toList();
     }
 }

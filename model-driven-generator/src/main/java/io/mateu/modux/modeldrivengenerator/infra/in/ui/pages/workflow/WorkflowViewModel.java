@@ -138,6 +138,7 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                     vm.deadline = s.deadline();
                     vm.escalationRoleId = s.escalationRoleId();
                     vm.compensationUseCaseId = s.compensationUseCaseId();
+                    vm.formPageId = s.formPageId();
                     vm.type = s.type();
                     vm.handoffWorkflowId = s.handoffWorkflowId();
                     return vm;
@@ -166,7 +167,7 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                 .map(s -> new WorkflowStepDto(s.id, s.name, s.emittedEventName, s.targetUseCaseId,
                         s.completionEventName, s.dependsOnStepIds, s.description,
                         s.type, s.handoffWorkflowId, s.roleId, s.deadline, s.escalationRoleId,
-                        s.compensationUseCaseId))
+                        s.compensationUseCaseId, s.formPageId))
                 .toList();
     }
 

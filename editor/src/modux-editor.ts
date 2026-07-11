@@ -2783,6 +2783,17 @@ export class ModuxEditor extends LitElement {
     }
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
+      // paso ⇆ página: el formulario de la tarea humana (cualquier dirección)
+      const isPage = (id: string) => (this.model.pages ?? []).some((p) => p.id === id);
+      if (isPage(sourceId) !== isPage(targetId)) {
+        const pageId = isPage(sourceId) ? sourceId : targetId;
+        const stepId = isPage(sourceId) ? targetId : sourceId;
+        const owner = this.owningWorkflowOf(stepId);
+        if (owner) {
+          this.command({ kind: 'set-workflow-step-form', workflowId: owner.id, id: stepId, targetId: pageId });
+          return;
+        }
+      }
       const gateways = this.model.workflowGateways ?? [];
       const isGateway = (id: string) => gateways.some((g) => g.id === id);
       // gateways y saltos a otro workflow: un solo comando, el backend valida la gramática
@@ -4386,6 +4397,16 @@ export class ModuxEditor extends LitElement {
     if (this._view === 'workflows' && elementType === 'node' && kind === 'workflow-gateway') {
       this._selectedId = null;
       this.command({ kind: 'remove-workflow-gateway', id });
+      return;
+    }
+    if (this._view === 'workflows' && elementType === 'edge' && kind === 'wf-form') {
+      const match = /^wfform:(.+)->(.+)$/.exec(id);
+      if (match) {
+        const owner = this.owningWorkflowOf(match[1]);
+        if (!owner) return;
+        this._selectedId = null;
+        this.command({ kind: 'set-workflow-step-form', workflowId: owner.id, id: match[1] });
+      }
       return;
     }
     if (this._view === 'workflows' && elementType === 'edge' && kind === 'wf-link') {

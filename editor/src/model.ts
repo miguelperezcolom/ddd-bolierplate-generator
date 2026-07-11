@@ -484,6 +484,8 @@ export interface WorkflowStepRef {
   deadline?: string;
   /** Use case run to UNDO this step when the workflow compensates. */
   compensationUseCaseId?: string;
+  /** HUMAN step: the declared PAGE the forms engine renders as the task's form. */
+  formPageId?: string;
   emittedEventName?: string;
   targetUseCaseId?: string;
   completionEventName?: string;

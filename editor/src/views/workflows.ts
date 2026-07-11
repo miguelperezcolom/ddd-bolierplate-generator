@@ -152,7 +152,7 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
         dashed: step.type === 'JOIN' || step.type === 'SPLIT',
         badge: step.type === 'JOIN' ? '⨝ JOIN'
           : step.type === 'SPLIT' ? '⑃ SPLIT'
-          : step.roleId ? `👤 ${step.roleId}${step.deadline ? ` · ${step.deadline}` : ''}`
+          : step.roleId ? `👤 ${step.roleId}${step.formPageId ? ' · 📋' : ''}${step.deadline ? ` · ${step.deadline}` : ''}`
           : target ? `→ ${target}` : '∅ sin use case',
         tooltip: step.type === 'JOIN'
           ? `${step.name} — espera a TODAS sus dependencias antes de seguir`
@@ -288,6 +288,47 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
           : 'el gateway fluye aquí — Supr lo desconecta',
       });
     }
+  }
+  // HUMAN step → its form: the PAGE the forms engine renders as the task
+  {
+    const formSteps = (model.workflows ?? []).flatMap((wf) =>
+      (wf.steps ?? []).filter((s) => s.formPageId && nodeIds.has(s.id)));
+    formSteps.forEach((step, i) => {
+      const page = (model.pages ?? []).find((p) => p.id === step.formPageId);
+      if (!page) return;
+      if (!nodeIds.has(page.id)) {
+        const anchor = nodes.find((n) => n.id === step.id);
+        const pos = layout[page.id] ?? {
+          x: (anchor ? anchor.x : 200 + i * 220),
+          y: (anchor ? anchor.y + 130 : 60),
+        };
+        nodes.push({
+          id: page.id,
+          label: page.name,
+          x: pos.x,
+          y: pos.y,
+          w: 160,
+          h: 48,
+          kind: 'page',
+          symbol: 'page',
+          fill: '#fff7ed',
+          stroke: '#ca8a04',
+          badge: '📋 FORMULARIO',
+          tooltip: `${page.name} — el forms engine la presenta como formulario de la tarea`,
+        });
+        nodeIds.add(page.id);
+      }
+      edges.push({
+        id: `wfform:${step.id}->${page.id}`,
+        sourceId: step.id,
+        targetId: page.id,
+        kind: 'wf-form',
+        color: '#ca8a04',
+        dashed: true,
+        arrow: true,
+        tooltip: 'la tarea humana se presenta con esta página — Supr lo desconecta',
+      });
+    });
   }
   // step → ANOTHER workflow: the hand-off
   for (const wf of model.workflows ?? []) {
