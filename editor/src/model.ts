@@ -646,6 +646,22 @@ export interface DocumentRef {
   queryOperationId?: string;
 }
 
+/** A code module: distribution unit inside a bounded context; services deploy them. */
+export interface CodeModuleRef {
+  id: string;
+  name: string;
+  /** The bounded context whose elements this module distributes. */
+  moduleId: string;
+  elementIds?: string[];
+}
+
+export interface ServiceRef {
+  id: string;
+  name: string;
+  moduleIds?: string[];
+  codeModuleIds?: string[];
+}
+
 export interface ModuxModel {
   /** UI apps (UiAdapter) with their menu tree — the UI view's containers. */
   uiApps?: UiAppRef[];
@@ -656,6 +672,10 @@ export interface ModuxModel {
   /** id+name catalogs for the designer's pickers. */
   models?: { id: string; name: string }[];
   modelMappings?: { id: string; name: string; sourceModelId?: string; targetModelId?: string }[];
+  /** Code modules: how each bounded context DISTRIBUTES its elements into buildable units. */
+  codeModules?: CodeModuleRef[];
+  /** Deployables: a service says where code modules are DEPLOYED. */
+  services?: ServiceRef[];
   modules: ModuleRef[];
   externalSystems: ExternalSystemRef[];
   relations: ContextMapRelation[];

@@ -236,29 +236,15 @@ function defaultChildOffset(i: number, size: { w: number; h: number }): { x: num
   };
 }
 
-/**
- * A bounded context at the detail level: the module itself as a resizable
- * container plus one small box per aggregate and per use case (both hang off the
- * module — there is no aggregate→use-case link). Child positions are offsets
- * from the container centre (stored in `layout` under the child id, falling back
- * to a grid); the container size comes from `sizes`. Children are draggable and
- * become connectable once relations between them are added.
- */
-function detailedContext(
+/** The distributable elements of a bounded context (everything but the API impls). */
+function moduleElementDescs(
   model: ModuxModel,
   module: ModuxModel['modules'][number],
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-  operationsLevel = false,
-): SceneNode[] {
-  const aggregates = (model.aggregates ?? []).filter((a) => a.moduleId === module.id);
-  const children: ChildDesc[] = [
-    // APIs implemented here nest first: strategic-level elements, like an external
-    // system's published APIs.
-    ...apiImplChildren(model, module.id),
-    ...aggregates.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
+): ChildDesc[] {
+  return [
+    ...(model.aggregates ?? [])
+      .filter((a) => a.moduleId === module.id)
+      .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
     ...(module.useCases ?? []).map(
       (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
     ),
@@ -292,6 +278,31 @@ function detailedContext(
     ...(model.uiApps ?? [])
       .filter((a) => (module.uiAppIds ?? []).includes(a.id))
       .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'ui-app' })),
+  ];
+}
+
+/**
+ * A bounded context at the detail level: the module itself as a resizable
+ * container plus one small box per aggregate and per use case (both hang off the
+ * module — there is no aggregate→use-case link). Child positions are offsets
+ * from the container centre (stored in `layout` under the child id, falling back
+ * to a grid); the container size comes from `sizes`. Children are draggable and
+ * become connectable once relations between them are added.
+ */
+function detailedContext(
+  model: ModuxModel,
+  module: ModuxModel['modules'][number],
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+  operationsLevel = false,
+): SceneNode[] {
+  const children: ChildDesc[] = [
+    // APIs implemented here nest first: strategic-level elements, like an external
+    // system's published APIs.
+    ...apiImplChildren(model, module.id),
+    ...moduleElementDescs(model, module),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.
@@ -464,6 +475,168 @@ function containerWithApiBoxes(
   return nodes;
 }
 
+/** The three hexagonal layers a code module packages its elements into, by kind. */
+const HEX_LAYERS: { key: string; label: string; fill: string; kinds: ChildDesc['kind'][] }[] = [
+  { key: 'dominio', label: 'dominio', fill: '#f5f3ff', kinds: ['aggregate', 'domain-event', 'domain-service'] },
+  {
+    key: 'aplicacion',
+    label: 'aplicación',
+    fill: '#ecfeff',
+    kinds: ['use-case', 'application-event', 'query-service', 'read-model'],
+  },
+  {
+    key: 'infraestructura',
+    label: 'infraestructura',
+    fill: '#f8fafc',
+    kinds: ['scheduled-trigger', 'etl-flow', 'notification', 'document', 'ui-app'],
+  },
+];
+
+const LAYER_HEADER = 20;
+const BOX_HEADER = 28;
+const BOX_PAD = 10;
+const BOX_W = C_W_DEFAULT + 2 * BOX_PAD;
+
+/**
+ * The distribution level: the bounded context DISTRIBUTES its elements into code
+ * modules. Each module is a sub-box stacking its three hexagonal layers (derived
+ * from the element kinds, never stored); undistributed elements stay as plain
+ * chips in the context, waiting to be wired into a module.
+ */
+function distributionContext(
+  model: ModuxModel,
+  module: ModuxModel['modules'][number],
+  center: { x: number; y: number },
+  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const elements = moduleElementDescs(model, module);
+  const byId = new Map(elements.map((e) => [e.id, e]));
+  const codeModules = (model.codeModules ?? []).filter((cm) => cm.moduleId === module.id);
+  const assignedElsewhere = new Set(codeModules.flatMap((cm) => cm.elementIds ?? []));
+  const plain = elements.filter((e) => !assignedElsewhere.has(e.id));
+
+  const mSize = sizes[base.id] ?? defaultContainerSize(codeModules.length + plain.length);
+  const boxes = codeModules.map((cm, i) => {
+    const chips = (cm.elementIds ?? [])
+      .map((id) => byId.get(id))
+      .filter((c): c is ChildDesc => !!c);
+    const bands = HEX_LAYERS.map((l) => {
+      const own = chips.filter((c) => l.kinds.includes(c.kind));
+      const rows = Math.ceil(own.length / CHILD_COLS);
+      const h = LAYER_HEADER + (rows ? rows * CHILD_H + (rows - 1) * CHILD_GAP_Y + 8 : 8);
+      return { layer: l, chips: own, rows, h };
+    });
+    const boxH = BOX_HEADER + bands.reduce((a, b) => a + b.h, 0) + BOX_PAD;
+    const off = layout[cm.id] ?? defaultChildOffset(i, mSize);
+    return { cm, bands, boxH, off };
+  });
+  const plainOffs = plain.map(
+    (c, i) => layout[c.id] ?? defaultChildOffset(boxes.length + i, mSize),
+  );
+  // Siblings never overlap: separate boxes and loose chips before fitting.
+  const separated = resolveOverlaps(
+    [
+      ...boxes.map((b) => ({ id: b.cm.id, x: b.off.x, y: b.off.y, w: BOX_W, h: b.boxH })),
+      ...plain.map((c, i) => ({ id: c.id, x: plainOffs[i].x, y: plainOffs[i].y, w: CHILD_W, h: CHILD_H })),
+    ],
+    24,
+  );
+  for (const b of boxes) {
+    const moved = separated.get(b.cm.id);
+    if (moved) b.off = { x: moved.x, y: moved.y };
+  }
+  plain.forEach((c, i) => {
+    const moved = separated.get(c.id);
+    if (moved) plainOffs[i] = { x: moved.x, y: moved.y };
+  });
+  const fit = containerFit(center, mSize, [
+    ...boxes.map((b) => ({ dx: b.off.x, dy: b.off.y, w: BOX_W, h: b.boxH })),
+    ...plainOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
+  ]);
+  const nodes: SceneNode[] = [
+    { ...base, x: fit.x, y: fit.y, w: fit.w, h: fit.h, container: true },
+  ];
+  for (const b of boxes) {
+    const bx = center.x + b.off.x;
+    const by = center.y + b.off.y;
+    nodes.push({
+      id: b.cm.id,
+      label: b.cm.name,
+      kind: 'code-module',
+      symbol: 'component',
+      fill: '#ffffff',
+      stroke: '#334155',
+      badge: 'MÓDULO',
+      container: true,
+      parentId: base.id,
+      x: bx,
+      y: by,
+      w: BOX_W,
+      h: b.boxH,
+      tooltip: `${b.cm.name} — módulo: empaqueta elementos del contexto en sus capas; arrastra el asa de un elemento hasta él para asignarlo`,
+    });
+    let cursor = -b.boxH / 2 + BOX_HEADER;
+    for (const band of b.bands) {
+      const bandId = `hexlayer:${b.cm.id}:${band.layer.key}`;
+      nodes.push({
+        id: bandId,
+        label: band.layer.label,
+        kind: 'hex-layer',
+        fill: band.layer.fill,
+        stroke: '#e2e8f0',
+        dashed: true,
+        container: true,
+        parentId: b.cm.id,
+        x: bx,
+        y: by + cursor + band.h / 2,
+        w: BOX_W - 2 * BOX_PAD,
+        h: band.h,
+        tooltip: `Capa de ${band.layer.label} del módulo ${b.cm.name} (derivada del tipo de cada elemento)`,
+      });
+      band.chips.forEach((c, j) => {
+        const col = j % CHILD_COLS;
+        const row = Math.floor(j / CHILD_COLS);
+        const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
+        nodes.push({
+          id: c.id,
+          label: c.name,
+          kind: c.kind,
+          x: bx - (BOX_W - 2 * BOX_PAD) / 2 + BOX_PAD + col * (CHILD_W + CHILD_GAP_X) + CHILD_W / 2,
+          y: by + cursor + LAYER_HEADER + row * (CHILD_H + CHILD_GAP_Y) + CHILD_H / 2,
+          w: CHILD_W,
+          h: CHILD_H,
+          symbol: style.symbol,
+          fill: style.fill,
+          stroke: style.stroke,
+          parentId: bandId,
+          tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name} — en el módulo ${b.cm.name} (Supr lo saca del módulo)`,
+        });
+      });
+      cursor += band.h;
+    }
+  }
+  plain.forEach((c, i) => {
+    const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
+    nodes.push({
+      id: c.id,
+      label: c.name,
+      kind: c.kind,
+      x: center.x + plainOffs[i].x,
+      y: center.y + plainOffs[i].y,
+      w: CHILD_W,
+      h: CHILD_H,
+      symbol: style.symbol,
+      fill: style.fill,
+      stroke: style.stroke,
+      parentId: base.id,
+      tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name} — sin módulo: arrastra su asa hasta un módulo para distribuirlo`,
+    });
+  });
+  return nodes;
+}
+
 /** A resizable container with child boxes — shared by contexts and external systems. */
 function detailedContainer(
   center: { x: number; y: number },
@@ -523,10 +696,11 @@ function detailedContainer(
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
-  detail: 'contexts' | 'detail' | 'operations' = 'contexts',
+  detail: 'contexts' | 'detail' | 'operations' | 'distribution' = 'contexts',
   sizes: Record<string, { w: number; h: number }> = {},
   toggledIds: ReadonlySet<string> = new Set(),
 ): Scene {
+  const distributionLevel = detail === 'distribution';
   // The per-node chevron OVERRIDES the level's default: it expands a node the
   // level draws compact, and folds one the level draws unfolded.
   const collapsedIds = toggledIds; // sub-boxes at the operations level: same semantics
@@ -852,6 +1026,13 @@ export function contextMapScene(
       detailed ? 'full' : implChildren.length > 0 ? 'coarse' : 'compact',
       hasDetail,
     );
+    if (distributionLevel) {
+      return distributionContext(
+        model, m, pos,
+        { ...base, collapsible: false, collapsed: false },
+        layout, sizes,
+      );
+    }
     if (mForm === 'full' && mFoldable) {
       return detailedContext(
         model, m, pos,
@@ -1001,6 +1182,26 @@ export function contextMapScene(
       });
     });
   });
+  // Distribution level: the services join the map — they say WHERE modules deploy.
+  if (distributionLevel) {
+    (model.services ?? []).forEach((svc, i) => {
+      const pos = layout[svc.id] ?? defaultPosition(allNodes.length + i, allNodes.length + (model.services ?? []).length);
+      nodes.push({
+        id: svc.id,
+        label: svc.name,
+        kind: 'service',
+        symbol: 'gear',
+        fill: '#f8fafc',
+        stroke: '#334155',
+        badge: 'SERVICIO',
+        tooltip: `${svc.name} — deployable: arrastra su asa hasta un módulo para desplegarlo aquí`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+    });
+  }
   // Children must paint over every container, not just their own.
   nodes.sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
 
@@ -1065,6 +1266,24 @@ export function contextMapScene(
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
   const nodeIds = new Set(nodes.map((n) => n.id));
+
+  // Deployment wiring (distribution level): service → the code modules it deploys.
+  const deployEdges: SceneEdge[] = distributionLevel
+    ? (model.services ?? []).flatMap((svc) =>
+        (svc.codeModuleIds ?? [])
+          .filter((cmId) => nodeIds.has(cmId) && nodeIds.has(svc.id))
+          .map((cmId): SceneEdge => ({
+            id: `deploy:${svc.id}->${cmId}`,
+            sourceId: svc.id,
+            targetId: cmId,
+            kind: 'deploys',
+            color: '#334155',
+            dashed: true,
+            arrow: true,
+            tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
+          })),
+      )
+    : [];
   const emissionEdges: SceneEdge[] = detailed
     ? (model.emissions ?? [])
         .filter((e) => nodeIds.has(e.sourceId) && nodeIds.has(e.domainEventId))
@@ -1951,6 +2170,7 @@ export function contextMapScene(
   return {
     nodes,
     edges: [
+      ...deployEdges,
       ...relationEdges,
       ...flowEdges,
       ...emissionEdges,

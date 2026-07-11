@@ -47,7 +47,8 @@ public record AllData(
         List<EtlFlowEntity> etlFlows,
         List<IdentityProviderEntity> identityProviders,
         List<NotificationEntity> notifications,
-        List<DocumentEntity> documents
+        List<DocumentEntity> documents,
+        List<CodeModuleEntity> codeModules
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -55,7 +56,7 @@ public record AllData(
         return new AllData(null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -104,5 +105,6 @@ public record AllData(
         apis = apis != null ? apis : List.of();
         proxyApis = proxyApis != null ? proxyApis : List.of();
         mcpGateways = mcpGateways != null ? mcpGateways : List.of();
+        codeModules = codeModules != null ? codeModules : List.of();
     }
 }

@@ -8,6 +8,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessSte
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
@@ -116,6 +117,9 @@ public class EditorApiController {
                             List<String> uiAppIds) {}
 
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
+    /** A code module: distribution unit inside a bounded context; services deploy them. */
+    public record CodeModuleDto(String id, String name, String moduleId, List<String> elementIds) {}
+    public record ServiceDto(String id, String name, List<String> moduleIds, List<String> codeModuleIds) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
@@ -340,6 +344,8 @@ public class EditorApiController {
             List<UiPageDto> pages,
             List<ActorAppUseDto> actorAppUses,
             List<NamedRefDto> models,
+            List<CodeModuleDto> codeModules,
+            List<ServiceDto> services,
             List<MappingRefDto> modelMappings) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId) {}
@@ -966,6 +972,12 @@ public class EditorApiController {
                 actorAppUses.stream().distinct().toList(),
                 repository.findAllOfType(ModelEntity.class).stream()
                         .map(x -> new NamedRefDto(x.id(), x.name())).toList(),
+                repository.findAllOfType(CodeModuleEntity.class).stream()
+                        .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
+                        .toList(),
+                services.stream()
+                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds()))
+                        .toList(),
                 repository.findAllOfType(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId()))
                         .toList());
@@ -1021,7 +1033,8 @@ public class EditorApiController {
                                 String queryOperationId, String mappingId,
                                 String componentId, String parentComponentId, String componentKind,
                                 String beforeComponentId, String title, String text,
-                                String cronExpression, String beforeItemId, String etlFlowId) {}
+                                String cronExpression, String beforeItemId, String etlFlowId,
+                                String serviceId, String elementId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -1050,6 +1063,12 @@ public class EditorApiController {
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
+            case "add-code-module" -> addCodeModule(command);
+            case "remove-code-module" -> removeCodeModule(command);
+            case "add-code-module-element" -> addCodeModuleElement(command);
+            case "remove-code-module-element" -> removeCodeModuleElement(command);
+            case "add-service-code-module" -> addServiceCodeModule(command);
+            case "remove-service-code-module" -> removeServiceCodeModule(command);
             case "add-external-system" -> addExternalSystem(command);
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
@@ -1695,6 +1714,63 @@ public class EditorApiController {
                 List.of(), List.of(), List.of(), List.of(),
                 command.subdomainType() == null ? null : SubdomainType.valueOf(command.subdomainType()),
                 List.of(), List.of(), List.of(), null, null, null, null));
+    }
+
+    private void addCodeModule(EditorCommand command) {
+        if (repository.findById(command.id(), CodeModuleEntity.class).isPresent()) return;
+        repository.findById(command.moduleId(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.save(new CodeModuleEntity(command.id(), command.name(), command.moduleId(), List.of()));
+    }
+
+    private void removeCodeModule(EditorCommand command) {
+        // the services that deployed it let go; its elements just become undistributed
+        repository.findAllOfType(ServiceEntity.class).stream()
+                .filter(s -> s.codeModuleIds().contains(command.id()))
+                .forEach(s -> repository.save(s.toBuilder()
+                        .codeModuleIds(without(s.codeModuleIds(), command.id())).build()));
+        repository.deleteAllById(List.of(command.id()), CodeModuleEntity.class);
+    }
+
+    private void addCodeModuleElement(EditorCommand command) {
+        var codeModule = repository.findById(command.id(), CodeModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
+        // an element lives in ONE module of its bounded context: assigning here moves it
+        repository.findAllOfType(CodeModuleEntity.class).stream()
+                .filter(cm -> !cm.id().equals(codeModule.id())
+                        && cm.moduleId().equals(codeModule.moduleId())
+                        && cm.elementIds().contains(command.elementId()))
+                .forEach(cm -> repository.save(cm.toBuilder()
+                        .elementIds(without(cm.elementIds(), command.elementId())).build()));
+        if (codeModule.elementIds().contains(command.elementId())) return;
+        var ids = new ArrayList<>(codeModule.elementIds());
+        ids.add(command.elementId());
+        repository.save(codeModule.toBuilder().elementIds(ids).build());
+    }
+
+    private void removeCodeModuleElement(EditorCommand command) {
+        var codeModule = repository.findById(command.id(), CodeModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
+        repository.save(codeModule.toBuilder()
+                .elementIds(without(codeModule.elementIds(), command.elementId())).build());
+    }
+
+    private void addServiceCodeModule(EditorCommand command) {
+        var service = repository.findById(command.serviceId(), ServiceEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
+        repository.findById(command.id(), CodeModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
+        if (service.codeModuleIds().contains(command.id())) return;
+        var ids = new ArrayList<>(service.codeModuleIds());
+        ids.add(command.id());
+        repository.save(service.toBuilder().codeModuleIds(ids).build());
+    }
+
+    private void removeServiceCodeModule(EditorCommand command) {
+        var service = repository.findById(command.serviceId(), ServiceEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
+        repository.save(service.toBuilder()
+                .codeModuleIds(without(service.codeModuleIds(), command.id())).build());
     }
 
     private void addAggregate(EditorCommand command) {

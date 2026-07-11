@@ -280,7 +280,7 @@ export class ModuxEditor extends LitElement {
   /** The explorer is the front door: graphics-first, the CRUDs behind it. */
   @state() private _view: ViewId = 'explorer';
   /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
-  @state() private _detail: 'contexts' | 'detail' | 'operations' = 'contexts';
+  @state() private _detail: 'contexts' | 'detail' | 'operations' | 'distribution' = 'contexts';
   /** Last chosen relation type — the default pre-selection in the picker. */
   @state() private _relationType: ContextMapRelationType = 'CUSTOMER_SUPPLIER';
   /** Open type picker: creating a new relation, or editing an existing one. */
@@ -777,6 +777,7 @@ export class ModuxEditor extends LitElement {
       case '1': scope('level:contexts'); break;
       case '2': scope('level:detail'); break;
       case '3': scope('level:operations'); break;
+      case '4': scope('level:distribution'); break;
       case '4': scope('view:aggregates'); break;
       case '5': scope('view:flows'); break;
       case '6': scope('view:processes'); break;
@@ -828,14 +829,15 @@ export class ModuxEditor extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('layout')) {
       const detail = normalizeViewLayout(this.layout['context-map']).detail;
-      if (detail === 'contexts' || detail === 'detail' || detail === 'operations') {
+      if (detail === 'contexts' || detail === 'detail' || detail === 'operations'
+          || detail === 'distribution') {
         this._detail = detail;
       }
     }
   }
 
   /** Detail level changes persist with the layout, so they survive reloads. */
-  private setDetail(detail: 'contexts' | 'detail' | 'operations'): void {
+  private setDetail(detail: 'contexts' | 'detail' | 'operations' | 'distribution'): void {
     if (detail === this._detail) return;
     // First visit to a level: it starts as a copy of what the user is looking
     // at; from then on each level's geometry lives its own life.
@@ -994,6 +996,8 @@ export class ModuxEditor extends LitElement {
       }
       case 'create-ui-app':
         return [{ kind: 'delete-ui-app', id: c.id }];
+      case 'add-code-module':
+        return [{ kind: 'remove-code-module', id: c.id }];
       case 'create-ui-page':
         return [{ kind: 'delete-ui-page', id: c.id }];
       case 'set-app-header-page': {
@@ -2521,7 +2525,7 @@ export class ModuxEditor extends LitElement {
   private onDiagramScopeChange(value: string): void {
     if (value.startsWith('level:')) {
       this._view = 'context-map';
-      this.setDetail(value.slice('level:'.length) as 'contexts' | 'detail' | 'operations');
+      this.setDetail(value.slice('level:'.length) as 'contexts' | 'detail' | 'operations' | 'distribution');
       return;
     }
     if (value.startsWith('view:')) {
@@ -2638,6 +2642,34 @@ export class ModuxEditor extends LitElement {
     y?: number,
     connectKind?: string,
   ): void {
+    // Distribution level: a line means packaging (elemento → módulo) or deployment
+    // (servicio → módulo). Anything else falls through to the usual meanings.
+    if (this._view === 'context-map' && this._detail === 'distribution') {
+      const scene = this.sceneFor('context-map');
+      const codeModules = this.model.codeModules ?? [];
+      const boxOf = (id: string): string | null => {
+        for (let cur: string | undefined = id; cur; ) {
+          if (codeModules.some((cm) => cm.id === cur)) return cur;
+          cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+        }
+        return null;
+      };
+      const targetBox = boxOf(targetId);
+      if (targetBox && targetBox !== sourceId) {
+        if ((this.model.services ?? []).some((s) => s.id === sourceId)) {
+          this.command({ kind: 'add-service-code-module', serviceId: sourceId, id: targetBox });
+          return;
+        }
+        const isElement =
+          !codeModules.some((cm) => cm.id === sourceId) &&
+          !this.model.modules.some((mo) => mo.id === sourceId);
+        if (isElement) {
+          // the backend moves it: an element lives in ONE module of its context
+          this.command({ kind: 'add-code-module-element', id: targetBox, elementId: sourceId });
+          return;
+        }
+      }
+    }
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (this._view === 'workflows') {
       const sourceOwner = this.owningWorkflowOf(sourceId);
@@ -4131,6 +4163,32 @@ export class ModuxEditor extends LitElement {
       this.command({ kind: 'delete-ui-app', id });
       return;
     }
+    if (this._view === 'context-map' && elementType === 'edge' && kind === 'deploys') {
+      const match = /^deploy:(.+)->(.+)$/.exec(id);
+      if (match) {
+        this._selectedId = null;
+        this.command({ kind: 'remove-service-code-module', serviceId: match[1], id: match[2] });
+      }
+      return;
+    }
+    if (this._view === 'context-map' && elementType === 'node' && kind === 'code-module') {
+      this._selectedId = null;
+      this.command({ kind: 'remove-code-module', id });
+      return;
+    }
+    if (this._view === 'context-map' && this._detail === 'distribution' && elementType === 'node') {
+      // Supr on a chip inside a module box UNPACKS it — the element itself survives.
+      const scene = this.sceneFor('context-map');
+      for (let cur = scene.nodes.find((n) => n.id === id)?.parentId; cur; ) {
+        if ((this.model.codeModules ?? []).some((cm) => cm.id === cur)) {
+          this._selectedId = null;
+          this.command({ kind: 'remove-code-module-element', id: cur, elementId: id });
+          return;
+        }
+        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      }
+      return;
+    }
     if (this._view === 'context-map' && elementType === 'edge' && kind === 'st-fire') {
       const match = /^stfire:(.+)->(.+)$/.exec(id);
       if (!match) return;
@@ -5369,6 +5427,7 @@ export class ModuxEditor extends LitElement {
     { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
     { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
     { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
+    { type: 'code-module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },
     { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-app-orchestrator', label: 'Orquestador', symbol: 'process', color: '#0ea5e9', group: 'UI' },
     { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },
@@ -5648,6 +5707,8 @@ export class ModuxEditor extends LitElement {
       (m.documents ?? []).map((x) => x.id),
       (m.uiApps ?? []).map((x) => x.id),
       (m.pages ?? []).map((x) => x.id),
+      (m.codeModules ?? []).map((x) => x.id),
+      (m.services ?? []).map((x) => x.id),
     ]) {
       pool.forEach((id) => ids.add(id));
     }
@@ -5670,7 +5731,7 @@ export class ModuxEditor extends LitElement {
     const needsModule = [
       'aggregate', 'use-case', 'policy', 'domain-event',
       'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
-      'notification', 'document',
+      'notification', 'document', 'code-module',
     ].includes(type);
     if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
     if (type === 'read-model') {
@@ -6086,11 +6147,16 @@ export class ModuxEditor extends LitElement {
       'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
       'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
       'read-model': 'rm-', 'external-use-case': 'xuc-',
-      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-',
+      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'code-module': 'cm-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+    } else if (type === 'code-module') {
+      issue({ kind: 'add-code-module', id, name, moduleId: container }, id, container);
+      this.emit('modux-notice', {
+        message: 'Módulo creado — arrastra el asa de los elementos del contexto hasta él para distribuirlos',
+      });
     } else if (type === 'use-case' || type === 'policy') {
       issue(
         { kind: 'add-use-case', id, name, moduleId: container, ...(type === 'policy' ? { policy: true } : {}) },
@@ -6661,6 +6727,10 @@ export class ModuxEditor extends LitElement {
               <option value="level:operations"
                 ?selected=${this._view === 'context-map' && this._detail === 'operations'}>
                 APIs y operaciones
+              </option>
+              <option value="level:distribution"
+                ?selected=${this._view === 'context-map' && this._detail === 'distribution'}>
+                Distribución (módulos y servicios)
               </option>
             </optgroup>
             <optgroup label="Vistas especializadas">

@@ -174,8 +174,8 @@ export interface ViewLayout {
   edges: Record<string, Point[]>;
   /** Node id → explicit size, for resizable containers. */
   sizes?: Record<string, { w: number; h: number }>;
-  /** Persisted detail level (context-map only): contexts, their contents, or API operations. */
-  detail?: 'contexts' | 'detail' | 'operations';
+  /** Persisted detail level (context-map only): contexts, their contents, API operations, or distribution. */
+  detail?: 'contexts' | 'detail' | 'operations' | 'distribution';
   /** Containers collapsed by hand at this level (they render compact). */
   collapsed?: string[];
 }

@@ -748,6 +748,28 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model-mapping'; id: string }
   | {
+      /** A code module: the bounded context distributes its elements into it. */
+      kind: 'add-code-module';
+      id: string;
+      name: string;
+      moduleId: string;
+    }
+  | { kind: 'remove-code-module'; id: string }
+  | {
+      /** An element lives in ONE module of its bounded context: assigning moves it. */
+      kind: 'add-code-module-element';
+      id: string;
+      elementId: string;
+    }
+  | { kind: 'remove-code-module-element'; id: string; elementId: string }
+  | {
+      /** The service deploys the module (a shared module may deploy in several). */
+      kind: 'add-service-code-module';
+      serviceId: string;
+      id: string;
+    }
+  | { kind: 'remove-service-code-module'; serviceId: string; id: string }
+  | {
       /** An integrator: an ETL flow owned by a bounded context. */
       kind: 'add-etl-flow';
       id: string;
