@@ -26,8 +26,21 @@ public record UseCaseStepEntity(
         /** PublishApplicationEvent: the application event this step publishes. */
         String applicationEventId,
         /** CallExternalUseCase: the external system's use case this step calls. */
-        String externalUseCaseId
+        String externalUseCaseId,
+        /** Custom: the hand-written code this operation delegates to (CustomCodeEntity). */
+        String customCodeId
 ) {
+
+    /** Backward-compatible constructor (pre-customCodeId callers and stores). */
+    public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,
+                             String operationId, String gatewayId, String gatewayOperationId,
+                             String domainEventId, String useCaseId, String modelMappingId,
+                             String queryServiceId, String queryOperationId, String intent,
+                             String applicationEventId, String externalUseCaseId) {
+        this(id, name, type, aggregateId, operationId, gatewayId, gatewayOperationId,
+                domainEventId, useCaseId, modelMappingId, queryServiceId, queryOperationId,
+                intent, applicationEventId, externalUseCaseId, null);
+    }
 
     /** Backward-compatible constructor (pre-externalUseCaseId callers and stores). */
     public UseCaseStepEntity(String id, String name, UseCaseStepType type, String aggregateId,

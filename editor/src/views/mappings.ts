@@ -91,9 +91,59 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       tooltip: `${t.name} — transformación: arrastra modelos o campos hasta ella (entradas) y su asa hasta un modelo o campo (salida)${t.output ? '' : ' · aún sin salida'}`,
     });
   });
+  // Custom code: hand-written pieces mappings, transformations and Custom steps
+  // delegate to — dashed slate node, wired by dragging.
+  (model.customCodes ?? []).forEach((cc, i) => {
+    const pos = layout[cc.id] ?? { x: 120 + (i % 5) * 220, y: 60 };
+    nodes.push({
+      id: cc.id,
+      label: cc.name,
+      x: pos.x,
+      y: pos.y,
+      w: 150,
+      h: 44,
+      kind: 'custom-code',
+      symbol: 'gear',
+      fill: '#f8fafc',
+      stroke: '#0f172a',
+      badge: 'CODE',
+      dashed: true,
+      tooltip: `${cc.name} — código a mano: arrastra su asa hasta una transformación, o hasta un modelo mapeado, para delegar en él`,
+    });
+  });
   const nodeIds = new Set(nodes.map((n) => n.id));
   const refNodeId = (r: { modelId: string; fieldId?: string | null }) =>
     r.fieldId ? fieldNodeId(r.modelId, r.fieldId) : r.modelId;
+
+  for (const t of model.transformations ?? []) {
+    if (t.customCodeId && nodeIds.has(t.customCodeId) && nodeIds.has(t.id)) {
+      edges.push({
+        id: `cctf:${t.id}`,
+        sourceId: t.customCodeId,
+        targetId: t.id,
+        kind: 'custom-of-transformation',
+        color: '#0f172a',
+        dashed: true,
+        arrow: true,
+        tooltip: `${t.name} delega en código a mano — Supr lo desconecta`,
+      });
+    }
+  }
+  for (const mm of mappings) {
+    if (mm.customCodeId && nodeIds.has(mm.customCodeId) && mm.targetModelId && nodeIds.has(mm.targetModelId)) {
+      edges.push({
+        id: `ccmap:${mm.id}`,
+        sourceId: mm.customCodeId,
+        targetId: mm.targetModelId,
+        kind: 'custom-of-mapping',
+        color: '#0f172a',
+        dashed: true,
+        arrow: true,
+        label: mm.name,
+        tooltip: `El mapeado ${mm.name} delega en código a mano — Supr lo desconecta`,
+      });
+    }
+  }
 
   for (const t of model.transformations ?? []) {
     for (const r of t.inputs ?? []) {

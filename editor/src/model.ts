@@ -678,13 +678,19 @@ export interface ModuxModel {
     targetModelId?: string;
     /** Field-to-field rules, drawn as thin edges between the two fields. */
     rules?: { id: string; sourceFieldId?: string; targetFieldId?: string }[];
+    /** The hand-written code this mapping delegates to. */
+    customCodeId?: string;
   }[];
+  /** Hand-written code, first-class: mappings, transformations and Custom steps point at it. */
+  customCodes?: { id: string; name: string }[];
   /** Transformations: models/fields in, a model or field out — wired on the mappings map. */
   transformations?: {
     id: string;
     name: string;
     inputs?: { modelId: string; fieldId?: string | null }[];
     output?: { modelId: string; fieldId?: string | null } | null;
+    /** The hand-written code that implements it. */
+    customCodeId?: string;
   }[];
   /** Code modules: how each bounded context DISTRIBUTES its elements into buildable units. */
   codeModules?: CodeModuleRef[];

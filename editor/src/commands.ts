@@ -765,6 +765,27 @@ export type ModuxCommand =
       targetId: string;
     }
   | { kind: 'remove-model-mapping-rule'; id: string; itemId: string }
+  | { kind: 'add-custom-code'; id: string; name: string }
+  | { kind: 'remove-custom-code'; id: string }
+  | {
+      /** The mapping delegates to hand-written code (targetId null unwires). */
+      kind: 'set-mapping-custom-code';
+      id: string;
+      targetId: string | null;
+    }
+  | {
+      /** The transformation delegates to hand-written code (targetId null unwires). */
+      kind: 'set-transformation-custom-code';
+      id: string;
+      targetId: string | null;
+    }
+  | {
+      /** The use case operation (step) delegates to hand-written code. */
+      kind: 'set-use-case-step-custom-code';
+      useCaseId: string;
+      id: string;
+      targetId: string | null;
+    }
   | { kind: 'add-transformation'; id: string; name: string }
   | { kind: 'remove-transformation'; id: string }
   | {

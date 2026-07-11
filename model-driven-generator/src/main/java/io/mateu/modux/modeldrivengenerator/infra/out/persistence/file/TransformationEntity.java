@@ -16,10 +16,18 @@ public record TransformationEntity(
         String name,
         List<TransformationRefEntity> inputs,
         /** The model or field this transformation produces (null while unwired). */
-        TransformationRefEntity output
+        TransformationRefEntity output,
+        /** The hand-written code that implements it (CustomCodeEntity). */
+        String customCodeId
 ) implements Identifiable {
 
     public TransformationEntity {
         if (inputs == null) inputs = List.of();
+    }
+
+    /** Backward-compatible constructor (pre-customCodeId callers and stores). */
+    public TransformationEntity(String id, String name, List<TransformationRefEntity> inputs,
+                                TransformationRefEntity output) {
+        this(id, name, inputs, output, null);
     }
 }
