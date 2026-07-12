@@ -244,7 +244,12 @@ function moduleElementDescs(
   return [
     ...(model.aggregates ?? [])
       .filter((a) => a.moduleId === module.id)
-      .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'aggregate' })),
+      .map((a): ChildDesc => ({
+        id: a.id,
+        // The invariants ARE the aggregate's reason to exist: they show on the chip.
+        name: (a.invariants ?? []).length ? `${a.name} ⚖${a.invariants!.length}` : a.name,
+        kind: 'aggregate',
+      })),
     ...(module.useCases ?? []).map(
       (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
     ),

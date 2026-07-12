@@ -33,6 +33,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'etl-flow', label: 'Flujo ETL (integrador)', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
   { type: 'etl-transform', label: 'Transformación ETL', child: true, symbol: 'gear', color: '#0f766e', group: 'Orquestación' },
   { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
+  { type: 'invariant', label: 'Invariante', child: true, symbol: 'shield', color: '#0f766e', group: 'Dominio' },
   { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4', group: 'Dominio' },
   { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4', group: 'Dominio' },
   { type: 'policy', label: 'Policy', child: true, symbol: 'usecase', color: '#a855f7', group: 'Dominio' },

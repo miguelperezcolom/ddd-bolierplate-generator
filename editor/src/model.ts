@@ -409,6 +409,8 @@ export interface AggregateRef {
   id: string;
   name: string;
   moduleId: string;
+  /** The rules the aggregate protects — its very reason to exist. */
+  invariants?: { id: string; name: string }[];
 }
 
 export interface EntityRef {

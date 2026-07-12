@@ -239,7 +239,10 @@ public class EditorModelProjection {
                 allAggregates.stream()
                         .filter(a -> a.id().equals(aggregateId))
                         .findFirst()
-                        .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), module.id())));
+                        .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), module.id(),
+                                a.invariants().stream()
+                                        .map(i -> new AggregateInvariantDto(i.id(), i.name()))
+                                        .toList())));
             }
         }
 

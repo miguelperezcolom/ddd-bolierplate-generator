@@ -1424,6 +1424,12 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (kind === 'invariant' || kind === 'invariant-containment') {
+    const invariantId = kind === 'invariant' ? id : id.replace(/^protects:.+->/, '');
+    host.clearSelection();
+    host.command({ kind: 'remove-invariant', id: invariantId });
+    return;
+  }
     if (view === 'eventstorming' && elementType === 'edge' && kind === 'es-custom') {
       const match = /^escc:(.+)$/.exec(id);
       const owner = match ? host.owningUseCaseOf(match[1]) : null;

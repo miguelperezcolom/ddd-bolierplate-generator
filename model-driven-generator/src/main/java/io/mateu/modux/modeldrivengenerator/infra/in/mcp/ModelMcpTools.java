@@ -308,8 +308,10 @@ public class ModelMcpTools {
         return "Project '" + projectId + "' bootstrapped: service '" + serviceId + "' with module(s) "
                 + String.join(", ", moduleIds) + ". Store persisted.\n"
                 + "Next (the authoring path): create the models of each module (step 2); add an aggregate "
-                + "only where there are invariants or a lifecycle to protect; then relations as intent "
-                + "(apply_recipe / flows) and run lint_model — its findings are the to-do list.";
+                + "only where there are invariants or a lifecycle to protect — and declare those "
+                + "invariants on it; then relations as intent (apply_recipe / flows), workflows for "
+                + "cross-context orchestration (human steps carry roleId, deadline and formPageId), and "
+                + "run lint_model — its findings are the to-do list.";
     }
 
     private String listElementTypes() {

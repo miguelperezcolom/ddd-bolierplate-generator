@@ -6,6 +6,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 
 import java.util.List;
 
+@lombok.Builder(toBuilder = true)
 public record AggregateEntity(
         String id,
         String name,

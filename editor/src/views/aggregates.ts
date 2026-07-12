@@ -66,7 +66,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       symbol: 'aggregate',
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#64748b',
-      badge: module ? `${module.name.toUpperCase()} · AGGREGATE` : 'AGGREGATE',
+      badge: `${module ? `${module.name.toUpperCase()} · ` : ''}AGGREGATE${(a.invariants ?? []).length ? ` · ⚖${a.invariants!.length}` : ''}`,
       tooltip: `Agregado ${a.name}${module ? ` — módulo ${module.name} (${subdomain})` : ''}`,
     };
   });
@@ -88,6 +88,40 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       tooltip: `Entidad ${e.name} (dentro del agregado)`,
     };
   });
+
+  // The rules the aggregate protects, orbiting it — declare them from the palette.
+  const invariantNodes: SceneNode[] = (model.aggregates ?? []).flatMap((a) =>
+    (a.invariants ?? []).map((inv, i) => {
+      const base = pos(a.id);
+      const p = layout[inv.id] ?? { x: base.x - 150, y: base.y + 90 + i * 52 };
+      return {
+        id: inv.id,
+        label: inv.name,
+        x: p.x,
+        y: p.y,
+        w: 150,
+        h: 36,
+        kind: 'invariant',
+        symbol: 'shield',
+        fill: '#f0fdfa',
+        stroke: '#0f766e',
+        badge: '⚖ INVARIANTE',
+        tooltip: `${inv.name} — regla que el agregado protege; doble click abre la ficha del agregado (sus condiciones se detallan allí)`,
+      } as SceneNode;
+    }),
+  );
+
+  const invariantEdges: SceneEdge[] = (model.aggregates ?? []).flatMap((a) =>
+    (a.invariants ?? []).map((inv) => ({
+      id: `protects:${a.id}->${inv.id}`,
+      sourceId: a.id,
+      targetId: inv.id,
+      kind: 'invariant-containment',
+      color: '#0f766e',
+      dashed: true,
+      tooltip: 'El agregado protege esta regla — Supr la retira',
+    })),
+  );
 
   const containmentEdges: SceneEdge[] = (model.entities ?? []).map((e) => ({
     id: `contains:${e.aggregateId}->${e.id}`,
@@ -111,7 +145,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
   }));
 
   return {
-    nodes: [...aggregateNodes, ...entityNodes],
-    edges: [...containmentEdges, ...referenceEdges],
+    nodes: [...aggregateNodes, ...entityNodes, ...invariantNodes],
+    edges: [...containmentEdges, ...referenceEdges, ...invariantEdges],
   };
 }

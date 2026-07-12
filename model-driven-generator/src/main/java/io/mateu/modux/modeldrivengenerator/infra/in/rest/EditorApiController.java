@@ -4,6 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.F
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
@@ -173,7 +174,10 @@ public class EditorApiController {
                              List<UseCaseStepDto> steps) {}
     /** An operation of a use case — the pipeline step, with its custom-code delegation. */
     public record UseCaseStepDto(String id, String name, String type, String customCodeId) {}
-    public record AggregateDto(String id, String name, String moduleId) {}
+    public record AggregateDto(String id, String name, String moduleId,
+                               /** The rules the aggregate protects — its very reason to exist. */
+                               List<AggregateInvariantDto> invariants) {}
+    public record AggregateInvariantDto(String id, String name) {}
     public record EntityDto(String id, String name, String aggregateId) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
     public record ProcessStepDto(String id, String name, String type, String useCaseId, String roleId,
@@ -663,6 +667,8 @@ public class EditorApiController {
             case "remove-api-operation" -> removeApiOperation(command);
             case "set-api-operation-target" -> setApiOperationTarget(command);
             case "add-aggregate" -> addAggregate(command);
+            case "add-invariant" -> addInvariant(command);
+            case "remove-invariant" -> removeInvariant(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
             case "add-application-event" -> addApplicationEvent(command);
@@ -1209,6 +1215,29 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
         repository.save(service.toBuilder()
                 .codeModuleIds(AgentEditorCommands.without(service.codeModuleIds(), command.id())).build());
+    }
+
+    /** The invariant declares WHY the aggregate exists; its conditions detail HOW (ficha). */
+    private void addInvariant(EditorCommand command) {
+        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        if (aggregate.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
+        var invariants = new ArrayList<>(aggregate.invariants());
+        invariants.add(new InvariantEntity(command.id(), command.name(), List.of()));
+        repository.save(aggregate.toBuilder().invariants(invariants).build());
+    }
+
+    private void removeInvariant(EditorCommand command) {
+        for (var aggregate : repository.findAllOfType(AggregateEntity.class)) {
+            if (aggregate.invariants().stream().noneMatch(i -> i.id().equals(command.id()))) continue;
+            repository.save(aggregate.toBuilder()
+                    .invariants(aggregate.invariants().stream()
+                            .filter(i -> !i.id().equals(command.id()))
+                            .toList())
+                    .build());
+            return;
+        }
     }
 
     private void addAggregate(EditorCommand command) {

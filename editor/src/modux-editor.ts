@@ -2053,6 +2053,12 @@ export class ModuxEditor extends LitElement {
       }
       return;
     }
+    if (e.detail.kind === 'invariant') {
+      const owner = (this.model.aggregates ?? [])
+        .find((a) => (a.invariants ?? []).some((i) => i.id === e.detail.id));
+      if (owner) this.openInDrawer({ elementType: 'aggregate', id: owner.id });
+      return;
+    }
     const mapped =
       e.detail.kind === 'process-step'
         ? activationForStep(this.model.processes, e.detail.id)
@@ -2779,6 +2785,12 @@ export class ModuxEditor extends LitElement {
       'notification', 'document', 'code-module',
     ].includes(type);
     if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
+    if (type === 'invariant') {
+      const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
+      if (agg) return agg;
+      const mod = chain.find((cid) => this.model.modules.some((mo) => mo.id === cid));
+      return (this.model.aggregates ?? []).find((a) => a.moduleId === mod)?.id ?? null;
+    }
     if (type === 'read-model') {
       const agg = chain.find((id) => (this.model.aggregates ?? []).some((a) => a.id === id));
       if (agg) return agg;
@@ -3231,11 +3243,16 @@ export class ModuxEditor extends LitElement {
       'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
       'read-model': 'rm-', 'external-use-case': 'xuc-',
       'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'code-module': 'cm-',
-      'model-field': 'f-',
+      'model-field': 'f-', invariant: 'inv-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+    } else if (type === 'invariant') {
+      this.command({ kind: 'add-invariant', aggregateId: container, id, name });
+      this.emit('modux-notice', {
+        message: `Invariante declarado en el agregado — sus condiciones se detallan en la ficha del agregado`,
+      });
     } else if (type === 'ui-button') {
       const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);
       const taken = new Set((group?.buttons ?? []).map((bt) => bt.id));

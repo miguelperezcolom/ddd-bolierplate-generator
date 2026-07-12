@@ -37,6 +37,14 @@ export type ModuxCommand =
       moduleId: string;
     }
   | {
+      /** An invariant INSIDE its aggregate — the rule that justifies the boundary. */
+      kind: 'add-invariant';
+      aggregateId: string;
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-invariant'; id: string }
+  | {
       kind: 'add-domain-event';
       id: string;
       name: string;
