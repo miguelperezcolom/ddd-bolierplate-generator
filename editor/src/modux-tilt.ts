@@ -42,9 +42,18 @@ export class ModuxTilt extends LitElement {
     null;
   @state() private _hoverTargetId: string | null = null;
 
+  /** Multi-selection (rubber band): Supr deletes the lot, like the 2D canvas. */
+  @state() private _selected = new Set<string>();
+
+  /** Rubber-band selection in progress (host-local px). */
+  @state() private _rubber: { x1: number; y1: number; x2: number; y2: number; additive: boolean } | null = null;
+
+  /** Inline rename (F2): a floating input over the selected plate. */
+  @state() private _renaming: { id: string; kind: string; value: string } | null = null;
+
   private _drag:
     | {
-        mode: 'orbit' | 'pan' | 'node' | 'connect';
+        mode: 'orbit' | 'pan' | 'node' | 'connect' | 'rubber';
         x: number;
         y: number;
         rx: number;
@@ -167,6 +176,27 @@ export class ModuxTilt extends LitElement {
       color: #94a3b8;
       white-space: nowrap;
     }
+    .lasso {
+      position: absolute;
+      z-index: 5;
+      pointer-events: none;
+      border: 1.2px dashed #38bdf8;
+      background: rgba(56, 189, 248, 0.09);
+      border-radius: 3px;
+    }
+    .rename3 {
+      position: absolute;
+      transform: translateX(-50%);
+      z-index: 7;
+      font: 12px system-ui, sans-serif;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1.5px solid #38bdf8;
+      background: #0f172a;
+      color: #e2e8f0;
+      outline: none;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
     .hud {
       /* right-aligned: the palette docks on the left and was covering it */
       position: absolute;
@@ -276,6 +306,12 @@ export class ModuxTilt extends LitElement {
     return { x: (b1 * a22 - a12 * b2) / det, y: (a11 * b2 - b1 * a21) / det };
   }
 
+  protected updated(changed: Map<string, unknown>): void {
+    if (changed.has('_renaming') && this._renaming) {
+      (this.renderRoot.querySelector('.rename3') as HTMLInputElement | null)?.select();
+    }
+  }
+
   private onSpaceKey = (e: KeyboardEvent): void => {
     if (e.key !== ' ') return;
     const t = e.target as HTMLElement;
@@ -288,7 +324,11 @@ export class ModuxTilt extends LitElement {
     if (e.button !== 0 && e.button !== 1) return;
     if (e.button === 1) e.preventDefault(); // middle button pans, not autoscroll
     this.focus();
-    this.setPointerCapture?.(e.pointerId);
+    try {
+      this.setPointerCapture?.(e.pointerId);
+    } catch {
+      /* synthetic events have no active pointer */
+    }
     const el = e.composedPath()[0] as HTMLElement | undefined;
     const handle = el?.closest?.('.h3') as HTMLElement | null;
     if (handle?.dataset.sourceId) {
@@ -305,6 +345,20 @@ export class ModuxTilt extends LitElement {
     }
     const wantsPan = e.shiftKey || this._space || e.button === 1;
     const plate = wantsPan ? null : this.plateAt(e);
+    // Same grammar as every surface: plain background drag SELECTS; space/shift
+    // pan; alt keeps the orbit (the gesture 3D adds, not replaces).
+    if (!plate && !wantsPan && !e.altKey) {
+      const rect = this.getBoundingClientRect();
+      this._rubber = {
+        x1: e.clientX - rect.left,
+        y1: e.clientY - rect.top,
+        x2: e.clientX - rect.left,
+        y2: e.clientY - rect.top,
+        additive: false,
+      };
+      this._drag = { mode: 'rubber', x: e.clientX, y: e.clientY, rx: this._rx, rz: this._rz, pan: { ...this._pan }, moved: false };
+      return;
+    }
     this._drag = {
       mode: plate ? 'node' : wantsPan ? 'pan' : 'orbit',
       x: e.clientX,
@@ -330,6 +384,12 @@ export class ModuxTilt extends LitElement {
       const target = under?.closest?.('.n3') as HTMLElement | null;
       const targetId = target?.dataset.nodeId ?? null;
       this._hoverTargetId = targetId !== this._connect.sourceId ? targetId : null;
+      return;
+    }
+    if (this._drag.mode === 'rubber' && this._rubber) {
+      if (Math.hypot(dx, dy) > 3) this._drag.moved = true;
+      const rect = this.getBoundingClientRect();
+      this._rubber = { ...this._rubber, x2: e.clientX - rect.left, y2: e.clientY - rect.top };
       return;
     }
     if (this._drag.mode === 'node') {
@@ -362,6 +422,30 @@ export class ModuxTilt extends LitElement {
       if (source && target && target !== source) {
         // Same contract as the canvas: the shell decides what the pair means.
         this.emit('connect-requested', { sourceId: source, targetId: target });
+      }
+      return;
+    }
+    if (drag.mode === 'rubber') {
+      const r = this._rubber;
+      this._rubber = null;
+      if (r && drag.moved) {
+        const host = this.getBoundingClientRect();
+        const x0 = Math.min(r.x1, r.x2) + host.left;
+        const x1 = Math.max(r.x1, r.x2) + host.left;
+        const y0 = Math.min(r.y1, r.y2) + host.top;
+        const y1 = Math.max(r.y1, r.y2) + host.top;
+        const caught: string[] = [];
+        this.renderRoot.querySelectorAll('.n3').forEach((el) => {
+          const b = (el as HTMLElement).getBoundingClientRect();
+          const cx = b.left + b.width / 2;
+          const cy = b.top + b.height / 2;
+          const id = (el as HTMLElement).dataset.nodeId;
+          if (id && cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) caught.push(id);
+        });
+        this._selected = new Set(caught);
+      } else {
+        this._selected = new Set();
+        this.emit('selection-cleared');
       }
       return;
     }
@@ -414,14 +498,40 @@ export class ModuxTilt extends LitElement {
       this.emit('redo-requested');
       return;
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
-      const node = this.scene.nodes.find((n) => n.id === this.selectedId);
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      // A live multi-selection takes over — each node goes through the host's rules.
+      if (this._selected.size) {
+        e.preventDefault();
+        const items = this.scene.nodes
+          .filter((n) => this._selected.has(n.id))
+          .map((n) => ({ id: n.id, kind: n.kind }));
+        this._selected = new Set();
+        if (items.length) this.emit('delete-selection-requested', { items });
+        return;
+      }
+      if (this.selectedId) {
+        const node = this.scene.nodes.find((n) => n.id === this.selectedId);
+        if (node) {
+          e.preventDefault();
+          this.emit('delete-requested', { elementType: 'node', id: node.id, kind: node.kind });
+        }
+      }
+      return;
+    }
+    if (e.key === 'F2') {
+      const only = this._selected.size === 1 ? [...this._selected][0] : this.selectedId;
+      const node = only ? this.scene.nodes.find((n) => n.id === only) : undefined;
       if (node) {
         e.preventDefault();
-        this.emit('delete-requested', { elementType: 'node', id: node.id, kind: node.kind });
+        this._renaming = { id: node.id, kind: node.kind ?? 'node', value: node.label };
       }
+      return;
     }
-    if (e.key === 'Escape') this.emit('selection-cleared');
+    if (e.key === 'Escape') {
+      this._selected = new Set();
+      this._renaming = null;
+      this.emit('selection-cleared');
+    }
   };
 
   private onWheel = (e: WheelEvent): void => {
@@ -537,7 +647,8 @@ export class ModuxTilt extends LitElement {
             const hovered = this._hoverTargetId === n.id;
             return html`
               <div
-                class="n3 ${n.container ? 'container3' : ''} ${this.selectedId === n.id
+                class="n3 ${n.container ? 'container3' : ''} ${this.selectedId === n.id ||
+                  this._selected.has(n.id)
                   ? 'selected3'
                   : ''} ${hovered ? 'hover3' : ''}"
                 data-node-id=${n.id}
@@ -600,10 +711,54 @@ export class ModuxTilt extends LitElement {
             ></line>
           </svg>`
         : ''}
+      ${this._rubber
+        ? html`<div
+            class="lasso"
+            style="left: ${Math.min(this._rubber.x1, this._rubber.x2)}px; top: ${Math.min(
+              this._rubber.y1,
+              this._rubber.y2,
+            )}px; width: ${Math.abs(this._rubber.x2 - this._rubber.x1)}px; height: ${Math.abs(
+              this._rubber.y2 - this._rubber.y1,
+            )}px"
+          ></div>`
+        : ''}
+      ${this._renaming
+        ? (() => {
+            const el = this.renderRoot.querySelector(
+              `.n3[data-node-id="${this._renaming.id}"]`,
+            ) as HTMLElement | null;
+            const host = this.getBoundingClientRect();
+            const b = el?.getBoundingClientRect();
+            const rx = b ? b.left + b.width / 2 - host.left : host.width / 2;
+            const ry = b ? b.bottom - host.top + 6 : host.height / 2;
+            return html`<input
+              class="rename3"
+              style="left: ${rx}px; top: ${ry}px"
+              .value=${this._renaming.value}
+              @pointerdown=${(e: Event) => e.stopPropagation()}
+              @input=${(e: Event) =>
+                (this._renaming = { ...this._renaming!, value: (e.target as HTMLInputElement).value })}
+              @keydown=${(e: KeyboardEvent) => {
+                e.stopPropagation();
+                if (e.key === 'Escape') this._renaming = null;
+                if (e.key === 'Enter') {
+                  const r = this._renaming!;
+                  const name = r.value.trim();
+                  this._renaming = null;
+                  const node = this.scene.nodes.find((n) => n.id === r.id);
+                  if (name && node && name !== node.label) {
+                    this.emit('node-renamed', { id: r.id, kind: r.kind, name });
+                  }
+                }
+              }}
+              @blur=${() => (this._renaming = null)}
+            />`;
+          })()
+        : ''}
       <div class="hud">
-        click selecciona · doble click abre · arrastra una placa para moverla · arrastra el fondo
-        para orbitar · shift, espacio o botón central+arrastra panea · rueda para zoom · Supr borra · doble click en el
-        fondo resetea
+        click selecciona · arrastra el fondo: selección múltiple · alt+arrastra orbita · doble click abre ·
+        arrastra una placa para moverla · shift, espacio o botón central+arrastra panea · rueda para zoom ·
+        Supr borra · F2 renombra · doble click en el fondo resetea
       </div>
     `;
   }

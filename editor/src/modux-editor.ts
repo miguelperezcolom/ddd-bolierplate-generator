@@ -4267,6 +4267,11 @@ export class ModuxEditor extends LitElement {
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
+            @delete-requested=${this.onDeleteRequested}
+            @delete-selection-requested=${this.onDeleteSelectionRequested}
+            @node-renamed=${this.onNodeRenamed}
+            @undo-requested=${this.undo}
+            @redo-requested=${this.redo}
             @node-activated=${(e: CustomEvent<{ id: string; kind: string }>) => {
               this.onElementActivated(new CustomEvent('element-activated', {
                 detail: { elementType: 'node', id: e.detail.id, kind: e.detail.kind },
@@ -4329,6 +4334,8 @@ export class ModuxEditor extends LitElement {
             @element-activated=${this.onElementActivated}
             @node-moved=${this.onNodeMoved}
             @delete-requested=${this.onDeleteRequested}
+            @delete-selection-requested=${this.onDeleteSelectionRequested}
+            @node-renamed=${this.onNodeRenamed}
             @undo-requested=${this.undo}
             @redo-requested=${this.redo}
             @selection-cleared=${() => {

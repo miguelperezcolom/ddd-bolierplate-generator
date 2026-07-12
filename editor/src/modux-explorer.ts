@@ -167,6 +167,19 @@ export class ModuxExplorer extends LitElement {
       height: 100%;
       cursor: default;
     }
+    .rename {
+      position: absolute;
+      transform: translateX(-50%);
+      z-index: 6;
+      font: 12px system-ui, sans-serif;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1.5px solid #2563eb;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+    }
     .hud {
       position: absolute;
       right: 12px;
@@ -338,12 +351,28 @@ export class ModuxExplorer extends LitElement {
   @state() private _viewName = '';
   /** alt+click focus: only these keys render; undefined = everything. */
   private focusKeys?: Set<string>;
+
+  /** Space held: background drags pan (the 2D canvas convention). */
+  private _space = false;
+
+  /** Rubber-band selection in progress (world coords). */
+  private rubber?: { ax: number; ay: number; bx: number; by: number; additive: boolean };
+
+  /** Multi-selection: node keys — Supr deletes them, «⊞ Vista…» prefers them. */
+  @state() private selected = new Set<string>();
+
+  /** Inline rename (F2): a floating input rides the node. */
+  @state() private renaming: { key: string; value: string } | null = null;
   /** A relation being drawn from the hover handle towards the pointer. */
   private linking?: { source: XNode; x: number; y: number };
 
   connectedCallback(): void {
     super.connectedCallback();
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.tabIndex = 0;
+    window.addEventListener('keydown', this.onSpaceKey);
+    window.addEventListener('keyup', this.onSpaceKey);
+    this.addEventListener('keydown', this.onKeydown);
   }
 
   disconnectedCallback(): void {
@@ -351,6 +380,68 @@ export class ModuxExplorer extends LitElement {
     this.saveState();
     cancelAnimationFrame(this.raf);
     this.ro?.disconnect();
+    window.removeEventListener('keydown', this.onSpaceKey);
+    window.removeEventListener('keyup', this.onSpaceKey);
+    this.removeEventListener('keydown', this.onKeydown);
+  }
+
+  private onSpaceKey = (e: KeyboardEvent): void => {
+    if (e.code !== 'Space') return;
+    const t = e.composedPath()[0] as HTMLElement | undefined;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    this._space = e.type === 'keydown';
+    if (this.canvas) this.canvas.style.cursor = this._space ? 'grab' : 'default';
+  };
+
+  /** The nodes behind the current selection keys, resolved against the live tree. */
+  private selectedNodes(): XNode[] {
+    if (!this.selected.size) return [];
+    return this.visible().filter((n) => this.selected.has(n.key));
+  }
+
+  private onKeydown = (e: KeyboardEvent): void => {
+    const t = e.composedPath()[0] as HTMLElement | undefined;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+      e.preventDefault();
+      this.emitUp(e.shiftKey ? 'redo-requested' : 'undo-requested');
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) {
+      e.preventDefault();
+      this.emitUp('redo-requested');
+      return;
+    }
+    if (e.key === 'Escape') {
+      this.selected = new Set();
+      this.renaming = null;
+      return;
+    }
+    const picked = this.selectedNodes();
+    if (e.key === 'F2' && picked.length === 1) {
+      e.preventDefault();
+      this.renaming = { key: picked[0].key, value: picked[0].label };
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && picked.length) {
+      e.preventDefault();
+      if (picked.length > 1) {
+        this.emitUp('delete-selection-requested', {
+          items: picked.map((n) => ({ id: n.refId, kind: n.kind })),
+        });
+      } else {
+        this.emitUp('delete-requested', {
+          elementType: 'node',
+          id: picked[0].refId,
+          kind: picked[0].kind,
+        });
+      }
+      this.selected = new Set();
+    }
+  };
+
+  private emitUp(name: string, detail?: unknown): void {
+    this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
   // ── State persistence (double click navigates to a CRUD and remounts us:
@@ -408,6 +499,7 @@ export class ModuxExplorer extends LitElement {
     }
   }
 
+
   protected firstUpdated(): void {
     this.canvas = this.renderRoot.querySelector('canvas') ?? undefined;
     this.ctx = this.canvas?.getContext('2d') ?? undefined;
@@ -417,6 +509,14 @@ export class ModuxExplorer extends LitElement {
     this.resize();
     this.buildTree();
     this.raf = requestAnimationFrame(() => this.tick());
+    if (this.renaming) {
+      const el = this.renderRoot.querySelector('.rename') as HTMLElement | null;
+      const n = this.visible().find((x) => x.key === this.renaming!.key);
+      if (el && n) {
+        el.style.left = `${n.x * this.cam.k + this.cam.x}px`;
+        el.style.top = `${(n.y + this.radiusOf(n) + 6) * this.cam.k + this.cam.y}px`;
+      }
+    }
   }
 
   /** Centers the visible tree in the viewport (the toolbar's «Ajustar»). */
@@ -443,6 +543,9 @@ export class ModuxExplorer extends LitElement {
 
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('model') || changed.has('scene')) this.buildTree();
+    if (changed.has('renaming') && this.renaming) {
+      (this.renderRoot.querySelector('.rename') as HTMLInputElement | null)?.select();
+    }
   }
 
   private resize(): void {
@@ -700,7 +803,11 @@ export class ModuxExplorer extends LitElement {
   private createViewFromVisible(): void {
     const name = this._viewName.trim();
     if (!name) return;
-    const members = this.visible()
+    // A live multi-selection narrows the view to exactly what you lassoed.
+    const pool = this.selected.size
+      ? this.selectedNodes()
+      : this.visible();
+    const members = pool
       .filter((n) => n.kind !== 'root' && n.kind !== 'group' && n.refId)
       .map((n) => ({ id: n.refId, kind: n.kind }));
     this._viewNaming = false;
@@ -901,6 +1008,31 @@ export class ModuxExplorer extends LitElement {
       }
     }
 
+    // Selection rings: dashed, in the canvas' accent — Supr and F2 act on them.
+    if (this.selected.size) {
+      ctx.save();
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2 / this.cam.k;
+      ctx.setLineDash([5 / this.cam.k, 4 / this.cam.k]);
+      for (const n of nodes) {
+        if (!this.selected.has(n.key)) continue;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, this.radiusOf(n) + 6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (this.rubber) {
+      const r = this.rubber;
+      ctx.save();
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 1.2 / this.cam.k;
+      ctx.setLineDash([4 / this.cam.k, 3 / this.cam.k]);
+      ctx.fillRect(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.abs(r.bx - r.ax), Math.abs(r.by - r.ay));
+      ctx.strokeRect(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.abs(r.bx - r.ax), Math.abs(r.by - r.ay));
+      ctx.restore();
+    }
     if (this.found) {
       // Landing ring: a pulse around the node search flew to.
       if (this.t > this.found.until) {
@@ -1458,9 +1590,13 @@ export class ModuxExplorer extends LitElement {
     }
     if (n) {
       this.dragNode = n;
-    } else {
+    } else if (this._space) {
       this.panning = true;
+    } else {
+      // Plain background drag selects (like the 2D canvas); space pans.
+      this.rubber = { ax: w.x, ay: w.y, bx: w.x, by: w.y, additive: e.shiftKey };
     }
+    this.focus();
     try {
       (e.target as Element).setPointerCapture(e.pointerId);
     } catch {
@@ -1481,6 +1617,12 @@ export class ModuxExplorer extends LitElement {
       const w = this.toWorld(e);
       this.dragNode.x = w.x;
       this.dragNode.y = w.y;
+      return;
+    }
+    if (this.rubber && (e.buttons & 1)) {
+      const w = this.toWorld(e);
+      this.rubber.bx = w.x;
+      this.rubber.by = w.y;
       return;
     }
     if (this.panning && (e.buttons & 1)) {
@@ -1513,12 +1655,36 @@ export class ModuxExplorer extends LitElement {
       }
       return;
     }
+    if (this.rubber) {
+      const r = this.rubber;
+      this.rubber = undefined;
+      if (this.moved) {
+        const x0 = Math.min(r.ax, r.bx);
+        const x1 = Math.max(r.ax, r.bx);
+        const y0 = Math.min(r.ay, r.by);
+        const y1 = Math.max(r.ay, r.by);
+        const caught = this.visible()
+          .filter((n) => n.kind !== 'root' && n.kind !== 'group' && n.refId)
+          .filter((n) => n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1)
+          .map((n) => n.key);
+        this.selected = new Set(r.additive ? [...this.selected, ...caught] : caught);
+      } else {
+        // a plain click on the background clears selection and focus
+        this.selected = new Set();
+        this.focusKeys = undefined;
+      }
+      return;
+    }
     const n = this.dragNode;
     this.dragNode = undefined;
     this.panning = false;
     if (n && !this.moved) {
       if (e.altKey) this.focusOn(n);
-      else this.toggle(n);
+      else {
+        // click both SELECTS (Supr/F2 target) and unfolds — one gesture, two truths
+        this.selected = new Set(n.kind !== 'root' && n.refId ? [n.key] : []);
+        this.toggle(n);
+      }
     } else if (!n && !this.moved && this.focusKeys) {
       // a plain click on the background lets go of the focus
       this.focusKeys = undefined;
@@ -1588,6 +1754,28 @@ export class ModuxExplorer extends LitElement {
         @dblclick=${this.onDblClick}
         @wheel=${this.onWheel}
       ></canvas>
+      ${this.renaming
+        ? html`<input
+            class="rename"
+            .value=${this.renaming.value}
+            @pointerdown=${(e: Event) => e.stopPropagation()}
+            @input=${(e: Event) => (this.renaming = { ...this.renaming!, value: (e.target as HTMLInputElement).value })}
+            @keydown=${(e: KeyboardEvent) => {
+              e.stopPropagation();
+              if (e.key === 'Escape') this.renaming = null;
+              if (e.key === 'Enter') {
+                const n = this.visible().find((x) => x.key === this.renaming!.key);
+                const name = this.renaming!.value.trim();
+                this.renaming = null;
+                if (n && name && name !== n.label) {
+                  n.label = name; // optimistic: the projection will confirm
+                  this.emitUp('node-renamed', { id: n.refId, kind: n.kind, name });
+                }
+              }
+            }}
+            @blur=${() => (this.renaming = null)}
+          />`
+        : ''}
       <div class="search" @pointerdown=${(e: Event) => e.stopPropagation()}>
         <input
           type="text"
@@ -1676,10 +1864,10 @@ export class ModuxExplorer extends LitElement {
             </button>`}
       </div>
       <div class="hud">
-        click: expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
-        shift+arrastrar desde un nodo: trazar una relación hasta otro<br />
-        buscar: expande el camino y vuela hasta el nodo<br />
-        arrastrar nodo: tirar del subárbol · fondo: mover · rueda: zoom
+        click: seleccionar y expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
+        shift+arrastrar desde un nodo: trazar una relación · arrastrar en el fondo: selección<br />
+        espacio+arrastrar: mover el lienzo · rueda: zoom · Supr borra · F2 renombra · Ctrl+Z deshace<br />
+        buscar: expande el camino y vuela hasta el nodo · arrastrar nodo: tirar del subárbol
       </div>
     `;
   }
