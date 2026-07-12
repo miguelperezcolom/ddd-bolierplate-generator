@@ -48,7 +48,18 @@ See [Operations](/manual/operations/) for details on defining commands and queri
 
 ### Invariants
 
-Invariants are business rules that must always hold for the aggregate. Define them as boolean expressions referencing the aggregate's fields. The generator will include these as guard assertions in the generated aggregate class.
+Invariants are the business rules that must always hold for the aggregate — **its
+very reason to exist**: if there is no invariant to protect, the element probably
+wants to be a plain model, not an aggregate (that is what the `aggregate-invariants`
+lint finding asks). Each invariant has a name (the rule, stated for humans) and
+conditions — boolean expressions over the aggregate's fields that the generator
+turns into guard assertions.
+
+Invariants are first-class in the **graphical editor**: the aggregate's chip counts
+them (`⚖n`) on the context map, they **orbit the aggregate** in the Agregados view,
+and you declare one by dropping **«Invariante»** from the palette onto the
+aggregate. Supr retires it, F2 renames it, and double click opens the aggregate's
+form, where the conditions are detailed.
 
 ### State machine
 

@@ -1,13 +1,19 @@
 ---
 title: Workflows
-description: Cross-context orchestrators — event-driven dependency graphs that live outside every bounded context
+description: Cross-context orchestrators — event-driven dependency graphs with human tasks, gateways and compensation
 ---
 
-A **Workflow** is an orchestrator that lives **outside every bounded context** — unlike
-a [Process](/reference/patterns/#business-processes), which is owned by a module. It is
+A **Workflow** is an orchestrator that lives **outside every bounded context**. It is
 started by an event and advances a **dependency graph** of steps; each step starts a
-task (a use case, for now) inside some bounded context. The workflow never calls
-anything directly: **all workflow ↔ context communication travels as events**.
+task inside some bounded context — or lands on a person's worklist. The workflow never
+calls anything directly: **all workflow ↔ context communication travels as events**.
+
+Workflows absorbed what used to be two separate concepts: **Processes** (human
+procedures with roles and deadlines) and **Sagas** (compensation chains) were fused
+into workflows — one orchestrator, three capabilities. Old stores migrate with one
+click (the **⇪ Migrar** button on the Workflows view) or the
+`migrate-processes-to-workflows` / `migrate-sagas-to-workflows` commands; ids are
+preserved so references survive.
 
 ```
 trigger event ──▶ Workflow ──emits──▶ step A ──▶ (awaits completion event)
@@ -18,65 +24,88 @@ trigger event ──▶ Workflow ──emits──▶ step A ──▶ (awaits c
                           onCompletionEventName
 ```
 
-## Process or Workflow?
-
-| | Process | Workflow |
-|---|---|---|
-| Owner | A bounded context (`ownerModuleId`) | Nobody — it sits between contexts |
-| Shape | Ordered chain of steps | Dependency **DAG** — steps run when their dependencies complete |
-| Steps | AUTOMATED or HUMAN (role, deadline, escalation, compensation) | Event-mediated tasks: the workflow *emits* an event to start the step and *awaits* another to consider it done |
-| Coupling | May call use cases directly | Only events in, events out |
-
-Use a Process for a business procedure that clearly belongs to one context (with human
-tasks, SLAs, compensations). Use a Workflow when the orchestration itself is neutral
-ground coordinating several contexts.
-
-## Configuration
+## Steps
 
 | Field | Description |
 |---|---|
-| **Name** | Workflow name |
-| **Trigger** | The event that starts it, and its source: an aggregate, a domain service, or a use case (application event) |
-| **Steps** | Each with: name, `emittedEventName` (the event the workflow publishes to start the step), `targetUseCaseId` (the task), `completionEventName` (what marks it done) and `dependsOnStepIds` |
-| **On completion** | Event published when every step completes |
+| `emittedEventName` | The event the workflow publishes to start the step |
+| `targetUseCaseId` | The task: a use case run in its bounded context |
+| `completionEventName` | The event that marks the step done |
+| `dependsOnStepIds` | The dependency graph — the step starts when ALL its dependencies complete |
+| `compensationUseCaseId` | The use case that **undoes** this step when the workflow compensates (the saga side) |
+| `handoffWorkflowId` | The step's single outgoing link when it is ANOTHER workflow: a hand-off |
 
-Steps' dependencies must form a **DAG** — the `workflow-dag` lint rule reports cycles
-(steps on a cycle can never start). Other rules check the trigger (`workflow-trigger`),
-each step's target (`workflow-step-target`) and that dependencies point at sibling
-steps (`workflow-depends-scope`).
+Steps' dependencies must form a **DAG** — the `workflow-dag` lint rule reports cycles.
+
+## Human tasks
+
+A step with a `roleId` is a **HUMAN task**: it lands on that role's worklist instead
+of calling a use case. Human steps carry the whole vocabulary of people-work:
+
+| Field | Description |
+|---|---|
+| `roleId` | The actor whose worklist receives the task (this is what makes the step human) |
+| `deadline` | ISO-8601 duration bound, e.g. `PT48H` |
+| `escalationRoleId` | Who the task escalates to when the deadline passes |
+| `formPageId` | **The form**: the declared [page](/manual/pages/) the forms engine renders when the task is worked |
+
+In the diagram a human step turns amber with a `👤 role · 📋 · PT48H` badge, its
+**role orbits it** (dashed amber edge) and so does its **form page** (`📋 FORMULARIO`).
+The gestures: **drag an actor onto a step** to make it human (Supr on the role edge
+turns it automatic again), **drag the step onto a page** to declare its form (Supr on
+the form edge clears it).
+
+## Gateways: join and split
+
+Flow control lives in **loose gateways** — they never declare which workflow they
+belong to: **their links say it** (membership is inferred). The grammar is enforced:
+
+- **Join (⨝)** — *n* inputs → **1** output. Semantics: **ALL** (waits for every
+  input, the default) or **ANY** (fires with the first).
+- **Split (⑃)** — **1** input → *n* outputs. Semantics: **PARALLEL** (opens every
+  branch, the default) or **EXCLUSIVE** (picks one branch by condition).
+
+A step or workflow can have only **one outgoing link**; joins accept many inputs,
+splits fan out. Links across two different workflows are rejected — except a step
+pointing at ANOTHER workflow, which is a **hand-off**.
+
+For an **exclusive split**, each outgoing branch carries a **condition**
+(`branchConditions`): **double click the branch edge** to edit its expression
+(unguarded branches render dashed with «¿condición?»), or edit them from the
+gateway's form — and from the owning workflow's form, which lists every branch of
+its inferred splits. **Double click the gateway node** toggles its semantics.
 
 ## In the graphical editor
 
-The **Workflows** tab draws each workflow as its dependency DAG: trigger source
-→(event, dashed)→ workflow → steps laid out by dependency depth → completion event
-(green). Steps badge their target use case. Create workflows and steps from the
-**palette** (🧰), reduced here to *Workflow* and *Paso de workflow*: drop the step
-on a workflow to append it, or **on one of its steps to chain it** (the new step
-lands beside it, already depending on it). The trigger is a gesture too — drag an
-event onto the workflow on the context map — or a field in the workflow's form. **Drag a handle
-from step A onto step B** to declare *B waits for A*; Supr deletes steps or
-dependency arrows; everything is undoable — removing a step restores its dependants'
-links on undo. Double click opens the owning workflow's form.
+The **Workflows** view draws each workflow as its dependency DAG: trigger source
+→(event, dashed)→ workflow → steps by dependency depth → completion event (green),
+with roles and form pages orbiting the human steps. From the **palette**: *Workflow*,
+*Paso de workflow* (drop it in the open and the only workflow adopts it; on a
+workflow or one of its steps to chain it), *Join* and *Split* (born loose). The
+gestures:
+
+- **step → step** — declares the dependency (*B waits for A*).
+- **actor ⇆ step** — the task becomes human (the role gets its worklist).
+- **step ⇆ page** — the human task's **form**.
+- **step/gateway links** — drawn like any line; the grammar validates them.
+- **step → another workflow** — the hand-off.
+- **Supr** deletes steps, dependencies, links, roles and forms (each edge knows what
+  its deletion means); **F2** renames; everything is undoable.
 
 ## On the context map
 
 Workflows are strategic elements too: the context map shows each one as a lilac
 dashed node with derived edges — violet **«orquesta»** to every use case its steps
-target, and amber **«dispara el workflow»** from its trigger event (both roll up to
-the owning context at the coarse detail level). The node has a connect handle:
+target, and amber **«dispara el workflow»** from its trigger event. Drag an event
+onto the workflow to set its trigger; **workflow → workflow** chains them (A's
+completion event becomes B's trigger). They also appear in the
+[EventStorming view](/manual/graphical-editor/#views) as lilac policies.
 
-- **Workflow → use case** — adds a step orchestrating it (named after the use case;
-  de-duplicated if already orchestrated).
-- **Domain/application event → workflow** — points the trigger at that event
-  (`set-workflow-trigger`); the emitter is filled in automatically when the map's
-  emissions know it.
-- **Workflow → workflow** — **chains them**: A's completion event becomes B's
-  trigger, drawn as an amber edge labelled with the event. Supr on that edge clears
-  the downstream trigger.
+## Runtime
 
-Supr on the node deletes the workflow (undoable), F2 renames, and the palette
-creates one by dragging — dropping a *Paso de workflow* on the workflow's node adds
-a step to it right from the map. Fine-grained step editing stays in the Workflows tab.
-
-Workflows also join the [EventStorming view](/manual/graphical-editor/#views) as lilac
-policies: trigger event → workflow → the commands it launches, with its emitted events.
+The generator emits an **[EventConductor](https://eventconductor.mateu.io/) workflow
+definition** per workflow — the engine drives the orchestration: events in, state
+transitions, worklists, deadlines and compensations out. FORM and WIZARD pages also
+emit an **EventConductor form definition**, which is how a human step's `formPageId`
+becomes the form the task presents. The distribution level of the context map shows
+both engines as infrastructure the deployed services lean on.

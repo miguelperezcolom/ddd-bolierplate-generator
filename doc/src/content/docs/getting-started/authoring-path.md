@@ -46,7 +46,7 @@ Modules relate in exactly three ways, and all three are **flow archetypes** — 
 | *"An event in A makes B act"* | `TRIGGERS` | subscription + use-case invocation |
 | *"A synchronous call from A to B"* | consumption API | gRPC exposure + typed client |
 | *"An event must reach an external system"* | `NOTIFIES` | subscription + gateway call |
-| *"A multi-step conversation with compensation"* | `ORCHESTRATES` / process | saga + worklist + deadlines |
+| *"A multi-step conversation with compensation"* | `ORCHESTRATES` / [workflow](/manual/workflows/) | dependency DAG + human tasks (worklist, deadlines, forms) + compensation per step |
 
 Prefer a [starter recipe](/manual/recipes/) over hand-building: `materialized-read-model`, `human-approval-process` and `external-notification` each emit one intent element and let the linter list what is still open.
 

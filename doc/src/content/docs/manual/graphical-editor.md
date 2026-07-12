@@ -1,6 +1,6 @@
 ---
 title: Graphical Editor
-description: Edit the model on a live canvas — context map, aggregates, flows, processes, workflows and an EventStorming view, with every change saved to the spec
+description: Edit the model on a live canvas — context map, aggregates, flows, workflows, UI, mappings, integrations and EventStorming, on three surfaces (2D, 3D, Yugo), with every change saved to the spec
 ---
 
 The **Graphical editor** page is a fully editable canvas over the model. It is not a
@@ -20,12 +20,11 @@ migrates into `diagrams` on the first change made in the editor.
 | **Context map** | Bounded contexts and external systems; strategic relations (solid, DDD abbreviations) and flows (dashed) | Flow colour = live coherence: green OK, amber missing relation, orange reversed |
 | **Agregados** | Aggregates coloured by their module's subdomain, entities as satellites, cross-aggregate references | |
 | **Flows** | Each flow as a pipeline: trigger aggregate → flow (coloured by archetype) → target | |
-| **Procesos** | Each process as a chain of steps — HUMAN steps amber with role and deadline, compensations hanging in red, completion event in green | |
-| **Workflows** | Each [workflow](/manual/workflows/) as a dependency DAG: trigger source →(event)→ workflow → steps laid out by dependency depth → completion event | Steps badge their target use case; drag a handle from step A onto step B to declare "B waits for A" |
+| **Workflows** | Each [workflow](/manual/workflows/) as a dependency DAG: trigger source →(event)→ workflow → steps by dependency depth → completion event; **human steps** amber with their **role and form page orbiting them**; loose **join/split gateways** with their semantics badged | step→step declares the dependency; **actor⇆step** makes the task human; **step⇆page** sets its form; double click a gateway toggles semantics, double click an exclusive branch edits its condition |
 | **UI** | The user interface, Mateu-shaped: apps (UiAdapter) as containers holding their **menu tree**, pages floating beside them, and each page's MVVM wiring — its viewmodel (a Model playing that role), the use cases behind its buttons and the query service feeding its listing; actors point at the apps they use | Palette creates apps — plain, **Orquestador** (keeps state and shows nothing of its own, only child pages) and **Maestro-detalle** (a header plus tabs, all of them pages: the first page dropped on it becomes the **header** — a «cabecera» edge, Supr unsets it — and the next ones its tabs) — plus pages, **CRUD** and **Wizard** shortcuts (pages born with that type) and menu entries (pages dropped **on an app** hang from its menu in the same gesture). **Data models** are first-class: every catalog model shows as a chip (the palette creates fresh ones), and wiring one to a page sets its **viewmodel**, to an app its **estado** — the state an orchestrator keeps and shares with its child pages; Supr on the chip deletes the model unlinking everyone (undo re-wires them). Selected nodes also offer **typed handles** (coloured drag points on the top edge): the green one on an app draws its **home** — a page or **another app** — (only plain apps have one: the master-detail is header+tabs and the orchestrator only shows child pages), the blue one on a master-detail (re)draws its **header**, a **CRUD** page offers two more — orange **detalle** (what opens a row) and teal **nuevo** (the new-record form), both reaching a page or an app of any archetype — and a **Vista-editor** app (an orchestrator pairing a read-only detail view with an edit view) offers **vista** and **edición** towards its two pages. A wizard's STEPS are the first-class thing: the palette drops bare steps on the wizard («Paso de wizard»), a page dropped on the wizard body becomes a new mapped step, and each step row **maps to its page by wiring** (drag the row's handle to a page, or drop a page on the row — remapping included; unmapped rows show ⌁). Rows list in numbered order — and the page designer's mockup shows the same steps on its wizard bar, **draggable to reorder them from there too**: **drag one between the drop slots to reorder** (undo puts it back), Supr on a row or on a «paso N» edge removes the step, and deleting a page unmaps its steps instead of losing them; the master-detail's tabs stay menu entries, reorderable the same way; drop a use case on a page for a toolbar button, a query service for the listing, an actor on an app to grant it; Supr on any of those edges undoes the wiring. **Menu entries move by dragging the row itself**: while it flies, **drop slots light up between the options of every app** — release on a slot to land exactly there, on another row's middle to nest under it (the target becomes a grouper), or on an app's end slot for its root — including **another app's** (the subtree travels whole, and undo puts it back in its slot). The connect handle offers the same moves |
 | **Mapeados** | Every data model as a node and every **model mapping** as a labeled edge (source → target; field rules stay in its form). The view also derives the **mapping debt**: a page button calling a use case whose request model differs from the page's viewmodel draws an amber dashed «falta mapear» edge — **wire the two models** and the mapping is born (named Source2Target) and the debt disappears; Supr on a mapping edge deletes it (undoable) | Mappings are a constant of the model: screen→use case, event→command, ETL transforms — this is where they all become visible |
 | **Page designer** *(inside the UI view)* | Double-click a page: a live **mockup inferred the Mateu way** — fields come from the viewmodel Model, their look from each field's config, the page shows its four zones — **header**, **toolbar** (top buttons), **content** and the **bottom bar** (closing actions, its own «+ botón») — plus a listing stub on CRUD pages. Nothing is drawn by hand: click a field to edit its **declaration** (stereotype, width, label) and the preview re-infers itself; drag fields to reorder (persisted as the fieldConfigs order); «Ficha» opens the page's full form | The designer is WYSIWYG over the MVVM: what you edit is the spec, never pixels. **UI-first composition**: the palette offers Mateu's full layout vocabulary (vertical, horizontal, form, split, tabs, accordion, card, grid, board, dashboard, master-detail, foldout, carousel, app) plus components (form, listing, button, field, text, metric, menu bar) — drop a layout on a frame, drop components inside (a tabLayout comes seeded with two tabs; **click a header to show and select that tab**, double click to configure it, **drag headers to reorder them**, and drops on the body land in the tab being shown — the palette also offers **Pestaña** to add tabs by dropping them on the tabLayout), **click selects** a node (Supr deletes it, subtree included — one undo restores it whole), **double click edits its declaration**, and **dragging the node moves it**: the top half of a component slots it before, the bottom half after (a blue bar opens the gap), a layout's body drops it inside — palette drops honor the same slots, a node never lands in its own subtree, and **dragging works across frames** (the node moves to the other page). **Ctrl+C / Ctrl+V** copies the selected subtree and pastes it under the current selection, on any frame. Catalog drops wire declarations: a **use case on a button** is its action (on the frame, a new toolbar button), a **model on a form or the frame** is the viewmodel (pages also offer a violet **viewmodel handle** on the UI view — draw it to a model; the designer shows the chip with a ✕ to unset, no dropdown), a **query operation on a listing or the frame** is what it lists. Empty content = the page stays fully inferred |
-| **Explorador** *(the editor opens here)* | The model as a **living radial tree**: the system at the center, its first ring (bounded contexts, external systems, apps, actors, agents, workflows, IdPs) around it, and everything else folded inside — collapsed nodes badge how much they hold. **Click a node and it explodes**: its children are born at its center and pushed into place by a spring simulation (springs + repulsion, no tweens), and a low-amplitude per-node noise keeps the whole tree gently breathing so it never feels static (honoring `prefers-reduced-motion`). **Hover grows the node** and shows a card with its contents; **double click opens the element's CRUD** — the intended entry point when working graphics-first. Hovering also reveals the node's **cross-relations as faint dashed threads** (calls, events, actor uses, IdP trust…) towards the visible nodes involved, and a folded node **whispers its children as ghost circles** around it. The **search box** (top left) looks across the whole tree, folded branches included, accent-insensitive: picking a result **expands the path level by level and flies the camera** to the node, marking the landing with a pulsing ring. Dragging a node pulls its subtree elastically; background pans, wheel zooms, «Ajustar» refits | Read-only lens: positions belong to the physics, not to the persisted layout — but the exploded state and camera survive navigating into a CRUD and back |
+| **Integraciones** | Every **ETL flow** as a container with its pipeline unfolded — sources (pull/consumer) → transforms → writes (API/db/event) — plus the external systems (with their legacy tables), APIs and events it touches | Drop *Flujo ETL* from the palette (in the open it floats; its owner context is set in its ficha); wire a **table or API to the flow** for a source step, an **event to the flow** for a consumer, and **from the flow** outwards for writes |
 | **EventStorming** | The whole causal narrative, derived from the model in classic sticky-note notation: actor → **command** (blue) → **aggregate** (yellow) → **event** (orange) → **policy** (lilac: subscription, flow, process, workflow or projection) → **read model** (green), external systems in pink, AI agents with their tools | A read-only *lens* — you edit from the other views or the forms. Events referenced by name but not declared in the catalog render dashed («EVENTO (sin declarar)»): a built-in gap detector. Auto-layout orders the narrative |
 
 Boxes carry an ArchiMate-inspired glyph for their kind: component (contexts, external
@@ -37,8 +36,11 @@ person / gear (human / automated steps), double circle (events), return arrow
 
 - **Drag** a box to move it (persisted per view). **Drag a process step across its
   siblings** to reorder the process — order and position undo together.
-- **Click** selects; **double click opens the element's own editor** (steps open their
-  owning process).
+- **Click** selects; **double click opens the element's ficha** in a drawer beside
+  the diagram, **already in edit mode** — every drawn type has one (contexts,
+  aggregates, workflows, pages, apps, actors, services, external systems, agents,
+  RAGs, gateways MCP, ETLs, custom code…). Workflow steps open their owning
+  workflow; invariants open their aggregate.
 - **Strategic relations are 100% computed**: a context→context edge exists exactly
   where a concrete dependency does (use case calls, query calls, flows, aggregate
   references) — nothing is hand-drawn between contexts anymore. Unannotated pairs
@@ -50,7 +52,10 @@ person / gear (human / automated steps), double circle (events), return arrow
   aggregates, domain events, flows, processes and steps. Integrity guards reject
   deleting a module with aggregates or an aggregate with entities (server-checked
   too, shown as a toast).
-- **F2** renames inline (modules, aggregates, entities, domain events, process steps).
+- **F2** renames inline — on every surface (2D, 3D and Yugo).
+- **A blank store bootstraps itself**: the palette opens by itself, and the first
+  context dropped materializes the project and a service around it — the topology
+  exists from gesture one.
 - **Creation lives in the palette (☰, leftmost on the toolbar)** on the context map
   and the Workflows view — also toggled with **P**. The panel has two **vertical
   tabs on its right edge**: **Nuevos** (every creatable type — drag a new element
@@ -189,20 +194,41 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   lifts a storey and rings green (the 2D canvas nodes grow on hover during tracing as
   well). The **palette works in 3D too**: open it with ☰/P and drag a new type or a
   catalog element onto the floor — the drop point is unprojected onto the ground
-  plane exactly, and dropping onto a plate connects, same as in 2D. Dragging the
-  background orbits,
-  shift+drag pans, wheel zooms, double click on the background resets the camera.
-  Press V again to come back to the 2D canvas. Pure CSS 3D, works on any view and
-  detail level.
+  plane exactly, and dropping onto a plate connects, same as in 2D. The pointer grammar
+  is the same as every surface: **plain background drag lassoes a multi-selection**
+  (Supr deletes it, F2 renames a single pick), **alt+drag orbits** (the gesture 3D
+  adds, not the one it replaces), shift / space / middle button pan, wheel zooms,
+  double click on the background resets the camera. Press V again to come back to
+  the 2D canvas. Pure CSS 3D, works on any view and detail level.
+
+- **∿ Yugo (or Y)** renders the current view as a **living organism** — the same
+  scene as a radial tree with a spring simulation (springs + repulsion, gentle
+  breathing, honoring `prefers-reduced-motion`). **Click selects and unfolds** a
+  node (collapsed hubs badge how much they hold), **alt+click isolates** what
+  relates to it, hover reveals its **cross-relations as dashed threads** («Hilos»
+  pins them all), **double click opens the ficha**, **shift+drag from a node draws
+  a relation** (with the active view's meaning), **plain background drag lassoes a
+  selection**, **space+drag pans**, Supr deletes, F2 renames with an input riding
+  the node, Ctrl+Z undoes. The **search box** flies the camera to any element,
+  unfolding the path; the **motion slider** calms the physics; **⊞ Vista…** creates
+  a [curated view](/manual/views-and-large-models/) from the selection (or from
+  everything unfolded). 2D, 3D and Yugo are **interchangeable surfaces over the
+  same view**: the view decides *what* is on stage, the detail level *which theme*,
+  the surface only *how it looks*.
+
+The editor follows **mateu's dark mode**: the same `theme="dark"` flag (persisted as
+`mateu-theme`), switched live from the top bar — hue-preserving, so a CORE context
+stays amber in the dark.
 
 ## Keyboard shortcuts
 
 Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·
 **F** fullscreen · **0** fit · **+/−** zoom · **1/2/3** context-map levels (contexts /
 aggregates & use cases / APIs & operations) · **4/5/6/7** the specialized views
-(aggregates · flows · processes · workflows) · **E/D** EventStorming / back to the
-diagram · **V** the 3D tilt view · **T** the view's catalog tree · plus the editing keys (Supr, F2, Ctrl+Z /
-Ctrl+Y, space+drag, shift for multi-selection). Shortcuts never fire while typing in
+(aggregates · flows · workflows · UI) · **E/D** EventStorming / back to the
+diagram · **V** the 3D tilt view · **Y** the Yugo surface · **T** the view's catalog
+tree · plus the editing keys (Supr, F2, Ctrl+Z / Ctrl+Y, space+drag, shift for
+multi-selection) — the same on every surface. Shortcuts never fire while typing in
 a field.
 
 ## Selections and views

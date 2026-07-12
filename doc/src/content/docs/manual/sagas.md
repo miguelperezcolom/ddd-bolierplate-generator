@@ -1,133 +1,36 @@
 ---
-title: Sagas
-description: Multi-step workflows with compensation in Modux
+title: Sagas (fusionadas en Workflows)
+description: Sagas were fused into workflows — compensation now travels on the workflow step
 ---
 
-A **Saga** coordinates a long-running business process that spans multiple aggregates or services. When a step fails, the saga executes compensation actions to undo previous steps and maintain consistency.
+**Sagas are no longer a separate concept**: they were fused into
+[Workflows](/manual/workflows/), together with Processes. What made a saga a saga —
+the compensation chain — now travels **on the workflow step**: each step may declare
+a `compensationUseCaseId`, the use case that *undoes* it when the workflow
+compensates.
 
-## Choreography vs Orchestration
-
-Modux supports both saga styles:
-
-| Style | How it works |
+| Before (Saga) | Now (Workflow) |
 |---|---|
-| **Choreography** | Each service reacts to events and emits new events. No central coordinator. |
-| **Orchestration** | A central saga orchestrator sends commands to services and waits for replies. |
+| Saga step with compensation action | Workflow step with `compensationUseCaseId` |
+| Central orchestrator | The workflow itself (events in, events out) |
+| Choreography | Plain [subscriptions](/manual/subscriptions/) between contexts — no orchestrator needed |
+| `USER_TASK` step bound to a form | Human step: `roleId` + `deadline` + `formPageId` |
 
-## Creating a saga
+The runtime story is unchanged: the generator emits
+[EventConductor](https://eventconductor.mateu.io/) workflow definitions — see
+[Workflows → Runtime](/manual/workflows/#runtime).
 
-1. Open a module and go to **Sagas**
-2. Click **New**
-3. Configure steps and save
+## Migrating an old store
 
-## Configuration
-
-### Basic
-
-| Field | Description |
-|---|---|
-| **Name** | Saga name (PascalCase, e.g. `BookingConfirmationSaga`) |
-| **Style** | `CHOREOGRAPHY` or `ORCHESTRATION` |
-| **Trigger event** | The domain event that starts this saga |
-| **Timeout** | Maximum duration for the entire saga (e.g. `PT1H`) |
-
-### Steps
-
-Saga steps use the same step types as use cases (`ReadAggregate`, `CallAggregateOperation`, `SaveAggregate`, `CallGateway`, `PublishDomainEvent`, `CallUseCase`, `ApplyModelMapping`, `Custom`). A `Custom` step generates a `{Saga}Steps` hook you implement in the `{service}-custom` module — see [Generating code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones).
-
-Each step in a saga has:
-
-| Field | Description |
-|---|---|
-| **Name** | Step name |
-| **Type** | One of the step types above |
-| **Command** | The operation/use case to execute |
-| **On success** | Event or transition to the next step |
-| **On failure** | Compensation action to execute |
-| **Retry policy** | Max retries, backoff strategy |
-| **Timeout** | Max duration for this individual step |
-
-### Compensation
-
-Each step can define a compensation action that runs if the step (or a later step) fails:
-
-| Field | Description |
-|---|---|
-| **Compensation command** | The operation to undo this step's effect |
-| **Dead-letter queue** | Queue for unresolvable failures |
-
-### Resilience
-
-| Field | Description |
-|---|---|
-| **Retry policy** | Max retries and backoff strategy (fixed, exponential) |
-| **Dead-letter queue** | Where to send messages when retries are exhausted |
-| **Idempotency** | Ensure each step executes exactly once |
-
-## Example: Booking confirmation saga
+Stores that still hold `sagas` (or `processes`) migrate with one click — the
+**⇪ Migrar** button appears on the Workflows view whenever there is something to
+migrate — or through the commands:
 
 ```
-Trigger: BookingRequested
-
-Step 1: ReserveInventory
-  → success: InventoryReserved
-  → failure: compensation = ReleaseInventory
-
-Step 2: ChargePayment
-  → success: PaymentCharged
-  → failure: compensation = RefundPayment + ReleaseInventory
-
-Step 3: ConfirmBooking
-  → success: BookingConfirmed
-  → failure: compensation = RefundPayment + ReleaseInventory
+migrate-sagas-to-workflows
+migrate-processes-to-workflows
 ```
 
-If payment fails, the saga automatically releases the inventory reservation and emits a `BookingFailed` event.
-
-## What gets generated
-
-For a `BookingConfirmationSaga`:
-
-- `BookingConfirmationSaga.java` — an orchestration **scaffold**: it injects the saga's collaborators
-  (gateways, repositories, the `Custom`-step hook) and lists each step. The **runnable** orchestration is
-  the EventConductor workflow below; wire steps in `execute()` in-process only if you are not delegating
-  to EventConductor. (A `Custom` step calls its `{Saga}Steps` hook directly.)
-- State machine transitions and compensation handlers
-- Kafka message handlers for each step
-- Retry and dead-letter configuration
-- For each `Custom` step: a `BookingConfirmationSteps` hook (locked) plus a write-once `DefaultBookingConfirmationSteps` in the `{service}-custom` module
-- `src/main/resources/workflows/BookingConfirmationSaga.workflow.json` — an [EventConductor](https://eventconductor.mateu.io/) workflow definition (see below)
-
-## Orchestration with EventConductor
-
-Modux generates each saga as an [**EventConductor**](https://eventconductor.mateu.io/) workflow
-definition — a version-controlled JSON file that the EventConductor engine executes. Rather than
-hand-roll a bespoke state machine, the generated system delegates orchestration to a
-production-grade, distributed workflow engine.
-
-The mapping is direct:
-
-| Modux saga | EventConductor workflow |
-|---|---|
-| Saga | A workflow definition (`<Saga>.workflow.json`) |
-| Step | An `ACTION` step dispatched to a Kafka topic |
-| Step ordering | `preconditionStepId` chaining |
-| Retry policy | `retries` per step |
-| Timeout | `timeout` (ISO-8601 or ms) |
-| Compensation | `rollbackable` + `compensationStepId` |
-| Human task | a `USER_TASK` step bound to a form |
-
-The generated JSON validates against EventConductor's `workflow-definition-schema.json`. Deploy the
-EventConductor orchestrator and workers alongside your services (it runs from a single JVM to a
-multi-pod Kubernetes cluster), import the workflow definitions, and the engine drives the process —
-events in, state transitions and compensations out. See the
-[EventConductor documentation](https://eventconductor.mateu.io/) for deployment modes and the
-workflow DSL.
-
-The [`orchestrates` flow archetype](/manual/flows/) is the quickest way to create one: declare the
-triggering event and target context, and Modux derives the saga and its EventConductor workflow.
-
-## Next steps
-
-- Set up [Domain Events](/manual/domain-events/) that trigger sagas
-- Configure [Subscriptions](/manual/subscriptions/) for external service integration
+Ids are preserved, so every reference survives: a saga becomes a workflow with the
+same id, its steps become a dependency chain, and each compensation action lands on
+its step's `compensationUseCaseId`.
