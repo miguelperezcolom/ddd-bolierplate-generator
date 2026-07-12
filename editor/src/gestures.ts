@@ -101,6 +101,17 @@ export function applyConnectionGesture(
     }
     // In the workflows view, dragging step A → step B declares "B depends on A".
     if (view === 'workflows') {
+      // actor ⇆ paso: la tarea se vuelve humana — el rol recibe su lista de tareas
+      const isActor = (id: string) => (host.model.actors ?? []).some((a) => a.id === id);
+      if (isActor(sourceId) !== isActor(targetId)) {
+        const roleId = isActor(sourceId) ? sourceId : targetId;
+        const stepId = isActor(sourceId) ? targetId : sourceId;
+        const roleOwner = host.owningWorkflowOf(stepId);
+        if (roleOwner) {
+          host.command({ kind: 'set-workflow-step-role', workflowId: roleOwner.id, id: stepId, targetId: roleId });
+          return;
+        }
+      }
       // paso ⇆ página: el formulario de la tarea humana (cualquier dirección)
       const isPage = (id: string) => (host.model.pages ?? []).some((p) => p.id === id);
       if (isPage(sourceId) !== isPage(targetId)) {
@@ -1656,7 +1667,18 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-workflow-gateway', id });
       return;
     }
-    if (view === 'workflows' && elementType === 'edge' && kind === 'wf-form') {
+    if (view === 'workflows' && elementType === 'edge' && kind === 'wf-role') {
+    const match = /^wfrole:(.+)->(.+)$/.exec(id);
+    if (match) {
+      const owner = host.owningWorkflowOf(match[1]);
+      if (owner) {
+        host.clearSelection();
+        host.command({ kind: 'set-workflow-step-role', workflowId: owner.id, id: match[1] });
+      }
+    }
+    return;
+  }
+  if (view === 'workflows' && elementType === 'edge' && kind === 'wf-form') {
       const match = /^wfform:(.+)->(.+)$/.exec(id);
       if (match) {
         const owner = host.owningWorkflowOf(match[1]);

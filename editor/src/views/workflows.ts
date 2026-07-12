@@ -289,6 +289,47 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
       });
     }
   }
+  // HUMAN step → its actor: who works the task (drawn like the form page)
+  {
+    const humanSteps = (model.workflows ?? []).flatMap((wf) =>
+      (wf.steps ?? []).filter((s) => s.roleId && nodeIds.has(s.id)));
+    humanSteps.forEach((step, i) => {
+      const actor = (model.actors ?? []).find((a) => a.id === step.roleId);
+      const actorId = step.roleId!;
+      if (!nodeIds.has(actorId)) {
+        const anchor = nodes.find((n) => n.id === step.id);
+        const pos = layout[actorId] ?? {
+          x: (anchor ? anchor.x - 90 : 120 + i * 200),
+          y: (anchor ? anchor.y - 120 : 40),
+        };
+        nodes.push({
+          id: actorId,
+          label: actor?.name ?? actorId,
+          x: pos.x,
+          y: pos.y,
+          w: 130,
+          h: 44,
+          kind: 'actor',
+          symbol: 'person',
+          fill: '#fef9c3',
+          stroke: '#ca8a04',
+          badge: 'ROL',
+          tooltip: `${actor?.name ?? actorId} — su lista de tareas recibe los pasos humanos conectados`,
+        });
+        nodeIds.add(actorId);
+      }
+      edges.push({
+        id: `wfrole:${step.id}->${actorId}`,
+        sourceId: actorId,
+        targetId: step.id,
+        kind: 'wf-role',
+        color: '#ca8a04',
+        dashed: true,
+        arrow: true,
+        tooltip: 'la tarea cae en la lista de este rol — Supr la vuelve automática',
+      });
+    });
+  }
   // HUMAN step → its form: the PAGE the forms engine renders as the task
   {
     const formSteps = (model.workflows ?? []).flatMap((wf) =>

@@ -468,6 +468,23 @@ public class WorkflowEditorCommands {
                 .toList()));
     }
 
+    /** HUMAN step ⇆ its role: who works the task (null clears — back to a system step). */
+    public void setWorkflowStepRole(EditorCommand command) {
+        var workflow = projects.requireWorkflow(command.workflowId());
+        if (workflow.steps().stream().noneMatch(st -> st.id().equals(command.id()))) {
+            throw new IllegalArgumentException("Paso desconocido: " + command.id());
+        }
+        if (command.targetId() != null
+                && repository.findById(command.targetId(), RoleEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Rol desconocido: " + command.targetId());
+        }
+        repository.save(EditorApiController.withWorkflowSteps(workflow, workflow.steps().stream()
+                .map(st -> st.id().equals(command.id())
+                        ? st.toBuilder().roleId(command.targetId()).build()
+                        : st)
+                .toList()));
+    }
+
     /** HUMAN step ⇆ its form: the PAGE the forms engine renders as the task (null clears). */
     public void setWorkflowStepForm(EditorCommand command) {
         var workflow = projects.requireWorkflow(command.workflowId());

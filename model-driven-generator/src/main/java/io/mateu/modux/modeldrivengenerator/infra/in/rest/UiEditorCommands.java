@@ -346,8 +346,11 @@ public class UiEditorCommands {
 
     public void addEtlFlow(EditorCommand command) {
         if (repository.findById(command.id(), EtlFlowEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        if (command.moduleId() != null) {
+            repository.findById(command.moduleId(), ModuleEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        }
+        // Ownerless pipelines FLOAT on the integrations view; the ficha wires the owner.
         repository.save(new EtlFlowEntity(command.id(), command.name(), null,
                 command.moduleId(), List.of()));
     }

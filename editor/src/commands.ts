@@ -694,6 +694,19 @@ export type ModuxCommand =
     }
   | { kind: 'remove-workflow-step'; workflowId: string; id: string }
   | {
+      /** HUMAN step ⇆ its role: targetId is the ACTOR whose worklist gets the task (omit to clear). */
+      kind: 'set-workflow-step-role';
+      workflowId: string;
+      id: string;
+      targetId?: string;
+    }
+  | {
+      /** A deployable service — the distribution level's container. */
+      kind: 'add-service';
+      id: string;
+      name: string;
+    }
+  | {
       /** HUMAN step ⇆ its form: targetId is the PAGE the forms engine renders (omit to clear). */
       kind: 'set-workflow-step-form';
       workflowId: string;
@@ -945,7 +958,8 @@ export type ModuxCommand =
       kind: 'add-etl-flow';
       id: string;
       name: string;
-      moduleId: string;
+      /** Omitted: the pipeline floats until the ficha wires its owner context. */
+      moduleId?: string;
     }
   | { kind: 'remove-etl-flow'; id: string }
   | {

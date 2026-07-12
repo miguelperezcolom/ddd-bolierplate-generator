@@ -344,6 +344,12 @@ export class ModuxEditor extends LitElement {
 
   /** Mirrors mateu's <html theme="dark"> flag — set by the connected host. */
   @property({ type: Boolean, reflect: true }) dark = false;
+
+  /** Ids issued by palette drops still in flight — the projection hasn't caught up. */
+  private _pendingIds = new Set<string>();
+
+  /** The blank-canvas palette auto-open fired already (once per mount). */
+  private _paletteOpenedForBlank = false;
   /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
   @state() private _repoPicker: { pos: Point } | null = null;
   /** Open picker: a loose step drop asking WHICH workflow adopts it. */
@@ -974,6 +980,13 @@ export class ModuxEditor extends LitElement {
 
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   protected willUpdate(changed: PropertyValues): void {
+    if (changed.has('model')) this._pendingIds.clear();
+    // A blank canvas opens the palette by itself: the first gesture is a drop.
+    if (changed.has('model') && !this._paletteOpenedForBlank
+        && this.model.modules.length === 0 && this.model.externalSystems.length === 0) {
+      this._paletteOpen = true;
+      this._paletteOpenedForBlank = true;
+    }
     if (changed.has('layout')) {
       const detail = normalizeViewLayout(this.layout['context-map']).detail;
       if (detail === 'contexts' || detail === 'detail' || detail === 'operations'
@@ -2709,7 +2722,9 @@ export class ModuxEditor extends LitElement {
    * the first one's id — and the backend ignores duplicate adds.
    */
   private uniquePaletteName(base: string, prefix: string): { id: string; name: string } {
-    const ids = new Set(this.sceneFor(this._view).nodes.map((n) => n.id));
+    // Ids from drops still in flight count as taken: two quick drops of the
+    // same type must not collide while the projection catches up.
+    const ids = new Set([...this._pendingIds, ...this.sceneFor(this._view).nodes.map((n) => n.id)]);
     const m = this.model;
     for (const pool of [
       m.modules.map((x) => x.id),
@@ -2753,7 +2768,10 @@ export class ModuxEditor extends LitElement {
     for (let n = 1; ; n++) {
       const name = n === 1 ? base : `${base} ${n}`;
       const id = `${prefix}${slug(name)}`;
-      if (!ids.has(id)) return { id, name };
+      if (!ids.has(id)) {
+        this._pendingIds.add(id);
+        return { id, name };
+      }
     }
   }
 
@@ -2970,7 +2988,7 @@ export class ModuxEditor extends LitElement {
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
         'identity-provider': 'idp-', transformation: 'tf-', 'custom-code': 'cc-',
-        'button-group': 'bg-',
+        'button-group': 'bg-', service: 'svc-',
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
@@ -3010,6 +3028,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'add-button-group', id, name }
                                   : type === 'identity-provider'
                                   ? { kind: 'add-identity-provider', id, name }
+                                  : type === 'service'
+                                  ? { kind: 'add-service', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
@@ -3136,6 +3156,15 @@ export class ModuxEditor extends LitElement {
       });
       this.emit('modux-notice', {
         message: 'Transformación añadida — el mapping o el intent se detallan en su ficha',
+      });
+      return;
+    }
+    if (type === 'etl-flow' && !this.dropContainerFor(type, targetId)) {
+      // In the open it floats: the pipeline exists before deciding who operates it.
+      const loose = this.uniquePaletteName(def.label, 'etl-');
+      issue({ kind: 'add-etl-flow', id: loose.id, name: loose.name }, loose.id);
+      this.emit('modux-notice', {
+        message: 'Integrador creado suelto — su contexto dueño se fija en la ficha; cablea fuentes y escrituras aquí',
       });
       return;
     }

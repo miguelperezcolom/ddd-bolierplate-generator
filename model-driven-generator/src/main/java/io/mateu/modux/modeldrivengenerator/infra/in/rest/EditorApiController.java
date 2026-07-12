@@ -606,6 +606,8 @@ public class EditorApiController {
             case "remove-code-module" -> removeCodeModule(command);
             case "add-code-module-element" -> addCodeModuleElement(command);
             case "remove-code-module-element" -> removeCodeModuleElement(command);
+            case "add-service" -> addService(command);
+            case "set-workflow-step-role" -> workflowCommands.setWorkflowStepRole(command);
             case "add-service-code-module" -> addServiceCodeModule(command);
             case "remove-service-code-module" -> removeServiceCodeModule(command);
             case "add-external-system" -> addExternalSystem(command);
@@ -958,7 +960,41 @@ public class EditorApiController {
     }
 
     /** A new module belongs to the working project: it joins its first service's moduleIds. */
+    /** A deployable service, wired into the current project (created if absent). */
+    private void addService(EditorCommand command) {
+        if (repository.findById(command.id(), ServiceEntity.class).isPresent()) return;
+        repository.save(ServiceEntity.builder().id(command.id()).name(command.name()).build());
+        var project = projects.currentProject().orElse(null);
+        if (project == null) {
+            repository.save(ProjectEntity.builder()
+                    .id("project").name("Proyecto")
+                    .serviceIds(List.of(command.id()))
+                    .build());
+            return;
+        }
+        var serviceIds = new ArrayList<>(project.serviceIds() == null ? List.of() : project.serviceIds());
+        if (!serviceIds.contains(command.id())) {
+            serviceIds.add(command.id());
+            repository.save(project.toBuilder().serviceIds(serviceIds).build());
+        }
+    }
+
+    /**
+     * The blank canvas bootstraps itself: the FIRST module materializes the
+     * project and a service around it, so the topology exists from gesture one
+     * (the editor twin of the MCP's bootstrap_project).
+     */
+    private void ensureProjectAndService() {
+        if (projects.currentProject().isPresent()) return;
+        repository.save(ServiceEntity.builder().id("svc-principal").name("Servicio principal").build());
+        repository.save(ProjectEntity.builder()
+                .id("project").name("Proyecto")
+                .serviceIds(List.of("svc-principal"))
+                .build());
+    }
+
     private void wireModuleIntoCurrentProject(String moduleId) {
+        ensureProjectAndService();
         var project = projects.currentProject().orElse(null);
         var serviceId = project == null || project.serviceIds() == null ? null
                 : project.serviceIds().stream().findFirst().orElse(null);

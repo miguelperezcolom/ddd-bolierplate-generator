@@ -22,6 +22,9 @@ import java.util.Optional;
 @Slf4j
 public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore {
 
+    // Guarded by `this`: the editor fires commands, layout PUTs and reloads
+    // concurrently — an unsynchronized map silently loses puts (seen in the wild:
+    // an aggregate saved but never linked to its module).
     private final Map<String, Object> store = new HashMap<>();
 
     /** Directory that holds the resolved model store; generated schema is written next to it. */
@@ -59,37 +62,37 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         return type.getSimpleName() + ":" + id;
     }
 
-    public <T> Optional<T> findById(String id, Class<T> type) {
+    public synchronized <T> Optional<T> findById(String id, Class<T> type) {
         return Optional.ofNullable((T) store.get(storeKey(id, type)));
     }
-    public void save(Identifiable o) {
+    public synchronized void save(Identifiable o) {
         store.put(storeKey(o.id(), o.getClass()), o);
         persist();
     }
 
     /** Puts an entity into the in-memory store without persisting to disk (transient/derived data). */
-    public void putTransient(Identifiable o) {
+    public synchronized void putTransient(Identifiable o) {
         store.put(storeKey(o.id(), o.getClass()), o);
     }
 
-    public <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> entityClass) {
+    public synchronized <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> entityClass) {
         var data = (List<T>) store.values().stream().filter(v -> v.getClass().equals(entityClass)).toList();
         return new ListingData<T>(new Page<T>(searchText, pageable.size(), pageable.page(), data.size(),
                 data.stream().skip(pageable.page() * pageable.size()).limit(pageable.size()).toList()));
     }
 
-    public <T> List<T> findAllOfType(Class<T> type) {
+    public synchronized <T> List<T> findAllOfType(Class<T> type) {
         return (List<T>) store.values().stream()
                 .filter(v -> v.getClass().equals(type))
                 .toList();
     }
 
     /** Every catalog element currently loaded (all types), for whole-model passes like integrity checks. */
-    public java.util.Collection<Object> allElements() {
+    public synchronized java.util.Collection<Object> allElements() {
         return new java.util.ArrayList<>(store.values());
     }
 
-    public <T> void deleteAllById(List<String> list, Class<T> type) {
+    public synchronized <T> void deleteAllById(List<String> list, Class<T> type) {
         list.forEach(id -> store.remove(storeKey(id, type)));
         persist();
     }
@@ -111,14 +114,14 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     private String overrideModelFile;
 
     /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
-    public void loadFrom(String modelFilePath) {
+    public synchronized void loadFrom(String modelFilePath) {
         this.overrideModelFile = modelFilePath;
         init();
     }
 
     /** Re-read the catalog from the underlying persistence (files or database). */
     @Override
-    public void reload() {
+    public synchronized void reload() {
         if (jdbc != null) {
             loadIntoStore(jdbc.load(jdbc.getCurrentWorkspace()));
             return;
@@ -127,7 +130,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
 
     /** Open a DATABASE-backed repository: the catalog loads from rows and persists to rows. */
-    public void openDatabase(io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase db) {
+    public synchronized void openDatabase(io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase db) {
         this.jdbc = db;
         this.scoped = false;
         this.startedFromScratch = false;
@@ -137,7 +140,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     @SneakyThrows
     @PostConstruct
-    public void init() {
+    public synchronized void init() {
         var specFile = overrideModelFile != null ? overrideModelFile
                 : System.getProperty("modux.model-file", ".dev/data/model-driven-store.yaml");
         jdbc = null;
@@ -154,7 +157,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
 
     /** Flatten an {@link AllData} into the in-memory catalog, keyed by (id, type), via reflection. */
-    private void loadIntoStore(AllData data) {
+    private synchronized void loadIntoStore(AllData data) {
         store.clear();
         for (var component : AllData.class.getRecordComponents()) {
             try {
@@ -172,19 +175,19 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
 
     /** The loaded model as an {@link AllData} — a read-only snapshot of the catalog. */
-    public AllData snapshot() {
+    public synchronized AllData snapshot() {
         return buildAllData();
     }
 
     /** Replace the whole catalog with the given model and persist it (semantic merges). */
     @SneakyThrows
-    public void replaceWith(AllData data) {
+    public synchronized void replaceWith(AllData data) {
         loadIntoStore(data);
         persist();
     }
 
     /** Rebuild an {@link AllData} from the in-memory catalog (inverse of {@link #loadIntoStore}). */
-    private AllData buildAllData() {
+    private synchronized AllData buildAllData() {
         var components = AllData.class.getRecordComponents();
         var args = new Object[components.length];
         for (var i = 0; i < components.length; i++) {
@@ -203,20 +206,20 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     /** Write the loaded model out as a granular file tree (one file per element). */
     @SneakyThrows
-    public void splitTo(Path dir) {
+    public synchronized void splitTo(Path dir) {
         granularFormat.save(dir.toAbsolutePath().normalize(), buildAllData());
         log.info("model split into granular store at {}", dir.toAbsolutePath().normalize());
     }
 
     /** Write the loaded model out as a single monolithic YAML file. */
     @SneakyThrows
-    public void mergeTo(Path file) {
+    public synchronized void mergeTo(Path file) {
         monolithicFormat.save(file.toAbsolutePath().normalize(), buildAllData());
         log.info("model merged into monolithic store at {}", file.toAbsolutePath().normalize());
     }
 
     @SneakyThrows
-    private void persist() {
+    private synchronized void persist() {
         if (scoped) {
             throw new IllegalStateException("The model is partially loaded (a view scope) and is read-only. "
                     + "Load the full model before saving.");
@@ -229,7 +232,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
 
     /** Begin a partial (scoped) load on a granular store: clears the catalog and marks it read-only. */
-    public void beginScopedLoad() {
+    public synchronized void beginScopedLoad() {
         if (!(activeFormat instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat)) {
             throw new IllegalStateException("Partial loading needs a granular store. Run --modux.split first, "
                     + "and point modux.model-file at the model directory.");
@@ -240,7 +243,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     /** Load all elements of one type (e.g. "views") into the catalog; returns them. */
     @SneakyThrows
-    public java.util.List<Object> loadTypeIntoStore(String componentName) {
+    public synchronized java.util.List<Object> loadTypeIntoStore(String componentName) {
         var elements = granularFormat.loadType(storePath, componentName);
         for (var element : elements) {
             if (element instanceof Identifiable identifiable) {
@@ -252,7 +255,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     /** Load a single element by id into the catalog (lazy); returns it, or null if not a stored element. */
     @SneakyThrows
-    public Object loadElementIntoStore(String id) {
+    public synchronized Object loadElementIntoStore(String id) {
         var element = granularFormat.loadElement(storePath, id);
         if (element instanceof Identifiable identifiable) {
             store.put(storeKey(identifiable.id(), element.getClass()), element);

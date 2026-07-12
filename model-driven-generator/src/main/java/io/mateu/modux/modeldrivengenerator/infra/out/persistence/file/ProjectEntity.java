@@ -18,6 +18,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 
 import java.util.List;
 
+@lombok.Builder(toBuilder = true)
 public record ProjectEntity(
         String id,
         String name,
