@@ -4366,6 +4366,7 @@ export class ModuxEditor extends LitElement {
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
             .scene=${this.sceneFor(this._view)}
+            .sceneKey=${`${this._view}:${this._detail}`}
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}

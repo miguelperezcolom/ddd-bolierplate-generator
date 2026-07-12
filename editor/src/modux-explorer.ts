@@ -361,6 +361,14 @@ export class ModuxExplorer extends LitElement {
   /** Multi-selection: node keys — Supr deletes them, «⊞ Vista…» prefers them. */
   @state() private selected = new Set<string>();
 
+  /** The levels slider value — kept in sync when a level change auto-unfolds. */
+  @state() private _levels = 1;
+
+  /** Identity of the scene on stage (view:detail) — set by the host; when it
+   *  changes, the tree unfolds to the scene's own depth: each level decides
+   *  what matters, the organism shows exactly that. */
+  @property() sceneKey = '';
+
   /** Inline rename (F2): a floating input rides the node. */
   @state() private renaming: { key: string; value: string } | null = null;
   /** A relation being drawn from the hover handle towards the pointer. */
@@ -541,8 +549,26 @@ export class ModuxExplorer extends LitElement {
     this.cam.y = h / 2 - ((minY + maxY) / 2) * k;
   }
 
+  /** Tree depth the scene reaches (root = 0, top nodes = 1, their children = 2…). */
+  private sceneDepth(): number {
+    if (!this.scene) return 1;
+    const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
+    let max = 1;
+    for (const n of this.scene.nodes) {
+      let d = 1;
+      for (let cur = n.parentId; cur; cur = byId.get(cur)?.parentId) d++;
+      max = Math.max(max, d);
+    }
+    return max;
+  }
+
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('model') || changed.has('scene')) this.buildTree();
+    if (changed.has('sceneKey') && changed.get('sceneKey') !== undefined) {
+      // A different view/level took the stage: unfold to ITS depth, so what
+      // matters there is visible without touching the slider by hand.
+      this.applyLevels(this.sceneDepth());
+    }
     if (changed.has('renaming') && this.renaming) {
       (this.renderRoot.querySelector('.rename') as HTMLInputElement | null)?.select();
     }
@@ -789,6 +815,7 @@ export class ModuxExplorer extends LitElement {
 
   /** Every node expanded down to `levels` (0 = todo plegado); focus clears. */
   private applyLevels(levels: number): void {
+    this._levels = levels;
     this.focusKeys = undefined;
     const walk = (n: XNode) => {
       if (!n.children) n.children = this.childrenOf(n);
@@ -1809,7 +1836,7 @@ export class ModuxExplorer extends LitElement {
           min="0"
           max="5"
           step="1"
-          value="1"
+          .value=${String(this._levels)}
           title="Cuántos niveles se ven abiertos"
           @input=${(e: Event) => this.applyLevels(Number((e.target as HTMLInputElement).value))}
         />
