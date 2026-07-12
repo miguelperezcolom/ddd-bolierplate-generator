@@ -115,6 +115,11 @@ public class EditorApiController {
     private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.ProjectReferenceService projectReferences;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
+    private final EditorProjectSupport projects;
+    private final EditorModelProjection projection;
+    private final WorkflowEditorCommands workflowCommands;
+    private final AgentEditorCommands agentCommands;
+    private final UiEditorCommands uiCommands;
 
     // ---- projection -------------------------------------------------------
 
@@ -469,648 +474,8 @@ public class EditorApiController {
         return emitter;
     }
 
-    @GetMapping("/model")
-    public EditorModelDto model() {
-        var services = repository.findAllOfType(ServiceEntity.class);
-        var useCasesById = repository.findAllOfType(UseCaseEntity.class).stream()
-                .collect(Collectors.toMap(UseCaseEntity::id, uc -> uc, (a, b) -> a));
-        var domainEventsById = repository.findAllOfType(DomainEventEntity.class).stream()
-                .collect(Collectors.toMap(DomainEventEntity::id, ev -> ev, (a, b) -> a));
-        var readModelsById = repository.findAllOfType(ReadModelEntity.class).stream()
-                .collect(Collectors.toMap(ReadModelEntity::id, rm -> rm, (a, b) -> a));
-        var domainServicesById = repository.findAllOfType(DomainServiceEntity.class).stream()
-                .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
-        var applicationEventsById = repository.findAllOfType(ApplicationEventEntity.class).stream()
-                .collect(Collectors.toMap(ApplicationEventEntity::id, ev -> ev, (a, b) -> a));
-        var queryServicesByModule = repository.findAllOfType(QueryServiceEntity.class).stream()
-                .filter(qs -> qs.moduleId() != null)
-                .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
-        var scheduledTriggersById = repository.findAllOfType(ScheduledTriggerEntity.class).stream()
-                .collect(Collectors.toMap(ScheduledTriggerEntity::id, t -> t, (a, b) -> a));
-        // The editor works on the current project: its services' modules, plus any
-        // module not wired to a service yet (legacy orphans stay visible).
-        var currentProject = currentProject().orElse(null);
-        var projectServiceIds = currentProject == null || currentProject.serviceIds() == null
-                ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
-        var wiredElsewhere = services.stream()
-                .filter(s2 -> !projectServiceIds.contains(s2.id()))
-                .flatMap(s2 -> s2.moduleIds() == null ? java.util.stream.Stream.<String>empty()
-                        : s2.moduleIds().stream())
-                .collect(java.util.stream.Collectors.toSet());
-        var modules = repository.findAllOfType(ModuleEntity.class).stream()
-                .filter(m -> !wiredElsewhere.contains(m.id()))
-                .map(m -> new ModuleDto(
-                        m.id(),
-                        m.name(),
-                        m.subdomainType() == null ? null : m.subdomainType().name(),
-                        services.stream()
-                                .filter(s -> s.moduleIds() != null && s.moduleIds().contains(m.id()))
-                                .map(ServiceEntity::id)
-                                .findFirst()
-                                .orElse(null),
-                        (m.useCaseIds() == null ? List.<String>of() : m.useCaseIds()).stream()
-                                .map(useCasesById::get)
-                                .filter(Objects::nonNull)
-                                .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy(),
-                                        (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
-                                                .map(UseCaseStepEntity::id).toList(),
-                                        uc.inputModelId(),
-                                        (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
-                                                .map(st -> new UseCaseStepDto(st.id(), st.name(),
-                                                        st.type() == null ? null : st.type().name(),
-                                                        st.customCodeId()))
-                                                .toList()))
-                                .toList(),
-                        (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
-                                .map(domainEventsById::get)
-                                .filter(Objects::nonNull)
-                                .map(ev -> new DomainEventDto(ev.id(), ev.name()))
-                                .toList(),
-                        (m.readModelIds() == null ? List.<String>of() : m.readModelIds()).stream()
-                                .map(readModelsById::get)
-                                .filter(Objects::nonNull)
-                                .map(rm -> new ReadModelDto(rm.id(), rm.name(), rm.aggregateId()))
-                                .toList(),
-                        m.domainServiceIds().stream()
-                                .map(domainServicesById::get)
-                                .filter(Objects::nonNull)
-                                .map(ds -> new DomainServiceDto(ds.id(), ds.name()))
-                                .toList(),
-                        m.applicationEventIds().stream()
-                                .map(applicationEventsById::get)
-                                .filter(Objects::nonNull)
-                                .map(ev -> new ApplicationEventDto(ev.id(), ev.name()))
-                                .toList(),
-                        queryServicesByModule.getOrDefault(m.id(), List.of()).stream()
-                                .map(qs -> new QueryServiceDto(qs.id(), qs.name(),
-                                        (qs.operations() == null ? List.<QueryOperationEntity>of() : qs.operations()).stream()
-                                                .map(op -> new QueryOperationDto(op.id(), op.name()))
-                                                .toList()))
-                                .toList(),
-                        (m.scheduledTriggerIds() == null ? List.<String>of() : m.scheduledTriggerIds()).stream()
-                                .map(scheduledTriggersById::get)
-                                .filter(Objects::nonNull)
-                                .map(t -> new ScheduledTriggerDto(t.id(), t.name(), t.cronExpression(), t.useCaseId()))
-                                .toList(),
-                        m.identityProviderId(),
-                        m.uiAdapterIds()))
-                .toList();
 
-        var projects = repository.findAllOfType(ProjectEntity.class);
-        var externalSystems = java.util.stream.Stream.ofNullable(currentProject)
-                .flatMap(p -> p.externalSystems().stream())
-                .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
-                        .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
-                        .toList(),
-                        x.tables().stream()
-                                .map(t -> new ExternalTableDto(t.id(), t.name()))
-                                .toList(),
-                        x.mcpServers().stream()
-                                .map(s -> new McpServerDto(s.id(), s.name(), s.uri()))
-                                .toList(),
-                        x.referencedRepositoryId()))
-                .toList();
-        var flowEntities = repository.findAllOfType(FlowEntity.class);
-        var flows = coherenceService.analyze().stream()
-                .filter(f -> f.sourceModuleId() != null && f.targetModuleId() != null)
-                .map(f -> {
-                    var entity = flowEntities.stream()
-                            .filter(e -> e.id().equals(f.flowId()))
-                            .findFirst();
-                    return new FlowDto(
-                            f.flowId(),
-                            f.flowName(),
-                            f.sourceModuleId(),
-                            f.targetModuleId(),
-                            f.archetype() == null ? null : f.archetype().name(),
-                            entity.map(FlowEntity::triggerAggregateId).orElse(null),
-                            entity.map(FlowEntity::triggerEvent).orElse(null),
-                            entity.map(FlowEntity::targetUseCaseId).orElse(null),
-                            entity.map(FlowEntity::readModelName).orElse(null));
-                })
-                .toList();
-
-        var allAggregates = repository.findAllOfType(AggregateEntity.class);
-        var aggregates = new ArrayList<AggregateDto>();
-        for (var module : repository.findAllOfType(ModuleEntity.class)) {
-            if (module.aggregateIds() == null) continue;
-            for (var aggregateId : module.aggregateIds()) {
-                allAggregates.stream()
-                        .filter(a -> a.id().equals(aggregateId))
-                        .findFirst()
-                        .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), module.id())));
-            }
-        }
-
-        var entities = repository.findAllOfType(EntityEntity.class).stream()
-                .filter(e -> e.parentAggregateId() != null && !e.parentAggregateId().isBlank())
-                .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId()))
-                .toList();
-
-        // A field of aggregate A's state model typed as another aggregate's state
-        // model is projected as a cross-aggregate reference (heuristic; the model
-        // remains the source of truth).
-        var models = repository.findAllOfType(ModelEntity.class);
-        var references = new ArrayList<AggregateReferenceDto>();
-        for (var source : allAggregates) {
-            var stateModel = models.stream()
-                    .filter(m -> m.id().equals(source.modelId()))
-                    .findFirst();
-            if (stateModel.isEmpty() || stateModel.get().fields() == null) continue;
-            for (var field : stateModel.get().fields()) {
-                if (field.modelId() == null || field.modelId().isBlank()) continue;
-                allAggregates.stream()
-                        .filter(t -> !t.id().equals(source.id()))
-                        .filter(t -> field.modelId().equals(t.modelId()))
-                        .findFirst()
-                        .ifPresent(t -> references.add(
-                                new AggregateReferenceDto(source.id(), t.id(), field.name())));
-            }
-        }
-
-        var processes = repository.findAllOfType(ProcessEntity.class).stream()
-                .map(p -> new ProcessDto(
-                        p.id(), p.name(), p.triggerAggregateId(), p.triggerEvent(),
-                        p.ownerModuleId(), p.onCompletionEventName(), p.sla(),
-                        p.steps().stream()
-                                .map(s -> new ProcessStepDto(
-                                        s.id(), s.name(),
-                                        s.type() == null ? null : s.type().name(),
-                                        s.useCaseId(), s.roleId(), s.deadline(),
-                                        s.compensationUseCaseId()))
-                                .toList()))
-                .toList();
-
-        var views = repository.findAllOfType(ViewEntity.class).stream()
-                .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
-                .toList();
-
-        var workflows = repository.findAllOfType(WorkflowEntity.class).stream()
-                .map(w -> new WorkflowDto(
-                        w.id(), w.name(), w.triggerAggregateId(), w.triggerDomainServiceId(),
-                        w.triggerUseCaseId(), w.triggerEvent(), w.onCompletionEventName(),
-                        w.steps().stream()
-                                .map(s -> new WorkflowStepDto(s.id(), s.name(), s.emittedEventName(),
-                                        s.targetUseCaseId(), s.completionEventName(),
-                                        s.dependsOnStepIds(), s.type(), s.handoffWorkflowId(),
-                                        s.roleId(), s.deadline(), s.compensationUseCaseId(),
-                                        s.formPageId()))
-                                .toList()))
-                .toList();
-
-
-        // Who publishes what: DOMAIN events are emitted by aggregates (operations
-        // declare emitted event NAMES as a CSV in OperationEntity.emits). Use cases
-        // publishing through PublishDomainEvent steps is pipeline plumbing, not an
-        // emission — application events are the use-case-level concept.
-        var eventIdByName = domainEventsById.values().stream()
-                .filter(ev -> ev.name() != null)
-                .collect(Collectors.toMap(ev -> ev.name().trim().toLowerCase(),
-                        DomainEventEntity::id, (a, b) -> a));
-        var emissions = new ArrayList<EmissionDto>();
-        for (var a : repository.findAllOfType(AggregateEntity.class)) {
-            collectEmissions(a.id(), a.operations(), eventIdByName, emissions);
-        }
-        for (var ds : repository.findAllOfType(DomainServiceEntity.class)) {
-            collectEmissions(ds.id(), ds.operations(), eventIdByName, emissions);
-        }
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishApplicationEvent
-                        && step.applicationEventId() != null) {
-                    emissions.add(new EmissionDto(uc.id(), step.applicationEventId()));
-                }
-            }
-        }
-
-        var actors = repository.findAllOfType(RoleEntity.class).stream()
-                .map(r -> new ActorDto(r.id(), r.name()))
-                .toList();
-        var aiAgents = repository.findAllOfType(AiAgentEntity.class).stream()
-                .map(a -> new AiAgentDto(a.id(), a.name(), a.external()))
-                .toList();
-        var agentUses = new ArrayList<AgentUseDto>();
-        var agentExternalUses = new ArrayList<AgentExternalUseDto>();
-        var agentRags = new ArrayList<AgentRagDto>();
-        var agentMcpUses = new ArrayList<AgentMcpUseDto>();
-        var agentGatewayUses = new ArrayList<AgentGatewayUseDto>();
-        var agentApiOpUses = new ArrayList<AgentApiOpUseDto>();
-        var agentApiUses = new ArrayList<AgentApiUseDto>();
-        var agentQueryUses = new ArrayList<AgentQueryUseDto>();
-        var agentDelegations = new ArrayList<AgentDelegationDto>();
-        var agentTriggers = new ArrayList<AgentTriggerDto>();
-        for (var agent : repository.findAllOfType(AiAgentEntity.class)) {
-            agent.allowedUseCaseIds().forEach(id -> agentUses.add(new AgentUseDto(agent.id(), id)));
-            agent.allowedExternalUseCaseIds().forEach(
-                    id -> agentExternalUses.add(new AgentExternalUseDto(agent.id(), id)));
-            agent.ragIds().forEach(id -> agentRags.add(new AgentRagDto(agent.id(), id)));
-            agent.allowedMcpServerIds().forEach(
-                    id -> agentMcpUses.add(new AgentMcpUseDto(agent.id(), id)));
-            agent.mcpGatewayIds().forEach(
-                    id -> agentGatewayUses.add(new AgentGatewayUseDto(agent.id(), id)));
-            agent.allowedApiOperationIds().forEach(
-                    id -> agentApiOpUses.add(new AgentApiOpUseDto(agent.id(), id)));
-            agent.allowedApiIds().forEach(
-                    id -> agentApiUses.add(new AgentApiUseDto(agent.id(), id)));
-            agent.allowedQueryServiceIds().forEach(
-                    id -> agentQueryUses.add(new AgentQueryUseDto(agent.id(), id)));
-            agent.delegateAgentIds().forEach(
-                    id -> agentDelegations.add(new AgentDelegationDto(agent.id(), id)));
-            agent.reactsToEventIds().forEach(
-                    id -> agentTriggers.add(new AgentTriggerDto(id, agent.id())));
-        }
-        var mcpGateways = repository.findAllOfType(McpGatewayEntity.class).stream()
-                .map(g -> new McpGatewayDto(g.id(), g.name(), g.mcpServerIds(), g.apiIds(),
-                        g.apiOperationIds(), g.useCaseIds(), g.ragIds()))
-                .toList();
-        var actorAgentUses = new ArrayList<ActorAgentUseDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
-            role.aiAgentIds().forEach(id -> actorAgentUses.add(new ActorAgentUseDto(role.id(), id)));
-        }
-        var rags = repository.findAllOfType(RagEntity.class).stream()
-                .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds(),
-                        r.contentSources().stream()
-                                .map(s -> new RagContentSourceDto(s.type(), s.uri()))
-                                .toList(),
-                        r.sourceExternalTableIds(), r.sourceApiIds(),
-                        r.sourceExternalSystemIds(), r.sourceModuleIds()))
-                .toList();
-        var apis = repository.findAllOfType(ApiEntity.class).stream()
-                .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
-                        .map(op -> new ApiOperationDto(op.id(), op.name(), op.httpMethod(),
-                                op.path(), op.targetModuleId(), op.targetUseCaseId()))
-                        .toList(),
-                        a.publishedByExternalSystemId()))
-                .toList();
-
-        var useCaseCalls = new ArrayList<UseCaseCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
-                        && step.useCaseId() != null) {
-                    useCaseCalls.add(new UseCaseCallDto(uc.id(), step.useCaseId()));
-                }
-            }
-        }
-
-        // The eventstorming chain: command → aggregate (write steps), command → domain
-        // event (publish steps), plus the event → reaction wiring (subscriptions and
-        // projections; flows/processes/workflows are already projected above).
-        var aggregateCalls = new ArrayList<AggregateCallDto>();
-        var useCaseEmissions = new ArrayList<EmissionDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                var type = step.type();
-                if ((type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallAggregateOperation
-                        || type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate)
-                        && step.aggregateId() != null) {
-                    aggregateCalls.add(new AggregateCallDto(uc.id(), step.aggregateId()));
-                }
-                if (type == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent
-                        && step.domainEventId() != null) {
-                    useCaseEmissions.add(new EmissionDto(uc.id(), step.domainEventId()));
-                }
-            }
-        }
-        var subscriptions = repository.findAllOfType(SubscriptionEntity.class).stream()
-                .map(s -> new SubscriptionDto(s.id(), s.name(), s.eventName(), s.consumerGroup(),
-                        (s.actions() == null ? List.<SubscriptionActionDto>of() : s.actions().stream()
-                                .map(a -> new SubscriptionActionDto(
-                                        a.type() != null ? a.type().name() : null,
-                                        a.useCaseId(), a.sagaId(), a.projectionId()))
-                                .toList())))
-                .toList();
-        var projectionDtos = repository.findAllOfType(ProjectionEntity.class).stream()
-                .map(p -> new ProjectionDto(p.id(), p.name(), p.readModelId(),
-                        p.readModelId() == null ? null
-                                : repository.findById(p.readModelId(), ReadModelEntity.class)
-                                        .map(ReadModelEntity::name).orElse(p.readModelId()),
-                        (p.handlers() == null ? List.<String>of() : p.handlers().stream()
-                                .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList()),
-                        p.sourceAggregateId(),
-                        repository.findAllOfType(ModuleEntity.class).stream()
-                                .filter(m -> m.projectionIds() != null
-                                        && m.projectionIds().contains(p.id()))
-                                .map(ModuleEntity::id).findFirst().orElse(null),
-                        p.sourceExternalUseCaseId(), p.sourceExternalTableId()))
-                .toList();
-
-        var queryCalls = new ArrayList<QueryCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService
-                        && step.queryServiceId() != null) {
-                    queryCalls.add(new QueryCallDto(uc.id(), step.queryServiceId()));
-                }
-            }
-        }
-        var externalCalls = new ArrayList<ExternalCallDto>();
-        for (var m : repository.findAllOfType(ModuleEntity.class)) {
-            if (m.acls() == null) continue;
-            for (var acl : m.acls()) {
-                if (!"INBOUND".equalsIgnoreCase(acl.direction()) || acl.externalSystem() == null) continue;
-                for (var ucId : acl.translatedUseCaseIds() == null ? List.<String>of() : acl.translatedUseCaseIds()) {
-                    externalCalls.add(new ExternalCallDto(acl.externalSystem(), ucId));
-                }
-            }
-        }
-        var externalUseCaseCalls = new ArrayList<ExternalUseCaseCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null) continue;
-            for (var step : uc.steps()) {
-                if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallExternalUseCase
-                        && step.externalUseCaseId() != null) {
-                    externalUseCaseCalls.add(new ExternalUseCaseCallDto(uc.id(), step.externalUseCaseId()));
-                }
-            }
-        }
-        var actorUses = new ArrayList<ActorUseDto>();
-        var actorExternalDependencies = new ArrayList<ActorExternalDependencyDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
-            role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
-            role.allowedQueryServiceIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
-            role.externalSystemIds().forEach(id ->
-                    actorExternalDependencies.add(new ActorExternalDependencyDto(role.id(), id)));
-        }
-        var externalSystemDependencies = new ArrayList<ExternalSystemDependencyDto>();
-        if (currentProject != null) {
-            for (var x : currentProject.externalSystems()) {
-                x.dependsOnExternalSystemIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
-                x.dependsOnApiIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
-                x.cqrsExternalSystemIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "CQRS")));
-            }
-        }
-        var proxyApis = repository.findAllOfType(ProxyApiEntity.class).stream()
-                .map(px -> new ProxyApiDto(px.id(), px.name(), px.targetApiId(),
-                        px.publishedByExternalSystemId()))
-                .toList();
-        var apiImplementations = repository.findAllOfType(ApiEntity.class).stream()
-                .flatMap(a -> a.implementedByModuleIds().stream()
-                        .map(mid -> new ApiImplementationDto(a.id(), mid)))
-                .toList();
-        var proxyOperationRoutes = repository.findAllOfType(ProxyApiEntity.class).stream()
-                .flatMap(px -> px.operationRoutes().stream()
-                        .map(r -> new ProxyOperationRouteDto(px.id(), r.operationId(), r.targetSiteId())))
-                .toList();
-        var externalOperationUses = java.util.stream.Stream.ofNullable(currentProject)
-                .flatMap(pr -> pr.externalSystems().stream())
-                .flatMap(x -> x.apiOperationUses().stream()
-                        .map(u -> new ExternalOperationUseDto(x.id(), u.operationId(), u.siteId())))
-                .toList();
-        var apiOperationImplementations = repository.findAllOfType(ApiEntity.class).stream()
-                .flatMap(a -> a.operationImplementations().stream()
-                        .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.moduleId(), w.useCaseId())))
-                .toList();
-
-        // The UI map: apps (menu trees), pages (with their buttons) and who uses which app.
-        // Pre-id stores (and entries created before ids existed) self-heal on first read:
-        // duplicate labels made selection and gestures ambiguous without a stable identity.
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
-            var healed = withMenuItemIds(app.menuItems(), new java.util.HashSet<>());
-            if (healed != null) {
-                repository.save(withMenuItems(app, healed));
-            }
-        }
-        var uiApps = repository.findAllOfType(UiAdapterEntity.class).stream()
-                .map(a -> new UiAppDto(a.id(), a.name(), a.title(),
-                        (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
-                                .map(EditorApiController::toMenuEntry)
-                                .toList(),
-                        a.appType().name(), a.headerPageId(), a.homePageId(), a.homeAppId(),
-                        a.modelId(), a.viewPageId(), a.editPageId(), a.identityProviderId()))
-                .toList();
-        var pages = repository.findAllOfType(PageEntity.class).stream()
-                .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
-                        p.modelId() == null ? null
-                                : repository.findById(p.modelId(), ModelEntity.class)
-                                        .map(ModelEntity::name).orElse(null),
-                        p.aggregateId(), p.listingQueryServiceId(),
-                        java.util.stream.Stream.concat(
-                                        (p.toolbar() == null ? List.<PageButtonEntity>of() : p.toolbar()).stream()
-                                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId(), "toolbar")),
-                                        (p.bottomBar() == null ? List.<PageButtonEntity>of() : p.bottomBar()).stream()
-                                                .map(b -> new UiPageButtonDto(b.label(), b.useCaseId(), b.mappingId(), "bottom")))
-                                .toList(),
-                        uiFields(p),
-                        (p.content() == null ? List.<UiComponentNodeEntity>of() : p.content()).stream()
-                                .map(EditorApiController::toComponentNode)
-                                .toList(),
-                        (p.wizardSteps() == null ? List.<PageWizardStepEntity>of() : p.wizardSteps()).stream()
-                                .map(s -> new UiWizardStepDto(s.pageId(), s.label(), s.key()))
-                                .toList(),
-                        p.crudDetailPageId(), p.crudDetailAppId(),
-                        p.crudCreatePageId(), p.crudCreateAppId(), p.customCodeId(),
-                        p.toolbarGroupIds() == null ? List.of() : p.toolbarGroupIds(),
-                        p.bottomBarGroupIds() == null ? List.of() : p.bottomBarGroupIds()))
-                .toList();
-        var actorAppUses = new ArrayList<ActorAppUseDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
-            role.uiAdapterIds().forEach(id -> actorAppUses.add(new ActorAppUseDto(role.id(), id)));
-        }
-
-        // The strategic map is a projection of the concrete dependency graph:
-        // upstream (provider) → downstream (consumer). contextMap entries only
-        // annotate the DDD pattern of a derived pair; orphaned annotations
-        // (no concrete dependency behind them) are not painted.
-        var allModules = repository.findAllOfType(ModuleEntity.class);
-        java.util.function.Function<String, String> moduleOfUseCase = ucId -> allModules.stream()
-                .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(ucId))
-                .map(ModuleEntity::id).findFirst().orElse(null);
-        java.util.function.Function<String, String> moduleOfAggregate = aggId -> allModules.stream()
-                .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggId))
-                .map(ModuleEntity::id).findFirst().orElse(null);
-        var dependencyReasons = new java.util.LinkedHashMap<List<String>, List<String>>();
-        java.util.function.BiConsumer<List<String>, String> addDependency = (pair, reason) -> {
-            if (pair.get(0) == null || pair.get(1) == null || pair.get(0).equals(pair.get(1))) return;
-            dependencyReasons.computeIfAbsent(pair, k -> new ArrayList<>()).add(reason);
-        };
-        for (var call : useCaseCalls) {
-            addDependency.accept(List.of(
-                    Objects.toString(moduleOfUseCase.apply(call.targetId()), ""),
-                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
-                    "llamada " + call.sourceId() + " → " + call.targetId());
-        }
-        for (var call : queryCalls) {
-            var qsModule = repository.findById(call.targetId(), QueryServiceEntity.class)
-                    .map(QueryServiceEntity::moduleId).orElse(null);
-            addDependency.accept(List.of(
-                    Objects.toString(qsModule, ""),
-                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
-                    "consulta " + call.sourceId() + " → " + call.targetId());
-        }
-        for (var f : flows) {
-            addDependency.accept(List.of(
-                    Objects.toString(f.sourceId(), ""), Objects.toString(f.targetId(), "")),
-                    "flow " + f.name() + " [" + f.archetype() + "]");
-        }
-        for (var ref : references) {
-            addDependency.accept(List.of(
-                    Objects.toString(moduleOfAggregate.apply(ref.targetAggregateId()), ""),
-                    Objects.toString(moduleOfAggregate.apply(ref.sourceAggregateId()), "")),
-                    "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
-        }
-        var annotations = currentProject == null
-                ? List.<ContextMapRelationEntity>of() : currentProject.contextMap();
-        // The PATTERN of a derived pair can often be read off its dependencies: mutual
-        // → partnership; embedded aggregates → shared kernel; events only → published
-        // language; one upstream serving many → open host service; direct calls →
-        // customer/supplier. The annotation (declared by hand) always wins.
-        java.util.function.BiFunction<List<String>, List<String>, String> inferType = (pair, reasons) -> {
-            if (dependencyReasons.containsKey(List.of(pair.get(1), pair.get(0)))) return "PARTNERSHIP";
-            if (reasons.stream().anyMatch(r -> r.startsWith("referencia "))) return "SHARED_KERNEL";
-            var onlyEvents = reasons.stream().allMatch(r -> r.startsWith("flow "));
-            if (onlyEvents) return "PUBLISHED_LANGUAGE";
-            var downstreamsOfUpstream = dependencyReasons.keySet().stream()
-                    .filter(k -> k.get(0).equals(pair.get(0)))
-                    .count();
-            if (downstreamsOfUpstream >= 2) return "OPEN_HOST_SERVICE";
-            return "CUSTOMER_SUPPLIER";
-        };
-        var relations = new ArrayList<>(dependencyReasons.entrySet().stream()
-                .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
-                .map(e -> {
-                    var annotation = annotations.stream()
-                            .filter(a -> e.getKey().get(0).equals(a.sourceModuleId())
-                                    && e.getKey().get(1).equals(a.targetModuleId()))
-                            .findFirst().orElse(null);
-                    return new RelationDto(e.getKey().get(0), e.getKey().get(1),
-                            annotation != null ? annotation.type() : null,
-                            inferType.apply(e.getKey(), e.getValue()),
-                            annotation != null,
-                            String.join(" · ", e.getValue()));
-                })
-                .toList());
-        // Hand-declared relations with no derived dependency yet (e.g. drawn from the
-        // explorer between two still-unwired contexts) surface too: intent shows first.
-        var derivedPairs = relations.stream()
-                .map(r -> r.sourceId() + "->" + r.targetId())
-                .collect(java.util.stream.Collectors.toSet());
-        annotations.stream()
-                .filter(a -> a.type() != null)
-                .filter(a -> !derivedPairs.contains(a.sourceModuleId() + "->" + a.targetModuleId()))
-                .filter(a -> repository.findById(a.sourceModuleId(), ModuleEntity.class).isPresent()
-                        && repository.findById(a.targetModuleId(), ModuleEntity.class).isPresent())
-                .forEach(a -> relations.add(new RelationDto(a.sourceModuleId(), a.targetModuleId(),
-                        a.type(), null, true, "declarada a mano — aún sin dependencia concreta")));
-
-        return new EditorModelDto(
-                modules, externalSystems, relations, flows, aggregates, entities, references, processes,
-                views, emissions.stream().distinct().toList(), actors,
-                useCaseCalls.stream().distinct().toList(),
-                queryCalls.stream().distinct().toList(),
-                actorUses.stream().distinct().toList(),
-                externalCalls.stream().distinct().toList(),
-                externalUseCaseCalls.stream().distinct().toList(),
-                aiAgents,
-                agentUses.stream().distinct().toList(),
-                workflows,
-                repository.findAllOfType(EtlFlowEntity.class).stream()
-                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerModuleId(), f.steps().stream()
-                                .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
-                                        s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
-                                .toList(),
-                                f.identityProviderId()))
-                        .toList(),
-                repository.findAllOfType(IdentityProviderEntity.class).stream()
-                        .map(x -> new IdentityProviderDto(x.id(), x.name(), x.type(), x.issuer(),
-                                x.publishedByExternalSystemId()))
-                        .toList(),
-                repository.findAllOfType(NotificationEntity.class).stream()
-                        .map(x -> new NotificationDto(x.id(), x.name(), x.ownerModuleId(), x.eventId(),
-                                x.channels(), x.recipientRoleIds()))
-                        .toList(),
-                repository.findAllOfType(DocumentEntity.class).stream()
-                        .map(x -> new DocumentDto(x.id(), x.name(), x.ownerModuleId(), x.kind(),
-                                x.modelId(), x.queryServiceId(), x.queryOperationId()))
-                        .toList(),
-                aggregateCalls.stream().distinct().toList(),
-                useCaseEmissions.stream().distinct().toList(),
-                subscriptions,
-                projectionDtos,
-                agentExternalUses.stream().distinct().toList(),
-                rags,
-                agentRags.stream().distinct().toList(),
-                apis,
-                actorExternalDependencies.stream().distinct().toList(),
-                externalSystemDependencies.stream().distinct().toList(),
-                proxyApis,
-                agentMcpUses.stream().distinct().toList(),
-                mcpGateways,
-                agentGatewayUses.stream().distinct().toList(),
-                agentApiOpUses.stream().distinct().toList(),
-                agentApiUses.stream().distinct().toList(),
-                agentQueryUses.stream().distinct().toList(),
-                agentDelegations.stream().distinct().toList(),
-                actorAgentUses.stream().distinct().toList(),
-                agentTriggers.stream().distinct().toList(),
-                apiImplementations,
-                proxyOperationRoutes,
-                externalOperationUses,
-                apiOperationImplementations,
-                uiApps,
-                pages,
-                actorAppUses.stream().distinct().toList(),
-                repository.findAllOfType(ModelEntity.class).stream()
-                        .map(x -> new ModelRefDto(x.id(), x.name(),
-                                (x.fields() == null ? List.<ModelFieldEntity>of() : x.fields()).stream()
-                                        .map(f -> new ModelFieldDto(f.id(), f.name(),
-                                                f.type() == null ? null : f.type().name()))
-                                        .toList()))
-                        .toList(),
-                repository.findAllOfType(SagaEntity.class).stream()
-                        .map(x -> new NamedRefDto(x.id(), x.name()))
-                        .toList(),
-                repository.findAllOfType(CodeModuleEntity.class).stream()
-                        .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
-                        .toList(),
-                services.stream()
-                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds(),
-                                s.database(), s.outboxEnabled()))
-                        .toList(),
-                repository.findAllOfType(TransformationEntity.class).stream()
-                        .map(t -> new TransformationDto(t.id(), t.name(),
-                                t.inputs().stream()
-                                        .map(r -> new TransformationRefDto(r.modelId(), r.fieldId()))
-                                        .toList(),
-                                t.output() == null ? null
-                                        : new TransformationRefDto(t.output().modelId(), t.output().fieldId()),
-                                t.customCodeId()))
-                        .toList(),
-                repository.findAllOfType(CustomCodeEntity.class).stream()
-                        .map(x -> new CustomCodeDto(x.id(), x.name(), x.usedElementIds()))
-                        .toList(),
-                repository.findAllOfType(ButtonGroupEntity.class).stream()
-                        .map(g -> new ButtonGroupDto(g.id(), g.name(),
-                                g.buttons().stream()
-                                        .map(bt -> new GroupButtonDto(bt.id(), bt.label(), bt.useCaseId(),
-                                                bt.apiId(), bt.apiOperationId(), bt.mappingId()))
-                                        .toList(),
-                                g.groupIds()))
-                        .toList(),
-                repository.findAllOfType(WorkflowGatewayEntity.class).stream()
-                        .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(), g.semantics(),
-                                g.sourceIds(), g.targetIds(),
-                                g.branchConditions().stream()
-                                        .map(c -> new GatewayBranchConditionDto(c.targetId(), c.expression()))
-                                        .toList()))
-                        .toList(),
-                repository.findAllOfType(ModelMappingEntity.class).stream()
-                        .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
-                                (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
-                                        .map(r -> new MappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId()))
-                                        .toList(),
-                                x.customCodeId()))
-                        .toList());
-    }
-
-    private static UiComponentNodeDto toComponentNode(UiComponentNodeEntity node) {
+    static UiComponentNodeDto toComponentNode(UiComponentNodeEntity node) {
         return new UiComponentNodeDto(node.id(), node.kind(), node.title(), node.text(), node.label(),
                 node.useCaseId(), node.mappingId(), node.modelId(),
                 node.queryServiceId(), node.queryOperationId(),
@@ -1121,7 +486,7 @@ public class EditorApiController {
                 node.customCodeId());
     }
 
-    private static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
+    static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
         return new UiMenuEntryDto(item.label(), item.icon(), item.pageId(),
                 (item.children() == null ? List.<UiMenuItemEntity>of() : item.children()).stream()
                         .map(EditorApiController::toMenuEntry)
@@ -1131,6 +496,11 @@ public class EditorApiController {
     }
 
     // ---- commands ---------------------------------------------------------
+
+    @GetMapping("/model")
+    public EditorModelDto model() {
+        return projection.build();
+    }
 
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
                                 String id, String name, String subdomainType, String moduleId,
@@ -1199,35 +569,35 @@ public class EditorApiController {
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
             case "add-module" -> addModule(command);
-            case "add-transformation" -> addTransformation(command);
-            case "add-custom-code" -> addCustomCode(command);
-            case "add-button-group" -> addButtonGroup(command);
-            case "remove-button-group" -> removeButtonGroup(command);
-            case "add-group-button" -> addGroupButton(command);
-            case "remove-group-button" -> removeGroupButton(command);
-            case "set-group-button-target" -> setGroupButtonTarget(command);
-            case "add-group-subgroup" -> addGroupSubgroup(command);
-            case "remove-group-subgroup" -> removeGroupSubgroup(command);
-            case "add-page-bar-group" -> addPageBarGroup(command);
-            case "remove-page-bar-group" -> removePageBarGroup(command);
-            case "remove-custom-code" -> removeCustomCode(command);
-            case "set-mapping-custom-code" -> setMappingCustomCode(command);
-            case "set-transformation-custom-code" -> setTransformationCustomCode(command);
-            case "set-use-case-step-custom-code" -> setUseCaseStepCustomCode(command);
-            case "set-page-custom-code" -> setPageCustomCode(command);
-            case "set-page-component-custom-code" -> setPageComponentCustomCode(command);
-            case "add-custom-code-use" -> addCustomCodeUse(command);
-            case "remove-custom-code-use" -> removeCustomCodeUse(command);
-            case "remove-transformation" -> removeTransformation(command);
-            case "add-transformation-input" -> addTransformationInput(command);
-            case "remove-transformation-input" -> removeTransformationInput(command);
-            case "set-transformation-output" -> setTransformationOutput(command);
-            case "add-model-field" -> addModelField(command);
-            case "remove-model-field" -> removeModelField(command);
-            case "set-model-field" -> setModelField(command);
-            case "move-model-field" -> moveModelField(command);
-            case "add-model-mapping-rule" -> addModelMappingRule(command);
-            case "remove-model-mapping-rule" -> removeModelMappingRule(command);
+            case "add-transformation" -> uiCommands.addTransformation(command);
+            case "add-custom-code" -> uiCommands.addCustomCode(command);
+            case "add-button-group" -> uiCommands.addButtonGroup(command);
+            case "remove-button-group" -> uiCommands.removeButtonGroup(command);
+            case "add-group-button" -> uiCommands.addGroupButton(command);
+            case "remove-group-button" -> uiCommands.removeGroupButton(command);
+            case "set-group-button-target" -> uiCommands.setGroupButtonTarget(command);
+            case "add-group-subgroup" -> uiCommands.addGroupSubgroup(command);
+            case "remove-group-subgroup" -> uiCommands.removeGroupSubgroup(command);
+            case "add-page-bar-group" -> uiCommands.addPageBarGroup(command);
+            case "remove-page-bar-group" -> uiCommands.removePageBarGroup(command);
+            case "remove-custom-code" -> uiCommands.removeCustomCode(command);
+            case "set-mapping-custom-code" -> uiCommands.setMappingCustomCode(command);
+            case "set-transformation-custom-code" -> uiCommands.setTransformationCustomCode(command);
+            case "set-use-case-step-custom-code" -> uiCommands.setUseCaseStepCustomCode(command);
+            case "set-page-custom-code" -> uiCommands.setPageCustomCode(command);
+            case "set-page-component-custom-code" -> uiCommands.setPageComponentCustomCode(command);
+            case "add-custom-code-use" -> uiCommands.addCustomCodeUse(command);
+            case "remove-custom-code-use" -> uiCommands.removeCustomCodeUse(command);
+            case "remove-transformation" -> uiCommands.removeTransformation(command);
+            case "add-transformation-input" -> uiCommands.addTransformationInput(command);
+            case "remove-transformation-input" -> uiCommands.removeTransformationInput(command);
+            case "set-transformation-output" -> uiCommands.setTransformationOutput(command);
+            case "add-model-field" -> uiCommands.addModelField(command);
+            case "remove-model-field" -> uiCommands.removeModelField(command);
+            case "set-model-field" -> uiCommands.setModelField(command);
+            case "move-model-field" -> uiCommands.moveModelField(command);
+            case "add-model-mapping-rule" -> uiCommands.addModelMappingRule(command);
+            case "remove-model-mapping-rule" -> uiCommands.removeModelMappingRule(command);
             case "add-code-module" -> addCodeModule(command);
             case "remove-code-module" -> removeCodeModule(command);
             case "add-code-module-element" -> addCodeModuleElement(command);
@@ -1239,54 +609,54 @@ public class EditorApiController {
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
             case "remove-actor" -> removeActor(command);
-            case "add-ai-agent" -> addAiAgent(command);
-            case "remove-ai-agent" -> removeAiAgent(command);
-            case "add-agent-use" -> addAgentUse(command);
-            case "remove-agent-use" -> removeAgentUse(command);
-            case "add-agent-external-use" -> addAgentExternalUse(command);
-            case "remove-agent-external-use" -> removeAgentExternalUse(command);
-            case "add-rag" -> addRag(command);
-            case "remove-rag" -> removeRag(command);
-            case "add-agent-rag" -> addAgentRag(command);
-            case "remove-agent-rag" -> removeAgentRag(command);
-            case "add-rag-source" -> addRagSource(command);
-            case "remove-rag-source" -> removeRagSource(command);
-            case "add-rag-content-source" -> addRagContentSource(command);
-            case "remove-rag-content-source" -> removeRagContentSource(command);
+            case "add-ai-agent" -> agentCommands.addAiAgent(command);
+            case "remove-ai-agent" -> agentCommands.removeAiAgent(command);
+            case "add-agent-use" -> agentCommands.addAgentUse(command);
+            case "remove-agent-use" -> agentCommands.removeAgentUse(command);
+            case "add-agent-external-use" -> agentCommands.addAgentExternalUse(command);
+            case "remove-agent-external-use" -> agentCommands.removeAgentExternalUse(command);
+            case "add-rag" -> agentCommands.addRag(command);
+            case "remove-rag" -> agentCommands.removeRag(command);
+            case "add-agent-rag" -> agentCommands.addAgentRag(command);
+            case "remove-agent-rag" -> agentCommands.removeAgentRag(command);
+            case "add-rag-source" -> agentCommands.addRagSource(command);
+            case "remove-rag-source" -> agentCommands.removeRagSource(command);
+            case "add-rag-content-source" -> agentCommands.addRagContentSource(command);
+            case "remove-rag-content-source" -> agentCommands.removeRagContentSource(command);
             case "add-view-member" -> addViewMember(command);
             case "remove-view-member" -> removeViewMember(command);
             case "add-external-table" -> addExternalTable(command);
             case "remove-external-table" -> removeExternalTable(command);
             case "add-mcp-server" -> addMcpServer(command);
             case "remove-mcp-server" -> removeMcpServer(command);
-            case "add-agent-mcp" -> addAgentMcp(command);
-            case "remove-agent-mcp" -> removeAgentMcp(command);
-            case "add-mcp-gateway" -> addMcpGateway(command);
-            case "remove-mcp-gateway" -> removeMcpGateway(command);
-            case "add-gateway-exposure" -> addGatewayExposure(command);
-            case "remove-gateway-exposure" -> removeGatewayExposure(command);
-            case "add-agent-gateway" -> addAgentGateway(command);
-            case "remove-agent-gateway" -> removeAgentGateway(command);
-            case "add-agent-api-operation" -> addAgentApiOperation(command);
-            case "remove-agent-api-operation" -> removeAgentApiOperation(command);
-            case "add-agent-api" -> addAgentApi(command);
-            case "remove-agent-api" -> removeAgentApi(command);
-            case "add-agent-query" -> addAgentQuery(command);
-            case "remove-agent-query" -> removeAgentQuery(command);
-            case "add-agent-delegate" -> addAgentDelegate(command);
-            case "remove-agent-delegate" -> removeAgentDelegate(command);
-            case "add-actor-agent" -> addActorAgent(command);
-            case "remove-actor-agent" -> removeActorAgent(command);
-            case "add-agent-trigger" -> addAgentTrigger(command);
-            case "remove-agent-trigger" -> removeAgentTrigger(command);
-            case "add-api-implementation" -> addApiImplementation(command);
-            case "remove-api-implementation" -> removeApiImplementation(command);
-            case "add-proxy-operation-route" -> addProxyOperationRoute(command);
-            case "remove-proxy-operation-route" -> removeProxyOperationRoute(command);
-            case "add-external-operation-use" -> addExternalOperationUse(command);
-            case "remove-external-operation-use" -> removeExternalOperationUse(command);
-            case "set-api-operation-implementation" -> setApiOperationImplementation(command);
-            case "remove-api-operation-implementation" -> removeApiOperationImplementation(command);
+            case "add-agent-mcp" -> agentCommands.addAgentMcp(command);
+            case "remove-agent-mcp" -> agentCommands.removeAgentMcp(command);
+            case "add-mcp-gateway" -> agentCommands.addMcpGateway(command);
+            case "remove-mcp-gateway" -> agentCommands.removeMcpGateway(command);
+            case "add-gateway-exposure" -> agentCommands.addGatewayExposure(command);
+            case "remove-gateway-exposure" -> agentCommands.removeGatewayExposure(command);
+            case "add-agent-gateway" -> agentCommands.addAgentGateway(command);
+            case "remove-agent-gateway" -> agentCommands.removeAgentGateway(command);
+            case "add-agent-api-operation" -> agentCommands.addAgentApiOperation(command);
+            case "remove-agent-api-operation" -> agentCommands.removeAgentApiOperation(command);
+            case "add-agent-api" -> agentCommands.addAgentApi(command);
+            case "remove-agent-api" -> agentCommands.removeAgentApi(command);
+            case "add-agent-query" -> agentCommands.addAgentQuery(command);
+            case "remove-agent-query" -> agentCommands.removeAgentQuery(command);
+            case "add-agent-delegate" -> agentCommands.addAgentDelegate(command);
+            case "remove-agent-delegate" -> agentCommands.removeAgentDelegate(command);
+            case "add-actor-agent" -> agentCommands.addActorAgent(command);
+            case "remove-actor-agent" -> agentCommands.removeActorAgent(command);
+            case "add-agent-trigger" -> agentCommands.addAgentTrigger(command);
+            case "remove-agent-trigger" -> agentCommands.removeAgentTrigger(command);
+            case "add-api-implementation" -> agentCommands.addApiImplementation(command);
+            case "remove-api-implementation" -> agentCommands.removeApiImplementation(command);
+            case "add-proxy-operation-route" -> agentCommands.addProxyOperationRoute(command);
+            case "remove-proxy-operation-route" -> agentCommands.removeProxyOperationRoute(command);
+            case "add-external-operation-use" -> agentCommands.addExternalOperationUse(command);
+            case "remove-external-operation-use" -> agentCommands.removeExternalOperationUse(command);
+            case "set-api-operation-implementation" -> agentCommands.setApiOperationImplementation(command);
+            case "remove-api-operation-implementation" -> agentCommands.removeApiOperationImplementation(command);
             case "add-api" -> addApi(command);
             case "remove-api" -> removeApi(command);
             case "add-api-operation" -> addApiOperation(command);
@@ -1351,85 +721,85 @@ public class EditorApiController {
             case "update-process-step" -> updateProcessStep(command);
             case "add-view" -> addView(command);
             case "remove-view" -> removeView(command);
-            case "add-workflow" -> addWorkflow(command);
-            case "remove-workflow" -> removeWorkflow(command);
-            case "add-workflow-step" -> addWorkflowStep(command);
-            case "move-workflow-step" -> moveWorkflowStep(command);
-            case "migrate-processes-to-workflows" -> migrateProcessesToWorkflows();
-            case "migrate-sagas-to-workflows" -> migrateSagasToWorkflows();
-            case "add-workflow-gateway" -> addWorkflowGateway(command);
-            case "set-gateway-semantics" -> setGatewaySemantics(command);
-            case "set-gateway-branch-condition" -> setGatewayBranchCondition(command);
-            case "remove-workflow-gateway" -> removeWorkflowGateway(command);
-            case "add-workflow-link" -> addWorkflowLink(command);
-            case "remove-workflow-link" -> removeWorkflowLink(command);
-            case "remove-workflow-step" -> removeWorkflowStep(command);
-            case "update-workflow-step" -> updateWorkflowStep(command);
-            case "set-workflow-step-form" -> setWorkflowStepForm(command);
-            case "add-workflow-dependency" -> addWorkflowDependency(command);
-            case "set-workflow-trigger" -> setWorkflowTrigger(command);
-            case "remove-workflow-dependency" -> removeWorkflowDependency(command);
-            case "create-ui-app" -> createUiApp(command);
-            case "set-app-header-page" -> setAppHeaderPage(command);
-            case "set-app-home-page" -> setAppHomePage(command);
-            case "set-app-model" -> setAppModel(command);
-            case "set-crud-detail" -> setCrudTarget(command, true);
-            case "set-crud-create" -> setCrudTarget(command, false);
-            case "set-app-view-page" -> setAppViewOrEdit(command, true);
-            case "set-app-edit-page" -> setAppViewOrEdit(command, false);
-            case "add-notification" -> addNotification(command);
-            case "remove-notification" -> removeNotification(command);
-            case "set-notification-event" -> setNotificationEvent(command);
-            case "add-notification-recipient" -> toggleNotificationRecipient(command, true);
-            case "remove-notification-recipient" -> toggleNotificationRecipient(command, false);
-            case "add-document" -> addDocument(command);
-            case "remove-document" -> removeDocument(command);
-            case "set-document-model" -> setDocumentModel(command);
-            case "set-document-query" -> setDocumentQuery(command);
-            case "set-project-locales" -> setProjectLocales(command);
-            case "add-identity-provider" -> addIdentityProvider(command);
-            case "remove-identity-provider" -> removeIdentityProvider(command);
-            case "set-idp-publisher" -> setIdpPublisher(command);
-            case "set-identity-provider" -> setIdentityProvider(command);
-            case "add-etl-flow" -> addEtlFlow(command);
-            case "remove-etl-flow" -> removeEtlFlow(command);
-            case "add-etl-step" -> addEtlStep(command);
-            case "remove-etl-step" -> removeEtlStep(command);
-            case "add-model-mapping" -> addModelMapping(command);
-            case "remove-model-mapping" -> removeModelMapping(command);
-            case "add-model" -> addModel(command);
-            case "remove-model" -> removeModel(command);
-            case "add-page-wizard-step" -> addPageWizardStep(command);
-            case "set-wizard-step-page" -> setWizardStepPage(command);
-            case "remove-page-wizard-step" -> removePageWizardStep(command);
-            case "move-page-wizard-step" -> movePageWizardStep(command);
-            case "delete-ui-app" -> deleteUiApp(command);
-            case "create-ui-page" -> createUiPage(command);
-            case "delete-ui-page" -> deleteUiPage(command);
-            case "add-menu-item" -> addMenuItem(command);
-            case "remove-menu-item" -> removeMenuItem(command);
-            case "set-menu-page" -> setMenuPage(command);
-            case "move-menu-item" -> moveMenuItem(command);
-            case "set-menu-app" -> setMenuApp(command);
-            case "set-menu-use-case" -> setMenuUseCase(command);
-            case "set-menu-aggregate" -> setMenuAggregate(command);
-            case "set-menu-query-operation" -> setMenuQueryOperation(command);
-            case "add-page-button" -> addPageButton(command);
-            case "remove-page-button" -> removePageButton(command);
-            case "set-page-listing" -> setPageListing(command);
-            case "set-page-model" -> setPageModel(command);
-            case "rename-ui-page" -> renameUiPage(command);
-            case "set-page-type" -> setPageType(command);
-            case "set-page-route" -> setPageRoute(command);
-            case "set-page-button" -> setPageButton(command);
-            case "set-page-field-config" -> setPageFieldConfig(command);
-            case "set-page-field-order" -> setPageFieldOrder(command);
-            case "add-page-component" -> addPageComponent(command);
-            case "remove-page-component" -> removePageComponent(command);
-            case "set-page-component" -> setPageComponent(command);
-            case "move-page-component" -> movePageComponent(command);
-            case "add-actor-app" -> addActorApp(command);
-            case "remove-actor-app" -> removeActorApp(command);
+            case "add-workflow" -> workflowCommands.addWorkflow(command);
+            case "remove-workflow" -> workflowCommands.removeWorkflow(command);
+            case "add-workflow-step" -> workflowCommands.addWorkflowStep(command);
+            case "move-workflow-step" -> workflowCommands.moveWorkflowStep(command);
+            case "migrate-processes-to-workflows" -> workflowCommands.migrateProcessesToWorkflows();
+            case "migrate-sagas-to-workflows" -> workflowCommands.migrateSagasToWorkflows();
+            case "add-workflow-gateway" -> workflowCommands.addWorkflowGateway(command);
+            case "set-gateway-semantics" -> workflowCommands.setGatewaySemantics(command);
+            case "set-gateway-branch-condition" -> workflowCommands.setGatewayBranchCondition(command);
+            case "remove-workflow-gateway" -> workflowCommands.removeWorkflowGateway(command);
+            case "add-workflow-link" -> workflowCommands.addWorkflowLink(command);
+            case "remove-workflow-link" -> workflowCommands.removeWorkflowLink(command);
+            case "remove-workflow-step" -> workflowCommands.removeWorkflowStep(command);
+            case "update-workflow-step" -> workflowCommands.updateWorkflowStep(command);
+            case "set-workflow-step-form" -> workflowCommands.setWorkflowStepForm(command);
+            case "add-workflow-dependency" -> workflowCommands.addWorkflowDependency(command);
+            case "set-workflow-trigger" -> workflowCommands.setWorkflowTrigger(command);
+            case "remove-workflow-dependency" -> workflowCommands.removeWorkflowDependency(command);
+            case "create-ui-app" -> uiCommands.createUiApp(command);
+            case "set-app-header-page" -> uiCommands.setAppHeaderPage(command);
+            case "set-app-home-page" -> uiCommands.setAppHomePage(command);
+            case "set-app-model" -> uiCommands.setAppModel(command);
+            case "set-crud-detail" -> uiCommands.setCrudTarget(command, true);
+            case "set-crud-create" -> uiCommands.setCrudTarget(command, false);
+            case "set-app-view-page" -> uiCommands.setAppViewOrEdit(command, true);
+            case "set-app-edit-page" -> uiCommands.setAppViewOrEdit(command, false);
+            case "add-notification" -> uiCommands.addNotification(command);
+            case "remove-notification" -> uiCommands.removeNotification(command);
+            case "set-notification-event" -> uiCommands.setNotificationEvent(command);
+            case "add-notification-recipient" -> uiCommands.toggleNotificationRecipient(command, true);
+            case "remove-notification-recipient" -> uiCommands.toggleNotificationRecipient(command, false);
+            case "add-document" -> uiCommands.addDocument(command);
+            case "remove-document" -> uiCommands.removeDocument(command);
+            case "set-document-model" -> uiCommands.setDocumentModel(command);
+            case "set-document-query" -> uiCommands.setDocumentQuery(command);
+            case "set-project-locales" -> uiCommands.setProjectLocales(command);
+            case "add-identity-provider" -> uiCommands.addIdentityProvider(command);
+            case "remove-identity-provider" -> uiCommands.removeIdentityProvider(command);
+            case "set-idp-publisher" -> uiCommands.setIdpPublisher(command);
+            case "set-identity-provider" -> uiCommands.setIdentityProvider(command);
+            case "add-etl-flow" -> uiCommands.addEtlFlow(command);
+            case "remove-etl-flow" -> uiCommands.removeEtlFlow(command);
+            case "add-etl-step" -> uiCommands.addEtlStep(command);
+            case "remove-etl-step" -> uiCommands.removeEtlStep(command);
+            case "add-model-mapping" -> uiCommands.addModelMapping(command);
+            case "remove-model-mapping" -> uiCommands.removeModelMapping(command);
+            case "add-model" -> uiCommands.addModel(command);
+            case "remove-model" -> uiCommands.removeModel(command);
+            case "add-page-wizard-step" -> uiCommands.addPageWizardStep(command);
+            case "set-wizard-step-page" -> uiCommands.setWizardStepPage(command);
+            case "remove-page-wizard-step" -> uiCommands.removePageWizardStep(command);
+            case "move-page-wizard-step" -> uiCommands.movePageWizardStep(command);
+            case "delete-ui-app" -> uiCommands.deleteUiApp(command);
+            case "create-ui-page" -> uiCommands.createUiPage(command);
+            case "delete-ui-page" -> uiCommands.deleteUiPage(command);
+            case "add-menu-item" -> uiCommands.addMenuItem(command);
+            case "remove-menu-item" -> uiCommands.removeMenuItem(command);
+            case "set-menu-page" -> uiCommands.setMenuPage(command);
+            case "move-menu-item" -> uiCommands.moveMenuItem(command);
+            case "set-menu-app" -> uiCommands.setMenuApp(command);
+            case "set-menu-use-case" -> uiCommands.setMenuUseCase(command);
+            case "set-menu-aggregate" -> uiCommands.setMenuAggregate(command);
+            case "set-menu-query-operation" -> uiCommands.setMenuQueryOperation(command);
+            case "add-page-button" -> uiCommands.addPageButton(command);
+            case "remove-page-button" -> uiCommands.removePageButton(command);
+            case "set-page-listing" -> uiCommands.setPageListing(command);
+            case "set-page-model" -> uiCommands.setPageModel(command);
+            case "rename-ui-page" -> uiCommands.renameUiPage(command);
+            case "set-page-type" -> uiCommands.setPageType(command);
+            case "set-page-route" -> uiCommands.setPageRoute(command);
+            case "set-page-button" -> uiCommands.setPageButton(command);
+            case "set-page-field-config" -> uiCommands.setPageFieldConfig(command);
+            case "set-page-field-order" -> uiCommands.setPageFieldOrder(command);
+            case "add-page-component" -> uiCommands.addPageComponent(command);
+            case "remove-page-component" -> uiCommands.removePageComponent(command);
+            case "set-page-component" -> uiCommands.setPageComponent(command);
+            case "move-page-component" -> uiCommands.movePageComponent(command);
+            case "add-actor-app" -> uiCommands.addActorApp(command);
+            case "remove-actor-app" -> uiCommands.removeActorApp(command);
             default -> throw new IllegalArgumentException("Unknown command kind: " + command.kind());
         }
     }
@@ -1494,7 +864,7 @@ public class EditorApiController {
         repository.save(withSteps(process, steps));
     }
 
-    private static int indexAfter(List<ProcessStepEntity> steps, String afterStepId) {
+    static int indexAfter(List<ProcessStepEntity> steps, String afterStepId) {
         for (int i = 0; i < steps.size(); i++) {
             if (steps.get(i).id().equals(afterStepId)) return i + 1;
         }
@@ -1553,434 +923,21 @@ public class EditorApiController {
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
-    private static ProcessEntity withSteps(ProcessEntity p, List<ProcessStepEntity> steps) {
+    static ProcessEntity withSteps(ProcessEntity p, List<ProcessStepEntity> steps) {
         return new ProcessEntity(
                 p.id(), p.name(), p.description(), p.triggerAggregateId(), p.triggerEvent(),
                 p.ownerModuleId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
     }
 
-    private void addWorkflow(EditorCommand command) {
-        if (repository.findById(command.id(), WorkflowEntity.class).isPresent()) return;
-        var steps = command.workflowSteps() == null ? List.<WorkflowStepEntity>of()
-                : command.workflowSteps().stream()
-                        .map(s -> new WorkflowStepEntity(
-                                s.id(), s.name(), s.emittedEventName(), s.targetUseCaseId(),
-                                s.completionEventName(), s.dependsOnStepIds(), null))
-                        .toList();
-        repository.save(new WorkflowEntity(
-                command.id(), command.name(), null,
-                command.triggerAggregateId(), command.triggerDomainServiceId(),
-                command.triggerUseCaseId(), command.triggerEvent(),
-                steps, command.completionEventName(), List.of()));
-    }
 
-    private void removeWorkflow(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), WorkflowEntity.class);
-    }
-
-    /** Points the workflow at the event that starts it (drawn event → workflow). */
-    private void setWorkflowTrigger(EditorCommand command) {
-        var wf = requireWorkflow(command.id());
-        repository.save(new WorkflowEntity(wf.id(), wf.name(), wf.description(),
-                command.triggerAggregateId(), command.triggerDomainServiceId(),
-                command.triggerUseCaseId(), command.triggerEvent(),
-                wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
-    }
-
-    /**
-     * The FUSION: every business process becomes a workflow — same id (references
-     * survive), steps as a linear dependency chain, human steps carrying role,
-     * deadline, escalation and compensation. The process disappears.
-     */
-    private void migrateProcessesToWorkflows() {
-        for (var process : repository.findAllOfType(ProcessEntity.class)) {
-            if (repository.findById(process.id(), WorkflowEntity.class).isPresent()) continue;
-            var steps = new ArrayList<WorkflowStepEntity>();
-            String previous = null;
-            for (var st : process.steps()) {
-                steps.add(WorkflowStepEntity.builder()
-                        .id(st.id())
-                        .name(st.name())
-                        .targetUseCaseId(st.useCaseId())
-                        .dependsOnStepIds(previous == null ? List.of() : List.of(previous))
-                        .description(st.description())
-                        .roleId(st.roleId())
-                        .deadline(st.deadline())
-                        .escalationRoleId(st.escalationRoleId())
-                        .compensationUseCaseId(st.compensationUseCaseId())
-                        .build());
-                previous = st.id();
-            }
-            repository.save(new WorkflowEntity(process.id(), process.name(), process.description(),
-                    process.triggerAggregateId(), null, null, process.triggerEvent(),
-                    steps, process.onCompletionEventName(), process.decisionIds()));
-            repository.deleteAllById(List.of(process.id()), ProcessEntity.class);
-        }
-    }
-
-    /**
-     * The other half of the fusion: every saga becomes a workflow — same id, its
-     * sequence as a linear chain, and each step's compensation resolved to the
-     * USE CASE of its compensating step. Pure compensation steps leave the chain.
-     */
-    private void migrateSagasToWorkflows() {
-        for (var saga : repository.findAllOfType(SagaEntity.class)) {
-            if (repository.findById(saga.id(), WorkflowEntity.class).isPresent()) continue;
-            var steps = saga.steps() == null ? List.<SagaStepEntity>of() : saga.steps();
-            var byId = new java.util.HashMap<String, SagaStepEntity>();
-            steps.forEach(st -> byId.put(st.id(), st));
-            var compensators = steps.stream()
-                    .map(SagaStepEntity::compensatingStepId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toSet());
-            var chain = new ArrayList<WorkflowStepEntity>();
-            String previous = null;
-            for (var st : steps) {
-                if (compensators.contains(st.id())) continue; // pure compensation: lives on the step it undoes
-                var compensating = st.compensatingStepId() == null ? null : byId.get(st.compensatingStepId());
-                var detail = new java.util.ArrayList<String>();
-                if (st.aggregateId() != null) {
-                    detail.add("opera sobre " + st.aggregateId()
-                            + (st.operationId() != null ? "." + st.operationId() : ""));
-                }
-                if (st.gatewayId() != null) detail.add("llama al gateway " + st.gatewayId());
-                if (compensating != null && compensating.useCaseId() == null) {
-                    detail.add("compensaba con el paso " + compensating.name());
-                }
-                chain.add(WorkflowStepEntity.builder()
-                        .id(st.id())
-                        .name(st.name())
-                        .targetUseCaseId(st.useCaseId())
-                        .dependsOnStepIds(previous == null ? List.of() : List.of(previous))
-                        .compensationUseCaseId(compensating == null ? null : compensating.useCaseId())
-                        .description(detail.isEmpty() ? null : String.join(" · ", detail))
-                        .build());
-                previous = st.id();
-            }
-            var triggers = saga.triggeringEventIds() == null
-                    ? List.<String>of() : saga.triggeringEventIds();
-            var notes = new java.util.ArrayList<String>();
-            if (triggers.size() > 1) {
-                notes.add("también la disparaban: " + String.join(", ", triggers.subList(1, triggers.size())));
-            }
-            if (saga.timeoutMs() != null) notes.add("timeout de la saga: " + saga.timeoutMs() + " ms");
-            if (saga.maxRetries() != null) notes.add("reintentos: " + saga.maxRetries());
-            if (saga.deadLetterQueue() != null) notes.add("DLQ: " + saga.deadLetterQueue());
-            repository.save(new WorkflowEntity(saga.id(), saga.name(),
-                    notes.isEmpty() ? null : String.join(" · ", notes),
-                    null, null, null,
-                    triggers.isEmpty() ? null : triggers.get(0),
-                    chain, null, List.of()));
-            // the owning contexts let go: workflows live outside every context
-            repository.findAllOfType(ModuleEntity.class).stream()
-                    .filter(mo -> mo.sagaIds() != null && mo.sagaIds().contains(saga.id()))
-                    .forEach(mo -> repository.save(mo.toBuilder()
-                            .sagaIds(without(mo.sagaIds(), saga.id())).build()));
-            repository.deleteAllById(List.of(saga.id()), SagaEntity.class);
-        }
-    }
-
-    private void addWorkflowGateway(EditorCommand command) {
-        if (repository.findById(command.id(), WorkflowGatewayEntity.class).isPresent()) return;
-        var type = "SPLIT".equals(command.stepType()) ? "SPLIT" : "JOIN";
-        repository.save(new WorkflowGatewayEntity(command.id(), command.name(), type,
-                List.of(), List.of()));
-    }
-
-    /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split (null back to default). */
-    private void setGatewaySemantics(EditorCommand command) {
-        var g = repository.findById(command.id(), WorkflowGatewayEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown gateway: " + command.id()));
-        var semantics = command.type() == null || command.type().isBlank() ? null : command.type();
-        if (semantics != null) {
-            var valid = "JOIN".equals(g.type())
-                    ? java.util.Set.of("ALL", "ANY")
-                    : java.util.Set.of("PARALLEL", "EXCLUSIVE");
-            if (!valid.contains(semantics)) {
-                throw new IllegalArgumentException("Semántica inválida para un " + g.type() + ": " + semantics);
-            }
-        }
-        repository.save(g.toBuilder().semantics(semantics).build());
-    }
-
-    /** The condition guarding ONE branch of an EXCLUSIVE split (blank clears it). */
-    private void setGatewayBranchCondition(EditorCommand command) {
-        var g = repository.findById(command.id(), WorkflowGatewayEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown gateway: " + command.id()));
-        if (!"SPLIT".equals(g.type()) || !"EXCLUSIVE".equals(g.semantics())) {
-            throw new IllegalArgumentException("Las condiciones por rama son del split EXCLUSIVO");
-        }
-        if (!g.targetIds().contains(command.targetId())) {
-            throw new IllegalArgumentException("Esa rama no sale de este split: " + command.targetId());
-        }
-        var kept = g.branchConditions().stream()
-                .filter(c -> !c.targetId().equals(command.targetId()))
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        if (command.text() != null && !command.text().isBlank()) {
-            kept.add(new GatewayBranchConditionEntity(command.targetId(), command.text().trim()));
-        }
-        repository.save(g.toBuilder().branchConditions(kept).build());
-    }
-
-    private void removeWorkflowGateway(EditorCommand command) {
-        // other gateways let go of it on both sides
-        repository.findAllOfType(WorkflowGatewayEntity.class).stream()
-                .filter(g -> g.sourceIds().contains(command.id()) || g.targetIds().contains(command.id()))
-                .forEach(g -> repository.save(g.toBuilder()
-                        .sourceIds(without(g.sourceIds(), command.id()))
-                        .targetIds(without(g.targetIds(), command.id()))
-                        .build()));
-        repository.deleteAllById(List.of(command.id()), WorkflowGatewayEntity.class);
-    }
-
-    /** Whether a step or workflow already flows somewhere (their single outgoing). */
-    private boolean hasOutgoing(String nodeId) {
-        for (var g : repository.findAllOfType(WorkflowGatewayEntity.class)) {
-            if (g.sourceIds().contains(nodeId)) return true;
-        }
-        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
-            for (var st : wf.steps()) {
-                if (st.id().equals(nodeId) && st.handoffWorkflowId() != null) return true;
-                if (st.dependsOnStepIds().contains(nodeId)) return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * A flow link between workflow nodes: gateways store their own ends; a step
-     * whose target is a WORKFLOW records the hand-off. Enforces the grammar:
-     * JOIN n→1, SPLIT 1→n, steps/workflows flow to ONE node, and a gateway never
-     * mixes workflows (reaching ANOTHER workflow as target is the exception).
-     */
-    private void addWorkflowLink(EditorCommand command) {
-        var sourceGw = repository.findById(command.sourceId(), WorkflowGatewayEntity.class).orElse(null);
-        var targetGw = repository.findById(command.targetId(), WorkflowGatewayEntity.class).orElse(null);
-        var targetIsWorkflow = repository.findById(command.targetId(), WorkflowEntity.class).isPresent();
-        var srcWf = workflowGraph.workflowOf(command.sourceId()).orElse(null);
-        var tgtWf = targetIsWorkflow ? null : workflowGraph.workflowOf(command.targetId()).orElse(null);
-        if (srcWf != null && tgtWf != null && !srcWf.equals(tgtWf)) {
-            throw new IllegalArgumentException(
-                    "Los dos extremos ya pertenecen a workflows distintos: a otro workflow solo se llega apuntando al workflow");
-        }
-        if (targetGw != null) {
-            if ("SPLIT".equals(targetGw.type()) && !targetGw.sourceIds().isEmpty()
-                    && !targetGw.sourceIds().contains(command.sourceId())) {
-                throw new IllegalArgumentException("Un split solo tiene UNA entrada");
-            }
-            if (sourceGw == null && hasOutgoing(command.sourceId())) {
-                throw new IllegalArgumentException("Ese nodo ya fluye hacia otro sitio: un paso o workflow solo sale a UN nodo");
-            }
-            if (sourceGw != null) {
-                if ("JOIN".equals(sourceGw.type()) && !sourceGw.targetIds().isEmpty()
-                        && !sourceGw.targetIds().contains(command.targetId())) {
-                    throw new IllegalArgumentException("Un join solo tiene UNA salida");
-                }
-                if (!sourceGw.targetIds().contains(command.targetId())) {
-                    var ids = new ArrayList<>(sourceGw.targetIds());
-                    ids.add(command.targetId());
-                    repository.save(sourceGw.toBuilder().targetIds(ids).build());
-                }
-            }
-            if (!targetGw.sourceIds().contains(command.sourceId())) {
-                var ids = new ArrayList<>(targetGw.sourceIds());
-                ids.add(command.sourceId());
-                repository.save(targetGw.toBuilder().sourceIds(ids).build());
-            }
-            return;
-        }
-        if (sourceGw != null) {
-            if ("JOIN".equals(sourceGw.type()) && !sourceGw.targetIds().isEmpty()
-                    && !sourceGw.targetIds().contains(command.targetId())) {
-                throw new IllegalArgumentException("Un join solo tiene UNA salida");
-            }
-            if (!sourceGw.targetIds().contains(command.targetId())) {
-                var ids = new ArrayList<>(sourceGw.targetIds());
-                ids.add(command.targetId());
-                repository.save(sourceGw.toBuilder().targetIds(ids).build());
-            }
-            return;
-        }
-        // step → workflow: the hand-off, recorded on the step
-        if (targetIsWorkflow) {
-            for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
-                var hit = wf.steps().stream().filter(st -> st.id().equals(command.sourceId())).findFirst();
-                if (hit.isEmpty()) continue;
-                if (hasOutgoing(command.sourceId())) {
-                    throw new IllegalArgumentException("Ese paso ya fluye hacia otro sitio: un paso solo sale a UN nodo");
-                }
-                repository.save(withWorkflowSteps(wf, wf.steps().stream()
-                        .map(st -> st.id().equals(command.sourceId())
-                                ? st.toBuilder().handoffWorkflowId(command.targetId()).build()
-                                : st)
-                        .toList()));
-                return;
-            }
-            throw new IllegalArgumentException("Unknown step: " + command.sourceId());
-        }
-        throw new IllegalArgumentException("Ese enlace no involucra a un gateway ni a un workflow");
-    }
-
-    private void removeWorkflowLink(EditorCommand command) {
-        repository.findById(command.targetId(), WorkflowGatewayEntity.class)
-                .filter(g -> g.sourceIds().contains(command.sourceId()))
-                .ifPresent(g -> repository.save(g.toBuilder()
-                        .sourceIds(without(g.sourceIds(), command.sourceId())).build()));
-        repository.findById(command.sourceId(), WorkflowGatewayEntity.class)
-                .filter(g -> g.targetIds().contains(command.targetId()))
-                .ifPresent(g -> repository.save(g.toBuilder()
-                        .targetIds(without(g.targetIds(), command.targetId())).build()));
-        for (var wf : repository.findAllOfType(WorkflowEntity.class)) {
-            if (wf.steps().stream().noneMatch(st -> st.id().equals(command.sourceId())
-                    && command.targetId().equals(st.handoffWorkflowId()))) continue;
-            repository.save(withWorkflowSteps(wf, wf.steps().stream()
-                    .map(st -> st.id().equals(command.sourceId())
-                            ? st.toBuilder().handoffWorkflowId(null).build()
-                            : st)
-                    .toList()));
-        }
-    }
-
-    /** The step moves to ANOTHER workflow; dependencies on steps left behind drop. */
-    private void moveWorkflowStep(EditorCommand command) {
-        var from = requireWorkflow(command.workflowId());
-        var to = requireWorkflow(command.targetId());
-        if (from.id().equals(to.id())) return;
-        var moving = from.steps().stream()
-                .filter(s -> s.id().equals(command.id()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown step: " + command.id()));
-        repository.save(withWorkflowSteps(from, from.steps().stream()
-                .filter(s -> !s.id().equals(command.id()))
-                .map(s -> s.toBuilder()
-                        .dependsOnStepIds(s.dependsOnStepIds().stream()
-                                .filter(d -> !d.equals(command.id())).toList())
-                        .build())
-                .toList()));
-        var targetIds = new java.util.HashSet<String>();
-        to.steps().forEach(s -> targetIds.add(s.id()));
-        var landed = moving.toBuilder()
-                .dependsOnStepIds(moving.dependsOnStepIds().stream()
-                        .filter(targetIds::contains).toList())
-                .build();
-        var steps = new ArrayList<>(to.steps());
-        steps.add(landed);
-        repository.save(withWorkflowSteps(to, steps));
-    }
-
-    private void addWorkflowStep(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        if (workflow.steps().stream().anyMatch(s -> s.id().equals(command.id()))) return;
-        var step = WorkflowStepEntity.builder()
-                .id(command.id())
-                .name(command.name())
-                .emittedEventName(command.emittedEventName())
-                .targetUseCaseId(command.targetUseCaseId())
-                .completionEventName(command.completionEventName())
-                .dependsOnStepIds(command.dependsOnStepIds() == null ? List.of() : command.dependsOnStepIds())
-                .type(command.stepType() == null || command.stepType().isBlank() ? null : command.stepType())
-                .roleId(command.roleId())
-                .deadline(command.deadline())
-                .compensationUseCaseId(command.compensationUseCaseId())
-                .build();
-        var steps = new ArrayList<>(workflow.steps());
-        var index = command.afterStepId() == null ? steps.size()
-                : indexAfterWorkflowStep(steps, command.afterStepId());
-        steps.add(index, step);
-        repository.save(withWorkflowSteps(workflow, steps));
-    }
-
-    /** Removing a step also drops it from every other step's dependencies. */
-    private void removeWorkflowStep(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        var steps = workflow.steps().stream()
-                .filter(s -> !s.id().equals(command.id()))
-                .map(s -> s.dependsOnStepIds().contains(command.id())
-                        ? withDependsOn(s, s.dependsOnStepIds().stream()
-                                .filter(id -> !id.equals(command.id())).toList())
-                        : s)
-                .toList();
-        repository.save(withWorkflowSteps(workflow, steps));
-    }
-
-    /** Replaces emittedEventName, targetUseCaseId and completionEventName wholesale (null clears). */
-    private void updateWorkflowStep(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
-                .map(s -> s.id().equals(command.id())
-                        ? s.toBuilder()
-                                .emittedEventName(command.emittedEventName())
-                                .targetUseCaseId(command.targetUseCaseId())
-                                .completionEventName(command.completionEventName())
-                                .build()
-                        : s)
-                .toList()));
-    }
-
-    /** HUMAN step ⇆ its form: the PAGE the forms engine renders as the task (null clears). */
-    private void setWorkflowStepForm(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        if (workflow.steps().stream().noneMatch(st -> st.id().equals(command.id()))) {
-            throw new IllegalArgumentException("Paso desconocido: " + command.id());
-        }
-        if (command.targetId() != null
-                && repository.findById(command.targetId(), PageEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("Página desconocida: " + command.targetId());
-        }
-        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
-                .map(st -> st.id().equals(command.id())
-                        ? st.toBuilder().formPageId(command.targetId()).build()
-                        : st)
-                .toList()));
-    }
-
-    private void addWorkflowDependency(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        if (command.id().equals(command.dependsOnStepId())) {
-            throw new IllegalArgumentException("Un paso no puede depender de sí mismo");
-        }
-        if (workflow.steps().stream().noneMatch(s -> s.id().equals(command.dependsOnStepId()))) {
-            throw new IllegalArgumentException("Paso desconocido: " + command.dependsOnStepId());
-        }
-        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
-                .map(s -> s.id().equals(command.id())
-                        && !s.dependsOnStepIds().contains(command.dependsOnStepId())
-                        ? withDependsOn(s, concat(s.dependsOnStepIds(), command.dependsOnStepId()))
-                        : s)
-                .toList()));
-    }
-
-    private void removeWorkflowDependency(EditorCommand command) {
-        var workflow = requireWorkflow(command.workflowId());
-        repository.save(withWorkflowSteps(workflow, workflow.steps().stream()
-                .map(s -> s.id().equals(command.id())
-                        ? withDependsOn(s, s.dependsOnStepIds().stream()
-                                .filter(id -> !id.equals(command.dependsOnStepId())).toList())
-                        : s)
-                .toList()));
-    }
-
-    private WorkflowEntity requireWorkflow(String workflowId) {
-        return repository.findById(workflowId, WorkflowEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Workflow desconocido: " + workflowId));
-    }
-
-    private static int indexAfterWorkflowStep(List<WorkflowStepEntity> steps, String afterStepId) {
-        for (int i = 0; i < steps.size(); i++) {
-            if (steps.get(i).id().equals(afterStepId)) return i + 1;
-        }
-        return steps.size();
-    }
-
-    private static List<String> concat(List<String> list, String extra) {
+    static List<String> concat(List<String> list, String extra) {
         var next = new ArrayList<>(list);
         next.add(extra);
         return List.copyOf(next);
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
-    private static WorkflowEntity withWorkflowSteps(WorkflowEntity w, List<WorkflowStepEntity> steps) {
+    static WorkflowEntity withWorkflowSteps(WorkflowEntity w, List<WorkflowStepEntity> steps) {
         return new WorkflowEntity(
                 w.id(), w.name(), w.description(), w.triggerAggregateId(),
                 w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
@@ -1988,7 +945,7 @@ public class EditorApiController {
     }
 
     /** Record copy with only dependsOnStepIds replaced — every other field preserved verbatim. */
-    private static WorkflowStepEntity withDependsOn(WorkflowStepEntity s, List<String> dependsOnStepIds) {
+    static WorkflowStepEntity withDependsOn(WorkflowStepEntity s, List<String> dependsOnStepIds) {
         return new WorkflowStepEntity(
                 s.id(), s.name(), s.emittedEventName(), s.targetUseCaseId(),
                 s.completionEventName(), dependsOnStepIds, s.description());
@@ -1996,7 +953,7 @@ public class EditorApiController {
 
     /** A new module belongs to the working project: it joins its first service's moduleIds. */
     private void wireModuleIntoCurrentProject(String moduleId) {
-        var project = currentProject().orElse(null);
+        var project = projects.currentProject().orElse(null);
         var serviceId = project == null || project.serviceIds() == null ? null
                 : project.serviceIds().stream().findFirst().orElse(null);
         if (serviceId == null) return;
@@ -2025,13 +982,13 @@ public class EditorApiController {
                     "El módulo " + command.id() + " tiene agregados; bórralos primero");
         }
         // Drop the strategic relations that mention it, then the module itself.
-        var project = owningProject();
+        var project = projects.owningProject();
         var relations = project.contextMap().stream()
                 .filter(r -> !command.id().equals(r.sourceModuleId())
                         && !command.id().equals(r.targetModuleId()))
                 .toList();
         if (relations.size() != project.contextMap().size()) {
-            repository.save(withContextMap(project, relations));
+            repository.save(EditorProjectSupport.withContextMap(project, relations));
         }
         repository.deleteAllById(List.of(command.id()), ModuleEntity.class);
     }
@@ -2081,8 +1038,8 @@ public class EditorApiController {
                             .map(o -> o.id().equals(command.id()) ? o.withName(command.name()) : o)
                             .toList())));
             case "external-table" -> {
-                var project = owningProject();
-                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                var project = projects.owningProject();
+                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                         .map(x -> withTables(x, x.tables().stream()
                                 .map(t -> t.id().equals(command.id())
                                         ? new ExternalSystemTableEntity(
@@ -2092,8 +1049,8 @@ public class EditorApiController {
                         .toList()));
             }
             case "mcp-server" -> {
-                var project = owningProject();
-                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                var project = projects.owningProject();
+                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                         .map(x -> x.withMcpServers(x.mcpServers().stream()
                                 .map(s -> s.id().equals(command.id())
                                         ? new McpServerEntity(
@@ -2105,8 +1062,8 @@ public class EditorApiController {
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
             case "external-system" -> {
-                var project = owningProject();
-                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                var project = projects.owningProject();
+                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                         .map(x -> x.id().equals(command.id()) ? x.withName(command.name()) : x)
                         .toList()));
             }
@@ -2156,8 +1113,8 @@ public class EditorApiController {
                             uc.rateLimitRequestsPerSecond(), uc.grpcServiceName(), uc.grpcMethodName(),
                             uc.decisionIds(), uc.policy())));
             case "external-use-case" -> {
-                var project = owningProject();
-                repository.save(withExternalSystems(project, project.externalSystems().stream()
+                var project = projects.owningProject();
+                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                         .map(x -> withUseCases(x, x.useCases().stream()
                                 .map(u -> u.id().equals(command.id())
                                         ? new ExternalSystemUseCaseEntity(
@@ -2209,7 +1166,7 @@ public class EditorApiController {
         repository.findAllOfType(ServiceEntity.class).stream()
                 .filter(s -> s.codeModuleIds().contains(command.id()))
                 .forEach(s -> repository.save(s.toBuilder()
-                        .codeModuleIds(without(s.codeModuleIds(), command.id())).build()));
+                        .codeModuleIds(AgentEditorCommands.without(s.codeModuleIds(), command.id())).build()));
         repository.deleteAllById(List.of(command.id()), CodeModuleEntity.class);
     }
 
@@ -2222,7 +1179,7 @@ public class EditorApiController {
                         && cm.moduleId().equals(codeModule.moduleId())
                         && cm.elementIds().contains(command.elementId()))
                 .forEach(cm -> repository.save(cm.toBuilder()
-                        .elementIds(without(cm.elementIds(), command.elementId())).build()));
+                        .elementIds(AgentEditorCommands.without(cm.elementIds(), command.elementId())).build()));
         if (codeModule.elementIds().contains(command.elementId())) return;
         var ids = new ArrayList<>(codeModule.elementIds());
         ids.add(command.elementId());
@@ -2233,7 +1190,7 @@ public class EditorApiController {
         var codeModule = repository.findById(command.id(), CodeModuleEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
         repository.save(codeModule.toBuilder()
-                .elementIds(without(codeModule.elementIds(), command.elementId())).build());
+                .elementIds(AgentEditorCommands.without(codeModule.elementIds(), command.elementId())).build());
     }
 
     private void addServiceCodeModule(EditorCommand command) {
@@ -2251,7 +1208,7 @@ public class EditorApiController {
         var service = repository.findById(command.serviceId(), ServiceEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
         repository.save(service.toBuilder()
-                .codeModuleIds(without(service.codeModuleIds(), command.id())).build());
+                .codeModuleIds(AgentEditorCommands.without(service.codeModuleIds(), command.id())).build());
     }
 
     private void addAggregate(EditorCommand command) {
@@ -2332,7 +1289,7 @@ public class EditorApiController {
     }
 
     /** The operations list with the emission appended, or null when it is already declared. */
-    private static List<OperationEntity> withEmissionAdded(List<OperationEntity> current, DomainEventEntity event) {
+    static List<OperationEntity> withEmissionAdded(List<OperationEntity> current, DomainEventEntity event) {
         var alreadyThere = current.stream().anyMatch(op -> op.emits() != null
                 && java.util.Arrays.stream(op.emits().split(","))
                         .anyMatch(n -> n.trim().equalsIgnoreCase(event.name().trim())));
@@ -2368,7 +1325,7 @@ public class EditorApiController {
                         withEmissionRemoved(ds.operations(), event))));
     }
 
-    private static List<OperationEntity> withEmissionRemoved(List<OperationEntity> current, DomainEventEntity event) {
+    static List<OperationEntity> withEmissionRemoved(List<OperationEntity> current, DomainEventEntity event) {
         return current.stream()
                 .map(op -> withEmits(op, java.util.Arrays.stream(
                                 (op.emits() == null ? "" : op.emits()).split(","))
@@ -2511,7 +1468,7 @@ public class EditorApiController {
             var ids = module.scheduledTriggerIds();
             if (ids != null && ids.contains(command.id())) {
                 repository.save(module.toBuilder()
-                        .scheduledTriggerIds(without(ids, command.id())).build());
+                        .scheduledTriggerIds(AgentEditorCommands.without(ids, command.id())).build());
             }
         }
         repository.deleteAllById(List.of(command.id()), ScheduledTriggerEntity.class);
@@ -2553,7 +1510,7 @@ public class EditorApiController {
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.allowedQueryServiceIds().contains(command.id()))
                 .forEach(a -> repository.save(a.withAllowedQueryServiceIds(
-                        without(a.allowedQueryServiceIds(), command.id()))));
+                        AgentEditorCommands.without(a.allowedQueryServiceIds(), command.id()))));
         repository.deleteAllById(List.of(command.id()), QueryServiceEntity.class);
     }
 
@@ -2614,7 +1571,7 @@ public class EditorApiController {
     private void addActorExternalDependency(EditorCommand command) {
         var role = repository.findById(command.sourceId(), RoleEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
-        var known = owningProject().externalSystems().stream()
+        var known = projects.owningProject().externalSystems().stream()
                 .anyMatch(x -> x.id().equals(command.targetId()));
         if (!known) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
@@ -2639,7 +1596,7 @@ public class EditorApiController {
         if (command.sourceId().equals(command.targetId())) {
             throw new IllegalArgumentException("Un sistema externo no puede depender de sí mismo");
         }
-        var project = owningProject();
+        var project = projects.owningProject();
         var source = project.externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -2654,7 +1611,7 @@ public class EditorApiController {
             if (source.dependsOnApiIds().contains(command.targetId())) return;
             var ids = new ArrayList<>(source.dependsOnApiIds());
             ids.add(command.targetId());
-            repository.save(withExternalSystems(project, project.externalSystems().stream()
+            repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                     .map(x -> x.id().equals(command.sourceId()) ? x.withDependsOnApiIds(ids) : x)
                     .toList()));
             return;
@@ -2663,7 +1620,7 @@ public class EditorApiController {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
         }
         // The two flavours are exclusive: re-drawing with the other type retypes the edge.
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> {
                     if (!x.id().equals(command.sourceId())) return x;
                     var plainWithout = (List<String>) x.dependsOnExternalSystemIds().stream()
@@ -2686,8 +1643,8 @@ public class EditorApiController {
 
     /** The target may live in any list (system, CQRS, API/proxy): clear it everywhere. */
     private void removeExternalSystemDependency(EditorCommand command) {
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> x.id().equals(command.sourceId())
                         ? x.withDependsOnExternalSystemIds(x.dependsOnExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
@@ -2703,7 +1660,7 @@ public class EditorApiController {
     private void setApiPublisher(EditorCommand command) {
         var target = command.targetId();
         if (target != null && !target.isBlank()) {
-            var known = owningProject().externalSystems().stream()
+            var known = projects.owningProject().externalSystems().stream()
                     .anyMatch(x -> x.id().equals(target));
             if (!known) {
                 throw new IllegalArgumentException("Sistema externo desconocido: " + target);
@@ -2730,7 +1687,7 @@ public class EditorApiController {
         }
         var host = command.moduleId();
         if (host != null && !host.isBlank()
-                && owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
+                && projects.owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + host);
         }
         var targetApi = target == null || target.isBlank() ? null : target;
@@ -2747,8 +1704,8 @@ public class EditorApiController {
      * that is the proxy's own upstream call). Deleting a wired proxy hands them back.
      */
     private void repointApiDependencies(String fromId, String toId, String exceptSystemId) {
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> x.dependsOnApiIds().contains(fromId) && !x.id().equals(exceptSystemId)
                         ? x.withDependsOnApiIds(x.dependsOnApiIds().stream()
                                 .map(i -> i.equals(fromId) ? toId : i)
@@ -2761,7 +1718,7 @@ public class EditorApiController {
     private void removeProxyApi(EditorCommand command) {
         var proxy = repository.findById(command.id(), ProxyApiEntity.class).orElse(null);
         if (proxy == null) return;
-        var dependedOn = currentProject().stream()
+        var dependedOn = projects.currentProject().stream()
                 .flatMap(p -> p.externalSystems().stream())
                 .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
         if (dependedOn && proxy.targetApiId() == null) {
@@ -2898,12 +1855,12 @@ public class EditorApiController {
                         r.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList())));
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.allowedUseCaseIds().contains(command.id()))
-                .forEach(a -> repository.save(withAllowedUseCaseIds(a,
+                .forEach(a -> repository.save(AgentEditorCommands.withAllowedUseCaseIds(a,
                         a.allowedUseCaseIds().stream().filter(id -> !id.equals(command.id())).toList())));
         repository.findAllOfType(McpGatewayEntity.class).stream()
                 .filter(g -> g.useCaseIds().contains(command.id()))
                 .forEach(g -> repository.save(g.withUseCaseIds(
-                        without(g.useCaseIds(), command.id()))));
+                        AgentEditorCommands.without(g.useCaseIds(), command.id()))));
         repository.findAllOfType(ModuleEntity.class).stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
@@ -2914,7 +1871,7 @@ public class EditorApiController {
 
     /** An external system calls one of our use cases: an INBOUND ACL in the target module. */
     private void addExternalCall(EditorCommand command) {
-        var external = owningProject().externalSystems().stream()
+        var external = projects.owningProject().externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
@@ -2971,7 +1928,7 @@ public class EditorApiController {
 
     /** A use case OFFERED by an external system (moduleId carries the external system id). */
     private void addExternalUseCase(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.moduleId()))
@@ -2981,7 +1938,7 @@ public class EditorApiController {
         var useCases = new ArrayList<>(external.useCases());
         useCases.add(new ExternalSystemUseCaseEntity(command.id(), command.name(), null));
         externalSystems.set(externalSystems.indexOf(external), withUseCases(external, useCases));
-        repository.save(withExternalSystems(project, externalSystems));
+        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     private void removeExternalUseCase(EditorCommand command) {
@@ -2992,8 +1949,8 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El caso de uso externo " + command.id() + " lo llaman casos de uso; quita esas llamadas primero");
         }
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> withUseCases(x, x.useCases().stream()
                         .filter(u -> !u.id().equals(command.id())).toList()))
                 .toList()));
@@ -3003,7 +1960,7 @@ public class EditorApiController {
     private void addExternalUcCall(EditorCommand command) {
         var source = repository.findById(command.sourceId(), UseCaseEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
-        var target = owningProject().externalSystems().stream()
+        var target = projects.owningProject().externalSystems().stream()
                 .flatMap(x -> x.useCases().stream())
                 .filter(u -> u.id().equals(command.targetId()))
                 .findFirst()
@@ -3025,20 +1982,20 @@ public class EditorApiController {
     }
 
     /** Record copy with only useCases replaced — every other field preserved verbatim. */
-    private static ExternalSystemEntity withUseCases(
+    static ExternalSystemEntity withUseCases(
             ExternalSystemEntity x, List<ExternalSystemUseCaseEntity> useCases) {
         return x.withUseCases(useCases);
     }
 
     /** Record copy with only tables replaced — every other field preserved verbatim. */
-    private static ExternalSystemEntity withTables(
+    static ExternalSystemEntity withTables(
             ExternalSystemEntity x, List<ExternalSystemTableEntity> tables) {
         return x.withTables(tables);
     }
 
     /** An MCP server published by an external system (moduleId carries the external system id). */
     private void addMcpServer(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.moduleId()))
@@ -3049,7 +2006,7 @@ public class EditorApiController {
         var servers = new ArrayList<>(external.mcpServers());
         servers.add(new McpServerEntity(command.id(), command.name(), null, command.uri()));
         externalSystems.set(externalSystems.indexOf(external), external.withMcpServers(servers));
-        repository.save(withExternalSystems(project, externalSystems));
+        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     /** Removing an MCP server also unlinks it from agents and gateways that aggregated it. */
@@ -3062,9 +2019,9 @@ public class EditorApiController {
         repository.findAllOfType(McpGatewayEntity.class).stream()
                 .filter(g -> g.mcpServerIds().contains(command.id()))
                 .forEach(g -> repository.save(g.withMcpServerIds(
-                        without(g.mcpServerIds(), command.id()))));
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        AgentEditorCommands.without(g.mcpServerIds(), command.id()))));
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> x.withMcpServers(x.mcpServers().stream()
                         .filter(s -> !s.id().equals(command.id())).toList()))
                 .toList()));
@@ -3072,7 +2029,7 @@ public class EditorApiController {
 
     /** A table offered by an external system (moduleId carries the external system id). */
     private void addExternalTable(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.moduleId()))
@@ -3083,7 +2040,7 @@ public class EditorApiController {
         var tables = new ArrayList<>(external.tables());
         tables.add(new ExternalSystemTableEntity(command.id(), command.name(), null));
         externalSystems.set(externalSystems.indexOf(external), withTables(external, tables));
-        repository.save(withExternalSystems(project, externalSystems));
+        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     private void removeExternalTable(EditorCommand command) {
@@ -3096,16 +2053,16 @@ public class EditorApiController {
         repository.findAllOfType(RagEntity.class).stream()
                 .filter(r -> r.sourceExternalTableIds().contains(command.id()))
                 .forEach(r -> repository.save(r.withSourceExternalTableIds(
-                        without(r.sourceExternalTableIds(), command.id()))));
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+                        AgentEditorCommands.without(r.sourceExternalTableIds(), command.id()))));
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .map(x -> withTables(x, x.tables().stream()
                         .filter(t -> !t.id().equals(command.id())).toList()))
                 .toList()));
     }
 
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
-    private static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
+    static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
         var cap = capitalize(aggregate.name());
         return List.of(
                 stubUseCase("uc-crear" + capitalize(aggregate.id()), "Crear" + cap, List.of(
@@ -3127,17 +2084,17 @@ public class EditorApiController {
     }
 
     /** UI-exposed stub (the CRUD default). */
-    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps) {
+    static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps) {
         return stubUseCase(id, name, steps, true);
     }
 
     /** A minimal use case stub — fields get refined later through the CRUDs. */
-    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
+    static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
                                              boolean exposedAsUi) {
         return stubUseCase(id, name, steps, exposedAsUi, false);
     }
 
-    private static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
+    static UseCaseEntity stubUseCase(String id, String name, List<UseCaseStepEntity> steps,
                                              boolean exposedAsUi, boolean policy) {
         return new UseCaseEntity(id, name, false, false, false, false, exposedAsUi,
                 null, null, steps, List.of(), List.of(), null, null, null, null,
@@ -3145,7 +2102,7 @@ public class EditorApiController {
                 false, null, null, null, List.of(), policy);
     }
 
-    private static String capitalize(String s) {
+    static String capitalize(String s) {
         return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
@@ -3176,14 +2133,14 @@ public class EditorApiController {
     }
 
     /** Record copy with only emits replaced. */
-    private static OperationEntity withEmits(OperationEntity op, String emits) {
+    static OperationEntity withEmits(OperationEntity op, String emits) {
         return new OperationEntity(op.id(), op.name(), op.inputModelId(), op.outputModelId(),
                 op.preconditions(), op.sets(), emits == null || emits.isBlank() ? null : emits,
                 op.type(), op.paginated(), op.defaultPageSize(), op.intent());
     }
 
     /** Record copy with only operations replaced — every other field preserved verbatim. */
-    private static AggregateEntity withOperations(AggregateEntity a, List<OperationEntity> operations) {
+    static AggregateEntity withOperations(AggregateEntity a, List<OperationEntity> operations) {
         return new AggregateEntity(
                 a.id(), a.name(), a.modelId(), a.persistenceType(), a.idType(),
                 a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
@@ -3192,7 +2149,7 @@ public class EditorApiController {
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
-    private static UseCaseEntity withSteps(UseCaseEntity uc, List<UseCaseStepEntity> steps) {
+    static UseCaseEntity withSteps(UseCaseEntity uc, List<UseCaseStepEntity> steps) {
         return new UseCaseEntity(
                 uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), uc.exposedAsMcp(),
                 uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), steps,
@@ -3265,7 +2222,7 @@ public class EditorApiController {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Unknown aggregate: " + command.aggregateId()));
         } else if (command.externalUseCaseId() != null) {
-            var known = owningProject().externalSystems().stream()
+            var known = projects.owningProject().externalSystems().stream()
                     .flatMap(x -> x.useCases().stream())
                     .anyMatch(u -> u.id().equals(command.externalUseCaseId()));
             if (!known) {
@@ -3273,7 +2230,7 @@ public class EditorApiController {
                         "Unknown external use case: " + command.externalUseCaseId());
             }
         } else if (command.externalTableId() != null) {
-            var known = owningProject().externalSystems().stream()
+            var known = projects.owningProject().externalSystems().stream()
                     .flatMap(x -> x.tables().stream())
                     .anyMatch(t -> t.id().equals(command.externalTableId()));
             if (!known) {
@@ -3349,7 +2306,7 @@ public class EditorApiController {
     }
 
     private void removeApi(EditorCommand command) {
-        var dependedOn = currentProject().stream()
+        var dependedOn = projects.currentProject().stream()
                 .flatMap(p -> p.externalSystems().stream())
                 .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
         if (dependedOn) {
@@ -3370,7 +2327,7 @@ public class EditorApiController {
                 .filter(g -> g.apiIds().contains(command.id())
                         || g.apiOperationIds().stream().anyMatch(leavingOpIds::contains))
                 .forEach(g -> repository.save(g
-                        .withApiIds(without(g.apiIds(), command.id()))
+                        .withApiIds(AgentEditorCommands.without(g.apiIds(), command.id()))
                         .withApiOperationIds(g.apiOperationIds().stream()
                                 .filter(id -> !leavingOpIds.contains(id)).toList())));
         repository.findAllOfType(AiAgentEntity.class).stream()
@@ -3397,11 +2354,11 @@ public class EditorApiController {
         repository.findAllOfType(McpGatewayEntity.class).stream()
                 .filter(g -> g.apiOperationIds().contains(command.id()))
                 .forEach(g -> repository.save(g.withApiOperationIds(
-                        without(g.apiOperationIds(), command.id()))));
+                        AgentEditorCommands.without(g.apiOperationIds(), command.id()))));
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.allowedApiOperationIds().contains(command.id()))
                 .forEach(a -> repository.save(a.withAllowedApiOperationIds(
-                        without(a.allowedApiOperationIds(), command.id()))));
+                        AgentEditorCommands.without(a.allowedApiOperationIds(), command.id()))));
         repository.save(withApiOperations(api, api.operations().stream()
                 .filter(o -> !o.id().equals(command.id())).toList()));
     }
@@ -3430,7 +2387,7 @@ public class EditorApiController {
     }
 
     /** Record copy with only operations replaced — every other field preserved verbatim. */
-    private static ApiEntity withApiOperations(ApiEntity a, List<ApiOperationEntity> operations) {
+    static ApiEntity withApiOperations(ApiEntity a, List<ApiOperationEntity> operations) {
         return a.withOperations(operations);
     }
 
@@ -3450,16 +2407,16 @@ public class EditorApiController {
         repository.findAllOfType(AiAgentEntity.class).stream()
                 .filter(a -> a.reactsToEventIds().contains(eventId))
                 .forEach(a -> repository.save(a.withReactsToEventIds(
-                        without(a.reactsToEventIds(), eventId))));
+                        AgentEditorCommands.without(a.reactsToEventIds(), eventId))));
     }
 
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */
-    private static ModuleEntity withAggregateIds(ModuleEntity m, List<String> aggregateIds) {
+    static ModuleEntity withAggregateIds(ModuleEntity m, List<String> aggregateIds) {
         return m.toBuilder().aggregateIds(aggregateIds).build();
     }
 
     private void addRelation(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var alreadyThere = project.contextMap().stream()
                 .anyMatch(r -> r.sourceModuleId().equals(command.sourceId())
                         && r.targetModuleId().equals(command.targetId()));
@@ -3473,21 +2430,21 @@ public class EditorApiController {
                 command.type(),
                 null,
                 List.of()));
-        repository.save(withContextMap(project, relations));
+        repository.save(EditorProjectSupport.withContextMap(project, relations));
     }
 
     private void removeRelation(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var relations = project.contextMap().stream()
                 .filter(r -> !(r.sourceModuleId().equals(command.sourceId())
                         && r.targetModuleId().equals(command.targetId())))
                 .toList();
-        repository.save(withContextMap(project, relations));
+        repository.save(EditorProjectSupport.withContextMap(project, relations));
     }
 
     /** Upserts the type ANNOTATION of a derived relation (the pair itself is computed). */
     private void setRelationType(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         var relations = new ArrayList<>(project.contextMap());
         var existing = relations.stream()
                 .filter(r -> r.sourceModuleId().equals(command.sourceId())
@@ -3503,7 +2460,7 @@ public class EditorApiController {
                     "rel-" + command.sourceId() + "-" + command.targetId(), null,
                     command.sourceId(), command.targetId(), command.type(), null, List.of()));
         }
-        repository.save(withContextMap(project, relations));
+        repository.save(EditorProjectSupport.withContextMap(project, relations));
     }
 
     /**
@@ -3516,7 +2473,7 @@ public class EditorApiController {
         var summary = projectReferences.read(command.targetId());
         var id = command.id() == null || command.id().isBlank()
                 ? "proj-" + command.targetId() : command.id();
-        var project = owningProject();
+        var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems().stream()
                 .filter(x -> !x.id().equals(id))
                 .toList());
@@ -3529,16 +2486,16 @@ public class EditorApiController {
                         .toList(),
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 command.targetId()));
-        repository.save(withExternalSystems(project, externalSystems));
+        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     private void addExternalSystem(EditorCommand command) {
-        var project = owningProject();
+        var project = projects.owningProject();
         if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
         var externalSystems = new ArrayList<>(project.externalSystems());
         externalSystems.add(new ExternalSystemEntity(
                 command.id(), command.name(), null, null, null, null, null, List.of()));
-        repository.save(withExternalSystems(project, externalSystems));
+        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     private void removeExternalSystem(EditorCommand command) {
@@ -3554,7 +2511,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " tiene actores que dependen de él; quita esas dependencias primero");
         }
-        var dependedOnByExternals = owningProject().externalSystems().stream()
+        var dependedOnByExternals = projects.owningProject().externalSystems().stream()
                 .anyMatch(x -> x.dependsOnExternalSystemIds().contains(command.id())
                         || x.cqrsExternalSystemIds().contains(command.id()));
         if (dependedOnByExternals) {
@@ -3562,7 +2519,7 @@ public class EditorApiController {
                     "El sistema externo " + command.id() + " tiene sistemas externos que dependen de él; quita esas dependencias primero");
         }
         // Agents lose their links to the MCP servers leaving with the system.
-        var leavingMcpIds = owningProject().externalSystems().stream()
+        var leavingMcpIds = projects.owningProject().externalSystems().stream()
                 .filter(x -> x.id().equals(command.id()))
                 .flatMap(x -> x.mcpServers().stream())
                 .map(McpServerEntity::id)
@@ -3577,7 +2534,7 @@ public class EditorApiController {
         repository.findAllOfType(RagEntity.class).stream()
                 .filter(r -> r.sourceExternalSystemIds().contains(command.id()))
                 .forEach(r -> repository.save(r.withSourceExternalSystemIds(
-                        without(r.sourceExternalSystemIds(), command.id()))));
+                        AgentEditorCommands.without(r.sourceExternalSystemIds(), command.id()))));
         // The APIs and proxies it published survive as standalone contracts.
         repository.findAllOfType(ApiEntity.class).stream()
                 .filter(a -> command.id().equals(a.publishedByExternalSystemId()))
@@ -3585,537 +2542,11 @@ public class EditorApiController {
         repository.findAllOfType(ProxyApiEntity.class).stream()
                 .filter(px -> command.id().equals(px.publishedByExternalSystemId()))
                 .forEach(px -> repository.save(px.withPublishedByExternalSystemId(null)));
-        var project = owningProject();
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
+        var project = projects.owningProject();
+        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
                 .filter(x -> !x.id().equals(command.id())).toList()));
     }
 
-    private void addAiAgent(EditorCommand command) {
-        if (repository.findById(command.id(), AiAgentEntity.class).isPresent()) return;
-        repository.save(new AiAgentEntity(command.id(), command.name(), null,
-                List.of(), List.of(), List.of(), List.of(),
-                Boolean.TRUE.equals(command.external()),
-                List.of(), List.of(), List.of(), List.of(), List.of()));
-    }
-
-    private void removeAiAgent(EditorCommand command) {
-        repository.findById(command.id(), AiAgentEntity.class).ifPresent(agent -> {
-            // Whoever pointed at this agent lets go: delegations and actor links.
-            repository.findAllOfType(AiAgentEntity.class).stream()
-                    .filter(a -> a.delegateAgentIds().contains(agent.id()))
-                    .forEach(a -> repository.save(a.withDelegateAgentIds(
-                            a.delegateAgentIds().stream()
-                                    .filter(id -> !id.equals(agent.id())).toList())));
-            repository.findAllOfType(RoleEntity.class).stream()
-                    .filter(r -> r.aiAgentIds().contains(agent.id()))
-                    .forEach(r -> repository.save(r.withAiAgentIds(
-                            r.aiAgentIds().stream()
-                                    .filter(id -> !id.equals(agent.id())).toList())));
-            repository.deleteAllById(List.of(agent.id()), AiAgentEntity.class);
-            // MCP exposure that only this agent justified goes with it.
-            agent.allowedUseCaseIds().forEach(this::clearMcpExposureIfUnused);
-        });
-    }
-
-    private void addMcpGateway(EditorCommand command) {
-        if (repository.findById(command.id(), McpGatewayEntity.class).isPresent()) return;
-        repository.save(new McpGatewayEntity(command.id(), command.name(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of()));
-    }
-
-    /** Removing a gateway also unlinks it from every agent that consumed it. */
-    private void removeMcpGateway(EditorCommand command) {
-        repository.findAllOfType(AiAgentEntity.class).stream()
-                .filter(a -> a.mcpGatewayIds().contains(command.id()))
-                .forEach(a -> repository.save(a.withMcpGatewayIds(
-                        a.mcpGatewayIds().stream()
-                                .filter(id -> !id.equals(command.id())).toList())));
-        repository.deleteAllById(List.of(command.id()), McpGatewayEntity.class);
-    }
-
-    /**
-     * Gateway → element: the gateway aggregates/exposes it. The target's kind decides
-     * the slot: an external MCP server, a whole API, one API operation, a use case or
-     * a RAG (retrieval as a tool).
-     */
-    private void addGatewayExposure(EditorCommand command) {
-        var gateway = repository.findById(command.sourceId(), McpGatewayEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown MCP gateway: " + command.sourceId()));
-        var target = command.targetId();
-        if (owningProject().externalSystems().stream()
-                .flatMap(x -> x.mcpServers().stream()).anyMatch(s -> s.id().equals(target))) {
-            if (!gateway.mcpServerIds().contains(target)) {
-                repository.save(gateway.withMcpServerIds(appended(gateway.mcpServerIds(), target)));
-            }
-        } else if (repository.findById(target, ApiEntity.class).isPresent()) {
-            if (!gateway.apiIds().contains(target)) {
-                repository.save(gateway.withApiIds(appended(gateway.apiIds(), target)));
-            }
-        } else if (repository.findAllOfType(ApiEntity.class).stream()
-                .flatMap(a -> a.operations().stream()).anyMatch(o -> o.id().equals(target))) {
-            if (!gateway.apiOperationIds().contains(target)) {
-                repository.save(gateway.withApiOperationIds(
-                        appended(gateway.apiOperationIds(), target)));
-            }
-        } else if (repository.findById(target, UseCaseEntity.class).isPresent()) {
-            if (!gateway.useCaseIds().contains(target)) {
-                repository.save(gateway.withUseCaseIds(appended(gateway.useCaseIds(), target)));
-            }
-        } else if (repository.findById(target, RagEntity.class).isPresent()) {
-            if (!gateway.ragIds().contains(target)) {
-                repository.save(gateway.withRagIds(appended(gateway.ragIds(), target)));
-            }
-        } else {
-            throw new IllegalArgumentException(
-                    "Un gateway MCP expone servidores MCP, APIs, operaciones, casos de uso o RAGs;"
-                            + " destino desconocido: " + target);
-        }
-    }
-
-    private void removeGatewayExposure(EditorCommand command) {
-        repository.findById(command.sourceId(), McpGatewayEntity.class).ifPresent(g ->
-                repository.save(g
-                        .withMcpServerIds(without(g.mcpServerIds(), command.targetId()))
-                        .withApiIds(without(g.apiIds(), command.targetId()))
-                        .withApiOperationIds(without(g.apiOperationIds(), command.targetId()))
-                        .withUseCaseIds(without(g.useCaseIds(), command.targetId()))
-                        .withRagIds(without(g.ragIds(), command.targetId()))));
-    }
-
-    /** Agent → gateway: the agent consumes the gateway's curated tool surface. */
-    private void addAgentGateway(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        repository.findById(command.targetId(), McpGatewayEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown MCP gateway: " + command.targetId()));
-        if (agent.mcpGatewayIds().contains(command.targetId())) return;
-        repository.save(agent.withMcpGatewayIds(appended(agent.mcpGatewayIds(), command.targetId())));
-    }
-
-    private void removeAgentGateway(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withMcpGatewayIds(
-                        without(agent.mcpGatewayIds(), command.targetId()))));
-    }
-
-    /** Agent → API operation: the operation joins the agent's tool surface. */
-    /** The whole API (or proxy) as a tool: every operation of it, present and future. */
-    private void addAgentApi(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown AI agent: " + command.sourceId()));
-        if (repository.findById(command.targetId(), ApiEntity.class).isEmpty()
-                && repository.findById(command.targetId(), ProxyApiEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("API desconocida: " + command.targetId());
-        }
-        if (agent.allowedApiIds().contains(command.targetId())) return;
-        repository.save(agent.withAllowedApiIds(
-                appended(agent.allowedApiIds(), command.targetId())));
-    }
-
-    private void removeAgentApi(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(a ->
-                repository.save(a.withAllowedApiIds(
-                        without(a.allowedApiIds(), command.targetId()))));
-    }
-
-    private void addAgentApiOperation(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var known = repository.findAllOfType(ApiEntity.class).stream()
-                .flatMap(a -> a.operations().stream())
-                .anyMatch(o -> o.id().equals(command.targetId()));
-        if (!known) {
-            throw new IllegalArgumentException("Unknown API operation: " + command.targetId());
-        }
-        if (agent.allowedApiOperationIds().contains(command.targetId())) return;
-        repository.save(agent.withAllowedApiOperationIds(
-                appended(agent.allowedApiOperationIds(), command.targetId())));
-    }
-
-    private void removeAgentApiOperation(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withAllowedApiOperationIds(
-                        without(agent.allowedApiOperationIds(), command.targetId()))));
-    }
-
-    /** Agent → query service: a read tool. */
-    private void addAgentQuery(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        repository.findById(command.targetId(), QueryServiceEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown query service: " + command.targetId()));
-        if (agent.allowedQueryServiceIds().contains(command.targetId())) return;
-        repository.save(agent.withAllowedQueryServiceIds(
-                appended(agent.allowedQueryServiceIds(), command.targetId())));
-    }
-
-    private void removeAgentQuery(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withAllowedQueryServiceIds(
-                        without(agent.allowedQueryServiceIds(), command.targetId()))));
-    }
-
-    /** Agent → agent: delegation. Self-delegation is rejected; cycles are the linter's job. */
-    private void addAgentDelegate(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        repository.findById(command.targetId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
-        if (command.sourceId().equals(command.targetId())) {
-            throw new IllegalArgumentException("Un agente no puede delegar en sí mismo");
-        }
-        if (agent.delegateAgentIds().contains(command.targetId())) return;
-        repository.save(agent.withDelegateAgentIds(
-                appended(agent.delegateAgentIds(), command.targetId())));
-    }
-
-    private void removeAgentDelegate(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withDelegateAgentIds(
-                        without(agent.delegateAgentIds(), command.targetId()))));
-    }
-
-    /** Actor → agent: the person talks to the agent (a chat/supervision UI derives). */
-    private void addActorAgent(EditorCommand command) {
-        var role = repository.findById(command.sourceId(), RoleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
-        repository.findById(command.targetId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
-        if (role.aiAgentIds().contains(command.targetId())) return;
-        repository.save(role.withAiAgentIds(appended(role.aiAgentIds(), command.targetId())));
-    }
-
-    private void removeActorAgent(EditorCommand command) {
-        repository.findById(command.sourceId(), RoleEntity.class).ifPresent(role ->
-                repository.save(role.withAiAgentIds(
-                        without(role.aiAgentIds(), command.targetId()))));
-    }
-
-    /** Event → agent: the event triggers a run of the agent (reactive agents). */
-    private void addAgentTrigger(EditorCommand command) {
-        var agent = repository.findById(command.targetId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.targetId()));
-        var eventExists = repository.findById(command.sourceId(), DomainEventEntity.class).isPresent()
-                || repository.findById(command.sourceId(), ApplicationEventEntity.class).isPresent();
-        if (!eventExists) {
-            throw new IllegalArgumentException(
-                    "Unknown domain/application event: " + command.sourceId());
-        }
-        if (agent.reactsToEventIds().contains(command.sourceId())) return;
-        repository.save(agent.withReactsToEventIds(
-                appended(agent.reactsToEventIds(), command.sourceId())));
-    }
-
-    private void removeAgentTrigger(EditorCommand command) {
-        repository.findById(command.targetId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withReactsToEventIds(
-                        without(agent.reactsToEventIds(), command.sourceId()))));
-    }
-
-    /** The API gets (another) implementation site: a bounded context of ours (same API, no copy). */
-    private void addApiImplementation(EditorCommand command) {
-        var api = repository.findById(command.apiId(), ApiEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
-        if (repository.findById(command.moduleId(), ModuleEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("Unknown bounded context: " + command.moduleId());
-        }
-        if (api.implementedByModuleIds().contains(command.moduleId())) return;
-        repository.save(api.withImplementedByModuleIds(
-                appended(api.implementedByModuleIds(), command.moduleId())));
-    }
-
-    private void removeApiImplementation(EditorCommand command) {
-        repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
-                repository.save(api.withImplementedByModuleIds(
-                        without(api.implementedByModuleIds(), command.moduleId()))));
-    }
-
-    /** Route ONE proxy operation to an implementation site of the API the proxy fronts. */
-    private void addProxyOperationRoute(EditorCommand command) {
-        var proxy = repository.findById(command.proxyId(), ProxyApiEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown proxy: " + command.proxyId()));
-        var route = new ProxyOperationRouteEntity(command.operationId(), command.targetSiteId());
-        if (proxy.operationRoutes().contains(route)) return;
-        var routes = new java.util.ArrayList<>(proxy.operationRoutes());
-        routes.add(route);
-        repository.save(proxy.withOperationRoutes(java.util.List.copyOf(routes)));
-    }
-
-    private void removeProxyOperationRoute(EditorCommand command) {
-        repository.findById(command.proxyId(), ProxyApiEntity.class).ifPresent(proxy -> {
-            var routes = proxy.operationRoutes().stream()
-                    .filter(r -> !(r.operationId().equals(command.operationId())
-                            && r.targetSiteId().equals(command.targetSiteId())))
-                    .toList();
-            repository.save(proxy.withOperationRoutes(routes));
-        });
-    }
-
-    /** Per-site wiring: the use case implementing an operation AT an implementation site. */
-    private void setApiOperationImplementation(EditorCommand command) {
-        var api = repository.findById(command.apiId(), ApiEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
-        var wires = new java.util.ArrayList<>(api.operationImplementations().stream()
-                .filter(w -> !(w.operationId().equals(command.operationId())
-                        && w.moduleId().equals(command.moduleId())))
-                .toList());
-        wires.add(new ApiOperationImplementationEntity(
-                command.operationId(), command.moduleId(), command.targetUseCaseId()));
-        repository.save(api.withOperationImplementations(java.util.List.copyOf(wires)));
-    }
-
-    private void removeApiOperationImplementation(EditorCommand command) {
-        repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
-                repository.save(api.withOperationImplementations(
-                        api.operationImplementations().stream()
-                                .filter(w -> !(w.operationId().equals(command.operationId())
-                                        && w.moduleId().equals(command.moduleId())))
-                                .toList())));
-    }
-
-    /** An external system calls one API operation at a site (published API, proxy or implementation). */
-    private void addExternalOperationUse(EditorCommand command) {
-        var project = owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
-        var external = externalSystems.stream()
-                .filter(x -> x.id().equals(command.sourceId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown external system: " + command.sourceId()));
-        var use = new ExternalApiOperationUseEntity(command.operationId(), command.targetSiteId());
-        if (external.apiOperationUses().contains(use)) return;
-        var uses = new ArrayList<>(external.apiOperationUses());
-        uses.add(use);
-        externalSystems.set(externalSystems.indexOf(external),
-                external.withApiOperationUses(java.util.List.copyOf(uses)));
-        repository.save(withExternalSystems(project, externalSystems));
-    }
-
-    private void removeExternalOperationUse(EditorCommand command) {
-        var project = owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
-        externalSystems.stream()
-                .filter(x -> x.id().equals(command.sourceId()))
-                .findFirst()
-                .ifPresent(external -> {
-                    var uses = external.apiOperationUses().stream()
-                            .filter(u -> !(u.operationId().equals(command.operationId())
-                                    && u.siteId().equals(command.targetSiteId())))
-                            .toList();
-                    externalSystems.set(externalSystems.indexOf(external),
-                            external.withApiOperationUses(uses));
-                    repository.save(withExternalSystems(project, externalSystems));
-                });
-    }
-
-    private static List<String> appended(List<String> ids, String id) {
-        var copy = new ArrayList<>(ids);
-        copy.add(id);
-        return copy;
-    }
-
-    private static List<String> without(List<String> ids, String id) {
-        return ids.stream().filter(x -> !x.equals(id)).toList();
-    }
-
-    /** Agent → use case: record the consumption and expose the use case through MCP. */
-    private void addAgentUse(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var useCase = repository.findById(command.targetId(), UseCaseEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetId()));
-        if (!agent.allowedUseCaseIds().contains(useCase.id())) {
-            var ids = new ArrayList<>(agent.allowedUseCaseIds());
-            ids.add(useCase.id());
-            repository.save(withAllowedUseCaseIds(agent, ids));
-        }
-        if (!useCase.exposedAsMcp()) {
-            repository.save(withExposedAsMcp(useCase, true));
-        }
-    }
-
-    private void removeAgentUse(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(withAllowedUseCaseIds(agent, agent.allowedUseCaseIds().stream()
-                        .filter(id -> !id.equals(command.targetId())).toList())));
-        clearMcpExposureIfUnused(command.targetId());
-    }
-
-    /** Agent → external-system operation: the other half of the agent's tool surface. */
-    private void addAgentExternalUse(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var known = owningProject().externalSystems().stream()
-                .flatMap(x -> x.useCases().stream())
-                .anyMatch(u -> u.id().equals(command.targetId()));
-        if (!known) {
-            throw new IllegalArgumentException(
-                    "Unknown external use case: " + command.targetId());
-        }
-        if (agent.allowedExternalUseCaseIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(agent.allowedExternalUseCaseIds());
-        ids.add(command.targetId());
-        repository.save(agent.withAllowedExternalUseCaseIds(ids));
-    }
-
-    private void removeAgentExternalUse(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withAllowedExternalUseCaseIds(
-                        agent.allowedExternalUseCaseIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList())));
-    }
-
-    /** Agent → MCP server published by an external system: another tool surface. */
-    private void addAgentMcp(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var known = owningProject().externalSystems().stream()
-                .flatMap(x -> x.mcpServers().stream())
-                .anyMatch(s -> s.id().equals(command.targetId()));
-        if (!known) {
-            throw new IllegalArgumentException("Unknown MCP server: " + command.targetId());
-        }
-        if (agent.allowedMcpServerIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(agent.allowedMcpServerIds());
-        ids.add(command.targetId());
-        repository.save(agent.withAllowedMcpServerIds(ids));
-    }
-
-    private void removeAgentMcp(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(agent.withAllowedMcpServerIds(
-                        agent.allowedMcpServerIds().stream()
-                                .filter(id -> !id.equals(command.targetId())).toList())));
-    }
-
-    /** Record copy with only allowedUseCaseIds replaced — every other field preserved verbatim. */
-    private static AiAgentEntity withAllowedUseCaseIds(AiAgentEntity a, List<String> ids) {
-        return a.withAllowedUseCaseIds(ids);
-    }
-
-    /** Record copy with only ragIds replaced — every other field preserved verbatim. */
-    private static AiAgentEntity withRagIds(AiAgentEntity a, List<String> ragIds) {
-        return a.withRagIds(ragIds);
-    }
-
-    private void addRag(EditorCommand command) {
-        if (repository.findById(command.id(), RagEntity.class).isPresent()) return;
-        repository.save(new RagEntity(command.id(), command.name(), null, List.of()));
-    }
-
-    /** Removing a knowledge base also unlinks it from agents and gateways that exposed it. */
-    private void removeRag(EditorCommand command) {
-        repository.findAllOfType(AiAgentEntity.class).stream()
-                .filter(a -> a.ragIds().contains(command.id()))
-                .forEach(a -> repository.save(withRagIds(a, a.ragIds().stream()
-                        .filter(id -> !id.equals(command.id())).toList())));
-        repository.findAllOfType(McpGatewayEntity.class).stream()
-                .filter(g -> g.ragIds().contains(command.id()))
-                .forEach(g -> repository.save(g.withRagIds(without(g.ragIds(), command.id()))));
-        repository.deleteAllById(List.of(command.id()), RagEntity.class);
-    }
-
-    /** Agent → knowledge base: the agent grounds its answers on this RAG. */
-    private void addAgentRag(EditorCommand command) {
-        var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        repository.findById(command.targetId(), RagEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.targetId()));
-        if (agent.ragIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(agent.ragIds());
-        ids.add(command.targetId());
-        repository.save(withRagIds(agent, ids));
-    }
-
-    private void removeAgentRag(EditorCommand command) {
-        repository.findById(command.sourceId(), AiAgentEntity.class).ifPresent(agent ->
-                repository.save(withRagIds(agent, agent.ragIds().stream()
-                        .filter(id -> !id.equals(command.targetId())).toList())));
-    }
-
-    /** RAG → read model: the knowledge base indexes the read model's content. */
-    /** The RAG indexes a read model, an external system's table, or an API/proxy. */
-    private void addRagSource(EditorCommand command) {
-        var rag = repository.findById(command.sourceId(), RagEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.sourceId()));
-        var target = command.targetId();
-        if (repository.findById(target, ReadModelEntity.class).isPresent()) {
-            if (rag.sourceReadModelIds().contains(target)) return;
-            repository.save(rag.withSourceReadModelIds(appended(rag.sourceReadModelIds(), target)));
-            return;
-        }
-        var isExternalTable = currentProject().stream()
-                .flatMap(pr -> pr.externalSystems().stream())
-                .flatMap(x -> x.tables().stream())
-                .anyMatch(t -> t.id().equals(target));
-        if (isExternalTable) {
-            if (rag.sourceExternalTableIds().contains(target)) return;
-            repository.save(rag.withSourceExternalTableIds(
-                    appended(rag.sourceExternalTableIds(), target)));
-            return;
-        }
-        if (repository.findById(target, ApiEntity.class).isPresent()
-                || repository.findById(target, ProxyApiEntity.class).isPresent()) {
-            if (rag.sourceApiIds().contains(target)) return;
-            repository.save(rag.withSourceApiIds(appended(rag.sourceApiIds(), target)));
-            return;
-        }
-        if (currentProject().stream().flatMap(pr -> pr.externalSystems().stream())
-                .anyMatch(x -> x.id().equals(target))) {
-            if (rag.sourceExternalSystemIds().contains(target)) return;
-            repository.save(rag.withSourceExternalSystemIds(
-                    appended(rag.sourceExternalSystemIds(), target)));
-            return;
-        }
-        if (repository.findById(target, ModuleEntity.class).isPresent()) {
-            if (rag.sourceModuleIds().contains(target)) return;
-            repository.save(rag.withSourceModuleIds(appended(rag.sourceModuleIds(), target)));
-            return;
-        }
-        throw new IllegalArgumentException(
-                "El RAG indexa read models, tablas externas, APIs, sistemas externos o contextos; destino desconocido: "
-                        + target);
-    }
-
-    private void removeRagSource(EditorCommand command) {
-        repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
-                repository.save(rag
-                        .withSourceReadModelIds(without(rag.sourceReadModelIds(), command.targetId()))
-                        .withSourceExternalTableIds(
-                                without(rag.sourceExternalTableIds(), command.targetId()))
-                        .withSourceApiIds(without(rag.sourceApiIds(), command.targetId()))
-                        .withSourceExternalSystemIds(
-                                without(rag.sourceExternalSystemIds(), command.targetId()))
-                        .withSourceModuleIds(without(rag.sourceModuleIds(), command.targetId()))));
-    }
-
-    /** External content feeding the RAG: a repo, a web site, an FTP server… */
-    private void addRagContentSource(EditorCommand command) {
-        var rag = repository.findById(command.sourceId(), RagEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown RAG: " + command.sourceId()));
-        if (command.uri() == null || command.uri().isBlank()) {
-            throw new IllegalArgumentException("La fuente necesita una URI");
-        }
-        if (rag.contentSources().stream().anyMatch(s -> command.uri().equals(s.uri()))) return;
-        var sources = new ArrayList<>(rag.contentSources());
-        sources.add(new RagContentSourceEntity(
-                command.type() == null ? "WEB" : command.type(), command.uri()));
-        repository.save(rag.withContentSources(sources));
-    }
-
-    private void removeRagContentSource(EditorCommand command) {
-        repository.findById(command.sourceId(), RagEntity.class).ifPresent(rag ->
-                repository.save(new RagEntity(rag.id(), rag.name(), rag.description(),
-                        rag.sourceReadModelIds(),
-                        rag.contentSources().stream()
-                                .filter(s -> !s.uri().equals(command.uri())).toList())));
-    }
-
-    /** Adds a catalog element to a CURATED view (searchable from the toolbar). */
     private void addViewMember(EditorCommand command) {
         var view = repository.findById(command.id(), ViewEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown view: " + command.id()));
@@ -4141,27 +2572,8 @@ public class EditorApiController {
     }
 
     /** exposedAsMcp holds only while some agent consumes the use case. */
-    private void clearMcpExposureIfUnused(String useCaseId) {
-        var stillUsed = repository.findAllOfType(AiAgentEntity.class).stream()
-                .anyMatch(a -> a.allowedUseCaseIds().contains(useCaseId));
-        if (stillUsed) return;
-        repository.findById(useCaseId, UseCaseEntity.class)
-                .filter(UseCaseEntity::exposedAsMcp)
-                .ifPresent(uc -> repository.save(withExposedAsMcp(uc, false)));
-    }
 
     /** Record copy with only exposedAsMcp replaced — every other field preserved verbatim. */
-    private static UseCaseEntity withExposedAsMcp(UseCaseEntity uc, boolean exposedAsMcp) {
-        return new UseCaseEntity(
-                uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), exposedAsMcp,
-                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), uc.steps(),
-                uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
-                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
-                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
-                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
-                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy());
-    }
 
     private void addActor(EditorCommand command) {
         if (repository.findById(command.id(), RoleEntity.class).isPresent()) return;
@@ -4187,1872 +2599,6 @@ public class EditorApiController {
 
     // ---- UI map commands (apps, pages, menus, buttons, actor→app) ----------
 
-    private void createUiApp(EditorCommand command) {
-        if (repository.findById(command.id(), UiAdapterEntity.class).isPresent()) return;
-        var appType = command.type() == null || command.type().isBlank()
-                ? io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP
-                : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
-        repository.save(new UiAdapterEntity(command.id(), command.name(), null,
-                command.name(), null, null, List.of(), appType, null, null, null, null));
-        if (command.moduleId() == null || command.moduleId().isBlank()) return;
-        // Born inside a bounded context: the module owns the app from the start.
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        if (module.uiAdapterIds().contains(command.id())) return;
-        var ids = new ArrayList<>(module.uiAdapterIds());
-        ids.add(command.id());
-        repository.save(module.toBuilder().uiAdapterIds(ids).build());
-    }
-
-    /** MASTER_DETAIL: the page shown as the header; null clears it. */
-    private void setAppHeaderPage(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.pageId() != null && !command.pageId().isBlank()) {
-            repository.findById(command.pageId(), PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(),
-                command.pageId() == null || command.pageId().isBlank() ? null : command.pageId(),
-                app.homePageId(), app.homeAppId(), app.modelId()));
-    }
-
-    /** What the app opens first — a page (pageId) or another app (toAppId); null clears. */
-    private void setAppHomePage(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (app.appType() != io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP) {
-            throw new IllegalArgumentException(
-                    "Solo las apps normales tienen home: el maestro-detalle es cabecera y pestañas, y el orquestador solo enseña páginas hijas");
-        }
-        var pageId = command.pageId() == null || command.pageId().isBlank() ? null : command.pageId();
-        var toAppId = command.toAppId() == null || command.toAppId().isBlank() ? null : command.toAppId();
-        if (pageId != null) {
-            repository.findById(pageId, PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + pageId));
-        }
-        if (toAppId != null) {
-            if (toAppId.equals(app.id())) {
-                throw new IllegalArgumentException("Una app no puede ser su propia home");
-            }
-            repository.findById(toAppId, UiAdapterEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + toAppId));
-        }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
-                toAppId != null ? null : pageId, toAppId, app.modelId()));
-    }
-
-    /** An identity provider — ours, or federated when published by an external system. */
-    private void addIdentityProvider(EditorCommand command) {
-        if (repository.findById(command.id(), IdentityProviderEntity.class).isPresent()) return;
-        var type = command.type() == null || command.type().isBlank() ? "CORPORATE" : command.type();
-        if (!IdentityProviderEntity.TYPES.contains(type)) {
-            throw new IllegalArgumentException("Unknown IdP type: " + type);
-        }
-        repository.save(new IdentityProviderEntity(command.id(), command.name(), type,
-                null, null, null));
-    }
-
-    /** Deletes the IdP and clears every trust edge pointing at it. */
-    private void removeIdentityProvider(EditorCommand command) {
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
-            if (command.id().equals(app.identityProviderId())) {
-                repository.save(app.toBuilder().identityProviderId(null).build());
-            }
-        }
-        for (var mo : repository.findAllOfType(ModuleEntity.class)) {
-            if (command.id().equals(mo.identityProviderId())) {
-                repository.save(mo.toBuilder().identityProviderId(null).build());
-            }
-        }
-        for (var flow : repository.findAllOfType(EtlFlowEntity.class)) {
-            if (command.id().equals(flow.identityProviderId())) {
-                repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                        flow.ownerModuleId(), flow.steps(), null));
-            }
-        }
-        repository.deleteAllById(List.of(command.id()), IdentityProviderEntity.class);
-    }
-
-    /** Federation: the external system publishing this IdP (null = ours). */
-    private void setIdpPublisher(EditorCommand command) {
-        var idp = repository.findById(command.id(), IdentityProviderEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown IdP: " + command.id()));
-        if (command.targetId() != null && !command.targetId().isBlank()) {
-            var known = owningProject().externalSystems().stream()
-                    .anyMatch(x -> x.id().equals(command.targetId()));
-            if (!known) {
-                throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
-            }
-        }
-        repository.save(new IdentityProviderEntity(idp.id(), idp.name(), idp.type(), idp.issuer(),
-                command.targetId() == null || command.targetId().isBlank() ? null : command.targetId(),
-                idp.description()));
-    }
-
-    /** Wires (or, with null, unwires) an app / bounded context / ETL flow to its IdP. */
-    private void setIdentityProvider(EditorCommand command) {
-        var idpId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        if (idpId != null) {
-            repository.findById(idpId, IdentityProviderEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown IdP: " + idpId));
-        }
-        var app = repository.findById(command.id(), UiAdapterEntity.class);
-        if (app.isPresent()) {
-            repository.save(app.get().toBuilder().identityProviderId(idpId).build());
-            return;
-        }
-        var mo = repository.findById(command.id(), ModuleEntity.class);
-        if (mo.isPresent()) {
-            repository.save(mo.get().toBuilder().identityProviderId(idpId).build());
-            return;
-        }
-        var flow = repository.findById(command.id(), EtlFlowEntity.class);
-        if (flow.isPresent()) {
-            var f = flow.get();
-            repository.save(new EtlFlowEntity(f.id(), f.name(), f.description(),
-                    f.ownerModuleId(), f.steps(), idpId));
-            return;
-        }
-        throw new IllegalArgumentException(
-                "El IdP se relaciona con apps, bounded contexts o flujos ETL: " + command.id());
-    }
-
-    /** A notification: when an event happens, tell these roles through these channels. */
-    private void addNotification(EditorCommand command) {
-        if (repository.findById(command.id(), NotificationEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        var channel = command.type() == null || command.type().isBlank() ? "EMAIL" : command.type();
-        if (!NotificationEntity.CHANNELS.contains(channel)) {
-            throw new IllegalArgumentException("Unknown channel: " + channel);
-        }
-        repository.save(new NotificationEntity(command.id(), command.name(), command.moduleId(),
-                null, List.of(channel), List.of(), null, null, null));
-    }
-
-    private void removeNotification(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), NotificationEntity.class);
-    }
-
-    /** Points (or, with null, unpoints) the notification at the event that fires it. */
-    private void setNotificationEvent(EditorCommand command) {
-        var n = repository.findById(command.id(), NotificationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown notification: " + command.id()));
-        var eventId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        if (eventId != null
-                && repository.findById(eventId, DomainEventEntity.class).isEmpty()
-                && repository.findById(eventId, ApplicationEventEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("Unknown event: " + eventId);
-        }
-        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), eventId,
-                n.channels(), n.recipientRoleIds(), n.recipientExpression(), n.subject(), n.body()));
-    }
-
-    /** Adds/removes a recipient role. */
-    private void toggleNotificationRecipient(EditorCommand command, boolean add) {
-        var n = repository.findById(command.id(), NotificationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown notification: " + command.id()));
-        if (add) {
-            repository.findById(command.roleId(), RoleEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + command.roleId()));
-        }
-        var roles = new ArrayList<>(n.recipientRoleIds());
-        if (add && !roles.contains(command.roleId())) roles.add(command.roleId());
-        if (!add) roles.remove(command.roleId());
-        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), n.eventId(),
-                n.channels(), roles, n.recipientExpression(), n.subject(), n.body()));
-    }
-
-    /** A generated document (template + model) or report (query-fed dataset). */
-    private void addDocument(EditorCommand command) {
-        if (repository.findById(command.id(), DocumentEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        var kind = command.type() == null || command.type().isBlank() ? "DOCUMENT" : command.type();
-        if (!DocumentEntity.KINDS.contains(kind)) {
-            throw new IllegalArgumentException("Unknown document kind: " + kind);
-        }
-        repository.save(new DocumentEntity(command.id(), command.name(), command.moduleId(),
-                kind, null, null, null, null, null));
-    }
-
-    private void removeDocument(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), DocumentEntity.class);
-    }
-
-    /** DOCUMENT: the model that fills the template (null clears). */
-    private void setDocumentModel(EditorCommand command) {
-        var doc = repository.findById(command.id(), DocumentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown document: " + command.id()));
-        var modelId = command.modelId() == null || command.modelId().isBlank() ? null : command.modelId();
-        if (modelId != null) {
-            repository.findById(modelId, ModelEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + modelId));
-        }
-        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
-                modelId, doc.queryServiceId(), doc.queryOperationId(), doc.templateUri(), doc.description()));
-    }
-
-    /** REPORT: the query operation feeding the dataset (nulls clear). */
-    private void setDocumentQuery(EditorCommand command) {
-        var doc = repository.findById(command.id(), DocumentEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown document: " + command.id()));
-        var qs = command.queryServiceId() == null || command.queryServiceId().isBlank() ? null : command.queryServiceId();
-        var op = command.queryOperationId() == null || command.queryOperationId().isBlank() ? null : command.queryOperationId();
-        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
-                doc.modelId(), qs, op, doc.templateUri(), doc.description()));
-    }
-
-    /** i18n: the locales the system speaks. */
-    private void setProjectLocales(EditorCommand command) {
-        var project = currentProject()
-                .orElseThrow(() -> new IllegalArgumentException("No current project"));
-        repository.save(new ProjectEntity(project.id(), project.name(), project.outputPath(),
-                project.packageName(), project.gitRepository(), project.database(),
-                project.dbMigrationTool(), project.terraformProvider(), project.terraformProviderVersion(),
-                project.terraformBackendType(), project.iamProvider(), project.messageBrokerType(),
-                project.tracingProvider(), project.metricsProvider(), project.loggingProvider(),
-                project.llmProvider(), project.cacheProvider(), project.fileStorageProvider(),
-                project.emailProvider(), project.secretsProvider(), project.cicdProvider(),
-                project.environments(), project.serviceIds(), project.contextMap(),
-                project.tenancyStrategy(), project.externalSystems(), project.objective(),
-                command.fieldIds(), command.label()));
-    }
-
-    private void addEtlFlow(EditorCommand command) {
-        if (repository.findById(command.id(), EtlFlowEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        repository.save(new EtlFlowEntity(command.id(), command.name(), null,
-                command.moduleId(), List.of()));
-    }
-
-    private void removeEtlFlow(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), EtlFlowEntity.class);
-    }
-
-    /** One ETL step: a source (pull/consumer), a transform, or a write (api/db/event). */
-    private void addEtlStep(EditorCommand command) {
-        var flow = repository.findById(command.etlFlowId(), EtlFlowEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown ETL flow: " + command.etlFlowId()));
-        if (command.stepType() == null || !EtlStepEntity.KINDS.contains(command.stepType())) {
-            throw new IllegalArgumentException("Unknown ETL step type: " + command.stepType());
-        }
-        var steps = new ArrayList<>(flow.steps());
-        if (steps.stream().anyMatch(s -> s.id().equals(command.id()))) return;
-        steps.add(new EtlStepEntity(command.id(),
-                command.name() != null ? command.name() : command.stepType(),
-                command.stepType(), command.externalTableId(), command.apiId(),
-                command.operationId(), command.targetId(), command.mappingId(), null));
-        repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                flow.ownerModuleId(), steps));
-    }
-
-    private void removeEtlStep(EditorCommand command) {
-        repository.findById(command.etlFlowId(), EtlFlowEntity.class).ifPresent(flow ->
-                repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                        flow.ownerModuleId(),
-                        flow.steps().stream().filter(s -> !s.id().equals(command.id())).toList())));
-    }
-
-    /** A declarative mapping between two models; its rules grow in its form. */
-    private void addTransformation(EditorCommand command) {
-        if (repository.findById(command.id(), TransformationEntity.class).isPresent()) return;
-        repository.save(new TransformationEntity(command.id(), command.name(), List.of(), null));
-    }
-
-    private void removeTransformation(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), TransformationEntity.class);
-    }
-
-    private TransformationRefEntity refOf(EditorCommand command) {
-        repository.findById(command.modelId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        return new TransformationRefEntity(command.modelId(),
-                command.fieldId() == null || command.fieldId().isBlank() ? null : command.fieldId());
-    }
-
-    private void addTransformationInput(EditorCommand command) {
-        var t = repository.findById(command.id(), TransformationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
-        var ref = refOf(command);
-        if (t.inputs().contains(ref)) return;
-        var inputs = new ArrayList<>(t.inputs());
-        inputs.add(ref);
-        repository.save(t.toBuilder().inputs(inputs).build());
-    }
-
-    private void removeTransformationInput(EditorCommand command) {
-        var t = repository.findById(command.id(), TransformationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
-        var fieldId = command.fieldId() == null || command.fieldId().isBlank() ? null : command.fieldId();
-        repository.save(t.toBuilder()
-                .inputs(t.inputs().stream()
-                        .filter(r -> !(r.modelId().equals(command.modelId())
-                                && java.util.Objects.equals(r.fieldId(), fieldId)))
-                        .toList())
-                .build());
-    }
-
-    /** The model or field the transformation produces; without modelId it just unwires. */
-    private void setTransformationOutput(EditorCommand command) {
-        var t = repository.findById(command.id(), TransformationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
-        var output = command.modelId() == null || command.modelId().isBlank() ? null : refOf(command);
-        repository.save(t.toBuilder().output(output).build());
-    }
-
-    private void addButtonGroup(EditorCommand command) {
-        if (repository.findById(command.id(), ButtonGroupEntity.class).isPresent()) return;
-        repository.save(new ButtonGroupEntity(command.id(), command.name(), List.of(), List.of()));
-    }
-
-    private void removeButtonGroup(EditorCommand command) {
-        // pages unhook it, parent groups let go of it
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            var tb = pg.toolbarGroupIds() == null ? List.<String>of() : pg.toolbarGroupIds();
-            var bb = pg.bottomBarGroupIds() == null ? List.<String>of() : pg.bottomBarGroupIds();
-            if (tb.contains(command.id()) || bb.contains(command.id())) {
-                repository.save(pg.toBuilder()
-                        .toolbarGroupIds(without(tb, command.id()))
-                        .bottomBarGroupIds(without(bb, command.id()))
-                        .build());
-            }
-        }
-        repository.findAllOfType(ButtonGroupEntity.class).stream()
-                .filter(g -> g.groupIds().contains(command.id()))
-                .forEach(g -> repository.save(g.toBuilder()
-                        .groupIds(without(g.groupIds(), command.id())).build()));
-        repository.deleteAllById(List.of(command.id()), ButtonGroupEntity.class);
-    }
-
-    private void addGroupButton(EditorCommand command) {
-        var g = repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        if (g.buttons().stream().anyMatch(bt -> bt.id().equals(command.itemId()))) return;
-        var buttons = new ArrayList<>(g.buttons());
-        buttons.add(new GroupButtonEntity(command.itemId(), command.label(), null, null, null, null));
-        repository.save(g.toBuilder().buttons(buttons).build());
-    }
-
-    private void removeGroupButton(EditorCommand command) {
-        var g = repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        repository.save(g.toBuilder()
-                .buttons(g.buttons().stream().filter(bt -> !bt.id().equals(command.itemId())).toList())
-                .build());
-    }
-
-    /** What the button FIRES: a use case/policy, or one API operation (both null clears). */
-    private void setGroupButtonTarget(EditorCommand command) {
-        var g = repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        repository.save(g.toBuilder()
-                .buttons(g.buttons().stream()
-                        .map(bt -> bt.id().equals(command.itemId())
-                                ? new GroupButtonEntity(bt.id(),
-                                        command.label() == null || command.label().isBlank()
-                                                ? bt.label() : command.label(),
-                                        command.useCaseId(), command.apiId(), command.operationId(),
-                                        command.mappingId())
-                                : bt)
-                        .toList())
-                .build());
-    }
-
-    private void addGroupSubgroup(EditorCommand command) {
-        var g = repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        repository.findById(command.targetId(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.targetId()));
-        if (command.id().equals(command.targetId()) || g.groupIds().contains(command.targetId())) return;
-        var ids = new ArrayList<>(g.groupIds());
-        ids.add(command.targetId());
-        repository.save(g.toBuilder().groupIds(ids).build());
-    }
-
-    private void removeGroupSubgroup(EditorCommand command) {
-        var g = repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        repository.save(g.toBuilder().groupIds(without(g.groupIds(), command.targetId())).build());
-    }
-
-    /** Hooks the group to the page's toolbar or bottom bar (command.bar()). */
-    private void addPageBarGroup(EditorCommand command) {
-        var pg = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.findById(command.id(), ButtonGroupEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown button group: " + command.id()));
-        var toolbar = "toolbar".equals(command.bar());
-        var current = toolbar
-                ? (pg.toolbarGroupIds() == null ? List.<String>of() : pg.toolbarGroupIds())
-                : (pg.bottomBarGroupIds() == null ? List.<String>of() : pg.bottomBarGroupIds());
-        if (current.contains(command.id())) return;
-        var grown = new ArrayList<>(current);
-        grown.add(command.id());
-        repository.save(toolbar
-                ? pg.toBuilder().toolbarGroupIds(grown).build()
-                : pg.toBuilder().bottomBarGroupIds(grown).build());
-    }
-
-    private void removePageBarGroup(EditorCommand command) {
-        var pg = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(pg.toBuilder()
-                .toolbarGroupIds(without(pg.toolbarGroupIds() == null ? List.of() : pg.toolbarGroupIds(), command.id()))
-                .bottomBarGroupIds(without(pg.bottomBarGroupIds() == null ? List.of() : pg.bottomBarGroupIds(), command.id()))
-                .build());
-    }
-
-    private void addCustomCode(EditorCommand command) {
-        if (repository.findById(command.id(), CustomCodeEntity.class).isPresent()) return;
-        repository.save(new CustomCodeEntity(command.id(), command.name(), null, null));
-    }
-
-    private void removeCustomCode(EditorCommand command) {
-        // whoever delegated to this code lets go of it
-        repository.findAllOfType(ModelMappingEntity.class).stream()
-                .filter(mm -> command.id().equals(mm.customCodeId()))
-                .forEach(mm -> repository.save(mm.toBuilder().customCodeId(null).build()));
-        repository.findAllOfType(TransformationEntity.class).stream()
-                .filter(t -> command.id().equals(t.customCodeId()))
-                .forEach(t -> repository.save(t.toBuilder().customCodeId(null).build()));
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
-            if (uc.steps() == null
-                    || uc.steps().stream().noneMatch(st -> command.id().equals(st.customCodeId()))) {
-                continue;
-            }
-            repository.save(withSteps(uc, uc.steps().stream()
-                    .map(st -> command.id().equals(st.customCodeId()) ? stepWithCustomCode(st, null) : st)
-                    .toList()));
-        }
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            var content = withoutComponentCustomCode(pg.content(), command.id());
-            var pageLinked = command.id().equals(pg.customCodeId());
-            if (pageLinked || content != null) {
-                repository.save(pg.toBuilder()
-                        .customCodeId(pageLinked ? null : pg.customCodeId())
-                        .content(content != null ? content : pg.content())
-                        .build());
-            }
-        }
-        repository.deleteAllById(List.of(command.id()), CustomCodeEntity.class);
-    }
-
-    private String customCodeRefOf(EditorCommand command) {
-        var ccId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        if (ccId != null) {
-            repository.findById(ccId, CustomCodeEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + ccId));
-        }
-        return ccId;
-    }
-
-    /** The mapping delegates to hand-written code (targetId null unwires). */
-    private void setMappingCustomCode(EditorCommand command) {
-        var mm = repository.findById(command.id(), ModelMappingEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
-        repository.save(mm.toBuilder().customCodeId(customCodeRefOf(command)).build());
-    }
-
-    /** The transformation delegates to hand-written code (targetId null unwires). */
-    private void setTransformationCustomCode(EditorCommand command) {
-        var t = repository.findById(command.id(), TransformationEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown transformation: " + command.id()));
-        repository.save(t.toBuilder().customCodeId(customCodeRefOf(command)).build());
-    }
-
-    /** The use case operation (step) delegates to hand-written code. */
-    private void setUseCaseStepCustomCode(EditorCommand command) {
-        var uc = repository.findById(command.useCaseId(), UseCaseEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.useCaseId()));
-        var ccId = customCodeRefOf(command);
-        repository.save(withSteps(uc,
-                (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
-                        .map(st -> st.id().equals(command.id()) ? stepWithCustomCode(st, ccId) : st)
-                        .toList()));
-    }
-
-    private static UseCaseStepEntity stepWithCustomCode(UseCaseStepEntity s, String customCodeId) {
-        return new UseCaseStepEntity(s.id(), s.name(), s.type(), s.aggregateId(), s.operationId(),
-                s.gatewayId(), s.gatewayOperationId(), s.domainEventId(), s.useCaseId(),
-                s.modelMappingId(), s.queryServiceId(), s.queryOperationId(), s.intent(),
-                s.applicationEventId(), s.externalUseCaseId(), customCodeId);
-    }
-
-    /** The page delegates to hand-written code — the page is CUSTOM (targetId null unwires). */
-    private void setPageCustomCode(EditorCommand command) {
-        var page = repository.findById(command.id(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.id()));
-        repository.save(page.toBuilder().customCodeId(customCodeRefOf(command)).build());
-    }
-
-    /** The component delegates to hand-written code — the component is CUSTOM. */
-    private void setPageComponentCustomCode(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var ccId = customCodeRefOf(command);
-        repository.save(page.toBuilder()
-                .content(withComponentCustomCode(page.content(), command.componentId(), ccId))
-                .build());
-    }
-
-    private static List<UiComponentNodeEntity> withComponentCustomCode(
-            List<UiComponentNodeEntity> nodes, String componentId, String customCodeId) {
-        if (nodes == null) return null;
-        return nodes.stream()
-                .map(n -> new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
-                        n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
-                        n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
-                        withComponentCustomCode(n.children(), componentId, customCodeId),
-                        n.id().equals(componentId) ? customCodeId : n.customCodeId()))
-                .toList();
-    }
-
-    /** The content tree with every reference to the given code cleared, or null when untouched. */
-    private static List<UiComponentNodeEntity> withoutComponentCustomCode(
-            List<UiComponentNodeEntity> nodes, String customCodeId) {
-        if (nodes == null) return null;
-        var changed = false;
-        var copy = new ArrayList<UiComponentNodeEntity>();
-        for (var n : nodes) {
-            var children = withoutComponentCustomCode(n.children(), customCodeId);
-            var hit = customCodeId.equals(n.customCodeId());
-            if (hit || children != null) changed = true;
-            copy.add(new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
-                    n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
-                    n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
-                    children != null ? children : n.children(),
-                    hit ? null : n.customCodeId()));
-        }
-        return changed ? copy : null;
-    }
-
-    /** The custom code TOUCHES an element (UI, use case, model… free-form intent). */
-    private void addCustomCodeUse(EditorCommand command) {
-        var cc = repository.findById(command.id(), CustomCodeEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + command.id()));
-        if (cc.usedElementIds().contains(command.elementId())) return;
-        var ids = new ArrayList<>(cc.usedElementIds());
-        ids.add(command.elementId());
-        repository.save(cc.toBuilder().usedElementIds(ids).build());
-    }
-
-    private void removeCustomCodeUse(EditorCommand command) {
-        var cc = repository.findById(command.id(), CustomCodeEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown custom code: " + command.id()));
-        repository.save(cc.toBuilder()
-                .usedElementIds(without(cc.usedElementIds(), command.elementId())).build());
-    }
-
-    private void addModelField(EditorCommand command) {
-        var model = repository.findById(command.modelId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
-        if (fields.stream().anyMatch(f -> f.id().equals(command.fieldId()))) return;
-        var type = command.type() == null || command.type().isBlank()
-                ? io.mateu.uidl.data.FieldDataType.string
-                : io.mateu.uidl.data.FieldDataType.valueOf(command.type());
-        var grown = new ArrayList<>(fields);
-        grown.add(new ModelFieldEntity(command.fieldId(), command.name(), true, type,
-                null, false, null, List.of()));
-        repository.save(new ModelEntity(model.id(), model.name(), grown, model.validations()));
-    }
-
-    private void removeModelField(EditorCommand command) {
-        var model = repository.findById(command.modelId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
-        repository.save(new ModelEntity(model.id(), model.name(),
-                fields.stream().filter(f -> !f.id().equals(command.fieldId())).toList(),
-                model.validations()));
-        pruneMappingRulesReferencing(model.id(), command.fieldId());
-    }
-
-    private void setModelField(EditorCommand command) {
-        var model = repository.findById(command.modelId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
-                .map(f -> f.id().equals(command.fieldId())
-                        ? new ModelFieldEntity(f.id(),
-                                command.name() == null || command.name().isBlank() ? f.name() : command.name(),
-                                f.basicType(),
-                                command.type() == null || command.type().isBlank()
-                                        ? f.type() : io.mateu.uidl.data.FieldDataType.valueOf(command.type()),
-                                f.modelId(), f.isEnum(), f.enumId(), f.validations(),
-                                f.piiClassification(), f.anonymizationStrategy())
-                        : f)
-                .toList();
-        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations()));
-    }
-
-    /** Moves a field to another model; the rules that mapped it no longer apply and drop. */
-    private void moveModelField(EditorCommand command) {
-        var source = repository.findById(command.modelId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        var target = repository.findById(command.targetId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.targetId()));
-        var moving = (source.fields() == null ? List.<ModelFieldEntity>of() : source.fields()).stream()
-                .filter(f -> f.id().equals(command.fieldId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown field: " + command.fieldId()));
-        var targetFields = target.fields() == null ? List.<ModelFieldEntity>of() : target.fields();
-        if (targetFields.stream().anyMatch(f -> f.id().equals(moving.id()))) {
-            throw new IllegalArgumentException(
-                    "El modelo destino ya tiene un campo con id " + moving.id());
-        }
-        repository.save(new ModelEntity(source.id(), source.name(),
-                source.fields().stream().filter(f -> !f.id().equals(moving.id())).toList(),
-                source.validations()));
-        var grown = new ArrayList<>(targetFields);
-        grown.add(moving);
-        repository.save(new ModelEntity(target.id(), target.name(), grown, target.validations()));
-        pruneMappingRulesReferencing(source.id(), moving.id());
-    }
-
-    /** Drops every rule of the model's mappings that references the given field. */
-    private void pruneMappingRulesReferencing(String modelId, String fieldId) {
-        for (var mm : repository.findAllOfType(ModelMappingEntity.class)) {
-            if (!modelId.equals(mm.sourceModelId()) && !modelId.equals(mm.targetModelId())) continue;
-            var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
-            var kept = rules.stream()
-                    .filter(r -> !fieldId.equals(r.sourceFieldId()) && !fieldId.equals(r.targetFieldId()))
-                    .toList();
-            if (kept.size() != rules.size()) {
-                repository.save(mm.toBuilder().rules(kept).build());
-            }
-        }
-    }
-
-    private void addModelMappingRule(EditorCommand command) {
-        var mm = repository.findById(command.id(), ModelMappingEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
-        var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
-        if (rules.stream().anyMatch(r -> command.sourceId().equals(r.sourceFieldId())
-                && command.targetId().equals(r.targetFieldId()))) return;
-        var taken = rules.stream().map(ModelMappingRuleEntity::id).collect(java.util.stream.Collectors.toSet());
-        var n = rules.size() + 1;
-        while (taken.contains("mr-" + n)) n++;
-        var grown = new ArrayList<>(rules);
-        grown.add(new ModelMappingRuleEntity("mr-" + n, command.sourceId(), command.targetId(), List.of()));
-        repository.save(mm.toBuilder().rules(grown).build());
-    }
-
-    private void removeModelMappingRule(EditorCommand command) {
-        var mm = repository.findById(command.id(), ModelMappingEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown mapping: " + command.id()));
-        var rules = mm.rules() == null ? List.<ModelMappingRuleEntity>of() : mm.rules();
-        repository.save(mm.toBuilder()
-                .rules(rules.stream().filter(r -> !r.id().equals(command.itemId())).toList())
-                .build());
-    }
-
-    private void addModelMapping(EditorCommand command) {
-        if (repository.findById(command.id(), ModelMappingEntity.class).isPresent()) return;
-        repository.findById(command.sourceId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.sourceId()));
-        repository.findById(command.targetId(), ModelEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.targetId()));
-        repository.save(new ModelMappingEntity(command.id(), command.name(),
-                command.sourceId(), command.targetId(), false, List.of()));
-    }
-
-    private void removeModelMapping(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), ModelMappingEntity.class);
-    }
-
-    /** A fresh empty data model, ready to be a viewmodel; fields grow in its form. */
-    private void addModel(EditorCommand command) {
-        if (repository.findById(command.id(), ModelEntity.class).isPresent()) return;
-        repository.save(new ModelEntity(command.id(), command.name(), List.of(), List.of()));
-    }
-
-    /** Deletes the model and unlinks whoever used it as a viewmodel. */
-    private void removeModel(EditorCommand command) {
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            var pageModel = command.id().equals(pg.modelId());
-            var content = pg.content() == null ? null : withoutComponentModel(pg.content(), command.id());
-            if (pageModel || content != null) {
-                repository.save(new PageEntity(pg.id(), pg.name(), pg.route(), pg.type(),
-                        pg.aggregateId(), pageModel ? null : pg.modelId(), pg.componentIds(),
-                        pg.listingDataSourceType(), pg.listingGatewayId(), pg.toolbar(), pg.bottomBar(),
-                        pg.triggers(), pg.rules(), pg.validations(), pg.fieldConfigs(), pg.wizardSteps(),
-                        pg.completionActions(), pg.listingQueryServiceId(),
-                        content != null ? content : pg.content()));
-            }
-        }
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
-            if (command.id().equals(app.modelId())) {
-                repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                        app.path(), app.appVariant(), app.menuItems(), app.appType(),
-                        app.headerPageId(), app.homePageId(), app.homeAppId(), null));
-            }
-        }
-        repository.deleteAllById(List.of(command.id()), ModelEntity.class);
-    }
-
-    /** The content forest with every `modelId` reference to the model cleared; null if untouched. */
-    private static List<UiComponentNodeEntity> withoutComponentModel(List<UiComponentNodeEntity> items,
-                                                                     String modelId) {
-        var touched = false;
-        var out = new ArrayList<UiComponentNodeEntity>();
-        for (var it : items) {
-            var children = it.children() == null ? List.<UiComponentNodeEntity>of() : it.children();
-            var nested = withoutComponentModel(children, modelId);
-            var hit = modelId.equals(it.modelId());
-            if (hit || nested != null) {
-                touched = true;
-                out.add(new UiComponentNodeEntity(it.id(), it.kind(), it.title(), it.text(), it.label(),
-                        it.useCaseId(), it.mappingId(), hit ? null : it.modelId(), it.queryServiceId(),
-                        it.queryOperationId(), it.fieldId(), it.stereotype(), it.colspan(),
-                        nested != null ? nested : children));
-            } else {
-                out.add(it);
-            }
-        }
-        return touched ? out : null;
-    }
-
-    /** The app's viewmodel (the orchestrator's state); null clears it. */
-    private void setAppModel(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.modelId() != null && !command.modelId().isBlank()) {
-            repository.findById(command.modelId(), ModelEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
-        }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
-                app.homePageId(), app.homeAppId(),
-                command.modelId() == null || command.modelId().isBlank() ? null : command.modelId()));
-    }
-
-    /** CRUD: what opens a row / the new-record form — a page OR an app; nulls clear. */
-    private void setCrudTarget(EditorCommand command, boolean detail) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        if (!"CRUD".equalsIgnoreCase(page.type() == null ? "" : page.type())) {
-            throw new IllegalArgumentException("Solo un CRUD tiene detalle y formulario de alta");
-        }
-        var targetPage = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        var targetApp = command.toAppId() == null || command.toAppId().isBlank() ? null : command.toAppId();
-        if (targetPage != null) {
-            repository.findById(targetPage, PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + targetPage));
-        }
-        if (targetApp != null) {
-            repository.findById(targetApp, UiAdapterEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + targetApp));
-        }
-        var pageRef = targetApp != null ? null : targetPage;
-        repository.save(detail
-                ? page.toBuilder().crudDetailPageId(pageRef).crudDetailAppId(targetApp).build()
-                : page.toBuilder().crudCreatePageId(pageRef).crudCreateAppId(targetApp).build());
-    }
-
-    /** VIEW_EDITOR: the read-only view / the edit view; null clears. */
-    private void setAppViewOrEdit(EditorCommand command, boolean view) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (app.appType() != io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.VIEW_EDITOR) {
-            throw new IllegalArgumentException("Solo un vista-editor tiene vista y edición");
-        }
-        var pageId = command.pageId() == null || command.pageId().isBlank() ? null : command.pageId();
-        if (pageId != null) {
-            repository.findById(pageId, PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + pageId));
-        }
-        repository.save(view
-                ? app.toBuilder().viewPageId(pageId).build()
-                : app.toBuilder().editPageId(pageId).build());
-    }
-
-    /** WIZARD: a new step — mapped to a page (targetId) or bare (itemId + label). */
-    private void addPageWizardStep(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var targetId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        PageEntity mapped = null;
-        if (targetId != null) {
-            mapped = repository.findById(targetId, PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.targetId()));
-            if (page.id().equals(mapped.id())) {
-                throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
-            }
-        }
-        var steps = new ArrayList<>(page.wizardSteps() == null
-                ? List.<PageWizardStepEntity>of() : page.wizardSteps());
-        if (targetId != null && steps.stream().anyMatch(s -> targetId.equals(s.pageId()))) return;
-        var id = command.itemId() != null && !command.itemId().isBlank()
-                ? command.itemId() : "wzs-" + (steps.size() + 1) + "-" + Math.abs(page.id().hashCode() % 1000);
-        if (steps.stream().anyMatch(s -> id.equals(s.key()))) return;
-        steps.add(new PageWizardStepEntity(targetId,
-                command.label() != null ? command.label()
-                        : mapped != null ? mapped.name() : "Paso " + (steps.size() + 1),
-                id));
-        repository.save(withWizardSteps(page, steps));
-    }
-
-    /** WIZARD: maps (or, with null, unmaps) the step onto the page implementing it. */
-    private void setWizardStepPage(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var targetId = command.targetId() == null || command.targetId().isBlank() ? null : command.targetId();
-        if (targetId != null) {
-            if (page.id().equals(targetId)) {
-                throw new IllegalArgumentException("Un wizard no puede contenerse a sí mismo");
-            }
-            repository.findById(targetId, PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + targetId));
-        }
-        var found = false;
-        var steps = new ArrayList<PageWizardStepEntity>();
-        for (var s : page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps()) {
-            if (command.itemId().equals(s.key())) {
-                found = true;
-                steps.add(new PageWizardStepEntity(targetId, s.label(), s.id()));
-            } else {
-                steps.add(s);
-            }
-        }
-        if (!found) throw new IllegalArgumentException("Unknown wizard step: " + command.itemId());
-        repository.save(withWizardSteps(page, steps));
-    }
-
-    private void removePageWizardStep(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var steps = (page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps()).stream()
-                .filter(s -> !command.targetId().equals(s.key()))
-                .toList();
-        repository.save(withWizardSteps(page, steps));
-    }
-
-    /** WIZARD: re-slots the step `targetId` before `beforeItemId` (append when null). */
-    private void movePageWizardStep(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var steps = page.wizardSteps() == null ? List.<PageWizardStepEntity>of() : page.wizardSteps();
-        var moving = steps.stream().filter(s -> command.targetId().equals(s.key())).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown wizard step: " + command.targetId()));
-        var rest = new ArrayList<>(steps.stream()
-                .filter(s -> !command.targetId().equals(s.key())).toList());
-        var at = command.beforeItemId() == null ? -1
-                : java.util.stream.IntStream.range(0, rest.size())
-                        .filter(i -> command.beforeItemId().equals(rest.get(i).key()))
-                        .findFirst().orElse(-1);
-        if (at < 0) rest.add(moving); else rest.add(at, moving);
-        repository.save(withWizardSteps(page, rest));
-    }
-
-    /** Record copy with only wizardSteps replaced. */
-    private static PageEntity withWizardSteps(PageEntity page, List<PageWizardStepEntity> steps) {
-        return new PageEntity(page.id(), page.name(), page.route(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), steps, page.completionActions(),
-                page.listingQueryServiceId(), page.content());
-    }
-
-    /** Removing an app also unlinks it from every actor that used it. */
-    private void deleteUiApp(EditorCommand command) {
-        repository.findAllOfType(RoleEntity.class).stream()
-                .filter(r -> r.uiAdapterIds().contains(command.id()))
-                .forEach(r -> repository.save(r.withUiAdapterIds(
-                        without(r.uiAdapterIds(), command.id()))));
-        // the bounded context that owned the app lets go of it
-        repository.findAllOfType(ModuleEntity.class).stream()
-                .filter(m -> m.uiAdapterIds().contains(command.id()))
-                .forEach(m -> repository.save(m.toBuilder()
-                        .uiAdapterIds(without(m.uiAdapterIds(), command.id())).build()));
-        // menu entries of OTHER apps pointing at this one lose their target, not their place
-        for (var other : repository.findAllOfType(UiAdapterEntity.class)) {
-            if (other.id().equals(command.id())) continue;
-            var cleared = withoutMenuAppRefs(other.menuItems(), command.id());
-            if (cleared != null) repository.save(withMenuItems(other, cleared));
-            var reloaded = repository.findById(other.id(), UiAdapterEntity.class).orElse(other);
-            if (command.id().equals(reloaded.homeAppId())) {
-                repository.save(reloaded.toBuilder().homeAppId(null).build());
-            }
-        }
-        // CRUDs pointing at the deleted app (detail/create) lose the ref
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            if (command.id().equals(pg.crudDetailAppId()) || command.id().equals(pg.crudCreateAppId())) {
-                repository.save(pg.toBuilder()
-                        .crudDetailAppId(command.id().equals(pg.crudDetailAppId()) ? null : pg.crudDetailAppId())
-                        .crudCreateAppId(command.id().equals(pg.crudCreateAppId()) ? null : pg.crudCreateAppId())
-                        .build());
-            }
-        }
-        repository.deleteAllById(List.of(command.id()), UiAdapterEntity.class);
-    }
-
-    /** The tree with every reference to the given app cleared, or null when there were none. */
-    private static List<UiMenuItemEntity> withoutMenuAppRefs(List<UiMenuItemEntity> items,
-                                                             String appId) {
-        if (items == null) return null;
-        var changed = false;
-        var copy = new ArrayList<UiMenuItemEntity>();
-        for (var item : items) {
-            var clearedChildren = withoutMenuAppRefs(item.children(), appId);
-            var hit = appId.equals(item.uiAdapterId());
-            if (hit || clearedChildren != null) changed = true;
-            copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                    item.route(), item.pageId(),
-                    clearedChildren != null ? clearedChildren
-                            : item.children() == null ? List.of() : item.children(),
-                    item.id(), hit ? null : item.uiAdapterId(), item.useCaseId(),
-                    item.aggregateId(), item.queryServiceId(), item.queryOperationId()));
-        }
-        return changed ? copy : null;
-    }
-
-    private void createUiPage(EditorCommand command) {
-        if (repository.findById(command.id(), PageEntity.class).isPresent()) return;
-        var type = command.pageType() == null || command.pageType().isBlank()
-                ? "PAGE" : command.pageType();
-        repository.save(new PageEntity(command.id(), command.name(), "/" + command.id(), type,
-                null, null, List.of(), null, null, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null, List.of()));
-        if (command.appId() == null || command.appId().isBlank()) return;
-        // Born reachable: the page hangs from the app's menu right away.
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        var label = command.menuLabel() == null || command.menuLabel().isBlank()
-                ? command.name() : command.menuLabel();
-        var items = new ArrayList<>(app.menuItems() == null
-                ? List.<UiMenuItemEntity>of() : app.menuItems());
-        items.add(new UiMenuItemEntity(label, null, null, null, command.id(), List.of()));
-        repository.save(withMenuItems(app, items));
-    }
-
-    /** Removing a page also drops every menu entry pointing at it, in any app at any depth. */
-    private void deleteUiPage(EditorCommand command) {
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
-            var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
-            var pruned = withoutMenuEntriesFor(items, command.id());
-            var header = command.id().equals(app.headerPageId()) ? null : app.headerPageId();
-            var home = command.id().equals(app.homePageId()) ? null : app.homePageId();
-            if (!pruned.equals(items)
-                    || !java.util.Objects.equals(header, app.headerPageId())
-                    || !java.util.Objects.equals(home, app.homePageId())) {
-                repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(),
-                        app.title(), app.path(), app.appVariant(), pruned, app.appType(),
-                        header, home, app.homeAppId(), app.modelId()));
-            }
-        }
-        // CRUDs pointing at the deleted page (detail/create) and view-editors lose the ref
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            if (pg.id().equals(command.id())) continue;
-            if (command.id().equals(pg.crudDetailPageId()) || command.id().equals(pg.crudCreatePageId())) {
-                repository.save(pg.toBuilder()
-                        .crudDetailPageId(command.id().equals(pg.crudDetailPageId()) ? null : pg.crudDetailPageId())
-                        .crudCreatePageId(command.id().equals(pg.crudCreatePageId()) ? null : pg.crudCreatePageId())
-                        .build());
-            }
-        }
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
-            if (command.id().equals(app.viewPageId()) || command.id().equals(app.editPageId())) {
-                repository.save(app.toBuilder()
-                        .viewPageId(command.id().equals(app.viewPageId()) ? null : app.viewPageId())
-                        .editPageId(command.id().equals(app.editPageId()) ? null : app.editPageId())
-                        .build());
-            }
-        }
-        // wizard steps mapped to the deleted page survive, unmapped
-        for (var pg : repository.findAllOfType(PageEntity.class)) {
-            if (pg.id().equals(command.id()) || pg.wizardSteps() == null) continue;
-            var touched = pg.wizardSteps().stream().anyMatch(s -> command.id().equals(s.pageId()));
-            if (touched) {
-                repository.save(withWizardSteps(pg, pg.wizardSteps().stream()
-                        .map(s -> command.id().equals(s.pageId())
-                                ? new PageWizardStepEntity(null, s.label(), s.key())
-                                : s)
-                        .toList()));
-            }
-        }
-        repository.deleteAllById(List.of(command.id()), PageEntity.class);
-    }
-
-    private void addMenuItem(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        var items = app.menuItems() == null ? List.<UiMenuItemEntity>of() : app.menuItems();
-        var entry = new UiMenuItemEntity(command.label(), null, null, null,
-                command.pageId(), List.of(),
-                command.itemId() != null ? command.itemId() : newMenuItemId(items, command.label()));
-        var hasParent = (command.parentId() != null && !command.parentId().isBlank())
-                || (command.parentLabel() != null && !command.parentLabel().isBlank());
-        if (!hasParent) {
-            var copy = new ArrayList<>(items);
-            copy.add(entry);
-            repository.save(withMenuItems(app, copy));
-            return;
-        }
-        var inserted = insertedUnderParent(items, command.parentId(), command.parentLabel(), entry);
-        if (inserted == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.parentId() != null ? command.parentId() : command.parentLabel()));
-        }
-        repository.save(withMenuItems(app, inserted));
-    }
-
-    private void removeMenuItem(EditorCommand command) {
-        repository.findById(command.appId(), UiAdapterEntity.class).ifPresent(app -> {
-            var pruned = withoutFirstMatching(app.menuItems(), command.itemId(), command.label());
-            if (pruned != null) {
-                repository.save(withMenuItems(app, pruned));
-            }
-        });
-    }
-
-    /** Points a menu entry at an APP — an app is just another UI component, like a page. */
-    private void setMenuApp(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.toAppId() != null) {
-            repository.findById(command.toAppId(), UiAdapterEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
-        }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                item -> retargeted(item, null, command.toAppId(), null, null, null, null));
-        if (updated == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        repository.save(withMenuItems(app, updated));
-    }
-
-
-
-    /** Points a menu entry at a USE CASE — third kind of target, same exclusivity. */
-    private void setMenuUseCase(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.useCaseId() != null) {
-            repository.findById(command.useCaseId(), UseCaseEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown use case: " + command.useCaseId()));
-        }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                item -> retargeted(item, null, null, command.useCaseId(), null, null, null));
-        if (updated == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        repository.save(withMenuItems(app, updated));
-    }
-
-    /** Points a menu entry at an AGGREGATE — a CRUD over it is inferred downstream. */
-    private void setMenuAggregate(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.aggregateId() != null) {
-            repository.findById(command.aggregateId(), AggregateEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown aggregate: " + command.aggregateId()));
-        }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                item -> retargeted(item, null, null, null, command.aggregateId(), null, null));
-        if (updated == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        repository.save(withMenuItems(app, updated));
-    }
-
-    /** Points a menu entry at a QUERY SERVICE OPERATION — a filtered listing is inferred. */
-    private void setMenuQueryOperation(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.queryOperationId() != null) {
-            var service = repository.findById(command.queryServiceId(), QueryServiceEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown query service: " + command.queryServiceId()));
-            var known = (service.operations() == null ? List.<QueryOperationEntity>of() : service.operations())
-                    .stream().anyMatch(op -> command.queryOperationId().equals(op.id()));
-            if (!known) {
-                throw new IllegalArgumentException("Unknown query operation: "
-                        + command.queryOperationId() + " en " + command.queryServiceId());
-            }
-        }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                item -> retargeted(item, null, null, null, null,
-                        command.queryOperationId() == null ? null : command.queryServiceId(),
-                        command.queryOperationId()));
-        if (updated == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        repository.save(withMenuItems(app, updated));
-    }
-
-    /** Moves a menu entry (subtree included) to another app's menu root. */
-    /**
-     * Moves an entry (subtree included) anywhere in the menu forest: to another app,
-     * under a parent entry (nesting — the parent becomes a grouper), to the root
-     * (promotion), and into a concrete slot (`beforeItemId`). Same-app moves reorder.
-     */
-    private void moveMenuItem(EditorCommand command) {
-        var source = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        var target = repository.findById(command.toAppId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.toAppId()));
-        var entry = findMenuItem(source.menuItems(), command.itemId(), command.label());
-        if (entry == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        if (command.parentId() != null
-                && findMenuItem(List.of(entry), command.parentId(), null) != null) {
-            throw new IllegalArgumentException("Una opción no puede moverse dentro de sí misma");
-        }
-        var pruned = withoutFirstMatching(source.menuItems(), command.itemId(), command.label());
-        repository.save(withMenuItems(source, pruned == null ? source.menuItems() : pruned));
-        var reloaded = repository.findById(command.toAppId(), UiAdapterEntity.class).orElse(target);
-        var items = reloaded.menuItems() == null
-                ? List.<UiMenuItemEntity>of() : reloaded.menuItems();
-        List<UiMenuItemEntity> placed = command.parentId() == null || command.parentId().isBlank()
-                ? insertedMenu(items, entry, command.beforeItemId())
-                : withMenuChildInserted(items, command.parentId(), entry, command.beforeItemId());
-        if (placed == null) {
-            throw new IllegalArgumentException("Unknown menu item: " + command.parentId());
-        }
-        repository.save(withMenuItems(reloaded, placed));
-    }
-
-    /** The list with `entry` inserted before `beforeId` (append when null or absent). */
-    private static List<UiMenuItemEntity> insertedMenu(List<UiMenuItemEntity> items,
-                                                       UiMenuItemEntity entry, String beforeId) {
-        var out = new ArrayList<>(items);
-        var at = beforeId == null ? -1
-                : java.util.stream.IntStream.range(0, out.size())
-                        .filter(i -> beforeId.equals(out.get(i).id()))
-                        .findFirst().orElse(-1);
-        if (at < 0) out.add(entry); else out.add(at, entry);
-        return out;
-    }
-
-    /** The forest with `entry` hung from the entry `parentId`, wherever it lives; null if absent. */
-    private static List<UiMenuItemEntity> withMenuChildInserted(List<UiMenuItemEntity> items,
-                                                                String parentId,
-                                                                UiMenuItemEntity entry,
-                                                                String beforeId) {
-        var out = new ArrayList<UiMenuItemEntity>();
-        var found = false;
-        for (var it : items) {
-            if (parentId.equals(it.id())) {
-                found = true;
-                var children = it.children() == null ? List.<UiMenuItemEntity>of() : it.children();
-                out.add(withChildren(it, insertedMenu(children, entry, beforeId)));
-                continue;
-            }
-            var children = it.children() == null ? List.<UiMenuItemEntity>of() : it.children();
-            var nested = withMenuChildInserted(children, parentId, entry, beforeId);
-            if (nested != null) {
-                found = true;
-                out.add(withChildren(it, nested));
-            } else {
-                out.add(it);
-            }
-        }
-        return found ? out : null;
-    }
-
-
-    private static UiMenuItemEntity findMenuItem(List<UiMenuItemEntity> items,
-                                                 String itemId, String label) {
-        for (var item : items == null ? List.<UiMenuItemEntity>of() : items) {
-            if (menuItemMatches(item, itemId, label)) return item;
-            var hit = findMenuItem(item.children(), itemId, label);
-            if (hit != null) return hit;
-        }
-        return null;
-    }
-
-    /** Points a menu entry (by stable id, or by label on pre-id entries) at a page. */
-    private void setMenuPage(EditorCommand command) {
-        var app = repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (command.pageId() != null) {
-            repository.findById(command.pageId(), PageEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        }
-        var updated = withMenuTarget(app.menuItems(), command.itemId(), command.label(),
-                item -> retargeted(item, command.pageId(), null, null, null, null, null));
-        if (updated == null) {
-            throw new IllegalArgumentException(
-                    "Unknown menu item: " + (command.itemId() != null ? command.itemId() : command.label()));
-        }
-        repository.save(withMenuItems(app, updated));
-    }
-
-    private void addPageButton(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var useCase = repository.findById(command.useCaseId(), UseCaseEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown use case: " + command.useCaseId()));
-        var label = command.label() == null || command.label().isBlank()
-                ? useCase.name() : command.label();
-        var bottom = "bottom".equalsIgnoreCase(command.type());
-        var bar = new ArrayList<>((bottom ? page.bottomBar() : page.toolbar()) == null
-                ? List.<PageButtonEntity>of() : (bottom ? page.bottomBar() : page.toolbar()));
-        bar.add(new PageButtonEntity(label, null, command.useCaseId(), null, null));
-        repository.save(bottom
-                ? withButtons(page, page.toolbar(), bar)
-                : withButtons(page, bar, page.bottomBar()));
-    }
-
-    private void removePageButton(EditorCommand command) {
-        repository.findById(command.pageId(), PageEntity.class).ifPresent(page ->
-                repository.save(withButtons(page,
-                        withoutUseCaseButtons(page.toolbar(), command.useCaseId()),
-                        withoutUseCaseButtons(page.bottomBar(), command.useCaseId()))));
-    }
-
-    private void setPageListing(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        if (command.queryServiceId() != null) {
-            repository.findById(command.queryServiceId(), QueryServiceEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown query service: " + command.queryServiceId()));
-        }
-        repository.save(withListingQueryServiceId(page, command.queryServiceId()));
-    }
-
-    private void setPageModel(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        if (command.modelId() != null) {
-            repository.findById(command.modelId(), ModelEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown model: " + command.modelId()));
-        }
-        repository.save(withModelId(page, command.modelId()));
-    }
-
-    /** Actor → app: the person opens the app (the actor→app link of the UI map). */
-    private void addActorApp(EditorCommand command) {
-        var role = repository.findById(command.actorId(), RoleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.actorId()));
-        repository.findById(command.appId(), UiAdapterEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.appId()));
-        if (role.uiAdapterIds().contains(command.appId())) return;
-        repository.save(role.withUiAdapterIds(appended(role.uiAdapterIds(), command.appId())));
-    }
-
-    private void removeActorApp(EditorCommand command) {
-        repository.findById(command.actorId(), RoleEntity.class).ifPresent(role ->
-                repository.save(role.withUiAdapterIds(
-                        without(role.uiAdapterIds(), command.appId()))));
-    }
-
-    /** Record copy with only menuItems replaced — every other field preserved verbatim. */
-    private static UiAdapterEntity withMenuItems(UiAdapterEntity app, List<UiMenuItemEntity> menuItems) {
-        return new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), menuItems, app.appType(), app.headerPageId());
-    }
-
-    /** Record copy with only toolbar/bottomBar replaced — every other field preserved verbatim. */
-    /**
-     * The designer's field list: the viewmodel Model's fields, ordered by the page's
-     * fieldConfigs (configured fields first, in config order), each merged with its config.
-     */
-    private List<UiFieldDto> uiFields(PageEntity p) {
-        if (p.modelId() == null) return List.of();
-        var model = repository.findById(p.modelId(), ModelEntity.class).orElse(null);
-        if (model == null || model.fields() == null) return List.of();
-        var configs = p.fieldConfigs() == null ? List.<PageFieldConfigEntity>of() : p.fieldConfigs();
-        // Authored YAML often declares fields by name only — the name is the identity then.
-        var fieldById = new java.util.LinkedHashMap<String, ModelFieldEntity>();
-        model.fields().forEach(f -> fieldById.put(f.id() != null ? f.id() : f.name(), f));
-        var order = new ArrayList<String>();
-        configs.forEach(c -> { if (fieldById.containsKey(c.fieldId()) && !order.contains(c.fieldId())) order.add(c.fieldId()); });
-        fieldById.keySet().forEach(id -> { if (!order.contains(id)) order.add(id); });
-        var configById = new java.util.HashMap<String, PageFieldConfigEntity>();
-        configs.forEach(c -> configById.putIfAbsent(c.fieldId(), c));
-        return order.stream().map(id -> {
-            var f = fieldById.get(id);
-            var c = configById.get(id);
-            var type = f.basicType() ? String.valueOf(f.type()) : f.isEnum() ? "ENUM" : "MODEL";
-            return new UiFieldDto(id, f.name(), type,
-                    c == null ? null : c.stereotype(), c == null ? null : c.colspan(),
-                    c == null ? null : c.label(), c == null ? null : c.help());
-        }).toList();
-    }
-
-    private void setPageFieldConfig(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("No existe la página " + command.pageId()));
-        var configs = new ArrayList<>(page.fieldConfigs() == null
-                ? List.<PageFieldConfigEntity>of() : page.fieldConfigs());
-        var index = -1;
-        for (int i = 0; i < configs.size(); i++) {
-            if (configs.get(i).fieldId().equals(command.fieldId())) index = i;
-        }
-        var previous = index >= 0 ? configs.get(index) : null;
-        var next = new PageFieldConfigEntity(command.fieldId(), command.stereotype(), command.colspan(),
-                previous == null ? null : previous.style(), previous == null ? null : previous.cssClass(),
-                command.label(), previous == null ? null : previous.help());
-        if (index >= 0) configs.set(index, next); else configs.add(next);
-        repository.save(withFieldConfigs(page, configs));
-    }
-
-    private void setPageFieldOrder(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("No existe la página " + command.pageId()));
-        var configById = new java.util.HashMap<String, PageFieldConfigEntity>();
-        (page.fieldConfigs() == null ? List.<PageFieldConfigEntity>of() : page.fieldConfigs())
-                .forEach(c -> configById.putIfAbsent(c.fieldId(), c));
-        var configs = command.fieldIds().stream()
-                .map(id -> configById.getOrDefault(id,
-                        new PageFieldConfigEntity(id, null, null, null, null, null, null)))
-                .toList();
-        repository.save(withFieldConfigs(page, configs));
-    }
-
-    // ---- page content tree -------------------------------------------------
-
-    /**
-     * Adds a node to the page's content tree: at the root, or appended to the children of
-     * parentComponentId. A new tabLayout is seeded with two tabs so it is usable right away.
-     */
-    private void addPageComponent(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var kind = command.componentKind();
-        if (!UiComponentNodeEntity.KINDS.contains(kind)) {
-            throw new IllegalArgumentException("Unknown component kind: " + kind);
-        }
-        var node = newComponentNode(command.componentId(), kind);
-        var content = page.content() == null
-                ? List.<UiComponentNodeEntity>of() : page.content();
-        if (command.parentComponentId() == null || command.parentComponentId().isBlank()) {
-            requireTabRules(kind, null);
-            repository.save(withContent(page, inserted(content, node, null)));
-            return;
-        }
-        var parent = findComponent(content, command.parentComponentId());
-        if (parent == null) {
-            throw new IllegalArgumentException("Unknown component: " + command.parentComponentId());
-        }
-        requireTabRules(kind, parent.kind());
-        repository.save(withContent(page,
-                withChildInserted(content, command.parentComponentId(), node, null)));
-    }
-
-    /** A fresh node: everything null but id+kind — except tabLayouts, born with two tabs. */
-    private static UiComponentNodeEntity newComponentNode(String id, String kind) {
-        var children = "tabLayout".equals(kind)
-                ? List.of(
-                        new UiComponentNodeEntity(id + "-tab-1", "tab", "Pestaña 1", null, null,
-                                null, null, null, null, null, null, null, null, List.of()),
-                        new UiComponentNodeEntity(id + "-tab-2", "tab", "Pestaña 2", null, null,
-                                null, null, null, null, null, null, null, null, List.of()))
-                : List.<UiComponentNodeEntity>of();
-        return new UiComponentNodeEntity(id, kind, null, null, null,
-                null, null, null, null, null, null, null, null, children);
-    }
-
-    /** tab ↔ tabLayout go together: a tabLayout only holds tabs, a tab only hangs from one. */
-    private static void requireTabRules(String kind, String parentKind) {
-        if ("tabLayout".equals(parentKind) && !"tab".equals(kind)) {
-            throw new IllegalArgumentException("A tabLayout only admits tab children");
-        }
-        if ("tab".equals(kind) && !"tabLayout".equals(parentKind)) {
-            throw new IllegalArgumentException("A tab can only hang from a tabLayout");
-        }
-    }
-
-    /** Prunes the node — subtree included — from the page's content tree. */
-    private void removePageComponent(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var pruned = withoutComponent(page.content(), command.componentId());
-        if (pruned == null) {
-            throw new IllegalArgumentException("Unknown component: " + command.componentId());
-        }
-        repository.save(withContent(page, pruned));
-    }
-
-    /**
-     * Replaces the node's configuration with the given values (null clears), keeping
-     * id, kind and children. References are validated when present.
-     */
-    private void setPageComponent(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        if (command.useCaseId() != null) {
-            repository.findById(command.useCaseId(), UseCaseEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown use case: " + command.useCaseId()));
-        }
-        if (command.modelId() != null) {
-            repository.findById(command.modelId(), ModelEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown model: " + command.modelId()));
-        }
-        if (command.mappingId() != null) {
-            repository.findById(command.mappingId(), ModelMappingEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown mapping: " + command.mappingId()));
-        }
-        if (command.queryServiceId() != null) {
-            repository.findById(command.queryServiceId(), QueryServiceEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown query service: " + command.queryServiceId()));
-        }
-        var updated = withComponentReplaced(page.content(), command.componentId(),
-                node -> new UiComponentNodeEntity(node.id(), node.kind(),
-                        command.title(), command.text(), command.label(),
-                        command.useCaseId(), command.mappingId(), command.modelId(),
-                        command.queryServiceId(), command.queryOperationId(),
-                        command.fieldId(), command.stereotype(), command.colspan(),
-                        node.children()));
-        if (updated == null) {
-            throw new IllegalArgumentException("Unknown component: " + command.componentId());
-        }
-        repository.save(withContent(page, updated));
-    }
-
-    /**
-     * Moves a node (subtree included) under toParentId — or to the root — before
-     * beforeComponentId, or to the end. A node never moves into its own subtree.
-     */
-    private void movePageComponent(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        var node = findComponent(page.content(), command.componentId());
-        if (node == null) {
-            throw new IllegalArgumentException("Unknown component: " + command.componentId());
-        }
-        var toParentId = command.parentComponentId();
-        var toRoot = toParentId == null || toParentId.isBlank();
-        if (!toRoot && findComponent(List.of(node), toParentId) != null) {
-            throw new IllegalArgumentException(
-                    "A component cannot move into its own subtree: " + command.componentId());
-        }
-        var pruned = withoutComponent(page.content(), command.componentId());
-        if (toRoot) {
-            requireTabRules(node.kind(), null);
-            repository.save(withContent(page,
-                    inserted(pruned, node, command.beforeComponentId())));
-            return;
-        }
-        var parent = findComponent(pruned, toParentId);
-        if (parent == null) {
-            throw new IllegalArgumentException("Unknown component: " + toParentId);
-        }
-        requireTabRules(node.kind(), parent.kind());
-        repository.save(withContent(page,
-                withChildInserted(pruned, toParentId, node, command.beforeComponentId())));
-    }
-
-    private static UiComponentNodeEntity findComponent(List<UiComponentNodeEntity> nodes, String id) {
-        for (var node : nodes == null ? List.<UiComponentNodeEntity>of() : nodes) {
-            if (id.equals(node.id())) return node;
-            var hit = findComponent(node.children(), id);
-            if (hit != null) return hit;
-        }
-        return null;
-    }
-
-    /** The siblings with the node inserted before beforeId (or at the end when null/absent). */
-    private static List<UiComponentNodeEntity> inserted(List<UiComponentNodeEntity> siblings,
-                                                        UiComponentNodeEntity node, String beforeId) {
-        var copy = new ArrayList<>(siblings == null ? List.<UiComponentNodeEntity>of() : siblings);
-        var at = copy.size();
-        if (beforeId != null) {
-            for (int i = 0; i < copy.size(); i++) {
-                if (beforeId.equals(copy.get(i).id())) { at = i; break; }
-            }
-        }
-        copy.add(at, node);
-        return copy;
-    }
-
-    /** The tree with the child inserted into the given parent's children, or null when not found. */
-    private static List<UiComponentNodeEntity> withChildInserted(List<UiComponentNodeEntity> nodes,
-                                                                 String parentId,
-                                                                 UiComponentNodeEntity child,
-                                                                 String beforeId) {
-        return withComponentReplaced(nodes, parentId,
-                parent -> withNodeChildren(parent, inserted(parent.children(), child, beforeId)));
-    }
-
-    /** The tree without the given node (subtree included), or null when it was not found. */
-    private static List<UiComponentNodeEntity> withoutComponent(List<UiComponentNodeEntity> nodes,
-                                                                String id) {
-        if (nodes == null) return null;
-        for (int i = 0; i < nodes.size(); i++) {
-            var node = nodes.get(i);
-            if (id.equals(node.id())) {
-                var copy = new ArrayList<>(nodes);
-                copy.remove(i);
-                return copy;
-            }
-            var prunedChildren = withoutComponent(node.children(), id);
-            if (prunedChildren != null) {
-                var copy = new ArrayList<>(nodes);
-                copy.set(i, withNodeChildren(node, prunedChildren));
-                return copy;
-            }
-        }
-        return null;
-    }
-
-    /** The tree with the given node replaced by edit(node), or null when it was not found. */
-    private static List<UiComponentNodeEntity> withComponentReplaced(
-            List<UiComponentNodeEntity> nodes, String id,
-            java.util.function.UnaryOperator<UiComponentNodeEntity> edit) {
-        if (nodes == null) return null;
-        for (int i = 0; i < nodes.size(); i++) {
-            var node = nodes.get(i);
-            if (id.equals(node.id())) {
-                var copy = new ArrayList<>(nodes);
-                copy.set(i, edit.apply(node));
-                return copy;
-            }
-            var editedChildren = withComponentReplaced(node.children(), id, edit);
-            if (editedChildren != null) {
-                var copy = new ArrayList<>(nodes);
-                copy.set(i, withNodeChildren(node, editedChildren));
-                return copy;
-            }
-        }
-        return null;
-    }
-
-    /** Record copy with only children replaced — every other field preserved verbatim. */
-    private static UiComponentNodeEntity withNodeChildren(UiComponentNodeEntity node,
-                                                          List<UiComponentNodeEntity> children) {
-        return new UiComponentNodeEntity(node.id(), node.kind(), node.title(), node.text(),
-                node.label(), node.useCaseId(), node.mappingId(), node.modelId(),
-                node.queryServiceId(), node.queryOperationId(),
-                node.fieldId(), node.stereotype(), node.colspan(), children);
-    }
-
-    private void renameUiPage(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), command.name(), page.route(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
-    }
-
-    private void setPageType(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), page.name(), page.route(), command.pageType(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
-    }
-
-    private void setPageRoute(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), page.name(), command.path(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
-    }
-
-    /** Edits an existing toolbar/bottomBar button (matched by useCaseId): label and mapping. */
-    private void setPageButton(EditorCommand command) {
-        var page = repository.findById(command.pageId(), PageEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        if (command.mappingId() != null) {
-            repository.findById(command.mappingId(), ModelMappingEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown mapping: " + command.mappingId()));
-        }
-        java.util.function.Function<List<PageButtonEntity>, List<PageButtonEntity>> edit = buttons ->
-                (buttons == null ? List.<PageButtonEntity>of() : buttons).stream()
-                        .map(b -> command.useCaseId().equals(b.useCaseId())
-                                ? new PageButtonEntity(
-                                        command.label() != null && !command.label().isBlank()
-                                                ? command.label() : b.label(),
-                                        b.icon(), b.useCaseId(), b.actionId(), command.mappingId())
-                                : b)
-                        .toList();
-        repository.save(withButtons(page, edit.apply(page.toolbar()), edit.apply(page.bottomBar())));
-    }
-
-    /** Record copy with only fieldConfigs replaced — every other field preserved verbatim. */
-    private static PageEntity withFieldConfigs(PageEntity p, List<PageFieldConfigEntity> fieldConfigs) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), fieldConfigs,
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
-    }
-
-    private static PageEntity withButtons(PageEntity p, List<PageButtonEntity> toolbar,
-                                          List<PageButtonEntity> bottomBar) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), toolbar,
-                bottomBar, p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
-    }
-
-    /** Record copy with only listingQueryServiceId replaced — every other field preserved verbatim. */
-    private static PageEntity withListingQueryServiceId(PageEntity p, String listingQueryServiceId) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), listingQueryServiceId, p.content());
-    }
-
-    /** Record copy with only modelId replaced — every other field preserved verbatim. */
-    private static PageEntity withModelId(PageEntity p, String modelId) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), modelId,
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
-    }
-
-    /** Record copy with only content replaced — every other field preserved verbatim. */
-    private static PageEntity withContent(PageEntity p, List<UiComponentNodeEntity> content) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), content);
-    }
-
-    private static List<PageButtonEntity> withoutUseCaseButtons(List<PageButtonEntity> buttons,
-                                                                String useCaseId) {
-        if (buttons == null) return List.of();
-        return buttons.stream().filter(b -> !useCaseId.equals(b.useCaseId())).toList();
-    }
-
-    /** The menu tree without any entry (at any depth) pointing at the given page. */
-    private static List<UiMenuItemEntity> withoutMenuEntriesFor(List<UiMenuItemEntity> items,
-                                                                String pageId) {
-        if (items == null) return List.of();
-        return items.stream()
-                .filter(i -> !pageId.equals(i.pageId()))
-                .map(i -> withChildren(i, withoutMenuEntriesFor(i.children(), pageId)))
-                .toList();
-    }
-
-    /**
-     * The tree with every entry carrying a UNIQUE stable id — null when it already does
-     * (nothing to save then). Duplicates count as missing: the first keeps the id.
-     */
-    private static List<UiMenuItemEntity> withMenuItemIds(List<UiMenuItemEntity> items,
-                                                          java.util.Set<String> used) {
-        if (items == null) return null;
-        var changed = false;
-        var copy = new ArrayList<UiMenuItemEntity>();
-        for (var item : items) {
-            var id = item.id();
-            if (id == null || id.isBlank() || used.contains(id)) {
-                id = null; // reassign below, uniquified against everything seen so far
-            }
-            if (id == null) {
-                var base = "mi-" + (item.label() == null ? "entrada" : item.label()).toLowerCase()
-                        .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
-                id = base;
-                for (var n = 2; used.contains(id); n++) id = base + "-" + n;
-                changed = true;
-            }
-            used.add(id);
-            var healedChildren = withMenuItemIds(item.children(), used);
-            if (healedChildren != null) changed = true;
-            var isGroup = item.children() != null && !item.children().isEmpty();
-            if (isGroup && (item.pageId() != null || item.uiAdapterId() != null || item.useCaseId() != null
-                    || item.aggregateId() != null || item.queryOperationId() != null)) {
-                changed = true; // a parent is a pure grouper — legacy targets are dropped
-            }
-            copy.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                    item.route(), isGroup ? null : item.pageId(),
-                    healedChildren != null ? healedChildren
-                            : item.children() == null ? List.of() : item.children(),
-                    id, isGroup ? null : item.uiAdapterId(), isGroup ? null : item.useCaseId(),
-                    isGroup ? null : item.aggregateId(), isGroup ? null : item.queryServiceId(),
-                    isGroup ? null : item.queryOperationId()));
-        }
-        return changed ? copy : null;
-    }
-
-    /** Entry identity: the stable id when both sides have one, the label for pre-id entries. */
-    private static boolean menuItemMatches(UiMenuItemEntity item, String itemId, String label) {
-        if (itemId != null && !itemId.isBlank()) return itemId.equals(item.id());
-        return label != null && label.equals(item.label());
-    }
-
-    /** A fresh stable id for a new entry: mi-<slug(label)>, uniquified within the app's tree. */
-    private static String newMenuItemId(List<UiMenuItemEntity> items, String label) {
-        var used = new java.util.HashSet<String>();
-        collectMenuItemIds(items, used);
-        var base = "mi-" + (label == null ? "entrada" : label).toLowerCase()
-                .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+|-+$)", "");
-        var id = base;
-        for (var n = 2; used.contains(id); n++) id = base + "-" + n;
-        return id;
-    }
-
-    private static void collectMenuItemIds(List<UiMenuItemEntity> items, java.util.Set<String> out) {
-        for (var item : items == null ? List.<UiMenuItemEntity>of() : items) {
-            if (item.id() != null) out.add(item.id());
-            collectMenuItemIds(item.children(), out);
-        }
-    }
-
-    /** Record copy with only children replaced — id and the rest preserved verbatim. */
-    private static UiMenuItemEntity withChildren(UiMenuItemEntity item,
-                                                 List<UiMenuItemEntity> children) {
-        return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
-                item.pageId(), children, item.id(), item.uiAdapterId(), item.useCaseId(),
-                item.aggregateId(), item.queryServiceId(), item.queryOperationId());
-    }
-
-    /**
-     * The menu tree with the entry appended under the FIRST matching item (depth-first),
-     * or null when nothing matches.
-     */
-    private static List<UiMenuItemEntity> insertedUnderParent(List<UiMenuItemEntity> items,
-                                                              String parentId, String parentLabel,
-                                                              UiMenuItemEntity entry) {
-        if (items == null) return null;
-        for (var i = 0; i < items.size(); i++) {
-            var item = items.get(i);
-            var children = item.children() == null ? List.<UiMenuItemEntity>of() : item.children();
-            List<UiMenuItemEntity> newChildren;
-            if (menuItemMatches(item, parentId, parentLabel)) {
-                newChildren = new ArrayList<>(children);
-                newChildren.add(entry);
-                // a parent is a pure grouper: gaining a submenu clears any target it had
-                var copy = new ArrayList<>(items);
-                copy.set(i, new UiMenuItemEntity(item.label(), item.icon(), item.description(),
-                        item.route(), null, newChildren, item.id(), null, null, null, null, null));
-                return copy;
-            } else {
-                newChildren = insertedUnderParent(children, parentId, parentLabel, entry);
-            }
-            if (newChildren != null) {
-                var copy = new ArrayList<>(items);
-                copy.set(i, withChildren(item, newChildren));
-                return copy;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * The menu tree without the FIRST matching item (depth-first), or null when nothing
-     * matches (nothing to save then).
-     */
-    private static List<UiMenuItemEntity> withoutFirstMatching(List<UiMenuItemEntity> items,
-                                                               String itemId, String label) {
-        if (items == null) return null;
-        for (var i = 0; i < items.size(); i++) {
-            var item = items.get(i);
-            if (menuItemMatches(item, itemId, label)) {
-                var copy = new ArrayList<>(items);
-                copy.remove(i);
-                return copy;
-            }
-            var newChildren = withoutFirstMatching(item.children(), itemId, label);
-            if (newChildren != null) {
-                var copy = new ArrayList<>(items);
-                copy.set(i, withChildren(item, newChildren));
-                return copy;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * The tree with the FIRST matching item's target replaced — an entry opens/fires
-     * exactly ONE thing, so every retarget lambda sets ITS target and nulls the rest;
-     * null when nothing matches. Entries with a submenu are pure groupers: linking
-     * them is rejected (linking = the lambda yields any non-null target).
-     */
-    private static List<UiMenuItemEntity> withMenuTarget(
-            List<UiMenuItemEntity> items, String itemId, String label,
-            java.util.function.UnaryOperator<UiMenuItemEntity> retarget) {
-        if (items == null) return null;
-        for (var i = 0; i < items.size(); i++) {
-            var item = items.get(i);
-            if (menuItemMatches(item, itemId, label)) {
-                var retargeted = retarget.apply(item);
-                var links = retargeted.pageId() != null || retargeted.uiAdapterId() != null
-                        || retargeted.useCaseId() != null || retargeted.aggregateId() != null
-                        || retargeted.queryOperationId() != null;
-                if (links && item.children() != null && !item.children().isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "La entrada «" + item.label() + "» tiene submenú: no puede abrir nada");
-                }
-                var copy = new ArrayList<>(items);
-                copy.set(i, retargeted);
-                return copy;
-            }
-            var newChildren = withMenuTarget(item.children(), itemId, label, retarget);
-            if (newChildren != null) {
-                var copy = new ArrayList<>(items);
-                copy.set(i, withChildren(item, newChildren));
-                return copy;
-            }
-        }
-        return null;
-    }
-
-    /** The item retargeted: one target set, every other cleared. */
-    private static UiMenuItemEntity retargeted(UiMenuItemEntity item, String pageId, String appId,
-                                               String useCaseId, String aggregateId,
-                                               String queryServiceId, String queryOperationId) {
-        return new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
-                pageId, item.children(), item.id(), appId, useCaseId,
-                aggregateId, queryServiceId, queryOperationId);
-    }
-
-    /** Record copy with only externalSystems replaced — every other field preserved verbatim. */
-    private static ProjectEntity withExternalSystems(
-            ProjectEntity p, List<ExternalSystemEntity> externalSystems) {
-        return new ProjectEntity(
-                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
-                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), p.contextMap(), p.tenancyStrategy(),
-                externalSystems, p.objective());
-    }
-
-    private ProjectEntity owningProject() {
-        return currentProject().orElseThrow(() -> new IllegalStateException(
-                "No hay ningún proyecto en el store — crea uno en Organización → Projects"));
-    }
-
-    private Optional<ProjectEntity> currentProject() {
-        var projects = repository.findAllOfType(ProjectEntity.class);
-        return projectStore.currentProjectId()
-                .flatMap(id -> projects.stream().filter(p -> p.id().equals(id)).findFirst())
-                .or(() -> projects.stream().findFirst());
-    }
-
-    /** Record copy with only contextMap replaced — every other field is preserved verbatim. */
-    private static ProjectEntity withContextMap(
-            ProjectEntity p, List<ContextMapRelationEntity> contextMap) {
-        return new ProjectEntity(
-                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
-                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), contextMap, p.tenancyStrategy(),
-                p.externalSystems(), p.objective());
-    }
 
     // ---- layout (diagram geometry, stored in the model store as diagrams) --
 
@@ -6165,7 +2711,7 @@ public class EditorApiController {
     }
 
     /** Emissions declared by an emitter's operations (CSV of event names in emits). */
-    private static void collectEmissions(String emitterId, List<OperationEntity> operations,
+    static void collectEmissions(String emitterId, List<OperationEntity> operations,
                                          Map<String, String> eventIdByName, List<EmissionDto> out) {
         for (var op : operations) {
             if (op.emits() == null || op.emits().isBlank()) continue;
@@ -6177,7 +2723,7 @@ public class EditorApiController {
     }
 
     /** Coordinates are kept to one decimal — plenty for pixels, and keeps the YAML readable. */
-    private static double round1(double value) {
+    static double round1(double value) {
         return Math.round(value * 10) / 10.0;
     }
 
