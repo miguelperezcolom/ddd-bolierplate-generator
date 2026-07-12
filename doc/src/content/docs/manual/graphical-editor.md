@@ -210,9 +210,11 @@ drawn later **hops over with a small bridge arc**, so dense maps stay readable.
   a relation** (with the active view's meaning), **plain background drag lassoes a
   selection**, **space+drag pans**, Supr deletes, F2 renames with an input riding
   the node, Ctrl+Z undoes. The **search box** flies the camera to any element,
-  unfolding the path; the **levels slider** controls the unfold depth — and
-  **adjusts itself when the view or detail level changes**, so what matters at that
-  level is on stage without touching it; the **motion slider** calms the physics; **⊞ Vista…** creates
+  unfolding the path; the **levels slider** controls the unfold depth — it
+  **adjusts itself when the view or detail level changes** (what matters at that
+  level goes on stage by itself), and **touching it is a preference for THAT
+  view+level only**, restored when you come back; the **motion slider** calms the
+  physics; **⊞ Vista…** creates
   a [curated view](/manual/views-and-large-models/) from the selection (or from
   everything unfolded). 2D, 3D and Yugo are **interchangeable surfaces over the
   same view**: the view decides *what* is on stage, the detail level *which theme*,

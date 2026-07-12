@@ -364,6 +364,11 @@ export class ModuxExplorer extends LitElement {
   /** The levels slider value — kept in sync when a level change auto-unfolds. */
   @state() private _levels = 1;
 
+  /** Manual slider choices, one per scene (view:detail): touching the slider is
+   *  a preference for THAT level — coming back restores it; untouched levels
+   *  keep unfolding to their scene's own depth. */
+  private manualLevels = new Map<string, number>();
+
   /** Identity of the scene on stage (view:detail) — set by the host; when it
    *  changes, the tree unfolds to the scene's own depth: each level decides
    *  what matters, the organism shows exactly that. */
@@ -466,7 +471,11 @@ export class ModuxExplorer extends LitElement {
     };
     walk(this.root);
     try {
-      sessionStorage.setItem(ModuxExplorer.STORE_KEY, JSON.stringify({ cam: this.cam, nodes }));
+      sessionStorage.setItem(ModuxExplorer.STORE_KEY, JSON.stringify({
+        cam: this.cam,
+        nodes,
+        levels: Object.fromEntries(this.manualLevels),
+      }));
     } catch {
       /* quota/private mode: state is just a nicety */
     }
@@ -479,8 +488,10 @@ export class ModuxExplorer extends LitElement {
       const s = JSON.parse(raw) as {
         cam?: { x: number; y: number; k: number };
         nodes?: Record<string, { e: number; x: number; y: number }>;
+        levels?: Record<string, number>;
       };
       if (s.cam && s.cam.k > 0) this.cam = s.cam;
+      this.manualLevels = new Map(Object.entries(s.levels ?? {}));
       for (const [key, v] of Object.entries(s.nodes ?? {})) {
         const ghost: XNode = {
           key,
@@ -565,9 +576,10 @@ export class ModuxExplorer extends LitElement {
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('model') || changed.has('scene')) this.buildTree();
     if (changed.has('sceneKey') && changed.get('sceneKey') !== undefined) {
-      // A different view/level took the stage: unfold to ITS depth, so what
-      // matters there is visible without touching the slider by hand.
-      this.applyLevels(this.sceneDepth());
+      // A different view/level took the stage: restore the hand-picked depth if
+      // this scene has one, else unfold to the scene's own depth — what matters
+      // at that level is on stage either way.
+      this.applyLevels(this.manualLevels.get(this.sceneKey) ?? this.sceneDepth());
     }
     if (changed.has('renaming') && this.renaming) {
       (this.renderRoot.querySelector('.rename') as HTMLInputElement | null)?.select();
@@ -814,6 +826,14 @@ export class ModuxExplorer extends LitElement {
   }
 
   /** Every node expanded down to `levels` (0 = todo plegado); focus clears. */
+  /** The slider touched by hand: remember the choice for THIS scene only. */
+  private applyLevelsManually(levels: number): void {
+    if (this.sceneKey) {
+      this.manualLevels.set(this.sceneKey, levels);
+    }
+    this.applyLevels(levels);
+  }
+
   private applyLevels(levels: number): void {
     this._levels = levels;
     this.focusKeys = undefined;
@@ -1838,9 +1858,9 @@ export class ModuxExplorer extends LitElement {
           step="1"
           .value=${String(this._levels)}
           title="Cuántos niveles se ven abiertos"
-          @input=${(e: Event) => this.applyLevels(Number((e.target as HTMLInputElement).value))}
+          @input=${(e: Event) => this.applyLevelsManually(Number((e.target as HTMLInputElement).value))}
         />
-        <button title="Plegarlo todo y volver a empezar" @click=${() => this.applyLevels(0)}>
+        <button title="Plegarlo todo y volver a empezar" @click=${() => this.applyLevelsManually(0)}>
           Replegar
         </button>
         <span>Física</span>
