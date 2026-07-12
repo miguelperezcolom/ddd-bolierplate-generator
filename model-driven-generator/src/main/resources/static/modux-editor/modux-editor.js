@@ -491,7 +491,7 @@ function Fn(e, t, i = "contexts", s = {}, o = /* @__PURE__ */ new Set()) {
     (p) => p.publishedByExternalSystemId && I.has(p.publishedByExternalSystemId)
   ), l = new Set(d.map((p) => p.id)), m = [
     ...e.modules.map((p) => ({ ref: p, external: !1, api: !1, proxy: !1 })),
-    ...e.externalSystems.map((p) => ({ ref: p, external: !0, api: !1, proxy: !1 })),
+    ...(a ? [] : e.externalSystems).map((p) => ({ ref: p, external: !0, api: !1, proxy: !1 })),
     ...r ? [] : (e.apis ?? []).filter((p) => !f.has(p.id)).map((p) => ({ ref: p, external: !1, api: !0, proxy: !1 })),
     ...r ? [] : (e.proxyApis ?? []).filter((p) => !l.has(p.id)).map((p) => ({ ref: p, external: !1, api: !1, proxy: !0 })),
     ...r ? [] : (e.workflows ?? []).map((p) => ({

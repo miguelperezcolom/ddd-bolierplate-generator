@@ -739,7 +739,8 @@ export function contextMapScene(
   // other levels.
   const allNodes = [
     ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
-    ...model.externalSystems.map((e) => ({ ref: e, external: true, api: false, proxy: false })),
+    ...(distributionLevel ? [] : model.externalSystems)
+      .map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(bareLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
       .map((a) => ({ ref: a, external: false, api: true, proxy: false }))),

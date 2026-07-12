@@ -1,0 +1,80 @@
+import { describe, it, expect } from 'vitest';
+import { contextMapScene } from '../context-map.js';
+import { baseModel } from './fixtures.js';
+
+const strategicModel = () =>
+  baseModel({
+    modules: [
+      {
+        id: 'mod-reservas',
+        name: 'Reservas',
+        subdomainType: 'CORE',
+        useCases: [{ id: 'uc-book', name: 'Reservar' }],
+        domainEvents: [],
+      },
+      { id: 'mod-facturas', name: 'Facturación', subdomainType: 'SUPPORTING' },
+    ],
+    aggregates: [{ id: 'agg-reserva', name: 'Reserva', moduleId: 'mod-reservas' }],
+    externalSystems: [{ id: 'ext-pms', name: 'PMS' }],
+    relations: [
+      {
+        sourceId: 'mod-reservas',
+        targetId: 'mod-facturas',
+        type: null,
+        inferredType: 'CUSTOMER_SUPPLIER',
+        declared: false,
+        reasons: 'llamada a Facturar',
+      },
+    ],
+  });
+
+describe('contextMapScene — contexts level (the strategic map)', () => {
+  const scene = contextMapScene(strategicModel(), {}, 'contexts');
+
+  it('shows contexts and external systems only — no aggregates, no use cases', () => {
+    const ids = scene.nodes.map((n) => n.id);
+    expect(ids).toContain('mod-reservas');
+    expect(ids).toContain('mod-facturas');
+    expect(ids).toContain('ext-pms');
+    expect(ids).not.toContain('agg-reserva');
+    expect(ids).not.toContain('uc-book');
+  });
+
+  it('badges the subdomain type', () => {
+    const core = scene.nodes.find((n) => n.id === 'mod-reservas')!;
+    expect(core.badge).toBe('CORE');
+  });
+
+  it('labels the inferred relation with ≈ABBREV (approximation, not annotation)', () => {
+    const rel = scene.edges.find((e) => e.kind === 'relation')!;
+    expect(rel.label).toMatch(/^≈/);
+    expect(rel.tooltip).toContain('INFERIDO');
+  });
+
+  it('drops the ≈ when the pair is declared', () => {
+    const m = strategicModel();
+    m.relations[0] = { ...m.relations[0], type: 'CUSTOMER_SUPPLIER', declared: true };
+    const s = contextMapScene(m, {}, 'contexts');
+    const rel = s.edges.find((e) => e.kind === 'relation')!;
+    expect(rel.label).not.toMatch(/^≈/);
+  });
+});
+
+describe('contextMapScene — detail level', () => {
+  it('unfolds aggregates and use cases inside their context', () => {
+    const scene = contextMapScene(strategicModel(), {}, 'detail');
+    const agg = scene.nodes.find((n) => n.id === 'agg-reserva')!;
+    expect(agg.parentId).toBe('mod-reservas');
+    const uc = scene.nodes.find((n) => n.id === 'uc-book')!;
+    expect(uc.parentId).toBe('mod-reservas');
+  });
+});
+
+describe('contextMapScene — distribution level (pure topology)', () => {
+  it('hides the strategic cast', () => {
+    const scene = contextMapScene(strategicModel(), {}, 'distribution');
+    const ids = scene.nodes.map((n) => n.id);
+    expect(ids).not.toContain('ext-pms');
+    expect(ids).not.toContain('agg-reserva');
+  });
+});
