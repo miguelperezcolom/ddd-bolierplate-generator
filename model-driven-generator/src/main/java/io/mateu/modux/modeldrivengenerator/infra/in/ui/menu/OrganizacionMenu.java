@@ -22,6 +22,12 @@ public class OrganizacionMenu {
     ModuleCrudOrchestrator modules;
 
     @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.externalsystem.ExternalSystemCrudOrchestrator externalSystems;
+
+    @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.codemodule.CodeModuleCrudOrchestrator codeModules;
+
+    @Menu
     DecisionCrudOrchestrator decisions;
 
     @Menu

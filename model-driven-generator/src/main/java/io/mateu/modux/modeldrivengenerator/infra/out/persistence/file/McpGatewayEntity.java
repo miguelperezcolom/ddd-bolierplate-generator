@@ -11,6 +11,7 @@ import java.util.List;
  * of touching internal elements directly; internal agents may also consume one to get a single
  * curated tool surface. How it is deployed/authenticated is a later decision.
  */
+@lombok.Builder(toBuilder = true)
 public record McpGatewayEntity(
         String id,
         String name,

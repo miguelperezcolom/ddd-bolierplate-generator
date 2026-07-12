@@ -10,4 +10,7 @@ public class SecurityMenu {
     @Menu
     RoleCrudOrchestrator roles;
 
+    @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.identityprovider.IdentityProviderCrudOrchestrator identityProviders;
+
 }

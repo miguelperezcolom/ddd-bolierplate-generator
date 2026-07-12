@@ -22,6 +22,9 @@ public class UIMenu {
     ComponentCrudOrchestrator components;
 
     @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.buttongroup.ButtonGroupCrudOrchestrator buttonGroups;
+
+    @Menu
     UiAdapterCrudOrchestrator uiAdapters;
 
     @Menu

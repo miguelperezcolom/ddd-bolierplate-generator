@@ -10,6 +10,7 @@ import java.util.List;
  * an ordered pipeline of steps — sources (pull/consumer), transforms and writes
  * (API call, legacy table, event).
  */
+@lombok.Builder(toBuilder = true)
 public record EtlFlowEntity(
         String id,
         String name,

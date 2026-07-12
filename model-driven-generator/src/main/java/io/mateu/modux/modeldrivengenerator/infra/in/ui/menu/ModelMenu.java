@@ -31,4 +31,7 @@ public class ModelMenu {
 
     @Menu
     SecurityMenu security;
+
+    @Menu
+    IaMenu ia;
 }

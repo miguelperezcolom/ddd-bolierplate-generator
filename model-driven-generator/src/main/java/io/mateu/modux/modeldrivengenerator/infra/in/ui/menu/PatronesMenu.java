@@ -30,4 +30,7 @@ public class PatronesMenu {
     @Menu
     ReadModelCrudOrchestrator readModels;
 
+    @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.etlflow.EtlFlowCrudOrchestrator etlFlows;
+
 }

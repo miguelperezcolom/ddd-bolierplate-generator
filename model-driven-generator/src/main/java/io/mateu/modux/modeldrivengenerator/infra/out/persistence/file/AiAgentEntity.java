@@ -11,6 +11,7 @@ import java.util.List;
  * and may react to domain/application events. EXTERNAL agents (someone else's) enter the system
  * through an {@link McpGatewayEntity MCP gateway} instead of touching internal elements directly.
  */
+@lombok.Builder(toBuilder = true)
 public record AiAgentEntity(
         String id,
         String name,

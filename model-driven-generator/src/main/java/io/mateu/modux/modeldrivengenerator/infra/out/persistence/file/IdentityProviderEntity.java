@@ -11,6 +11,7 @@ import java.util.Set;
  * contexts which issuer's tokens they validate, and non-human subjects (ETL
  * flows, and later agents and triggers) which service identity they run as.
  */
+@lombok.Builder(toBuilder = true)
 public record IdentityProviderEntity(
         String id,
         String name,

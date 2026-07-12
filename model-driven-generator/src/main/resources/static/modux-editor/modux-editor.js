@@ -13484,6 +13484,26 @@ function Qc(e, t) {
       return { elementType: "mapping", id: e };
     case "component":
       return { elementType: "component", id: e };
+    case "external-system":
+      return { elementType: "external-system", id: e };
+    case "code-module":
+      return { elementType: "code-module", id: e };
+    case "custom-code":
+      return { elementType: "custom-code", id: e };
+    case "transformation":
+      return { elementType: "transformation", id: e };
+    case "etl-flow":
+      return { elementType: "etl-flow", id: e };
+    case "button-group":
+      return { elementType: "button-group", id: e };
+    case "identity-provider":
+      return { elementType: "identity-provider", id: e };
+    case "ai-agent":
+      return { elementType: "ai-agent", id: e };
+    case "rag":
+      return { elementType: "rag", id: e };
+    case "mcp-gateway":
+      return { elementType: "mcp-gateway", id: e };
     default:
       return null;
   }
@@ -16893,7 +16913,17 @@ X.CRUD_ROUTES = {
   component: "/modelo/inbound/ui/components",
   "ui-adapter": "/modelo/inbound/ui/uiAdapters",
   "query-service": "/modelo/outbound/queryServices",
-  actor: "/modelo/security/roles"
+  actor: "/modelo/security/roles",
+  "external-system": "/modelo/organizacion/externalSystems",
+  "code-module": "/modelo/organizacion/codeModules",
+  "custom-code": "/modelo/behaviour/customCodes",
+  transformation: "/modelo/behaviour/transformations",
+  "etl-flow": "/modelo/patrones/etlFlows",
+  "button-group": "/modelo/inbound/ui/buttonGroups",
+  "identity-provider": "/modelo/security/identityProviders",
+  "ai-agent": "/modelo/ia/aiAgents",
+  rag: "/modelo/ia/rags",
+  "mcp-gateway": "/modelo/ia/mcpGateways"
 };
 J([
   se({ attribute: !1 })

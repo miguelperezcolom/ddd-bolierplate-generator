@@ -11,6 +11,7 @@ import java.util.List;
  * (gateway) — puts it on the context map as a node, gives NOTIFIES flows a real target, places
  * the anti-corruption layer correctly, and enables generated mocks/contract tests later.
  */
+@lombok.Builder(toBuilder = true)
 public record ExternalSystemEntity(
         String id,
         String name,

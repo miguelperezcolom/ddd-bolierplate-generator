@@ -19,4 +19,10 @@ public class BehaviourMenu {
     @Menu
     ModelMappingCrudOrchestrator modelMappings;
 
+    @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.transformation.TransformationCrudOrchestrator transformations;
+
+    @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.customcode.CustomCodeCrudOrchestrator customCodes;
+
 }

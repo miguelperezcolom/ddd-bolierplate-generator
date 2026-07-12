@@ -51,7 +51,17 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("component", "/modelo/inbound/ui/components"),
             Map.entry("ui-adapter", "/modelo/inbound/ui/uiAdapters"),
             Map.entry("query-service", "/modelo/outbound/queryServices"),
-            Map.entry("actor", "/modelo/security/roles"));
+            Map.entry("actor", "/modelo/security/roles"),
+            Map.entry("external-system", "/modelo/organizacion/externalSystems"),
+            Map.entry("code-module", "/modelo/organizacion/codeModules"),
+            Map.entry("custom-code", "/modelo/behaviour/customCodes"),
+            Map.entry("transformation", "/modelo/behaviour/transformations"),
+            Map.entry("etl-flow", "/modelo/patrones/etlFlows"),
+            Map.entry("button-group", "/modelo/inbound/ui/buttonGroups"),
+            Map.entry("identity-provider", "/modelo/security/identityProviders"),
+            Map.entry("ai-agent", "/modelo/ia/aiAgents"),
+            Map.entry("rag", "/modelo/ia/rags"),
+            Map.entry("mcp-gateway", "/modelo/ia/mcpGateways"));
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so

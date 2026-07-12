@@ -257,6 +257,26 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'mapping', id };
     case 'component':
       return { elementType: 'component', id };
+    case 'external-system':
+      return { elementType: 'external-system', id };
+    case 'code-module':
+      return { elementType: 'code-module', id };
+    case 'custom-code':
+      return { elementType: 'custom-code', id };
+    case 'transformation':
+      return { elementType: 'transformation', id };
+    case 'etl-flow':
+      return { elementType: 'etl-flow', id };
+    case 'button-group':
+      return { elementType: 'button-group', id };
+    case 'identity-provider':
+      return { elementType: 'identity-provider', id };
+    case 'ai-agent':
+      return { elementType: 'ai-agent', id };
+    case 'rag':
+      return { elementType: 'rag', id };
+    case 'mcp-gateway':
+      return { elementType: 'mcp-gateway', id };
     default:
       return null;
   }
@@ -1949,6 +1969,16 @@ export class ModuxEditor extends LitElement {
     'ui-adapter': '/modelo/inbound/ui/uiAdapters',
     'query-service': '/modelo/outbound/queryServices',
     actor: '/modelo/security/roles',
+    'external-system': '/modelo/organizacion/externalSystems',
+    'code-module': '/modelo/organizacion/codeModules',
+    'custom-code': '/modelo/behaviour/customCodes',
+    'transformation': '/modelo/behaviour/transformations',
+    'etl-flow': '/modelo/patrones/etlFlows',
+    'button-group': '/modelo/inbound/ui/buttonGroups',
+    'identity-provider': '/modelo/security/identityProviders',
+    'ai-agent': '/modelo/ia/aiAgents',
+    'rag': '/modelo/ia/rags',
+    'mcp-gateway': '/modelo/ia/mcpGateways',
   };
 
   /** Opening an element shows its ficha in the right drawer; unmapped kinds still navigate. */

@@ -10,6 +10,7 @@ import java.util.List;
  * itself into an index. How the pipeline works (embeddings, chunking, refresh…) is a
  * later decision; this only declares the knowledge base and what it draws from.
  */
+@lombok.Builder(toBuilder = true)
 public record RagEntity(
         String id,
         String name,
