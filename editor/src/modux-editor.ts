@@ -241,6 +241,22 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'ui-adapter', id };
     case 'page':
       return { elementType: 'page', id };
+    case 'service':
+      return { elementType: 'service', id };
+    case 'actor':
+      return { elementType: 'actor', id };
+    case 'query-service':
+      return { elementType: 'query-service', id };
+    case 'scheduled-trigger':
+      return { elementType: 'scheduled-trigger', id };
+    case 'workflow-gateway':
+      return { elementType: 'workflow-gateway', id };
+    case 'model':
+      return { elementType: 'model', id };
+    case 'mapping':
+      return { elementType: 'mapping', id };
+    case 'component':
+      return { elementType: 'component', id };
     default:
       return null;
   }
@@ -1914,15 +1930,25 @@ export class ModuxEditor extends LitElement {
   /** elementType → CRUD listing route (mirror of GraphicalEditorPage.CRUD_ROUTES). */
   private static readonly CRUD_ROUTES: Record<string, string> = {
     module: '/modelo/organizacion/modules',
+    service: '/modelo/organizacion/services',
     aggregate: '/modelo/domainModel/aggregates',
     entity: '/modelo/domainModel/entities',
+    model: '/modelo/domainModel/models',
     flow: '/modelo/patrones/flows',
     workflow: '/modelo/patrones/workflows',
+    'workflow-gateway': '/modelo/patrones/workflowGateways',
     'use-case': '/modelo/behaviour/useCases',
+    mapping: '/modelo/behaviour/modelMappings',
     'domain-event': '/modelo/domainModel/domainEvents',
     subscription: '/modelo/inbound/subscriptions',
+    'scheduled-trigger': '/modelo/inbound/scheduledTriggers',
     projection: '/modelo/behaviour/projections',
     'read-model': '/modelo/patrones/readModels',
+    page: '/modelo/inbound/ui/pages',
+    component: '/modelo/inbound/ui/components',
+    'ui-adapter': '/modelo/inbound/ui/uiAdapters',
+    'query-service': '/modelo/outbound/queryServices',
+    actor: '/modelo/security/roles',
   };
 
   /** Opening an element shows its ficha in the right drawer; unmapped kinds still navigate. */
@@ -1951,7 +1977,7 @@ export class ModuxEditor extends LitElement {
           </button>
           <button title="Cerrar" @click=${() => (this._drawer = null)}>✕</button>
         </header>
-        <iframe src=${`${route}/${ref.id}`} title=${ref.id}></iframe>
+        <iframe src=${`${route}/${ref.id}/edit`} title=${ref.id}></iframe>
       </aside>
     `;
   }

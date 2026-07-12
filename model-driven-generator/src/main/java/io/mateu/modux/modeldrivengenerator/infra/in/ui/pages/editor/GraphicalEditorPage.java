@@ -33,15 +33,25 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
     /** elementType (as emitted by the editor views) → CRUD listing route. */
     private static final Map<String, String> CRUD_ROUTES = Map.ofEntries(
             Map.entry("module", "/modelo/organizacion/modules"),
+            Map.entry("service", "/modelo/organizacion/services"),
             Map.entry("aggregate", "/modelo/domainModel/aggregates"),
             Map.entry("entity", "/modelo/domainModel/entities"),
+            Map.entry("model", "/modelo/domainModel/models"),
             Map.entry("flow", "/modelo/patrones/flows"),
             Map.entry("workflow", "/modelo/patrones/workflows"),
+            Map.entry("workflow-gateway", "/modelo/patrones/workflowGateways"),
             Map.entry("use-case", "/modelo/behaviour/useCases"),
+            Map.entry("mapping", "/modelo/behaviour/modelMappings"),
             Map.entry("domain-event", "/modelo/domainModel/domainEvents"),
             Map.entry("subscription", "/modelo/inbound/subscriptions"),
+            Map.entry("scheduled-trigger", "/modelo/inbound/scheduledTriggers"),
             Map.entry("projection", "/modelo/behaviour/projections"),
-            Map.entry("read-model", "/modelo/patrones/readModels"));
+            Map.entry("read-model", "/modelo/patrones/readModels"),
+            Map.entry("page", "/modelo/inbound/ui/pages"),
+            Map.entry("component", "/modelo/inbound/ui/components"),
+            Map.entry("ui-adapter", "/modelo/inbound/ui/uiAdapters"),
+            Map.entry("query-service", "/modelo/outbound/queryServices"),
+            Map.entry("actor", "/modelo/security/roles"));
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so
@@ -97,6 +107,6 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
         var route = CRUD_ROUTES.get((String) event.get("elementType"));
         var id = (String) event.get("id");
         if (route == null || id == null) return null;
-        return URI.create(route + "/" + id);
+        return URI.create(route + "/" + id + "/edit");
     }
 }
