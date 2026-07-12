@@ -335,8 +335,6 @@ export class ModuxEditor extends LitElement {
   @state() private _selectedId: string | null = null;
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = false;
-  /** The element whose ficha shows in the right drawer (double click opens it). */
-  @state() private _drawer: { elementType: string; id: string } | null = null;
   /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
   @state() private _yugo = true;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
@@ -732,49 +730,6 @@ export class ModuxEditor extends LitElement {
       flex: 1;
       min-height: 0;
       display: flex;
-    }
-    .drawer {
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 460px;
-      max-width: 55%;
-      background: #ffffff;
-      border-left: 1px solid #e2e8f0;
-      box-shadow: -10px 0 24px rgba(15, 23, 42, 0.08);
-      z-index: 25;
-      display: flex;
-      flex-direction: column;
-    }
-    .drawer header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-bottom: 1px solid #e2e8f0;
-      font: 600 12px system-ui, sans-serif;
-      color: #0f172a;
-    }
-    .drawer header .spacer {
-      flex: 1;
-    }
-    .drawer header button {
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
-      border-radius: 6px;
-      padding: 3px 10px;
-      font: 11px system-ui, sans-serif;
-      color: #475569;
-      cursor: pointer;
-    }
-    .drawer header button:hover {
-      background: #f1f5f9;
-    }
-    .drawer iframe {
-      flex: 1;
-      width: 100%;
-      border: 0;
     }
     .view-tree {
       position: absolute;
@@ -1960,69 +1915,13 @@ export class ModuxEditor extends LitElement {
     });
   }
 
-  /** elementType → CRUD listing route (mirror of GraphicalEditorPage.CRUD_ROUTES). */
-  private static readonly CRUD_ROUTES: Record<string, string> = {
-    module: '/modelo/organizacion/modules',
-    service: '/modelo/organizacion/services',
-    aggregate: '/modelo/domainModel/aggregates',
-    entity: '/modelo/domainModel/entities',
-    model: '/modelo/domainModel/models',
-    flow: '/modelo/patrones/flows',
-    workflow: '/modelo/patrones/workflows',
-    'workflow-gateway': '/modelo/patrones/workflowGateways',
-    'use-case': '/modelo/behaviour/useCases',
-    mapping: '/modelo/behaviour/modelMappings',
-    'domain-event': '/modelo/domainModel/domainEvents',
-    subscription: '/modelo/inbound/subscriptions',
-    'scheduled-trigger': '/modelo/inbound/scheduledTriggers',
-    projection: '/modelo/behaviour/projections',
-    'read-model': '/modelo/patrones/readModels',
-    page: '/modelo/inbound/ui/pages',
-    component: '/modelo/inbound/ui/components',
-    'ui-adapter': '/modelo/inbound/ui/uiAdapters',
-    'query-service': '/modelo/outbound/queryServices',
-    actor: '/modelo/security/roles',
-    'external-system': '/modelo/organizacion/externalSystems',
-    'code-module': '/modelo/organizacion/codeModules',
-    'custom-code': '/modelo/behaviour/customCodes',
-    'transformation': '/modelo/behaviour/transformations',
-    'etl-flow': '/modelo/patrones/etlFlows',
-    'button-group': '/modelo/inbound/ui/buttonGroups',
-    'identity-provider': '/modelo/security/identityProviders',
-    'ai-agent': '/modelo/ia/aiAgents',
-    'rag': '/modelo/ia/rags',
-    'mcp-gateway': '/modelo/ia/mcpGateways',
-  };
-
-  /** Opening an element shows its ficha in the right drawer; unmapped kinds still navigate. */
+  /**
+   * Opening an element is the HOST's job: the editor only emits the event and
+   * mateu draws its own drawer with the element's read-only detail inside
+   * (GraphicalEditorPage.handleAction returns the Drawer).
+   */
   private openInDrawer(ref: { elementType: string; id: string }): void {
-    if (ModuxEditor.CRUD_ROUTES[ref.elementType]) this._drawer = ref;
-    else this.emit('modux-activate', ref);
-  }
-
-  private renderDrawer() {
-    if (!this._drawer) return null;
-    const route = ModuxEditor.CRUD_ROUTES[this._drawer.elementType];
-    const ref = this._drawer;
-    return html`
-      <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
-        <header>
-          <span>${ref.id}</span>
-          <span class="spacer"></span>
-          <button
-            title="Abrir la ficha completa en su página"
-            @click=${() => {
-              this._drawer = null;
-              this.emit('modux-activate', ref);
-            }}
-          >
-            Abrir ficha
-          </button>
-          <button title="Cerrar" @click=${() => (this._drawer = null)}>✕</button>
-        </header>
-        <iframe src=${`${route}/${ref.id}/edit`} title=${ref.id}></iframe>
-      </aside>
-    `;
+    this.emit('modux-activate', ref);
   }
 
   private onElementActivated(e: CustomEvent): void {
@@ -4359,7 +4258,6 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this.renderDrawer()}
       ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
         : this._yugo

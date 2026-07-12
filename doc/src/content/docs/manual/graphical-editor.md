@@ -36,11 +36,13 @@ person / gear (human / automated steps), double circle (events), return arrow
 
 - **Drag** a box to move it (persisted per view). **Drag a process step across its
   siblings** to reorder the process — order and position undo together.
-- **Click** selects; **double click opens the element's ficha** in a drawer beside
-  the diagram, **already in edit mode** — every drawn type has one (contexts,
-  aggregates, workflows, pages, apps, actors, services, external systems, agents,
-  RAGs, gateways MCP, ETLs, custom code…). Workflow steps open their owning
-  workflow; invariants open their aggregate.
+- **Click** selects; **double click opens the element's DETAIL** in **mateu's own
+  drawer** over the diagram — read-only, no app chrome, no «back to list» (there is
+  no listing to go back to). The editor only emits the event; the host page answers
+  with a [Drawer](/manual/pages/) whose content is the element's view. Every drawn
+  type has one (contexts, aggregates, workflows, pages, apps, actors, services,
+  external systems, agents, RAGs, gateways MCP, ETLs, custom code…). Workflow steps
+  open their owning workflow; invariants open their aggregate.
 - **Strategic relations are 100% computed**: a context→context edge exists exactly
   where a concrete dependency does (use case calls, query calls, flows, aggregate
   references) — nothing is hand-drawn between contexts anymore. Unannotated pairs
