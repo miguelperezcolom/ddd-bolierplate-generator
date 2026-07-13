@@ -3,6 +3,7 @@
 target
 # generated sample apps are not versioned…
 sample/*
+model-driven-generator/sample/
 # …but hand-authored sample SPECS are (the generated code inside them is not)
 !sample/hla-booking/
 sample/hla-booking/generated/
