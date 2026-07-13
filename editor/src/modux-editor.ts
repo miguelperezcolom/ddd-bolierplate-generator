@@ -1072,7 +1072,9 @@ export class ModuxEditor extends LitElement {
     const drawn = new Set(overlay.map((e) => e.id));
     const runs = journeyRuns(journey)
       .map((run) => run.map((legId) => `journeyleg:${journey.id}:${legId}`).filter((id) => drawn.has(id)))
-      .filter((run) => run.length > 0);
+      .filter((run) => run.length > 0)
+      // hidden legs may truncate several routes into the same visible prefix
+      .filter((run, i, all) => all.findIndex((r) => r.join('|') === run.join('|')) === i);
     return {
       nodes: scene.nodes.map((n) => (lit.has(n.id) ? n : { ...n, dim: true })),
       edges: [...scene.edges.map((e) => ({ ...e, dim: true })), ...overlay],

@@ -42,23 +42,40 @@ export function journeyLegNumbers(journey: JourneyRef): Map<string, string> {
  */
 export function journeyRuns(journey: JourneyRef): string[][] {
   const legs = journey.legs ?? [];
+  const byId = new Map(legs.map((l) => [l.id, l]));
   const successors = new Map<string, string[]>();
   for (const leg of legs) {
     for (const after of leg.afterLegIds ?? []) {
       successors.set(after, [...(successors.get(after) ?? []), leg.id]);
     }
   }
-  const roots = legs.filter((l) => !(l.afterLegIds ?? []).length).map((l) => l.id);
+  // The traveller keeps rolling wherever the path physically continues: a leg
+  // whose source is this one's target counts as a successor even when nobody
+  // declared the link (converging entries drawn later used to strand the run).
+  const nextOf = (legId: string, visited: Set<string>): string[] => {
+    const leg = byId.get(legId);
+    if (!leg) return [];
+    const declared = successors.get(legId) ?? [];
+    const physical = legs
+      .filter((l) => l.sourceId === leg.targetId && l.id !== legId)
+      .map((l) => l.id);
+    return [...new Set([...declared, ...physical])].filter((id) => !visited.has(id));
+  };
+  const targets = new Set(legs.map((l) => l.targetId));
+  const roots = legs
+    .filter((l) => !(l.afterLegIds ?? []).length && !targets.has(l.sourceId))
+    .map((l) => l.id);
+  if (!roots.length && legs.length) roots.push(legs[0].id); // cycles still tour
   const runs: string[][] = [];
-  const walk = (path: string[]) => {
+  const walk = (path: string[], visited: Set<string>) => {
     if (path.length > legs.length) return;
-    const next = successors.get(path[path.length - 1]) ?? [];
+    const next = nextOf(path[path.length - 1], visited);
     if (!next.length) {
       runs.push(path);
       return;
     }
-    for (const n of next) walk([...path, n]);
+    for (const n of next) walk([...path, n], new Set([...visited, n]));
   };
-  for (const root of roots) walk([root]);
+  for (const root of roots) walk([root], new Set([root]));
   return runs;
 }

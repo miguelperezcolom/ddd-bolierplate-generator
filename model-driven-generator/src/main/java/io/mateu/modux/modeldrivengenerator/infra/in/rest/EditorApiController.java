@@ -2608,7 +2608,18 @@ public class EditorApiController {
                 .afterLegIds(command.dependsOnStepIds() != null ? command.dependsOnStepIds() : List.of())
                 .label(command.label())
                 .build());
-        repository.save(journey.toBuilder().legs(legs).build());
+        // Convergence: legs that DEPART from the new leg's target now also run
+        // after it — otherwise a second entry drawn later strands its run.
+        var rewired = legs.stream()
+                .map(l -> !l.id().equals(legId)
+                        && l.sourceId().equals(command.targetId())
+                        && !l.afterLegIds().contains(legId)
+                        ? l.toBuilder().afterLegIds(java.util.stream.Stream.concat(
+                                        l.afterLegIds().stream(), java.util.stream.Stream.of(legId))
+                                .toList()).build()
+                        : l)
+                .toList();
+        repository.save(journey.toBuilder().legs(rewired).build());
     }
 
     private void journeyRemoveLeg(EditorCommand command) {

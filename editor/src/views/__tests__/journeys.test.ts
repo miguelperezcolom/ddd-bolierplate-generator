@@ -65,4 +65,25 @@ describe('journeyRuns', () => {
     });
     expect(runs).toHaveLength(2);
   });
+
+  it('a converging entry drawn later still tours to the end (physical continuation)', () => {
+    const runs = journeyRuns({
+      id: 'tr-x', name: 'x',
+      legs: [
+        { id: 'leg-1', sourceId: 'metabuscador', targetId: 'proxy' },
+        { id: 'leg-2', sourceId: 'proxy', targetId: 'api', afterLegIds: ['leg-1'] },
+        { id: 'leg-3', sourceId: 'api', targetId: 'tridion', afterLegIds: ['leg-2'] },
+        { id: 'leg-4', sourceId: 'tridion', targetId: 'nuevo-motor', afterLegIds: ['leg-3'] },
+        { id: 'leg-5', sourceId: 'tridion', targetId: 'rumbo', afterLegIds: ['leg-3'] },
+        { id: 'leg-6', sourceId: 'integradores', targetId: 'proxy' },
+      ],
+    });
+    // desde integradores el viaje llega hasta nuevo motor y hasta rumbo
+    expect(runs).toContainEqual(['leg-6', 'leg-2', 'leg-3', 'leg-4']);
+    expect(runs).toContainEqual(['leg-6', 'leg-2', 'leg-3', 'leg-5']);
+    // y desde el metabuscador, también
+    expect(runs).toContainEqual(['leg-1', 'leg-2', 'leg-3', 'leg-4']);
+    expect(runs).toContainEqual(['leg-1', 'leg-2', 'leg-3', 'leg-5']);
+    expect(runs).toHaveLength(4);
+  });
 });
