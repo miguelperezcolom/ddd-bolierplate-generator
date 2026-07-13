@@ -2622,7 +2622,24 @@ public class EditorApiController {
                         .map(x -> x.id().equals(command.id())
                                 ? x.toBuilder().parentExternalSystemId(command.parentId()).build()
                                 : x)
+                        // containment replaces dependency: the pair's dep edges (both
+                        // directions, plain and CQRS) stop making sense once nested
+                        .map(x -> command.parentId() == null ? x
+                                : stripPairDependency(x, command.id(), command.parentId()))
                         .toList()));
+    }
+
+    private static ExternalSystemEntity stripPairDependency(ExternalSystemEntity x, String childId, String parentId) {
+        var isChild = x.id().equals(childId);
+        var isParent = x.id().equals(parentId);
+        if (!isChild && !isParent) return x;
+        var other = isChild ? parentId : childId;
+        return x.toBuilder()
+                .dependsOnExternalSystemIds(x.dependsOnExternalSystemIds().stream()
+                        .filter(id -> !id.equals(other)).toList())
+                .cqrsExternalSystemIds(x.cqrsExternalSystemIds().stream()
+                        .filter(id -> !id.equals(other)).toList())
+                .build();
     }
 
     private void removeExternalSystem(EditorCommand command) {

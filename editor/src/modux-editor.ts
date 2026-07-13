@@ -1199,8 +1199,17 @@ export class ModuxEditor extends LitElement {
       const scene = this.sceneFor(view);
       const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
       const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      // nesting strips the pair's dependency edges on the backend: undo re-adds them
+      const pairDeps = next
+        ? (this.model.externalSystemDependencies ?? []).filter(
+            (d) => (d.sourceId === id && d.targetId === next) || (d.sourceId === next && d.targetId === id))
+        : [];
       this.pushUndoEntry([
         { kind: 'set-external-system-parent', id, parentId: ext.parentExternalSystemId ?? null },
+        ...pairDeps.map((d): EditOp => ({
+          kind: 'add-external-dependency', sourceId: d.sourceId, targetId: d.targetId,
+          ...(d.type === 'CQRS' ? { type: 'CQRS' } : {}),
+        })),
         { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
       ]);
       this.command({ kind: 'set-external-system-parent', id, parentId: next }, false);
