@@ -1150,6 +1150,25 @@ export class ModuxCanvas extends LitElement {
                          calcMode="linear"></animateMotion>
           <set attributeName="opacity" to="1" begin="${id}.begin" end="${id}.end"></set>
         </circle>`);
+      // Route boundaries need punctuation: a ripple LAUNCHES the traveller at the
+      // origin, and a ring closing onto the destination marks the arrival.
+      const first = points[0];
+      const last = points[points.length - 1];
+      runners.push(svg`
+        <circle cx=${first.x} cy=${first.y} r="5" fill="none" stroke="#d97706"
+                stroke-width="2.5" opacity="0" pointer-events="none">
+          <animate attributeName="r" values="5;26" dur="0.6s" begin="${id}.begin"
+                   fill="remove"></animate>
+          <animate attributeName="opacity" values="0.9;0" dur="0.6s" begin="${id}.begin"
+                   fill="remove"></animate>
+        </circle>
+        <circle cx=${last.x} cy=${last.y} r="26" fill="none" stroke="#d97706"
+                stroke-width="2.5" opacity="0" pointer-events="none">
+          <animate attributeName="r" values="26;5" dur="0.45s" begin="${id}.end"
+                   fill="remove"></animate>
+          <animate attributeName="opacity" values="0.15;0.9" dur="0.45s" begin="${id}.end"
+                   fill="remove"></animate>
+        </circle>`);
     });
     return runners;
   }

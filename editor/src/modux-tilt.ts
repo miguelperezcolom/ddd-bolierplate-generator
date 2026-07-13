@@ -147,6 +147,15 @@ export class ModuxTilt extends LitElement {
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
       pointer-events: none;
     }
+    .journey-fx3 {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      margin: -17px 0 0 -17px;
+      border-radius: 50%;
+      border: 2.5px solid #d97706;
+      pointer-events: none;
+    }
     .journey-badge3 {
       position: absolute;
       min-width: 22px;
@@ -620,6 +629,8 @@ export class ModuxTilt extends LitElement {
   private moveJourneyRunner(t: number): void {
     const el = this.renderRoot.querySelector('.journey-runner3') as HTMLElement | null;
     if (!el) return;
+    const fxStart = this.renderRoot.querySelector('[data-fx="start"]') as HTMLElement | null;
+    const fxEnd = this.renderRoot.querySelector('[data-fx="end"]') as HTMLElement | null;
     const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
     const edgeById = new Map(this.scene.edges.map((e) => [e.id, e]));
     const depth = this.depths();
@@ -636,6 +647,8 @@ export class ModuxTilt extends LitElement {
       .filter((run) => run.length > 0);
     if (!runs.length) {
       el.style.display = 'none';
+      if (fxStart) fxStart.style.display = 'none';
+      if (fxEnd) fxEnd.style.display = 'none';
       return;
     }
     const SPEED = 170;
@@ -650,11 +663,31 @@ export class ModuxTilt extends LitElement {
       time -= durations[k] + GAP;
       k++;
     }
+    const run = runs[k];
+    // Route punctuation, same grammar as the other surfaces: a ripple expands at the
+    // origin as the run begins; a ring closes onto the destination while it rests.
+    const placeFx = (fx: HTMLElement | null, node: SceneNode, scale: number, opacity: number) => {
+      if (!fx) return;
+      fx.style.display = 'block';
+      fx.style.left = `${node.x}px`;
+      fx.style.top = `${node.y}px`;
+      fx.style.transform = `translateZ(${zOf(node.id)}px) scale(${scale})`;
+      fx.style.opacity = `${opacity}`;
+    };
+    const FX = 0.6;
+    if (time < FX && run[0]) {
+      const age = time / FX;
+      placeFx(fxStart, run[0].s, 0.35 + age * 1.15, 0.9 * (1 - age));
+    } else if (fxStart) fxStart.style.display = 'none';
+    const over = time - durations[k];
+    if (over > 0 && over < 0.45 && run[run.length - 1]) {
+      const age = over / 0.45;
+      placeFx(fxEnd, run[run.length - 1].tgt, 1.5 - age * 1.15, 0.15 + age * 0.75);
+    } else if (fxEnd) fxEnd.style.display = 'none';
     if (time > durations[k]) {
       el.style.display = 'none';
       return;
     }
-    const run = runs[k];
     const runLength = lengths[k].reduce((a, b) => a + b, 0) || 1;
     let distance = (time / durations[k]) * runLength;
     let i = 0;
@@ -781,7 +814,9 @@ export class ModuxTilt extends LitElement {
               : ''}`;
           })}
           ${(this.scene.journeyRuns ?? []).length
-            ? html`<div class="journey-runner3" style="display: none"></div>`
+            ? html`<div class="journey-runner3" style="display: none"></div>
+                <div class="journey-fx3" data-fx="start" style="display: none"></div>
+                <div class="journey-fx3" data-fx="end" style="display: none"></div>`
             : ''}
           ${nodes.map((n) => {
             const d = depth.get(n.id) ?? 0;

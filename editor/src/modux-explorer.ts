@@ -1283,6 +1283,8 @@ export class ModuxExplorer extends LitElement {
    *  Advancing (run, leg, progress) by dt keeps the ride smooth. */
   private runnerState: { run: number; leg: number; t: number; pause: number } | null = null;
   private runnerLastClock = 0;
+  /** Ephemeral ripples marking a run's departure and arrival, anchored where they fired. */
+  private runnerFx: { x: number; y: number; at: number; kind: 'start' | 'end' }[] = [];
 
   /**
    * A traveller tours the journey: it enters at a run's origin, follows its legs
@@ -1292,6 +1294,7 @@ export class ModuxExplorer extends LitElement {
   private drawJourneyRunner(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
     if (!this.journey?.runs?.length) {
       this.runnerState = null;
+      this.runnerFx = [];
       return;
     }
     const byId = new Map(this.journey.legs.map((l) => [l.id, l]));
@@ -1307,6 +1310,7 @@ export class ModuxExplorer extends LitElement {
       .filter((run) => run.length > 0);
     if (!runs.length) {
       this.runnerState = null;
+      this.runnerFx = [];
       return;
     }
     const SPEED = 170; // world units per second
@@ -1314,9 +1318,17 @@ export class ModuxExplorer extends LitElement {
     const dt = Math.max(0, Math.min(0.1, this.t - this.runnerLastClock));
     this.runnerLastClock = this.t;
     let st = this.runnerState;
-    if (!st || st.run >= runs.length) st = this.runnerState = { run: 0, leg: 0, t: 0, pause: 0 };
+    if (!st || st.run >= runs.length) {
+      st = this.runnerState = { run: 0, leg: 0, t: 0, pause: 0 };
+      this.runnerFx.push({ x: runs[0][0].a.x, y: runs[0][0].a.y, at: this.t, kind: 'start' });
+    }
+    this.drawRunnerFx(ctx); // departure/arrival ripples outlive the traveller's rests
     if (st.pause > 0) {
       st.pause -= dt;
+      // the rest is over: the next run announces itself at its origin
+      if (st.pause <= 0 && runs[st.run]?.[0]) {
+        this.runnerFx.push({ x: runs[st.run][0].a.x, y: runs[st.run][0].a.y, at: this.t, kind: 'start' });
+      }
       return; // resting between runs, off stage
     }
     if (st.leg >= runs[st.run].length) st.leg = runs[st.run].length - 1;
@@ -1327,6 +1339,8 @@ export class ModuxExplorer extends LitElement {
       st.t -= 1;
       st.leg++;
       if (st.leg >= runs[st.run].length) {
+        const done = runs[st.run];
+        this.runnerFx.push({ x: done[done.length - 1].b.x, y: done[done.length - 1].b.y, at: this.t, kind: 'end' });
         st.run = (st.run + 1) % runs.length;
         st.leg = 0;
         st.t = 0;
@@ -1349,6 +1363,28 @@ export class ModuxExplorer extends LitElement {
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
     ctx.restore();
+  }
+
+  /**
+   * Route punctuation: a ripple expanding from the origin says «the traveller departs»,
+   * a ring closing onto the destination says «it arrived». Without them the loop reads
+   * as one endless wander instead of distinct routes.
+   */
+  private drawRunnerFx(ctx: CanvasRenderingContext2D): void {
+    const DUR = 0.6;
+    this.runnerFx = this.runnerFx.filter((f) => this.t - f.at < DUR);
+    for (const f of this.runnerFx) {
+      const age = (this.t - f.at) / DUR;
+      const r = f.kind === 'start' ? 7 + age * 20 : 27 - age * 20;
+      const alpha = f.kind === 'start' ? 0.9 * (1 - age) : 0.15 + age * 0.75;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, r / this.cam.k, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(217, 119, 6, ${alpha})`;
+      ctx.lineWidth = 2.5 / this.cam.k;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /** Ghost preview: a hovered, folded node whispers its children around it. */
