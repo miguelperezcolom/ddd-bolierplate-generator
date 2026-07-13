@@ -1,0 +1,7 @@
+modux desplegado.
+
+  UI:    kubectl port-forward svc/{{ include "modux.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+         → http://localhost:{{ .Values.service.port }}
+  Store: {{ if .Values.postgresql.enabled }}PostgreSQL embebido ({{ .Release.Name }}-postgresql){{ else }}{{ .Values.externalDatabase.jdbcUrl }}{{ end }}
+
+El primer arranque siembra el catálogo con un repositorio DATABASE apuntando a la BD.

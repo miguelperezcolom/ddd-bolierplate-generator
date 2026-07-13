@@ -1,0 +1,8 @@
+
+**/node_modules
+editor/dist
+.git
+.dev
+doc
+docs
+*.md

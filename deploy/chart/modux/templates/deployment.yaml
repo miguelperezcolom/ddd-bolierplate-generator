@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "modux.fullname" . }}
+  labels:
+    app.kubernetes.io/name: modux
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # el home es RWO y el modelo vive en memoria: una réplica
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: modux
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: modux
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: modux
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8192
+          env:
+            - name: MODUX_BOOTSTRAP_DB
+              value: {{ include "modux.jdbcUrl" . | quote }}
+          envFrom:
+            - secretRef:
+                name: {{ include "modux.fullname" . }}-db
+          readinessProbe:
+            httpGet:
+              path: /modux/editor/version
+              port: 8192
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /modux/editor/version
+              port: 8192
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: home
+              mountPath: /data
+      volumes:
+        - name: home
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "modux.fullname" . }}-home
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

@@ -1,0 +1,41 @@
+image:
+  repository: modux
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8192
+
+ingress:
+  enabled: false
+  className: ""
+  host: modux.local
+  tls: []
+
+# El home de modux (catálogo de repositorios, checkouts git) persiste aquí.
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+
+# BD embebida (subchart bitnami/postgresql). Para una BD externa: enabled=false
+# y rellena externalDatabase.
+postgresql:
+  enabled: true
+  auth:
+    username: modux
+    password: modux
+    database: modux
+
+externalDatabase:
+  jdbcUrl: ""
+  username: ""
+  password: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
