@@ -170,6 +170,8 @@ interface ChildDesc {
     | 'external-system';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
+  /** Nested chips: a subsystem carries its published APIs inside its own chip. */
+  children?: ChildDesc[];
 }
 
 const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
@@ -682,10 +684,20 @@ function detailedContainer(
   sizes: Record<string, { w: number; h: number }>,
 ): SceneNode[] {
   const size = sizes[base.id] ?? defaultContainerSize(children.length);
+  // Subsystem chips accept the corner-resize gesture and grow with their own
+  // nested chips (their published APIs), so they honour BOTH minimum and stored size.
+  const sizeOf = (c: ChildDesc) => {
+    const kids = c.children ?? [];
+    const min = kids.length
+      ? { w: CHILD_W + 16, h: 22 + kids.length * (CHILD_H + 6) + 8 }
+      : { w: CHILD_W, h: CHILD_H };
+    const stored = c.kind === 'external-system' ? sizes[c.id] : undefined;
+    return { w: Math.max(min.w, stored?.w ?? 0), h: Math.max(min.h, stored?.h ?? 0) };
+  };
   const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
   // Siblings never overlap: nudge the chips apart before fitting the box.
   const separated = resolveOverlaps(
-    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, w: CHILD_W, h: CHILD_H })),
+    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, ...sizeOf(c) })),
     10,
   );
   children.forEach((c, i) => {
@@ -698,7 +710,7 @@ function detailedContainer(
   const fit = containerFit(
     center,
     size,
-    offsets.map((off) => ({ dx: off.x, dy: off.y, w: CHILD_W, h: CHILD_H })),
+    offsets.map((off, i) => ({ dx: off.x, dy: off.y, ...sizeOf(children[i]) })),
   );
   const container: SceneNode = {
     ...base,
@@ -708,23 +720,42 @@ function detailedContainer(
     h: fit.h,
     container: true,
   };
-  const childNodes: SceneNode[] = children.map((c, i) => {
+  const childNodes: SceneNode[] = children.flatMap((c, i) => {
     const off = offsets[i];
     const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
-    return {
+    const dims = sizeOf(c);
+    const chip: SceneNode = {
       id: c.id,
       label: c.name,
       kind: c.kind,
       x: center.x + off.x,
       y: center.y + off.y,
-      w: CHILD_W,
-      h: CHILD_H,
+      ...dims,
+      resizable: c.kind === 'external-system' || undefined,
       symbol: style.symbol,
       fill: style.fill,
       stroke: style.stroke,
       parentId: base.id,
       tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
     };
+    const kids = (c.children ?? []).map((k, j): SceneNode => {
+      const ks = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
+      return {
+        id: k.id,
+        label: k.name,
+        kind: k.kind,
+        x: chip.x,
+        y: chip.y - dims.h / 2 + 22 + j * (CHILD_H + 6) + CHILD_H / 2,
+        w: CHILD_W - 8,
+        h: CHILD_H,
+        symbol: ks.symbol,
+        fill: ks.fill,
+        stroke: ks.stroke,
+        parentId: c.id,
+        tooltip: `${CHILD_TOOLTIP[k.kind]} ${k.name} — publicada por ${c.name}`,
+      };
+    });
+    return [chip, ...kids];
   });
   return [container, ...childNodes];
 }
@@ -940,7 +971,9 @@ export function contextMapScene(
       };
       // Published APIs and proxies are strategic-level elements: they are the system's
       // chip (coarse) form; operations and tables only unfold in the full form.
-      // Subsystems publish too: their APIs and proxies show inside the parent box.
+      // Subsystems publish too: their APIs and proxies nest INSIDE their own chip
+      // (moving an API to a subsystem must be VISIBLE); the operations level still
+      // unfolds them as boxes of the parent, where the wiring is what matters.
       const subsystemIds = new Set(
         model.externalSystems.filter((sub) => sub.parentExternalSystemId === x.id).map((sub) => sub.id),
       );
@@ -950,13 +983,24 @@ export function contextMapScene(
         model.externalSystems.find((e) => e.id === publisherId)?.name ?? x.name;
       const publishedApis = nestedApis.filter((a) => ownedBy(a.publishedByExternalSystemId));
       const hostedProxies = nestedProxies.filter((px) => ownedBy(px.publishedByExternalSystemId));
-      const proxyChips: ChildDesc[] = hostedProxies.map(
-        (px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' }),
-      );
+      const ownApiChips = publishedApis.filter((a) => a.publishedByExternalSystemId === x.id);
+      const ownProxyChips = hostedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
       const richChildren: ChildDesc[] = [
         ...model.externalSystems
           .filter((sub) => sub.parentExternalSystemId === x.id)
-          .map((sub): ChildDesc => ({ id: sub.id, name: sub.name, kind: 'external-system' })),
+          .map((sub): ChildDesc => ({
+            id: sub.id,
+            name: sub.name,
+            kind: 'external-system',
+            children: [
+              ...nestedApis
+                .filter((a) => a.publishedByExternalSystemId === sub.id)
+                .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+              ...nestedProxies
+                .filter((px) => px.publishedByExternalSystemId === sub.id)
+                .map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
+            ],
+          })),
         ...(x.useCases ?? []).map(
           (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
         ),
@@ -979,7 +1023,7 @@ export function contextMapScene(
       // Subsystems are strategic, like the published APIs: they show from the
       // coarse form on — otherwise nobody can drop an API on them.
       const plainChildren: ChildDesc[] = [
-        ...proxyChips,
+        ...ownProxyChips.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
         ...(xForm === 'full' ? richChildren : subsystemChips),
       ];
       const unfoldableProxies = operationsLevel && xForm === 'full'
@@ -1038,7 +1082,7 @@ export function contextMapScene(
       const children: ChildDesc[] = xForm === 'compact'
         ? []
         : [
-            ...publishedApis.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+            ...ownApiChips.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
             ...plainChildren,
           ];
       if (children.length > 0) {

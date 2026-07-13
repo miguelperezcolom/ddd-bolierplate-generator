@@ -88,8 +88,12 @@ describe('contextMapScene — subsystems', () => {
     });
     const scene = contextMapScene(model, {}, 'contexts');
     const api = scene.nodes.find((n) => n.id === 'api-ventus');
-    // the API neither floats top-level nor disappears: it is a chip in Rumbo's box
-    expect(api?.parentId).toBe('ext-rumbo');
+    // the API nests INSIDE the subsystem's chip — moving it there must be visible
+    expect(api?.parentId).toBe('ext-ventus');
+    const sub = scene.nodes.find((n) => n.id === 'ext-ventus');
+    // and the chip grows to hold it (taller than a plain chip) and accepts resize
+    expect((sub?.h ?? 0)).toBeGreaterThan(40);
+    expect(sub?.resizable).toBe(true);
   });
 
   it('an orphaned parent reference falls back to top-level', () => {
