@@ -5,6 +5,16 @@ description: Let an AI agent build and validate the Modux spec conversationally 
 
 Modux positions AI as the natural-language-to-model translator: you describe the system, the agent writes the spec, Modux generates the code deterministically. The **MCP authoring server** turns that stance into tooling — any MCP client (Claude Code, IDE assistants, custom agents) can create, inspect and validate model elements directly against the store, with the linter closing the feedback loop in the same conversation.
 
+
+## Two transports, one server
+
+The MCP server speaks stdio (`--modux.mcp`, for agents that spawn a process — Claude Code,
+gemini-cli) **and streamable HTTP at `POST /mcp` on the running app** — same tools, same
+in-memory catalog the open UIs are looking at. The HTTP transport is what the in-app chat's
+pseudo-agent uses (`mateu.agent.cli.mcp-config` points the CLI at it), so asking the chat to
+touch the model edits exactly what you see — and `render_context_map` pastes straight into
+the conversation.
+
 ## System & solutions over MCP
 
 The AI can drive the [solutions workflow](/manual/solutions/) too: `workspace_status`
