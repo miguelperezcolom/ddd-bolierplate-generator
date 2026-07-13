@@ -1277,15 +1277,25 @@ export class ModuxExplorer extends LitElement {
     ctx.restore();
   }
 
+  /** The traveller's own state: deriving position from the global clock made it
+   *  BOUNCE — the organism's physics moves the nodes, the leg lengths breathe,
+   *  and a time→distance mapping recomputed per frame jitters at boundaries.
+   *  Advancing (run, leg, progress) by dt keeps the ride smooth. */
+  private runnerState: { run: number; leg: number; t: number; pause: number } | null = null;
+  private runnerLastClock = 0;
+
   /**
    * A traveller tours the journey: it enters at a run's origin, follows its legs
    * — curve by curve — and when it arrives the NEXT run takes the stage, looping
-   * through every route the DAG offers. Time comes from the explorer's own clock.
+   * through every route the DAG offers.
    */
   private drawJourneyRunner(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
-    if (!this.journey?.runs?.length) return;
+    if (!this.journey?.runs?.length) {
+      this.runnerState = null;
+      return;
+    }
     const byId = new Map(this.journey.legs.map((l) => [l.id, l]));
-    // geometry + chord lengths per run, skipping legs hidden at this depth
+    // geometry per run, skipping legs hidden at this depth
     const runs = this.journey.runs
       .map((run) =>
         run
@@ -1295,30 +1305,38 @@ export class ModuxExplorer extends LitElement {
           .filter((g): g is NonNullable<typeof g> => !!g),
       )
       .filter((run) => run.length > 0);
-    if (!runs.length) return;
+    if (!runs.length) {
+      this.runnerState = null;
+      return;
+    }
     const SPEED = 170; // world units per second
     const GAP = 0.5;   // pause between runs
-    const durations = runs.map((run) =>
-      Math.max(1.2, run.reduce((acc, g) => acc + Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y), 0) / SPEED));
-    const total = durations.reduce((a, b) => a + b + GAP, 0);
-    let t = this.t % total;
-    let k = 0;
-    while (t > durations[k] + GAP) {
-      t -= durations[k] + GAP;
-      k++;
+    const dt = Math.max(0, Math.min(0.1, this.t - this.runnerLastClock));
+    this.runnerLastClock = this.t;
+    let st = this.runnerState;
+    if (!st || st.run >= runs.length) st = this.runnerState = { run: 0, leg: 0, t: 0, pause: 0 };
+    if (st.pause > 0) {
+      st.pause -= dt;
+      return; // resting between runs, off stage
     }
-    if (t > durations[k]) return; // resting between runs
-    const run = runs[k];
-    const lengths = run.map((g) => Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y));
-    const runLength = lengths.reduce((a, b) => a + b, 0) || 1;
-    let distance = (t / durations[k]) * runLength;
-    let i = 0;
-    while (i < run.length - 1 && distance > lengths[i]) {
-      distance -= lengths[i];
-      i++;
+    if (st.leg >= runs[st.run].length) st.leg = runs[st.run].length - 1;
+    let g = runs[st.run][st.leg];
+    const lengthOf = (geom: typeof g) => Math.max(24, Math.hypot(geom.b.x - geom.a.x, geom.b.y - geom.a.y));
+    st.t += (dt * SPEED) / lengthOf(g);
+    while (st.t >= 1) {
+      st.t -= 1;
+      st.leg++;
+      if (st.leg >= runs[st.run].length) {
+        st.run = (st.run + 1) % runs.length;
+        st.leg = 0;
+        st.t = 0;
+        st.pause = GAP;
+        return;
+      }
+      g = runs[st.run][st.leg];
+      st.t = st.t * 1; // remaining fraction rides into the next leg at its own pace
     }
-    const g = run[i];
-    const lt = Math.min(1, distance / (lengths[i] || 1));
+    const lt = st.t;
     const omt = 1 - lt;
     const x = omt * omt * g.a.x + 2 * omt * lt * g.cx + lt * lt * g.b.x;
     const y = omt * omt * g.a.y + 2 * omt * lt * g.cy + lt * lt * g.b.y;
