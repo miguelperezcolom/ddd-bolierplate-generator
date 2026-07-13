@@ -2,14 +2,14 @@ package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
@@ -48,7 +48,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -124,7 +124,7 @@ public class EditorApiController {
 
     // ---- projection -------------------------------------------------------
 
-    public record ModuleDto(String id, String name, String subdomainType, String serviceId,
+    public record BoundedContextDto(String id, String name, String subdomainType, String serviceId,
                             List<UseCaseDto> useCases, List<DomainEventDto> domainEvents,
                             List<ReadModelDto> readModels, List<DomainServiceDto> domainServices,
                             List<ApplicationEventDto> applicationEvents,
@@ -135,9 +135,9 @@ public class EditorApiController {
                             List<String> uiAppIds) {}
 
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
-    /** A code module: distribution unit inside a bounded context; services deploy them. */
-    public record CodeModuleDto(String id, String name, String moduleId, List<String> elementIds) {}
-    public record ServiceDto(String id, String name, List<String> moduleIds, List<String> codeModuleIds,
+    /** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
+    public record ModuleDto(String id, String name, String boundedContextId, List<String> elementIds) {}
+    public record ServiceDto(String id, String name, List<String> boundedContextIds, List<String> moduleIds,
                              String database, boolean outboxEnabled) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
@@ -174,7 +174,7 @@ public class EditorApiController {
                              List<UseCaseStepDto> steps) {}
     /** An operation of a use case — the pipeline step, with its custom-code delegation. */
     public record UseCaseStepDto(String id, String name, String type, String customCodeId) {}
-    public record AggregateDto(String id, String name, String moduleId,
+    public record AggregateDto(String id, String name, String boundedContextId,
                                /** The rules the aggregate protects — its very reason to exist. */
                                List<AggregateInvariantDto> invariants) {}
     public record AggregateInvariantDto(String id, String name) {}
@@ -183,7 +183,7 @@ public class EditorApiController {
     public record ProcessStepDto(String id, String name, String type, String useCaseId, String roleId,
                                  String deadline, String compensationUseCaseId) {}
     public record ProcessDto(String id, String name, String triggerAggregateId, String triggerEvent,
-                             String ownerModuleId, String onCompletionEventName, String sla,
+                             String ownerBoundedContextId, String onCompletionEventName, String sla,
                              List<ProcessStepDto> steps) {}
     public record WorkflowStepDto(String id, String name, String emittedEventName,
                                   String targetUseCaseId, String completionEventName,
@@ -195,7 +195,7 @@ public class EditorApiController {
     public record WorkflowGatewayDto(String id, String name, String type, String semantics,
                                      List<String> sourceIds, List<String> targetIds,
                                      List<GatewayBranchConditionDto> branchConditions) {}
-    /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
+    /** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner boundedContext). */
     public record WorkflowDto(String id, String name, String triggerAggregateId,
                               String triggerDomainServiceId, String triggerUseCaseId,
                               String triggerEvent, String onCompletionEventName,
@@ -208,7 +208,7 @@ public class EditorApiController {
                                   List<SubscriptionActionDto> actions) {}
     public record ProjectionDto(String id, String name, String readModelId, String readModelName,
                                 List<String> handledEventIds, String sourceAggregateId,
-                                String moduleId, String sourceExternalUseCaseId,
+                                String boundedContextId, String sourceExternalUseCaseId,
                                 String sourceExternalTableId) {}
     public record ViewDto(String id, String name, String kind, List<String> memberIds) {}
     /** A business actor (RoleEntity) shown on the context map. */
@@ -245,13 +245,13 @@ public class EditorApiController {
                          List<String> sourceExternalTableIds,
                          List<String> sourceApiIds,
                          List<String> sourceExternalSystemIds,
-                         List<String> sourceModuleIds) {}
+                         List<String> sourceBoundedContextIds) {}
     public record RagContentSourceDto(String type, String uri) {}
     /** A published API as a first-class element; operations wire to their implementers. */
     public record ApiDto(String id, String name, List<ApiOperationDto> operations,
                          String publishedByExternalSystemId) {}
     public record ApiOperationDto(String id, String name, String httpMethod, String path,
-                                  String targetModuleId, String targetUseCaseId) {}
+                                  String targetBoundedContextId, String targetUseCaseId) {}
     /** An AI agent grounds its answers on a knowledge base. */
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
@@ -271,13 +271,13 @@ public class EditorApiController {
     public record ProxyApiDto(String id, String name, String targetApiId,
                               String publishedByExternalSystemId) {}
     /** The SAME published API, (also) implemented in one of our bounded contexts. */
-    public record ApiImplementationDto(String apiId, String moduleId) {}
+    public record ApiImplementationDto(String apiId, String boundedContextId) {}
     /** One proxy operation routed to an implementation site of the fronted API. */
     public record ProxyOperationRouteDto(String proxyId, String operationId, String targetSiteId) {}
     /** An external system calls one API operation at a site (published API, proxy or implementation). */
     public record ExternalOperationUseDto(String externalSystemId, String operationId, String siteId) {}
     /** The use case implementing one operation at one implementation site. */
-    public record ApiOperationImplementationDto(String apiId, String operationId, String moduleId, String useCaseId) {}
+    public record ApiOperationImplementationDto(String apiId, String operationId, String boundedContextId, String useCaseId) {}
     /** A UI app (UiAdapterEntity): the shell an actor opens; its menu tree points at pages. */
     public record UiAppDto(String id, String name, String title, List<UiMenuEntryDto> menuItems,
                            String type, String headerPageId, String homePageId, String homeAppId,
@@ -301,16 +301,16 @@ public class EditorApiController {
 
     public record UiWizardStepDto(String pageId, String label, String id) {}
 
-    public record EtlFlowDto(String id, String name, String ownerModuleId, List<EtlStepDto> steps,
+    public record EtlFlowDto(String id, String name, String ownerBoundedContextId, List<EtlStepDto> steps,
                              String identityProviderId) {}
 
     public record IdentityProviderDto(String id, String name, String type, String issuer,
                                       String publishedByExternalSystemId) {}
 
-    public record NotificationDto(String id, String name, String ownerModuleId, String eventId,
+    public record NotificationDto(String id, String name, String ownerBoundedContextId, String eventId,
                                   List<String> channels, List<String> recipientRoleIds) {}
 
-    public record DocumentDto(String id, String name, String ownerModuleId, String kind,
+    public record DocumentDto(String id, String name, String ownerBoundedContextId, String kind,
                               String modelId, String queryServiceId, String queryOperationId) {}
 
     public record EtlStepDto(String id, String name, String type, String externalTableId,
@@ -345,7 +345,7 @@ public class EditorApiController {
                                     TransformationRefDto output, String customCodeId) {}
 
     public record EditorModelDto(
-            List<ModuleDto> modules,
+            List<BoundedContextDto> boundedContexts,
             List<ExternalSystemDto> externalSystems,
             List<RelationDto> relations,
             List<FlowDto> flows,
@@ -397,7 +397,7 @@ public class EditorApiController {
             List<ActorAppUseDto> actorAppUses,
             List<ModelRefDto> models,
             List<NamedRefDto> sagas,
-            List<CodeModuleDto> codeModules,
+            List<ModuleDto> modules,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
             List<CustomCodeDto> customCodes,
@@ -507,7 +507,7 @@ public class EditorApiController {
     }
 
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
-                                String id, String name, String subdomainType, String moduleId,
+                                String id, String name, String subdomainType, String boundedContextId,
                                 String aggregateId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String triggerDomainServiceId, String triggerUseCaseId,
@@ -572,7 +572,7 @@ public class EditorApiController {
             case "add-relation" -> addRelation(command);
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
-            case "add-module" -> addModule(command);
+            case "add-boundedContext" -> addBoundedContext(command);
             case "add-transformation" -> uiCommands.addTransformation(command);
             case "add-custom-code" -> uiCommands.addCustomCode(command);
             case "add-button-group" -> uiCommands.addButtonGroup(command);
@@ -602,14 +602,14 @@ public class EditorApiController {
             case "move-model-field" -> uiCommands.moveModelField(command);
             case "add-model-mapping-rule" -> uiCommands.addModelMappingRule(command);
             case "remove-model-mapping-rule" -> uiCommands.removeModelMappingRule(command);
-            case "add-code-module" -> addCodeModule(command);
-            case "remove-code-module" -> removeCodeModule(command);
-            case "add-code-module-element" -> addCodeModuleElement(command);
-            case "remove-code-module-element" -> removeCodeModuleElement(command);
+            case "add-module" -> addModule(command);
+            case "remove-module" -> removeModule(command);
+            case "add-module-element" -> addModuleElement(command);
+            case "remove-module-element" -> removeModuleElement(command);
             case "add-service" -> addService(command);
             case "set-workflow-step-role" -> workflowCommands.setWorkflowStepRole(command);
-            case "add-service-code-module" -> addServiceCodeModule(command);
-            case "remove-service-code-module" -> removeServiceCodeModule(command);
+            case "add-service-module" -> addServiceModule(command);
+            case "remove-service-module" -> removeServiceModule(command);
             case "add-external-system" -> addExternalSystem(command);
             case "add-project-reference" -> addProjectReference(command);
             case "remove-external-system" -> removeExternalSystem(command);
@@ -714,7 +714,7 @@ public class EditorApiController {
             case "remove-read-model" -> removeReadModel(command);
             case "add-projection" -> addProjection(command);
             case "remove-projection" -> removeProjection(command);
-            case "remove-module" -> removeModule(command);
+            case "remove-boundedContext" -> removeBoundedContext(command);
             case "remove-aggregate" -> removeAggregate(command);
             case "remove-domain-event" -> removeDomainEvent(command);
             case "remove-emission" -> removeEmission(command);
@@ -846,7 +846,7 @@ public class EditorApiController {
                         .toList();
         repository.save(new ProcessEntity(
                 command.id(), command.name(), null,
-                command.triggerAggregateId(), command.triggerEvent(), command.moduleId(),
+                command.triggerAggregateId(), command.triggerEvent(), command.boundedContextId(),
                 steps, null, null, List.of()));
     }
 
@@ -934,7 +934,7 @@ public class EditorApiController {
     static ProcessEntity withSteps(ProcessEntity p, List<ProcessStepEntity> steps) {
         return new ProcessEntity(
                 p.id(), p.name(), p.description(), p.triggerAggregateId(), p.triggerEvent(),
-                p.ownerModuleId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
+                p.ownerBoundedContextId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
     }
 
 
@@ -959,7 +959,7 @@ public class EditorApiController {
                 s.completionEventName(), dependsOnStepIds, s.description());
     }
 
-    /** A new module belongs to the working project: it joins its first service's moduleIds. */
+    /** A new boundedContext belongs to the working project: it joins its first service's boundedContextIds. */
     /** A deployable service, wired into the current project (created if absent). */
     private void addService(EditorCommand command) {
         if (repository.findById(command.id(), ServiceEntity.class).isPresent()) return;
@@ -980,7 +980,7 @@ public class EditorApiController {
     }
 
     /**
-     * The blank canvas bootstraps itself: the FIRST module materializes the
+     * The blank canvas bootstraps itself: the FIRST boundedContext materializes the
      * project and a service around it, so the topology exists from gesture one
      * (the editor twin of the MCP's bootstrap_project).
      */
@@ -993,46 +993,46 @@ public class EditorApiController {
                 .build());
     }
 
-    private void wireModuleIntoCurrentProject(String moduleId) {
+    private void wireBoundedContextIntoCurrentProject(String boundedContextId) {
         ensureProjectAndService();
         var project = projects.currentProject().orElse(null);
         var serviceId = project == null || project.serviceIds() == null ? null
                 : project.serviceIds().stream().findFirst().orElse(null);
         if (serviceId == null) return;
         repository.findById(serviceId, ServiceEntity.class).ifPresent(service -> {
-            var moduleIds = new ArrayList<>(service.moduleIds() == null ? List.of() : service.moduleIds());
-            if (moduleIds.contains(moduleId)) return;
-            moduleIds.add(moduleId);
+            var boundedContextIds = new ArrayList<>(service.boundedContextIds() == null ? List.of() : service.boundedContextIds());
+            if (boundedContextIds.contains(boundedContextId)) return;
+            boundedContextIds.add(boundedContextId);
             // ServiceEntity is huge; a Jackson round-trip copies it safely field-by-field.
             var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             var node = mapper.valueToTree(service);
             ((com.fasterxml.jackson.databind.node.ObjectNode) node)
-                    .set("moduleIds", mapper.valueToTree(moduleIds));
+                    .set("boundedContextIds", mapper.valueToTree(boundedContextIds));
             try {
                 repository.save(mapper.treeToValue(node, ServiceEntity.class));
             } catch (com.fasterxml.jackson.core.JacksonException e) {
-                throw new IllegalStateException("No se pudo cablear el módulo al servicio", e);
+                throw new IllegalStateException("No se pudo cablear el bounded context al servicio", e);
             }
         });
     }
 
-    private void removeModule(EditorCommand command) {
-        var module = repository.findById(command.id(), ModuleEntity.class).orElse(null);
-        if (module == null) return;
-        if (module.aggregateIds() != null && !module.aggregateIds().isEmpty()) {
+    private void removeBoundedContext(EditorCommand command) {
+        var boundedContext = repository.findById(command.id(), BoundedContextEntity.class).orElse(null);
+        if (boundedContext == null) return;
+        if (boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty()) {
             throw new IllegalArgumentException(
-                    "El módulo " + command.id() + " tiene agregados; bórralos primero");
+                    "El bounded context " + command.id() + " tiene agregados; bórralos primero");
         }
-        // Drop the strategic relations that mention it, then the module itself.
+        // Drop the strategic relations that mention it, then the boundedContext itself.
         var project = projects.owningProject();
         var relations = project.contextMap().stream()
-                .filter(r -> !command.id().equals(r.sourceModuleId())
-                        && !command.id().equals(r.targetModuleId()))
+                .filter(r -> !command.id().equals(r.sourceBoundedContextId())
+                        && !command.id().equals(r.targetBoundedContextId()))
                 .toList();
         if (relations.size() != project.contextMap().size()) {
             repository.save(EditorProjectSupport.withContextMap(project, relations));
         }
-        repository.deleteAllById(List.of(command.id()), ModuleEntity.class);
+        repository.deleteAllById(List.of(command.id()), BoundedContextEntity.class);
     }
 
     private void removeAggregate(EditorCommand command) {
@@ -1042,7 +1042,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El agregado " + command.id() + " tiene entidades; bórralas primero");
         }
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(command.id()))
                 .forEach(m -> repository.save(withAggregateIds(
                         m, m.aggregateIds().stream().filter(id -> !id.equals(command.id())).toList())));
@@ -1051,7 +1051,7 @@ public class EditorApiController {
 
     private void renameElement(EditorCommand command) {
         switch (Objects.requireNonNull(command.type(), "rename-element.type (elementType)")) {
-            case "module" -> repository.findById(command.id(), ModuleEntity.class)
+            case "boundedContext" -> repository.findById(command.id(), BoundedContextEntity.class)
                     .ifPresent(m -> repository.save(m.toBuilder().name(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
                     .ifPresent(a -> repository.save(new AggregateEntity(
@@ -1117,11 +1117,11 @@ public class EditorApiController {
                             ds.id(), command.name(), ds.description(), ds.operations())));
             case "query-service" -> repository.findById(command.id(), QueryServiceEntity.class)
                     .ifPresent(qs -> repository.save(new QueryServiceEntity(
-                            qs.id(), command.name(), qs.moduleId(), qs.description(),
+                            qs.id(), command.name(), qs.boundedContextId(), qs.description(),
                             qs.operations(), qs.exposedAsGrpc())));
             case "read-model" -> repository.findById(command.id(), ReadModelEntity.class)
                     .ifPresent(rm -> repository.save(new ReadModelEntity(
-                            rm.id(), command.name(), rm.moduleId(), rm.description(), rm.modelId(),
+                            rm.id(), command.name(), rm.boundedContextId(), rm.description(), rm.modelId(),
                             rm.storageType(), rm.consistency(), rm.aggregateId())));
             case "domain-event" -> repository.findById(command.id(), DomainEventEntity.class)
                     .ifPresent(ev -> repository.save(new DomainEventEntity(
@@ -1183,10 +1183,10 @@ public class EditorApiController {
         }
     }
 
-    private void addModule(EditorCommand command) {
-        if (repository.findById(command.id(), ModuleEntity.class).isPresent()) return;
-        wireModuleIntoCurrentProject(command.id());
-        repository.save(new ModuleEntity(
+    private void addBoundedContext(EditorCommand command) {
+        if (repository.findById(command.id(), BoundedContextEntity.class).isPresent()) return;
+        wireBoundedContextIntoCurrentProject(command.id());
+        repository.save(new BoundedContextEntity(
                 command.id(), command.name(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(),
@@ -1196,61 +1196,61 @@ public class EditorApiController {
                 List.of(), List.of(), List.of(), null, null, null, null));
     }
 
-    private void addCodeModule(EditorCommand command) {
-        if (repository.findById(command.id(), CodeModuleEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        repository.save(new CodeModuleEntity(command.id(), command.name(), command.moduleId(), List.of()));
+    private void addModule(EditorCommand command) {
+        if (repository.findById(command.id(), ModuleEntity.class).isPresent()) return;
+        repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
+        repository.save(new ModuleEntity(command.id(), command.name(), command.boundedContextId(), List.of()));
     }
 
-    private void removeCodeModule(EditorCommand command) {
+    private void removeModule(EditorCommand command) {
         // the services that deployed it let go; its elements just become undistributed
         repository.findAllOfType(ServiceEntity.class).stream()
-                .filter(s -> s.codeModuleIds().contains(command.id()))
+                .filter(s -> s.moduleIds().contains(command.id()))
                 .forEach(s -> repository.save(s.toBuilder()
-                        .codeModuleIds(AgentEditorCommands.without(s.codeModuleIds(), command.id())).build()));
-        repository.deleteAllById(List.of(command.id()), CodeModuleEntity.class);
+                        .moduleIds(AgentEditorCommands.without(s.moduleIds(), command.id())).build()));
+        repository.deleteAllById(List.of(command.id()), ModuleEntity.class);
     }
 
-    private void addCodeModuleElement(EditorCommand command) {
-        var codeModule = repository.findById(command.id(), CodeModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
-        // an element lives in ONE module of its bounded context: assigning here moves it
-        repository.findAllOfType(CodeModuleEntity.class).stream()
-                .filter(cm -> !cm.id().equals(codeModule.id())
-                        && cm.moduleId().equals(codeModule.moduleId())
+    private void addModuleElement(EditorCommand command) {
+        var module = repository.findById(command.id(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code boundedContext: " + command.id()));
+        // an element lives in ONE boundedContext of its bounded context: assigning here moves it
+        repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(cm -> !cm.id().equals(module.id())
+                        && cm.boundedContextId().equals(module.boundedContextId())
                         && cm.elementIds().contains(command.elementId()))
                 .forEach(cm -> repository.save(cm.toBuilder()
                         .elementIds(AgentEditorCommands.without(cm.elementIds(), command.elementId())).build()));
-        if (codeModule.elementIds().contains(command.elementId())) return;
-        var ids = new ArrayList<>(codeModule.elementIds());
+        if (module.elementIds().contains(command.elementId())) return;
+        var ids = new ArrayList<>(module.elementIds());
         ids.add(command.elementId());
-        repository.save(codeModule.toBuilder().elementIds(ids).build());
+        repository.save(module.toBuilder().elementIds(ids).build());
     }
 
-    private void removeCodeModuleElement(EditorCommand command) {
-        var codeModule = repository.findById(command.id(), CodeModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
-        repository.save(codeModule.toBuilder()
-                .elementIds(AgentEditorCommands.without(codeModule.elementIds(), command.elementId())).build());
+    private void removeModuleElement(EditorCommand command) {
+        var module = repository.findById(command.id(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code boundedContext: " + command.id()));
+        repository.save(module.toBuilder()
+                .elementIds(AgentEditorCommands.without(module.elementIds(), command.elementId())).build());
     }
 
-    private void addServiceCodeModule(EditorCommand command) {
+    private void addServiceModule(EditorCommand command) {
         var service = repository.findById(command.serviceId(), ServiceEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
-        repository.findById(command.id(), CodeModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown code module: " + command.id()));
-        if (service.codeModuleIds().contains(command.id())) return;
-        var ids = new ArrayList<>(service.codeModuleIds());
+        repository.findById(command.id(), ModuleEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown code boundedContext: " + command.id()));
+        if (service.moduleIds().contains(command.id())) return;
+        var ids = new ArrayList<>(service.moduleIds());
         ids.add(command.id());
-        repository.save(service.toBuilder().codeModuleIds(ids).build());
+        repository.save(service.toBuilder().moduleIds(ids).build());
     }
 
-    private void removeServiceCodeModule(EditorCommand command) {
+    private void removeServiceModule(EditorCommand command) {
         var service = repository.findById(command.serviceId(), ServiceEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
         repository.save(service.toBuilder()
-                .codeModuleIds(AgentEditorCommands.without(service.codeModuleIds(), command.id())).build());
+                .moduleIds(AgentEditorCommands.without(service.moduleIds(), command.id())).build());
     }
 
     /** The invariant declares WHY the aggregate exists; its conditions detail HOW (ficha). */
@@ -1278,8 +1278,8 @@ public class EditorApiController {
 
     private void addAggregate(EditorCommand command) {
         if (repository.findById(command.id(), AggregateEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         // Stub state model so the aggregate is referentially complete from birth;
         // fields get filled in later through the CRUD.
         var modelId = "model-" + command.id().replaceFirst("^agg-", "");
@@ -1290,24 +1290,24 @@ public class EditorApiController {
                 command.id(), command.name(), modelId,
                 null, null, null, null, false, false, null,
                 List.of(), List.of(), List.of(), null, false, List.of()));
-        var aggregateIds = new ArrayList<>(module.aggregateIds() == null ? List.of() : module.aggregateIds());
+        var aggregateIds = new ArrayList<>(boundedContext.aggregateIds() == null ? List.of() : boundedContext.aggregateIds());
         aggregateIds.add(command.id());
-        repository.save(withAggregateIds(module, aggregateIds));
+        repository.save(withAggregateIds(boundedContext, aggregateIds));
     }
 
     private void addDomainEvent(EditorCommand command) {
         if (repository.findById(command.id(), DomainEventEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new DomainEventEntity(
                 command.id(), command.name(), null,
                 false, null, null, null, null, null, null,
                 false, null, null, null, null, false));
-        // The event belongs to the bounded context through the module's id list.
+        // The event belongs to the bounded context through the boundedContext's id list.
         var domainEventIds = new ArrayList<>(
-                module.domainEventIds() == null ? List.of() : module.domainEventIds());
+                boundedContext.domainEventIds() == null ? List.of() : boundedContext.domainEventIds());
         domainEventIds.add(command.id());
-        repository.save(module.toBuilder().domainEventIds(domainEventIds).build());
+        repository.save(boundedContext.toBuilder().domainEventIds(domainEventIds).build());
     }
 
     /**
@@ -1404,16 +1404,16 @@ public class EditorApiController {
 
     private void addApplicationEvent(EditorCommand command) {
         if (repository.findById(command.id(), ApplicationEventEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new ApplicationEventEntity(command.id(), command.name(), null));
-        var applicationEventIds = new ArrayList<>(module.applicationEventIds());
+        var applicationEventIds = new ArrayList<>(boundedContext.applicationEventIds());
         applicationEventIds.add(command.id());
-        repository.save(module.toBuilder().applicationEventIds(applicationEventIds).build());
+        repository.save(boundedContext.toBuilder().applicationEventIds(applicationEventIds).build());
     }
 
     private void removeApplicationEvent(EditorCommand command) {
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.applicationEventIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .applicationEventIds(m.applicationEventIds().stream()
@@ -1518,21 +1518,21 @@ public class EditorApiController {
     /** A cron task inside a bounded context; the use case it fires is its target. */
     private void addScheduledTrigger(EditorCommand command) {
         if (repository.findById(command.id(), ScheduledTriggerEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new ScheduledTriggerEntity(command.id(), command.name(),
                 command.cronExpression() != null ? command.cronExpression() : "0 0 * * *",
                 null, command.targetUseCaseId(), null, null, null, null, null, null, null, false, false, null));
-        var ids = new ArrayList<>(module.scheduledTriggerIds() == null ? List.of() : module.scheduledTriggerIds());
+        var ids = new ArrayList<>(boundedContext.scheduledTriggerIds() == null ? List.of() : boundedContext.scheduledTriggerIds());
         ids.add(command.id());
-        repository.save(module.toBuilder().scheduledTriggerIds(ids).build());
+        repository.save(boundedContext.toBuilder().scheduledTriggerIds(ids).build());
     }
 
     private void removeScheduledTrigger(EditorCommand command) {
-        for (var module : repository.findAllOfType(ModuleEntity.class)) {
-            var ids = module.scheduledTriggerIds();
+        for (var boundedContext : repository.findAllOfType(BoundedContextEntity.class)) {
+            var ids = boundedContext.scheduledTriggerIds();
             if (ids != null && ids.contains(command.id())) {
-                repository.save(module.toBuilder()
+                repository.save(boundedContext.toBuilder()
                         .scheduledTriggerIds(AgentEditorCommands.without(ids, command.id())).build());
             }
         }
@@ -1554,10 +1554,10 @@ public class EditorApiController {
 
     private void addQueryService(EditorCommand command) {
         if (repository.findById(command.id(), QueryServiceEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new QueryServiceEntity(
-                command.id(), command.name(), command.moduleId(), null, List.of(), false));
+                command.id(), command.name(), command.boundedContextId(), null, List.of(), false));
     }
 
     private void removeQueryService(EditorCommand command) {
@@ -1742,7 +1742,7 @@ public class EditorApiController {
         repository.save(proxy.withPublishedByExternalSystemId(home));
     }
 
-    /** Optionally born wired: targetId = the API it fronts, moduleId = the host system. */
+    /** Optionally born wired: targetId = the API it fronts, boundedContextId = the host system. */
     private void addProxyApi(EditorCommand command) {
         if (repository.findById(command.id(), ProxyApiEntity.class).isPresent()) return;
         var target = command.targetId();
@@ -1750,7 +1750,7 @@ public class EditorApiController {
                 && repository.findById(target, ApiEntity.class).isEmpty()) {
             throw new IllegalArgumentException("API desconocida: " + target);
         }
-        var host = command.moduleId();
+        var host = command.boundedContextId();
         if (host != null && !host.isBlank()
                 && projects.owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + host);
@@ -1815,7 +1815,7 @@ public class EditorApiController {
 
     /**
      * An actor manages an aggregate through a CRUD UI: stub create/update/delete use
-     * cases appear in the aggregate's module (with steps anchored to the aggregate) and
+     * cases appear in the aggregate's boundedContext (with steps anchored to the aggregate) and
      * the actor is allowed on all three. The UI itself derives at generation time.
      */
     private void addActorCrud(EditorCommand command) {
@@ -1823,12 +1823,12 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
         var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
-        var module = repository.findAllOfType(ModuleEntity.class).stream()
+        var boundedContext = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "El agregado " + aggregate.id() + " no pertenece a ningún módulo"));
-        var useCaseIds = new ArrayList<>(module.useCaseIds() == null ? List.of() : module.useCaseIds());
+                        "El agregado " + aggregate.id() + " no pertenece a ningún bounded context"));
+        var useCaseIds = new ArrayList<>(boundedContext.useCaseIds() == null ? List.of() : boundedContext.useCaseIds());
         var allowed = new ArrayList<>(role.allowedUseCaseIds());
         for (var uc : crudUseCases(aggregate)) {
             if (repository.findById(uc.id(), UseCaseEntity.class).isEmpty()) {
@@ -1837,7 +1837,7 @@ public class EditorApiController {
             if (!useCaseIds.contains(uc.id())) useCaseIds.add(uc.id());
             if (!allowed.contains(uc.id())) allowed.add(uc.id());
         }
-        repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
+        repository.save(boundedContext.toBuilder().useCaseIds(useCaseIds).build());
         repository.save(role.withAllowedUseCaseIds(allowed));
     }
 
@@ -1863,7 +1863,7 @@ public class EditorApiController {
                 .filter(id -> !referenced.contains(id) && !otherActors.contains(id))
                 .toList();
         if (!removable.isEmpty()) {
-            repository.findAllOfType(ModuleEntity.class).stream()
+            repository.findAllOfType(BoundedContextEntity.class).stream()
                     .filter(m -> m.useCaseIds() != null && m.useCaseIds().stream().anyMatch(removable::contains))
                     .forEach(m -> repository.save(m.toBuilder()
                             .useCaseIds(m.useCaseIds().stream().filter(id -> !removable.contains(id)).toList())
@@ -1874,14 +1874,14 @@ public class EditorApiController {
 
     private void addUseCase(EditorCommand command) {
         if (repository.findById(command.id(), UseCaseEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         // A policy is a use-case-shaped reaction: same catalog, no UI derivation.
         repository.save(stubUseCase(command.id(), command.name(), List.of(), false,
                 Boolean.TRUE.equals(command.policy())));
-        var useCaseIds = new ArrayList<>(module.useCaseIds() == null ? List.of() : module.useCaseIds());
+        var useCaseIds = new ArrayList<>(boundedContext.useCaseIds() == null ? List.of() : boundedContext.useCaseIds());
         useCaseIds.add(command.id());
-        repository.save(module.toBuilder().useCaseIds(useCaseIds).build());
+        repository.save(boundedContext.toBuilder().useCaseIds(useCaseIds).build());
     }
 
     private void removeUseCase(EditorCommand command) {
@@ -1905,7 +1905,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El caso de uso " + command.id() + " participa en flows; bórralos primero");
         }
-        var translatedByAcl = repository.findAllOfType(ModuleEntity.class).stream()
+        var translatedByAcl = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.acls() != null)
                 .flatMap(m -> m.acls().stream())
                 .anyMatch(a -> a.translatedUseCaseIds() != null
@@ -1926,7 +1926,7 @@ public class EditorApiController {
                 .filter(g -> g.useCaseIds().contains(command.id()))
                 .forEach(g -> repository.save(g.withUseCaseIds(
                         AgentEditorCommands.without(g.useCaseIds(), command.id()))));
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .useCaseIds(m.useCaseIds().stream().filter(id -> !id.equals(command.id())).toList())
@@ -1934,7 +1934,7 @@ public class EditorApiController {
         repository.deleteAllById(List.of(command.id()), UseCaseEntity.class);
     }
 
-    /** An external system calls one of our use cases: an INBOUND ACL in the target module. */
+    /** An external system calls one of our use cases: an INBOUND ACL in the target boundedContext. */
     private void addExternalCall(EditorCommand command) {
         var external = projects.owningProject().externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId()))
@@ -1942,12 +1942,12 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
         repository.findById(command.targetId(), UseCaseEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.targetId()));
-        var module = repository.findAllOfType(ModuleEntity.class).stream()
+        var boundedContext = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(command.targetId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "El caso de uso " + command.targetId() + " no pertenece a ningún módulo"));
-        var acls = new ArrayList<>(module.acls() == null ? List.of() : module.acls());
+                        "El caso de uso " + command.targetId() + " no pertenece a ningún bounded context"));
+        var acls = new ArrayList<>(boundedContext.acls() == null ? List.of() : boundedContext.acls());
         var existing = acls.stream()
                 .filter(a -> external.id().equals(a.externalSystem()) && "INBOUND".equalsIgnoreCase(a.direction()))
                 .findFirst().orElse(null);
@@ -1961,15 +1961,15 @@ public class EditorApiController {
                     existing.externalSystem(), existing.description(), existing.direction(),
                     existing.gatewayId(), existing.translatedDomainEventIds(), ids));
         } else {
-            acls.add(new AclEntity("acl-" + external.id() + "-" + module.id(),
+            acls.add(new AclEntity("acl-" + external.id() + "-" + boundedContext.id(),
                     "Acl" + capitalize(external.name()), external.id(), null, "INBOUND", null,
                     List.of(), List.of(command.targetId())));
         }
-        repository.save(module.toBuilder().acls(acls).build());
+        repository.save(boundedContext.toBuilder().acls(acls).build());
     }
 
     private void removeExternalCall(EditorCommand command) {
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.acls() != null && m.acls().stream().anyMatch(a ->
                         command.sourceId().equals(a.externalSystem())
                                 && "INBOUND".equalsIgnoreCase(a.direction())
@@ -1991,14 +1991,14 @@ public class EditorApiController {
                         .toList()).build()));
     }
 
-    /** A use case OFFERED by an external system (moduleId carries the external system id). */
+    /** A use case OFFERED by an external system (boundedContextId carries the external system id). */
     private void addExternalUseCase(EditorCommand command) {
         var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
-                .filter(x -> x.id().equals(command.moduleId()))
+                .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.moduleId()));
+                .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.boundedContextId()));
         if (external.useCases().stream().anyMatch(u -> u.id().equals(command.id()))) return;
         var useCases = new ArrayList<>(external.useCases());
         useCases.add(new ExternalSystemUseCaseEntity(command.id(), command.name(), null));
@@ -2058,15 +2058,15 @@ public class EditorApiController {
         return x.withTables(tables);
     }
 
-    /** An MCP server published by an external system (moduleId carries the external system id). */
+    /** An MCP server published by an external system (boundedContextId carries the external system id). */
     private void addMcpServer(EditorCommand command) {
         var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
-                .filter(x -> x.id().equals(command.moduleId()))
+                .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown external system: " + command.moduleId()));
+                        "Unknown external system: " + command.boundedContextId()));
         if (external.mcpServers().stream().anyMatch(s -> s.id().equals(command.id()))) return;
         var servers = new ArrayList<>(external.mcpServers());
         servers.add(new McpServerEntity(command.id(), command.name(), null, command.uri()));
@@ -2092,15 +2092,15 @@ public class EditorApiController {
                 .toList()));
     }
 
-    /** A table offered by an external system (moduleId carries the external system id). */
+    /** A table offered by an external system (boundedContextId carries the external system id). */
     private void addExternalTable(EditorCommand command) {
         var project = projects.owningProject();
         var externalSystems = new ArrayList<>(project.externalSystems());
         var external = externalSystems.stream()
-                .filter(x -> x.id().equals(command.moduleId()))
+                .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Unknown external system: " + command.moduleId()));
+                        "Unknown external system: " + command.boundedContextId()));
         if (external.tables().stream().anyMatch(t -> t.id().equals(command.id()))) return;
         var tables = new ArrayList<>(external.tables());
         tables.add(new ExternalSystemTableEntity(command.id(), command.name(), null));
@@ -2173,12 +2173,12 @@ public class EditorApiController {
 
     private void addDomainService(EditorCommand command) {
         if (repository.findById(command.id(), DomainServiceEntity.class).isPresent()) return;
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new DomainServiceEntity(command.id(), command.name(), null, List.of()));
-        var domainServiceIds = new ArrayList<>(module.domainServiceIds());
+        var domainServiceIds = new ArrayList<>(boundedContext.domainServiceIds());
         domainServiceIds.add(command.id());
-        repository.save(module.toBuilder().domainServiceIds(domainServiceIds).build());
+        repository.save(boundedContext.toBuilder().domainServiceIds(domainServiceIds).build());
     }
 
     private void removeDomainService(EditorCommand command) {
@@ -2188,7 +2188,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El servicio de dominio " + command.id() + " dispara flows; bórralos primero");
         }
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.domainServiceIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .domainServiceIds(m.domainServiceIds().stream()
@@ -2227,24 +2227,24 @@ public class EditorApiController {
     }
 
     /**
-     * A read model born from an aggregate: it lives in the aggregate's module and its
+     * A read model born from an aggregate: it lives in the aggregate's boundedContext and its
      * shape starts as the aggregate's state model (refinable later through the CRUDs).
      */
     private void addReadModel(EditorCommand command) {
         if (repository.findById(command.id(), ReadModelEntity.class).isPresent()) return;
         var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.aggregateId()));
-        var module = repository.findAllOfType(ModuleEntity.class).stream()
+        var boundedContext = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "El agregado " + aggregate.id() + " no pertenece a ningún módulo"));
-        repository.save(new ReadModelEntity(command.id(), command.name(), module.id(),
+                        "El agregado " + aggregate.id() + " no pertenece a ningún bounded context"));
+        repository.save(new ReadModelEntity(command.id(), command.name(), boundedContext.id(),
                 null, aggregate.modelId(), null, null, aggregate.id()));
         var readModelIds = new ArrayList<>(
-                module.readModelIds() == null ? List.of() : module.readModelIds());
+                boundedContext.readModelIds() == null ? List.of() : boundedContext.readModelIds());
         readModelIds.add(command.id());
-        repository.save(module.toBuilder().readModelIds(readModelIds).build());
+        repository.save(boundedContext.toBuilder().readModelIds(readModelIds).build());
     }
 
     private void removeReadModel(EditorCommand command) {
@@ -2262,7 +2262,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El read model " + name + " lo materializa un flow; borra el flow primero");
         }
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.readModelIds() != null && m.readModelIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .readModelIds(m.readModelIds().stream()
@@ -2274,7 +2274,7 @@ public class EditorApiController {
     /**
      * A projection SOURCED FROM AN AGGREGATE's state (no event handlers): the aggregate is
      * projected onto a read model — possibly in another bounded context. Without a
-     * readModelId a stub read model is born in the target module, shaped after the
+     * readModelId a stub read model is born in the target boundedContext, shaped after the
      * aggregate's state model. How the state travels is a later decision.
      */
     private void addProjection(EditorCommand command) {
@@ -2307,19 +2307,19 @@ public class EditorApiController {
                     "La proyección necesita una fuente: agregado, operación externa o tabla");
         }
         String readModelId;
-        ModuleEntity owner;
+        BoundedContextEntity owner;
         if (command.targetId() != null
                 && repository.findById(command.targetId(), ReadModelEntity.class).isPresent()) {
             readModelId = command.targetId();
-            owner = repository.findAllOfType(ModuleEntity.class).stream()
+            owner = repository.findAllOfType(BoundedContextEntity.class).stream()
                     .filter(m -> m.readModelIds() != null && m.readModelIds().contains(readModelId))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "El read model " + readModelId + " no pertenece a ningún módulo"));
+                            "El read model " + readModelId + " no pertenece a ningún bounded context"));
         } else {
-            owner = repository.findById(command.moduleId(), ModuleEntity.class)
+            owner = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Unknown module: " + command.moduleId()));
+                            "Unknown boundedContext: " + command.boundedContextId()));
             readModelId = "rm-" + command.id().replaceFirst("^proj-", "");
             if (repository.findById(readModelId, ReadModelEntity.class).isEmpty()) {
                 repository.save(new ReadModelEntity(readModelId,
@@ -2355,7 +2355,7 @@ public class EditorApiController {
             throw new IllegalArgumentException("La proyección " + command.id()
                     + " la actualizan subscriptions; quita esas acciones primero");
         }
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.projectionIds() != null && m.projectionIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .projectionIds(m.projectionIds().stream()
@@ -2409,7 +2409,7 @@ public class EditorApiController {
         var operations = new ArrayList<>(api.operations());
         operations.add(new ApiOperationEntity(command.id(), command.name(),
                 command.httpMethod(), command.path(), null,
-                command.moduleId(), command.targetUseCaseId()));
+                command.boundedContextId(), command.targetUseCaseId()));
         repository.save(withApiOperations(api, operations));
     }
 
@@ -2435,13 +2435,13 @@ public class EditorApiController {
                 && repository.findById(command.targetUseCaseId(), UseCaseEntity.class).isEmpty()) {
             throw new IllegalArgumentException("Unknown use case: " + command.targetUseCaseId());
         }
-        if (command.moduleId() != null
-                && repository.findById(command.moduleId(), ModuleEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("Unknown module: " + command.moduleId());
+        if (command.boundedContextId() != null
+                && repository.findById(command.boundedContextId(), BoundedContextEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId());
         }
         repository.save(withApiOperations(api, api.operations().stream()
                 .map(o -> o.id().equals(command.id())
-                        ? o.withTargets(command.moduleId(), command.targetUseCaseId())
+                        ? o.withTargets(command.boundedContextId(), command.targetUseCaseId())
                         : o)
                 .toList()));
     }
@@ -2457,7 +2457,7 @@ public class EditorApiController {
     }
 
     private void removeDomainEvent(EditorCommand command) {
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.domainEventIds() != null && m.domainEventIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .domainEventIds(m.domainEventIds().stream()
@@ -2476,15 +2476,15 @@ public class EditorApiController {
     }
 
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */
-    static ModuleEntity withAggregateIds(ModuleEntity m, List<String> aggregateIds) {
+    static BoundedContextEntity withAggregateIds(BoundedContextEntity m, List<String> aggregateIds) {
         return m.toBuilder().aggregateIds(aggregateIds).build();
     }
 
     private void addRelation(EditorCommand command) {
         var project = projects.owningProject();
         var alreadyThere = project.contextMap().stream()
-                .anyMatch(r -> r.sourceModuleId().equals(command.sourceId())
-                        && r.targetModuleId().equals(command.targetId()));
+                .anyMatch(r -> r.sourceBoundedContextId().equals(command.sourceId())
+                        && r.targetBoundedContextId().equals(command.targetId()));
         if (alreadyThere) return;
         var relations = new ArrayList<>(project.contextMap());
         relations.add(new ContextMapRelationEntity(
@@ -2501,8 +2501,8 @@ public class EditorApiController {
     private void removeRelation(EditorCommand command) {
         var project = projects.owningProject();
         var relations = project.contextMap().stream()
-                .filter(r -> !(r.sourceModuleId().equals(command.sourceId())
-                        && r.targetModuleId().equals(command.targetId())))
+                .filter(r -> !(r.sourceBoundedContextId().equals(command.sourceId())
+                        && r.targetBoundedContextId().equals(command.targetId())))
                 .toList();
         repository.save(EditorProjectSupport.withContextMap(project, relations));
     }
@@ -2512,13 +2512,13 @@ public class EditorApiController {
         var project = projects.owningProject();
         var relations = new ArrayList<>(project.contextMap());
         var existing = relations.stream()
-                .filter(r -> r.sourceModuleId().equals(command.sourceId())
-                        && r.targetModuleId().equals(command.targetId()))
+                .filter(r -> r.sourceBoundedContextId().equals(command.sourceId())
+                        && r.targetBoundedContextId().equals(command.targetId()))
                 .findFirst().orElse(null);
         if (existing != null) {
             relations.set(relations.indexOf(existing), new ContextMapRelationEntity(
-                    existing.id(), existing.name(), existing.sourceModuleId(),
-                    existing.targetModuleId(), command.type(), existing.description(),
+                    existing.id(), existing.name(), existing.sourceBoundedContextId(),
+                    existing.targetBoundedContextId(), command.type(), existing.description(),
                     existing.decisionIds()));
         } else {
             relations.add(new ContextMapRelationEntity(
@@ -2565,7 +2565,7 @@ public class EditorApiController {
 
     private void removeExternalSystem(EditorCommand command) {
         var notifiedByFlow = repository.findAllOfType(FlowEntity.class).stream()
-                .anyMatch(f -> command.id().equals(f.targetModuleId()));
+                .anyMatch(f -> command.id().equals(f.targetBoundedContextId()));
         if (notifiedByFlow) {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " es destino de flows; bórralos primero");

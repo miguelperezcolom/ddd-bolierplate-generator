@@ -62,12 +62,12 @@ public class FlowExpandedPage implements ComponentTreeSupplier {
         md.append("## ").append(flow.name())
                 .append("  `").append(flow.archetype() != null ? flow.archetype().name() : "—").append("`\n\n");
         md.append("_when `").append(when(ctx, flow.triggerEvent()))
-                .append("` → ").append(ctx.targetModuleName()).append("_\n\n");
+                .append("` → ").append(ctx.targetBoundedContextName()).append("_\n\n");
         md.append("| Derived piece | Value |\n|---|---|\n");
         if (x.domainEvent() != null) row(md, "Domain event", "`" + x.domainEvent().name() + "`");
         if (x.payloadModel() != null) row(md, "Payload model", "`" + x.payloadModel().name() + "` (" + fields(x) + ")");
         if (x.integrationEvent() != null) row(md, "Integration event", "topic `" + x.integrationEvent().topicName() + "`");
-        if (x.readModel() != null) row(md, "Read model", "`" + x.readModel().name() + "` @ " + ctx.targetModuleName());
+        if (x.readModel() != null) row(md, "Read model", "`" + x.readModel().name() + "` @ " + ctx.targetBoundedContextName());
         if (x.projection() != null) row(md, "Projection", "`" + x.projection().name() + "`");
         if (x.subscription() != null) row(md, "Subscription", "`" + x.subscription().name() + "`");
         if (x.modelMapping() != null) row(md, "Model mapping", "`" + x.modelMapping().name() + "`");
@@ -97,7 +97,7 @@ public class FlowExpandedPage implements ComponentTreeSupplier {
     private static Flow toDomain(FlowEntity e) {
         return Flow.load(e.id(), e.name(), e.description(),
                 e.archetype() != null ? e.archetype().name() : null,
-                e.triggerAggregateId(), e.triggerEvent(), e.targetModuleId(),
+                e.triggerAggregateId(), e.triggerEvent(), e.targetBoundedContextId(),
                 e.readModelName(), e.materializedFields(), e.targetUseCaseId(), e.inputMappings(), e.overrides());
     }
 }

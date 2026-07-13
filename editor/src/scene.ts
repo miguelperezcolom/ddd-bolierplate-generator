@@ -12,7 +12,7 @@ export interface SceneNode {
   y: number;
   w: number;
   h: number;
-  /** Semantic hint carried back in gesture events (e.g. 'module', 'external-system'). */
+  /** Semantic hint carried back in gesture events (e.g. 'boundedContext', 'external-system'). */
   kind: string;
   fill?: string;
   stroke?: string;

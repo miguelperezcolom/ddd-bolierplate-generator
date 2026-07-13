@@ -12,8 +12,8 @@ public record FlowContextMapFinding(
         String flowId,
         String flowName,
         FlowArchetype archetype,
-        String sourceModuleId,
-        String targetModuleId,
+        String sourceBoundedContextId,
+        String targetBoundedContextId,
         Status status,
         /** The declared relation's type when {@link Status#OK} or {@link Status#REVERSED}; else null. */
         ContextMapRelationType declaredType,

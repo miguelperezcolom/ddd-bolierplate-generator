@@ -1,8 +1,8 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiMeasure;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiTimeGrain;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiTimeGrain;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
@@ -11,7 +11,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.LifecycleE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.LifecycleTransitionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.uidl.data.FieldDataType;
@@ -80,9 +80,9 @@ class LintRulesTest {
                 List.of("hotelId"), KpiTimeGrain.DAY);
         var kpiBad = new KpiEntity("k2", "RevPar", null, "evt-2", KpiMeasure.AVG, null,
                 List.of("hotelId"), KpiTimeGrain.DAY);
-        var module = module("mod1", List.of(kpiOk, kpiBad));
+        var boundedContext = boundedContext("mod1", List.of(kpiOk, kpiBad));
 
-        var findings = new LintRules.KpiValueField().apply(snapshotWith(module));
+        var findings = new LintRules.KpiValueField().apply(snapshotWith(boundedContext));
 
         assertEquals(1, findings.size());
         assertTrue(findings.get(0).message().contains("RevPar"));
@@ -141,10 +141,10 @@ class LintRulesTest {
                 "uc-checkin", "RealizarCheckin", false, false, false, false, true,
                 null, null, List.of(step), List.of(), List.of(), null, null, null, null,
                 null, null, null, null, null, false, null, null, null, false, null, false, null, null, null);
-        var reservas = new ModuleEntity("mod-reservas", "Reservas", null, List.of("agg-reserva"),
+        var reservas = new BoundedContextEntity("mod-reservas", "Reservas", null, List.of("agg-reserva"),
                 null, null, null, null, null, null, null, null, null, null, null, null, false,
                 null, null, null, null, null);
-        var frontoffice = new ModuleEntity("mod-frontoffice", "FrontOffice", null, List.of(),
+        var frontoffice = new BoundedContextEntity("mod-frontoffice", "FrontOffice", null, List.of(),
                 null, null, List.of("uc-checkin"), null, null, null, null, null, null, null, null, null, false,
                 null, null, null, null, null);
         var snapshot = new ModelSnapshot(null, null, List.of(reservas, frontoffice), null, null,
@@ -169,17 +169,17 @@ class LintRulesTest {
     // --- helpers ---
 
     @Test
-    void module_not_in_service_is_flagged_as_undeployed() throws Exception {
-        var module = module("mod1", List.of());
+    void boundedContext_not_in_service_is_flagged_as_undeployed() throws Exception {
+        var boundedContext = boundedContext("mod1", List.of());
         var service = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
-                "{\"id\":\"s1\",\"name\":\"S1\",\"moduleIds\":[\"mod1\"]}",
+                "{\"id\":\"s1\",\"name\":\"S1\",\"boundedContextIds\":[\"mod1\"]}",
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class);
 
-        var orphanFindings = new LintRules.ModuleNotInService().apply(new ModelSnapshot(
-                null, null, List.of(module), null, null, null, null, null,
+        var orphanFindings = new LintRules.BoundedContextNotInService().apply(new ModelSnapshot(
+                null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null));
-        var deployedFindings = new LintRules.ModuleNotInService().apply(new ModelSnapshot(
-                null, List.of(service), List.of(module), null, null, null, null, null,
+        var deployedFindings = new LintRules.BoundedContextNotInService().apply(new ModelSnapshot(
+                null, List.of(service), List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null));
 
         assertTrue(orphanFindings.stream().anyMatch(f -> "mod1".equals(f.elementId())
@@ -188,15 +188,15 @@ class LintRulesTest {
     }
 
     @Test
-    void module_with_aggregates_but_no_read_or_write_path_gets_next_step_advice() {
-        var module = new ModuleEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
+    void boundedContext_with_aggregates_but_no_read_or_write_path_gets_next_step_advice() {
+        var boundedContext = new BoundedContextEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
                 null, null, null, null, null, null, null, null, false, null, null, null, null, null,
                 null, List.of(), List.of());
-        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+        var snapshot = new ModelSnapshot(null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null);
 
-        var readFindings = new LintRules.ModuleReadPath().apply(snapshot);
-        var writeFindings = new LintRules.ModuleWritePath().apply(snapshot);
+        var readFindings = new LintRules.BoundedContextReadPath().apply(snapshot);
+        var writeFindings = new LintRules.BoundedContextWritePath().apply(snapshot);
 
         assertTrue(readFindings.stream().anyMatch(f -> f.message().contains("how is this state read")),
                 readFindings.toString());
@@ -206,30 +206,30 @@ class LintRulesTest {
 
     @Test
     void declared_read_delegation_satisfies_the_read_path() throws Exception {
-        // "the read side lives elsewhere": a CQRS module whose reads are served by another module
-        var module = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+        // "the read side lives elsewhere": a CQRS boundedContext whose reads are served by another boundedContext
+        var boundedContext = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
                 "{\"id\":\"mod1\",\"name\":\"Reservas\",\"aggregateIds\":[\"a1\"],"
-                        + "\"readSideModuleId\":\"mod-dispo\",\"readSideVia\":\"CDC\"}",
-                ModuleEntity.class);
-        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+                        + "\"readSideBoundedContextId\":\"mod-dispo\",\"readSideVia\":\"CDC\"}",
+                BoundedContextEntity.class);
+        var snapshot = new ModelSnapshot(null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null);
 
-        assertTrue(new LintRules.ModuleReadPath().apply(snapshot).isEmpty(),
+        assertTrue(new LintRules.BoundedContextReadPath().apply(snapshot).isEmpty(),
                 "a declared read delegation is a read path");
     }
 
     @Test
-    void a_flow_targeting_the_module_satisfies_the_write_path() {
-        var module = new ModuleEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
+    void a_flow_targeting_the_boundedContext_satisfies_the_write_path() {
+        var boundedContext = new BoundedContextEntity("mod1", "Reservas", null, List.of("a1"), null, null, null, null,
                 null, null, null, null, null, null, null, null, false, null, null, null, null, null,
                 null, List.of(), List.of());
         var flow = new FlowEntity("f1", "Materializa", null,
                 io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype.MATERIALIZES,
                 "a0", "Evento", "mod1", "Vista", List.of(), null, List.of(), List.of());
-        var snapshot = new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+        var snapshot = new ModelSnapshot(null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, List.of(flow), null, null, null, null, null, null);
 
-        assertTrue(new LintRules.ModuleWritePath().apply(snapshot).isEmpty());
+        assertTrue(new LintRules.BoundedContextWritePath().apply(snapshot).isEmpty());
     }
 
     @Test
@@ -305,13 +305,13 @@ class LintRulesTest {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private static ModelSnapshot snapshotWith(ModuleEntity module) {
-        return new ModelSnapshot(null, null, List.of(module), null, null, null, null, null,
+    private static ModelSnapshot snapshotWith(BoundedContextEntity boundedContext) {
+        return new ModelSnapshot(null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private static ModuleEntity module(String id, List<KpiEntity> kpis) {
-        return new ModuleEntity(id, id, null, null, null, null, null, null, null, null, null, null,
+    private static BoundedContextEntity boundedContext(String id, List<KpiEntity> kpis) {
+        return new BoundedContextEntity(id, id, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, false, null, null, null, null, null,
                 null, List.of(), kpis);
     }

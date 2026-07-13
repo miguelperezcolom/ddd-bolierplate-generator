@@ -212,7 +212,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       .map((mm) => `${mm.sourceModelId}->${mm.targetModelId}`),
   );
   const ucById = new Map(
-    model.modules.flatMap((mo) => (mo.useCases ?? []).map((u) => [u.id, u] as const)),
+    model.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((u) => [u.id, u] as const)),
   );
   const seen = new Set<string>();
   for (const page of model.pages ?? []) {

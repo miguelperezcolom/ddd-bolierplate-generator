@@ -7,8 +7,8 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.queryservice.cre
 import io.mateu.modux.modeldrivengenerator.application.usecases.queryservice.create.CreateQueryServiceUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.queryservice.save.SaveQueryServiceCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.queryservice.save.SaveQueryServiceUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -37,8 +37,8 @@ public class QueryServiceViewModel implements Identifiable, CrudEditorForm<Strin
     @NotEmpty
     String name;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    String moduleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    String boundedContextId;
 
     String description;
 
@@ -50,14 +50,14 @@ public class QueryServiceViewModel implements Identifiable, CrudEditorForm<Strin
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateQueryServiceCommand(id, name, moduleId, description,
+        createUseCase.handle(new CreateQueryServiceCommand(id, name, boundedContextId, description,
                 toOperationData(operations)));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveQueryServiceCommand(id, name, moduleId, description,
+        saveUseCase.handle(new SaveQueryServiceCommand(id, name, boundedContextId, description,
                 toOperationData(operations)));
     }
 
@@ -69,7 +69,7 @@ public class QueryServiceViewModel implements Identifiable, CrudEditorForm<Strin
     public QueryServiceViewModel load(QueryServiceDto model) {
         id = model.id();
         name = model.name();
-        moduleId = model.moduleId();
+        boundedContextId = model.boundedContextId();
         description = model.description();
         operations = model.operations() == null ? new ArrayList<>() :
                 model.operations().stream().map(o -> {

@@ -4,8 +4,8 @@ package io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo;
  * Strategic DDD context-map relationship patterns (Evans). Classifies how two bounded
  * contexts relate on the {@link ContextMapRelation} (source → target).
  *
- * <p><b>Directionality convention:</b> for the asymmetric patterns, {@code sourceModuleId}
- * is the <em>upstream</em> (U) context and {@code targetModuleId} is the <em>downstream</em>
+ * <p><b>Directionality convention:</b> for the asymmetric patterns, {@code sourceBoundedContextId}
+ * is the <em>upstream</em> (U) context and {@code targetBoundedContextId} is the <em>downstream</em>
  * (D) context. The symmetric patterns ({@link #PARTNERSHIP}, {@link #SHARED_KERNEL},
  * {@link #SEPARATE_WAYS}) carry no up/down role — source/target are interchangeable.
  * The U/D role is therefore <em>derived</em> from (type, source, target); it is not stored

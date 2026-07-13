@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.importw
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiExternalUseCase;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +29,8 @@ public class ImportWsdlUseCase {
 
     public void handle(ImportWsdlCommand command) {
         var hasExternal = command.externalSystemId() != null && !command.externalSystemId().isBlank();
-        var hasModule = command.moduleId() != null && !command.moduleId().isBlank();
-        if (hasExternal == hasModule) {
+        var hasBoundedContext = command.boundedContextId() != null && !command.boundedContextId().isBlank();
+        if (hasExternal == hasBoundedContext) {
             throw new IllegalArgumentException(
                     "Elige UN destino: un sistema externo o un bounded context");
         }
@@ -38,7 +38,7 @@ public class ImportWsdlUseCase {
         if (hasExternal) {
             importIntoExternal(command.externalSystemId(), operations);
         } else {
-            importIntoModule(command.moduleId(), operations);
+            importIntoBoundedContext(command.boundedContextId(), operations);
         }
     }
 
@@ -73,12 +73,12 @@ public class ImportWsdlUseCase {
                 operations.size(), externalSystemId);
     }
 
-    private void importIntoModule(String moduleId, List<WsdlParser.WsdlOperation> operations) {
-        var module = repository.findById(moduleId, ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + moduleId));
+    private void importIntoBoundedContext(String boundedContextId, List<WsdlParser.WsdlOperation> operations) {
+        var boundedContext = repository.findById(boundedContextId, BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + boundedContextId));
         var useCaseIds = new ArrayList<String>();
         for (var op : operations) {
-            var id = useCaseId(op.name(), module);
+            var id = useCaseId(op.name(), boundedContext);
             useCaseIds.add(id);
             repository.save(new UseCaseEntity(
                     id, op.name(),
@@ -95,20 +95,20 @@ public class ImportWsdlUseCase {
                     false, null,
                     null, null));
         }
-        var merged = new ArrayList<>(module.useCaseIds() != null ? module.useCaseIds() : List.<String>of());
+        var merged = new ArrayList<>(boundedContext.useCaseIds() != null ? boundedContext.useCaseIds() : List.<String>of());
         useCaseIds.stream().filter(id -> !merged.contains(id)).forEach(merged::add);
-        repository.save(module.toBuilder().useCaseIds(merged).build());
-        log.info("Imported {} SOAP operations as use-case stubs into module '{}'",
-                operations.size(), moduleId);
+        repository.save(boundedContext.toBuilder().useCaseIds(merged).build());
+        log.info("Imported {} SOAP operations as use-case stubs into boundedContext '{}'",
+                operations.size(), boundedContextId);
     }
 
-    /** Deterministic id, never hijacking one owned by another module (same rule as OpenAPI inbound). */
-    private String useCaseId(String operationName, ModuleEntity module) {
+    /** Deterministic id, never hijacking one owned by another boundedContext (same rule as OpenAPI inbound). */
+    private String useCaseId(String operationName, BoundedContextEntity boundedContext) {
         var plain = "uc-" + operationName;
         var existing = repository.findById(plain, UseCaseEntity.class);
-        var ownedHere = module.useCaseIds() != null && module.useCaseIds().contains(plain);
+        var ownedHere = boundedContext.useCaseIds() != null && boundedContext.useCaseIds().contains(plain);
         if (existing.isEmpty() || ownedHere) return plain;
-        return "uc-" + module.name().toLowerCase().replaceAll("[^a-z0-9]+", "")
+        return "uc-" + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]+", "")
                 + "-" + operationName;
     }
 

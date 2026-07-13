@@ -41,19 +41,19 @@ public class ImportApiContractForm {
 
     String externalSystemId;
 
-    String moduleId;
+    String boundedContextId;
 
     @Button
     @SneakyThrows
     URI importContract() {
         var hasExternal = externalSystemId != null && !externalSystemId.isBlank();
-        var hasModule = moduleId != null && !moduleId.isBlank();
-        if (hasExternal && hasModule) {
+        var hasBoundedContext = boundedContextId != null && !boundedContextId.isBlank();
+        if (hasExternal && hasBoundedContext) {
             throw new IllegalArgumentException(
                     "Elige UN destino como mucho: sistema externo, bounded context, o ninguno"
                             + " (la API entra como elemento de primer nivel)");
         }
-        if (!hasExternal && !hasModule) {
+        if (!hasExternal && !hasBoundedContext) {
             // No target: the contract IS the element — a first-class API on the map,
             // its operations waiting to be wired to contexts / use cases / policies.
             apiEntity.handle(filePath);
@@ -61,11 +61,11 @@ public class ImportApiContractForm {
         }
         if (isWsdl(filePath)) {
             wsdl.handle(new ImportWsdlCommand(filePath,
-                    hasExternal ? externalSystemId : null, hasModule ? moduleId : null));
+                    hasExternal ? externalSystemId : null, hasBoundedContext ? boundedContextId : null));
         } else if (hasExternal) {
             openApiExternal.handle(new ImportOpenApiExternalCommand(externalSystemId, filePath));
         } else {
-            openApiInbound.handle(new ImportOpenApiInboundCommand(moduleId, filePath));
+            openApiInbound.handle(new ImportOpenApiInboundCommand(boundedContextId, filePath));
         }
         return URI.create(hasExternal ? "/graphicalEditor" : "/modelo/behaviour/useCases");
     }

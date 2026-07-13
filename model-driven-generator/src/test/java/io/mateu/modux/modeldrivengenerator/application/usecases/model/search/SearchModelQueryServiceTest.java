@@ -24,7 +24,7 @@ class SearchModelQueryServiceTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -35,7 +35,7 @@ class SearchModelQueryServiceTest {
 
     @BeforeEach
     void loadTempStore() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("search-test-store", ".yaml");
         Files.writeString(file, store);
         repository.loadFrom(file.toAbsolutePath().toString());

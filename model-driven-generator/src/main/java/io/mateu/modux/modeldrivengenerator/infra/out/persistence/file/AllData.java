@@ -5,7 +5,7 @@ import java.util.List;
 public record AllData(
         List<ProjectEntity> projects,
         List<ServiceEntity> services,
-        List<ModuleEntity> modules,
+        List<BoundedContextEntity> boundedContexts,
         List<AggregateEntity> aggregates,
         List<EntityEntity> entities,
         List<ValueObjectEntity> valueObjects,
@@ -48,7 +48,7 @@ public record AllData(
         List<IdentityProviderEntity> identityProviders,
         List<NotificationEntity> notifications,
         List<DocumentEntity> documents,
-        List<CodeModuleEntity> codeModules,
+        List<ModuleEntity> modules,
         List<TransformationEntity> transformations,
         List<CustomCodeEntity> customCodes,
         List<ButtonGroupEntity> buttonGroups,
@@ -66,7 +66,7 @@ public record AllData(
     public AllData {
         projects = projects != null ? projects : List.of();
         services = services != null ? services : List.of();
-        modules = modules != null ? modules : List.of();
+        boundedContexts = boundedContexts != null ? boundedContexts : List.of();
         aggregates = aggregates != null ? aggregates : List.of();
         entities = entities != null ? entities : List.of();
         valueObjects = valueObjects != null ? valueObjects : List.of();
@@ -109,7 +109,7 @@ public record AllData(
         apis = apis != null ? apis : List.of();
         proxyApis = proxyApis != null ? proxyApis : List.of();
         mcpGateways = mcpGateways != null ? mcpGateways : List.of();
-        codeModules = codeModules != null ? codeModules : List.of();
+        modules = modules != null ? modules : List.of();
         transformations = transformations != null ? transformations : List.of();
         customCodes = customCodes != null ? customCodes : List.of();
         buttonGroups = buttonGroups != null ? buttonGroups : List.of();

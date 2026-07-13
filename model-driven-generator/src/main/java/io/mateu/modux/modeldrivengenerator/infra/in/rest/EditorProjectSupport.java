@@ -2,13 +2,13 @@ package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
@@ -47,7 +47,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;

@@ -21,7 +21,7 @@ public class CreateProcessUseCase {
                 command.description(),
                 command.triggerAggregateId(),
                 command.triggerEvent(),
-                command.ownerModuleId(),
+                command.ownerBoundedContextId(),
                 ProcessStepMapper.toSteps(command.steps()),
                 command.onCompletionEventName(),
                 command.sla());

@@ -20,7 +20,7 @@ public class SaveFlowUseCase {
                 command.archetype(),
                 command.triggerAggregateId(),
                 command.triggerEvent(),
-                command.targetModuleId(),
+                command.targetBoundedContextId(),
                 command.readModelName(),
                 command.materializedFields(),
                 command.targetUseCaseId(),

@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchety
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class ApplyRecipeUseCaseTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -34,15 +34,15 @@ class ApplyRecipeUseCaseTest {
     @Autowired
     CommonFileRepository repository;
 
-    String moduleId;
+    String boundedContextId;
 
     @BeforeEach
     void loadTempStore() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("..", "sample", "hla-booking", "model-driven-store.yaml"));
         var file = Files.createTempFile("recipes-test-store", ".yaml");
         Files.writeString(file, store);
         repository.loadFrom(file.toAbsolutePath().toString());
-        moduleId = repository.findAllOfType(ModuleEntity.class).get(0).id();
+        boundedContextId = repository.findAllOfType(BoundedContextEntity.class).get(0).id();
     }
 
     @Test
@@ -52,7 +52,7 @@ class ApplyRecipeUseCaseTest {
                 "name", "Llegadas de hoy",
                 "triggerAggregateId", "reserva",
                 "triggerEvent", "ReservaCreada",
-                "targetModuleId", moduleId,
+                "targetBoundedContextId", boundedContextId,
                 "readModelName", "LlegadaHoy",
                 "materializedFields", "fecha, huesped"));
 
@@ -69,7 +69,7 @@ class ApplyRecipeUseCaseTest {
                 "name", "Aprobar tarifa",
                 "triggerAggregateId", "reserva",
                 "triggerEvent", "TarifaPropuesta",
-                "ownerModuleId", moduleId));
+                "ownerBoundedContextId", boundedContextId));
 
         var process = repository.findById("recipe-test-approval", ProcessEntity.class).orElseThrow();
         assertEquals(2, process.steps().size());
@@ -84,11 +84,11 @@ class ApplyRecipeUseCaseTest {
                 () -> useCase.handle("external-notification", Map.of("id", "x")));
         assertTrue(missing.getMessage().contains("missing required parameter"), missing.getMessage());
 
-        var existingId = repository.findAllOfType(ModuleEntity.class).get(0).id();
+        var existingId = repository.findAllOfType(BoundedContextEntity.class).get(0).id();
         var duplicate = assertThrows(IllegalArgumentException.class,
                 () -> useCase.handle("external-notification", Map.of(
                         "id", existingId, "name", "n", "triggerAggregateId", "a",
-                        "triggerEvent", "E", "targetModuleId", moduleId)));
+                        "triggerEvent", "E", "targetBoundedContextId", boundedContextId)));
         assertTrue(duplicate.getMessage().contains("already exists"), duplicate.getMessage());
 
         var unknown = assertThrows(IllegalArgumentException.class,

@@ -42,14 +42,14 @@ function applyCommand(command: ModuxCommand): void {
         (r) => !(r.sourceId === command.sourceId && r.targetId === command.targetId),
       );
       break;
-    case 'add-module':
-      model.modules.push({ id: command.id, name: command.name, subdomainType: command.subdomainType });
+    case 'add-boundedContext':
+      model.boundedContexts.push({ id: command.id, name: command.name, subdomainType: command.subdomainType });
       break;
     case 'add-aggregate':
-      (model.aggregates ??= []).push({ id: command.id, name: command.name, moduleId: command.moduleId });
+      (model.aggregates ??= []).push({ id: command.id, name: command.name, boundedContextId: command.boundedContextId });
       break;
-    case 'remove-module':
-      model.modules = model.modules.filter((m) => m.id !== command.id);
+    case 'remove-boundedContext':
+      model.boundedContexts = model.boundedContexts.filter((m) => m.id !== command.id);
       model.relations = model.relations.filter(
         (r) => r.sourceId !== command.id && r.targetId !== command.id,
       );
@@ -69,7 +69,7 @@ function applyCommand(command: ModuxCommand): void {
       break;
     case 'add-process':
       (model.processes ??= []).push({
-        id: command.id, name: command.name, ownerModuleId: command.moduleId,
+        id: command.id, name: command.name, ownerBoundedContextId: command.boundedContextId,
         triggerAggregateId: command.triggerAggregateId, triggerEvent: command.triggerEvent,
         steps: command.steps ?? [],
       });
@@ -121,7 +121,7 @@ function applyCommand(command: ModuxCommand): void {
     }
     case 'rename-element': {
       const list =
-        command.type === 'module' ? model.modules
+        command.type === 'boundedContext' ? model.boundedContexts
         : command.type === 'aggregate' ? model.aggregates ?? []
         : model.entities ?? [];
       const el = (list as { id: string; name: string }[]).find((x) => x.id === command.id);

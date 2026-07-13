@@ -12,7 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
@@ -32,7 +32,7 @@ import java.util.List;
 public record ModelSnapshot(
         List<ProjectEntity> projects,
         List<ServiceEntity> services,
-        List<ModuleEntity> modules,
+        List<BoundedContextEntity> boundedContexts,
         List<AggregateEntity> aggregates,
         List<ModelEntity> models,
         List<UseCaseEntity> useCases,
@@ -58,7 +58,7 @@ public record ModelSnapshot(
 
     /** Backward-compatible constructor (pre-mcpGateways callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
-                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
                          List<DomainEventEntity> domainEvents,
                          List<IntegrationEventEntity> integrationEvents,
@@ -70,7 +70,7 @@ public record ModelSnapshot(
                          List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
                          List<WorkflowEntity> workflows, List<AiAgentEntity> aiAgents,
                          List<RagEntity> rags, List<ApiEntity> apis) {
-        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
                 rags, apis, null);
@@ -78,7 +78,7 @@ public record ModelSnapshot(
 
     /** Backward-compatible constructor (pre-apis callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
-                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
                          List<DomainEventEntity> domainEvents,
                          List<IntegrationEventEntity> integrationEvents,
@@ -90,7 +90,7 @@ public record ModelSnapshot(
                          List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
                          List<WorkflowEntity> workflows, List<AiAgentEntity> aiAgents,
                          List<RagEntity> rags) {
-        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
                 rags, null);
@@ -98,7 +98,7 @@ public record ModelSnapshot(
 
     /** Backward-compatible constructor (pre-rags callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
-                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
                          List<DomainEventEntity> domainEvents,
                          List<IntegrationEventEntity> integrationEvents,
@@ -109,14 +109,14 @@ public record ModelSnapshot(
                          List<QueryServiceEntity> queryServices,
                          List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
                          List<WorkflowEntity> workflows, List<AiAgentEntity> aiAgents) {
-        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents, null);
     }
 
     /** Backward-compatible constructor (pre-aiAgents callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
-                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
                          List<DomainEventEntity> domainEvents,
                          List<IntegrationEventEntity> integrationEvents,
@@ -127,14 +127,14 @@ public record ModelSnapshot(
                          List<QueryServiceEntity> queryServices,
                          List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
                          List<WorkflowEntity> workflows) {
-        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, null);
     }
 
     /** Backward-compatible constructor (pre-workflows callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
-                         List<ModuleEntity> modules, List<AggregateEntity> aggregates,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
                          List<DomainEventEntity> domainEvents,
                          List<IntegrationEventEntity> integrationEvents,
@@ -144,7 +144,7 @@ public record ModelSnapshot(
                          List<DecisionEntity> decisions, List<PageEntity> pages,
                          List<QueryServiceEntity> queryServices,
                          List<ModelMappingEntity> modelMappings, List<EntityEntity> entities) {
-        this(projects, services, modules, aggregates, models, useCases, domainEvents,
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, null);
     }
@@ -152,7 +152,7 @@ public record ModelSnapshot(
     public ModelSnapshot {
         projects = nvl(projects);
         services = nvl(services);
-        modules = nvl(modules);
+        boundedContexts = nvl(boundedContexts);
         aggregates = nvl(aggregates);
         models = nvl(models);
         useCases = nvl(useCases);
@@ -180,7 +180,7 @@ public record ModelSnapshot(
         return new ModelSnapshot(
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
-                repository.findAllOfType(ModuleEntity.class),
+                repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(ModelEntity.class),
                 repository.findAllOfType(UseCaseEntity.class),

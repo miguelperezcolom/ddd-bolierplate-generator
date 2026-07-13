@@ -16,16 +16,16 @@ public record EtlFlowEntity(
         String name,
         String description,
         /** The bounded context that owns (and generates, and operates) the pipeline. */
-        String ownerModuleId,
+        String ownerBoundedContextId,
         List<EtlStepEntity> steps,
         /** The service identity the pipeline runs as (a non-human subject). */
         String identityProviderId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
-    public EtlFlowEntity(String id, String name, String description, String ownerModuleId,
+    public EtlFlowEntity(String id, String name, String description, String ownerBoundedContextId,
                          List<EtlStepEntity> steps) {
-        this(id, name, description, ownerModuleId, steps, null);
+        this(id, name, description, ownerBoundedContextId, steps, null);
     }
 
     /** Backward-compatible constructor (pre-owner callers and stores). */

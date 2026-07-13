@@ -2,8 +2,8 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.workspace.CreateWorkspaceElementCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.workspace.CreateWorkspaceElementUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ProjectIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ProjectIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ServiceIdLabelSupplier;
@@ -23,7 +23,7 @@ import java.util.Map;
 
 /**
  * "New element" from the workspace tree: pick the kind, give it an id and a name, and anchor it to
- * its owner (module / service / project, depending on the kind). A skeleton element is created and
+ * its owner (boundedContext / service / project, depending on the kind). A skeleton element is created and
  * appears in the tree immediately; details are filled in through the element's own editor.
  */
 @Service
@@ -32,7 +32,7 @@ import java.util.Map;
 public class WorkspaceCreationForm implements CrudCreationForm<String> {
 
     @NotNull
-    @Help("What to create. Module-scoped kinds need an owner module; GATEWAY and MODULE an owner service; SERVICE an owner project.")
+    @Help("What to create. BoundedContext-scoped kinds need an owner boundedContext; GATEWAY and BOUNDED_CONTEXT an owner service; SERVICE an owner project.")
     WorkspaceElementKind kind;
 
     @NotEmpty
@@ -42,12 +42,12 @@ public class WorkspaceCreationForm implements CrudCreationForm<String> {
     @NotEmpty
     String name;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    @Help("Owner module (for module-scoped kinds).")
-    String moduleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    @Help("Owner boundedContext (for boundedContext-scoped kinds).")
+    String boundedContextId;
 
     @Lookup(search = ServiceIdOptionsSupplier.class, label = ServiceIdLabelSupplier.class)
-    @Help("Owner service (for GATEWAY and MODULE).")
+    @Help("Owner service (for GATEWAY and BOUNDED_CONTEXT).")
     String serviceId;
 
     @Lookup(search = ProjectIdOptionsSupplier.class, label = ProjectIdLabelSupplier.class)
@@ -74,7 +74,7 @@ public class WorkspaceCreationForm implements CrudCreationForm<String> {
 
     private String parentIdFor(WorkspaceElementKind kind) {
         var parentId = switch (kind.scope()) {
-            case MODULE -> moduleId;
+            case BOUNDED_CONTEXT -> boundedContextId;
             case SERVICE -> serviceId;
             case PROJECT -> projectId;
             case GLOBAL -> null;

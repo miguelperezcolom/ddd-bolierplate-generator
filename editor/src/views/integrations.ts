@@ -31,9 +31,9 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
   const flows = model.etlFlows ?? [];
-  const moduleName = new Map(model.modules.map((m) => [m.id, m.name]));
+  const boundedContextName = new Map(model.boundedContexts.map((m) => [m.id, m.name]));
   const eventName = new Map(
-    model.modules.flatMap((m) => [
+    model.boundedContexts.flatMap((m) => [
       ...(m.domainEvents ?? []).map((ev) => [ev.id, ev.name] as const),
       ...(m.applicationEvents ?? []).map((ev) => [ev.id, ev.name] as const),
     ]),
@@ -62,7 +62,7 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
       container: true,
       fill: '#ffffff',
       stroke: '#0f766e',
-      tooltip: `${f.name} — integrador${f.ownerModuleId ? ` de ${moduleName.get(f.ownerModuleId) ?? f.ownerModuleId}` : ''}: fuentes → transformación → escrituras; la paleta añade transformaciones`,
+      tooltip: `${f.name} — integrador${f.ownerBoundedContextId ? ` de ${boundedContextName.get(f.ownerBoundedContextId) ?? f.ownerBoundedContextId}` : ''}: fuentes → transformación → escrituras; la paleta añade transformaciones`,
     });
     byPhase.forEach((column, phase) => {
       const colX = pos.x - FLOW_W / 2 + FLOW_PAD + STEP_W / 2 + (phase * (FLOW_W - 2 * FLOW_PAD - STEP_W)) / 2;

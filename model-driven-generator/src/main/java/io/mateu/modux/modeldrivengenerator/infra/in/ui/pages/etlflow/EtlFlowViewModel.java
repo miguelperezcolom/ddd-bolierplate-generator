@@ -15,8 +15,8 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.IdentityProviderIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.IdentityProviderIdLabelSupplier;
 
@@ -38,9 +38,9 @@ public class EtlFlowViewModel implements Identifiable, CrudEditorForm<String>, C
 
     String description;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
     @Help("El contexto que posee (genera y opera) el pipeline.")
-    String ownerModuleId;
+    String ownerBoundedContextId;
 
     @Lookup(search = IdentityProviderIdOptionsSupplier.class, label = IdentityProviderIdLabelSupplier.class)
     @Help("La identidad de servicio con la que corre el pipeline.")
@@ -50,7 +50,7 @@ public class EtlFlowViewModel implements Identifiable, CrudEditorForm<String>, C
 
     @Override
     public String create(HttpRequest httpRequest) {
-        repository.save(new EtlFlowEntity(id, name, description, ownerModuleId,
+        repository.save(new EtlFlowEntity(id, name, description, ownerBoundedContextId,
                 java.util.List.of(), identityProviderId));
         return id;
     }
@@ -60,7 +60,7 @@ public class EtlFlowViewModel implements Identifiable, CrudEditorForm<String>, C
         var current = repository.findById(id, EtlFlowEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Desconocido: " + id));
         repository.save(current.toBuilder().name(name).description(description)
-                .ownerModuleId(ownerModuleId).identityProviderId(identityProviderId).build());
+                .ownerBoundedContextId(ownerBoundedContextId).identityProviderId(identityProviderId).build());
     }
 
     @Override
@@ -72,7 +72,7 @@ public class EtlFlowViewModel implements Identifiable, CrudEditorForm<String>, C
         id = entity.id();
         name = entity.name();
         description = entity.description();
-        ownerModuleId = entity.ownerModuleId();
+        ownerBoundedContextId = entity.ownerBoundedContextId();
         identityProviderId = entity.identityProviderId();
         return this;
     }

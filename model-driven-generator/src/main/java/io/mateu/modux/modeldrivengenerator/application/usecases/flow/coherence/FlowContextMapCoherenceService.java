@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,14 @@ public class FlowContextMapCoherenceService {
         return analyze(
                 repository.findAllOfType(FlowEntity.class),
                 repository.findAllOfType(AggregateEntity.class),
-                repository.findAllOfType(ModuleEntity.class),
+                repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ProjectEntity.class));
     }
 
     /** Pure analysis over the given model slices — unit-testable without Spring or files. */
     public static List<FlowContextMapFinding> analyze(List<FlowEntity> flows,
                                                List<AggregateEntity> aggregates,
-                                               List<ModuleEntity> modules,
+                                               List<BoundedContextEntity> boundedContexts,
                                                List<ProjectEntity> projects) {
         var relations = projects.stream()
                 .flatMap(p -> p.contextMap().stream())
@@ -48,86 +48,86 @@ public class FlowContextMapCoherenceService {
 
         var findings = new ArrayList<FlowContextMapFinding>();
         for (var flow : flows) {
-            findings.add(analyzeOne(flow, modules, relations));
+            findings.add(analyzeOne(flow, boundedContexts, relations));
         }
         return findings;
     }
 
     private static FlowContextMapFinding analyzeOne(FlowEntity flow,
-                                                    List<ModuleEntity> modules,
+                                                    List<BoundedContextEntity> boundedContexts,
                                                     List<ContextMapRelationEntity> relations) {
         var archetype = flow.archetype();
-        var aggregateOwner = ownerModuleId(flow.triggerAggregateId(), modules);
+        var aggregateOwner = ownerBoundedContextId(flow.triggerAggregateId(), boundedContexts);
         var nonAggregateOwner = flow.triggerDomainServiceId() != null
-                ? domainServiceOwnerModuleId(flow.triggerDomainServiceId(), modules)
-                : useCaseOwnerModuleId(flow.triggerUseCaseId(), modules);
-        var sourceModuleId = aggregateOwner != null ? aggregateOwner : nonAggregateOwner;
-        var targetModuleId = flow.targetModuleId();
+                ? domainServiceOwnerBoundedContextId(flow.triggerDomainServiceId(), boundedContexts)
+                : useCaseOwnerBoundedContextId(flow.triggerUseCaseId(), boundedContexts);
+        var sourceBoundedContextId = aggregateOwner != null ? aggregateOwner : nonAggregateOwner;
+        var targetBoundedContextId = flow.targetBoundedContextId();
 
         // NOTIFIES targets an external system — it is not an edge of the bounded-context map.
         if (archetype == FlowArchetype.NOTIFIES) {
-            return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.EXTERNAL,
+            return finding(flow, sourceBoundedContextId, targetBoundedContextId, FlowContextMapFinding.Status.EXTERNAL,
                     null, null,
                     "Notifies an external system — no context-map relation applies.");
         }
 
         // Intra-context flow (or unresolved source) — no strategic relation needed.
-        if (sourceModuleId == null || sourceModuleId.equals(targetModuleId)) {
-            return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.INTERNAL,
+        if (sourceBoundedContextId == null || sourceBoundedContextId.equals(targetBoundedContextId)) {
+            return finding(flow, sourceBoundedContextId, targetBoundedContextId, FlowContextMapFinding.Status.INTERNAL,
                     null, null,
                     "Source and target are the same context — no strategic relation needed.");
         }
 
         var forward = relations.stream()
-                .filter(r -> sourceModuleId.equals(r.sourceModuleId()) && targetModuleId.equals(r.targetModuleId()))
+                .filter(r -> sourceBoundedContextId.equals(r.sourceBoundedContextId()) && targetBoundedContextId.equals(r.targetBoundedContextId()))
                 .findFirst().orElse(null);
         if (forward != null) {
-            return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.OK,
+            return finding(flow, sourceBoundedContextId, targetBoundedContextId, FlowContextMapFinding.Status.OK,
                     parseType(forward.type()), null,
                     "Backed by a declared '" + forward.type() + "' relation.");
         }
 
         var reverse = relations.stream()
-                .filter(r -> targetModuleId.equals(r.sourceModuleId()) && sourceModuleId.equals(r.targetModuleId()))
+                .filter(r -> targetBoundedContextId.equals(r.sourceBoundedContextId()) && sourceBoundedContextId.equals(r.targetBoundedContextId()))
                 .findFirst().orElse(null);
         if (reverse != null) {
-            return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.REVERSED,
+            return finding(flow, sourceBoundedContextId, targetBoundedContextId, FlowContextMapFinding.Status.REVERSED,
                     parseType(reverse.type()), null,
                     "A '" + reverse.type() + "' relation exists but points the opposite way; the flow's "
                             + "source is upstream, so the relation should go source → target.");
         }
 
         var suggested = ContextMapArchetypeInference.impliedRelation(archetype).orElse(null);
-        return finding(flow, sourceModuleId, targetModuleId, FlowContextMapFinding.Status.MISSING_RELATION,
+        return finding(flow, sourceBoundedContextId, targetBoundedContextId, FlowContextMapFinding.Status.MISSING_RELATION,
                 null, suggested,
                 "Cross-context flow with no declared relation — declare it in the project's contextMap "
-                        + "(sourceModuleId/targetModuleId/type)."
+                        + "(sourceBoundedContextId/targetBoundedContextId/type)."
                         + (suggested != null ? " Suggested type: " + suggested + "." : ""));
     }
 
-    private static String ownerModuleId(String aggregateId, List<ModuleEntity> modules) {
+    private static String ownerBoundedContextId(String aggregateId, List<BoundedContextEntity> boundedContexts) {
         if (aggregateId == null) return null;
-        return modules.stream()
+        return boundedContexts.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
-                .map(ModuleEntity::id)
+                .map(BoundedContextEntity::id)
                 .findFirst().orElse(null);
     }
 
-    /** Alternative trigger: the module owning the publishing use case (application events). */
-    private static String useCaseOwnerModuleId(String useCaseId, List<ModuleEntity> modules) {
+    /** Alternative trigger: the boundedContext owning the publishing use case (application events). */
+    private static String useCaseOwnerBoundedContextId(String useCaseId, List<BoundedContextEntity> boundedContexts) {
         if (useCaseId == null) return null;
-        return modules.stream()
+        return boundedContexts.stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(useCaseId))
-                .map(ModuleEntity::id)
+                .map(BoundedContextEntity::id)
                 .findFirst().orElse(null);
     }
 
-    /** Alternative trigger: the module owning the emitting domain service. */
-    private static String domainServiceOwnerModuleId(String domainServiceId, List<ModuleEntity> modules) {
+    /** Alternative trigger: the boundedContext owning the emitting domain service. */
+    private static String domainServiceOwnerBoundedContextId(String domainServiceId, List<BoundedContextEntity> boundedContexts) {
         if (domainServiceId == null) return null;
-        return modules.stream()
+        return boundedContexts.stream()
                 .filter(m -> m.domainServiceIds().contains(domainServiceId))
-                .map(ModuleEntity::id)
+                .map(BoundedContextEntity::id)
                 .findFirst().orElse(null);
     }
 
@@ -140,14 +140,14 @@ public class FlowContextMapCoherenceService {
         }
     }
 
-    private static FlowContextMapFinding finding(FlowEntity flow, String sourceModuleId, String targetModuleId,
+    private static FlowContextMapFinding finding(FlowEntity flow, String sourceBoundedContextId, String targetBoundedContextId,
                                                  FlowContextMapFinding.Status status,
                                                  ContextMapRelationType declaredType,
                                                  ContextMapRelationType suggestedType,
                                                  String message) {
         return new FlowContextMapFinding(
                 flow.id(), flow.name(), flow.archetype(),
-                sourceModuleId, targetModuleId,
+                sourceBoundedContextId, targetBoundedContextId,
                 status, declaredType, suggestedType, message);
     }
 }

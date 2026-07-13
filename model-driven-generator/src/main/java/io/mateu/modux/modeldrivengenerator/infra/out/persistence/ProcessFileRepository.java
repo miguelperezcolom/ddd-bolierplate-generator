@@ -23,7 +23,7 @@ public class ProcessFileRepository implements ProcessRepository {
     public Optional<Process> findById(ProcessId id) {
         return repository.findById(id.id(), ProcessEntity.class)
                 .map(entity -> Process.load(entity.id(), entity.name(), entity.description(),
-                        entity.triggerAggregateId(), entity.triggerEvent(), entity.ownerModuleId(),
+                        entity.triggerAggregateId(), entity.triggerEvent(), entity.ownerBoundedContextId(),
                         toSteps(entity.steps()), entity.onCompletionEventName(), entity.sla()));
     }
 
@@ -38,7 +38,7 @@ public class ProcessFileRepository implements ProcessRepository {
                 entity.getDescription(),
                 entity.getTriggerAggregateId(),
                 entity.getTriggerEvent(),
-                entity.getOwnerModuleId(),
+                entity.getOwnerBoundedContextId(),
                 toStepEntities(entity.getSteps()),
                 entity.getOnCompletionEventName(),
                 entity.getSla(),

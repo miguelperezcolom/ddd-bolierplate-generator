@@ -2,8 +2,8 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project;
 
 import io.mateu.core.infra.valuegenerators.UUIDValueGenerator;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -18,11 +18,11 @@ public class ContextMapRelationViewModel {
     @NotEmpty
     String name;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    String sourceModuleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    String sourceBoundedContextId;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    String targetModuleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    String targetBoundedContextId;
 
     ContextMapRelationType type;
 

@@ -215,8 +215,8 @@ function routeEdgesAroundNodes(
  */
 function normalizeActivation(id: string, kind: string): { elementType: string; id: string } | null {
   switch (kind) {
-    case 'module':
-      return { elementType: 'module', id: id.replace(/^tgt:/, '') };
+    case 'boundedContext':
+      return { elementType: 'boundedContext', id: id.replace(/^tgt:/, '') };
     case 'aggregate':
       return { elementType: 'aggregate', id };
     case 'use-case':
@@ -259,8 +259,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'component', id };
     case 'external-system':
       return { elementType: 'external-system', id };
-    case 'code-module':
-      return { elementType: 'code-module', id };
+    case 'module':
+      return { elementType: 'module', id };
     case 'custom-code':
       return { elementType: 'custom-code', id };
     case 'transformation':
@@ -302,7 +302,7 @@ function activationForStep(
 @customElement('modux-editor')
 export class ModuxEditor extends LitElement {
   @property({ attribute: false }) model: ModuxModel = {
-    modules: [],
+    boundedContexts: [],
     externalSystems: [],
     relations: [],
     flows: [],
@@ -368,7 +368,7 @@ export class ModuxEditor extends LitElement {
   /** Keyboard-shortcuts help popover (toggled with ?). */
   @state() private _helpOpen = false;
   @state() private _newName = '';
-  @state() private _newModuleId = '';
+  @state() private _newBoundedContextId = '';
   @state() private _newArchetype = 'TRIGGERS';
   @state() private _newTriggerAggId = '';
   @state() private _newTriggerEvent = '';
@@ -938,7 +938,7 @@ export class ModuxEditor extends LitElement {
     if (changed.has('model')) this._pendingIds.clear();
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
-        && this.model.modules.length === 0 && this.model.externalSystems.length === 0) {
+        && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0) {
       this._paletteOpen = true;
       this._paletteOpenedForBlank = true;
     }
@@ -1087,7 +1087,7 @@ export class ModuxEditor extends LitElement {
   /**
    * Inverse commands computed against the CURRENT model (before the command is
    * applied) — what Ctrl+Z replays. Composite where needed (e.g. removing a
-   * module also drops its relations, so its inverse restores them).
+   * boundedContext also drops its relations, so its inverse restores them).
    */
 
   /** Discard undo/redo — called by the host when the model changed externally. */
@@ -1205,7 +1205,7 @@ export class ModuxEditor extends LitElement {
         id: proxyId,
         name: `${api.name}@${host.name}`,
         targetId: id,
-        moduleId: targetId,
+        boundedContextId: targetId,
       },
       false,
     );
@@ -1246,11 +1246,11 @@ export class ModuxEditor extends LitElement {
     const homeExternalId = apiId
       ? null
       : (this.model.externalSystems.find((x) => x.id === this._selectedId)?.id ?? null);
-    const homeModuleId =
+    const homeBoundedContextId =
       apiId || homeExternalId
         ? null
-        : (this.model.modules.find((mo) => mo.id === this._selectedId)?.id ?? null);
-    if (!apiId && !homeExternalId && !homeModuleId) {
+        : (this.model.boundedContexts.find((mo) => mo.id === this._selectedId)?.id ?? null);
+    if (!apiId && !homeExternalId && !homeBoundedContextId) {
       this.emit('modux-notice', {
         message:
           'Selecciona la API destino, o el sistema externo o contexto que la publicará, antes de importar',
@@ -1262,7 +1262,7 @@ export class ModuxEditor extends LitElement {
       fileName: file.name,
       apiId,
       homeExternalId,
-      homeModuleId,
+      homeBoundedContextId,
     });
   }
 
@@ -1430,7 +1430,7 @@ export class ModuxEditor extends LitElement {
   /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
   private memberIdOf(id: string, kind: string): string | null {
     switch (kind) {
-      case 'module':
+      case 'boundedContext':
       case 'external-system':
         return id.replace(/^tgt:/, '');
       case 'aggregate':
@@ -1507,7 +1507,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private owningUseCaseOf(stepId: string) {
-    return this.model.modules
+    return this.model.boundedContexts
       .flatMap((mo) => mo.useCases ?? [])
       .find((uc) => (uc.steps ?? []).some((st) => st.id === stepId));
   }
@@ -1523,7 +1523,7 @@ export class ModuxEditor extends LitElement {
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
     if (
-      kind === 'module' ||
+      kind === 'boundedContext' ||
       kind === 'aggregate' ||
       kind === 'entity' ||
       kind === 'process-step' ||
@@ -1629,7 +1629,7 @@ export class ModuxEditor extends LitElement {
     if (!view) return [];
     const members = new Set(view.memberIds);
     return [
-      ...this.model.modules.map((m) => ({ id: m.id, name: m.name, kind: 'contexto' })),
+      ...this.model.boundedContexts.map((m) => ({ id: m.id, name: m.name, kind: 'contexto' })),
       ...this.model.externalSystems.map((x) => ({ id: x.id, name: x.name, kind: 'externo' })),
       ...(this.model.aggregates ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'agregado' })),
       ...this.model.flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' })),
@@ -1695,10 +1695,10 @@ export class ModuxEditor extends LitElement {
         <div class="tree-title">Vista: ${view.name}</div>
         ${group(
           'Contextos',
-          this.model.modules.flatMap((m) => [
+          this.model.boundedContexts.flatMap((m) => [
             row(m.id, m.name),
             ...(this.model.aggregates ?? [])
-              .filter((a) => a.moduleId === m.id)
+              .filter((a) => a.boundedContextId === m.id)
               .map((a) => row(a.id, a.name, { child: true, implicit: members.has(m.id) })),
           ]),
         )}
@@ -1773,7 +1773,7 @@ export class ModuxEditor extends LitElement {
       const node = scene.nodes.find((n) => n.id === id);
       if (!node) continue;
       switch (node.kind) {
-        case 'module':
+        case 'boundedContext':
         case 'external-system':
           members.add(id.replace(/^tgt:/, ''));
           break;
@@ -1835,12 +1835,12 @@ export class ModuxEditor extends LitElement {
     const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
     if (!view) return this.model;
     const members = new Set(view.memberIds);
-    const modules = this.model.modules.filter((m) => members.has(m.id));
-    const moduleIds = new Set(modules.map((m) => m.id));
+    const boundedContexts = this.model.boundedContexts.filter((m) => members.has(m.id));
+    const boundedContextIds = new Set(boundedContexts.map((m) => m.id));
     const externalSystems = this.model.externalSystems.filter((x) => members.has(x.id));
     const externalIds = new Set(externalSystems.map((x) => x.id));
     const aggregates = (this.model.aggregates ?? []).filter(
-      (a) => members.has(a.id) || moduleIds.has(a.moduleId),
+      (a) => members.has(a.id) || boundedContextIds.has(a.boundedContextId),
     );
     const aggregateIds = new Set(aggregates.map((a) => a.id));
     const uiApps = (this.model.uiApps ?? []).filter((a) => members.has(a.id));
@@ -1861,16 +1861,16 @@ export class ModuxEditor extends LitElement {
       uiApps,
       pages,
       actorAppUses: (this.model.actorAppUses ?? []).filter((u) => keptAppIds.has(u.appId)),
-      modules,
+      boundedContexts,
       externalSystems,
       relations: this.model.relations.filter(
-        (r) => moduleIds.has(r.sourceId) && moduleIds.has(r.targetId),
+        (r) => boundedContextIds.has(r.sourceId) && boundedContextIds.has(r.targetId),
       ),
       flows: this.model.flows.filter(
         (f) =>
           members.has(f.id) ||
-          ((moduleIds.has(f.sourceId) || externalIds.has(f.sourceId)) &&
-            (moduleIds.has(f.targetId) || externalIds.has(f.targetId))),
+          ((boundedContextIds.has(f.sourceId) || externalIds.has(f.sourceId)) &&
+            (boundedContextIds.has(f.targetId) || externalIds.has(f.targetId))),
       ),
       aggregates,
       entities: (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId)),
@@ -1878,9 +1878,9 @@ export class ModuxEditor extends LitElement {
         (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
       ),
       processes: (this.model.processes ?? []).filter(
-        (p) => members.has(p.id) || (p.ownerModuleId ? moduleIds.has(p.ownerModuleId) : false),
+        (p) => members.has(p.id) || (p.ownerBoundedContextId ? boundedContextIds.has(p.ownerBoundedContextId) : false),
       ),
-      // Workflows have no owner module (they live outside the contexts): member-only.
+      // Workflows have no owner boundedContext (they live outside the contexts): member-only.
       workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
       // Top-level AI/strategic pieces scope by membership too — a curated view
       // about one subdomain should not drag every agent and gateway along.
@@ -2327,10 +2327,10 @@ export class ModuxEditor extends LitElement {
         this.moveWizardStep(e.detail.pageId, e.detail.stepKey, e.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
-      .useCases=${this.model.modules.flatMap((mod) =>
+      .useCases=${this.model.boundedContexts.flatMap((mod) =>
         (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
       )}
-      .queryOps=${this.model.modules.flatMap((mod) =>
+      .queryOps=${this.model.boundedContexts.flatMap((mod) =>
         (mod.queryServices ?? []).flatMap((qs) =>
           (qs.operations ?? []).map((op) => ({
             id: op.id,
@@ -2426,7 +2426,7 @@ export class ModuxEditor extends LitElement {
         label: 'Contextos',
         symbol: 'component',
         color: '#94a3b8',
-        items: m.modules.map((x) => ({ id: x.id, name: x.name })),
+        items: m.boundedContexts.map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Apps',
@@ -2450,7 +2450,7 @@ export class ModuxEditor extends LitElement {
         label: 'Triggers programados',
         symbol: 'clock',
         color: '#d97706',
-        items: m.modules.flatMap((mod) =>
+        items: m.boundedContexts.flatMap((mod) =>
           (mod.scheduledTriggers ?? []).map((t) => ({ id: t.id, name: t.name })),
         ),
       },
@@ -2464,13 +2464,13 @@ export class ModuxEditor extends LitElement {
         label: 'Casos de uso',
         symbol: 'usecase',
         color: '#06b6d4',
-        items: m.modules.flatMap((mod) => (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name }))),
+        items: m.boundedContexts.flatMap((mod) => (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name }))),
       },
       {
         label: 'Eventos',
         symbol: 'event',
         color: '#f59e0b',
-        items: m.modules.flatMap((mod) => [
+        items: m.boundedContexts.flatMap((mod) => [
           ...(mod.domainEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
           ...(mod.applicationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
         ]),
@@ -2485,13 +2485,13 @@ export class ModuxEditor extends LitElement {
         label: 'Read models',
         symbol: 'readmodel',
         color: '#10b981',
-        items: m.modules.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
+        items: m.boundedContexts.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
       },
       {
         label: 'Operaciones de consulta',
         symbol: 'lens',
         color: '#0284c7',
-        items: m.modules.flatMap((mod) =>
+        items: m.boundedContexts.flatMap((mod) =>
           (mod.queryServices ?? []).flatMap((qs) =>
             (qs.operations ?? []).map((op) => ({ id: op.id, name: `${op.name} (${qs.name})` })),
           ),
@@ -2501,7 +2501,7 @@ export class ModuxEditor extends LitElement {
         label: 'Query services',
         symbol: 'lens',
         color: '#0284c7',
-        items: m.modules.flatMap((mod) => (mod.queryServices ?? []).map((q) => ({ id: q.id, name: q.name }))),
+        items: m.boundedContexts.flatMap((mod) => (mod.queryServices ?? []).map((q) => ({ id: q.id, name: q.name }))),
       },
       {
         label: 'Actores',
@@ -2626,14 +2626,14 @@ export class ModuxEditor extends LitElement {
     const ids = new Set([...this._pendingIds, ...this.sceneFor(this._view).nodes.map((n) => n.id)]);
     const m = this.model;
     for (const pool of [
-      m.modules.map((x) => x.id),
-      m.modules.flatMap((mo) => (mo.useCases ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.domainEvents ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.applicationEvents ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.readModels ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.domainServices ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.queryServices ?? []).map((x) => x.id)),
-      m.modules.flatMap((mo) => (mo.scheduledTriggers ?? []).map((x) => x.id)),
+      m.boundedContexts.map((x) => x.id),
+      m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.readModels ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((x) => x.id)),
+      m.boundedContexts.flatMap((mo) => (mo.scheduledTriggers ?? []).map((x) => x.id)),
       (m.aggregates ?? []).map((x) => x.id),
       (m.entities ?? []).map((x) => x.id),
       (m.actors ?? []).map((x) => x.id),
@@ -2655,7 +2655,7 @@ export class ModuxEditor extends LitElement {
       (m.documents ?? []).map((x) => x.id),
       (m.uiApps ?? []).map((x) => x.id),
       (m.pages ?? []).map((x) => x.id),
-      (m.codeModules ?? []).map((x) => x.id),
+      (m.modules ?? []).map((x) => x.id),
       (m.services ?? []).map((x) => x.id),
       (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
       (m.customCodes ?? []).map((x) => x.id),
@@ -2696,23 +2696,23 @@ export class ModuxEditor extends LitElement {
   private dropContainerFor(type: string, targetId: string | null): string | null {
     if (!targetId) return null;
     const chain = this.dropChain(targetId);
-    const needsModule = [
+    const needsBoundedContext = [
       'aggregate', 'use-case', 'policy', 'domain-event',
       'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
-      'notification', 'document', 'code-module',
+      'notification', 'document', 'module',
     ].includes(type);
-    if (needsModule) return chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ?? null;
+    if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
     if (type === 'invariant') {
       const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
       if (agg) return agg;
-      const mod = chain.find((cid) => this.model.modules.some((mo) => mo.id === cid));
-      return (this.model.aggregates ?? []).find((a) => a.moduleId === mod)?.id ?? null;
+      const mod = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
+      return (this.model.aggregates ?? []).find((a) => a.boundedContextId === mod)?.id ?? null;
     }
     if (type === 'read-model') {
       const agg = chain.find((id) => (this.model.aggregates ?? []).some((a) => a.id === id));
       if (agg) return agg;
-      const mod = chain.find((id) => this.model.modules.some((mo) => mo.id === id));
-      return (this.model.aggregates ?? []).find((a) => a.moduleId === mod)?.id ?? null;
+      const mod = chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id));
+      return (this.model.aggregates ?? []).find((a) => a.boundedContextId === mod)?.id ?? null;
     }
     if (['external-use-case', 'external-table', 'mcp-server'].includes(type)) {
       return chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ?? null;
@@ -2720,8 +2720,8 @@ export class ModuxEditor extends LitElement {
     if (type === 'model-field') {
       return chain.find((id) => (this.model.models ?? []).some((mo) => mo.id === id)) ?? null;
     }
-    if (type === 'etl-flow' && this._view === 'integrations' && this.model.modules.length === 1) {
-      return this.model.modules[0].id;
+    if (type === 'etl-flow' && this._view === 'integrations' && this.model.boundedContexts.length === 1) {
+      return this.model.boundedContexts[0].id;
     }
     if (type === 'ui-button') {
       return chain.find((id) => (this.model.buttonGroups ?? []).some((g) => g.id === id)) ?? null;
@@ -2729,7 +2729,7 @@ export class ModuxEditor extends LitElement {
     if (type === 'use-case-step') {
       return (
         chain.find((id) =>
-          this.model.modules.some((mo) => (mo.useCases ?? []).some((u) => u.id === id)),
+          this.model.boundedContexts.some((mo) => (mo.useCases ?? []).some((u) => u.id === id)),
         ) ?? null
       );
     }
@@ -2748,7 +2748,7 @@ export class ModuxEditor extends LitElement {
     if (type === 'api') {
       return (
         chain.find((id) => this.model.externalSystems.some((x) => x.id === id)) ??
-        chain.find((id) => this.model.modules.some((mo) => mo.id === id)) ??
+        chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ??
         null
       );
     }
@@ -2882,7 +2882,7 @@ export class ModuxEditor extends LitElement {
     };
     if (!def.child) {
       const prefix: Record<string, string> = {
-        module: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
+        boundedContext: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
@@ -2891,8 +2891,8 @@ export class ModuxEditor extends LitElement {
       };
       const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
       const cmd: ModuxCommand =
-        type === 'module'
-          ? { kind: 'add-module', id, name, subdomainType: 'SUPPORTING' }
+        type === 'boundedContext'
+          ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
           : type === 'actor'
             ? { kind: 'add-actor', id, name }
             : type === 'external-system'
@@ -2936,11 +2936,11 @@ export class ModuxEditor extends LitElement {
                                 completionEventName: `${name.replace(/\s+/g, '')}Completado`,
                               };
       if (cmd.kind === 'create-ui-app') {
-        // Dropped inside a bounded context: the module owns the app from the start.
+        // Dropped inside a bounded context: the boundedContext owns the app from the start.
         const chain = this.dropChain(targetId);
-        const moduleId = chain.find((cid) => this.model.modules.some((mo) => mo.id === cid));
-        if (moduleId) {
-          issue({ ...cmd, moduleId }, id, moduleId);
+        const boundedContextId = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
+        if (boundedContextId) {
+          issue({ ...cmd, boundedContextId }, id, boundedContextId);
           return;
         }
       }
@@ -3140,7 +3140,7 @@ export class ModuxEditor extends LitElement {
       if (this.model.externalSystems.some((x) => x.id === home)) {
         this.command({ kind: 'set-api-publisher', id, targetId: home }, false);
       } else {
-        this.command({ kind: 'add-api-implementation', apiId: id, moduleId: home }, false);
+        this.command({ kind: 'add-api-implementation', apiId: id, boundedContextId: home }, false);
       }
       const current = this.viewLayout(this._view);
       const parent = this.sceneFor(this._view).nodes.find((n) => n.id === home);
@@ -3170,12 +3170,12 @@ export class ModuxEditor extends LitElement {
       'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
       'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
       'read-model': 'rm-', 'external-use-case': 'xuc-',
-      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'code-module': 'cm-',
+      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'module': 'cm-',
       'model-field': 'f-', invariant: 'inv-',
     };
     const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
     if (type === 'aggregate') {
-      issue({ kind: 'add-aggregate', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-aggregate', id, name, boundedContextId: container }, id, container);
     } else if (type === 'invariant') {
       this.command({ kind: 'add-invariant', aggregateId: container, id, name });
       this.emit('modux-notice', {
@@ -3193,49 +3193,49 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'model-field') {
       // the chip's scene id is fld:<modelId>:<fieldId> and its spot is fixed — no layout write
       this.command({ kind: 'add-model-field', modelId: container, fieldId: id, name });
-    } else if (type === 'code-module') {
-      issue({ kind: 'add-code-module', id, name, moduleId: container }, id, container);
+    } else if (type === 'module') {
+      issue({ kind: 'add-module', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Módulo creado — arrastra el asa de los elementos del contexto hasta él para distribuirlos',
       });
     } else if (type === 'use-case' || type === 'policy') {
       issue(
-        { kind: 'add-use-case', id, name, moduleId: container, ...(type === 'policy' ? { policy: true } : {}) },
+        { kind: 'add-use-case', id, name, boundedContextId: container, ...(type === 'policy' ? { policy: true } : {}) },
         id,
         container,
       );
     } else if (type === 'domain-event') {
-      issue({ kind: 'add-domain-event', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-domain-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'application-event') {
-      issue({ kind: 'add-application-event', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-application-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'domain-service') {
-      issue({ kind: 'add-domain-service', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-domain-service', id, name, boundedContextId: container }, id, container);
     } else if (type === 'query-service') {
-      issue({ kind: 'add-query-service', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-query-service', id, name, boundedContextId: container }, id, container);
     } else if (type === 'scheduled-trigger') {
-      issue({ kind: 'add-scheduled-trigger', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-scheduled-trigger', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
       });
     } else if (type === 'notification') {
-      issue({ kind: 'add-notification', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-notification', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Notificación creada (canal EMAIL) — arrastra un evento hasta ella y de ella a los roles que avisa',
       });
     } else if (type === 'document') {
-      issue({ kind: 'add-document', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-document', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
         message: 'Documento creado — arrástralo a un modelo (plantilla) o a una consulta (informe)',
       });
     } else if (type === 'etl-flow') {
-      issue({ kind: 'add-etl-flow', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-etl-flow', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
         message:
           'Integrador creado en el contexto — cablea fuentes HACIA él (tabla/API = pull, evento = consumidor) y escrituras DESDE él',
       });
     } else if (type === 'read-model') {
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
-      issue({ kind: 'add-read-model', id, name, aggregateId: container }, id, aggregate?.moduleId ?? container);
+      issue({ kind: 'add-read-model', id, name, aggregateId: container }, id, aggregate?.boundedContextId ?? container);
     } else if (type === 'api-operation') {
       // The operation id embeds the API, so uniqueness is per-API — the generic
       // pool above can't see it and a second «Operación de API» would collide.
@@ -3261,7 +3261,7 @@ export class ModuxEditor extends LitElement {
       // Step ids are per-use-case; a bare palette step is Custom — drawing a relation
       // FROM the use case (evento, otro caso de uso, agregado, query…) creates the
       // typed steps instead.
-      const uc = this.model.modules
+      const uc = this.model.boundedContexts
         .flatMap((mo) => mo.useCases ?? [])
         .find((u) => u.id === container);
       const taken = new Set(uc?.stepIds ?? []);
@@ -3276,11 +3276,11 @@ export class ModuxEditor extends LitElement {
         message: `Paso Custom añadido a ${uc?.name ?? container} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`,
       });
     } else if (type === 'external-use-case') {
-      issue({ kind: 'add-external-use-case', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-external-use-case', id, name, boundedContextId: container }, id, container);
     } else if (type === 'external-table') {
-      issue({ kind: 'add-external-table', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-external-table', id, name, boundedContextId: container }, id, container);
     } else if (type === 'mcp-server') {
-      issue({ kind: 'add-mcp-server', id, name, moduleId: container }, id, container);
+      issue({ kind: 'add-mcp-server', id, name, boundedContextId: container }, id, container);
     }
   }
 
@@ -3311,7 +3311,7 @@ export class ModuxEditor extends LitElement {
         this.emit('modux-notice', { message: `El botón mapea con ${mapping.name}` });
         return;
       }
-      const newUc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+      const newUc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
       if (newUc) {
         if (id === btnHit[2]) return;
         const pg = (this.model.pages ?? []).find((x) => x.id === btnHit[1]);
@@ -3349,7 +3349,7 @@ export class ModuxEditor extends LitElement {
     // a use case dropped on a BAR creates its button right there
     const barHit = targetId ? /^bar:([^:]+):(.+)$/.exec(targetId) : null;
     if (barHit) {
-      const uc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+      const uc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
       if (!uc) {
         this.emit('modux-notice', { message: 'En una barra se sueltan CASOS DE USO del Catálogo' });
         return;
@@ -3370,7 +3370,7 @@ export class ModuxEditor extends LitElement {
       return;
     }
     const cmp = m ? this.componentIn(pageId, m[2])?.node ?? null : null;
-    const uc = this.model.modules.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
+    const uc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
     if (uc) {
       if (cmp?.kind === 'button') {
         this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, useCaseId: id, label: cmp.label ?? uc.name });
@@ -3398,7 +3398,7 @@ export class ModuxEditor extends LitElement {
       this.emit('modux-notice', { message: `El botón mapea con ${mappingDrop.name}` });
       return;
     }
-    const queryOp = this.model.modules
+    const queryOp = this.model.boundedContexts
       .flatMap((mo) => (mo.queryServices ?? []).flatMap((qs) => (qs.operations ?? []).map((op) => ({ op, qs }))))
       .find(({ op }) => op.id === id);
     if (queryOp) {
@@ -3580,12 +3580,12 @@ export class ModuxEditor extends LitElement {
     const name = this._newName.trim();
     if (!name) return;
     if (this._view === 'aggregates') {
-      const moduleId = this._newModuleId || this.model.modules[0]?.id;
-      if (!moduleId) return;
-      this.command({ kind: 'add-aggregate', id: `agg-${slug(name)}`, name, moduleId });
+      const boundedContextId = this._newBoundedContextId || this.model.boundedContexts[0]?.id;
+      if (!boundedContextId) return;
+      this.command({ kind: 'add-aggregate', id: `agg-${slug(name)}`, name, boundedContextId });
     } else if (this._view === 'flows') {
       const triggerAggregateId = this._newTriggerAggId || this.model.aggregates?.[0]?.id;
-      const targetId = this._newTargetId || this.model.modules[0]?.id;
+      const targetId = this._newTargetId || this.model.boundedContexts[0]?.id;
       const triggerEvent = this._newTriggerEvent.trim();
       if (!triggerAggregateId || !targetId || !triggerEvent) return;
       this.command({
@@ -3599,13 +3599,13 @@ export class ModuxEditor extends LitElement {
       });
       this._newTriggerEvent = '';
     } else if (this._view === 'processes') {
-      const moduleId = this._newModuleId || this.model.modules[0]?.id;
-      if (!moduleId) return;
+      const boundedContextId = this._newBoundedContextId || this.model.boundedContexts[0]?.id;
+      if (!boundedContextId) return;
       this.command({
         kind: 'add-process',
         id: `proc-${slug(name)}`,
         name,
-        moduleId,
+        boundedContextId,
         triggerAggregateId: this._newTriggerAggId || this.model.aggregates?.[0]?.id,
         triggerEvent: this._newTriggerEvent.trim() || undefined,
       });
@@ -3868,15 +3868,15 @@ export class ModuxEditor extends LitElement {
         ${this._view === 'aggregates' || this._view === 'processes'
           ? html`<select
               title=${this._view === 'aggregates'
-                ? 'Módulo del nuevo agregado'
-                : 'Módulo dueño del proceso'}
-              @change=${(e: Event) => (this._newModuleId = (e.target as HTMLSelectElement).value)}
+                ? 'Contexto del nuevo agregado'
+                : 'Contexto dueño del proceso'}
+              @change=${(e: Event) => (this._newBoundedContextId = (e.target as HTMLSelectElement).value)}
             >
-              ${this.model.modules.map(
+              ${this.model.boundedContexts.map(
                 (m) =>
                   html`<option
                     value=${m.id}
-                    ?selected=${m.id === (this._newModuleId || this.model.modules[0]?.id)}
+                    ?selected=${m.id === (this._newBoundedContextId || this.model.boundedContexts[0]?.id)}
                   >
                     ${m.name}
                   </option>`,
@@ -3924,11 +3924,11 @@ export class ModuxEditor extends LitElement {
                     title="Destino del nuevo flow"
                     @change=${(e: Event) => (this._newTargetId = (e.target as HTMLSelectElement).value)}
                   >
-                    ${[...this.model.modules, ...this.model.externalSystems].map(
+                    ${[...this.model.boundedContexts, ...this.model.externalSystems].map(
                       (t) =>
                         html`<option
                           value=${t.id}
-                          ?selected=${t.id === (this._newTargetId || this.model.modules[0]?.id)}
+                          ?selected=${t.id === (this._newTargetId || this.model.boundedContexts[0]?.id)}
                         >
                           ${t.name}
                         </option>`,
@@ -4092,7 +4092,7 @@ export class ModuxEditor extends LitElement {
                 @change=${(e: Event) => (this._newStepUseCase = (e.target as HTMLSelectElement).value)}
               >
                 <option value="" ?selected=${this._newStepUseCase === ''}>— sin use case —</option>
-                ${this.model.modules
+                ${this.model.boundedContexts
                   .flatMap((m) => m.useCases ?? [])
                   .map(
                     (u) =>
@@ -4126,7 +4126,7 @@ export class ModuxEditor extends LitElement {
                       <option value="" ?selected=${this._editStepUseCase === ''}>
                         — sin use case —
                       </option>
-                      ${this.model.modules
+                      ${this.model.boundedContexts
                         .flatMap((m) => m.useCases ?? [])
                         .map(
                           (u) =>
@@ -4282,8 +4282,8 @@ export class ModuxEditor extends LitElement {
               const { sourceId, targetId, x, y } = e.detail;
               // Two bounded contexts: the strategic relation needs its TYPE — the
               // picker opens at the drop point (create, or retype if declared).
-              const isModule = (id: string) => this.model.modules.some((mo) => mo.id === id);
-              if (this._view === 'context-map' && isModule(sourceId) && isModule(targetId)) {
+              const isBoundedContext = (id: string) => this.model.boundedContexts.some((mo) => mo.id === id);
+              if (this._view === 'context-map' && isBoundedContext(sourceId) && isBoundedContext(targetId)) {
                 const declared = this.model.relations.find(
                   (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
                 );
@@ -4303,7 +4303,7 @@ export class ModuxEditor extends LitElement {
               // Members are the VIEW-able kinds; finer elements ride along with
               // their (also visible) owning container, like in canvas selections.
               const MEMBER_KINDS = new Set([
-                'module', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
+                'boundedContext', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
                 'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'page', 'ui-app',
               ]);
               const memberIds = [...new Set(

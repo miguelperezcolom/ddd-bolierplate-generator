@@ -108,7 +108,7 @@ public class ImportApiEntityUseCase {
             var previous = merged.stream().filter(o -> o.id().equals(id)).findFirst();
             var next = new ApiOperationEntity(id, op.name(), op.httpMethod(), op.path(),
                     op.description(),
-                    previous.map(ApiOperationEntity::targetModuleId).orElse(null),
+                    previous.map(ApiOperationEntity::targetBoundedContextId).orElse(null),
                     previous.map(ApiOperationEntity::targetUseCaseId).orElse(null),
                     op.requestModelId(), op.responseModelId());
             if (previous.isPresent()) {

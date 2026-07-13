@@ -4,12 +4,12 @@ import { baseModel } from './fixtures.js';
 
 const model = () =>
   baseModel({
-    modules: [{ id: 'mod-reservas', name: 'Reservas', subdomainType: 'CORE' }],
+    boundedContexts: [{ id: 'mod-reservas', name: 'Reservas', subdomainType: 'CORE' }],
     aggregates: [
       {
         id: 'agg-reserva',
         name: 'Reserva',
-        moduleId: 'mod-reservas',
+        boundedContextId: 'mod-reservas',
         invariants: [
           { id: 'inv-overbooking', name: 'Sin overbooking' },
           { id: 'inv-fechas', name: 'Fechas coherentes' },

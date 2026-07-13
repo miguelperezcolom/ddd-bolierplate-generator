@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 
 import java.util.ArrayList;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Renders the context map as a self-contained SVG: bounded-context modules as nodes, strategic
+ * Renders the context map as a self-contained SVG: bounded-context boundedContexts as nodes, strategic
  * {@link ContextMapRelationType} relations as solid directed edges, and runtime flows as dashed
  * edges coloured by their {@link FlowContextMapFinding.Status coherence status} (green = backed,
  * orange = missing relation with a suggestion, amber = reversed).
@@ -177,9 +177,9 @@ public final class ContextMapSvgRenderer {
         String tip = node.label()
                 + (node.subdomain() != null ? " — " + node.subdomain().name().toLowerCase() + " subdomain" : "")
                 + (node.external() ? " — external system" : "");
-        // data-module-id + pointer cursor are the hooks for click-to-open (wired via the Element's
+        // data-boundedContext-id + pointer cursor are the hooks for click-to-open (wired via the Element's
         // event map once the frontend navigation primitive is confirmed).
-        return "<g data-module-id=\"" + esc(node.id()) + "\" style=\"cursor: pointer;\">"
+        return "<g data-boundedContext-id=\"" + esc(node.id()) + "\" style=\"cursor: pointer;\">"
                 + "<title>" + esc(tip) + "</title>"
                 + "<rect x=\"" + f(x) + "\" y=\"" + f(y) + "\" width=\"" + f(NODE_HW * 2) + "\" height=\"" + f(NODE_HH * 2)
                 + "\" rx=\"8\" fill=\"" + fill + "\" stroke=\"#334155\" stroke-width=\"1.5\"" + dash + "/>"

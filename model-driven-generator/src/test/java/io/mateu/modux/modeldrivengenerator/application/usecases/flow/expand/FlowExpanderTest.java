@@ -34,7 +34,7 @@ class FlowExpanderTest {
                 FlowArchetype.MATERIALIZES,
                 "agg-reserva",          // triggerAggregateId
                 "ReservaCreada",        // triggerEvent
-                "frontoffice",          // targetModuleId
+                "frontoffice",          // targetBoundedContextId
                 "ReservaFrontOffice",   // readModelName
                 List.of("localizador", "titular"),
                 null,                   // targetUseCaseId (n/a for materializes)
@@ -73,7 +73,7 @@ class FlowExpanderTest {
 
         // Read model materialized in the target context
         assertEquals("ReservaFrontOffice", x.readModel().name());
-        assertEquals("frontoffice", x.readModel().moduleId());
+        assertEquals("frontoffice", x.readModel().boundedContextId());
         assertEquals(ReadModelStorageType.Relational, x.readModel().storageType());
         assertEquals(ReadModelConsistency.Eventual, x.readModel().consistency());
         assertEquals(x.payloadModel().id(), x.readModel().modelId());

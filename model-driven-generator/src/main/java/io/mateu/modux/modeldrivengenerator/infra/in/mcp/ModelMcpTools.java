@@ -66,7 +66,7 @@ public class ModelMcpTools {
         return List.of(
                 new ToolSpec("bootstrap_project",
                         "Step 1 of the authoring path in ONE call: create a project, its service and its "
-                                + "modules, wired together. Extract the names and the objective from the user's "
+                                + "boundedContexts, wired together. Extract the names and the objective from the user's "
                                 + "natural-language description; then continue with models (step 2) — the linter "
                                 + "guides from there.",
                         obj(Map.of(
@@ -76,18 +76,18 @@ public class ModelMcpTools {
                                         "outputPath", str("Directory where the code will be generated"),
                                         "objective", str("The system's objective, in prose (from the user's description; feeds the HLA)"),
                                         "serviceId", str("Id of the service (defaults to <projectId>-svc)"),
-                                        "modules", Map.of(
+                                        "boundedContexts", Map.of(
                                                 "type", "array",
                                                 "description", "The bounded contexts, from the description",
                                                 "items", obj(Map.of(
-                                                                "id", str("Module id (kebab-case)"),
-                                                                "name", str("Module name"),
-                                                                "description", str("Responsibility of the module, in prose"),
+                                                                "id", str("BoundedContext id (kebab-case)"),
+                                                                "name", str("BoundedContext name"),
+                                                                "description", str("Responsibility of the boundedContext, in prose"),
                                                                 "subdomainType", Map.of("type", "string",
                                                                         "enum", List.of("CORE", "SUPPORTING", "GENERIC"),
                                                                         "description", "Strategic classification")),
                                                         List.of("id", "name")))),
-                                List.of("projectId", "name", "packageName", "outputPath", "modules"))),
+                                List.of("projectId", "name", "packageName", "outputPath", "boundedContexts"))),
                 new ToolSpec("list_element_types",
                         "List every element type in the modux model (aggregates, useCases, flows, processes…) "
                                 + "with the number of elements currently in the store. Start here to see the model's shape.",
@@ -252,27 +252,27 @@ public class ModelMcpTools {
         var projectId = requireText(args, "projectId");
         var serviceId = args.hasNonNull("serviceId") && !args.get("serviceId").asText().isBlank()
                 ? args.get("serviceId").asText() : projectId + "-svc";
-        var modules = args.get("modules");
-        if (modules == null || !modules.isArray() || modules.isEmpty()) {
-            throw new IllegalArgumentException("'modules' must be a non-empty array — carve the description"
+        var boundedContexts = args.get("boundedContexts");
+        if (boundedContexts == null || !boundedContexts.isArray() || boundedContexts.isEmpty()) {
+            throw new IllegalArgumentException("'boundedContexts' must be a non-empty array — carve the description"
                     + " into at least one bounded context.");
         }
 
-        var moduleIds = new java.util.ArrayList<String>();
-        for (var module : modules) {
-            if (!module.hasNonNull("id") || module.get("id").asText().isBlank()) {
-                throw new IllegalArgumentException("Every module needs an id.");
+        var boundedContextIds = new java.util.ArrayList<String>();
+        for (var boundedContext : boundedContexts) {
+            if (!boundedContext.hasNonNull("id") || boundedContext.get("id").asText().isBlank()) {
+                throw new IllegalArgumentException("Every boundedContext needs an id.");
             }
-            moduleIds.add(module.get("id").asText());
+            boundedContextIds.add(boundedContext.get("id").asText());
             // validate the shape up front — nothing is persisted until every layer parses
             try {
-                json.treeToValue(module, registry.classFor("modules"));
+                json.treeToValue(boundedContext, registry.classFor("boundedContexts"));
             } catch (JacksonException e) {
-                throw new IllegalArgumentException(schemaMismatchMessage("modules", e));
+                throw new IllegalArgumentException(schemaMismatchMessage("boundedContexts", e));
             }
         }
         for (var newId : java.util.stream.Stream.concat(
-                java.util.stream.Stream.of(projectId, serviceId), moduleIds.stream()).toList()) {
+                java.util.stream.Stream.of(projectId, serviceId), boundedContextIds.stream()).toList()) {
             var owner = idPolicy.conflict(newId, "n/a").orElse(null);
             if (owner != null) {
                 throw new IllegalArgumentException("Id '" + newId + "' already exists (in " + owner
@@ -295,19 +295,19 @@ public class ModelMcpTools {
         service.put("id", serviceId);
         // the service name drives the generated directory layout — default to the project id
         service.put("name", projectId);
-        var serviceModules = service.putArray("moduleIds");
-        moduleIds.forEach(serviceModules::add);
+        var serviceBoundedContexts = service.putArray("boundedContextIds");
+        boundedContextIds.forEach(serviceBoundedContexts::add);
 
         // reuse upsert so uniqueness/shape checks and persistence behave identically
         upsertElement("projects", project);
         upsertElement("services", service);
-        for (var module : modules) {
-            upsertElement("modules", module);
+        for (var boundedContext : boundedContexts) {
+            upsertElement("boundedContexts", boundedContext);
         }
 
-        return "Project '" + projectId + "' bootstrapped: service '" + serviceId + "' with module(s) "
-                + String.join(", ", moduleIds) + ". Store persisted.\n"
-                + "Next (the authoring path): create the models of each module (step 2); add an aggregate "
+        return "Project '" + projectId + "' bootstrapped: service '" + serviceId + "' with boundedContext(s) "
+                + String.join(", ", boundedContextIds) + ". Store persisted.\n"
+                + "Next (the authoring path): create the models of each boundedContext (step 2); add an aggregate "
                 + "only where there are invariants or a lifecycle to protect — and declare those "
                 + "invariants on it; then relations as intent (apply_recipe / flows), workflows for "
                 + "cross-context orchestration (human steps carry roleId, deadline and formPageId), and "

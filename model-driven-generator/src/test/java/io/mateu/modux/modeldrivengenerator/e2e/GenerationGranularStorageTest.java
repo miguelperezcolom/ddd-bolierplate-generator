@@ -22,7 +22,7 @@ class GenerationGranularStorageTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -34,7 +34,7 @@ class GenerationGranularStorageTest {
     @Test
     void monolithic_splits_to_granular_and_round_trips() throws Exception {
         // 1. load the monolithic example store
-        repository.loadFrom(new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+        repository.loadFrom(new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
         var originalCount = repository.allElements().size();
         assertTrue(originalCount > 100, "the example store should have many elements, was " + originalCount);
 

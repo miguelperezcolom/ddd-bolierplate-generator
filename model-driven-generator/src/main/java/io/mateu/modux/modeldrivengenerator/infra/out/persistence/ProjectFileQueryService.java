@@ -66,7 +66,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.environments(),
                         entity.serviceIds(),
                         entity.contextMap() == null ? List.<ContextMapRelationDto>of() : entity.contextMap().stream()
-                                .map(r -> new ContextMapRelationDto(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(), r.type(), r.description()))
+                                .map(r -> new ContextMapRelationDto(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(), r.type(), r.description()))
                                 .toList()));
     }
 }

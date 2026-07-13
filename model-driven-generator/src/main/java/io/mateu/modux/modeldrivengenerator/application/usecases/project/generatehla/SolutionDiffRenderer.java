@@ -22,7 +22,7 @@ public final class SolutionDiffRenderer {
 
     /** Element types in reading order (strategic → domain → behaviour → integration). */
     private static final Map<String, Integer> TYPE_ORDER = Map.ofEntries(
-            Map.entry("projects", 0), Map.entry("services", 1), Map.entry("modules", 2),
+            Map.entry("projects", 0), Map.entry("services", 1), Map.entry("boundedContexts", 2),
             Map.entry("aggregates", 3), Map.entry("entities", 4), Map.entry("models", 5),
             Map.entry("useCases", 6), Map.entry("domainEvents", 7),
             Map.entry("applicationEvents", 8), Map.entry("flows", 9),

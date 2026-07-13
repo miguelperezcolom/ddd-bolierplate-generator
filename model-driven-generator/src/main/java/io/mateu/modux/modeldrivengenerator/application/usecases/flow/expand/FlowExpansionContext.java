@@ -13,11 +13,11 @@ public record FlowExpansionContext(
         String projectName,
         String sourceServiceName,
         String aggregateName,
-        String targetModuleName,
+        String targetBoundedContextName,
         Map<String, FieldDataType> fieldTypes,
         String targetUseCaseName,
         String targetUseCaseInputModelId,
-        String sourceModuleId
+        String sourceBoundedContextId
 ) {
     public FieldDataType typeOf(String fieldName) {
         return fieldTypes != null ? fieldTypes.getOrDefault(fieldName, FieldDataType.string) : FieldDataType.string;

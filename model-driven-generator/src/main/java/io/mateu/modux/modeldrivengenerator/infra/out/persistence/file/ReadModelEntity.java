@@ -7,7 +7,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 public record ReadModelEntity(
         String id,
         String name,
-        String moduleId,
+        String boundedContextId,
         String description,
         String modelId,
         ReadModelStorageType storageType,
@@ -17,9 +17,9 @@ public record ReadModelEntity(
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-aggregateId callers and stores). */
-    public ReadModelEntity(String id, String name, String moduleId, String description,
+    public ReadModelEntity(String id, String name, String boundedContextId, String description,
                            String modelId, ReadModelStorageType storageType,
                            ReadModelConsistency consistency) {
-        this(id, name, moduleId, description, modelId, storageType, consistency, null);
+        this(id, name, boundedContextId, description, modelId, storageType, consistency, null);
     }
 }

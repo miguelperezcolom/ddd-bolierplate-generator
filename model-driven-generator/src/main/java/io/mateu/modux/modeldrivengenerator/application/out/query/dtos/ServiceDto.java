@@ -16,7 +16,7 @@ public record ServiceDto(String id, String name, String gitRepository, String do
                          Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                          String deploymentStrategy,
                          String owner,
-                         List<String> moduleIds,
+                         List<String> boundedContextIds,
                          List<String> gatewayIds,
                          List<EnvVar> envVars,
                          String javaVersion,

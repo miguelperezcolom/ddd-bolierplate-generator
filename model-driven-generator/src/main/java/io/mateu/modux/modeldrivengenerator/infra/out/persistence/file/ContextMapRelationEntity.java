@@ -5,8 +5,8 @@ import java.util.List;
 public record ContextMapRelationEntity(
         String id,
         String name,
-        String sourceModuleId,
-        String targetModuleId,
+        String sourceBoundedContextId,
+        String targetBoundedContextId,
         String type,
         String description,
         /** Architecture decisions (ADRs) this relation traces back to. */
@@ -14,8 +14,8 @@ public record ContextMapRelationEntity(
 ) {
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
-    public ContextMapRelationEntity(String id, String name, String sourceModuleId,
-                                    String targetModuleId, String type, String description) {
-        this(id, name, sourceModuleId, targetModuleId, type, description, List.of());
+    public ContextMapRelationEntity(String id, String name, String sourceBoundedContextId,
+                                    String targetBoundedContextId, String type, String description) {
+        this(id, name, sourceBoundedContextId, targetBoundedContextId, type, description, List.of());
     }
 }

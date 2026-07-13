@@ -2,13 +2,13 @@ package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
@@ -47,7 +47,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -339,18 +339,18 @@ public class AgentEditorCommands {
     public void addApiImplementation(EditorCommand command) {
         var api = repository.findById(command.apiId(), ApiEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
-        if (repository.findById(command.moduleId(), ModuleEntity.class).isEmpty()) {
-            throw new IllegalArgumentException("Unknown bounded context: " + command.moduleId());
+        if (repository.findById(command.boundedContextId(), BoundedContextEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Unknown bounded context: " + command.boundedContextId());
         }
-        if (api.implementedByModuleIds().contains(command.moduleId())) return;
-        repository.save(api.withImplementedByModuleIds(
-                appended(api.implementedByModuleIds(), command.moduleId())));
+        if (api.implementedByBoundedContextIds().contains(command.boundedContextId())) return;
+        repository.save(api.withImplementedByBoundedContextIds(
+                appended(api.implementedByBoundedContextIds(), command.boundedContextId())));
     }
 
     public void removeApiImplementation(EditorCommand command) {
         repository.findById(command.apiId(), ApiEntity.class).ifPresent(api ->
-                repository.save(api.withImplementedByModuleIds(
-                        without(api.implementedByModuleIds(), command.moduleId()))));
+                repository.save(api.withImplementedByBoundedContextIds(
+                        without(api.implementedByBoundedContextIds(), command.boundedContextId()))));
     }
 
     /** Route ONE proxy operation to an implementation site of the API the proxy fronts. */
@@ -380,10 +380,10 @@ public class AgentEditorCommands {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown API: " + command.apiId()));
         var wires = new java.util.ArrayList<>(api.operationImplementations().stream()
                 .filter(w -> !(w.operationId().equals(command.operationId())
-                        && w.moduleId().equals(command.moduleId())))
+                        && w.boundedContextId().equals(command.boundedContextId())))
                 .toList());
         wires.add(new ApiOperationImplementationEntity(
-                command.operationId(), command.moduleId(), command.targetUseCaseId()));
+                command.operationId(), command.boundedContextId(), command.targetUseCaseId()));
         repository.save(api.withOperationImplementations(java.util.List.copyOf(wires)));
     }
 
@@ -392,7 +392,7 @@ public class AgentEditorCommands {
                 repository.save(api.withOperationImplementations(
                         api.operationImplementations().stream()
                                 .filter(w -> !(w.operationId().equals(command.operationId())
-                                        && w.moduleId().equals(command.moduleId())))
+                                        && w.boundedContextId().equals(command.boundedContextId())))
                                 .toList())));
     }
 
@@ -590,9 +590,9 @@ public class AgentEditorCommands {
                     appended(rag.sourceExternalSystemIds(), target)));
             return;
         }
-        if (repository.findById(target, ModuleEntity.class).isPresent()) {
-            if (rag.sourceModuleIds().contains(target)) return;
-            repository.save(rag.withSourceModuleIds(appended(rag.sourceModuleIds(), target)));
+        if (repository.findById(target, BoundedContextEntity.class).isPresent()) {
+            if (rag.sourceBoundedContextIds().contains(target)) return;
+            repository.save(rag.withSourceBoundedContextIds(appended(rag.sourceBoundedContextIds(), target)));
             return;
         }
         throw new IllegalArgumentException(
@@ -609,7 +609,7 @@ public class AgentEditorCommands {
                         .withSourceApiIds(without(rag.sourceApiIds(), command.targetId()))
                         .withSourceExternalSystemIds(
                                 without(rag.sourceExternalSystemIds(), command.targetId()))
-                        .withSourceModuleIds(without(rag.sourceModuleIds(), command.targetId()))));
+                        .withSourceBoundedContextIds(without(rag.sourceBoundedContextIds(), command.targetId()))));
     }
 
     /** External content feeding the RAG: a repo, a web site, an FTP server… */

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * The workspace as a heterogeneous tree-CRUD: a split view whose master list is rendered as a treegrid
- * ({@code gridLayout = tree}) of the whole model (Project ▸ Service ▸ Module ▸ Aggregates/Entities/…),
+ * ({@code gridLayout = tree}) of the whole model (Project ▸ Service ▸ BoundedContext ▸ Aggregates/Entities/…),
  * and whose detail pane shows the selected node's own editor. The framework handles selection→editor and
  * save routing; this class only supplies the tree data (via {@link WorkspaceCrudAdapter}) and delegates
  * save to the right concept editor by decoding the composite id. New elements are created through

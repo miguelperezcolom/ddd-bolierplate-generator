@@ -1,11 +1,10 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module;
 
-import io.mateu.modux.modeldrivengenerator.application.out.query.ModuleQueryService;
-import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModuleRow;
-import io.mateu.modux.modeldrivengenerator.application.usecases.module.delete.DeleteModuleCommand;
-import io.mateu.modux.modeldrivengenerator.application.usecases.module.delete.DeleteModuleUseCase;
+import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.NoFilters;
+import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
 import io.mateu.uidl.interfaces.CrudAdapter;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -19,7 +18,6 @@ import java.util.List;
 @Scope("prototype")
 @RequiredArgsConstructor
 public class ModuleCrudAdapter implements CrudAdapter<
-
         ModuleViewModel,
         ModuleViewModel,
         NoFilters,
@@ -28,34 +26,37 @@ public class ModuleCrudAdapter implements CrudAdapter<
         > {
 
     final ModuleViewModel viewModel;
-    final DeleteModuleUseCase deleteUseCase;
-    final ModuleQueryService queryService;
+    final ModelStore repository;
 
     @Override
     public ListingData<ModuleRow> search(String searchText,
                                          NoFilters filters,
                                          Pageable pageable,
                                          HttpRequest httpRequest) {
-        return queryService.findAll(searchText, filters, pageable);
+        var data = repository.findAll(searchText, filters, pageable, ModuleEntity.class);
+        return new ListingData<>(new Page<>(
+                data.page().searchSignature(),
+                data.page().pageSize(),
+                data.page().pageNumber(),
+                data.page().totalElements(),
+                data.page().content().stream()
+                        .map(x -> new ModuleRow(x.id(), x.name(), x.boundedContextId()))
+                        .toList()));
     }
 
     @Override
     public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
-        deleteUseCase.handle(new DeleteModuleCommand(selectedIds));
+        repository.deleteAllById(selectedIds, ModuleEntity.class);
     }
 
     @Override
     public ModuleViewModel getView(String id, HttpRequest httpRequest) {
-        return viewModel.load(queryService
-                .getById(id)
-                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
+        return viewModel.load(repository.findById(id, ModuleEntity.class).orElseThrow());
     }
 
     @Override
     public ModuleViewModel getEditor(String id, HttpRequest httpRequest) {
-        return viewModel.load(queryService
-                .getById(id)
-                .orElseThrow(() -> new RuntimeException("Not found: " + id)));
+        return viewModel.load(repository.findById(id, ModuleEntity.class).orElseThrow());
     }
 
     @Override

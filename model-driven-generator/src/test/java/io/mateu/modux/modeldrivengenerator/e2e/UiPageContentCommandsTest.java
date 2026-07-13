@@ -23,7 +23,7 @@ class UiPageContentCommandsTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -42,9 +42,9 @@ class UiPageContentCommandsTest {
 
         // ── the surrounding model: a use case for the button to fire ─────────
         apply("""
-                {"kind":"add-module","id":"test-mod","name":"Reservas"}""");
+                {"kind":"add-boundedContext","id":"test-mod","name":"Reservas"}""");
         apply("""
-                {"kind":"add-use-case","id":"test-uc","name":"Reservar","moduleId":"test-mod"}""");
+                {"kind":"add-use-case","id":"test-uc","name":"Reservar","boundedContextId":"test-mod"}""");
         apply("""
                 {"kind":"create-ui-page","id":"test-page","name":"Reservas"}""");
 

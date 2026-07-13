@@ -1,3 +1,3 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.importasyncapi;
 
-public record ImportAsyncApiCommand(String moduleId, String filePath) {}
+public record ImportAsyncApiCommand(String boundedContextId, String filePath) {}

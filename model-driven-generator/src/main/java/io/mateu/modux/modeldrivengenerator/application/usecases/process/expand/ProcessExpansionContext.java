@@ -5,8 +5,8 @@ public record ProcessExpansionContext(
         String projectName,
         String sourceServiceName,
         String aggregateName,
-        String ownerModuleId,
-        String ownerModuleName,
+        String ownerBoundedContextId,
+        String ownerBoundedContextName,
         /** Id of the declared DomainEvent matching the trigger event name; null when not declared yet. */
         String triggerEventId
 ) {

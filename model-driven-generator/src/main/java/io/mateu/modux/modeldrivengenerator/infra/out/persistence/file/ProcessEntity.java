@@ -15,7 +15,7 @@ public record ProcessEntity(
         String description,
         String triggerAggregateId,
         String triggerEvent,
-        String ownerModuleId,
+        String ownerBoundedContextId,
         List<ProcessStepEntity> steps,
         String onCompletionEventName,
         /** End-to-end SLA as an ISO-8601 duration (e.g. P3D). */
@@ -30,9 +30,9 @@ public record ProcessEntity(
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
     public ProcessEntity(String id, String name, String description, String triggerAggregateId,
-                         String triggerEvent, String ownerModuleId, List<ProcessStepEntity> steps,
+                         String triggerEvent, String ownerBoundedContextId, List<ProcessStepEntity> steps,
                          String onCompletionEventName, String sla) {
-        this(id, name, description, triggerAggregateId, triggerEvent, ownerModuleId, steps,
+        this(id, name, description, triggerAggregateId, triggerEvent, ownerBoundedContextId, steps,
                 onCompletionEventName, sla, List.of());
     }
 }

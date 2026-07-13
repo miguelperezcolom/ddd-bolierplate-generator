@@ -15,7 +15,7 @@ export interface PaletteItem {
 }
 
 export const PALETTE_NEW: PaletteItem[] = [
-  { type: 'module', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
+  { type: 'boundedContext', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
   { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
   { type: 'project-reference', label: 'Proyecto (catálogo)', symbol: 'component', color: '#334155', group: 'Estratégico' },
   { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
@@ -50,7 +50,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
   { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
   { type: 'service', label: 'Servicio (despliegue)', symbol: 'gear', color: '#334155', group: 'Distribución' },
-  { type: 'code-module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },
+  { type: 'module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },
   { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app-orchestrator', label: 'Orquestador', symbol: 'process', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },

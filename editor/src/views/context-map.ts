@@ -39,8 +39,8 @@ const NODE_W = 168;
 const NODE_H = 56;
 
 /** Canvas id of an API-implementation occurrence (same ApiRef, one node per site). */
-export function apiImplNodeId(apiId: string, moduleId: string): string {
-  return `apiimpl:${apiId}@${moduleId}`;
+export function apiImplNodeId(apiId: string, boundedContextId: string): string {
+  return `apiimpl:${apiId}@${boundedContextId}`;
 }
 
 /** Canvas id of an operation occurrence at a SITE (a proxy or a bounded context). */
@@ -78,12 +78,12 @@ function resolveForm(
  * ApiRef the external system publishes, so the chip looks exactly like the API nested
  * in its publisher; only the site differs.
  */
-function apiImplChildren(model: ModuxModel, moduleId: string): ChildDesc[] {
+function apiImplChildren(model: ModuxModel, boundedContextId: string): ChildDesc[] {
   const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
   return (model.apiImplementations ?? [])
-    .filter((impl) => impl.moduleId === moduleId && apiById.has(impl.apiId))
+    .filter((impl) => impl.boundedContextId === boundedContextId && apiById.has(impl.apiId))
     .map((impl): ChildDesc => ({
-      id: apiImplNodeId(impl.apiId, impl.moduleId),
+      id: apiImplNodeId(impl.apiId, impl.boundedContextId),
       name: apiById.get(impl.apiId)!.name,
       kind: 'api-impl',
     }));
@@ -237,66 +237,66 @@ function defaultChildOffset(i: number, size: { w: number; h: number }): { x: num
 }
 
 /** The distributable elements of a bounded context (everything but the API impls). */
-function moduleElementDescs(
+function boundedContextElementDescs(
   model: ModuxModel,
-  module: ModuxModel['modules'][number],
+  boundedContext: ModuxModel['boundedContexts'][number],
 ): ChildDesc[] {
   return [
     ...(model.aggregates ?? [])
-      .filter((a) => a.moduleId === module.id)
+      .filter((a) => a.boundedContextId === boundedContext.id)
       .map((a): ChildDesc => ({
         id: a.id,
         // The invariants ARE the aggregate's reason to exist: they show on the chip.
         name: (a.invariants ?? []).length ? `${a.name} ⚖${a.invariants!.length}` : a.name,
         kind: 'aggregate',
       })),
-    ...(module.useCases ?? []).map(
+    ...(boundedContext.useCases ?? []).map(
       (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
     ),
-    ...(module.domainEvents ?? []).map(
+    ...(boundedContext.domainEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'domain-event' }),
     ),
-    ...(module.readModels ?? []).map(
+    ...(boundedContext.readModels ?? []).map(
       (rm): ChildDesc => ({ id: rm.id, name: rm.name, kind: 'read-model' }),
     ),
-    ...(module.domainServices ?? []).map(
+    ...(boundedContext.domainServices ?? []).map(
       (ds): ChildDesc => ({ id: ds.id, name: ds.name, kind: 'domain-service' }),
     ),
-    ...(module.applicationEvents ?? []).map(
+    ...(boundedContext.applicationEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'application-event' }),
     ),
-    ...(module.queryServices ?? []).map(
+    ...(boundedContext.queryServices ?? []).map(
       (qs): ChildDesc => ({ id: qs.id, name: qs.name, kind: 'query-service' }),
     ),
-    ...(module.scheduledTriggers ?? []).map(
+    ...(boundedContext.scheduledTriggers ?? []).map(
       (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'scheduled-trigger' }),
     ),
     ...(model.etlFlows ?? [])
-      .filter((f) => f.ownerModuleId === module.id)
+      .filter((f) => f.ownerBoundedContextId === boundedContext.id)
       .map((f): ChildDesc => ({ id: f.id, name: f.name, kind: 'etl-flow' })),
     ...(model.notifications ?? [])
-      .filter((n) => n.ownerModuleId === module.id)
+      .filter((n) => n.ownerBoundedContextId === boundedContext.id)
       .map((n): ChildDesc => ({ id: n.id, name: n.name, kind: 'notification' })),
     ...(model.documents ?? [])
-      .filter((d) => d.ownerModuleId === module.id)
+      .filter((d) => d.ownerBoundedContextId === boundedContext.id)
       .map((d): ChildDesc => ({ id: d.id, name: d.name, kind: 'document' })),
     ...(model.uiApps ?? [])
-      .filter((a) => (module.uiAppIds ?? []).includes(a.id))
+      .filter((a) => (boundedContext.uiAppIds ?? []).includes(a.id))
       .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'ui-app' })),
   ];
 }
 
 /**
- * A bounded context at the detail level: the module itself as a resizable
+ * A bounded context at the detail level: the boundedContext itself as a resizable
  * container plus one small box per aggregate and per use case (both hang off the
- * module — there is no aggregate→use-case link). Child positions are offsets
+ * boundedContext — there is no aggregate→use-case link). Child positions are offsets
  * from the container centre (stored in `layout` under the child id, falling back
  * to a grid); the container size comes from `sizes`. Children are draggable and
  * become connectable once relations between them are added.
  */
 function detailedContext(
   model: ModuxModel,
-  module: ModuxModel['modules'][number],
+  boundedContext: ModuxModel['boundedContexts'][number],
   center: { x: number; y: number },
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
   layout: DiagramLayout,
@@ -306,8 +306,8 @@ function detailedContext(
   const children: ChildDesc[] = [
     // APIs implemented here nest first: strategic-level elements, like an external
     // system's published APIs.
-    ...apiImplChildren(model, module.id),
-    ...moduleElementDescs(model, module),
+    ...apiImplChildren(model, boundedContext.id),
+    ...boundedContextElementDescs(model, boundedContext),
   ];
   if (!children.length) {
     // Nothing to nest — keep the compact context box.
@@ -319,20 +319,20 @@ function detailedContext(
   if (operationsLevel) {
     const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
     const boxes: ApiBoxDesc[] = (model.apiImplementations ?? [])
-      .filter((impl) => impl.moduleId === module.id && apiById.has(impl.apiId))
+      .filter((impl) => impl.boundedContextId === boundedContext.id && apiById.has(impl.apiId))
       .map((impl) => {
         const api = apiById.get(impl.apiId)!;
         return {
-          id: apiImplNodeId(impl.apiId, impl.moduleId),
+          id: apiImplNodeId(impl.apiId, impl.boundedContextId),
           name: api.name,
           kind: 'api-impl' as const,
           badge: 'API',
           fill: '#eef2ff',
           stroke: '#4f46e5',
-          tooltip: `${api.name} — la misma API, implementada en ${module.name}`,
+          tooltip: `${api.name} — la misma API, implementada en ${boundedContext.name}`,
           opKind: 'api-op-occurrence' as const,
           ops: (api.operations ?? []).map((op) => ({
-            id: apiOpOccurrenceId(op.id, module.id),
+            id: apiOpOccurrenceId(op.id, boundedContext.id),
             name: op.name,
           })),
         };
@@ -480,7 +480,7 @@ function containerWithApiBoxes(
   return nodes;
 }
 
-/** The three hexagonal layers a code module packages its elements into, by kind. */
+/** The three hexagonal layers a code boundedContext packages its elements into, by kind. */
 const HEX_LAYERS: { key: string; label: string; fill: string; kinds: ChildDesc['kind'][] }[] = [
   { key: 'dominio', label: 'dominio', fill: '#f5f3ff', kinds: ['aggregate', 'domain-event', 'domain-service'] },
   {
@@ -504,31 +504,31 @@ const BOX_W = C_W_DEFAULT + 2 * BOX_PAD;
 
 /**
  * The distribution level: the bounded context DISTRIBUTES its elements into code
- * modules. Each module is a sub-box stacking its three hexagonal layers (derived
+ * boundedContexts. Each boundedContext is a sub-box stacking its three hexagonal layers (derived
  * from the element kinds, never stored); undistributed elements stay as plain
- * chips in the context, waiting to be wired into a module.
+ * chips in the context, waiting to be wired into a boundedContext.
  */
 function distributionContext(
   model: ModuxModel,
-  module: ModuxModel['modules'][number],
+  boundedContext: ModuxModel['boundedContexts'][number],
   center: { x: number; y: number },
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
   toggledIds: ReadonlySet<string> = new Set(),
 ): SceneNode[] {
-  const elements = moduleElementDescs(model, module);
+  const elements = boundedContextElementDescs(model, boundedContext);
   const byId = new Map(elements.map((e) => [e.id, e]));
-  const codeModules = (model.codeModules ?? []).filter((cm) => cm.moduleId === module.id);
-  const assignedElsewhere = new Set(codeModules.flatMap((cm) => cm.elementIds ?? []));
+  const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === boundedContext.id);
+  const assignedElsewhere = new Set(modules.flatMap((cm) => cm.elementIds ?? []));
   // Deployment is topology, not content: boxes stay COMPACT by default — the
   // chevron unfolds one to package elements looking inside, and only then the
   // context's unassigned elements join as loose chips to wire in.
-  const anyExpanded = codeModules.some((cm) => toggledIds.has(cm.id));
+  const anyExpanded = modules.some((cm) => toggledIds.has(cm.id));
   const plain = anyExpanded ? elements.filter((e) => !assignedElsewhere.has(e.id)) : [];
 
-  const mSize = sizes[base.id] ?? defaultContainerSize(codeModules.length + plain.length);
-  const boxes = codeModules.map((cm, i) => {
+  const mSize = sizes[base.id] ?? defaultContainerSize(modules.length + plain.length);
+  const boxes = modules.map((cm, i) => {
     const expanded = toggledIds.has(cm.id);
     const chips = !expanded ? [] : (cm.elementIds ?? [])
       .map((id) => byId.get(id))
@@ -577,7 +577,7 @@ function distributionContext(
     nodes.push({
       id: b.cm.id,
       label: b.cm.name,
-      kind: 'code-module',
+      kind: 'module',
       symbol: 'component',
       fill: '#ffffff',
       stroke: '#334155',
@@ -739,11 +739,11 @@ export function contextMapScene(
     (px) => px.publishedByExternalSystemId && externalIds.has(px.publishedByExternalSystemId),
   );
   const nestedProxyIds = new Set(nestedProxies.map((px) => px.id));
-  // The distribution level narrows the cast: modules, services and infrastructure —
+  // The distribution level narrows the cast: boundedContexts, services and infrastructure —
   // the strategic nodes (externals, APIs, workflows, floating ETLs) stay on the
   // other levels.
   const allNodes = [
-    ...model.modules.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
+    ...model.boundedContexts.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
     ...(distributionLevel ? [] : model.externalSystems)
       .map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(bareLevel ? [] : (model.apis ?? [])
@@ -761,7 +761,7 @@ export function contextMapScene(
     }))),
     // ETL flows without owner (legacy) still float; owned ones nest in their context.
     ...(bareLevel ? [] : (model.etlFlows ?? [])
-      .filter((f) => !f.ownerModuleId)
+      .filter((f) => !f.ownerBoundedContextId)
       .map((f) => ({
         ref: f,
         external: false,
@@ -940,7 +940,7 @@ export function contextMapScene(
       const xFoldable = hasChips || richChildren.length > 0;
       const { form: xForm, collapsed: xCollapsed } = resolveForm(
         toggledIds.has(x.id),
-        // Deployment is topology: external systems join compact, like the modules.
+        // Deployment is topology: external systems join compact, like the boundedContexts.
         distributionLevel ? 'compact' : detailed ? 'full' : hasChips ? 'coarse' : 'compact',
         richChildren.length > 0 || (operationsLevel && hasChips),
       );
@@ -1024,12 +1024,12 @@ export function contextMapScene(
         h: NODE_H,
       }];
     }
-    const m = entry.ref as ModuxModel['modules'][number];
+    const m = entry.ref as ModuxModel['boundedContexts'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
     const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
       id: m.id,
       label: m.name,
-      kind: 'module',
+      kind: 'boundedContext',
       symbol: 'component',
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#94a3b8',
@@ -1038,7 +1038,7 @@ export function contextMapScene(
     };
     const implChildren = apiImplChildren(model, m.id);
     const hasDetail =
-      (model.aggregates ?? []).some((a) => a.moduleId === m.id) ||
+      (model.aggregates ?? []).some((a) => a.boundedContextId === m.id) ||
       (m.useCases ?? []).length > 0 ||
       (m.domainEvents ?? []).length > 0 ||
       (m.applicationEvents ?? []).length > 0 ||
@@ -1046,9 +1046,9 @@ export function contextMapScene(
       (m.domainServices ?? []).length > 0 ||
       (m.queryServices ?? []).length > 0 ||
       (m.scheduledTriggers ?? []).length > 0 ||
-      (model.etlFlows ?? []).some((f) => f.ownerModuleId === m.id) ||
-      (model.notifications ?? []).some((n) => n.ownerModuleId === m.id) ||
-      (model.documents ?? []).some((d) => d.ownerModuleId === m.id);
+      (model.etlFlows ?? []).some((f) => f.ownerBoundedContextId === m.id) ||
+      (model.notifications ?? []).some((n) => n.ownerBoundedContextId === m.id) ||
+      (model.documents ?? []).some((d) => d.ownerBoundedContextId === m.id);
     const mFoldable = hasDetail || implChildren.length > 0;
     const { form: mForm, collapsed: mCollapsed } = resolveForm(
       toggledIds.has(m.id),
@@ -1220,7 +1220,7 @@ export function contextMapScene(
       });
     });
   });
-  // Distribution level: the services join the map — they say WHERE modules deploy —
+  // Distribution level: the services join the map — they say WHERE boundedContexts deploy —
   // and the infrastructure they lean on shows up too (db, broker, engines).
   if (distributionLevel) {
     const services = model.services ?? [];
@@ -1306,19 +1306,19 @@ export function contextMapScene(
     // At the detail level a flow anchors on the concrete pieces when they are
     // visible: the trigger event in the source context and (for MATERIALIZES)
     // the read model in the target — the drawing mirrors the intent.
-    const sourceModule = detailed ? model.modules.find((m) => m.id === f.sourceId) : undefined;
+    const sourceBoundedContext = detailed ? model.boundedContexts.find((m) => m.id === f.sourceId) : undefined;
     const sourceEvent =
-      sourceModule?.domainEvents?.find((ev) => ev.name === f.triggerEvent) ??
-      sourceModule?.applicationEvents?.find((ev) => ev.name === f.triggerEvent);
+      sourceBoundedContext?.domainEvents?.find((ev) => ev.name === f.triggerEvent) ??
+      sourceBoundedContext?.applicationEvents?.find((ev) => ev.name === f.triggerEvent);
     const targetReadModel =
       detailed && f.readModelName
-        ? model.modules
+        ? model.boundedContexts
             .find((m) => m.id === f.targetId)
             ?.readModels?.find((rm) => rm.name === f.readModelName)
         : undefined;
     const targetUseCase =
       detailed && f.targetUseCaseId
-        ? model.modules
+        ? model.boundedContexts
             .find((m) => m.id === f.targetId)
             ?.useCases?.find((u) => u.id === f.targetUseCaseId)
         : undefined;
@@ -1339,21 +1339,21 @@ export function contextMapScene(
   // contexts): the occurrences nest INSIDE their context above; here only the list
   // survives, feeding the proxy-routing edges below.
   const implApiIds = new Map((model.apis ?? []).map((a) => [a.id, a]));
-  const implModuleIds = new Set(model.modules.map((m) => m.id));
+  const implBoundedContextIds = new Set(model.boundedContexts.map((m) => m.id));
   const implEntries = (model.apiImplementations ?? []).filter(
-    (impl) => implApiIds.has(impl.apiId) && implModuleIds.has(impl.moduleId),
+    (impl) => implApiIds.has(impl.apiId) && implBoundedContextIds.has(impl.boundedContextId),
   );
 
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
   const nodeIds = new Set(nodes.map((n) => n.id));
 
-  // Deployment wiring (distribution level): service → the code modules it deploys,
+  // Deployment wiring (distribution level): service → the code boundedContexts it deploys,
   // plus the infrastructure each service leans on.
   const deployEdges: SceneEdge[] = distributionLevel
     ? [
         ...(model.services ?? []).flatMap((svc) =>
-          (svc.codeModuleIds ?? [])
+          (svc.moduleIds ?? [])
             .filter((cmId) => nodeIds.has(cmId) && nodeIds.has(svc.id))
             .map((cmId): SceneEdge => ({
               id: `deploy:${svc.id}->${cmId}`,
@@ -1436,16 +1436,16 @@ export function contextMapScene(
     : [];
 
   // API operations wired to their implementers: operation chip → use case/policy at
-  // the detail level; at the contexts level the API box points at the module.
+  // the detail level; at the contexts level the API box points at the boundedContext.
   const apiWireEdges: SceneEdge[] = (model.apis ?? []).flatMap((api) =>
     api.operations.flatMap((op) => {
       const target =
         detailed && op.targetUseCaseId && nodeIds.has(op.targetUseCaseId)
           ? op.targetUseCaseId
-          : op.targetModuleId && nodeIds.has(op.targetModuleId)
-            ? op.targetModuleId
+          : op.targetBoundedContextId && nodeIds.has(op.targetBoundedContextId)
+            ? op.targetBoundedContextId
             : op.targetUseCaseId && !detailed
-              ? null // fine wiring is invisible at the contexts level unless a module is set
+              ? null // fine wiring is invisible at the contexts level unless a boundedContext is set
               : null;
       if (!target) return [];
       // Global wiring always paints from the operation AS PUBLISHED (per-site wiring —
@@ -1485,7 +1485,7 @@ export function contextMapScene(
 
   // Identity: who validates whose tokens, and where federated IdPs come from.
   const idpEdges: SceneEdge[] = [
-    ...model.modules
+    ...model.boundedContexts
       .filter((mo) => mo.identityProviderId && nodeIds.has(mo.id) && nodeIds.has(mo.identityProviderId))
       .map((mo): SceneEdge => ({
         id: `idptrust:${mo.id}`,
@@ -1501,7 +1501,7 @@ export function contextMapScene(
     ...(model.etlFlows ?? [])
       .filter((f) => f.identityProviderId && nodeIds.has(f.identityProviderId))
       .flatMap((f): SceneEdge[] => {
-        const el = nodeIds.has(f.id) ? f.id : f.ownerModuleId && nodeIds.has(f.ownerModuleId) ? f.ownerModuleId : null;
+        const el = nodeIds.has(f.id) ? f.id : f.ownerBoundedContextId && nodeIds.has(f.ownerBoundedContextId) ? f.ownerBoundedContextId : null;
         if (!el) return [];
         return [{
           id: `idpsvc:${f.id}`,
@@ -1532,7 +1532,7 @@ export function contextMapScene(
 
   // Scheduled trigger → the use case (or policy) it fires, on a cron.
   const triggerFireEdges: SceneEdge[] = detailed
-    ? model.modules
+    ? model.boundedContexts
         .flatMap((mo) => mo.scheduledTriggers ?? [])
         .filter((t) => t.useCaseId && nodeIds.has(t.id) && nodeIds.has(t.useCaseId))
         .map((t) => ({
@@ -1646,16 +1646,16 @@ export function contextMapScene(
   ];
   // Workflows on the strategic map: what they orchestrate and what fires them.
   // A hidden child (use case / event at the coarse level) rolls up to its context.
-  const moduleOfChild = new Map<string, string>();
-  for (const m of model.modules) {
-    for (const u of m.useCases ?? []) moduleOfChild.set(u.id, m.id);
-    for (const ev of m.domainEvents ?? []) moduleOfChild.set(ev.id, m.id);
-    for (const ev of m.applicationEvents ?? []) moduleOfChild.set(ev.id, m.id);
-    for (const qs of m.queryServices ?? []) moduleOfChild.set(qs.id, m.id);
+  const boundedContextOfChild = new Map<string, string>();
+  for (const m of model.boundedContexts) {
+    for (const u of m.useCases ?? []) boundedContextOfChild.set(u.id, m.id);
+    for (const ev of m.domainEvents ?? []) boundedContextOfChild.set(ev.id, m.id);
+    for (const ev of m.applicationEvents ?? []) boundedContextOfChild.set(ev.id, m.id);
+    for (const qs of m.queryServices ?? []) boundedContextOfChild.set(qs.id, m.id);
   }
-  const rollUpChild = (id: string) => (nodeIds.has(id) ? id : (moduleOfChild.get(id) ?? id));
+  const rollUpChild = (id: string) => (nodeIds.has(id) ? id : (boundedContextOfChild.get(id) ?? id));
   const eventIdByName = new Map<string, string>();
-  for (const m of model.modules) {
+  for (const m of model.boundedContexts) {
     for (const ev of m.domainEvents ?? []) eventIdByName.set(ev.name, ev.id);
     for (const ev of m.applicationEvents ?? []) eventIdByName.set(ev.name, ev.id);
   }
@@ -1718,11 +1718,11 @@ export function contextMapScene(
   }
   // Notifications: the event firing them and the roles they reach.
   const notificationEdges: SceneEdge[] = (model.notifications ?? []).flatMap((n): SceneEdge[] => {
-    const el = nodeIds.has(n.id) ? n.id : n.ownerModuleId && nodeIds.has(n.ownerModuleId) ? n.ownerModuleId : null;
+    const el = nodeIds.has(n.id) ? n.id : n.ownerBoundedContextId && nodeIds.has(n.ownerBoundedContextId) ? n.ownerBoundedContextId : null;
     if (!el) return [];
     const out: SceneEdge[] = [];
     if (n.eventId) {
-      const ev = nodeIds.has(n.eventId) ? n.eventId : moduleOfChild.get(n.eventId);
+      const ev = nodeIds.has(n.eventId) ? n.eventId : boundedContextOfChild.get(n.eventId);
       if (ev && nodeIds.has(ev) && ev !== el) {
         out.push({
           id: `notif:${n.id}`,
@@ -1756,9 +1756,9 @@ export function contextMapScene(
 
   // Reports fed by a query operation (the qs chip at the detail level).
   const documentEdges: SceneEdge[] = (model.documents ?? []).flatMap((d): SceneEdge[] => {
-    const el = nodeIds.has(d.id) ? d.id : d.ownerModuleId && nodeIds.has(d.ownerModuleId) ? d.ownerModuleId : null;
+    const el = nodeIds.has(d.id) ? d.id : d.ownerBoundedContextId && nodeIds.has(d.ownerBoundedContextId) ? d.ownerBoundedContextId : null;
     if (!el || !d.queryServiceId) return [];
-    const qs = nodeIds.has(d.queryServiceId) ? d.queryServiceId : moduleOfChild.get(d.queryServiceId);
+    const qs = nodeIds.has(d.queryServiceId) ? d.queryServiceId : boundedContextOfChild.get(d.queryServiceId);
     if (!qs || !nodeIds.has(qs) || qs === el) return [];
     return [{
       id: `docq:${d.id}`,
@@ -1778,8 +1778,8 @@ export function contextMapScene(
     (f.steps ?? []).flatMap((s): SceneEdge[] => {
       const flowEl = nodeIds.has(f.id)
         ? f.id
-        : f.ownerModuleId && nodeIds.has(f.ownerModuleId)
-          ? f.ownerModuleId
+        : f.ownerBoundedContextId && nodeIds.has(f.ownerBoundedContextId)
+          ? f.ownerBoundedContextId
           : null;
       if (!flowEl) return [];
       const ref = s.externalTableId ?? s.operationId ?? s.apiId ?? s.eventId;
@@ -1788,7 +1788,7 @@ export function contextMapScene(
       if (!nodeIds.has(el) && s.operationId && s.apiId) el = s.apiId;
       if (!nodeIds.has(el) && s.externalTableId) el = tableSystem.get(s.externalTableId) ?? el;
       if (!nodeIds.has(el)) el = rollUp(el);
-      if (!nodeIds.has(el)) el = moduleOfChild.get(ref) ?? el;
+      if (!nodeIds.has(el)) el = boundedContextOfChild.get(ref) ?? el;
       if (!nodeIds.has(el) || el === flowEl) return [];
       const source = s.type.startsWith('SOURCE');
       return [{
@@ -1868,7 +1868,7 @@ export function contextMapScene(
       (model.rags ?? [])
         .flatMap((r) => [
           ...(r.sourceExternalSystemIds ?? []).map((xid) => ({ sourceId: xid, targetId: r.id, name: r.name })),
-          ...(r.sourceModuleIds ?? []).map((mid) => ({ sourceId: mid, targetId: r.id, name: r.name })),
+          ...(r.sourceBoundedContextIds ?? []).map((mid) => ({ sourceId: mid, targetId: r.id, name: r.name })),
         ])
         .filter((d) => nodeIds.has(d.sourceId) && nodeIds.has(d.targetId))
         .map((d): [string, SceneEdge] => [
@@ -1960,7 +1960,7 @@ export function contextMapScene(
   // "implemented here"), and every proxy fronting that API also routes to it (teal, like
   // the proxy → published-API edge).
   const apiImplEdges: SceneEdge[] = implEntries.flatMap((impl) => {
-    const nid = apiImplNodeId(impl.apiId, impl.moduleId);
+    const nid = apiImplNodeId(impl.apiId, impl.boundedContextId);
     if (!nodeIds.has(nid)) return [];
     const edges: SceneEdge[] = [];
     for (const px of (model.proxyApis ?? []).filter((p) => p.targetApiId === impl.apiId)) {
@@ -2058,16 +2058,16 @@ export function contextMapScene(
   const apiOpImplWireEdges: SceneEdge[] = detailed
     ? (model.apiOperationImplementations ?? []).flatMap((w) => {
         if (!nodeIds.has(w.useCaseId)) return [];
-        const source = nodeIds.has(apiOpOccurrenceId(w.operationId, w.moduleId))
-          ? apiOpOccurrenceId(w.operationId, w.moduleId)
-          : nodeIds.has(apiImplNodeId(w.apiId, w.moduleId))
-            ? apiImplNodeId(w.apiId, w.moduleId)
-            : nodeIds.has(rollUp(w.moduleId))
-              ? rollUp(w.moduleId)
+        const source = nodeIds.has(apiOpOccurrenceId(w.operationId, w.boundedContextId))
+          ? apiOpOccurrenceId(w.operationId, w.boundedContextId)
+          : nodeIds.has(apiImplNodeId(w.apiId, w.boundedContextId))
+            ? apiImplNodeId(w.apiId, w.boundedContextId)
+            : nodeIds.has(rollUp(w.boundedContextId))
+              ? rollUp(w.boundedContextId)
               : null;
         if (!source) return [];
         return [{
-          id: `apiimplwire:${w.operationId}@${w.moduleId}`,
+          id: `apiimplwire:${w.operationId}@${w.boundedContextId}`,
           sourceId: source,
           targetId: w.useCaseId,
           kind: 'api-impl-wire',

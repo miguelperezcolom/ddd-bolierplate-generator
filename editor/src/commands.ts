@@ -25,7 +25,7 @@ export type ModuxCommand =
       type: ContextMapRelationType;
     }
   | {
-      kind: 'add-module';
+      kind: 'add-boundedContext';
       id: string;
       name: string;
       subdomainType: SubdomainType;
@@ -34,7 +34,7 @@ export type ModuxCommand =
       kind: 'add-aggregate';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       /** An invariant INSIDE its aggregate — the rule that justifies the boundary. */
@@ -48,10 +48,10 @@ export type ModuxCommand =
       kind: 'add-domain-event';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
-      kind: 'remove-module';
+      kind: 'remove-boundedContext';
       id: string;
     }
   | {
@@ -135,19 +135,19 @@ export type ModuxCommand =
     }
   | { kind: 'remove-rag-content-source'; sourceId: string; uri: string; type?: string }
   | {
-      /** A table/dataset owned by an external system (moduleId = external system id). */
+      /** A table/dataset owned by an external system (boundedContextId = external system id). */
       kind: 'add-external-table';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | { kind: 'remove-external-table'; id: string }
   | {
-      /** An MCP server published by an external system (moduleId = external system id). */
+      /** An MCP server published by an external system (boundedContextId = external system id). */
       kind: 'add-mcp-server';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       uri?: string;
     }
   | { kind: 'remove-mcp-server'; id: string }
@@ -247,7 +247,7 @@ export type ModuxCommand =
       name: string;
       httpMethod?: string;
       path?: string;
-      moduleId?: string;
+      boundedContextId?: string;
       targetUseCaseId?: string;
     }
   | { kind: 'remove-api-operation'; apiId: string; id: string }
@@ -256,7 +256,7 @@ export type ModuxCommand =
       kind: 'set-api-operation-target';
       apiId: string;
       id: string;
-      moduleId?: string;
+      boundedContextId?: string;
       targetUseCaseId?: string;
     }
   | {
@@ -274,7 +274,7 @@ export type ModuxCommand =
       kind: 'add-application-event';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-application-event';
@@ -285,14 +285,14 @@ export type ModuxCommand =
       kind: 'add-domain-service';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-domain-service';
       id: string;
     }
   | {
-      /** A read model born from an aggregate (it lives in the aggregate's module). */
+      /** A read model born from an aggregate (it lives in the aggregate's boundedContext). */
       kind: 'add-read-model';
       id: string;
       name: string;
@@ -307,7 +307,7 @@ export type ModuxCommand =
        * Project a source onto a read model — possibly in another bounded context.
        * The source is exactly one of: an aggregate's state, an external operation to
        * poll, or a legacy table to poll. `targetId` names an existing read model;
-       * otherwise `moduleId` is the target context and a stub read model is born there.
+       * otherwise `boundedContextId` is the target context and a stub read model is born there.
        */
       kind: 'add-projection';
       id: string;
@@ -316,7 +316,7 @@ export type ModuxCommand =
       externalUseCaseId?: string;
       externalTableId?: string;
       targetId?: string;
-      moduleId?: string;
+      boundedContextId?: string;
       readModelName?: string;
     }
   | {
@@ -328,7 +328,7 @@ export type ModuxCommand =
       kind: 'add-query-service';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-query-service';
@@ -388,8 +388,8 @@ export type ModuxCommand =
       name: string;
       /** The API it fronts (optional at birth). */
       targetId?: string;
-      /** Host external system (optional at birth) — moduleId carries it, as elsewhere. */
-      moduleId?: string;
+      /** Host external system (optional at birth) — boundedContextId carries it, as elsewhere. */
+      boundedContextId?: string;
     }
   | {
       kind: 'remove-proxy-api';
@@ -406,12 +406,12 @@ export type ModuxCommand =
        *  the same API, never a copy; proxies fronting it route there too. */
       kind: 'add-api-implementation';
       apiId: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-api-implementation';
       apiId: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       /** Route ONE proxy operation to an implementation site of the fronted API
@@ -447,14 +447,14 @@ export type ModuxCommand =
       kind: 'set-api-operation-implementation';
       apiId: string;
       operationId: string;
-      moduleId: string;
+      boundedContextId: string;
       targetUseCaseId: string;
     }
   | {
       kind: 'remove-api-operation-implementation';
       apiId: string;
       operationId: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-external-dependency';
@@ -477,7 +477,7 @@ export type ModuxCommand =
       kind: 'add-use-case';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       /** Reaction logic with use-case shape that expresses no business case. */
       policy?: boolean;
     }
@@ -497,11 +497,11 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
-      /** A use case OFFERED by an external system (moduleId = external system id). */
+      /** A use case OFFERED by an external system (boundedContextId = external system id). */
       kind: 'add-external-use-case';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
   | {
       kind: 'remove-external-use-case';
@@ -546,7 +546,7 @@ export type ModuxCommand =
       kind: 'add-scheduled-trigger';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       cronExpression?: string;
       targetUseCaseId?: string;
     }
@@ -580,7 +580,7 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
-      /** `type` carries the elementType (module | aggregate | entity | domain-event). */
+      /** `type` carries the elementType (boundedContext | aggregate | entity | domain-event). */
       kind: 'rename-element';
       type: string;
       id: string;
@@ -597,7 +597,7 @@ export type ModuxCommand =
       triggerDomainServiceId?: string;
       /** Alternative trigger: the use case publishing the trigger APPLICATION event. */
       triggerUseCaseId?: string;
-      /** Target module or external system. */
+      /** Target boundedContext or external system. */
       targetId: string;
       readModelName?: string;
       targetUseCaseId?: string;
@@ -607,7 +607,7 @@ export type ModuxCommand =
       kind: 'add-process';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       triggerAggregateId?: string;
       triggerEvent?: string;
       steps?: import('./model.js').ProcessStepRef[];
@@ -770,8 +770,8 @@ export type ModuxCommand =
       id: string;
       name: string;
       type?: string;
-      /** Born inside a bounded context: the module owns the app from the start. */
-      moduleId?: string;
+      /** Born inside a bounded context: the boundedContext owns the app from the start. */
+      boundedContextId?: string;
     }
   | {
       /** MASTER_DETAIL: the page shown as the header (null clears it). */
@@ -932,34 +932,34 @@ export type ModuxCommand =
       fieldId?: string;
     }
   | {
-      /** A code module: the bounded context distributes its elements into it. */
-      kind: 'add-code-module';
+      /** A code boundedContext: the bounded context distributes its elements into it. */
+      kind: 'add-module';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
     }
-  | { kind: 'remove-code-module'; id: string }
+  | { kind: 'remove-module'; id: string }
   | {
-      /** An element lives in ONE module of its bounded context: assigning moves it. */
-      kind: 'add-code-module-element';
+      /** An element lives in ONE boundedContext of its bounded context: assigning moves it. */
+      kind: 'add-module-element';
       id: string;
       elementId: string;
     }
-  | { kind: 'remove-code-module-element'; id: string; elementId: string }
+  | { kind: 'remove-module-element'; id: string; elementId: string }
   | {
-      /** The service deploys the module (a shared module may deploy in several). */
-      kind: 'add-service-code-module';
+      /** The service deploys the boundedContext (a shared boundedContext may deploy in several). */
+      kind: 'add-service-module';
       serviceId: string;
       id: string;
     }
-  | { kind: 'remove-service-code-module'; serviceId: string; id: string }
+  | { kind: 'remove-service-module'; serviceId: string; id: string }
   | {
       /** An integrator: an ETL flow owned by a bounded context. */
       kind: 'add-etl-flow';
       id: string;
       name: string;
       /** Omitted: the pipeline floats until the ficha wires its owner context. */
-      moduleId?: string;
+      boundedContextId?: string;
     }
   | { kind: 'remove-etl-flow'; id: string }
   | {
@@ -989,7 +989,7 @@ export type ModuxCommand =
       kind: 'add-notification';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       type?: string;
     }
   | { kind: 'remove-notification'; id: string }
@@ -1001,7 +1001,7 @@ export type ModuxCommand =
       kind: 'add-document';
       id: string;
       name: string;
-      moduleId: string;
+      boundedContextId: string;
       type?: string;
     }
   | { kind: 'remove-document'; id: string }

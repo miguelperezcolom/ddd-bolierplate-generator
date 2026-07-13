@@ -45,7 +45,7 @@ public class FlowExpansionService {
                 keepNew(collect(expansions, FlowExpansion::domainEvent), DomainEventEntity.class, DomainEventEntity::name),
                 keepNew(collect(expansions, FlowExpansion::payloadModel), ModelEntity.class, ModelEntity::name),
                 keepNew(collect(expansions, FlowExpansion::integrationEvent), IntegrationEventEntity.class, IntegrationEventEntity::topicName),
-                keepNew(collect(expansions, FlowExpansion::readModel), ReadModelEntity.class, rm -> rm.moduleId() + "/" + rm.name()),
+                keepNew(collect(expansions, FlowExpansion::readModel), ReadModelEntity.class, rm -> rm.boundedContextId() + "/" + rm.name()),
                 keepNew(collect(expansions, FlowExpansion::projection), ProjectionEntity.class, ProjectionEntity::name),
                 keepNew(collect(expansions, FlowExpansion::subscription), SubscriptionEntity.class, SubscriptionEntity::name),
                 keepNew(collect(expansions, FlowExpansion::modelMapping), ModelMappingEntity.class, ModelMappingEntity::name),
@@ -81,7 +81,7 @@ public class FlowExpansionService {
     static Flow toDomain(FlowEntity e) {
         return Flow.load(e.id(), e.name(), e.description(),
                 e.archetype() != null ? e.archetype().name() : null,
-                e.triggerAggregateId(), e.triggerEvent(), e.targetModuleId(),
+                e.triggerAggregateId(), e.triggerEvent(), e.targetBoundedContextId(),
                 e.readModelName(), e.materializedFields(), e.targetUseCaseId(), e.inputMappings(), e.overrides());
     }
 }

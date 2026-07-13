@@ -94,7 +94,7 @@ public class ProjectFileRepository implements ProjectRepository {
                                 )).toList(),
                         entity.serviceIds(),
                         entity.contextMap() == null ? List.<ContextMapRelation>of() : entity.contextMap().stream()
-                                .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                                .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                         r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
                                 .toList()));
     }
@@ -174,7 +174,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         .map(s -> s.id())
                         .toList(),
                 entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
-                        .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                        .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                 r.type() != null ? r.type().name() : null, r.description(),
                                 // per-relation decisionIds carry-over (not modeled in the domain yet)
                                 existing == null ? List.of() : existing.contextMap().stream()

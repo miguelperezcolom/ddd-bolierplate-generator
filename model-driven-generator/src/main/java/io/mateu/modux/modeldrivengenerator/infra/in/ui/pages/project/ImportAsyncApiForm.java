@@ -22,13 +22,13 @@ public class ImportAsyncApiForm {
 
     final ImportAsyncApiUseCase useCase;
 
-    String moduleId;
+    String boundedContextId;
 
     String filePath;
 
     @Button
     URI importAsyncApi() {
-        useCase.handle(new ImportAsyncApiCommand(moduleId, filePath));
-        return URI.create("/modules/" + moduleId);
+        useCase.handle(new ImportAsyncApiCommand(boundedContextId, filePath));
+        return URI.create("/boundedContexts/" + boundedContextId);
     }
 }

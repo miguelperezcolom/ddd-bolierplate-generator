@@ -18,7 +18,7 @@ import java.util.List;
  * so every operation lands as an {@link ExternalSystemUseCaseEntity} on the external system
  * — the callable surface our use cases (CallExternalUseCase) and AI agents consume, and the
  * pollable source of projections. Deterministic ids make re-imports update, not duplicate.
- * (The other two directions: outbound → gateway, inbound → a module's use-case stubs.)
+ * (The other two directions: outbound → gateway, inbound → a boundedContext's use-case stubs.)
  */
 @Service
 @RequiredArgsConstructor

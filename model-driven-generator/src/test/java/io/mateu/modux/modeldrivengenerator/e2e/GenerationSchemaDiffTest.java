@@ -25,7 +25,7 @@ class GenerationSchemaDiffTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -36,7 +36,7 @@ class GenerationSchemaDiffTest {
 
     @Test
     void model_change_produces_an_incremental_migration_leaving_the_baseline_untouched() throws Exception {
-        var baseStore = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var baseStore = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var output = Files.createTempDirectory("modux-diff");
 
         // generation 1 → baseline only (sourceOnly: skip DevOps, we only inspect the SQL)

@@ -24,7 +24,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     // Guarded by `this`: the editor fires commands, layout PUTs and reloads
     // concurrently — an unsynchronized map silently loses puts (seen in the wild:
-    // an aggregate saved but never linked to its module).
+    // an aggregate saved but never linked to its boundedContext).
     private final Map<String, Object> store = new HashMap<>();
 
     /** Directory that holds the resolved model store; generated schema is written next to it. */

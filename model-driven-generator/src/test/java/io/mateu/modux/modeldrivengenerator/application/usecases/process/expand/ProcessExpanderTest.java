@@ -64,7 +64,7 @@ class ProcessExpanderTest {
         assertNotNull(x.taskModel());
         assertEquals("CheckInTask", x.taskModel().name());
         assertNotNull(x.taskReadModel());
-        assertEquals("mod-frontoffice", x.taskReadModel().moduleId());
+        assertEquals("mod-frontoffice", x.taskReadModel().boundedContextId());
 
         // deadline-bounded step → scheduled watch trigger
         assertEquals(1, x.deadlineTriggers().size());

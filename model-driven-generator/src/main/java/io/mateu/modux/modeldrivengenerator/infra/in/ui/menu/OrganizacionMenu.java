@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.menu;
 
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.decision.DecisionCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.designdoc.DesignDocPage;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.boundedcontext.BoundedContextCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project.ImportApiContractForm;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project.ProjectCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudOrchestrator;
@@ -19,13 +19,13 @@ public class OrganizacionMenu {
     ServiceCrudOrchestrator services;
 
     @Menu
-    ModuleCrudOrchestrator modules;
+    BoundedContextCrudOrchestrator boundedContexts;
 
     @Menu
     io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.externalsystem.ExternalSystemCrudOrchestrator externalSystems;
 
     @Menu
-    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.codemodule.CodeModuleCrudOrchestrator codeModules;
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudOrchestrator modules;
 
     @Menu
     DecisionCrudOrchestrator decisions;

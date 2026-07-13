@@ -83,8 +83,8 @@ public class ModelJsonSchemaGenerator {
     /** One-line hover docs for the top-level sections of the store. */
     private static final java.util.Map<String, String> STORE_SECTIONS = java.util.Map.ofEntries(
             java.util.Map.entry("projects", "Deliverable systems: output path, package, services, tenancy, external systems, context map."),
-            java.util.Map.entry("services", "Microservices of a project; each owns modules (bounded contexts)."),
-            java.util.Map.entry("modules", "Bounded contexts: the unit that owns aggregates, use cases and the published language."),
+            java.util.Map.entry("services", "Microservices of a project; each owns boundedContexts (bounded contexts)."),
+            java.util.Map.entry("boundedContexts", "Bounded contexts: the unit that owns aggregates, use cases and the published language."),
             java.util.Map.entry("aggregates", "DDD aggregate roots: operations, invariants, lifecycle, persistence and event sourcing."),
             java.util.Map.entry("entities", "Domain entities that live inside an aggregate boundary."),
             java.util.Map.entry("valueObjects", "Immutable typed wrappers (e.g. BookingId, Email) used by models and aggregates."),
@@ -102,7 +102,7 @@ public class ModelJsonSchemaGenerator {
             java.util.Map.entry("roles", "RBAC role definitions."),
             java.util.Map.entry("pages", "UI pages (CRUD, wizards) generated for the application."),
             java.util.Map.entry("uiAdapters", "Bindings between pages and use cases."),
-            java.util.Map.entry("uiShells", "Application shells: menus aggregating pages across modules."),
+            java.util.Map.entry("uiShells", "Application shells: menus aggregating pages across boundedContexts."),
             java.util.Map.entry("components", "Reusable UI components."),
             java.util.Map.entry("bddScenarios", "Given/when/then scenarios attached to use cases."),
             java.util.Map.entry("enums", "Enumerated types shared by models."),

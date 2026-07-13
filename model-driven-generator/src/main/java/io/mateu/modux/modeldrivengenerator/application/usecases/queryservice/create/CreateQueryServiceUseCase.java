@@ -26,7 +26,7 @@ public class CreateQueryServiceUseCase {
         var queryService = QueryService.of(
                 new QueryServiceId(command.id()),
                 new QueryServiceName(command.name()),
-                command.moduleId(),
+                command.boundedContextId(),
                 command.description(),
                 operations);
         repository.save(queryService);

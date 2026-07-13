@@ -12,7 +12,7 @@ public record FlowEntity(
         FlowArchetype archetype,
         String triggerAggregateId,
         String triggerEvent,
-        String targetModuleId,
+        String targetBoundedContextId,
         String readModelName,
         List<String> materializedFields,
         String targetUseCaseId,
@@ -28,31 +28,31 @@ public record FlowEntity(
 
     /** Backward-compatible constructor (pre-triggerUseCaseId callers and stores). */
     public FlowEntity(String id, String name, String description, FlowArchetype archetype,
-                      String triggerAggregateId, String triggerEvent, String targetModuleId,
+                      String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                       String readModelName, List<String> materializedFields, String targetUseCaseId,
                       List<String> inputMappings, List<String> overrides, List<String> decisionIds,
                       String triggerDomainServiceId) {
-        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
+        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
                 decisionIds, triggerDomainServiceId, null);
     }
 
     /** Backward-compatible constructor (pre-triggerDomainServiceId callers and stores). */
     public FlowEntity(String id, String name, String description, FlowArchetype archetype,
-                      String triggerAggregateId, String triggerEvent, String targetModuleId,
+                      String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                       String readModelName, List<String> materializedFields, String targetUseCaseId,
                       List<String> inputMappings, List<String> overrides, List<String> decisionIds) {
-        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
+        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
                 decisionIds, null, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
     public FlowEntity(String id, String name, String description, FlowArchetype archetype,
-                      String triggerAggregateId, String triggerEvent, String targetModuleId,
+                      String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                       String readModelName, List<String> materializedFields, String targetUseCaseId,
                       List<String> inputMappings, List<String> overrides) {
-        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetModuleId,
+        this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
                 List.of(), null, null);
     }

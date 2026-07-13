@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryCardinality;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -19,9 +19,9 @@ class ConsumptionApiDerivationTest {
 
     // topology: mod-a (svc-1) consumes from mod-b (svc-2) → cross-service
     //           mod-a (svc-1) consumes from mod-c (svc-1) → in-process
-    private static final ModuleEntity MOD_A = module("mod-a", List.of("uc-consumer"));
-    private static final ModuleEntity MOD_B = module("mod-b", List.of("uc-provider"));
-    private static final ModuleEntity MOD_C = module("mod-c", List.of("uc-local"));
+    private static final BoundedContextEntity MOD_A = boundedContext("mod-a", List.of("uc-consumer"));
+    private static final BoundedContextEntity MOD_B = boundedContext("mod-b", List.of("uc-provider"));
+    private static final BoundedContextEntity MOD_C = boundedContext("mod-c", List.of("uc-local"));
     private static final List<ServiceEntity> SERVICES = List.of(
             service("svc-1", List.of("mod-a", "mod-c")),
             service("svc-2", List.of("mod-b")));
@@ -43,7 +43,7 @@ class ConsumptionApiDerivationTest {
         var exposed = result.useCasesToExpose().get(0);
         assertEquals("uc-provider", exposed.id());
         assertTrue(exposed.exposedAsGrpc());
-        assertEquals("B", exposed.grpcServiceName());       // provider module name by convention
+        assertEquals("B", exposed.grpcServiceName());       // provider boundedContext name by convention
         assertEquals("uc-provider", exposed.grpcMethodName());
         assertEquals(1, result.crossServiceCalls());
         assertEquals(1, result.inProcessCalls());
@@ -68,16 +68,16 @@ class ConsumptionApiDerivationTest {
 
     // --- compact factories ---
 
-    private static ModuleEntity module(String id, List<String> useCaseIds) {
-        return new ModuleEntity(id, id.replace("mod-", "").toUpperCase(), null, null, null, null,
+    private static BoundedContextEntity boundedContext(String id, List<String> useCaseIds) {
+        return new BoundedContextEntity(id, id.replace("mod-", "").toUpperCase(), null, null, null, null,
                 useCaseIds, null, null, null, null, null, null, null, null, null, false,
                 null, null, null, null, null);
     }
 
-    private static ServiceEntity service(String id, List<String> moduleIds) {
+    private static ServiceEntity service(String id, List<String> boundedContextIds) {
         return new ServiceEntity(id, id, null, null, null, null, null, null, null, null, null,
                 null, null, null, false, null, null, null, null, null, null, false, false, null,
-                null, null, null, null, null, moduleIds, null, null, null, false, null);
+                null, null, null, null, null, boundedContextIds, null, null, null, false, null);
     }
 
     private static UseCaseEntity useCase(String id, List<UseCaseStepEntity> steps) {

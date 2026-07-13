@@ -11,7 +11,7 @@ public record SaveFlowCommand(
         FlowArchetype archetype,
         String triggerAggregateId,
         String triggerEvent,
-        String targetModuleId,
+        String targetBoundedContextId,
         String readModelName,
         List<String> materializedFields,
         String targetUseCaseId,

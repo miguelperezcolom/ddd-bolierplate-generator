@@ -37,24 +37,24 @@ public record ServiceEntity(
         Long writeTimeoutMs,
         String deploymentStrategy,
         String owner,
-        List<String> moduleIds,
+        List<String> boundedContextIds,
         List<String> gatewayIds,
         List<EnvVarEntity> envVars,
         String javaVersion,
         boolean outboxEnabled,
         String outboxTableName,
-        /** The code modules this service deploys (a shared module may deploy in several). */
-        List<String> codeModuleIds
+        /** The code boundedContexts this service deploys (a shared boundedContext may deploy in several). */
+        List<String> moduleIds
 ) implements Identifiable {
 
     public ServiceEntity {
-        if (moduleIds == null) moduleIds = List.of();
+        if (boundedContextIds == null) boundedContextIds = List.of();
         if (gatewayIds == null) gatewayIds = List.of();
         if (envVars == null) envVars = List.of();
-        if (codeModuleIds == null) codeModuleIds = List.of();
+        if (moduleIds == null) moduleIds = List.of();
     }
 
-    /** Backward-compatible constructor (pre-codeModuleIds callers and stores). */
+    /** Backward-compatible constructor (pre-moduleIds callers and stores). */
     public ServiceEntity(String id, String name, String gitRepository, String dockerImageRegistry,
                          String dockerImageName, Integer port, String contextPath, String database,
                          DbMigrationTool dbMigrationTool, Integer kubernetesReplicas,
@@ -66,7 +66,7 @@ public record ServiceEntity(
                          boolean openApiDocumentationEnabled, boolean circuitBreakerEnabled,
                          Integer circuitBreakerThreshold, Long connectionTimeoutMs, Long readTimeoutMs,
                          Long writeTimeoutMs, String deploymentStrategy, String owner,
-                         List<String> moduleIds, List<String> gatewayIds, List<EnvVarEntity> envVars,
+                         List<String> boundedContextIds, List<String> gatewayIds, List<EnvVarEntity> envVars,
                          String javaVersion, boolean outboxEnabled, String outboxTableName) {
         this(id, name, gitRepository, dockerImageRegistry, dockerImageName, port, contextPath,
                 database, dbMigrationTool, kubernetesReplicas, kubernetesCpuRequest,
@@ -75,6 +75,6 @@ public record ServiceEntity(
                 kubernetesHpaCpuThreshold, livenessProbe, readinessProbe, startupProbe,
                 openApiDocumentationEnabled, circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs, deploymentStrategy, owner,
-                moduleIds, gatewayIds, envVars, javaVersion, outboxEnabled, outboxTableName, null);
+                boundedContextIds, gatewayIds, envVars, javaVersion, outboxEnabled, outboxTableName, null);
     }
 }

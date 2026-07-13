@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -14,7 +14,7 @@ import java.util.Objects;
  * Consumption intent → transport, derived from deployment topology: a use case consumes
  * functionality (another use case, or a query service operation) declared as a step. If the
  * provider lives in the SAME service, the call is an in-process interface — nothing to derive.
- * If the modules are distributed into DIFFERENT services, the call crosses a process boundary,
+ * If the boundedContexts are distributed into DIFFERENT services, the call crosses a process boundary,
  * which implies an API: the provider is exposed as gRPC (names by convention). Pure and idempotent.
  */
 public final class ConsumptionApiDerivation {
@@ -30,30 +30,30 @@ public final class ConsumptionApiDerivation {
 
     public static Result derive(List<UseCaseEntity> useCases,
                                 List<QueryServiceEntity> queryServices,
-                                List<ModuleEntity> modules,
+                                List<BoundedContextEntity> boundedContexts,
                                 List<ServiceEntity> services) {
         var useCasesToExpose = new ArrayList<UseCaseEntity>();
         var queryServicesToExpose = new ArrayList<QueryServiceEntity>();
         int crossService = 0, inProcess = 0;
 
-        for (var module : modules) {
-            if (module.useCaseIds() == null) continue;
-            var consumerService = serviceOf(services, module.id());
-            for (var useCaseId : module.useCaseIds()) {
+        for (var boundedContext : boundedContexts) {
+            if (boundedContext.useCaseIds() == null) continue;
+            var consumerService = serviceOf(services, boundedContext.id());
+            for (var useCaseId : boundedContext.useCaseIds()) {
                 var consumer = byId(useCases, useCaseId);
                 if (consumer == null || consumer.steps() == null) continue;
                 for (var step : consumer.steps()) {
                     if (step.type() == UseCaseStepType.CallUseCase && step.useCaseId() != null) {
                         var provider = byId(useCases, step.useCaseId());
-                        var providerModule = ownerModule(modules, step.useCaseId());
-                        if (provider == null || providerModule == null) continue;
-                        if (sameService(consumerService, serviceOf(services, providerModule.id()))) {
+                        var providerBoundedContext = ownerBoundedContext(boundedContexts, step.useCaseId());
+                        if (provider == null || providerBoundedContext == null) continue;
+                        if (sameService(consumerService, serviceOf(services, providerBoundedContext.id()))) {
                             inProcess++;
                         } else {
                             crossService++;
                             if (!provider.exposedAsGrpc() && !provider.exposedAsRest()
                                     && useCasesToExpose.stream().noneMatch(u -> u.id().equals(provider.id()))) {
-                                useCasesToExpose.add(exposedAsGrpc(provider, providerModule));
+                                useCasesToExpose.add(exposedAsGrpc(provider, providerBoundedContext));
                             }
                         }
                     }
@@ -61,15 +61,15 @@ public final class ConsumptionApiDerivation {
                         var provider = queryServices.stream()
                                 .filter(qs -> qs.id().equals(step.queryServiceId())).findFirst().orElse(null);
                         if (provider == null) continue;
-                        var providerModuleId = provider.moduleId();
-                        if (sameService(consumerService, serviceOf(services, providerModuleId))) {
+                        var providerBoundedContextId = provider.boundedContextId();
+                        if (sameService(consumerService, serviceOf(services, providerBoundedContextId))) {
                             inProcess++;
                         } else {
                             crossService++;
                             if (!provider.exposedAsGrpc()
                                     && queryServicesToExpose.stream().noneMatch(q -> q.id().equals(provider.id()))) {
                                 queryServicesToExpose.add(new QueryServiceEntity(
-                                        provider.id(), provider.name(), provider.moduleId(),
+                                        provider.id(), provider.name(), provider.boundedContextId(),
                                         provider.description(), provider.operations(), true));
                             }
                         }
@@ -86,16 +86,16 @@ public final class ConsumptionApiDerivation {
         return useCases.stream().filter(uc -> uc.id().equals(id)).findFirst().orElse(null);
     }
 
-    private static ModuleEntity ownerModule(List<ModuleEntity> modules, String useCaseId) {
-        return modules.stream()
+    private static BoundedContextEntity ownerBoundedContext(List<BoundedContextEntity> boundedContexts, String useCaseId) {
+        return boundedContexts.stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(useCaseId))
                 .findFirst().orElse(null);
     }
 
-    private static ServiceEntity serviceOf(List<ServiceEntity> services, String moduleId) {
-        if (moduleId == null) return null;
+    private static ServiceEntity serviceOf(List<ServiceEntity> services, String boundedContextId) {
+        if (boundedContextId == null) return null;
         return services.stream()
-                .filter(s -> s.moduleIds() != null && s.moduleIds().contains(moduleId))
+                .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(boundedContextId))
                 .findFirst().orElse(null);
     }
 
@@ -106,7 +106,7 @@ public final class ConsumptionApiDerivation {
     }
 
     /** Copy of the provider exposed as gRPC, service/method names by convention. */
-    private static UseCaseEntity exposedAsGrpc(UseCaseEntity uc, ModuleEntity providerModule) {
+    private static UseCaseEntity exposedAsGrpc(UseCaseEntity uc, BoundedContextEntity providerBoundedContext) {
         return new UseCaseEntity(uc.id(), uc.name(), uc.exposedAsRest(), true, uc.exposedAsMcp(),
                 uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(),
                 uc.steps(), uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
@@ -114,7 +114,7 @@ public final class ConsumptionApiDerivation {
                 uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName() != null ? uc.grpcServiceName() : providerModule.name(),
+                uc.grpcServiceName() != null ? uc.grpcServiceName() : providerBoundedContext.name(),
                 uc.grpcMethodName() != null ? uc.grpcMethodName() : uc.name(),
                 uc.decisionIds(), uc.policy());
     }

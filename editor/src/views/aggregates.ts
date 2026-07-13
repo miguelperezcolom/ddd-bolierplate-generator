@@ -2,7 +2,7 @@ import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 
 /**
- * Aggregates view: aggregates as nodes coloured by their module's subdomain,
+ * Aggregates view: aggregates as nodes coloured by their boundedContext's subdomain,
  * entities-within-aggregates as smaller satellite nodes, containment dashed,
  * cross-aggregate references solid.
  */
@@ -18,14 +18,14 @@ const AGG_H = 60;
 const ENT_W = 140;
 const ENT_H = 40;
 
-/** Column per module, aggregates stacked, entities hanging under their aggregate. */
+/** Column per boundedContext, aggregates stacked, entities hanging under their aggregate. */
 function defaultPositions(model: ModuxModel): DiagramLayout {
   const layout: DiagramLayout = {};
   const aggregates = model.aggregates ?? [];
   const entities = model.entities ?? [];
-  model.modules.forEach((m, mi) => {
+  model.boundedContexts.forEach((m, mi) => {
     const columnX = 220 + mi * 340;
-    const own = aggregates.filter((a) => a.moduleId === m.id);
+    const own = aggregates.filter((a) => a.boundedContextId === m.id);
     own.forEach((a, ai) => {
       const entCount = entities.filter((e) => e.aggregateId === a.id).length;
       const y = 140 + ai * (170 + entCount * 60);
@@ -37,9 +37,9 @@ function defaultPositions(model: ModuxModel): DiagramLayout {
         });
     });
   });
-  // Aggregates whose module is unknown still get a slot.
+  // Aggregates whose boundedContext is unknown still get a slot.
   aggregates
-    .filter((a) => !model.modules.some((m) => m.id === a.moduleId))
+    .filter((a) => !model.boundedContexts.some((m) => m.id === a.boundedContextId))
     .forEach((a, i) => {
       layout[a.id] = { x: 220 + i * 340, y: 640 };
     });
@@ -49,11 +49,11 @@ function defaultPositions(model: ModuxModel): DiagramLayout {
 export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const defaults = defaultPositions(model);
   const pos = (id: string) => layout[id] ?? defaults[id] ?? { x: 200, y: 200 };
-  const moduleById = new Map(model.modules.map((m) => [m.id, m]));
+  const boundedContextById = new Map(model.boundedContexts.map((m) => [m.id, m]));
 
   const aggregateNodes: SceneNode[] = (model.aggregates ?? []).map((a) => {
-    const module = moduleById.get(a.moduleId);
-    const subdomain = module?.subdomainType ?? 'GENERIC';
+    const boundedContext = boundedContextById.get(a.boundedContextId);
+    const subdomain = boundedContext?.subdomainType ?? 'GENERIC';
     const p = pos(a.id);
     return {
       id: a.id,
@@ -66,8 +66,8 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       symbol: 'aggregate',
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#64748b',
-      badge: `${module ? `${module.name.toUpperCase()} · ` : ''}AGGREGATE${(a.invariants ?? []).length ? ` · ⚖${a.invariants!.length}` : ''}`,
-      tooltip: `Agregado ${a.name}${module ? ` — módulo ${module.name} (${subdomain})` : ''}`,
+      badge: `${boundedContext ? `${boundedContext.name.toUpperCase()} · ` : ''}AGGREGATE${(a.invariants ?? []).length ? ` · ⚖${a.invariants!.length}` : ''}`,
+      tooltip: `Agregado ${a.name}${boundedContext ? ` — contexto ${boundedContext.name} (${subdomain})` : ''}`,
     };
   });
 

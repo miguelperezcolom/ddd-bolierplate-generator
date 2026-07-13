@@ -44,7 +44,7 @@ public class ProcessFileQueryService implements ProcessQueryService {
     public Optional<ProcessDto> getById(String id) {
         return repository.findById(id, ProcessEntity.class)
                 .map(entity -> new ProcessDto(entity.id(), entity.name(), entity.description(),
-                        entity.triggerAggregateId(), entity.triggerEvent(), entity.ownerModuleId(),
+                        entity.triggerAggregateId(), entity.triggerEvent(), entity.ownerBoundedContextId(),
                         toStepDtos(entity.steps()), entity.onCompletionEventName(), entity.sla()));
     }
 

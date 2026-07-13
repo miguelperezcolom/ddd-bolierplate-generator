@@ -51,8 +51,8 @@ public class ProcessExpander {
 
         var saga = saga(process, sagaId, dlq, ctx.triggerEventId());
         var subscription = new SubscriptionEntity(
-                "sub-" + base, ctx.ownerModuleName() + eventName,
-                eventName, ctx.sourceServiceName(), null, topic, kebab(ctx.ownerModuleName()),
+                "sub-" + base, ctx.ownerBoundedContextName() + eventName,
+                eventName, ctx.sourceServiceName(), null, topic, kebab(ctx.ownerBoundedContextName()),
                 3, dlq,
                 List.of(new SubscriptionActionEntity(
                         "act-" + base, "start" + process.name(), SubscriptionActionType.StartSaga,
@@ -76,7 +76,7 @@ public class ProcessExpander {
                     field(modelId, "createdAt", FieldDataType.dateTime)),
                     List.of());
             taskReadModel = new ReadModelEntity(
-                    "rm-" + base + "-tasks", process.name() + "Tasks", process.ownerModuleId(),
+                    "rm-" + base + "-tasks", process.name() + "Tasks", process.ownerBoundedContextId(),
                     "Worklist of pending human tasks of the " + process.name() + " process.",
                     modelId, ReadModelStorageType.Relational, ReadModelConsistency.Eventual);
         }
@@ -97,7 +97,7 @@ public class ProcessExpander {
 
         var completionName = process.onCompletionEventName() != null && !process.onCompletionEventName().isBlank()
                 ? process.onCompletionEventName() : process.name() + "Completed";
-        var completionTopic = kebab(ctx.projectName()) + "." + kebab(ctx.ownerModuleName()) + "." + kebab(completionName);
+        var completionTopic = kebab(ctx.projectName()) + "." + kebab(ctx.ownerBoundedContextName()) + "." + kebab(completionName);
         var completionEvent = new DomainEventEntity(
                 "evt-" + base + "-completed", completionName, null,
                 true, null, completionTopic, null, null,

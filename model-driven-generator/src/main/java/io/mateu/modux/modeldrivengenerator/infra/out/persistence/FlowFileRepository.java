@@ -21,7 +21,7 @@ public class FlowFileRepository implements FlowRepository {
     public Optional<Flow> findById(FlowId id) {
         return repository.findById(id.id(), FlowEntity.class)
                 .map(entity -> Flow.load(entity.id(), entity.name(), entity.description(), entity.archetype() != null ? entity.archetype().name() : null,
-                        entity.triggerAggregateId(), entity.triggerEvent(), entity.targetModuleId(),
+                        entity.triggerAggregateId(), entity.triggerEvent(), entity.targetBoundedContextId(),
                         entity.readModelName(), entity.materializedFields(),
                         entity.targetUseCaseId(), entity.inputMappings(), entity.overrides()));
     }
@@ -38,7 +38,7 @@ public class FlowFileRepository implements FlowRepository {
                 entity.getArchetype(),
                 entity.getTriggerAggregateId(),
                 entity.getTriggerEvent(),
-                entity.getTargetModuleId(),
+                entity.getTargetBoundedContextId(),
                 entity.getReadModelName(),
                 entity.getMaterializedFields(),
                 entity.getTargetUseCaseId(),

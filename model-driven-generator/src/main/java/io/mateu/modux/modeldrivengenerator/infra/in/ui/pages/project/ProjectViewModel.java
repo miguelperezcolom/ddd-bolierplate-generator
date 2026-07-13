@@ -230,8 +230,8 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                     var vm = new ContextMapRelationViewModel();
                     vm.id = r.id();
                     vm.name = r.name();
-                    vm.sourceModuleId = r.sourceModuleId();
-                    vm.targetModuleId = r.targetModuleId();
+                    vm.sourceBoundedContextId = r.sourceBoundedContextId();
+                    vm.targetBoundedContextId = r.targetBoundedContextId();
                     vm.type = r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null;
                     vm.description = r.description();
                     return vm;
@@ -290,7 +290,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     private List<ContextMapRelationData> toContextMapData(List<ContextMapRelationViewModel> list) {
         if (list == null) return List.of();
         return list.stream()
-                .map(r -> new ContextMapRelationData(r.id, r.name, r.sourceModuleId, r.targetModuleId,
+                .map(r -> new ContextMapRelationData(r.id, r.name, r.sourceBoundedContextId, r.targetBoundedContextId,
                         r.type != null ? r.type.name() : null, r.description))
                 .toList();
     }

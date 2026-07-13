@@ -493,7 +493,7 @@ export class ModuxEditorConnected extends LitElement {
   private static readonly TYPE_LABELS: Record<string, string> = {
     projects: 'Proyecto',
     services: 'Servicio',
-    modules: 'Contexto',
+    boundedContexts: 'Contexto',
     aggregates: 'Agregado',
     entities: 'Entidad',
     valueObjects: 'Value object',
@@ -738,12 +738,12 @@ export class ModuxEditorConnected extends LitElement {
 
   /** An OpenAPI/WSDL upload from the editor: operations (and rq/rs models) land in the store. */
   private async onImportApi(e: CustomEvent): Promise<void> {
-    const { content, fileName, apiId, homeExternalId, homeModuleId } = e.detail as {
+    const { content, fileName, apiId, homeExternalId, homeBoundedContextId } = e.detail as {
       content: string;
       fileName: string;
       apiId: string | null;
       homeExternalId?: string | null;
-      homeModuleId?: string | null;
+      homeBoundedContextId?: string | null;
     };
     await this.trackWrite(async () => {
       try {
@@ -767,8 +767,8 @@ export class ModuxEditorConnected extends LitElement {
         // A freshly imported API never floats: it lands on the selected home.
         const homeCommand = homeExternalId
           ? { kind: 'set-api-publisher', id: landed, targetId: homeExternalId }
-          : homeModuleId
-            ? { kind: 'add-api-implementation', apiId: landed, moduleId: homeModuleId }
+          : homeBoundedContextId
+            ? { kind: 'add-api-implementation', apiId: landed, boundedContextId: homeBoundedContextId }
             : null;
         if (homeCommand) {
           await fetch(`${this.base}/commands`, {

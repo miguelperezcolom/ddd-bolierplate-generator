@@ -10,7 +10,7 @@ import java.util.Map;
  * @param id              the new element's id (must be unique across the whole model)
  * @param name            the new element's name
  * @param elementRefs     extra reference fields to set on the element itself
- *                        (e.g. targetModuleId for a flow, serviceId for a gateway)
+ *                        (e.g. targetBoundedContextId for a flow, serviceId for a gateway)
  * @param parentTypeName  type of the parent to attach to (null = no attachment)
  * @param parentId        id of the parent to attach to
  * @param parentListField the parent's id-list field the new id is appended to (e.g. "aggregateIds")

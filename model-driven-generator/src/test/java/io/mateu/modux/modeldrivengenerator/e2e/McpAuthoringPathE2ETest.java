@@ -26,7 +26,7 @@ class McpAuthoringPathE2ETest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -50,7 +50,7 @@ class McpAuthoringPathE2ETest {
                 {"projectId":"club","name":"Club de Pádel","packageName":"com.club.padel",
                  "outputPath":"%s","serviceId":"svc-club",
                  "objective":"Reservas de pistas de pádel: franjas de 90 minutos, sin solapes.",
-                 "modules":[
+                 "boundedContexts":[
                   {"id":"mod-reservas","name":"Reservas","subdomainType":"CORE",
                    "description":"Reserva de pistas: valida solapes y emite eventos de ocupación.",
                    "aggregateIds":["reserva-pista"],"domainEventIds":["ev-reserva-creada"],
@@ -68,7 +68,7 @@ class McpAuthoringPathE2ETest {
                  "tenancyStrategy":"NONE",
                  "objective":"Reservas de pistas de pádel: franjas de 90 minutos, sin solapes.",
                  "contextMap":[{"id":"rel-reservas-panel","name":"Reservas publica ocupación al Panel",
-                   "sourceModuleId":"mod-reservas","targetModuleId":"mod-panel","type":"OPEN_HOST_SERVICE"}]}}"""
+                   "sourceBoundedContextId":"mod-reservas","targetBoundedContextId":"mod-panel","type":"OPEN_HOST_SERVICE"}]}}"""
                 .formatted(output.toAbsolutePath()));
 
         // ── paso 2: modelos primero; el agregado, porque hay invariante y lifecycle ──
@@ -105,7 +105,7 @@ class McpAuthoringPathE2ETest {
                   "domainEventId":"ev-reserva-creada"}]}}""");
         call("upsert_element", """
                 {"type":"queryServices","element":{"id":"qs-reservas","name":"ReservasDelDia",
-                 "moduleId":"mod-reservas","operations":[{"id":"qop-dia","name":"reservasDelDia",
+                 "boundedContextId":"mod-reservas","operations":[{"id":"qop-dia","name":"reservasDelDia",
                  "outputModelId":"reserva-pista"}]}}""");
 
         // ── paso 3: la relación entre módulos se declara como intención (receta) ──
@@ -113,7 +113,7 @@ class McpAuthoringPathE2ETest {
                 {"recipe":"materialized-read-model","params":{
                  "id":"flow-ocupacion","name":"Ocupación del día",
                  "triggerAggregateId":"reserva-pista","triggerEvent":"ReservaPistaCreada",
-                 "targetModuleId":"mod-panel","readModelName":"OcupacionDia",
+                 "targetBoundedContextId":"mod-panel","readModelName":"OcupacionDia",
                  "materializedFields":"pista, inicio, socio"}}""");
         assertTrue(recipe.contains("flow-ocupacion"), recipe);
 
@@ -133,7 +133,7 @@ class McpAuthoringPathE2ETest {
                 "the natural-language intent must reach the scaffold:\n" + scaffoldSource);
         assertTrue(Files.exists(output.resolve(
                         "club/panel/src/main/java/com/club/padel/panel/infra/in/projection/OcupacionDiaProjection.java")),
-                "the recipe's MATERIALIZES flow should expand into a projection in the target module");
+                "the recipe's MATERIALIZES flow should expand into a projection in the target boundedContext");
         try (var files = Files.walk(output)) {
             var javaFiles = files.filter(f -> f.toString().endsWith(".java")).count();
             assertTrue(javaFiles > 40, "expected a full application, got " + javaFiles + " java files");

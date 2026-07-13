@@ -7,16 +7,16 @@ import java.util.List;
 public record QueryServiceEntity(
         String id,
         String name,
-        String moduleId,
+        String boundedContextId,
         String description,
         List<QueryOperationEntity> operations,
-        /** Exposed as a gRPC API — required when consumed from a module deployed in another service. */
+        /** Exposed as a gRPC API — required when consumed from a boundedContext deployed in another service. */
         boolean exposedAsGrpc
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-exposedAsGrpc callers and stores). */
-    public QueryServiceEntity(String id, String name, String moduleId, String description,
+    public QueryServiceEntity(String id, String name, String boundedContextId, String description,
                               List<QueryOperationEntity> operations) {
-        this(id, name, moduleId, description, operations, false);
+        this(id, name, boundedContextId, description, operations, false);
     }
 }

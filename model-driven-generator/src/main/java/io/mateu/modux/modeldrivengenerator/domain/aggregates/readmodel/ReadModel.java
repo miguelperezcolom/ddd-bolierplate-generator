@@ -11,18 +11,18 @@ public class ReadModel {
 
     private ReadModelId id;
     private ReadModelName name;
-    private String moduleId;
+    private String boundedContextId;
     private String description;
     private String modelId;
     private ReadModelStorageType storageType;
     private ReadModelConsistency consistency;
 
-    public static ReadModel of(ReadModelId id, ReadModelName name, String moduleId, String description,
+    public static ReadModel of(ReadModelId id, ReadModelName name, String boundedContextId, String description,
                                String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         var readModel = new ReadModel();
         readModel.id = id;
         readModel.name = name;
-        readModel.moduleId = moduleId;
+        readModel.boundedContextId = boundedContextId;
         readModel.description = description;
         readModel.modelId = modelId;
         readModel.storageType = storageType;
@@ -30,12 +30,12 @@ public class ReadModel {
         return readModel;
     }
 
-    public static ReadModel load(String id, String name, String moduleId, String description,
+    public static ReadModel load(String id, String name, String boundedContextId, String description,
                                  String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         var readModel = new ReadModel();
         readModel.id = new ReadModelId(id);
         readModel.name = new ReadModelName(name);
-        readModel.moduleId = moduleId;
+        readModel.boundedContextId = boundedContextId;
         readModel.description = description;
         readModel.modelId = modelId;
         readModel.storageType = storageType;
@@ -43,10 +43,10 @@ public class ReadModel {
         return readModel;
     }
 
-    public void update(ReadModelName name, String moduleId, String description,
+    public void update(ReadModelName name, String boundedContextId, String description,
                        String modelId, ReadModelStorageType storageType, ReadModelConsistency consistency) {
         this.name = name;
-        this.moduleId = moduleId;
+        this.boundedContextId = boundedContextId;
         this.description = description;
         this.modelId = modelId;
         this.storageType = storageType;

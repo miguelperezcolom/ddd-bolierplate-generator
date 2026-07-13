@@ -40,7 +40,7 @@ public class ApplyRecipeUseCase {
                                 new RecipeParam("name", "Display name", true),
                                 new RecipeParam("triggerAggregateId", "Source aggregate emitting the event", true),
                                 new RecipeParam("triggerEvent", "Domain event name (e.g. ReservaCreada)", true),
-                                new RecipeParam("targetModuleId", "Module that owns the read model", true),
+                                new RecipeParam("targetBoundedContextId", "BoundedContext that owns the read model", true),
                                 new RecipeParam("readModelName", "Name of the materialized read model", true),
                                 new RecipeParam("materializedFields", "Comma-separated fields to materialize", false))),
                 new Recipe("human-approval-process", "Process with a human approval step",
@@ -52,7 +52,7 @@ public class ApplyRecipeUseCase {
                                 new RecipeParam("name", "Display name", true),
                                 new RecipeParam("triggerAggregateId", "Aggregate whose event starts the process", true),
                                 new RecipeParam("triggerEvent", "Domain event name that starts the process", true),
-                                new RecipeParam("ownerModuleId", "Module that owns the process", true),
+                                new RecipeParam("ownerBoundedContextId", "BoundedContext that owns the process", true),
                                 new RecipeParam("approverRoleId", "Role that approves (linted if missing)", false),
                                 new RecipeParam("deadline", "Approval deadline, ISO-8601 (default PT48H)", false),
                                 new RecipeParam("escalationRoleId", "Role escalated to on deadline", false),
@@ -65,7 +65,7 @@ public class ApplyRecipeUseCase {
                                 new RecipeParam("name", "Display name", true),
                                 new RecipeParam("triggerAggregateId", "Source aggregate emitting the event", true),
                                 new RecipeParam("triggerEvent", "Domain event name", true),
-                                new RecipeParam("targetModuleId", "Module that owns the outbound adapter", true))));
+                                new RecipeParam("targetBoundedContextId", "BoundedContext that owns the outbound adapter", true))));
     }
 
     /** Applies a recipe; returns the ids of the created elements. */
@@ -101,7 +101,7 @@ public class ApplyRecipeUseCase {
         repository.save(new FlowEntity(p.get("id"), p.get("name"),
                 "Materializes " + p.get("readModelName") + " from " + p.get("triggerEvent"),
                 FlowArchetype.MATERIALIZES, p.get("triggerAggregateId"), p.get("triggerEvent"),
-                p.get("targetModuleId"), p.get("readModelName"), fields, null, List.of(), List.of()));
+                p.get("targetBoundedContextId"), p.get("readModelName"), fields, null, List.of(), List.of()));
         return List.of(p.get("id"));
     }
 
@@ -117,7 +117,7 @@ public class ApplyRecipeUseCase {
                 "Applies the approved outcome"));
         repository.save(new ProcessEntity(p.get("id"), p.get("name"),
                 "Approval process started by " + p.get("triggerEvent"),
-                p.get("triggerAggregateId"), p.get("triggerEvent"), p.get("ownerModuleId"),
+                p.get("triggerAggregateId"), p.get("triggerEvent"), p.get("ownerBoundedContextId"),
                 steps, p.get("name").replaceAll("\\s", "") + "Completed", null));
         return List.of(p.get("id"));
     }
@@ -126,7 +126,7 @@ public class ApplyRecipeUseCase {
         repository.save(new FlowEntity(p.get("id"), p.get("name"),
                 "Notifies an external system on " + p.get("triggerEvent"),
                 FlowArchetype.NOTIFIES, p.get("triggerAggregateId"), p.get("triggerEvent"),
-                p.get("targetModuleId"), null, List.of(), null, List.of(), List.of()));
+                p.get("targetBoundedContextId"), null, List.of(), null, List.of(), List.of()));
         return List.of(p.get("id"));
     }
 

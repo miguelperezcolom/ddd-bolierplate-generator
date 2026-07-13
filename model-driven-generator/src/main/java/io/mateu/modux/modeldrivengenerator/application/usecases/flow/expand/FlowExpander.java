@@ -56,12 +56,12 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceBoundedContextId());
 
         var rmId = "rm-" + base;
         var projId = "proj-" + base;
         var readModel = new ReadModelEntity(
-                rmId, flow.getReadModelName(), flow.getTargetModuleId(), null,
+                rmId, flow.getReadModelName(), flow.getTargetBoundedContextId(), null,
                 modelId, ReadModelStorageType.Relational, ReadModelConsistency.Eventual);
 
         var projection = new ProjectionEntity(
@@ -71,8 +71,8 @@ public class FlowExpander {
                 "FROM_SCRATCH", "RETRY", 3, false, null);
 
         var subscription = new SubscriptionEntity(
-                "sub-" + base, ctx.targetModuleName() + eventName,
-                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
+                "sub-" + base, ctx.targetBoundedContextName() + eventName,
+                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetBoundedContextName()),
                 3, dlq,
                 List.of(new SubscriptionActionEntity(
                         "act-" + base, "updateProjection", SubscriptionActionType.UpdateProjection,
@@ -93,7 +93,7 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceBoundedContextId());
 
         var useCaseName = ctx.targetUseCaseName() != null ? ctx.targetUseCaseName() : flow.getTargetUseCaseId();
         var mappingId = "mm-" + base;
@@ -105,8 +105,8 @@ public class FlowExpander {
                 modelId, ctx.targetUseCaseInputModelId(), true, rules);
 
         var subscription = new SubscriptionEntity(
-                "sub-" + base, ctx.targetModuleName() + eventName,
-                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
+                "sub-" + base, ctx.targetBoundedContextName() + eventName,
+                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetBoundedContextName()),
                 3, dlq,
                 List.of(new SubscriptionActionEntity(
                         "act-" + base, lowerFirst(useCaseName), SubscriptionActionType.CallUseCase,
@@ -129,7 +129,7 @@ public class FlowExpander {
         // external system consumes. No internal target (read model / use case / saga).
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceBoundedContextId());
 
         return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, null, null, null);
     }
@@ -145,7 +145,7 @@ public class FlowExpander {
 
         var payloadModel = payloadModel(flow, ctx, modelId, eventName);
         var domainEvent = domainEvent(eventId, eventName, modelId, topic, dlq);
-        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceModuleId());
+        var integrationEvent = integrationEvent("ie-" + base, eventName, modelId, eventId, topic, dlq, ctx.sourceBoundedContextId());
 
         // skeleton saga triggered by the event with one placeholder step; the author fills in the
         // real steps and compensations (it is generated as an EventConductor workflow definition)
@@ -158,8 +158,8 @@ public class FlowExpander {
                 3, null, dlq, true);
 
         var subscription = new SubscriptionEntity(
-                "sub-" + base, ctx.targetModuleName() + eventName,
-                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetModuleName()),
+                "sub-" + base, ctx.targetBoundedContextName() + eventName,
+                eventName, ctx.sourceServiceName(), modelId, topic, kebab(ctx.targetBoundedContextName()),
                 3, dlq,
                 List.of(new SubscriptionActionEntity(
                         "act-" + base, "start" + flow.getName().name(), SubscriptionActionType.StartSaga,
@@ -198,9 +198,9 @@ public class FlowExpander {
     }
 
     private IntegrationEventEntity integrationEvent(String ieId, String eventName, String modelId, String eventId,
-                                                    String topic, String dlq, String moduleId) {
+                                                    String topic, String dlq, String boundedContextId) {
         return new IntegrationEventEntity(
-                ieId, eventName, moduleId, null,
+                ieId, eventName, boundedContextId, null,
                 eventId, modelId, topic, null, null,
                 IntegrationEventSerializationFormat.JSON,
                 IntegrationEventCompressionType.NONE,

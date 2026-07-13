@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages;
 
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aiagent.AiAgentCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.buttongroup.ButtonGroupCrudAdapter;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.codemodule.CodeModuleCrudAdapter;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.customcode.CustomCodeCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.etlflow.EtlFlowCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.externalsystem.ExternalSystemCrudAdapter;
@@ -13,7 +13,7 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.rag.RagCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.transformation.TransformationCrudAdapter;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CustomCodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlFlowEntity;
@@ -41,7 +41,7 @@ class NewFichasSmokeTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -94,12 +94,12 @@ class NewFichasSmokeTest {
         etl.create(null);
         assertThat(repository.findById("etl-1", EtlFlowEntity.class)).isPresent();
 
-        // code module
-        var cm = context.getBean(CodeModuleCrudAdapter.class).getCreationForm(null);
+        // code boundedContext
+        var cm = context.getBean(ModuleCrudAdapter.class).getCreationForm(null);
         setField(cm, "id", "cm-1");
         setField(cm, "name", "reservas-core");
         cm.create(null);
-        assertThat(repository.findById("cm-1", CodeModuleEntity.class)).isPresent();
+        assertThat(repository.findById("cm-1", ModuleEntity.class)).isPresent();
 
         // identity provider (enum round-trips)
         var idp = context.getBean(IdentityProviderCrudAdapter.class).getCreationForm(null);

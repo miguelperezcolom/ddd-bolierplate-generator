@@ -1,8 +1,8 @@
-# A second example domain (order fulfillment) to harden the generator: one service with two modules,
+# A second example domain (order fulfillment) to harden the generator: one service with two boundedContexts,
 # a saga with compensation that orchestrates external services through gateways, a payment gateway and
 # a warehouse gateway, an enum, money fields, an invariant, a business rule and an integration event.
 # Different shapes from the hotel store on purpose. Cross-context coordination is modelled the way the
-# generated architecture supports it — gateways and events, not direct cross-module use-case calls.
+# generated architecture supports it — gateways and events, not direct cross-boundedContext use-case calls.
 projects:
 - id: "ecommerce"
   name: "Ecommerce"
@@ -17,11 +17,11 @@ services:
   gatewayIds:
   - "gw-payments"
   - "gw-warehouse"
-  moduleIds:
+  boundedContextIds:
   - "mod-ordering"
   - "mod-inventory"
 
-modules:
+boundedContexts:
 - id: "mod-ordering"
   name: "Ordering"
   aggregateIds:
@@ -222,7 +222,7 @@ domainEvents:
 integrationEvents:
 - id: "ie-orderPlaced"
   name: "OrderPlacedIntegration"
-  moduleId: "mod-ordering"
+  boundedContextId: "mod-ordering"
   sourceDomainEventId: "ev-orderPlaced"
   payloadModelId: "order-event-model"
   topicName: "orders.order-placed.v1"

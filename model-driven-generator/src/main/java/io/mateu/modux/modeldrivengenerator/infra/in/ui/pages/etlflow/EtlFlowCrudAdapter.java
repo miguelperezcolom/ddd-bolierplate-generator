@@ -40,7 +40,7 @@ public class EtlFlowCrudAdapter implements CrudAdapter<
                 data.page().pageNumber(),
                 data.page().totalElements(),
                 data.page().content().stream()
-                        .map(x -> new EtlFlowRow(x.id(), x.name(), x.ownerModuleId()))
+                        .map(x -> new EtlFlowRow(x.id(), x.name(), x.ownerBoundedContextId()))
                         .toList()));
     }
 

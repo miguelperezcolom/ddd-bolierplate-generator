@@ -2,13 +2,13 @@ package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
@@ -47,7 +47,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -123,29 +123,29 @@ public class EditorModelProjection {
                 .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
         var applicationEventsById = repository.findAllOfType(ApplicationEventEntity.class).stream()
                 .collect(Collectors.toMap(ApplicationEventEntity::id, ev -> ev, (a, b) -> a));
-        var queryServicesByModule = repository.findAllOfType(QueryServiceEntity.class).stream()
-                .filter(qs -> qs.moduleId() != null)
-                .collect(Collectors.groupingBy(QueryServiceEntity::moduleId));
+        var queryServicesByBoundedContext = repository.findAllOfType(QueryServiceEntity.class).stream()
+                .filter(qs -> qs.boundedContextId() != null)
+                .collect(Collectors.groupingBy(QueryServiceEntity::boundedContextId));
         var scheduledTriggersById = repository.findAllOfType(ScheduledTriggerEntity.class).stream()
                 .collect(Collectors.toMap(ScheduledTriggerEntity::id, t -> t, (a, b) -> a));
-        // The editor works on the current project: its services' modules, plus any
-        // module not wired to a service yet (legacy orphans stay visible).
+        // The editor works on the current project: its services' boundedContexts, plus any
+        // boundedContext not wired to a service yet (legacy orphans stay visible).
         var currentProject = projects.currentProject().orElse(null);
         var projectServiceIds = currentProject == null || currentProject.serviceIds() == null
                 ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
         var wiredElsewhere = services.stream()
                 .filter(s2 -> !projectServiceIds.contains(s2.id()))
-                .flatMap(s2 -> s2.moduleIds() == null ? java.util.stream.Stream.<String>empty()
-                        : s2.moduleIds().stream())
+                .flatMap(s2 -> s2.boundedContextIds() == null ? java.util.stream.Stream.<String>empty()
+                        : s2.boundedContextIds().stream())
                 .collect(java.util.stream.Collectors.toSet());
-        var modules = repository.findAllOfType(ModuleEntity.class).stream()
+        var boundedContexts = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> !wiredElsewhere.contains(m.id()))
-                .map(m -> new ModuleDto(
+                .map(m -> new BoundedContextDto(
                         m.id(),
                         m.name(),
                         m.subdomainType() == null ? null : m.subdomainType().name(),
                         services.stream()
-                                .filter(s -> s.moduleIds() != null && s.moduleIds().contains(m.id()))
+                                .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(m.id()))
                                 .map(ServiceEntity::id)
                                 .findFirst()
                                 .orElse(null),
@@ -182,7 +182,7 @@ public class EditorModelProjection {
                                 .filter(Objects::nonNull)
                                 .map(ev -> new ApplicationEventDto(ev.id(), ev.name()))
                                 .toList(),
-                        queryServicesByModule.getOrDefault(m.id(), List.of()).stream()
+                        queryServicesByBoundedContext.getOrDefault(m.id(), List.of()).stream()
                                 .map(qs -> new QueryServiceDto(qs.id(), qs.name(),
                                         (qs.operations() == null ? List.<QueryOperationEntity>of() : qs.operations()).stream()
                                                 .map(op -> new QueryOperationDto(op.id(), op.name()))
@@ -213,7 +213,7 @@ public class EditorModelProjection {
                 .toList();
         var flowEntities = repository.findAllOfType(FlowEntity.class);
         var flows = coherenceService.analyze().stream()
-                .filter(f -> f.sourceModuleId() != null && f.targetModuleId() != null)
+                .filter(f -> f.sourceBoundedContextId() != null && f.targetBoundedContextId() != null)
                 .map(f -> {
                     var entity = flowEntities.stream()
                             .filter(e -> e.id().equals(f.flowId()))
@@ -221,8 +221,8 @@ public class EditorModelProjection {
                     return new FlowDto(
                             f.flowId(),
                             f.flowName(),
-                            f.sourceModuleId(),
-                            f.targetModuleId(),
+                            f.sourceBoundedContextId(),
+                            f.targetBoundedContextId(),
                             f.archetype() == null ? null : f.archetype().name(),
                             entity.map(FlowEntity::triggerAggregateId).orElse(null),
                             entity.map(FlowEntity::triggerEvent).orElse(null),
@@ -233,13 +233,13 @@ public class EditorModelProjection {
 
         var allAggregates = repository.findAllOfType(AggregateEntity.class);
         var aggregates = new ArrayList<AggregateDto>();
-        for (var module : repository.findAllOfType(ModuleEntity.class)) {
-            if (module.aggregateIds() == null) continue;
-            for (var aggregateId : module.aggregateIds()) {
+        for (var boundedContext : repository.findAllOfType(BoundedContextEntity.class)) {
+            if (boundedContext.aggregateIds() == null) continue;
+            for (var aggregateId : boundedContext.aggregateIds()) {
                 allAggregates.stream()
                         .filter(a -> a.id().equals(aggregateId))
                         .findFirst()
-                        .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), module.id(),
+                        .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), boundedContext.id(),
                                 a.invariants().stream()
                                         .map(i -> new AggregateInvariantDto(i.id(), i.name()))
                                         .toList())));
@@ -275,7 +275,7 @@ public class EditorModelProjection {
         var processes = repository.findAllOfType(ProcessEntity.class).stream()
                 .map(p -> new ProcessDto(
                         p.id(), p.name(), p.triggerAggregateId(), p.triggerEvent(),
-                        p.ownerModuleId(), p.onCompletionEventName(), p.sla(),
+                        p.ownerBoundedContextId(), p.onCompletionEventName(), p.sla(),
                         p.steps().stream()
                                 .map(s -> new ProcessStepDto(
                                         s.id(), s.name(),
@@ -378,12 +378,12 @@ public class EditorModelProjection {
                                 .map(s -> new RagContentSourceDto(s.type(), s.uri()))
                                 .toList(),
                         r.sourceExternalTableIds(), r.sourceApiIds(),
-                        r.sourceExternalSystemIds(), r.sourceModuleIds()))
+                        r.sourceExternalSystemIds(), r.sourceBoundedContextIds()))
                 .toList();
         var apis = repository.findAllOfType(ApiEntity.class).stream()
                 .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
                         .map(op -> new ApiOperationDto(op.id(), op.name(), op.httpMethod(),
-                                op.path(), op.targetModuleId(), op.targetUseCaseId()))
+                                op.path(), op.targetBoundedContextId(), op.targetUseCaseId()))
                         .toList(),
                         a.publishedByExternalSystemId()))
                 .toList();
@@ -435,10 +435,10 @@ public class EditorModelProjection {
                         (p.handlers() == null ? List.<String>of() : p.handlers().stream()
                                 .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList()),
                         p.sourceAggregateId(),
-                        repository.findAllOfType(ModuleEntity.class).stream()
+                        repository.findAllOfType(BoundedContextEntity.class).stream()
                                 .filter(m -> m.projectionIds() != null
                                         && m.projectionIds().contains(p.id()))
-                                .map(ModuleEntity::id).findFirst().orElse(null),
+                                .map(BoundedContextEntity::id).findFirst().orElse(null),
                         p.sourceExternalUseCaseId(), p.sourceExternalTableId()))
                 .toList();
 
@@ -453,7 +453,7 @@ public class EditorModelProjection {
             }
         }
         var externalCalls = new ArrayList<ExternalCallDto>();
-        for (var m : repository.findAllOfType(ModuleEntity.class)) {
+        for (var m : repository.findAllOfType(BoundedContextEntity.class)) {
             if (m.acls() == null) continue;
             for (var acl : m.acls()) {
                 if (!"INBOUND".equalsIgnoreCase(acl.direction()) || acl.externalSystem() == null) continue;
@@ -496,7 +496,7 @@ public class EditorModelProjection {
                         px.publishedByExternalSystemId()))
                 .toList();
         var apiImplementations = repository.findAllOfType(ApiEntity.class).stream()
-                .flatMap(a -> a.implementedByModuleIds().stream()
+                .flatMap(a -> a.implementedByBoundedContextIds().stream()
                         .map(mid -> new ApiImplementationDto(a.id(), mid)))
                 .toList();
         var proxyOperationRoutes = repository.findAllOfType(ProxyApiEntity.class).stream()
@@ -510,7 +510,7 @@ public class EditorModelProjection {
                 .toList();
         var apiOperationImplementations = repository.findAllOfType(ApiEntity.class).stream()
                 .flatMap(a -> a.operationImplementations().stream()
-                        .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.moduleId(), w.useCaseId())))
+                        .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.boundedContextId(), w.useCaseId())))
                 .toList();
 
         // The UI map: apps (menu trees), pages (with their buttons) and who uses which app.
@@ -563,13 +563,13 @@ public class EditorModelProjection {
         // upstream (provider) → downstream (consumer). contextMap entries only
         // annotate the DDD pattern of a derived pair; orphaned annotations
         // (no concrete dependency behind them) are not painted.
-        var allModules = repository.findAllOfType(ModuleEntity.class);
-        java.util.function.Function<String, String> moduleOfUseCase = ucId -> allModules.stream()
+        var allBoundedContexts = repository.findAllOfType(BoundedContextEntity.class);
+        java.util.function.Function<String, String> boundedContextOfUseCase = ucId -> allBoundedContexts.stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(ucId))
-                .map(ModuleEntity::id).findFirst().orElse(null);
-        java.util.function.Function<String, String> moduleOfAggregate = aggId -> allModules.stream()
+                .map(BoundedContextEntity::id).findFirst().orElse(null);
+        java.util.function.Function<String, String> boundedContextOfAggregate = aggId -> allBoundedContexts.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggId))
-                .map(ModuleEntity::id).findFirst().orElse(null);
+                .map(BoundedContextEntity::id).findFirst().orElse(null);
         var dependencyReasons = new java.util.LinkedHashMap<List<String>, List<String>>();
         java.util.function.BiConsumer<List<String>, String> addDependency = (pair, reason) -> {
             if (pair.get(0) == null || pair.get(1) == null || pair.get(0).equals(pair.get(1))) return;
@@ -577,16 +577,16 @@ public class EditorModelProjection {
         };
         for (var call : useCaseCalls) {
             addDependency.accept(List.of(
-                    Objects.toString(moduleOfUseCase.apply(call.targetId()), ""),
-                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
+                    Objects.toString(boundedContextOfUseCase.apply(call.targetId()), ""),
+                    Objects.toString(boundedContextOfUseCase.apply(call.sourceId()), "")),
                     "llamada " + call.sourceId() + " → " + call.targetId());
         }
         for (var call : queryCalls) {
-            var qsModule = repository.findById(call.targetId(), QueryServiceEntity.class)
-                    .map(QueryServiceEntity::moduleId).orElse(null);
+            var qsBoundedContext = repository.findById(call.targetId(), QueryServiceEntity.class)
+                    .map(QueryServiceEntity::boundedContextId).orElse(null);
             addDependency.accept(List.of(
-                    Objects.toString(qsModule, ""),
-                    Objects.toString(moduleOfUseCase.apply(call.sourceId()), "")),
+                    Objects.toString(qsBoundedContext, ""),
+                    Objects.toString(boundedContextOfUseCase.apply(call.sourceId()), "")),
                     "consulta " + call.sourceId() + " → " + call.targetId());
         }
         for (var f : flows) {
@@ -596,8 +596,8 @@ public class EditorModelProjection {
         }
         for (var ref : references) {
             addDependency.accept(List.of(
-                    Objects.toString(moduleOfAggregate.apply(ref.targetAggregateId()), ""),
-                    Objects.toString(moduleOfAggregate.apply(ref.sourceAggregateId()), "")),
+                    Objects.toString(boundedContextOfAggregate.apply(ref.targetAggregateId()), ""),
+                    Objects.toString(boundedContextOfAggregate.apply(ref.sourceAggregateId()), "")),
                     "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
         }
         var annotations = currentProject == null
@@ -621,8 +621,8 @@ public class EditorModelProjection {
                 .filter(e -> !e.getKey().get(0).isEmpty() && !e.getKey().get(1).isEmpty())
                 .map(e -> {
                     var annotation = annotations.stream()
-                            .filter(a -> e.getKey().get(0).equals(a.sourceModuleId())
-                                    && e.getKey().get(1).equals(a.targetModuleId()))
+                            .filter(a -> e.getKey().get(0).equals(a.sourceBoundedContextId())
+                                    && e.getKey().get(1).equals(a.targetBoundedContextId()))
                             .findFirst().orElse(null);
                     return new RelationDto(e.getKey().get(0), e.getKey().get(1),
                             annotation != null ? annotation.type() : null,
@@ -638,14 +638,14 @@ public class EditorModelProjection {
                 .collect(java.util.stream.Collectors.toSet());
         annotations.stream()
                 .filter(a -> a.type() != null)
-                .filter(a -> !derivedPairs.contains(a.sourceModuleId() + "->" + a.targetModuleId()))
-                .filter(a -> repository.findById(a.sourceModuleId(), ModuleEntity.class).isPresent()
-                        && repository.findById(a.targetModuleId(), ModuleEntity.class).isPresent())
-                .forEach(a -> relations.add(new RelationDto(a.sourceModuleId(), a.targetModuleId(),
+                .filter(a -> !derivedPairs.contains(a.sourceBoundedContextId() + "->" + a.targetBoundedContextId()))
+                .filter(a -> repository.findById(a.sourceBoundedContextId(), BoundedContextEntity.class).isPresent()
+                        && repository.findById(a.targetBoundedContextId(), BoundedContextEntity.class).isPresent())
+                .forEach(a -> relations.add(new RelationDto(a.sourceBoundedContextId(), a.targetBoundedContextId(),
                         a.type(), null, true, "declarada a mano — aún sin dependencia concreta")));
 
         return new EditorModelDto(
-                modules, externalSystems, relations, flows, aggregates, entities, references, processes,
+                boundedContexts, externalSystems, relations, flows, aggregates, entities, references, processes,
                 views, emissions.stream().distinct().toList(), actors,
                 useCaseCalls.stream().distinct().toList(),
                 queryCalls.stream().distinct().toList(),
@@ -656,7 +656,7 @@ public class EditorModelProjection {
                 agentUses.stream().distinct().toList(),
                 workflows,
                 repository.findAllOfType(EtlFlowEntity.class).stream()
-                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerModuleId(), f.steps().stream()
+                        .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerBoundedContextId(), f.steps().stream()
                                 .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
                                         s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
                                 .toList(),
@@ -667,11 +667,11 @@ public class EditorModelProjection {
                                 x.publishedByExternalSystemId()))
                         .toList(),
                 repository.findAllOfType(NotificationEntity.class).stream()
-                        .map(x -> new NotificationDto(x.id(), x.name(), x.ownerModuleId(), x.eventId(),
+                        .map(x -> new NotificationDto(x.id(), x.name(), x.ownerBoundedContextId(), x.eventId(),
                                 x.channels(), x.recipientRoleIds()))
                         .toList(),
                 repository.findAllOfType(DocumentEntity.class).stream()
-                        .map(x -> new DocumentDto(x.id(), x.name(), x.ownerModuleId(), x.kind(),
+                        .map(x -> new DocumentDto(x.id(), x.name(), x.ownerBoundedContextId(), x.kind(),
                                 x.modelId(), x.queryServiceId(), x.queryOperationId()))
                         .toList(),
                 aggregateCalls.stream().distinct().toList(),
@@ -711,11 +711,11 @@ public class EditorModelProjection {
                 repository.findAllOfType(SagaEntity.class).stream()
                         .map(x -> new NamedRefDto(x.id(), x.name()))
                         .toList(),
-                repository.findAllOfType(CodeModuleEntity.class).stream()
-                        .map(x -> new CodeModuleDto(x.id(), x.name(), x.moduleId(), x.elementIds()))
+                repository.findAllOfType(ModuleEntity.class).stream()
+                        .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds()))
                         .toList(),
                 services.stream()
-                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(), s.codeModuleIds(),
+                        .map(s -> new ServiceDto(s.id(), s.name(), s.boundedContextIds(), s.moduleIds(),
                                 s.database(), s.outboxEnabled()))
                         .toList(),
                 repository.findAllOfType(TransformationEntity.class).stream()

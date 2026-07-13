@@ -27,7 +27,7 @@ class McpStdioServerTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -41,7 +41,7 @@ class McpStdioServerTest {
 
     @BeforeEach
     void loadTempStore() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("..", "sample", "hla-booking", "model-driven-store.yaml"));
         var file = Files.createTempFile("mcp-test-store", ".yaml");
         Files.writeString(file, store);
         repository.loadFrom(file.toAbsolutePath().toString());
@@ -165,10 +165,10 @@ class McpStdioServerTest {
     }
 
     @Test
-    void bootstrap_is_atomic_a_bad_module_persists_nothing() throws Exception {
+    void bootstrap_is_atomic_a_bad_boundedContext_persists_nothing() throws Exception {
         var response = rawCall("bootstrap_project", """
                 {"projectId":"boot-atomic","name":"Boot","packageName":"com.x","outputPath":"/tmp/x",
-                 "modules":[{"id":"m-ok","name":"Ok"},{"id":"m-bad","name":"Bad","subdomain":"CORE"}]}""");
+                 "boundedContexts":[{"id":"m-ok","name":"Ok"},{"id":"m-bad","name":"Bad","subdomain":"CORE"}]}""");
         assertTrue(response.at("/result/isError").asBoolean(), response.toString());
         assertTrue(response.at("/result/content/0/text").asText().contains("did you mean 'subdomainType'"),
                 response.toString());
@@ -176,7 +176,7 @@ class McpStdioServerTest {
         assertTrue(repository.findById("boot-atomic",
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class).isEmpty());
         assertTrue(repository.findById("m-ok",
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).isEmpty());
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class).isEmpty());
     }
 
     @Test

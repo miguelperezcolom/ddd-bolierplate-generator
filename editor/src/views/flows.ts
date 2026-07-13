@@ -3,7 +3,7 @@ import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 
 /**
  * Flows view: each flow as a pipeline — trigger aggregate → flow (coloured by
- * archetype) → target (module, external system, use case or read model).
+ * archetype) → target (boundedContext, external system, use case or read model).
  */
 
 const ARCHETYPE_COLOR: Record<string, string> = {
@@ -23,8 +23,8 @@ const TGT_H = 48;
 function targetLabel(model: ModuxModel, flow: FlowRef): { id: string; label: string; external: boolean } {
   const external = model.externalSystems.find((x) => x.id === flow.targetId);
   if (external) return { id: external.id, label: external.name, external: true };
-  const module = model.modules.find((m) => m.id === flow.targetId);
-  return { id: flow.targetId, label: module?.name ?? flow.targetId, external: false };
+  const boundedContext = model.boundedContexts.find((m) => m.id === flow.targetId);
+  return { id: flow.targetId, label: boundedContext?.name ?? flow.targetId, external: false };
 }
 
 export function flowsScene(model: ModuxModel, layout: DiagramLayout): Scene {
@@ -52,11 +52,11 @@ export function flowsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         y: pos.y,
         w: SRC_W,
         h: SRC_H,
-        kind: flow.triggerAggregateId ? 'aggregate' : 'module',
+        kind: flow.triggerAggregateId ? 'aggregate' : 'boundedContext',
         symbol: flow.triggerAggregateId ? 'aggregate' : 'component',
         fill: '#ffffff',
         stroke: '#64748b',
-        badge: flow.triggerAggregateId ? 'AGGREGATE' : 'MODULE',
+        badge: flow.triggerAggregateId ? 'AGGREGATE' : 'BOUNDED_CONTEXT',
       });
     }
 
@@ -91,12 +91,12 @@ export function flowsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         y: pos.y,
         w: TGT_W,
         h: TGT_H,
-        kind: target.external ? 'external-system' : 'module',
+        kind: target.external ? 'external-system' : 'boundedContext',
         symbol: 'component',
         fill: target.external ? '#ffffff' : '#e0e7ff',
         stroke: '#64748b',
         dashed: target.external,
-        badge: target.external ? 'EXTERNAL' : 'MODULE',
+        badge: target.external ? 'EXTERNAL' : 'BOUNDED_CONTEXT',
       });
     }
 

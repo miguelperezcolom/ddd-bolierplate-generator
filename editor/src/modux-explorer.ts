@@ -50,7 +50,7 @@ declare global {
 
 const KIND_COLOR: Record<string, string> = {
   root: '#334155',
-  module: '#0369a1',
+  boundedContext: '#0369a1',
   group: '#6366f1',
   'external-system': '#9333ea',
   'ui-app': '#16a34a',
@@ -81,7 +81,7 @@ const KIND_COLOR: Record<string, string> = {
 
 const KIND_LABEL: Record<string, string> = {
   root: 'Sistema',
-  module: 'Bounded context',
+  boundedContext: 'Bounded context',
   group: 'Grupo',
   'external-system': 'Sistema externo',
   'ui-app': 'App',
@@ -112,7 +112,7 @@ const KIND_LABEL: Record<string, string> = {
 
 /** Plural, for the hover summary («5 agregados», «3 casos de uso»). */
 const KIND_PLURAL: Record<string, string> = {
-  module: 'bounded contexts',
+  boundedContext: 'bounded contexts',
   'external-system': 'sistemas externos',
   'ui-app': 'apps',
   page: 'páginas',
@@ -305,7 +305,7 @@ export class ModuxExplorer extends LitElement {
   @property({ attribute: false }) scene: Scene | null = null;
 
   @property({ attribute: false }) model: ModuxModel = {
-    modules: [],
+    boundedContexts: [],
     externalSystems: [],
     relations: [],
     flows: [],
@@ -655,7 +655,7 @@ export class ModuxExplorer extends LitElement {
     for (const r of m.agentExternalUses ?? []) link(r.agentId, r.externalUseCaseId);
     for (const r of m.agentDelegations ?? []) link(r.agentId, r.delegateAgentId);
     for (const app of m.uiApps ?? []) link(app.id, app.identityProviderId);
-    for (const mod of m.modules) link(mod.id, mod.identityProviderId);
+    for (const mod of m.boundedContexts) link(mod.id, mod.identityProviderId);
     for (const f of m.etlFlows ?? []) link(f.id, f.identityProviderId);
     for (const idp of m.identityProviders ?? []) link(idp.id, (idp as { publishedByExternalSystemId?: string }).publishedByExternalSystemId);
   }
@@ -714,7 +714,7 @@ export class ModuxExplorer extends LitElement {
     switch (n.kind) {
       case 'root':
         return [
-          ...m.modules.map((x) => mk('module', x.id, x.name)),
+          ...m.boundedContexts.map((x) => mk('boundedContext', x.id, x.name)),
           ...m.externalSystems.map((x) => mk('external-system', x.id, x.name)),
           ...(m.uiApps ?? []).map((x) => mk('ui-app', x.id, x.name)),
           ...(m.actors ?? []).map((x) => mk('actor', x.id, x.name)),
@@ -722,10 +722,10 @@ export class ModuxExplorer extends LitElement {
           ...(m.workflows ?? []).map((x) => mk('workflow', x.id, x.name)),
           ...(m.identityProviders ?? []).map((x) => mk('identity-provider', x.id, x.name)),
         ];
-      case 'module': {
-        const mod = m.modules.find((x) => x.id === n.refId);
+      case 'boundedContext': {
+        const mod = m.boundedContexts.find((x) => x.id === n.refId);
         if (!mod) return [];
-        const aggs = (m.aggregates ?? []).filter((a) => a.moduleId === n.refId);
+        const aggs = (m.aggregates ?? []).filter((a) => a.boundedContextId === n.refId);
         const ucs = mod.useCases ?? [];
         // Events emitted by one of this BC's aggregates hang off the aggregate, not the BC.
         const aggIds = new Set(aggs.map((a) => a.id));
@@ -743,20 +743,20 @@ export class ModuxExplorer extends LitElement {
           ...(mod.domainServices ?? []).map((x) => mk('domain-service', x.id, x.name)),
           ...(mod.queryServices ?? []).map((x) => mk('query-service', x.id, x.name)),
           ...(mod.scheduledTriggers ?? []).map((x) => mk('scheduled-trigger', x.id, x.name)),
-          ...(m.etlFlows ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('etl-flow', x.id, x.name)),
-          ...(m.notifications ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('notification', x.id, x.name)),
-          ...(m.documents ?? []).filter((f) => f.ownerModuleId === n.refId).map((x) => mk('document', x.id, x.name)),
+          ...(m.etlFlows ?? []).filter((f) => f.ownerBoundedContextId === n.refId).map((x) => mk('etl-flow', x.id, x.name)),
+          ...(m.notifications ?? []).filter((f) => f.ownerBoundedContextId === n.refId).map((x) => mk('notification', x.id, x.name)),
+          ...(m.documents ?? []).filter((f) => f.ownerBoundedContextId === n.refId).map((x) => mk('document', x.id, x.name)),
         ];
       }
       case 'group': {
         const sep = n.refId.indexOf(':');
         const what = n.refId.slice(0, sep);
-        const moduleId = n.refId.slice(sep + 1);
-        const mod = m.modules.find((x) => x.id === moduleId);
+        const boundedContextId = n.refId.slice(sep + 1);
+        const mod = m.boundedContexts.find((x) => x.id === boundedContextId);
         if (!mod) return [];
         if (what === 'aggregates') {
           return (m.aggregates ?? [])
-            .filter((a) => a.moduleId === moduleId)
+            .filter((a) => a.boundedContextId === boundedContextId)
             .map((x) => mk('aggregate', x.id, x.name));
         }
         return (mod.useCases ?? []).map((x) => mk(x.policy ? 'policy' : 'use-case', x.id, x.name));
@@ -768,7 +768,7 @@ export class ModuxExplorer extends LitElement {
         );
         return [
           ...(m.entities ?? []).filter((e) => e.aggregateId === n.refId).map((x) => mk('entity', x.id, x.name)),
-          ...m.modules
+          ...m.boundedContexts
             .flatMap((mo) => mo.domainEvents ?? [])
             .filter((ev) => emitted.has(ev.id))
             .map((x) => mk('domain-event', x.id, x.name)),
@@ -1238,7 +1238,7 @@ export class ModuxExplorer extends LitElement {
         ctx.arc(x, y, s * 0.35, 0, Math.PI * 2);
         ctx.stroke();
         break;
-      case 'module': // cluster of three dots
+      case 'boundedContext': // cluster of three dots
         for (const [dx, dy] of [[-0.55, 0.4], [0.55, 0.4], [0, -0.55]]) {
           ctx.moveTo(x + dx * s + s * 0.3, y + dy * s);
           ctx.arc(x + dx * s, y + dy * s, s * 0.3, 0, Math.PI * 2);

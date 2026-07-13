@@ -14,7 +14,7 @@ public record DocumentEntity(
         String id,
         String name,
         /** The bounded context that owns it. */
-        String ownerModuleId,
+        String ownerBoundedContextId,
         /** DOCUMENT (template + model) or REPORT (query-fed dataset). */
         String kind,
         /** DOCUMENT: the data model that fills the template. */

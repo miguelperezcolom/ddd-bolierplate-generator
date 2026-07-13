@@ -2,13 +2,13 @@ package io.mateu.modux.modeldrivengenerator.infra.in.rest;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.SubdomainType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CodeModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ButtonGroupEntity;
@@ -47,7 +47,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -116,14 +116,14 @@ public class UiEditorCommands {
                 : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
         repository.save(new UiAdapterEntity(command.id(), command.name(), null,
                 command.name(), null, null, List.of(), appType, null, null, null, null));
-        if (command.moduleId() == null || command.moduleId().isBlank()) return;
-        // Born inside a bounded context: the module owns the app from the start.
-        var module = repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
-        if (module.uiAdapterIds().contains(command.id())) return;
-        var ids = new ArrayList<>(module.uiAdapterIds());
+        if (command.boundedContextId() == null || command.boundedContextId().isBlank()) return;
+        // Born inside a bounded context: the boundedContext owns the app from the start.
+        var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
+        if (boundedContext.uiAdapterIds().contains(command.id())) return;
+        var ids = new ArrayList<>(boundedContext.uiAdapterIds());
         ids.add(command.id());
-        repository.save(module.toBuilder().uiAdapterIds(ids).build());
+        repository.save(boundedContext.toBuilder().uiAdapterIds(ids).build());
     }
 
     /** MASTER_DETAIL: the page shown as the header; null clears it. */
@@ -184,7 +184,7 @@ public class UiEditorCommands {
                 repository.save(app.toBuilder().identityProviderId(null).build());
             }
         }
-        for (var mo : repository.findAllOfType(ModuleEntity.class)) {
+        for (var mo : repository.findAllOfType(BoundedContextEntity.class)) {
             if (command.id().equals(mo.identityProviderId())) {
                 repository.save(mo.toBuilder().identityProviderId(null).build());
             }
@@ -192,7 +192,7 @@ public class UiEditorCommands {
         for (var flow : repository.findAllOfType(EtlFlowEntity.class)) {
             if (command.id().equals(flow.identityProviderId())) {
                 repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                        flow.ownerModuleId(), flow.steps(), null));
+                        flow.ownerBoundedContextId(), flow.steps(), null));
             }
         }
         repository.deleteAllById(List.of(command.id()), IdentityProviderEntity.class);
@@ -226,7 +226,7 @@ public class UiEditorCommands {
             repository.save(app.get().toBuilder().identityProviderId(idpId).build());
             return;
         }
-        var mo = repository.findById(command.id(), ModuleEntity.class);
+        var mo = repository.findById(command.id(), BoundedContextEntity.class);
         if (mo.isPresent()) {
             repository.save(mo.get().toBuilder().identityProviderId(idpId).build());
             return;
@@ -235,7 +235,7 @@ public class UiEditorCommands {
         if (flow.isPresent()) {
             var f = flow.get();
             repository.save(new EtlFlowEntity(f.id(), f.name(), f.description(),
-                    f.ownerModuleId(), f.steps(), idpId));
+                    f.ownerBoundedContextId(), f.steps(), idpId));
             return;
         }
         throw new IllegalArgumentException(
@@ -245,13 +245,13 @@ public class UiEditorCommands {
     /** A notification: when an event happens, tell these roles through these channels. */
     public void addNotification(EditorCommand command) {
         if (repository.findById(command.id(), NotificationEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         var channel = command.type() == null || command.type().isBlank() ? "EMAIL" : command.type();
         if (!NotificationEntity.CHANNELS.contains(channel)) {
             throw new IllegalArgumentException("Unknown channel: " + channel);
         }
-        repository.save(new NotificationEntity(command.id(), command.name(), command.moduleId(),
+        repository.save(new NotificationEntity(command.id(), command.name(), command.boundedContextId(),
                 null, List.of(channel), List.of(), null, null, null));
     }
 
@@ -269,7 +269,7 @@ public class UiEditorCommands {
                 && repository.findById(eventId, ApplicationEventEntity.class).isEmpty()) {
             throw new IllegalArgumentException("Unknown event: " + eventId);
         }
-        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), eventId,
+        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerBoundedContextId(), eventId,
                 n.channels(), n.recipientRoleIds(), n.recipientExpression(), n.subject(), n.body()));
     }
 
@@ -284,20 +284,20 @@ public class UiEditorCommands {
         var roles = new ArrayList<>(n.recipientRoleIds());
         if (add && !roles.contains(command.roleId())) roles.add(command.roleId());
         if (!add) roles.remove(command.roleId());
-        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerModuleId(), n.eventId(),
+        repository.save(new NotificationEntity(n.id(), n.name(), n.ownerBoundedContextId(), n.eventId(),
                 n.channels(), roles, n.recipientExpression(), n.subject(), n.body()));
     }
 
     /** A generated document (template + model) or report (query-fed dataset). */
     public void addDocument(EditorCommand command) {
         if (repository.findById(command.id(), DocumentEntity.class).isPresent()) return;
-        repository.findById(command.moduleId(), ModuleEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         var kind = command.type() == null || command.type().isBlank() ? "DOCUMENT" : command.type();
         if (!DocumentEntity.KINDS.contains(kind)) {
             throw new IllegalArgumentException("Unknown document kind: " + kind);
         }
-        repository.save(new DocumentEntity(command.id(), command.name(), command.moduleId(),
+        repository.save(new DocumentEntity(command.id(), command.name(), command.boundedContextId(),
                 kind, null, null, null, null, null));
     }
 
@@ -314,7 +314,7 @@ public class UiEditorCommands {
             repository.findById(modelId, ModelEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + modelId));
         }
-        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
+        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerBoundedContextId(), doc.kind(),
                 modelId, doc.queryServiceId(), doc.queryOperationId(), doc.templateUri(), doc.description()));
     }
 
@@ -324,7 +324,7 @@ public class UiEditorCommands {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown document: " + command.id()));
         var qs = command.queryServiceId() == null || command.queryServiceId().isBlank() ? null : command.queryServiceId();
         var op = command.queryOperationId() == null || command.queryOperationId().isBlank() ? null : command.queryOperationId();
-        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerModuleId(), doc.kind(),
+        repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerBoundedContextId(), doc.kind(),
                 doc.modelId(), qs, op, doc.templateUri(), doc.description()));
     }
 
@@ -346,13 +346,13 @@ public class UiEditorCommands {
 
     public void addEtlFlow(EditorCommand command) {
         if (repository.findById(command.id(), EtlFlowEntity.class).isPresent()) return;
-        if (command.moduleId() != null) {
-            repository.findById(command.moduleId(), ModuleEntity.class)
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown module: " + command.moduleId()));
+        if (command.boundedContextId() != null) {
+            repository.findById(command.boundedContextId(), BoundedContextEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         }
         // Ownerless pipelines FLOAT on the integrations view; the ficha wires the owner.
         repository.save(new EtlFlowEntity(command.id(), command.name(), null,
-                command.moduleId(), List.of()));
+                command.boundedContextId(), List.of()));
     }
 
     public void removeEtlFlow(EditorCommand command) {
@@ -373,13 +373,13 @@ public class UiEditorCommands {
                 command.stepType(), command.externalTableId(), command.apiId(),
                 command.operationId(), command.targetId(), command.mappingId(), null));
         repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                flow.ownerModuleId(), steps));
+                flow.ownerBoundedContextId(), steps));
     }
 
     public void removeEtlStep(EditorCommand command) {
         repository.findById(command.etlFlowId(), EtlFlowEntity.class).ifPresent(flow ->
                 repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                        flow.ownerModuleId(),
+                        flow.ownerBoundedContextId(),
                         flow.steps().stream().filter(s -> !s.id().equals(command.id())).toList())));
     }
 
@@ -989,7 +989,7 @@ public class UiEditorCommands {
                 .forEach(r -> repository.save(r.withUiAdapterIds(
                         AgentEditorCommands.without(r.uiAdapterIds(), command.id()))));
         // the bounded context that owned the app lets go of it
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.uiAdapterIds().contains(command.id()))
                 .forEach(m -> repository.save(m.toBuilder()
                         .uiAdapterIds(AgentEditorCommands.without(m.uiAdapterIds(), command.id())).build()));

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence;
 
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ServiceRepository;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.BoundedContextId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.Service;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.EnvVar;
@@ -33,7 +33,7 @@ public class ServiceFileRepository implements ServiceRepository {
                         entity.circuitBreakerEnabled(), entity.circuitBreakerThreshold(),
                         entity.connectionTimeoutMs(), entity.readTimeoutMs(), entity.writeTimeoutMs(),
                         entity.deploymentStrategy(), entity.owner(),
-                        entity.moduleIds(),
+                        entity.boundedContextIds(),
                         entity.gatewayIds(),
                         entity.envVars() != null ? entity.envVars().stream()
                                 .map(e -> new EnvVar(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
@@ -75,7 +75,7 @@ public class ServiceFileRepository implements ServiceRepository {
                 entity.getWriteTimeoutMs(),
                 entity.getDeploymentStrategy() != null ? entity.getDeploymentStrategy().name() : null,
                 entity.getOwner(),
-                entity.getModules().stream().map(ModuleId::id).toList(),
+                entity.getBoundedContexts().stream().map(BoundedContextId::id).toList(),
                 entity.getGatewayIds(),
                 entity.getEnvVars() != null ? entity.getEnvVars().stream()
                         .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))

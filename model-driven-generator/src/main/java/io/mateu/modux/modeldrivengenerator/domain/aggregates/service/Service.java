@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.domain.aggregates.service;
 
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.BoundedContextId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.DeploymentStrategy;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.EnvVar;
@@ -42,7 +42,7 @@ public class Service {
     private Long writeTimeoutMs;
     private DeploymentStrategy deploymentStrategy;
     private String owner;
-    private List<ModuleId> modules;
+    private List<BoundedContextId> boundedContexts;
     private List<String> gatewayIds;
     private List<EnvVar> envVars;
     private String javaVersion;
@@ -61,7 +61,7 @@ public class Service {
                              boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                              Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                              DeploymentStrategy deploymentStrategy, String owner,
-                             List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                             List<BoundedContextId> boundedContexts, List<String> gatewayIds, List<EnvVar> envVars,
                              String javaVersion, boolean outboxEnabled, String outboxTableName) {
         var service = new Service();
         service.id = id;
@@ -93,7 +93,7 @@ public class Service {
         service.writeTimeoutMs = writeTimeoutMs;
         service.deploymentStrategy = deploymentStrategy;
         service.owner = owner;
-        service.modules = modules;
+        service.boundedContexts = boundedContexts;
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         service.javaVersion = javaVersion;
@@ -114,7 +114,7 @@ public class Service {
                                boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                                Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                String deploymentStrategy, String owner,
-                               List<String> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                               List<String> boundedContexts, List<String> gatewayIds, List<EnvVar> envVars,
                                String javaVersion, boolean outboxEnabled, String outboxTableName) {
         var service = new Service();
         service.id = new ServiceId(id);
@@ -146,7 +146,7 @@ public class Service {
         service.writeTimeoutMs = writeTimeoutMs;
         service.deploymentStrategy = deploymentStrategy != null ? DeploymentStrategy.valueOf(deploymentStrategy) : null;
         service.owner = owner;
-        service.modules = modules.stream().map(ModuleId::new).toList();
+        service.boundedContexts = boundedContexts.stream().map(BoundedContextId::new).toList();
         service.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         service.envVars = envVars != null ? envVars : List.of();
         service.javaVersion = javaVersion;
@@ -167,7 +167,7 @@ public class Service {
                        boolean circuitBreakerEnabled, Integer circuitBreakerThreshold,
                        Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                        DeploymentStrategy deploymentStrategy, String owner,
-                       List<ModuleId> modules, List<String> gatewayIds, List<EnvVar> envVars,
+                       List<BoundedContextId> boundedContexts, List<String> gatewayIds, List<EnvVar> envVars,
                        String javaVersion, boolean outboxEnabled, String outboxTableName) {
         this.name = name;
         this.gitRepository = gitRepository;
@@ -197,7 +197,7 @@ public class Service {
         this.writeTimeoutMs = writeTimeoutMs;
         this.deploymentStrategy = deploymentStrategy;
         this.owner = owner;
-        this.modules = modules;
+        this.boundedContexts = boundedContexts;
         this.gatewayIds = gatewayIds != null ? gatewayIds : List.of();
         this.envVars = envVars != null ? envVars : List.of();
         this.javaVersion = javaVersion;

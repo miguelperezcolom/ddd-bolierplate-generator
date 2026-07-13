@@ -87,7 +87,7 @@ public class ImportOpenApiUseCase {
                             service.circuitBreakerThreshold(), service.connectionTimeoutMs(),
                             service.readTimeoutMs(), service.writeTimeoutMs(),
                             service.deploymentStrategy(), service.owner(),
-                            service.moduleIds(), updatedIds, service.envVars(),
+                            service.boundedContextIds(), updatedIds, service.envVars(),
                             service.javaVersion(), service.outboxEnabled(), service.outboxTableName());
                     repository.save(updated);
                 }

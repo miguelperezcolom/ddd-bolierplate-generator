@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadMo
 public record SaveReadModelCommand(
         String id,
         String name,
-        String moduleId,
+        String boundedContextId,
         String description,
         String modelId,
         ReadModelStorageType storageType,

@@ -15,7 +15,7 @@ public record NotificationEntity(
         String id,
         String name,
         /** The bounded context that owns (and sends) it. */
-        String ownerModuleId,
+        String ownerBoundedContextId,
         /** The domain/application event that fires it. */
         String eventId,
         /** EMAIL, SMS, PUSH, WEBHOOK. */

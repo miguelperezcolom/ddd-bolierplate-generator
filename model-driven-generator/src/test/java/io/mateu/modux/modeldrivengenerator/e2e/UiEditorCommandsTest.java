@@ -23,7 +23,7 @@ class UiEditorCommandsTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -40,13 +40,13 @@ class UiEditorCommandsTest {
         var dir = Files.createTempDirectory("ui-editor-commands");
         repository.loadFrom(dir.resolve("model-driven-store.yaml").toAbsolutePath().toString());
 
-        // ── the surrounding model: a module with a use case and a query service, an actor ──
+        // ── the surrounding model: a boundedContext with a use case and a query service, an actor ──
         apply("""
-                {"kind":"add-module","id":"test-mod","name":"Reservas"}""");
+                {"kind":"add-boundedContext","id":"test-mod","name":"Reservas"}""");
         apply("""
-                {"kind":"add-use-case","id":"test-uc","name":"Reservar","moduleId":"test-mod"}""");
+                {"kind":"add-use-case","id":"test-uc","name":"Reservar","boundedContextId":"test-mod"}""");
         apply("""
-                {"kind":"add-query-service","id":"test-qs","name":"ReservasDelDia","moduleId":"test-mod"}""");
+                {"kind":"add-query-service","id":"test-qs","name":"ReservasDelDia","boundedContextId":"test-mod"}""");
         apply("""
                 {"kind":"add-actor","id":"test-actor","name":"Recepción"}""");
         repository.save(new ModelEntity("test-model", "ReservaForm", List.of(), List.of()));
@@ -151,14 +151,14 @@ class UiEditorCommandsTest {
         repository.loadFrom(dir.resolve("model-driven-store.yaml").toAbsolutePath().toString());
 
         apply("""
-                {"kind":"add-module","id":"test-mod","name":"Reservas"}""");
-        // dropped INSIDE the bounded context: the module owns the app from the start
+                {"kind":"add-boundedContext","id":"test-mod","name":"Reservas"}""");
+        // dropped INSIDE the bounded context: the boundedContext owns the app from the start
         apply("""
-                {"kind":"create-ui-app","id":"test-app","name":"Recepción App","moduleId":"test-mod"}""");
+                {"kind":"create-ui-app","id":"test-app","name":"Recepción App","boundedContextId":"test-mod"}""");
 
         var model = controller.model();
-        var module = model.modules().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
-        assertThat(module.uiAppIds()).containsExactly("test-app");
+        var boundedContext = model.boundedContexts().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
+        assertThat(boundedContext.uiAppIds()).containsExactly("test-app");
         assertThat(model.uiApps()).anyMatch(a -> "test-app".equals(a.id()));
 
         // deleting the app: the bounded context lets go of it
@@ -166,8 +166,8 @@ class UiEditorCommandsTest {
                 {"kind":"delete-ui-app","id":"test-app"}""");
 
         model = controller.model();
-        module = model.modules().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
-        assertThat(module.uiAppIds()).isEmpty();
+        boundedContext = model.boundedContexts().stream().filter(m -> "test-mod".equals(m.id())).findFirst().orElseThrow();
+        assertThat(boundedContext.uiAppIds()).isEmpty();
         assertThat(model.uiApps()).noneMatch(a -> "test-app".equals(a.id()));
     }
 

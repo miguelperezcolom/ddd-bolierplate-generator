@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.F
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiMeasure;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
@@ -53,9 +53,9 @@ public final class LintRules {
                 new ModelOrphan(),
                 new CrossContextDataAccess(),
                 new CrossServiceConsumption(),
-                new ModuleNotInService(),
-                new ModuleReadPath(),
-                new ModuleWritePath(),
+                new BoundedContextNotInService(),
+                new BoundedContextReadPath(),
+                new BoundedContextWritePath(),
                 new UseCasePipeline(),
                 new OperationPipeline(),
                 new CustomStepIntent(),
@@ -81,7 +81,7 @@ public final class LintRules {
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.apis().stream()
                     .flatMap(api -> api.operations().stream()
-                            .filter(op -> op.targetModuleId() == null && op.targetUseCaseId() == null)
+                            .filter(op -> op.targetBoundedContextId() == null && op.targetUseCaseId() == null)
                             .map(op -> new LintFinding(id(), LintSeverity.WARNING, "ApiOperation",
                                     op.id(), api.name() + "." + op.name(),
                                     "Operación publicada sin implementador: apúntala a un bounded"
@@ -383,7 +383,7 @@ public final class LintRules {
         public String id() { return "flow-context-relation"; }
         public String description() { return "Cross-context flows should be backed by a context-map relation"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            return FlowContextMapCoherenceService.analyze(m.flows(), m.aggregates(), m.modules(), m.projects()).stream()
+            return FlowContextMapCoherenceService.analyze(m.flows(), m.aggregates(), m.boundedContexts(), m.projects()).stream()
                     .filter(f -> f.status() == FlowContextMapFinding.Status.MISSING_RELATION
                             || f.status() == FlowContextMapFinding.Status.REVERSED)
                     .map(f -> new LintFinding(id(), LintSeverity.WARNING, "Flow", f.flowId(), f.flowName(), f.message()))
@@ -460,19 +460,19 @@ public final class LintRules {
 
     // --- structure ------------------------------------------------------------
 
-    /** A use case owned by no module is invisible to generation and the context map. */
+    /** A use case owned by no boundedContext is invisible to generation and the context map. */
     static class OrphanUseCase implements LintRule {
         public String id() { return "orphan-use-case"; }
-        public String description() { return "Every use case should belong to a module"; }
+        public String description() { return "Every use case should belong to a boundedContext"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var owned = new HashSet<String>();
-            m.modules().forEach(mod -> {
+            m.boundedContexts().forEach(mod -> {
                 if (mod.useCaseIds() != null) owned.addAll(mod.useCaseIds());
             });
             return m.useCases().stream()
                     .filter(uc -> !owned.contains(uc.id()))
                     .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(), uc.name(),
-                            "Not referenced by any module — orphan use cases are skipped by generation."))
+                            "Not referenced by any boundedContext — orphan use cases are skipped by generation."))
                     .toList();
         }
     }
@@ -669,10 +669,10 @@ public final class LintRules {
         public String description() { return "Access policies must have an expression"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var findings = new ArrayList<LintFinding>();
-            for (var mod : m.modules()) {
+            for (var mod : m.boundedContexts()) {
                 for (var p : mod.accessPolicies()) {
                     if (p.expression() == null || p.expression().isBlank()) {
-                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "Module", mod.id(), mod.name(),
+                        findings.add(new LintFinding(id(), LintSeverity.WARNING, "BoundedContext", mod.id(), mod.name(),
                                 "Access policy '" + p.name() + "' has no expression."));
                     }
                 }
@@ -687,11 +687,11 @@ public final class LintRules {
         public String description() { return "Non-COUNT KPIs need a value field"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var findings = new ArrayList<LintFinding>();
-            for (var mod : m.modules()) {
+            for (var mod : m.boundedContexts()) {
                 for (var k : mod.kpis()) {
                     if (k.measure() != null && k.measure() != KpiMeasure.COUNT
                             && (k.valueField() == null || k.valueField().isBlank())) {
-                        findings.add(new LintFinding(id(), LintSeverity.ERROR, "Module", mod.id(), mod.name(),
+                        findings.add(new LintFinding(id(), LintSeverity.ERROR, "BoundedContext", mod.id(), mod.name(),
                                 "KPI '" + k.name() + "' uses " + k.measure() + " but declares no value field."));
                     }
                 }
@@ -703,11 +703,11 @@ public final class LintRules {
     /** Classifying subdomains is the whole point of strategic design: where to invest. */
     static class SubdomainClassification implements LintRule {
         public String id() { return "subdomain-classification"; }
-        public String description() { return "Modules should be classified core/supporting/generic"; }
+        public String description() { return "BoundedContexts should be classified core/supporting/generic"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            return m.modules().stream()
+            return m.boundedContexts().stream()
                     .filter(mod -> mod.subdomainType() == null)
-                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "BoundedContext", mod.id(), mod.name(),
                             "No subdomain classification — is this CORE, SUPPORTING or GENERIC?"))
                     .toList();
         }
@@ -759,7 +759,7 @@ public final class LintRules {
     /**
      * Data living in another subdomain is consumed through its API (query service) or materialized
      * as a projection — never by reaching into the foreign aggregate directly. This rule catches a
-     * use case whose steps read/write an aggregate owned by a different module.
+     * use case whose steps read/write an aggregate owned by a different boundedContext.
      */
     static class CrossContextDataAccess implements LintRule {
         private static final Set<io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType> AGGREGATE_ACCESS =
@@ -770,17 +770,17 @@ public final class LintRules {
         public String description() { return "Foreign-context data is consumed via API or projection, not by touching the aggregate"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var findings = new ArrayList<LintFinding>();
-            for (var module : m.modules()) {
-                if (module.useCaseIds() == null) continue;
-                for (var useCaseId : module.useCaseIds()) {
+            for (var boundedContext : m.boundedContexts()) {
+                if (boundedContext.useCaseIds() == null) continue;
+                for (var useCaseId : boundedContext.useCaseIds()) {
                     var useCase = m.useCases().stream().filter(uc -> uc.id().equals(useCaseId)).findFirst().orElse(null);
                     if (useCase == null || useCase.steps() == null) continue;
                     for (var step : useCase.steps()) {
                         if (!AGGREGATE_ACCESS.contains(step.type()) || step.aggregateId() == null) continue;
-                        var owner = m.modules().stream()
+                        var owner = m.boundedContexts().stream()
                                 .filter(other -> other.aggregateIds() != null && other.aggregateIds().contains(step.aggregateId()))
                                 .findFirst().orElse(null);
-                        if (owner != null && !owner.id().equals(module.id())) {
+                        if (owner != null && !owner.id().equals(boundedContext.id())) {
                             findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
                                     useCase.id(), useCase.name(),
                                     "Step '" + step.name() + "' " + step.type() + " on aggregate '" + step.aggregateId()
@@ -797,7 +797,7 @@ public final class LintRules {
 
     /**
      * A use case consumes functionality (a use case or a query service) in the same or another
-     * subdomain. Same service → in-process interface, fine. Modules distributed into different
+     * subdomain. Same service → in-process interface, fine. BoundedContexts distributed into different
      * services → the call crosses a process boundary, which requires an API: the provider must be
      * exposed (gRPC/REST). The deriver (Derive APIs) can fix these automatically.
      */
@@ -806,21 +806,21 @@ public final class LintRules {
         public String description() { return "Cross-service consumption requires the provider to expose an API"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var findings = new ArrayList<LintFinding>();
-            for (var module : m.modules()) {
-                if (module.useCaseIds() == null) continue;
-                var consumerService = serviceOf(m, module.id());
-                for (var useCaseId : module.useCaseIds()) {
+            for (var boundedContext : m.boundedContexts()) {
+                if (boundedContext.useCaseIds() == null) continue;
+                var consumerService = serviceOf(m, boundedContext.id());
+                for (var useCaseId : boundedContext.useCaseIds()) {
                     var consumer = m.useCases().stream().filter(uc -> uc.id().equals(useCaseId)).findFirst().orElse(null);
                     if (consumer == null || consumer.steps() == null) continue;
                     for (var step : consumer.steps()) {
                         if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
                                 && step.useCaseId() != null) {
                             var provider = m.useCases().stream().filter(uc -> uc.id().equals(step.useCaseId())).findFirst().orElse(null);
-                            var providerModule = m.modules().stream()
+                            var providerBoundedContext = m.boundedContexts().stream()
                                     .filter(other -> other.useCaseIds() != null && other.useCaseIds().contains(step.useCaseId()))
                                     .findFirst().orElse(null);
-                            if (provider == null || providerModule == null) continue;
-                            if (crossesService(m, consumerService, providerModule.id())
+                            if (provider == null || providerBoundedContext == null) continue;
+                            if (crossesService(m, consumerService, providerBoundedContext.id())
                                     && !provider.exposedAsGrpc() && !provider.exposedAsRest()) {
                                 findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
                                         consumer.id(), consumer.name(),
@@ -833,7 +833,7 @@ public final class LintRules {
                             var provider = m.queryServices().stream()
                                     .filter(qs -> qs.id().equals(step.queryServiceId())).findFirst().orElse(null);
                             if (provider == null) continue;
-                            if (crossesService(m, consumerService, provider.moduleId()) && !provider.exposedAsGrpc()) {
+                            if (crossesService(m, consumerService, provider.boundedContextId()) && !provider.exposedAsGrpc()) {
                                 findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
                                         consumer.id(), consumer.name(),
                                         "Consumes query service '" + provider.name() + "' deployed in another service — "
@@ -845,14 +845,14 @@ public final class LintRules {
             }
             return findings;
         }
-        private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity serviceOf(ModelSnapshot m, String moduleId) {
-            if (moduleId == null) return null;
+        private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity serviceOf(ModelSnapshot m, String boundedContextId) {
+            if (boundedContextId == null) return null;
             return m.services().stream()
-                    .filter(s -> s.moduleIds() != null && s.moduleIds().contains(moduleId))
+                    .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(boundedContextId))
                     .findFirst().orElse(null);
         }
-        private static boolean crossesService(ModelSnapshot m, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity consumerService, String providerModuleId) {
-            var providerService = serviceOf(m, providerModuleId);
+        private static boolean crossesService(ModelSnapshot m, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity consumerService, String providerBoundedContextId) {
+            var providerService = serviceOf(m, providerBoundedContextId);
             if (consumerService == null || providerService == null) return false;
             return !Objects.equals(consumerService.id(), providerService.id());
         }
@@ -890,60 +890,60 @@ public final class LintRules {
     // modeling sequence — topology → models → read/write sides → relations → operations — into
     // next-step feedback instead of leaving it as tribal knowledge -------------------------------
 
-    /** Step 1 of the path: a module nobody deploys is a dead end. */
-    static class ModuleNotInService implements LintRule {
-        public String id() { return "module-not-in-service"; }
-        public String description() { return "Every module should belong to a service"; }
+    /** Step 1 of the path: a boundedContext nobody deploys is a dead end. */
+    static class BoundedContextNotInService implements LintRule {
+        public String id() { return "boundedContext-not-in-service"; }
+        public String description() { return "Every boundedContext should belong to a service"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var deployed = new HashSet<String>();
             m.services().forEach(s -> {
-                if (s.moduleIds() != null) deployed.addAll(s.moduleIds());
+                if (s.boundedContextIds() != null) deployed.addAll(s.boundedContextIds());
             });
-            return m.modules().stream()
+            return m.boundedContexts().stream()
                     .filter(mod -> !deployed.contains(mod.id()))
-                    .map(mod -> new LintFinding(id(), LintSeverity.WARNING, "Module", mod.id(), mod.name(),
+                    .map(mod -> new LintFinding(id(), LintSeverity.WARNING, "BoundedContext", mod.id(), mod.name(),
                             "Not referenced by any service — it will never be generated or deployed."))
                     .toList();
         }
     }
 
     /** Step 2 of the path: state without a read side is invisible — unless the read side lives elsewhere. */
-    static class ModuleReadPath implements LintRule {
-        public String id() { return "module-read-path"; }
-        public String description() { return "Modules holding state should expose a way to read it"; }
+    static class BoundedContextReadPath implements LintRule {
+        public String id() { return "boundedContext-read-path"; }
+        public String description() { return "BoundedContexts holding state should expose a way to read it"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            return m.modules().stream()
+            return m.boundedContexts().stream()
                     .filter(mod -> mod.aggregateIds() != null && !mod.aggregateIds().isEmpty())
                     // declared read delegation ("the read side lives elsewhere") satisfies the path
-                    .filter(mod -> isBlank(mod.readSideModuleId()) && isBlank(mod.readSideExternalSystemId()))
+                    .filter(mod -> isBlank(mod.readSideBoundedContextId()) && isBlank(mod.readSideExternalSystemId()))
                     .filter(mod -> mod.readModelIds() == null || mod.readModelIds().isEmpty())
-                    .filter(mod -> m.queryServices().stream().noneMatch(qs -> mod.id().equals(qs.moduleId())))
+                    .filter(mod -> m.queryServices().stream().noneMatch(qs -> mod.id().equals(qs.boundedContextId())))
                     .filter(mod -> {
-                        var moduleModels = new HashSet<String>();
+                        var boundedContextModels = new HashSet<String>();
                         mod.aggregateIds().forEach(aggId -> {
                             var model = modelOfAggregate(m, aggId);
-                            if (model != null) moduleModels.add(model.id());
+                            if (model != null) boundedContextModels.add(model.id());
                         });
-                        return m.pages().stream().noneMatch(p -> moduleModels.contains(p.modelId()));
+                        return m.pages().stream().noneMatch(p -> boundedContextModels.contains(p.modelId()));
                     })
-                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "BoundedContext", mod.id(), mod.name(),
                             "Has aggregates but no query service, read model or page — how is this state read?"))
                     .toList();
         }
     }
 
     /** Step 2 of the path: an aggregate no station writes to is decoration. */
-    static class ModuleWritePath implements LintRule {
-        public String id() { return "module-write-path"; }
-        public String description() { return "Modules holding aggregates should have a way to write them"; }
+    static class BoundedContextWritePath implements LintRule {
+        public String id() { return "boundedContext-write-path"; }
+        public String description() { return "BoundedContexts holding aggregates should have a way to write them"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            return m.modules().stream()
+            return m.boundedContexts().stream()
                     .filter(mod -> mod.aggregateIds() != null && !mod.aggregateIds().isEmpty())
                     .filter(mod -> isEmpty(mod.useCaseIds()) && isEmpty(mod.subscriptionIds())
                             && isEmpty(mod.scheduledTriggerIds()))
-                    .filter(mod -> m.processes().stream().noneMatch(p -> mod.id().equals(p.ownerModuleId())))
-                    .filter(mod -> m.flows().stream().noneMatch(f -> mod.id().equals(f.targetModuleId())))
-                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "Module", mod.id(), mod.name(),
+                    .filter(mod -> m.processes().stream().noneMatch(p -> mod.id().equals(p.ownerBoundedContextId())))
+                    .filter(mod -> m.flows().stream().noneMatch(f -> mod.id().equals(f.targetBoundedContextId())))
+                    .map(mod -> new LintFinding(id(), LintSeverity.INFO, "BoundedContext", mod.id(), mod.name(),
                             "Has aggregates but no use cases, subscriptions, processes, flows or triggers"
                                     + " — who writes to them?"))
                     .toList();

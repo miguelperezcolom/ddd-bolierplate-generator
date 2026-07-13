@@ -27,7 +27,7 @@ class McpModernLanguageE2ETest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -47,7 +47,7 @@ class McpModernLanguageE2ETest {
                 {"projectId":"aseguradora","name":"Aseguradora","packageName":"com.aseg",
                  "outputPath":"%s","serviceId":"svc-siniestros",
                  "objective":"Tramitación de siniestros con peritaje humano.",
-                 "modules":[{"id":"mod-siniestros","name":"Siniestros","subdomainType":"CORE",
+                 "boundedContexts":[{"id":"mod-siniestros","name":"Siniestros","subdomainType":"CORE",
                    "description":"Apertura, peritaje y liquidación de siniestros."}]}"""
                 .formatted(dir.resolve("out").toAbsolutePath()));
 
@@ -103,7 +103,7 @@ class McpModernLanguageE2ETest {
         var types = call("list_element_types", "{}");
         for (var t : new String[]{"workflows", "workflowGateways", "customCodes",
                 "transformations", "etlFlows", "aiAgents", "rags", "mcpGateways",
-                "buttonGroups", "codeModules", "identityProviders"}) {
+                "buttonGroups", "modules", "identityProviders"}) {
             assertTrue(types.contains(t), "missing type: " + t);
         }
     }

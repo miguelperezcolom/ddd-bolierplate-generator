@@ -21,7 +21,7 @@ class GenerationViewClosureTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     private static final String VIEW = """
@@ -47,7 +47,7 @@ class GenerationViewClosureTest {
 
     @Test
     void view_expands_to_its_dependency_closure() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("modux-view", ".yaml");
         Files.writeString(file, store + VIEW);
         repository.loadFrom(file.toAbsolutePath().toString());
@@ -67,7 +67,7 @@ class GenerationViewClosureTest {
 
     @Test
     void missing_members_are_reported() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("modux-view-broken", ".yaml");
         Files.writeString(file, store + VIEW);
         repository.loadFrom(file.toAbsolutePath().toString());

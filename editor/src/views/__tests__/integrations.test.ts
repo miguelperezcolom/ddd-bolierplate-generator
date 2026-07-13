@@ -4,7 +4,7 @@ import { baseModel } from './fixtures.js';
 
 const etlModel = () =>
   baseModel({
-    modules: [{ id: 'mod-reservas', name: 'Reservas' }],
+    boundedContexts: [{ id: 'mod-reservas', name: 'Reservas' }],
     externalSystems: [
       { id: 'ext-pms', name: 'PMS', tables: [{ id: 'tbl-rooms', name: 'ROOMS' }] },
     ],
@@ -12,7 +12,7 @@ const etlModel = () =>
       {
         id: 'etl-noche',
         name: 'Carga nocturna',
-        ownerModuleId: 'mod-reservas',
+        ownerBoundedContextId: 'mod-reservas',
         steps: [
           { id: 'st-pull', name: 'Leer ROOMS', type: 'SOURCE_TABLE', externalTableId: 'tbl-rooms' },
           { id: 'st-map', name: 'Normalizar', type: 'TRANSFORM' },

@@ -12,10 +12,10 @@ projects:
 services:
 - id: "ledger"
   name: "Ledger"
-  moduleIds:
+  boundedContextIds:
   - "mod-accounts"
 
-modules:
+boundedContexts:
 - id: "mod-accounts"
   name: "Accounts"
   aggregateIds:

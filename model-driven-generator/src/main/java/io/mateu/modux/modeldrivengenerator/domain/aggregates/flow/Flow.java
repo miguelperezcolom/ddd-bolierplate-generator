@@ -21,12 +21,12 @@ public class Flow {
     private String description;
     private FlowArchetype archetype;
 
-    // when: <triggerAggregate> <triggerEvent>  (the source context is the aggregate's module)
+    // when: <triggerAggregate> <triggerEvent>  (the source context is the aggregate's boundedContext)
     private String triggerAggregateId;
     private String triggerEvent;
 
     // target bounded context (the `in:` of the archetype)
-    private String targetModuleId;
+    private String targetBoundedContextId;
 
     // materializes: read model name (`as`) + the subset of fields that cross the boundary
     private String readModelName;
@@ -43,7 +43,7 @@ public class Flow {
     private List<String> overrides;
 
     public static Flow of(FlowId id, FlowName name, String description, FlowArchetype archetype,
-                          String triggerAggregateId, String triggerEvent, String targetModuleId,
+                          String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                           String readModelName, List<String> materializedFields,
                           String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         var flow = new Flow();
@@ -53,7 +53,7 @@ public class Flow {
         flow.archetype = archetype;
         flow.triggerAggregateId = triggerAggregateId;
         flow.triggerEvent = triggerEvent;
-        flow.targetModuleId = targetModuleId;
+        flow.targetBoundedContextId = targetBoundedContextId;
         flow.readModelName = readModelName;
         flow.materializedFields = materializedFields != null ? materializedFields : List.of();
         flow.targetUseCaseId = targetUseCaseId;
@@ -63,7 +63,7 @@ public class Flow {
     }
 
     public static Flow load(String id, String name, String description, String archetype,
-                            String triggerAggregateId, String triggerEvent, String targetModuleId,
+                            String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                             String readModelName, List<String> materializedFields,
                             String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         var flow = new Flow();
@@ -73,7 +73,7 @@ public class Flow {
         flow.archetype = archetype != null ? FlowArchetype.valueOf(archetype) : null;
         flow.triggerAggregateId = triggerAggregateId;
         flow.triggerEvent = triggerEvent;
-        flow.targetModuleId = targetModuleId;
+        flow.targetBoundedContextId = targetBoundedContextId;
         flow.readModelName = readModelName;
         flow.materializedFields = materializedFields != null ? materializedFields : List.of();
         flow.targetUseCaseId = targetUseCaseId;
@@ -83,7 +83,7 @@ public class Flow {
     }
 
     public void update(FlowName name, String description, FlowArchetype archetype,
-                       String triggerAggregateId, String triggerEvent, String targetModuleId,
+                       String triggerAggregateId, String triggerEvent, String targetBoundedContextId,
                        String readModelName, List<String> materializedFields,
                        String targetUseCaseId, List<String> inputMappings, List<String> overrides) {
         this.name = name;
@@ -91,7 +91,7 @@ public class Flow {
         this.archetype = archetype;
         this.triggerAggregateId = triggerAggregateId;
         this.triggerEvent = triggerEvent;
-        this.targetModuleId = targetModuleId;
+        this.targetBoundedContextId = targetBoundedContextId;
         this.readModelName = readModelName;
         this.materializedFields = materializedFields != null ? materializedFields : List.of();
         this.targetUseCaseId = targetUseCaseId;

@@ -41,7 +41,7 @@ public class ReadModelFileQueryService implements ReadModelQueryService {
     @Override
     public Optional<ReadModelDto> getById(String id) {
         return repository.findById(id, ReadModelEntity.class)
-                .map(entity -> new ReadModelDto(entity.id(), entity.name(), entity.moduleId(), entity.description(),
+                .map(entity -> new ReadModelDto(entity.id(), entity.name(), entity.boundedContextId(), entity.description(),
                         entity.modelId(), entity.storageType(), entity.consistency()));
     }
 }

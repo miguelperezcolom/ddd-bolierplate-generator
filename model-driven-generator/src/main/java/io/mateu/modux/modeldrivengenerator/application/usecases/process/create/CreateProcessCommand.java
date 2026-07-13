@@ -10,7 +10,7 @@ public record CreateProcessCommand(
         String description,
         String triggerAggregateId,
         String triggerEvent,
-        String ownerModuleId,
+        String ownerBoundedContextId,
         List<ProcessStepDto> steps,
         String onCompletionEventName,
         String sla

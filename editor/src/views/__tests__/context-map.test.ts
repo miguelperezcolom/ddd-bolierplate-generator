@@ -4,7 +4,7 @@ import { baseModel } from './fixtures.js';
 
 const strategicModel = () =>
   baseModel({
-    modules: [
+    boundedContexts: [
       {
         id: 'mod-reservas',
         name: 'Reservas',
@@ -14,7 +14,7 @@ const strategicModel = () =>
       },
       { id: 'mod-facturas', name: 'Facturación', subdomainType: 'SUPPORTING' },
     ],
-    aggregates: [{ id: 'agg-reserva', name: 'Reserva', moduleId: 'mod-reservas' }],
+    aggregates: [{ id: 'agg-reserva', name: 'Reserva', boundedContextId: 'mod-reservas' }],
     externalSystems: [{ id: 'ext-pms', name: 'PMS' }],
     relations: [
       {

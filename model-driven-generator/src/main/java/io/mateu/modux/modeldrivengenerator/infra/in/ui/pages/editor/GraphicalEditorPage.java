@@ -35,7 +35,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
 
     /** elementType (as emitted by the editor views) → CRUD listing route. */
     private static final Map<String, String> CRUD_ROUTES = Map.ofEntries(
-            Map.entry("module", "/modelo/organizacion/modules"),
+            Map.entry("boundedContext", "/modelo/organizacion/boundedContexts"),
             Map.entry("service", "/modelo/organizacion/services"),
             Map.entry("aggregate", "/modelo/domainModel/aggregates"),
             Map.entry("entity", "/modelo/domainModel/entities"),
@@ -56,7 +56,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("query-service", "/modelo/outbound/queryServices"),
             Map.entry("actor", "/modelo/security/roles"),
             Map.entry("external-system", "/modelo/organizacion/externalSystems"),
-            Map.entry("code-module", "/modelo/organizacion/codeModules"),
+            Map.entry("module", "/modelo/organizacion/modules"),
             Map.entry("custom-code", "/modelo/behaviour/customCodes"),
             Map.entry("transformation", "/modelo/behaviour/transformations"),
             Map.entry("etl-flow", "/modelo/patrones/etlFlows"),
@@ -72,7 +72,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
      * emits the event; mateu draws.
      */
     private static final Map<String, Class<?>> ADAPTERS = Map.ofEntries(
-            Map.entry("module", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudAdapter.class),
+            Map.entry("boundedContext", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.boundedcontext.BoundedContextCrudAdapter.class),
             Map.entry("service", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudAdapter.class),
             Map.entry("aggregate", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudAdapter.class),
             Map.entry("entity", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudAdapter.class),
@@ -93,7 +93,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("query-service", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.queryservice.QueryServiceCrudAdapter.class),
             Map.entry("actor", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.role.RoleCrudAdapter.class),
             Map.entry("external-system", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.externalsystem.ExternalSystemCrudAdapter.class),
-            Map.entry("code-module", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.codemodule.CodeModuleCrudAdapter.class),
+            Map.entry("module", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudAdapter.class),
             Map.entry("custom-code", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.customcode.CustomCodeCrudAdapter.class),
             Map.entry("transformation", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.transformation.TransformationCrudAdapter.class),
             Map.entry("etl-flow", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.etlflow.EtlFlowCrudAdapter.class),
@@ -105,7 +105,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so
-     * neither the browser's HTTP cache nor the tab's ES-module map can keep serving stale
+     * neither the browser's HTTP cache nor the tab's ES-boundedContext map can keep serving stale
      * editor code (dynamic imports are cached per-URL for the life of the page).
      */
     private static volatile String bundleVersion;

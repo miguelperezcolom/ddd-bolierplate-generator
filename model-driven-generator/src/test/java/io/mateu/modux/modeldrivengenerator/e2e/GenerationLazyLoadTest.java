@@ -23,7 +23,7 @@ class GenerationLazyLoadTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     private static final String VIEW = """
@@ -44,7 +44,7 @@ class GenerationLazyLoadTest {
     @Test
     void loading_a_view_loads_only_its_closure() throws Exception {
         // build a granular store that contains a computed view
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var monolithic = Files.createTempFile("modux-lazy-src", ".yaml");
         Files.writeString(monolithic, store + VIEW);
         repository.loadFrom(monolithic.toAbsolutePath().toString());
@@ -65,9 +65,9 @@ class GenerationLazyLoadTest {
                 "partial load did not shrink the catalog (" + ids.size() + " vs full " + fullCount + ")");
         assertTrue(load.loadedElements() > 1, "the closure did not load anything beyond the seed");
         // it contains the bounded context
-        assertTrue(ids.contains("mod-frontoffice"), "seed module not loaded; got " + ids);
-        assertTrue(ids.contains("estancia"), "the module's aggregate was not loaded; got " + ids);
-        assertTrue(ids.contains("uc-crearEstancia"), "the module's use case was not loaded; got " + ids);
+        assertTrue(ids.contains("mod-frontoffice"), "seed boundedContext not loaded; got " + ids);
+        assertTrue(ids.contains("estancia"), "the boundedContext's aggregate was not loaded; got " + ids);
+        assertTrue(ids.contains("uc-crearEstancia"), "the boundedContext's use case was not loaded; got " + ids);
         // a different bounded context is NOT loaded
         assertFalse(ids.contains("reserva"), "a different context (reserva) leaked into the partial load; got " + ids);
 

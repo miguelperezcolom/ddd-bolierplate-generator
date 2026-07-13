@@ -26,8 +26,8 @@ class ContextMapSvgRendererTest {
         var svg = ContextMapSvgRenderer.render(nodes, relations, flows);
 
         // both nodes present, tagged for future interactivity
-        assertTrue(svg.contains("data-module-id=\"mod-reservas\""));
-        assertTrue(svg.contains("data-module-id=\"mod-frontoffice\""));
+        assertTrue(svg.contains("data-boundedContext-id=\"mod-reservas\""));
+        assertTrue(svg.contains("data-boundedContext-id=\"mod-frontoffice\""));
         assertTrue(svg.contains(">Reservas<"));
         // strategic relation drawn with its abbreviation
         assertTrue(svg.contains(">OHS<"));
@@ -48,7 +48,7 @@ class ContextMapSvgRendererTest {
 
         var svg = ContextMapSvgRenderer.render(nodes, relations, List.of());
 
-        assertTrue(svg.contains("data-module-id=\"a\""));
+        assertTrue(svg.contains("data-boundedContext-id=\"a\""));
         assertFalse(svg.contains("marker-end")); // no edge rendered toward the missing node
     }
 

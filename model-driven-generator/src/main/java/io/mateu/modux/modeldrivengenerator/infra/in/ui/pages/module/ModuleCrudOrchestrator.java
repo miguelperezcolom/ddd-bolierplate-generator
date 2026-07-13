@@ -1,7 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module;
 
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
-import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModuleRow;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Scope("prototype")
-@Title("Modules")
+@Title("Módulos")
 public class ModuleCrudOrchestrator extends Crud<
         ModuleViewModel,
         ModuleViewModel,
@@ -27,9 +26,7 @@ public class ModuleCrudOrchestrator extends Crud<
     final ModuleCrudAdapter adapter;
 
     @Override
-    public CrudAdapter<
-            ModuleViewModel, ModuleViewModel,
-            NoFilters, ModuleRow, String> adapter() {
+    public CrudAdapter<ModuleViewModel, ModuleViewModel, NoFilters, ModuleRow, String> adapter() {
         return adapter;
     }
 
@@ -37,6 +34,7 @@ public class ModuleCrudOrchestrator extends Crud<
     public String toId(String s) {
         return s;
     }
+
     @Override
     @SuppressWarnings("unchecked")
     public Object search(String searchText, Object filters, Pageable pageable, HttpRequest httpRequest) {
@@ -73,5 +71,4 @@ public class ModuleCrudOrchestrator extends Crud<
         return io.mateu.uidl.reflection.GenericClassProvider.getGenericClass(
             this.getClass(), io.mateu.core.infra.declarative.orchestrators.crud.Crud.class, "CreationForm");
     }
-
 }

@@ -7,7 +7,7 @@ import java.util.List;
 public record SaveQueryServiceCommand(
         String id,
         String name,
-        String moduleId,
+        String boundedContextId,
         String description,
         List<QueryOperationData> operations
 ) {

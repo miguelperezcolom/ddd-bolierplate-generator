@@ -41,7 +41,7 @@ public class FlowFileQueryService implements FlowQueryService {
     public Optional<FlowDto> getById(String id) {
         return repository.findById(id, FlowEntity.class)
                 .map(entity -> new FlowDto(entity.id(), entity.name(), entity.description(), entity.archetype(),
-                        entity.triggerAggregateId(), entity.triggerEvent(), entity.targetModuleId(),
+                        entity.triggerAggregateId(), entity.triggerEvent(), entity.targetBoundedContextId(),
                         entity.readModelName(), entity.materializedFields(),
                         entity.targetUseCaseId(), entity.inputMappings(), entity.overrides()));
     }

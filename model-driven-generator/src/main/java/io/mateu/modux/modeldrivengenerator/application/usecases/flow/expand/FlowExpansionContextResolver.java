@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * Resolves the {@link FlowExpansionContext} a flow needs from the rest of the model:
- * triggerAggregate → name + owning module → service → project, the target module name, and the
+ * triggerAggregate → name + owning boundedContext → service → project, the target boundedContext name, and the
  * types of the materialized fields (read from the aggregate's model). Lenient: missing
  * references fall back to ids / string so expansion never hard-fails on an incomplete model.
  */
@@ -42,7 +42,7 @@ public class FlowExpansionContextResolver {
                 .orElse(null);
         return resolve(flow, triggerDomainServiceId, triggerUseCaseId,
                 repository.findAllOfType(AggregateEntity.class),
-                repository.findAllOfType(ModuleEntity.class),
+                repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(ModelEntity.class),
@@ -52,12 +52,12 @@ public class FlowExpansionContextResolver {
     /** Pre-domain-service-trigger overload, kept for existing tests. */
     static FlowExpansionContext resolve(Flow flow,
                                         List<AggregateEntity> aggregates,
-                                        List<ModuleEntity> modules,
+                                        List<BoundedContextEntity> boundedContexts,
                                         List<ServiceEntity> services,
                                         List<ProjectEntity> projects,
                                         List<ModelEntity> models,
                                         List<UseCaseEntity> useCases) {
-        return resolve(flow, null, null, aggregates, modules, services, projects, models, useCases);
+        return resolve(flow, null, null, aggregates, boundedContexts, services, projects, models, useCases);
     }
 
     /** Pure resolution over the given model slices — unit-testable without Spring or files. */
@@ -65,7 +65,7 @@ public class FlowExpansionContextResolver {
                                         String triggerDomainServiceId,
                                         String triggerUseCaseId,
                                         List<AggregateEntity> aggregates,
-                                        List<ModuleEntity> modules,
+                                        List<BoundedContextEntity> boundedContexts,
                                         List<ServiceEntity> services,
                                         List<ProjectEntity> projects,
                                         List<ModelEntity> models,
@@ -75,34 +75,34 @@ public class FlowExpansionContextResolver {
         var aggregate = aggregates.stream().filter(a -> a.id().equals(aggregateId)).findFirst().orElse(null);
         var aggregateName = aggregate != null ? aggregate.name() : aggregateId;
 
-        var sourceModule = modules.stream()
+        var sourceBoundedContext = boundedContexts.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
                 .findFirst()
-                // Alternative triggers: the module owning the emitting domain service,
+                // Alternative triggers: the boundedContext owning the emitting domain service,
                 // or the one owning the publishing use case (application events).
                 .orElseGet(() -> triggerDomainServiceId != null
-                        ? modules.stream()
+                        ? boundedContexts.stream()
                                 .filter(m -> m.domainServiceIds().contains(triggerDomainServiceId))
                                 .findFirst().orElse(null)
-                        : triggerUseCaseId == null ? null : modules.stream()
+                        : triggerUseCaseId == null ? null : boundedContexts.stream()
                                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(triggerUseCaseId))
                                 .findFirst().orElse(null));
 
-        var sourceService = sourceModule == null ? null : services.stream()
-                .filter(s -> s.moduleIds().contains(sourceModule.id()))
+        var sourceService = sourceBoundedContext == null ? null : services.stream()
+                .filter(s -> s.boundedContextIds().contains(sourceBoundedContext.id()))
                 .findFirst().orElse(null);
         var sourceServiceName = sourceService != null ? sourceService.name()
-                : (sourceModule != null ? sourceModule.name() : aggregateId);
+                : (sourceBoundedContext != null ? sourceBoundedContext.name() : aggregateId);
 
         var projectName = sourceService == null ? "app" : projects.stream()
                 .filter(p -> p.serviceIds().contains(sourceService.id()))
                 .map(ProjectEntity::name)
                 .findFirst().orElse("app");
 
-        var targetModule = modules.stream()
-                .filter(m -> m.id().equals(flow.getTargetModuleId()))
+        var targetBoundedContext = boundedContexts.stream()
+                .filter(m -> m.id().equals(flow.getTargetBoundedContextId()))
                 .findFirst().orElse(null);
-        var targetModuleName = targetModule != null ? targetModule.name() : flow.getTargetModuleId();
+        var targetBoundedContextName = targetBoundedContext != null ? targetBoundedContext.name() : flow.getTargetBoundedContextId();
 
         Map<String, FieldDataType> fieldTypes = new HashMap<>();
         if (aggregate != null && aggregate.modelId() != null) {
@@ -125,9 +125,9 @@ public class FlowExpansionContextResolver {
         var targetUseCaseName = targetUseCase != null ? targetUseCase.name() : flow.getTargetUseCaseId();
         var targetUseCaseInputModelId = targetUseCase != null ? targetUseCase.inputModelId() : null;
 
-        var sourceModuleId = sourceModule != null ? sourceModule.id() : null;
+        var sourceBoundedContextId = sourceBoundedContext != null ? sourceBoundedContext.id() : null;
 
-        return new FlowExpansionContext(projectName, sourceServiceName, aggregateName, targetModuleName, fieldTypes,
-                targetUseCaseName, targetUseCaseInputModelId, sourceModuleId);
+        return new FlowExpansionContext(projectName, sourceServiceName, aggregateName, targetBoundedContextName, fieldTypes,
+                targetUseCaseName, targetUseCaseInputModelId, sourceBoundedContextId);
     }
 }

@@ -20,7 +20,7 @@ public class SaveProcessUseCase {
                 command.description(),
                 command.triggerAggregateId(),
                 command.triggerEvent(),
-                command.ownerModuleId(),
+                command.ownerBoundedContextId(),
                 ProcessStepMapper.toSteps(command.steps()),
                 command.onCompletionEventName(),
                 command.sla());

@@ -10,8 +10,8 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadMo
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModelIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
@@ -36,8 +36,8 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     @NotEmpty
     String name;
 
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    String moduleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    String boundedContextId;
 
     String description;
 
@@ -53,14 +53,14 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateReadModelCommand(id, name, moduleId, description,
+        createUseCase.handle(new CreateReadModelCommand(id, name, boundedContextId, description,
                 modelId, storageType, consistency));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveReadModelCommand(id, name, moduleId, description,
+        saveUseCase.handle(new SaveReadModelCommand(id, name, boundedContextId, description,
                 modelId, storageType, consistency));
     }
 
@@ -72,7 +72,7 @@ public class ReadModelViewModel implements Identifiable, CrudEditorForm<String>,
     public ReadModelViewModel load(ReadModelDto model) {
         id = model.id();
         name = model.name();
-        moduleId = model.moduleId();
+        boundedContextId = model.boundedContextId();
         description = model.description();
         modelId = model.modelId();
         storageType = model.storageType();

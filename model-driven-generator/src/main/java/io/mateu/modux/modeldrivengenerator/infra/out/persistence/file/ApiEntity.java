@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * A published API as a FIRST-CLASS element, at the level of the bounded contexts: the
  * contract is a product (often fronting several contexts), not an implementation detail
- * of one module. Its operations wire to whoever implements them. Usually born from an
+ * of one boundedContext. Its operations wire to whoever implements them. Usually born from an
  * OpenAPI/WSDL import (Organización › Import API contract, no target), refined on the map.
  */
 public record ApiEntity(
@@ -18,7 +18,7 @@ public record ApiEntity(
         /** External system publishing this API (it nests inside it on the map); null = standalone. */
         String publishedByExternalSystemId,
         /** Bounded contexts also implementing this SAME API (strangler migrations: N sites coexist). */
-        List<String> implementedByModuleIds,
+        List<String> implementedByBoundedContextIds,
         /** Per-site wiring: the use case implementing an operation at a given implementation site. */
         List<ApiOperationImplementationEntity> operationImplementations
 ) implements Identifiable {
@@ -29,7 +29,7 @@ public record ApiEntity(
         this(id, name, description, operations, null, List.of(), List.of());
     }
 
-    /** Backward-compatible constructor (pre-implementedByModuleIds callers and stores). */
+    /** Backward-compatible constructor (pre-implementedByBoundedContextIds callers and stores). */
     public ApiEntity(String id, String name, String description,
                      List<ApiOperationEntity> operations, String publishedByExternalSystemId) {
         this(id, name, description, operations, publishedByExternalSystemId, List.of(), List.of());
@@ -38,17 +38,17 @@ public record ApiEntity(
     /** Backward-compatible constructor (pre-operationImplementations callers and stores). */
     public ApiEntity(String id, String name, String description,
                      List<ApiOperationEntity> operations, String publishedByExternalSystemId,
-                     List<String> implementedByModuleIds) {
+                     List<String> implementedByBoundedContextIds) {
         this(id, name, description, operations, publishedByExternalSystemId,
-                implementedByModuleIds, List.of());
+                implementedByBoundedContextIds, List.of());
     }
 
     public List<ApiOperationEntity> operations() {
         return operations != null ? operations : List.of();
     }
 
-    public List<String> implementedByModuleIds() {
-        return implementedByModuleIds != null ? implementedByModuleIds : List.of();
+    public List<String> implementedByBoundedContextIds() {
+        return implementedByBoundedContextIds != null ? implementedByBoundedContextIds : List.of();
     }
 
     public List<ApiOperationImplementationEntity> operationImplementations() {
@@ -59,22 +59,22 @@ public record ApiEntity(
     // drop a field added to the record after the calling code was written.
 
     public ApiEntity withName(String name) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByModuleIds, operationImplementations);
+        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
     }
 
     public ApiEntity withOperations(List<ApiOperationEntity> operations) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByModuleIds, operationImplementations);
+        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
     }
 
     public ApiEntity withPublishedByExternalSystemId(String externalSystemId) {
-        return new ApiEntity(id, name, description, operations, externalSystemId, implementedByModuleIds, operationImplementations);
+        return new ApiEntity(id, name, description, operations, externalSystemId, implementedByBoundedContextIds, operationImplementations);
     }
 
-    public ApiEntity withImplementedByModuleIds(List<String> implementedByModuleIds) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByModuleIds, operationImplementations);
+    public ApiEntity withImplementedByBoundedContextIds(List<String> implementedByBoundedContextIds) {
+        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
     }
 
     public ApiEntity withOperationImplementations(List<ApiOperationImplementationEntity> operationImplementations) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByModuleIds, operationImplementations);
+        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
     }
 }

@@ -40,13 +40,13 @@ function triggerSource(model: ModuxModel, workflow: WorkflowRef):
     if (agg) return { id: agg.id, label: agg.name, kind: 'aggregate', symbol: 'aggregate' };
   }
   if (workflow.triggerDomainServiceId) {
-    const ds = model.modules
+    const ds = model.boundedContexts
       .flatMap((m) => m.domainServices ?? [])
       .find((x) => x.id === workflow.triggerDomainServiceId);
     if (ds) return { id: ds.id, label: ds.name, kind: 'domain-service', symbol: 'gear' };
   }
   if (workflow.triggerUseCaseId) {
-    const uc = model.modules
+    const uc = model.boundedContexts
       .flatMap((m) => m.useCases ?? [])
       .find((x) => x.id === workflow.triggerUseCaseId);
     if (uc) return { id: uc.id, label: uc.name, kind: 'use-case', symbol: 'gear' };
@@ -60,7 +60,7 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
   const seenSources = new Set<string>();
 
   const useCaseName = (id: string | undefined) =>
-    model.modules.flatMap((m) => m.useCases ?? []).find((u) => u.id === id)?.name;
+    model.boundedContexts.flatMap((m) => m.useCases ?? []).find((u) => u.id === id)?.name;
 
   let rowY = 140;
   (model.workflows ?? []).forEach((workflow) => {

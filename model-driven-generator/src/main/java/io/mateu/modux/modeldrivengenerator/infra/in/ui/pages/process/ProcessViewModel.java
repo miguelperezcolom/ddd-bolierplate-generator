@@ -9,8 +9,8 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.process.save.Sav
 import io.mateu.modux.modeldrivengenerator.application.usecases.process.save.SaveProcessUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Help;
 import io.mateu.uidl.annotations.Hidden;
@@ -49,9 +49,9 @@ public class ProcessViewModel implements Identifiable, CrudEditorForm<String>, C
     String triggerEvent;
 
     @Tab("Steps")
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
     @Help("Bounded context that owns/orchestrates the process.")
-    String ownerModuleId;
+    String ownerBoundedContextId;
 
     List<ProcessStepViewModel> steps = new ArrayList<>();
 
@@ -68,7 +68,7 @@ public class ProcessViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateProcessCommand(id, name, description,
-                triggerAggregateId, triggerEvent, ownerModuleId,
+                triggerAggregateId, triggerEvent, ownerBoundedContextId,
                 toStepDtos(steps), onCompletionEventName, sla));
         return id;
     }
@@ -76,7 +76,7 @@ public class ProcessViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveProcessCommand(id, name, description,
-                triggerAggregateId, triggerEvent, ownerModuleId,
+                triggerAggregateId, triggerEvent, ownerBoundedContextId,
                 toStepDtos(steps), onCompletionEventName, sla));
     }
 
@@ -91,7 +91,7 @@ public class ProcessViewModel implements Identifiable, CrudEditorForm<String>, C
         description = model.description();
         triggerAggregateId = model.triggerAggregateId();
         triggerEvent = model.triggerEvent();
-        ownerModuleId = model.ownerModuleId();
+        ownerBoundedContextId = model.ownerBoundedContextId();
         steps = model.steps() == null ? new ArrayList<>() :
                 model.steps().stream().map(s -> {
                     var vm = new ProcessStepViewModel();

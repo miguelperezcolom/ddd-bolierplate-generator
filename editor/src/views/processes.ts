@@ -16,8 +16,8 @@ export function processesScene(model: ModuxModel, layout: DiagramLayout): Scene 
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
 
-  const moduleName = (id: string | undefined) =>
-    model.modules.find((m) => m.id === id)?.name;
+  const boundedContextName = (id: string | undefined) =>
+    model.boundedContexts.find((m) => m.id === id)?.name;
 
   (model.processes ?? []).forEach((process, pi) => {
     const rowY = 140 + pi * 240;
@@ -34,7 +34,7 @@ export function processesScene(model: ModuxModel, layout: DiagramLayout): Scene 
       fill: '#f5f3ff',
       stroke: '#7c3aed',
       badge: `PROCESS${process.sla ? ` · SLA ${process.sla}` : ''}`,
-      tooltip: `${process.name}${moduleName(process.ownerModuleId) ? ` — módulo ${moduleName(process.ownerModuleId)}` : ''}${process.triggerEvent ? ` · arranca con ${process.triggerEvent}` : ''}`,
+      tooltip: `${process.name}${boundedContextName(process.ownerBoundedContextId) ? ` — contexto ${boundedContextName(process.ownerBoundedContextId)}` : ''}${process.triggerEvent ? ` · arranca con ${process.triggerEvent}` : ''}`,
     });
 
     let previousId = process.id;

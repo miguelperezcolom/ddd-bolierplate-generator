@@ -34,7 +34,7 @@ class LedgerGenerationTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -66,7 +66,7 @@ class LedgerGenerationTest {
                 "event-sourced repository (port impl) was not generated");
         assertTrue(anyFile(output, "AccountEventSourcing.java"), "event-sourcing fold hook was not generated");
         assertTrue(anyFile(output, "DefaultAccountEventSourcing.java"),
-                "default event-sourcing impl was not scaffolded in the custom module");
+                "default event-sourcing impl was not scaffolded in the custom boundedContext");
         assertFalse(anyFile(output, "AccountDBRepository.java"),
                 "the JPA port impl should be replaced by the event-sourced one for an event-sourced aggregate");
 

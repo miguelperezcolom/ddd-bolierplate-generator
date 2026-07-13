@@ -26,7 +26,7 @@ public record RagEntity(
         /** Whole external systems it indexes (coarse: everything the system owns). */
         List<String> sourceExternalSystemIds,
         /** Whole bounded contexts it indexes (coarse: the context's content). */
-        List<String> sourceModuleIds
+        List<String> sourceBoundedContextIds
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre coarse-sources callers and stores). */
@@ -74,8 +74,8 @@ public record RagEntity(
         return sourceExternalSystemIds != null ? sourceExternalSystemIds : List.of();
     }
 
-    public List<String> sourceModuleIds() {
-        return sourceModuleIds != null ? sourceModuleIds : List.of();
+    public List<String> sourceBoundedContextIds() {
+        return sourceBoundedContextIds != null ? sourceBoundedContextIds : List.of();
     }
 
     // Single-field copies: unlike the positional constructor, these can never silently
@@ -83,35 +83,35 @@ public record RagEntity(
 
     public RagEntity withName(String name) {
         return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceModuleIds);
+                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
     }
 
     public RagEntity withSourceReadModelIds(List<String> ids) {
         return new RagEntity(id, name, description, ids, contentSources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceModuleIds);
+                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
     }
 
     public RagEntity withContentSources(List<RagContentSourceEntity> sources) {
         return new RagEntity(id, name, description, sourceReadModelIds, sources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceModuleIds);
+                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
     }
 
     public RagEntity withSourceExternalTableIds(List<String> ids) {
         return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                ids, sourceApiIds, sourceExternalSystemIds, sourceModuleIds);
+                ids, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
     }
 
     public RagEntity withSourceApiIds(List<String> ids) {
         return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, ids, sourceExternalSystemIds, sourceModuleIds);
+                sourceExternalTableIds, ids, sourceExternalSystemIds, sourceBoundedContextIds);
     }
 
     public RagEntity withSourceExternalSystemIds(List<String> ids) {
         return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, sourceApiIds, ids, sourceModuleIds);
+                sourceExternalTableIds, sourceApiIds, ids, sourceBoundedContextIds);
     }
 
-    public RagEntity withSourceModuleIds(List<String> ids) {
+    public RagEntity withSourceBoundedContextIds(List<String> ids) {
         return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
                 sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, ids);
     }

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.service.save;
 
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.ServiceRepository;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.ModuleId;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.BoundedContextId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.DeploymentStrategy;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.ServiceId;
@@ -45,7 +45,7 @@ public class SaveServiceUseCase {
                 command.writeTimeoutMs(),
                 command.deploymentStrategy() != null ? DeploymentStrategy.valueOf(command.deploymentStrategy()) : null,
                 command.owner(),
-                command.moduleIds().stream().map(ModuleId::new).toList(),
+                command.boundedContextIds().stream().map(BoundedContextId::new).toList(),
                 command.gatewayIds(),
                 command.envVars(),
                 command.javaVersion(),

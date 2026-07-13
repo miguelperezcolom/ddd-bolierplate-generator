@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.Model
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +29,7 @@ class WorkspaceElementLifecycleTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -44,38 +44,38 @@ class WorkspaceElementLifecycleTest {
     @Autowired
     ModelLintService modelLintService;
 
-    String moduleId;
+    String boundedContextId;
 
     @BeforeEach
     void loadTempStore() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("workspace-test-store", ".yaml");
         Files.writeString(file, store);
         repository.loadFrom(file.toAbsolutePath().toString());
-        moduleId = repository.findAllOfType(ModuleEntity.class).get(0).id();
+        boundedContextId = repository.findAllOfType(BoundedContextEntity.class).get(0).id();
     }
 
     @Test
-    void create_attaches_to_the_module_and_delete_detaches() {
+    void create_attaches_to_the_boundedContext_and_delete_detaches() {
         createUseCase.handle(new CreateWorkspaceElementCommand(
-                "aggregates", "ws-test-agg", "Ws Test", Map.of(), "modules", moduleId, "aggregateIds"));
+                "aggregates", "ws-test-agg", "Ws Test", Map.of(), "boundedContexts", boundedContextId, "aggregateIds"));
 
         assertTrue(repository.findById("ws-test-agg", AggregateEntity.class).isPresent());
-        assertTrue(module().aggregateIds().contains("ws-test-agg"), "should attach to the module");
+        assertTrue(boundedContext().aggregateIds().contains("ws-test-agg"), "should attach to the boundedContext");
 
         deleteUseCase.handle(List.of("ws-test-agg"));
 
         assertTrue(repository.findById("ws-test-agg", AggregateEntity.class).isEmpty());
-        assertFalse(module().aggregateIds().contains("ws-test-agg"), "should detach from the module");
+        assertFalse(boundedContext().aggregateIds().contains("ws-test-agg"), "should detach from the boundedContext");
     }
 
     @Test
     void create_via_own_reference_field() {
         createUseCase.handle(new CreateWorkspaceElementCommand(
-                "flows", "ws-test-flow", "Ws Flow", Map.of("targetModuleId", moduleId), null, null, null));
+                "flows", "ws-test-flow", "Ws Flow", Map.of("targetBoundedContextId", boundedContextId), null, null, null));
 
         var flow = repository.findById("ws-test-flow", FlowEntity.class).orElseThrow();
-        assertEquals(moduleId, flow.targetModuleId());
+        assertEquals(boundedContextId, flow.targetBoundedContextId());
 
         deleteUseCase.handle(List.of("ws-test-flow"));
         assertTrue(repository.findById("ws-test-flow", FlowEntity.class).isEmpty());
@@ -97,7 +97,7 @@ class WorkspaceElementLifecycleTest {
         var aggregate = repository.findAllOfType(AggregateEntity.class).stream()
                 .filter(a -> a.id().equals(a.modelId()))
                 .findFirst().orElseThrow();
-        var moduleOwning = repository.findAllOfType(ModuleEntity.class).stream()
+        var boundedContextOwning = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
                 .findFirst().orElseThrow();
 
@@ -107,8 +107,8 @@ class WorkspaceElementLifecycleTest {
         assertTrue(repository.findById(aggregate.id(),
                         io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity.class)
                 .isPresent(), "the backing model must survive");
-        var module = repository.findById(moduleOwning.id(), ModuleEntity.class).orElseThrow();
-        assertTrue(module.aggregateIds().contains(aggregate.id()),
+        var boundedContext = repository.findById(boundedContextOwning.id(), BoundedContextEntity.class).orElseThrow();
+        assertTrue(boundedContext.aggregateIds().contains(aggregate.id()),
                 "references still resolve (to the surviving model) — they must not be pruned");
     }
 
@@ -154,7 +154,7 @@ class WorkspaceElementLifecycleTest {
                 "duplicate id should be flagged: " + duplicates);
     }
 
-    private ModuleEntity module() {
-        return repository.findById(moduleId, ModuleEntity.class).orElseThrow();
+    private BoundedContextEntity boundedContext() {
+        return repository.findById(boundedContextId, BoundedContextEntity.class).orElseThrow();
     }
 }

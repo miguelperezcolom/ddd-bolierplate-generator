@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService;
 import io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionMergeService;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.ModelLintService;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SolutionEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,8 +29,8 @@ class DbStorageTest {
     @Autowired CommonFileRepository repository;
     @Autowired ModelLintService lintService;
 
-    private static ModuleEntity module(String id, String name) {
-        return new ModuleEntity(id, name, null,
+    private static BoundedContextEntity boundedContext(String id, String name) {
+        return new BoundedContextEntity(id, name, null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of(), List.of(),
                 null, null, false, null,
@@ -47,10 +47,10 @@ class DbStorageTest {
 
         // ---- the catalog persists as rows and survives a reopen
         repository.openDatabase(db);
-        repository.save(module("mod-uno", "Uno"));
+        repository.save(boundedContext("mod-uno", "Uno"));
         var reopened = new JdbcModelDatabase("jdbc:h2:mem:modux-db-test;DB_CLOSE_DELAY=-1", "", "");
         repository.openDatabase(reopened);
-        assertThat(repository.findById("mod-uno", ModuleEntity.class)).isPresent();
+        assertThat(repository.findById("mod-uno", BoundedContextEntity.class)).isPresent();
 
         // ---- a solution branches off the system, self-describing, with its frozen base
         var branch = workspaces.createSolution("Prueba db");
@@ -59,13 +59,13 @@ class DbStorageTest {
         assertThat(repository.findAllOfType(SolutionEntity.class)).hasSize(1);
 
         // ---- to-be work: one addition; the semantic diff sees exactly that
-        repository.save(module("mod-dos", "Dos"));
+        repository.save(boundedContext("mod-dos", "Dos"));
         var diff = diffService.diffAgainstSystem();
         assertThat(diff.system()).isFalse();
         assertThat(diff.added()).isEqualTo(1);
         assertThat(diff.modified()).isZero();
         // the system itself is untouched
-        assertThat(workspaces.systemModel().modules()).hasSize(1);
+        assertThat(workspaces.systemModel().boundedContexts()).hasSize(1);
 
         // ---- no conflicts, approve, and the merge lands it as the new as-is
         assertThat(mergeService.check().conflicts()).isEmpty();
@@ -75,7 +75,7 @@ class DbStorageTest {
         mergeService.mergeIntoSystem(Map.of());
 
         assertThat(workspaces.currentBranch()).isEqualTo("main");
-        assertThat(repository.findById("mod-dos", ModuleEntity.class)).isPresent();
+        assertThat(repository.findById("mod-dos", BoundedContextEntity.class)).isPresent();
         assertThat(repository.findAllOfType(SolutionEntity.class)).isEmpty(); // stripped on landing
         assertThat(workspaces.solutionBranches()).isEmpty(); // workspace archived
     }

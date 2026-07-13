@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiMeasure;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.module.vo.KpiTimeGrain;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiTimeGrain;
 
 import java.util.List;
 

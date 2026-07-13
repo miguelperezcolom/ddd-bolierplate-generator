@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.Decisio
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -88,11 +88,11 @@ public final class HlaDocumentRenderer {
         md.append("## 3. Vista estructural\n\n```mermaid\nflowchart LR\n");
         for (var service : m.services()) {
             md.append("  subgraph ").append(id(service.id())).append("[\"servicio ").append(service.name()).append("\"]\n");
-            for (var moduleId : nvlList(service.moduleIds())) {
-                var module = moduleById(m, moduleId);
-                if (module == null) continue;
-                var label = module.name() + (module.subdomainType() != null ? " · " + module.subdomainType().name() : "");
-                md.append("    ").append(id(moduleId)).append("[\"").append(label).append("\"]\n");
+            for (var boundedContextId : nvlList(service.boundedContextIds())) {
+                var boundedContext = boundedContextById(m, boundedContextId);
+                if (boundedContext == null) continue;
+                var label = boundedContext.name() + (boundedContext.subdomainType() != null ? " · " + boundedContext.subdomainType().name() : "");
+                md.append("    ").append(id(boundedContextId)).append("[\"").append(label).append("\"]\n");
             }
             md.append("  end\n");
         }
@@ -101,15 +101,15 @@ public final class HlaDocumentRenderer {
                 md.append("  ").append(id(external.id())).append("[[\"").append(external.name()).append("\"]]\n");
             }
             for (var rel : project.contextMap()) {
-                md.append("  ").append(id(rel.sourceModuleId())).append(" -->|").append(nvl(rel.type()))
-                        .append("| ").append(id(rel.targetModuleId())).append("\n");
+                md.append("  ").append(id(rel.sourceBoundedContextId())).append(" -->|").append(nvl(rel.type()))
+                        .append("| ").append(id(rel.targetBoundedContextId())).append("\n");
             }
         }
         for (var flow : m.flows()) {
-            var source = moduleOfAggregate(m, flow.triggerAggregateId());
-            if (source == null || flow.targetModuleId() == null) continue;
+            var source = boundedContextOfAggregate(m, flow.triggerAggregateId());
+            if (source == null || flow.targetBoundedContextId() == null) continue;
             md.append("  ").append(id(source.id())).append(" -.->|").append(nvl(flow.triggerEvent()))
-                    .append("| ").append(id(flow.targetModuleId())).append("\n");
+                    .append("| ").append(id(flow.targetBoundedContextId())).append("\n");
         }
         md.append("```\n\n");
     }
@@ -119,23 +119,23 @@ public final class HlaDocumentRenderer {
     private static void responsibilities(StringBuilder md, ModelSnapshot m, ProjectEntity project) {
         md.append("## 4. Responsabilidades por contenedor\n\n");
         md.append("| Contenedor | Subdominio | Responsabilidad |\n|---|---|---|\n");
-        for (var module : m.modules()) {
-            var notes = new StringBuilder(nvl(module.description()));
-            nvlList(module.bffs()).forEach(b -> notes.append(notes.isEmpty() ? "" : " ")
+        for (var boundedContext : m.boundedContexts()) {
+            var notes = new StringBuilder(nvl(boundedContext.description()));
+            nvlList(boundedContext.bffs()).forEach(b -> notes.append(notes.isEmpty() ? "" : " ")
                     .append("**BFF** ").append(b.name()).append(" (").append(nvl(b.basePath())).append(")."));
-            nvlList(module.acls()).forEach(a -> notes.append(notes.isEmpty() ? "" : " ")
+            nvlList(boundedContext.acls()).forEach(a -> notes.append(notes.isEmpty() ? "" : " ")
                     .append("**ACL** hacia ").append(a.externalSystem()).append("."));
             // "la lectura vive en otro sitio" — the delegated read side is an architectural fact
-            if (module.readSideModuleId() != null || module.readSideExternalSystemId() != null) {
-                var target = module.readSideModuleId() != null
-                        ? moduleById(m, module.readSideModuleId()) != null
-                                ? moduleById(m, module.readSideModuleId()).name() : module.readSideModuleId()
-                        : module.readSideExternalSystemId();
+            if (boundedContext.readSideBoundedContextId() != null || boundedContext.readSideExternalSystemId() != null) {
+                var target = boundedContext.readSideBoundedContextId() != null
+                        ? boundedContextById(m, boundedContext.readSideBoundedContextId()) != null
+                                ? boundedContextById(m, boundedContext.readSideBoundedContextId()).name() : boundedContext.readSideBoundedContextId()
+                        : boundedContext.readSideExternalSystemId();
                 notes.append(notes.isEmpty() ? "" : " ").append("**Lectura delegada** en ").append(target)
-                        .append(module.readSideVia() != null ? " vía " + module.readSideVia() : "").append(".");
+                        .append(boundedContext.readSideVia() != null ? " vía " + boundedContext.readSideVia() : "").append(".");
             }
-            md.append("| ").append(module.name())
-                    .append(" | ").append(module.subdomainType() != null ? module.subdomainType().name() : "—")
+            md.append("| ").append(boundedContext.name())
+                    .append(" | ").append(boundedContext.subdomainType() != null ? boundedContext.subdomainType().name() : "—")
                     .append(" | ").append(notes.isEmpty() ? "—" : notes.toString()).append(" |\n");
         }
         if (project != null) {
@@ -157,8 +157,8 @@ public final class HlaDocumentRenderer {
             if (process.description() != null) md.append(process.description()).append("\n\n");
             if (process.sla() != null) md.append("_SLA extremo a extremo: ").append(process.sla()).append("_\n\n");
             md.append("```mermaid\nsequenceDiagram\n  autonumber\n");
-            var owner = moduleById(m, process.ownerModuleId());
-            var ownerName = owner != null ? owner.name() : nvl(process.ownerModuleId());
+            var owner = boundedContextById(m, process.ownerBoundedContextId());
+            var ownerName = owner != null ? owner.name() : nvl(process.ownerBoundedContextId());
             md.append("  participant SAGA as ").append(process.name()).append(" (saga · ").append(ownerName).append(")\n");
             md.append("  Note over SAGA: arranca con ").append(nvl(process.triggerEvent())).append("\n");
             for (var step : process.steps()) {
@@ -248,13 +248,13 @@ public final class HlaDocumentRenderer {
         if (project != null && project.tenancyStrategy() != null) {
             md.append("- **Tenancy**: ").append(project.tenancyStrategy().name()).append(".\n");
         }
-        for (var module : m.modules()) {
-            for (var policy : module.accessPolicies()) {
-                md.append("- **Acceso por datos** (").append(module.name()).append("): ")
+        for (var boundedContext : m.boundedContexts()) {
+            for (var policy : boundedContext.accessPolicies()) {
+                md.append("- **Acceso por datos** (").append(boundedContext.name()).append("): ")
                         .append(policy.name()).append(" — `").append(nvl(policy.expression())).append("`.\n");
             }
-            for (var kpi : module.kpis()) {
-                md.append("- **KPI** (").append(module.name()).append("): ").append(kpi.name())
+            for (var kpi : boundedContext.kpis()) {
+                md.append("- **KPI** (").append(boundedContext.name()).append("): ").append(kpi.name())
                         .append(" — ").append(kpi.measure() != null ? kpi.measure().name() : "—")
                         .append(kpi.valueField() != null ? " de " + kpi.valueField() : "")
                         .append(" por ").append(String.join("+", kpi.dimensionFields()))
@@ -272,8 +272,8 @@ public final class HlaDocumentRenderer {
 
     private static void contracts(StringBuilder md, ModelSnapshot m) {
         md.append("## 8. Contratos expuestos\n\n");
-        for (var module : m.modules()) {
-            for (var bff : nvlList(module.bffs())) {
+        for (var boundedContext : m.boundedContexts()) {
+            for (var bff : nvlList(boundedContext.bffs())) {
                 md.append("### ").append(bff.name()).append(" (").append(nvl(bff.basePath())).append(")\n\n");
                 if (bff.description() != null) md.append(bff.description()).append("\n\n");
             }
@@ -312,13 +312,13 @@ public final class HlaDocumentRenderer {
 
     // --- helpers ----------------------------------------------------------------
 
-    private static ModuleEntity moduleById(ModelSnapshot m, String id) {
-        return m.modules().stream().filter(mod -> mod.id().equals(id)).findFirst().orElse(null);
+    private static BoundedContextEntity boundedContextById(ModelSnapshot m, String id) {
+        return m.boundedContexts().stream().filter(mod -> mod.id().equals(id)).findFirst().orElse(null);
     }
 
-    private static ModuleEntity moduleOfAggregate(ModelSnapshot m, String aggregateId) {
+    private static BoundedContextEntity boundedContextOfAggregate(ModelSnapshot m, String aggregateId) {
         if (aggregateId == null) return null;
-        return m.modules().stream()
+        return m.boundedContexts().stream()
                 .filter(mod -> mod.aggregateIds() != null && mod.aggregateIds().contains(aggregateId))
                 .findFirst().orElse(null);
     }

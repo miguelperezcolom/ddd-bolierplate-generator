@@ -23,7 +23,7 @@ class GenerationViewScopeTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     private static final String VIEW = """
@@ -44,7 +44,7 @@ class GenerationViewScopeTest {
 
     @Test
     void generating_a_view_emits_only_its_closure() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("modux-view-scope", ".yaml");
         Files.writeString(file, store + VIEW);
         repository.loadFrom(file.toAbsolutePath().toString());

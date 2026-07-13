@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.F
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.annotations.Title;
@@ -41,7 +41,7 @@ public class ContextMapDiagramPage implements ComponentTreeSupplier {
     @Override
     public Component component(HttpRequest httpRequest) {
         var nodes = new java.util.ArrayList<ContextMapSvgRenderer.Node>();
-        repository.findAllOfType(ModuleEntity.class).forEach(m ->
+        repository.findAllOfType(BoundedContextEntity.class).forEach(m ->
                 nodes.add(new ContextMapSvgRenderer.Node(m.id(), m.name(), m.subdomainType(), false)));
         repository.findAllOfType(ProjectEntity.class).forEach(p ->
                 p.externalSystems().forEach(x ->
@@ -53,12 +53,12 @@ public class ContextMapDiagramPage implements ComponentTreeSupplier {
                 .toList();
 
         var flows = coherenceService.analyze().stream()
-                .filter(f -> f.sourceModuleId() != null && f.targetModuleId() != null)
+                .filter(f -> f.sourceBoundedContextId() != null && f.targetBoundedContextId() != null)
                 .filter(f -> f.status() == FlowContextMapFinding.Status.OK
                         || f.status() == FlowContextMapFinding.Status.MISSING_RELATION
                         || f.status() == FlowContextMapFinding.Status.REVERSED)
                 .map(f -> new ContextMapSvgRenderer.Flow(
-                        f.sourceModuleId(), f.targetModuleId(), f.flowName(), f.status(), f.suggestedType()))
+                        f.sourceBoundedContextId(), f.targetBoundedContextId(), f.flowName(), f.status(), f.suggestedType()))
                 .toList();
 
         var svg = "<svg viewBox=\"" + ContextMapSvgRenderer.viewBox() + "\" xmlns=\"http://www.w3.org/2000/svg\" "
@@ -78,7 +78,7 @@ public class ContextMapDiagramPage implements ComponentTreeSupplier {
     }
 
     private static ContextMapSvgRenderer.Relation toRelation(ContextMapRelationEntity r) {
-        return new ContextMapSvgRenderer.Relation(r.sourceModuleId(), r.targetModuleId(), parseType(r.type()));
+        return new ContextMapSvgRenderer.Relation(r.sourceBoundedContextId(), r.targetBoundedContextId(), parseType(r.type()));
     }
 
     private static ContextMapRelationType parseType(String type) {

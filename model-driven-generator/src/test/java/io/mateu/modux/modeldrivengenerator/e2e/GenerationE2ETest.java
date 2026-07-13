@@ -48,7 +48,7 @@ class GenerationE2ETest {
 
     static {
         System.setProperty("modux.model-file",
-                new File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     private static final Set<String> WORKFLOW_STEP_TYPES =
@@ -65,7 +65,7 @@ class GenerationE2ETest {
               archetype: "MATERIALIZES"
               triggerAggregateId: "reserva"
               triggerEvent: "ReservaMaterializadaE2E"
-              targetModuleId: "mod-housekeeping"
+              targetBoundedContextId: "mod-housekeeping"
               readModelName: "ReservaHousekeepingE2E"
               materializedFields:
               - "localizador"
@@ -75,14 +75,14 @@ class GenerationE2ETest {
               archetype: "ORCHESTRATES"
               triggerAggregateId: "reserva"
               triggerEvent: "CheckinIniciadoE2E"
-              targetModuleId: "mod-housekeeping"
+              targetBoundedContextId: "mod-housekeeping"
               materializedFields: []
             - id: "e2e-flow-trig"
               name: "ReservaCreaEstanciaE2E"
               archetype: "TRIGGERS"
               triggerAggregateId: "reserva"
               triggerEvent: "ReservaTriggersE2E"
-              targetModuleId: "mod-frontoffice"
+              targetBoundedContextId: "mod-frontoffice"
               targetUseCaseId: "uc-crearEstancia"
               materializedFields:
               - "localizador"
@@ -92,7 +92,7 @@ class GenerationE2ETest {
               archetype: "NOTIFIES"
               triggerAggregateId: "reserva"
               triggerEvent: "ReservaNotificadaE2E"
-              targetModuleId: "mod-frontoffice"
+              targetBoundedContextId: "mod-frontoffice"
               materializedFields:
               - "localizador"
             pages:
@@ -134,7 +134,7 @@ class GenerationE2ETest {
     @Test
     void generates_packages_validates_and_boots_the_project() throws Exception {
         // 1. build a fixture store = hotel + flows + a FORM page, and load it
-        var hotelStore = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var hotelStore = Files.readString(Path.of("..", "sample", "hla-booking", "model-driven-store.yaml"));
         // give the Reserva aggregate an invariant so the invariants hook (port + custom default impl) is exercised
         hotelStore = hotelStore.replace(
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
@@ -186,33 +186,33 @@ class GenerationE2ETest {
                 "notifies flow did not produce its domain event");
         assertTrue(anyFileMatches(output, "SwaggerPetstoreGatewayImpl.java"),
                 "imported OpenAPI gateway was not generated");
-        // two-zone: invariant hook port is generated, its default implementation lives in the custom module
+        // two-zone: invariant hook port is generated, its default implementation lives in the custom boundedContext
         assertTrue(anyFileMatches(output, "ReservaInvariants.java"),
                 "invariant hook port was not generated");
         assertTrue(anyFileMatches(output, "DefaultReservaInvariants.java"),
-                "invariant hook default implementation was not scaffolded in the custom module");
+                "invariant hook default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "DefaultCrearReservaOperation.java"),
-                "custom operation default implementation was not scaffolded in the custom module");
+                "custom operation default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "DefaultProcesoCheckinE2ESagaSteps.java"),
-                "saga custom-steps default implementation was not scaffolded in the custom module");
+                "saga custom-steps default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "CrearEstanciaSteps.java"),
-                "use-case custom-steps interface was not generated in the module");
+                "use-case custom-steps interface was not generated in the boundedContext");
         assertTrue(anyFileMatches(output, "DefaultCrearEstanciaSteps.java"),
-                "use-case custom-steps default implementation was not scaffolded in the custom module");
+                "use-case custom-steps default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "ReservaRulesEvaluator.java"),
                 "business-rules evaluator was not generated for the Reserva aggregate");
         assertTrue(anyFileMatches(output, "ReservaPrioritariaE2ERule.java"),
                 "business-rule glue component was not generated");
         assertTrue(anyFileMatches(output, "ReservaPrioritariaE2ELogic.java"),
-                "business-rule logic hook interface was not generated in the module");
+                "business-rule logic hook interface was not generated in the boundedContext");
         assertTrue(anyFileMatches(output, "DefaultReservaPrioritariaE2ELogic.java"),
-                "business-rule logic default implementation was not scaffolded in the custom module");
+                "business-rule logic default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "ReservaCreadaToCrearEstanciaMapper.java"),
                 "model mapper was not generated for the referenced mapping");
         assertTrue(anyFileMatches(output, "ReservaCreadaToCrearEstanciaCustomMapping.java"),
-                "model-mapping custom-part hook interface was not generated in the module");
+                "model-mapping custom-part hook interface was not generated in the boundedContext");
         assertTrue(anyFileMatches(output, "DefaultReservaCreadaToCrearEstanciaCustomMapping.java"),
-                "model-mapping custom-part default implementation was not scaffolded in the custom module");
+                "model-mapping custom-part default implementation was not scaffolded in the custom boundedContext");
         assertTrue(anyFileMatches(output, "V1__baseline.sql"),
                 "Flyway baseline migration was not generated for the service");
         var restController = findFiles(output, "CrearEstanciaController.java").stream().findFirst()
@@ -222,7 +222,7 @@ class GenerationE2ETest {
         assertTrue(anyFileMatches(output, "EstanciaCreadaEventUpcaster.java"),
                 "event upcaster hook interface was not generated for the v2 event");
         assertTrue(anyFileMatches(output, "DefaultEstanciaCreadaEventUpcaster.java"),
-                "event upcaster default implementation was not scaffolded in the custom module");
+                "event upcaster default implementation was not scaffolded in the custom boundedContext");
         var event = findFiles(output, "EstanciaCreadaEvent.java").stream().findFirst()
                 .orElseThrow(() -> new AssertionError("EstanciaCreada domain event was not generated"));
         assertTrue(Files.readString(event).contains("CURRENT_SCHEMA_VERSION = 2"),

@@ -45,7 +45,7 @@ public class RagViewModel implements Identifiable, CrudEditorForm<String>, CrudC
                 .sourceExternalTableIds(java.util.List.of())
                 .sourceApiIds(java.util.List.of())
                 .sourceExternalSystemIds(java.util.List.of())
-                .sourceModuleIds(java.util.List.of())
+                .sourceBoundedContextIds(java.util.List.of())
                 .build());
         return id;
     }

@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.importop
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importwsdl.ImportWsdlCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importwsdl.ImportWsdlUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import org.junit.jupiter.api.Test;
@@ -20,14 +20,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * API-contract imports towards their two NEW targets: an external system gains the
  * operations it offers (OpenAPI or WSDL — the callable/pollable partner surface), and a
  * bounded context gains SOAP use-case stubs to implement. Re-imports must update, not
- * duplicate, and the module target must never hijack another module's use-case id.
+ * duplicate, and the boundedContext target must never hijack another boundedContext's use-case id.
  */
 @SpringBootTest
 class ImportApiContractTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -91,7 +91,7 @@ class ImportApiContractTest {
     }
 
     @Test
-    void wsdl_lands_as_use_case_stubs_on_a_module() throws Exception {
+    void wsdl_lands_as_use_case_stubs_on_a_boundedContext() throws Exception {
         loadSampleCopy();
         var contract = new java.io.File("src/test/resources/legacy-pms.wsdl").getAbsolutePath();
 
@@ -99,8 +99,8 @@ class ImportApiContractTest {
         var stub = repository.findById("uc-ObtenerReserva", UseCaseEntity.class).orElseThrow();
         assertTrue(stub.steps().isEmpty(), "stub: el desarrollador implementa el comportamiento");
         assertTrue(stub.mcpDescription().contains("SOAP PmsPort.ObtenerReserva"));
-        var module = repository.findById("mod-distribution", ModuleEntity.class).orElseThrow();
-        assertTrue(module.useCaseIds().contains("uc-ObtenerReserva"));
+        var boundedContext = repository.findById("mod-distribution", BoundedContextEntity.class).orElseThrow();
+        assertTrue(boundedContext.useCaseIds().contains("uc-ObtenerReserva"));
     }
 
     @Autowired

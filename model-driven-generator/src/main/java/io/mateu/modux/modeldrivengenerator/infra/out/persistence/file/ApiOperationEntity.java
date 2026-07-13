@@ -12,7 +12,7 @@ public record ApiOperationEntity(
         String path,
         String description,
         /** Coarse wiring: the bounded context that implements it (use case TBD). */
-        String targetModuleId,
+        String targetBoundedContextId,
         /** Fine wiring: the use case (or policy) that implements it. */
         String targetUseCaseId,
         /** Request payload data model (a ModelEntity id), when the contract declares one. */
@@ -23,20 +23,20 @@ public record ApiOperationEntity(
 
     /** Backward-compatible constructor (pre request/response model callers and stores). */
     public ApiOperationEntity(String id, String name, String httpMethod, String path,
-                              String description, String targetModuleId, String targetUseCaseId) {
-        this(id, name, httpMethod, path, description, targetModuleId, targetUseCaseId, null, null);
+                              String description, String targetBoundedContextId, String targetUseCaseId) {
+        this(id, name, httpMethod, path, description, targetBoundedContextId, targetUseCaseId, null, null);
     }
 
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
     public ApiOperationEntity withName(String name) {
-        return new ApiOperationEntity(id, name, httpMethod, path, description, targetModuleId,
+        return new ApiOperationEntity(id, name, httpMethod, path, description, targetBoundedContextId,
                 targetUseCaseId, requestModelId, responseModelId);
     }
 
-    public ApiOperationEntity withTargets(String targetModuleId, String targetUseCaseId) {
-        return new ApiOperationEntity(id, name, httpMethod, path, description, targetModuleId,
+    public ApiOperationEntity withTargets(String targetBoundedContextId, String targetUseCaseId) {
+        return new ApiOperationEntity(id, name, httpMethod, path, description, targetBoundedContextId,
                 targetUseCaseId, requestModelId, responseModelId);
     }
 }

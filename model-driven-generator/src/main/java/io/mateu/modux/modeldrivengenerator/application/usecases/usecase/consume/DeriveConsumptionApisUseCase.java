@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume;
 
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -24,7 +24,7 @@ public class DeriveConsumptionApisUseCase {
         var result = ConsumptionApiDerivation.derive(
                 repository.findAllOfType(UseCaseEntity.class),
                 repository.findAllOfType(QueryServiceEntity.class),
-                repository.findAllOfType(ModuleEntity.class),
+                repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ServiceEntity.class));
 
         result.useCasesToExpose().forEach(repository::save);

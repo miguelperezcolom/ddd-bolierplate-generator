@@ -122,37 +122,37 @@ projects:
   contextMap:
   - id: "rel-reservas-distribution"
     name: "reservas expone gRPC formal al BFF"
-    sourceModuleId: "mod-reservas"
-    targetModuleId: "mod-distribution"
+    sourceBoundedContextId: "mod-reservas"
+    targetBoundedContextId: "mod-distribution"
     type: "OPEN_HOST_SERVICE"
     description: "D8/D10: el BFF compone; reservas publica contrato gRPC estable (book/get/cancel)."
     decisionIds: ["d8", "d10"]
   - id: "rel-dispo-distribution"
     name: "dispo sirve al BFF"
-    sourceModuleId: "mod-dispo"
-    targetModuleId: "mod-distribution"
+    sourceBoundedContextId: "mod-dispo"
+    targetBoundedContextId: "mod-distribution"
     type: "OPEN_HOST_SERVICE"
   - id: "rel-valoracion-distribution"
     name: "valoración sirve al BFF"
-    sourceModuleId: "mod-valoracion"
-    targetModuleId: "mod-distribution"
+    sourceBoundedContextId: "mod-valoracion"
+    targetBoundedContextId: "mod-distribution"
     type: "OPEN_HOST_SERVICE"
   - id: "rel-ficha-distribution"
     name: "ficha sirve al BFF"
-    sourceModuleId: "mod-ficha"
-    targetModuleId: "mod-distribution"
+    sourceBoundedContextId: "mod-ficha"
+    targetBoundedContextId: "mod-distribution"
     type: "OPEN_HOST_SERVICE"
   - id: "rel-valoracion-reservas"
     name: "reservas re-precia contra valoración"
-    sourceModuleId: "mod-valoracion"
-    targetModuleId: "mod-reservas"
+    sourceBoundedContextId: "mod-valoracion"
+    targetBoundedContextId: "mod-reservas"
     type: "CUSTOMER_SUPPLIER"
     description: "D9: el quote-token (stays[].rateId + suplementos) se valida re-preciando."
     decisionIds: ["d9"]
   - id: "rel-reservas-rumbowriter"
     name: "el writer traduce dominio → Oracle"
-    sourceModuleId: "mod-reservas"
-    targetModuleId: "mod-rumbo-writer"
+    sourceBoundedContextId: "mod-reservas"
+    targetBoundedContextId: "mod-rumbo-writer"
     type: "ANTI_CORRUPTION_LAYER"
     description: "D4: la SP idempotente es el contrato del ACL; el writer aísla el esquema legacy."
     decisionIds: ["d4"]
@@ -161,23 +161,23 @@ services:
 - id: "svc-distribution"
   name: "distribution"
   owner: "equipo journey"
-  moduleIds:
+  boundedContextIds:
   - "mod-distribution"
 - id: "svc-reservas"
   name: "reservas"
   owner: "equipo reservas"
-  moduleIds:
+  boundedContextIds:
   - "mod-reservas"
   - "mod-rumbo-writer"
 - id: "svc-readside"
   name: "readside"
   owner: "equipo reservas"
-  moduleIds:
+  boundedContextIds:
   - "mod-dispo"
   - "mod-valoracion"
   - "mod-ficha"
 
-modules:
+boundedContexts:
 # D8 — BFF/experience-API stateless: fachada fina, el dominio no vive en el borde
 - id: "mod-distribution"
   name: "Distribution"
@@ -203,7 +203,7 @@ modules:
   decisionIds: ["d1", "d11"]
   description: "System of record del agregado Reserva; valida el quote-token re-preciando, crea Pending y emite eventos por outbox."
   # La lectura vive en otro sitio (CQRS): el read side es dispo, alimentado por CDC desde rumbo (D1/D2)
-  readSideModuleId: "mod-dispo"
+  readSideBoundedContextId: "mod-dispo"
   readSideVia: "CDC (rumbo → dispo); reservas solo expone getBooking puntual"
   aggregateIds:
   - "agg-reserva"
@@ -651,7 +651,7 @@ useCases:
 queryServices:
 - id: "qs-valoracion"
   name: "Valoracion"
-  moduleId: "mod-valoracion"
+  boundedContextId: "mod-valoracion"
   description: "Oferta preciada: rateId por estancia + suplementos seleccionables (getRates / getHotelPriceDetails)."
   exposedAsGrpc: true
   operations:
@@ -697,7 +697,7 @@ processes:
   description: "§5.1: book → confirm, orquestado (EventConductor). El pending de la agencia (ONREQUEST) se resuelve al completar."
   triggerAggregateId: "agg-reserva"
   triggerEvent: "ReservationRequested"
-  ownerModuleId: "mod-reservas"
+  ownerBoundedContextId: "mod-reservas"
   sla: "PT1H"
   decisionIds: ["d3", "d6", "d12"]
   # D12 resuelto por negocio: SIN hold — el book atómico es toda la escritura (opción A)
@@ -720,7 +720,7 @@ processes:
   description: "Cuando la grabación falla, operaciones revisa el caso — puede relanzar (re-drive idempotente, D5) o rechazar definitivamente."
   triggerAggregateId: "agg-reserva"
   triggerEvent: "ReservationFailed"
-  ownerModuleId: "mod-reservas"
+  ownerBoundedContextId: "mod-reservas"
   sla: "P1D"
   decisionIds: ["d5"]
   steps:
@@ -745,7 +745,7 @@ flows:
   archetype: "NOTIFIES"
   triggerAggregateId: "agg-reserva"
   triggerEvent: "ReservationConfirmed"
-  targetModuleId: "ext-agencia-callback"
+  targetBoundedContextId: "ext-agencia-callback"
   materializedFields:
   - "bookingId"
   - "locator"

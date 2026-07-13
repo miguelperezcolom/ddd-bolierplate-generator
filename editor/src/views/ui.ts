@@ -56,9 +56,9 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const pages = model.pages ?? [];
 
   const useCaseName = (id: string) =>
-    model.modules.flatMap((m) => m.useCases ?? []).find((u) => u.id === id)?.name ?? id;
+    model.boundedContexts.flatMap((m) => m.useCases ?? []).find((u) => u.id === id)?.name ?? id;
   const queryName = (id: string) =>
-    model.modules.flatMap((m) => m.queryServices ?? []).find((q) => q.id === id)?.name ?? id;
+    model.boundedContexts.flatMap((m) => m.queryServices ?? []).find((q) => q.id === id)?.name ?? id;
 
   const chipMeta = new Map<string, { label: string; kind: string; symbol: string; stroke: string }>();
 
@@ -215,7 +215,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         });
       }
       if (entry.useCaseId) {
-        const known = model.modules.some((mod) => (mod.useCases ?? []).some((u) => u.id === entry.useCaseId));
+        const known = model.boundedContexts.some((mod) => (mod.useCases ?? []).some((u) => u.id === entry.useCaseId));
         if (known) {
           chipMeta.set(entry.useCaseId, {
             label: useCaseName(entry.useCaseId),
@@ -249,7 +249,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         });
       }
       if (entry.queryOperationId) {
-        const qs = model.modules
+        const qs = model.boundedContexts
           .flatMap((mod) => mod.queryServices ?? [])
           .find((x) => x.id === entry.queryServiceId);
         const op = (qs?.operations ?? []).find((o) => o.id === entry.queryOperationId);
@@ -504,7 +504,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
   for (const g of groups) {
     for (const bt of g.buttons ?? []) {
       if (!bt.useCaseId) continue;
-      const known = model.modules.some((mod) => (mod.useCases ?? []).some((u) => u.id === bt.useCaseId));
+      const known = model.boundedContexts.some((mod) => (mod.useCases ?? []).some((u) => u.id === bt.useCaseId));
       if (!known) continue;
       chipMeta.set(bt.useCaseId, {
         label: useCaseName(bt.useCaseId),

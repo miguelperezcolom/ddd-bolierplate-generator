@@ -111,7 +111,7 @@ export interface ProxyApiRef {
  */
 export interface ApiImplementationRef {
   apiId: string;
-  moduleId: string;
+  boundedContextId: string;
 }
 
 /**
@@ -123,7 +123,7 @@ export interface ApiImplementationRef {
 export interface ProxyOperationRouteRef {
   proxyId: string;
   operationId: string;
-  /** moduleId of the implementing context, or the apiId for "as published". */
+  /** boundedContextId of the implementing context, or the apiId for "as published". */
   targetSiteId: string;
 }
 
@@ -139,7 +139,7 @@ export interface ExternalOperationUseRef {
 
 /**
  * The use case serving ONE operation AT one site — a bounded context implementing the
- * API, or a proxy fronting it (moduleId holds either id). Per-site: during a strangler
+ * API, or a proxy fronting it (boundedContextId holds either id). Per-site: during a strangler
  * migration the same operation may be served differently at each site, and the use case
  * may live in ANOTHER context.
  */
@@ -147,7 +147,7 @@ export interface ApiOperationImplementationRef {
   apiId: string;
   operationId: string;
   /** The site: a bounded-context id or a proxy id. */
-  moduleId: string;
+  boundedContextId: string;
   useCaseId: string;
 }
 
@@ -159,7 +159,7 @@ export interface ScheduledTriggerRef {
   useCaseId?: string;
 }
 
-export interface ModuleRef {
+export interface BoundedContextRef {
   id: string;
   name: string;
   subdomainType?: SubdomainType;
@@ -287,7 +287,7 @@ export interface RagRef {
   /** Whole external systems it indexes (coarse). */
   sourceExternalSystemIds?: string[];
   /** Whole bounded contexts it indexes (coarse). */
-  sourceModuleIds?: string[];
+  sourceBoundedContextIds?: string[];
 }
 
 /** An AI agent grounds its answers on a knowledge base. */
@@ -302,7 +302,7 @@ export interface ApiOperationRef {
   httpMethod?: string;
   path?: string;
   /** Coarse wiring: the bounded context that implements it. */
-  targetModuleId?: string;
+  targetBoundedContextId?: string;
   /** Fine wiring: the use case (or policy) that implements it. */
   targetUseCaseId?: string;
 }
@@ -399,7 +399,7 @@ export interface ProcessRef {
   name: string;
   triggerAggregateId?: string;
   triggerEvent?: string;
-  ownerModuleId?: string;
+  ownerBoundedContextId?: string;
   onCompletionEventName?: string;
   sla?: string;
   steps: ProcessStepRef[];
@@ -408,7 +408,7 @@ export interface ProcessRef {
 export interface AggregateRef {
   id: string;
   name: string;
-  moduleId: string;
+  boundedContextId: string;
   /** The rules the aggregate protects — its very reason to exist. */
   invariants?: { id: string; name: string }[];
 }
@@ -466,7 +466,7 @@ export interface ProjectionRef {
   /** Alternative source: the aggregate whose state this projection materializes. */
   sourceAggregateId?: string;
   /** Bounded context that owns the projection (and its read model). */
-  moduleId?: string;
+  boundedContextId?: string;
   /** Alternative source: an external system's operation, polled. */
   sourceExternalUseCaseId?: string;
   /** Alternative source: a legacy/external system's table, polled. */
@@ -494,7 +494,7 @@ export interface WorkflowStepRef {
   dependsOnStepIds?: string[];
 }
 
-/** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner module). */
+/** A cross-context orchestrator living OUTSIDE the bounded contexts (no owner boundedContext). */
 export interface WorkflowRef {
   id: string;
   name: string;
@@ -635,7 +635,7 @@ export interface EtlFlowRef {
   id: string;
   name: string;
   /** The bounded context that owns (generates, operates) the pipeline. */
-  ownerModuleId?: string;
+  ownerBoundedContextId?: string;
   steps?: EtlStepRef[];
   /** The service identity the pipeline runs as. */
   identityProviderId?: string;
@@ -656,7 +656,7 @@ export interface IdentityProviderRef {
 export interface NotificationRef {
   id: string;
   name: string;
-  ownerModuleId?: string;
+  ownerBoundedContextId?: string;
   eventId?: string;
   channels?: string[];
   recipientRoleIds?: string[];
@@ -666,27 +666,27 @@ export interface NotificationRef {
 export interface DocumentRef {
   id: string;
   name: string;
-  ownerModuleId?: string;
+  ownerBoundedContextId?: string;
   kind?: string;
   modelId?: string;
   queryServiceId?: string;
   queryOperationId?: string;
 }
 
-/** A code module: distribution unit inside a bounded context; services deploy them. */
-export interface CodeModuleRef {
+/** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
+export interface ModuleRef {
   id: string;
   name: string;
-  /** The bounded context whose elements this module distributes. */
-  moduleId: string;
+  /** The bounded context whose elements this boundedContext distributes. */
+  boundedContextId: string;
   elementIds?: string[];
 }
 
 export interface ServiceRef {
   id: string;
   name: string;
+  boundedContextIds?: string[];
   moduleIds?: string[];
-  codeModuleIds?: string[];
   /** Infrastructure it leans on (drawn at the distribution level). */
   database?: string;
   outboxEnabled?: boolean;
@@ -743,11 +743,11 @@ export interface ModuxModel {
   }[];
   /** Legacy sagas awaiting their fusion into workflows (the migrate button counts them). */
   sagas?: { id: string; name: string }[];
-  /** Code modules: how each bounded context DISTRIBUTES its elements into buildable units. */
-  codeModules?: CodeModuleRef[];
-  /** Deployables: a service says where code modules are DEPLOYED. */
+  /** Code boundedContexts: how each bounded context DISTRIBUTES its elements into buildable units. */
+  modules?: ModuleRef[];
+  /** Deployables: a service says where code boundedContexts are DEPLOYED. */
   services?: ServiceRef[];
-  modules: ModuleRef[];
+  boundedContexts: BoundedContextRef[];
   externalSystems: ExternalSystemRef[];
   relations: ContextMapRelation[];
   flows: FlowRef[];

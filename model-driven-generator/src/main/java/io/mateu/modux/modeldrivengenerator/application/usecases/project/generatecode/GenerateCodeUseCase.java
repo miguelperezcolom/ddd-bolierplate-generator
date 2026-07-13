@@ -23,7 +23,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntit
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 import io.mateu.uidl.data.FieldDataType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
@@ -172,10 +172,10 @@ public class GenerateCodeUseCase {
             createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
         }
 
-        // generate each DDD module
-        service.moduleIds().stream()
-                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
-                .forEach(module -> generateModule(project, service, serviceDir, module));
+        // generate each DDD boundedContext
+        service.boundedContextIds().stream()
+                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
+                .forEach(boundedContext -> generateBoundedContext(project, service, serviceDir, boundedContext));
 
         // generate gateways (outbound adapters at service level)
         if (service.gatewayIds() != null) {
@@ -185,17 +185,17 @@ public class GenerateCodeUseCase {
                     .forEach(gateway -> generateGateway(project, service, serviceDir, gateway));
         }
 
-        // developer-owned custom module (hook implementations); the module structure is generated,
+        // developer-owned custom boundedContext (hook implementations); the boundedContext structure is generated,
         // but files inside are scaffolded once and never overwritten on regeneration
-        generateCustomModule(project, service, serviceDir, serviceName);
+        generateCustomBoundedContext(project, service, serviceDir, serviceName);
 
-        // generate the Spring Boot app module
+        // generate the Spring Boot app boundedContext
         generateServiceApp(project, service, serviceDir);
 
         // database schema migrations (Flyway baseline) for the service datasource
         generateDatabaseMigrations(project, service, serviceDir);
 
-        // Roles (all project roles, once per service in app module)
+        // Roles (all project roles, once per service in app boundedContext)
         generateRolesConfig(project, service, serviceDir);
 
         // UIAdapters (find by serviceId — generates custom Home.java)
@@ -204,164 +204,164 @@ public class GenerateCodeUseCase {
                 .forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
     }
 
-    // ─── Module level ─────────────────────────────────────────────────────────
+    // ─── BoundedContext level ─────────────────────────────────────────────────────────
 
-    private void generateModule(ProjectEntity project, ServiceEntity service,
-                                String serviceDir, ModuleEntity module) {
-        var moduleSlug = moduleSlug(module.name());
-        var moduleDir = serviceDir + "/" + moduleSlug;
+    private void generateBoundedContext(ProjectEntity project, ServiceEntity service,
+                                String serviceDir, BoundedContextEntity boundedContext) {
+        var boundedContextSlug = boundedContextSlug(boundedContext.name());
+        var boundedContextDir = serviceDir + "/" + boundedContextSlug;
         var packageDir = project.packageName().replace(".", "/");
-        var modulePackageDir = packageDir + "/" + moduleSlug;
+        var boundedContextPackageDir = packageDir + "/" + boundedContextSlug;
 
-        createDir(moduleDir, "");
+        createDir(boundedContextDir, "");
 
-        // module pom
-        Map<String, Object> moduleModel = new HashMap<>();
-        moduleModel.put("project", projectToMap(project));
-        moduleModel.put("service", serviceToMap(service));
-        moduleModel.put("module", moduleToMap(module));
-        createFile(moduleDir, moduleModel, "module-pom.ftl", "pom.xml");
+        // boundedContext pom
+        Map<String, Object> boundedContextModel = new HashMap<>();
+        boundedContextModel.put("project", projectToMap(project));
+        boundedContextModel.put("service", serviceToMap(service));
+        boundedContextModel.put("module", boundedContextToMap(boundedContext));
+        createFile(boundedContextDir, boundedContextModel, "module-pom.ftl", "pom.xml");
 
         // source directories
-        createDir(moduleDir, "src/main/java/" + packageDir + "/application/out");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/usecases");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/aggregates/shared/vo");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/pages");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/persistence");
-        createDir(moduleDir, "src/main/resources");
-        createDir(moduleDir, "src/test/java");
-        createDir(moduleDir, "src/test/resources");
+        createDir(boundedContextDir, "src/main/java/" + packageDir + "/application/out");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/usecases");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/out");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query/dto");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/shared/vo");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence");
+        createDir(boundedContextDir, "src/main/resources");
+        createDir(boundedContextDir, "src/test/java");
+        createDir(boundedContextDir, "src/test/resources");
 
         // Base interfaces at project package level, shared by all aggregate repositories and query services
-        createFile(moduleDir, moduleModel, "repository.ftl",
+        createFile(boundedContextDir, boundedContextModel, "repository.ftl",
                 "src/main/java/" + packageDir + "/application/out/Repository.java");
-        createDir(moduleDir, "src/main/java/" + packageDir + "/application/query");
-        createFile(moduleDir, moduleModel, "queryservice.ftl",
+        createDir(boundedContextDir, "src/main/java/" + packageDir + "/application/query");
+        createFile(boundedContextDir, boundedContextModel, "queryservice.ftl",
                 "src/main/java/" + packageDir + "/application/query/QueryService.java");
 
-        // E2E base class (once per module)
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/e2e");
-        Map<String, Object> e2eBaseModel = buildBaseModel(project, service, module);
-        createFile(moduleDir, e2eBaseModel, "e2e-base.ftl",
-                "src/test/java/" + modulePackageDir + "/e2e/BaseE2ETest.java");
+        // E2E base class (once per boundedContext)
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/e2e");
+        Map<String, Object> e2eBaseModel = buildBaseModel(project, service, boundedContext);
+        createFile(boundedContextDir, e2eBaseModel, "e2e-base.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/e2e/BaseE2ETest.java");
 
-        (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of()).stream()
+        (boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of()).stream()
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .filter(aggregate -> inScope(aggregate.id()))
-                .forEach(aggregate -> generateAggregate(project, service, module, moduleDir, modulePackageDir, aggregate));
+                .forEach(aggregate -> generateAggregate(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, aggregate));
 
-        // Per-module menu: groups this module's CRUDs under a single entry in the app Home
-        if (module.aggregateIds() != null && !module.aggregateIds().isEmpty()) {
-            moduleModel.put("moduleMenuClassName", toTypeName(module.name()) + "Menu");
-            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/menu");
-            createFile(moduleDir, moduleModel, "module-menu.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/in/ui/menu/"
-                            + toTypeName(module.name()) + "Menu.java");
+        // Per-boundedContext menu: groups this boundedContext's CRUDs under a single entry in the app Home
+        if (boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty()) {
+            boundedContextModel.put("moduleMenuClassName", toTypeName(boundedContext.name()) + "Menu");
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu");
+            createFile(boundedContextDir, boundedContextModel, "module-menu.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu/"
+                            + toTypeName(boundedContext.name()) + "Menu.java");
         }
 
-        // BDD runner (once per module)
-        Map<String, Object> bddModel = buildBaseModel(project, service, module);
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/bdd");
-        createFile(moduleDir, bddModel, "bdd-runner.ftl",
-                "src/test/java/" + modulePackageDir + "/bdd/CucumberRunner.java");
+        // BDD runner (once per boundedContext)
+        Map<String, Object> bddModel = buildBaseModel(project, service, boundedContext);
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/bdd");
+        createFile(boundedContextDir, bddModel, "bdd-runner.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/bdd/CucumberRunner.java");
 
         // Domain events
-        if (module.domainEventIds() != null) {
-            module.domainEventIds().stream()
+        if (boundedContext.domainEventIds() != null) {
+            boundedContext.domainEventIds().stream()
                     .map(id -> repository.findById(id, DomainEventEntity.class).orElseThrow())
                     .filter(event -> inScope(event.id()))
-                    .forEach(event -> generateDomainEvent(project, service, module, moduleDir, modulePackageDir, event));
+                    .forEach(event -> generateDomainEvent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, event));
         }
 
         // Subscriptions
-        if (module.subscriptionIds() != null) {
-            module.subscriptionIds().stream()
+        if (boundedContext.subscriptionIds() != null) {
+            boundedContext.subscriptionIds().stream()
                     .map(id -> repository.findById(id, SubscriptionEntity.class).orElseThrow())
                     .filter(subscription -> inScope(subscription.id()))
-                    .forEach(subscription -> generateSubscription(project, service, module, moduleDir, modulePackageDir, subscription));
+                    .forEach(subscription -> generateSubscription(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, subscription));
         }
 
         // Scheduled triggers
-        if (module.scheduledTriggerIds() != null) {
-            module.scheduledTriggerIds().stream()
+        if (boundedContext.scheduledTriggerIds() != null) {
+            boundedContext.scheduledTriggerIds().stream()
                     .map(id -> repository.findById(id, ScheduledTriggerEntity.class).orElseThrow())
                     .filter(trigger -> inScope(trigger.id()))
-                    .forEach(trigger -> generateScheduledTrigger(project, service, module, moduleDir, modulePackageDir, trigger));
+                    .forEach(trigger -> generateScheduledTrigger(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, trigger));
         }
 
         // Use cases
-        if (module.useCaseIds() != null) {
-            module.useCaseIds().stream()
+        if (boundedContext.useCaseIds() != null) {
+            boundedContext.useCaseIds().stream()
                     .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
                     .filter(useCase -> inScope(useCase.id()))
-                    .forEach(useCase -> generateUseCase(project, service, module, moduleDir, modulePackageDir, useCase));
+                    .forEach(useCase -> generateUseCase(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, useCase));
         }
 
         // Sagas
-        if (module.sagaIds() != null) {
-            module.sagaIds().stream()
+        if (boundedContext.sagaIds() != null) {
+            boundedContext.sagaIds().stream()
                     .map(id -> repository.findById(id, SagaEntity.class).orElseThrow())
                     .filter(saga -> inScope(saga.id()))
-                    .forEach(saga -> generateSaga(project, service, module, moduleDir, modulePackageDir, saga));
+                    .forEach(saga -> generateSaga(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, saga));
         }
 
         // Projections
-        if (module.projectionIds() != null) {
-            module.projectionIds().stream()
+        if (boundedContext.projectionIds() != null) {
+            boundedContext.projectionIds().stream()
                     .map(id -> repository.findById(id, ProjectionEntity.class).orElseThrow())
                     .filter(projection -> inScope(projection.id()))
-                    .forEach(projection -> generateProjection(project, service, module, moduleDir, modulePackageDir, projection));
+                    .forEach(projection -> generateProjection(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, projection));
         }
 
-        // Read models (module-level, by moduleId)
+        // Read models (boundedContext-level, by boundedContextId)
         repository.findAllOfType(ReadModelEntity.class).stream()
-                .filter(rm -> module.id().equals(rm.moduleId()))
+                .filter(rm -> boundedContext.id().equals(rm.boundedContextId()))
                 .filter(rm -> inScope(rm.id()))
-                .forEach(rm -> generateReadModel(project, service, module, moduleDir, modulePackageDir, rm));
+                .forEach(rm -> generateReadModel(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, rm));
 
-        // Integration events (module-level, by moduleId)
+        // Integration events (boundedContext-level, by boundedContextId)
         repository.findAllOfType(IntegrationEventEntity.class).stream()
-                .filter(ie -> module.id().equals(ie.moduleId()))
+                .filter(ie -> boundedContext.id().equals(ie.boundedContextId()))
                 .filter(ie -> inScope(ie.id()))
-                .forEach(ie -> generateIntegrationEvent(project, service, module, moduleDir, modulePackageDir, ie));
+                .forEach(ie -> generateIntegrationEvent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, ie));
 
-        // Query services (module-level, by moduleId)
+        // Query services (boundedContext-level, by boundedContextId)
         repository.findAllOfType(QueryServiceEntity.class).stream()
-                .filter(qs -> module.id().equals(qs.moduleId()))
+                .filter(qs -> boundedContext.id().equals(qs.boundedContextId()))
                 .filter(qs -> inScope(qs.id()))
-                .forEach(qs -> generateQueryService(project, service, module, moduleDir, modulePackageDir, qs));
+                .forEach(qs -> generateQueryService(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, qs));
 
         // Entities (embedded/child entities within aggregates)
-        if (module.entityIds() != null) {
-            module.entityIds().stream()
+        if (boundedContext.entityIds() != null) {
+            boundedContext.entityIds().stream()
                     .map(id -> repository.findById(id, EntityEntity.class).orElseThrow())
                     .filter(entity -> inScope(entity.id()))
-                    .forEach(entity -> generateEntity(project, service, module, moduleDir, modulePackageDir, entity));
+                    .forEach(entity -> generateEntity(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, entity));
         }
 
         // Value objects
-        if (module.valueObjectIds() != null) {
-            module.valueObjectIds().stream()
+        if (boundedContext.valueObjectIds() != null) {
+            boundedContext.valueObjectIds().stream()
                     .map(id -> repository.findById(id, ValueObjectEntity.class).orElseThrow())
                     .filter(vo -> inScope(vo.id()))
-                    .forEach(vo -> generateValueObject(project, service, module, moduleDir, modulePackageDir, vo));
+                    .forEach(vo -> generateValueObject(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, vo));
         }
 
         // Model mappings (discovered by scanning use case and saga steps)
-        generateModelMappingsForModule(project, service, module, moduleDir, modulePackageDir);
+        generateModelMappingsForBoundedContext(project, service, boundedContext, boundedContextDir, boundedContextPackageDir);
 
         // Business rules (associated to an owned aggregate via its fact model)
-        generateBusinessRulesForModule(project, service, module, moduleDir, modulePackageDir);
+        generateBusinessRulesForBoundedContext(project, service, boundedContext, boundedContextDir, boundedContextPackageDir);
 
-        // Pages (find by matching aggregateId to module's aggregate IDs)
-        var moduleAggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.of();
+        // Pages (find by matching aggregateId to boundedContext's aggregate IDs)
+        var boundedContextAggregateIds = boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.of();
         repository.findAllOfType(PageEntity.class).stream()
-                .filter(p -> p.aggregateId() != null && moduleAggregateIds.contains(p.aggregateId()))
+                .filter(p -> p.aggregateId() != null && boundedContextAggregateIds.contains(p.aggregateId()))
                 .filter(p -> inScope(p.aggregateId()))
-                .forEach(page -> generatePage(project, service, module, moduleDir, modulePackageDir, page));
+                .forEach(page -> generatePage(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, page));
     }
 
     // ─── Service app ─────────────────────────────────────────────────────────
@@ -382,20 +382,20 @@ public class GenerateCodeUseCase {
         appModel.put("project", projectToMap(project));
         appModel.put("service", serviceToMap(service));
 
-        // One Home menu entry per module (each pointing to that module's menu class).
-        // Only modules that own aggregates produce a menu.
-        var menuModules = new java.util.ArrayList<Map<String, Object>>();
-        service.moduleIds().stream()
-                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
+        // One Home menu entry per boundedContext (each pointing to that boundedContext's menu class).
+        // Only boundedContexts that own aggregates produce a menu.
+        var menuBoundedContexts = new java.util.ArrayList<Map<String, Object>>();
+        service.boundedContextIds().stream()
+                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
                 .filter(m -> m.aggregateIds() != null && !m.aggregateIds().isEmpty())
                 .forEach(m -> {
                     var entry = new HashMap<String, Object>();
                     entry.put("className", toTypeName(m.name()) + "Menu");
-                    entry.put("slug", moduleSlug(m.name()));
-                    entry.put("field", moduleSlug(m.name()) + "Menu");
-                    menuModules.add(entry);
+                    entry.put("slug", boundedContextSlug(m.name()));
+                    entry.put("field", boundedContextSlug(m.name()) + "Menu");
+                    menuBoundedContexts.add(entry);
                 });
-        appModel.put("menuModules", menuModules);
+        appModel.put("menuModules", menuBoundedContexts);
 
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
@@ -407,70 +407,70 @@ public class GenerateCodeUseCase {
 
     // ─── Aggregate level ─────────────────────────────────────────────────────
 
-    private void generateAggregate(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                   String moduleDir, String modulePackageDir, AggregateEntity aggregate) {
+    private void generateAggregate(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                   String boundedContextDir, String boundedContextPackageDir, AggregateEntity aggregate) {
 
         var aggregatePackageName = aggregate.name().toLowerCase();
 
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/create");
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/create");
 
-        createFile(moduleDir, project, service, module, aggregate, "aggregate-repository.ftl",
-                "src/main/java/" + modulePackageDir + "/application/out/" + aggregate.name() + "Repository.java");
-        createFile(moduleDir, project, service, module, aggregate, "aggregate-queryservice.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/" + aggregate.name() + "QueryService.java");
-        createFile(moduleDir, project, service, module, aggregate, "row.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
-        createFile(moduleDir, project, service, module, aggregate, "dto.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate-repository.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/" + aggregate.name() + "Repository.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate-queryservice.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/" + aggregate.name() + "QueryService.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "row.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/dto/" + aggregate.name() + "Row.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "dto.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/dto/" + aggregate.name() + "Dto.java");
 
-        createFile(moduleDir, project, service, module, aggregate, "create-command.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "create-command.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "Command.java");
-        createFile(moduleDir, project, service, module, aggregate, "create-usecase.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "create-usecase.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "UseCase.java");
 
-        // invariants hook: port + context generated here, default implementation scaffolded once in the custom module
+        // invariants hook: port + context generated here, default implementation scaffolded once in the custom boundedContext
         if (aggregate.invariants() != null && !aggregate.invariants().isEmpty()) {
-            var aggDir = "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregate.name().toLowerCase();
-            createFile(moduleDir, project, service, module, aggregate, "aggregate-invariants.ftl",
+            var aggDir = "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregate.name().toLowerCase();
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate-invariants.ftl",
                     aggDir + "/" + aggregate.name() + "Invariants.java");
-            createFile(moduleDir, project, service, module, aggregate, "aggregate-context.ftl",
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate-context.ftl",
                     aggDir + "/" + aggregate.name() + "Context.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
-            createCustomFile(customDir, project, service, module, aggregate, "aggregate-invariants-default.ftl",
+            createCustomFile(customDir, project, service, boundedContext, aggregate, "aggregate-invariants-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
                             + "/custom/Default" + aggregate.name() + "Invariants.java");
         }
 
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/update");
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/update");
 
-        createFile(moduleDir, project, service, module, aggregate, "update-command.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "update-command.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/update/Update" + aggregate.name() + "Command.java");
-        createFile(moduleDir, project, service, module, aggregate, "update-usecase.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "update-usecase.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/update/Update" + aggregate.name() + "UseCase.java");
 
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
 
-        createFile(moduleDir, project, service, module, aggregate, "delete-command.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "delete-command.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/delete/Delete" + aggregate.name() + "Command.java");
-        createFile(moduleDir, project, service, module, aggregate, "delete-usecase.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "delete-usecase.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/delete/Delete" + aggregate.name() + "UseCase.java");
 
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName);
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName + "/vo");
 
-        createFile(moduleDir, project, service, module, aggregate, "vo-id.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "vo-id.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/vo/" + aggregate.name() + "Id.java");
 
         // Value-object enums referenced by the aggregate fields (one class per enum field)
@@ -480,21 +480,21 @@ public class GenerateCodeUseCase {
                 modelEntity.fields().stream()
                         .filter(f -> !f.basicType() && f.enumId() != null && !f.enumId().isBlank())
                         .forEach(f -> generateAggregateEnum(
-                                project, service, module, moduleDir, modulePackageDir, aggregate, f.name(), f.enumId()));
+                                project, service, boundedContext, boundedContextDir, boundedContextPackageDir, aggregate, f.name(), f.enumId()));
             }
         }
 
         boolean hasValueObjectFields = false;
         if (hasValueObjectFields) {
-            createFile(moduleDir, project, service, module, aggregate, "vo-name.ftl",
-                    "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "vo-name.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                             + "/vo/" + aggregate.name() + "Name.java");
         }
 
         boolean hasOperations = aggregate.operations() != null && !aggregate.operations().isEmpty();
         if (hasOperations) {
-            createFile(moduleDir, project, service, module, aggregate, "operation-context.ftl",
-                    "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "operation-context.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                             + "/" + aggregate.name() + "OperationContext.java");
         }
 
@@ -518,15 +518,15 @@ public class GenerateCodeUseCase {
                         Map<String, Object> model = new HashMap<>();
                         model.put("project", projectToMap(project));
                         model.put("service", serviceToMap(service));
-                        model.put("module", moduleToMap(module));
+                        model.put("module", boundedContextToMap(boundedContext));
                         model.put("aggregate", aggregateToMap(aggregate));
                         model.put("operation", fromJson(toJson(operation)));
 
-                        createFile(moduleDir, model, "custom-operation.ftl",
-                                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+                        createFile(boundedContextDir, model, "custom-operation.ftl",
+                                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                                         + "/" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
 
-                        // developer-owned default implementation of the operation (custom module, write-once)
+                        // developer-owned default implementation of the operation (custom boundedContext, write-once)
                         var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
                         createCustomFile(customDir, model, "aggregate-operation-default.ftl",
                                 "src/main/java/" + project.packageName().replace(".", "/")
@@ -534,138 +534,138 @@ public class GenerateCodeUseCase {
                     });
         }
 
-        createFile(moduleDir, project, service, module, aggregate, "aggregate.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/" + aggregate.name() + ".java");
 
-        createFile(moduleDir, project, service, module, aggregate, "dbentity.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "dbentity.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "Entity.java");
         // The repository port has a single implementation: JPA for a normal aggregate, event-sourced
         // (events as the source of truth, with a state snapshot for reads) for an event-sourced one.
         if (!isEventSourced(aggregate)) {
-            createFile(moduleDir, project, service, module, aggregate, "dbrepository.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "dbrepository.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
         }
-        createFile(moduleDir, project, service, module, aggregate, "dbqueryservice.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
-        createFile(moduleDir, project, service, module, aggregate, "entityrepository.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "dbqueryservice.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "entityrepository.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
 
         // Event-sourced aggregates also get an append-only event store (entity + repository + appender).
         // The aggregate's current-state JPA persistence above stays for now; making the event store the
         // source of truth (reconstitution) is the next step — see docs/design/event-sourcing.md.
         if (isEventSourced(aggregate)) {
-            createFile(moduleDir, project, service, module, aggregate, "es-event-entity.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventEntity.java");
-            createFile(moduleDir, project, service, module, aggregate, "es-event-store.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventStore.java");
-            createFile(moduleDir, project, service, module, aggregate, "es-event-appender.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventAppender.java");
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "es-event-entity.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventEntity.java");
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "es-event-store.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventStore.java");
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "es-event-appender.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventAppender.java");
 
             // decode stored payloads to typed domain events, so the fold hook works with real events
-            var esModel = aggregateModel(project, service, module, aggregate);
-            var moduleEventNames = (module.domainEventIds() != null ? module.domainEventIds() : List.<String>of()).stream()
+            var esModel = aggregateModel(project, service, boundedContext, aggregate);
+            var boundedContextEventNames = (boundedContext.domainEventIds() != null ? boundedContext.domainEventIds() : List.<String>of()).stream()
                     .map(eid -> repository.findById(eid, DomainEventEntity.class).orElse(null))
                     .filter(java.util.Objects::nonNull)
                     .map(DomainEventEntity::name)
                     .toList();
-            esModel.put("domainEvents", moduleEventNames);
+            esModel.put("domainEvents", boundedContextEventNames);
 
-            createFile(moduleDir, esModel, "es-codec.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventCodec.java");
+            createFile(boundedContextDir, esModel, "es-codec.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventCodec.java");
             // event-sourced port implementation (appends events + keeps a state snapshot; folds on read)
-            createFile(moduleDir, esModel, "es-repository.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcedRepository.java");
+            createFile(boundedContextDir, esModel, "es-repository.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcedRepository.java");
             // two-zone hook: how operations produce events and how the typed event stream folds into state
-            createFile(moduleDir, esModel, "es-handler.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcing.java");
+            createFile(boundedContextDir, esModel, "es-handler.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EventSourcing.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, esModel, "es-handler-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
                             + "/custom/Default" + aggregate.name() + "EventSourcing.java");
         }
 
-        createDir(moduleDir,
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
+        createDir(boundedContextDir,
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
 
-        createFile(moduleDir, project, service, module, aggregate, "crud-adapter.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-adapter.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "CrudAdapter.java");
-        createFile(moduleDir, project, service, module, aggregate, "crud-orchestrator.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-orchestrator.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "CrudOrchestrator.java");
-        createFile(moduleDir, project, service, module, aggregate, "crud-viewmodel.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + aggregatePackageName
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-viewmodel.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
-        createFile(moduleDir, project, service, module, aggregate, "options-supplier.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers/"
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "options-supplier.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdOptionsSupplier.java");
-        createFile(moduleDir, project, service, module, aggregate, "label-supplier.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/suppliers/"
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "label-supplier.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdLabelSupplier.java");
 
         // ─── Tests ────────────────────────────────────────────────────────────────
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
-        createFile(moduleDir, project, service, module, aggregate, "aggregate-test.ftl",
-                "src/test/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName);
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate-test.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/" + aggregate.name() + "Test.java");
 
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/create");
-        createFile(moduleDir, project, service, module, aggregate, "create-usecase-test.ftl",
-                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/create");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "create-usecase-test.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/create/Create" + aggregate.name() + "UseCaseTest.java");
 
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/update");
-        createFile(moduleDir, project, service, module, aggregate, "update-usecase-test.ftl",
-                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/update");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "update-usecase-test.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/update/Update" + aggregate.name() + "UseCaseTest.java");
 
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
-        createFile(moduleDir, project, service, module, aggregate, "delete-usecase-test.ftl",
-                "src/test/java/" + modulePackageDir + "/application/usecases/" + aggregatePackageName
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName + "/delete");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "delete-usecase-test.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + aggregatePackageName
                         + "/delete/Delete" + aggregate.name() + "UseCaseTest.java");
 
         // ─── BDD ─────────────────────────────────────────────────────────────────
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/bdd");
-        createFile(moduleDir, project, service, module, aggregate, "bdd-steps.ftl",
-                "src/test/java/" + modulePackageDir + "/bdd/" + aggregate.name() + "Steps.java");
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/bdd");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "bdd-steps.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/bdd/" + aggregate.name() + "Steps.java");
 
-        createDir(moduleDir, "src/test/resources/features/" + moduleSlug(module.name()));
-        createFile(moduleDir, project, service, module, aggregate, "bdd-feature.ftl",
-                "src/test/resources/features/" + moduleSlug(module.name()) + "/" + aggregate.name() + ".feature");
+        createDir(boundedContextDir, "src/test/resources/features/" + boundedContextSlug(boundedContext.name()));
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "bdd-feature.ftl",
+                "src/test/resources/features/" + boundedContextSlug(boundedContext.name()) + "/" + aggregate.name() + ".feature");
 
         // E2E test
-        createFile(moduleDir, project, service, module, aggregate, "e2e-aggregate.ftl",
-                "src/test/java/" + modulePackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
+        createFile(boundedContextDir, project, service, boundedContext, aggregate, "e2e-aggregate.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
     }
 
     // ─── Use Cases ────────────────────────────────────────────────────────────
 
-    private void generateUseCase(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                 String moduleDir, String modulePackageDir, UseCaseEntity useCase) {
+    private void generateUseCase(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                 String boundedContextDir, String boundedContextPackageDir, UseCaseEntity useCase) {
         var ucSlug = useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug);
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug);
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("usecase", enrichUseCaseMap(useCase));
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             model.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
         }
 
-        createFile(moduleDir, model, "usecase-command.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+        createFile(boundedContextDir, model, "usecase-command.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "Command.java");
-        createFile(moduleDir, model, "usecase.ftl",
-                "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+        createFile(boundedContextDir, model, "usecase.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "UseCase.java");
 
-        // custom-steps hook: port in the generated module, default implementation in the custom module
+        // custom-steps hook: port in the generated boundedContext, default implementation in the custom boundedContext
         var hasCustomStep = useCase.steps() != null
                 && useCase.steps().stream().anyMatch(s -> s.type() == UseCaseStepType.Custom);
         if (hasCustomStep) {
-            createFile(moduleDir, model, "usecase-steps.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+            createFile(boundedContextDir, model, "usecase-steps.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                             + "/" + capitalize(useCase.name()) + "Steps.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, model, "usecase-steps-default.ftl",
@@ -674,29 +674,29 @@ public class GenerateCodeUseCase {
         }
 
         if (useCase.exposedAsRest()) {
-            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/rest");
-            createFile(moduleDir, model, "usecase-rest-controller.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/in/rest/"
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
+            createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
                             + capitalize(useCase.name()) + "Controller.java");
         }
 
         if (useCase.exposedAsAsync()) {
-            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/async");
-            createFile(moduleDir, model, "usecase-async-consumer.ftl",
-                    "src/main/java/" + modulePackageDir + "/infra/in/async/"
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/async");
+            createFile(boundedContextDir, model, "usecase-async-consumer.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/async/"
                             + capitalize(useCase.name()) + "Consumer.java");
         }
 
         // Unit test for custom use case
-        createDir(moduleDir, "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug);
-        Map<String, Object> testModel = buildBaseModel(project, service, module);
+        createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug);
+        Map<String, Object> testModel = buildBaseModel(project, service, boundedContext);
         testModel.put("usecase", enrichUseCaseMap(useCase));
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             testModel.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
         }
-        createFile(moduleDir, testModel, "usecase-test.ftl",
-                "src/test/java/" + modulePackageDir + "/application/usecases/" + ucSlug
+        createFile(boundedContextDir, testModel, "usecase-test.ftl",
+                "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "UseCaseTest.java");
     }
 
@@ -782,17 +782,17 @@ public class GenerateCodeUseCase {
     // ─── Gateways ─────────────────────────────────────────────────────────────
 
     private void generateGateway(ProjectEntity project, ServiceEntity service, String serviceDir, GatewayEntity gateway) {
-        // Gateways are module-agnostic at service level; we place them in the first module or a shared location.
+        // Gateways are boundedContext-agnostic at service level; we place them in the first boundedContext or a shared location.
         // For now we generate them relative to serviceDir in a shared infra area.
-        // Find the first module to determine the package dir.
-        if (service.moduleIds() == null || service.moduleIds().isEmpty()) return;
-        var firstModule = repository.findById(service.moduleIds().get(0), ModuleEntity.class).orElse(null);
-        if (firstModule == null) return;
-        var moduleSlug = moduleSlug(firstModule.name());
-        var moduleDir = serviceDir + "/" + moduleSlug;
-        var modulePackageDir = project.packageName().replace(".", "/") + "/" + moduleSlug;
+        // Find the first boundedContext to determine the package dir.
+        if (service.boundedContextIds() == null || service.boundedContextIds().isEmpty()) return;
+        var firstBoundedContext = repository.findById(service.boundedContextIds().get(0), BoundedContextEntity.class).orElse(null);
+        if (firstBoundedContext == null) return;
+        var boundedContextSlug = boundedContextSlug(firstBoundedContext.name());
+        var boundedContextDir = serviceDir + "/" + boundedContextSlug;
+        var boundedContextPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug;
 
-        Map<String, Object> model = buildBaseModel(project, service, firstModule);
+        Map<String, Object> model = buildBaseModel(project, service, firstBoundedContext);
         var gwMap = new HashMap<String, Object>();
         gwMap.putAll(fromJson(toJson(gateway)));
 
@@ -808,7 +808,7 @@ public class GenerateCodeUseCase {
             }
         }
 
-        var dtoPackage = project.packageName() + "." + moduleSlug + ".application.out.gateway.dto";
+        var dtoPackage = project.packageName() + "." + boundedContextSlug + ".application.out.gateway.dto";
         model.put("dtoPackage", dtoPackage);
 
         // typed DTO descriptors (one record per reachable model)
@@ -857,23 +857,23 @@ public class GenerateCodeUseCase {
         }
         model.put("gateway", gwMap);
 
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/gateway");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out/gateway/dto");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/out");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/gateway");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/out/gateway/dto");
 
         for (var dto : dtos) {
             var dtoModel = new HashMap<>(model);
             dtoModel.put("dto", dto);
-            createFile(moduleDir, dtoModel, "gateway-dto.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/out/gateway/dto/"
+            createFile(boundedContextDir, dtoModel, "gateway-dto.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/out/gateway/dto/"
                             + dto.get("className") + ".java");
         }
 
-        createFile(moduleDir, model, "gateway.ftl",
-                "src/main/java/" + modulePackageDir + "/application/out/"
+        createFile(boundedContextDir, model, "gateway.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/"
                         + capitalize(gateway.name()) + "Gateway.java");
-        createFile(moduleDir, model, "gateway-impl.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/gateway/"
+        createFile(boundedContextDir, model, "gateway-impl.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/gateway/"
                         + capitalize(gateway.name()) + "GatewayImpl.java");
     }
 
@@ -913,9 +913,9 @@ public class GenerateCodeUseCase {
 
     // ─── ReadModels ───────────────────────────────────────────────────────────
 
-    private void generateReadModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                   String moduleDir, String modulePackageDir, ReadModelEntity readModel) {
-        Map<String, Object> model = buildBaseModel(project, service, module);
+    private void generateReadModel(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                   String boundedContextDir, String boundedContextPackageDir, ReadModelEntity readModel) {
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         var typeName = toTypeName(readModel.name());
         var className = typeName.endsWith("ReadModel") ? typeName : typeName + "ReadModel";
         model.put("className", className);
@@ -925,32 +925,32 @@ public class GenerateCodeUseCase {
             model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
         }
 
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/readmodel");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/out/persistence");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query/readmodel");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence");
 
         // Read-side DTO (record)
-        createFile(moduleDir, model, "read-model.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/readmodel/" + className + ".java");
+        createFile(boundedContextDir, model, "read-model.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/readmodel/" + className + ".java");
 
         // JPA persistence
-        createFile(moduleDir, model, "readmodel-entity.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "Entity.java");
-        createFile(moduleDir, model, "readmodel-entityrepository.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "EntityRepository.java");
+        createFile(boundedContextDir, model, "readmodel-entity.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + className + "Entity.java");
+        createFile(boundedContextDir, model, "readmodel-entityrepository.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + className + "EntityRepository.java");
 
         // QueryService interface + impl
-        createFile(moduleDir, model, "readmodel-queryservice.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/" + className + "QueryService.java");
-        createFile(moduleDir, model, "readmodel-dbqueryservice.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/out/persistence/" + className + "DBQueryService.java");
+        createFile(boundedContextDir, model, "readmodel-queryservice.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/" + className + "QueryService.java");
+        createFile(boundedContextDir, model, "readmodel-dbqueryservice.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + className + "DBQueryService.java");
     }
 
     // ─── IntegrationEvents ────────────────────────────────────────────────────
 
-    private void generateIntegrationEvent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                          String moduleDir, String modulePackageDir, IntegrationEventEntity integrationEvent) {
-        Map<String, Object> model = buildBaseModel(project, service, module);
+    private void generateIntegrationEvent(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                          String boundedContextDir, String boundedContextPackageDir, IntegrationEventEntity integrationEvent) {
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         var className = toTypeName(integrationEvent.name());
         model.put("className", className);
         model.put("integrationEvent", fromJson(toJson(integrationEvent)));
@@ -962,30 +962,30 @@ public class GenerateCodeUseCase {
         var schemaVersion = schemaVersionOf(integrationEvent.schemaVersion());
         model.put("schemaVersion", schemaVersion);
 
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/out/integration");
-        createFile(moduleDir, model, "integration-event.ftl",
-                "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + ".java");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/out/integration");
+        createFile(boundedContextDir, model, "integration-event.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + ".java");
         if (schemaVersion > 1) {
             model.put("upcasterClass", className + "Upcaster");
-            model.put("upcasterPackage", project.packageName() + "." + moduleSlug(module.name()) + ".application.out.integration");
+            model.put("upcasterPackage", project.packageName() + "." + boundedContextSlug(boundedContext.name()) + ".application.out.integration");
             model.put("eventLabel", className);
-            createFile(moduleDir, model, "event-upcaster.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + "Upcaster.java");
+            createFile(boundedContextDir, model, "event-upcaster.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + "Upcaster.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, model, "event-upcaster-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
                             + "/custom/Default" + className + "Upcaster.java");
         }
-        createFile(moduleDir, model, "integration-event-publisher.ftl",
-                "src/main/java/" + modulePackageDir + "/application/out/integration/" + className + "Publisher.java");
+        createFile(boundedContextDir, model, "integration-event-publisher.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + "Publisher.java");
     }
 
     // ─── QueryServices ────────────────────────────────────────────────────────
 
-    private void generateQueryService(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                      String moduleDir, String modulePackageDir, QueryServiceEntity queryService) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/query/dto");
+    private void generateQueryService(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                      String boundedContextDir, String boundedContextPackageDir, QueryServiceEntity queryService) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query/dto");
 
         // Resolve distinct referenced models → DTOs, mapping modelId -> TypeName
         var typeNameByModelId = new HashMap<String, String>();
@@ -1001,12 +1001,12 @@ public class GenerateCodeUseCase {
         for (var modelId : dtosToGenerate) {
             var modelEntity = repository.findById(modelId, ModelEntity.class).orElse(null);
             if (modelEntity == null) continue;
-            Map<String, Object> dtoModel = buildBaseModel(project, service, module);
+            Map<String, Object> dtoModel = buildBaseModel(project, service, boundedContext);
             var dtoClassName = typeNameByModelId.get(modelId);
             dtoModel.put("className", dtoClassName);
             dtoModel.put("model", fromJson(toJson(modelEntity)));
-            createFile(moduleDir, dtoModel, "query-dto.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/query/dto/" + dtoClassName + ".java");
+            createFile(boundedContextDir, dtoModel, "query-dto.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/query/dto/" + dtoClassName + ".java");
         }
 
         // Build enriched operation list
@@ -1020,12 +1020,12 @@ public class GenerateCodeUseCase {
             enrichedOps.add(opMap);
         }
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         var className = toTypeName(queryService.name());
         model.put("className", className);
         model.put("operations", enrichedOps);
-        createFile(moduleDir, model, "query-service.ftl",
-                "src/main/java/" + modulePackageDir + "/application/query/" + className + ".java");
+        createFile(boundedContextDir, model, "query-service.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/query/" + className + ".java");
     }
 
     private void resolveQueryModelType(String modelId, Map<String, String> typeNameByModelId, Set<String> dtosToGenerate) {
@@ -1043,23 +1043,23 @@ public class GenerateCodeUseCase {
 
     // ─── Sagas ────────────────────────────────────────────────────────────────
 
-    private void generateSaga(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                              String moduleDir, String modulePackageDir, SagaEntity saga) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/sagas");
+    private void generateSaga(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                              String boundedContextDir, String boundedContextPackageDir, SagaEntity saga) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/sagas");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("saga", enrichSagaMap(saga));
 
-        createFile(moduleDir, model, "saga.ftl",
-                "src/main/java/" + modulePackageDir + "/application/sagas/"
+        createFile(boundedContextDir, model, "saga.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/sagas/"
                         + capitalize(saga.name()) + "Saga.java");
 
-        // custom-steps hook: a port in the generated module, default implementation in the custom module
+        // custom-steps hook: a port in the generated boundedContext, default implementation in the custom boundedContext
         var hasCustomStep = saga.steps() != null
                 && saga.steps().stream().anyMatch(s -> s.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType.Custom);
         if (hasCustomStep) {
-            createFile(moduleDir, model, "saga-steps.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/sagas/"
+            createFile(boundedContextDir, model, "saga-steps.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/sagas/"
                             + capitalize(saga.name()) + "Steps.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, model, "saga-steps-default.ftl",
@@ -1068,7 +1068,7 @@ public class GenerateCodeUseCase {
         }
 
         // EventConductor workflow definition (the workflow engine owns the orchestration)
-        createFile(moduleDir, model, "workflow-definition.ftl",
+        createFile(boundedContextDir, model, "workflow-definition.ftl",
                 "src/main/resources/workflows/" + capitalize(saga.name()) + ".workflow.json");
     }
 
@@ -1096,8 +1096,8 @@ public class GenerateCodeUseCase {
 
     // ─── Entity (embedded/child) ──────────────────────────────────────────────
 
-    private void generateEntity(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                String moduleDir, String modulePackageDir, EntityEntity entity) {
+    private void generateEntity(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                String boundedContextDir, String boundedContextPackageDir, EntityEntity entity) {
         var parentAggregate = entity.parentAggregateId() != null
                 ? repository.findById(entity.parentAggregateId(), AggregateEntity.class).orElse(null)
                 : null;
@@ -1106,9 +1106,9 @@ public class GenerateCodeUseCase {
                 ? parentAggregate.name().toLowerCase()
                 : "shared";
 
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName);
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName);
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("entity", fromJson(toJson(entity)));
         model.put("aggregate", parentAggregate != null ? aggregateToMap(parentAggregate) : Map.of("name", aggregatePackageName));
 
@@ -1117,53 +1117,53 @@ public class GenerateCodeUseCase {
             model.put("entityModel", entityModel != null ? fromJson(toJson(entityModel)) : null);
         }
 
-        createFile(moduleDir, model, "entity-embedded.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregatePackageName
+        createFile(boundedContextDir, model, "entity-embedded.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
                         + "/" + capitalize(entity.name()) + ".java");
     }
 
     // ─── Value Objects ────────────────────────────────────────────────────────
 
-    private void generateValueObject(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                     String moduleDir, String modulePackageDir, ValueObjectEntity vo) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/vo");
+    private void generateValueObject(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                     String boundedContextDir, String boundedContextPackageDir, ValueObjectEntity vo) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/domain/vo");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("vo", fromJson(toJson(vo)));
 
         var voType = vo.type() != null ? vo.type().toUpperCase() : "SIMPLE";
 
         switch (voType) {
-            case "ENUM" -> createFile(moduleDir, model, "vo-enum.ftl",
-                    "src/main/java/" + modulePackageDir + "/domain/vo/"
+            case "ENUM" -> createFile(boundedContextDir, model, "vo-enum.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/domain/vo/"
                             + capitalize(vo.name()) + ".java");
             case "COMPOSITE" -> {
                 model.put("voFields", parseVoFields(vo.fieldsJson()));
-                createFile(moduleDir, model, "vo-composite.ftl",
-                        "src/main/java/" + modulePackageDir + "/domain/vo/"
+                createFile(boundedContextDir, model, "vo-composite.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/domain/vo/"
                                 + capitalize(vo.name()) + ".java");
             }
-            default -> createFile(moduleDir, model, "vo-simple.ftl",
-                    "src/main/java/" + modulePackageDir + "/domain/vo/"
+            default -> createFile(boundedContextDir, model, "vo-simple.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/domain/vo/"
                             + capitalize(vo.name()) + ".java");
         }
     }
 
-    private void generateAggregateEnum(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                       String moduleDir, String modulePackageDir, AggregateEntity aggregate,
+    private void generateAggregateEnum(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                       String boundedContextDir, String boundedContextPackageDir, AggregateEntity aggregate,
                                        String fieldName, String enumId) {
         var enumEntity = repository.findById(enumId, EnumEntity.class).orElse(null);
         var values = (enumEntity != null && enumEntity.values() != null)
                 ? enumEntity.values().stream().map(v -> toEnumConstant(v.id())).toList()
                 : List.<String>of();
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("aggregate", aggregateToMap(aggregate));
         model.put("enumName", capitalize(fieldName));
         model.put("values", values);
 
-        createFile(moduleDir, model, "aggregate-enum.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/aggregates/" + aggregate.name().toLowerCase()
+        createFile(boundedContextDir, model, "aggregate-enum.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregate.name().toLowerCase()
                         + "/vo/" + capitalize(fieldName) + ".java");
     }
 
@@ -1193,13 +1193,13 @@ public class GenerateCodeUseCase {
 
     // ─── Model Mappings (scanned from use-case and saga steps) ───────────────
 
-    private void generateModelMappingsForModule(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                                String moduleDir, String modulePackageDir) {
+    private void generateModelMappingsForBoundedContext(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                                String boundedContextDir, String boundedContextPackageDir) {
         Set<String> mappingIds = new LinkedHashSet<>();
 
         // Collect from use case steps
-        if (module.useCaseIds() != null) {
-            module.useCaseIds().stream()
+        if (boundedContext.useCaseIds() != null) {
+            boundedContext.useCaseIds().stream()
                     .map(id -> repository.findById(id, UseCaseEntity.class).orElse(null))
                     .filter(uc -> uc != null && inScope(uc.id()) && uc.steps() != null)
                     .flatMap(uc -> uc.steps().stream())
@@ -1209,8 +1209,8 @@ public class GenerateCodeUseCase {
         }
 
         // Collect from saga steps
-        if (module.sagaIds() != null) {
-            module.sagaIds().stream()
+        if (boundedContext.sagaIds() != null) {
+            boundedContext.sagaIds().stream()
                     .map(id -> repository.findById(id, SagaEntity.class).orElse(null))
                     .filter(saga -> saga != null && inScope(saga.id()) && saga.steps() != null)
                     .flatMap(saga -> saga.steps().stream())
@@ -1221,13 +1221,13 @@ public class GenerateCodeUseCase {
 
         if (mappingIds.isEmpty()) return;
 
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/mappers");
 
         for (var mappingId : mappingIds) {
             var mapping = repository.findById(mappingId, ModelMappingEntity.class).orElse(null);
             if (mapping == null) continue;
 
-            Map<String, Object> model = buildBaseModel(project, service, module);
+            Map<String, Object> model = buildBaseModel(project, service, boundedContext);
             model.put("mapping", fromJson(toJson(mapping)));
 
             ModelEntity sourceModel = null;
@@ -1245,34 +1245,34 @@ public class GenerateCodeUseCase {
             // model is represented elsewhere; the type name is derived from the model name.
             if (sourceModel != null) {
                 model.put("sourceTypeName", typeName(sourceModel.name()));
-                createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers/dto");
-                Map<String, Object> dto = buildBaseModel(project, service, module);
+                createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/mappers/dto");
+                Map<String, Object> dto = buildBaseModel(project, service, boundedContext);
                 dto.put("model", fromJson(toJson(sourceModel)));
                 dto.put("className", typeName(sourceModel.name()));
-                createFile(moduleDir, dto, "mapper-dto.ftl",
-                        "src/main/java/" + modulePackageDir + "/application/mappers/dto/"
+                createFile(boundedContextDir, dto, "mapper-dto.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/mappers/dto/"
                                 + typeName(sourceModel.name()) + ".java");
             }
             if (targetModel != null) {
                 model.put("targetTypeName", typeName(targetModel.name()));
-                createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/mappers/dto");
-                Map<String, Object> dto = buildBaseModel(project, service, module);
+                createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/mappers/dto");
+                Map<String, Object> dto = buildBaseModel(project, service, boundedContext);
                 dto.put("model", fromJson(toJson(targetModel)));
                 dto.put("className", typeName(targetModel.name()));
-                createFile(moduleDir, dto, "mapper-dto.ftl",
-                        "src/main/java/" + modulePackageDir + "/application/mappers/dto/"
+                createFile(boundedContextDir, dto, "mapper-dto.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/mappers/dto/"
                                 + typeName(targetModel.name()) + ".java");
             }
 
-            createFile(moduleDir, model, "model-mapper.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/mappers/"
+            createFile(boundedContextDir, model, "model-mapper.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/mappers/"
                             + capitalize(mapping.name()) + "Mapper.java");
 
-            // custom part: a two-zone hook (port in the generated module, default impl in the custom module)
+            // custom part: a two-zone hook (port in the generated boundedContext, default impl in the custom boundedContext)
             var hasResolvedModels = model.get("sourceModel") != null && model.get("targetModel") != null;
             if (mapping.hasCustomPart() && hasResolvedModels) {
-                createFile(moduleDir, model, "model-mapper-custom.ftl",
-                        "src/main/java/" + modulePackageDir + "/application/mappers/"
+                createFile(boundedContextDir, model, "model-mapper-custom.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/mappers/"
                                 + capitalize(mapping.name()) + "CustomMapping.java");
                 var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
                 createCustomFile(customDir, model, "model-mapper-custom-default.ftl",
@@ -1284,9 +1284,9 @@ public class GenerateCodeUseCase {
 
     // ─── Business rules (fact = the aggregate whose modelId matches the rule) ───
 
-    private void generateBusinessRulesForModule(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                                String moduleDir, String modulePackageDir) {
-        var aggregateIds = module.aggregateIds() != null ? module.aggregateIds() : List.<String>of();
+    private void generateBusinessRulesForBoundedContext(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                                String boundedContextDir, String boundedContextPackageDir) {
+        var aggregateIds = boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of();
         if (aggregateIds.isEmpty()) return;
 
         var allRules = repository.findAllOfType(BusinessRuleEntity.class);
@@ -1304,30 +1304,30 @@ public class GenerateCodeUseCase {
                     .toList();
             if (rules.isEmpty()) continue;
 
-            createDir(moduleDir, "src/main/java/" + modulePackageDir + "/application/rules");
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/rules");
             var aggMap = aggregateToMap(aggregate);
 
             // per-aggregate port + evaluator (generated once)
-            Map<String, Object> aggModel = buildBaseModel(project, service, module);
+            Map<String, Object> aggModel = buildBaseModel(project, service, boundedContext);
             aggModel.put("aggregate", aggMap);
-            createFile(moduleDir, aggModel, "business-rule-port.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/rules/"
+            createFile(boundedContextDir, aggModel, "business-rule-port.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/rules/"
                             + capitalize(aggregate.name()) + "Rule.java");
-            createFile(moduleDir, aggModel, "business-rules-evaluator.ftl",
-                    "src/main/java/" + modulePackageDir + "/application/rules/"
+            createFile(boundedContextDir, aggModel, "business-rules-evaluator.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/rules/"
                             + capitalize(aggregate.name()) + "RulesEvaluator.java");
 
-            // per rule: generated glue + hook port, plus write-once default impl in the custom module
+            // per rule: generated glue + hook port, plus write-once default impl in the custom boundedContext
             for (var rule : rules) {
-                Map<String, Object> model = buildBaseModel(project, service, module);
+                Map<String, Object> model = buildBaseModel(project, service, boundedContext);
                 model.put("aggregate", aggMap);
                 model.put("rule", fromJson(toJson(rule)));
 
-                createFile(moduleDir, model, "business-rule.ftl",
-                        "src/main/java/" + modulePackageDir + "/application/rules/"
+                createFile(boundedContextDir, model, "business-rule.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/rules/"
                                 + capitalize(rule.name()) + "Rule.java");
-                createFile(moduleDir, model, "business-rule-logic.ftl",
-                        "src/main/java/" + modulePackageDir + "/application/rules/"
+                createFile(boundedContextDir, model, "business-rule-logic.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/rules/"
                                 + capitalize(rule.name()) + "Logic.java");
                 createCustomFile(customDir, model, "business-rule-logic-default.ftl",
                         "src/main/java/" + project.packageName().replace(".", "/")
@@ -1349,11 +1349,11 @@ public class GenerateCodeUseCase {
         // Flyway (also the default when unset)
 
         var tables = new ArrayList<Map<String, Object>>();
-        for (var moduleId : (service.moduleIds() != null ? service.moduleIds() : List.<String>of())) {
-            var module = repository.findById(moduleId, ModuleEntity.class).orElse(null);
-            if (module == null) continue;
+        for (var boundedContextId : (service.boundedContextIds() != null ? service.boundedContextIds() : List.<String>of())) {
+            var boundedContext = repository.findById(boundedContextId, BoundedContextEntity.class).orElse(null);
+            if (boundedContext == null) continue;
 
-            for (var aggId : (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of())) {
+            for (var aggId : (boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of())) {
                 if (!inScope(aggId)) continue;
                 var agg = repository.findById(aggId, AggregateEntity.class).orElse(null);
                 if (agg == null) continue;
@@ -1362,15 +1362,15 @@ public class GenerateCodeUseCase {
                     tables.add(eventStoreTable(agg));
                 }
             }
-            for (var entId : (module.entityIds() != null ? module.entityIds() : List.<String>of())) {
+            for (var entId : (boundedContext.entityIds() != null ? boundedContext.entityIds() : List.<String>of())) {
                 if (!inScope(entId)) continue;
                 var ent = repository.findById(entId, EntityEntity.class).orElse(null);
                 if (ent != null && ent.isCollection()) tables.add(collectionEntityTable(ent));
             }
-            // read models are discovered by moduleId (the same way generateModule does), so
+            // read models are discovered by boundedContextId (the same way generateBoundedContext does), so
             // flow-materialized read models are included too
             repository.findAllOfType(ReadModelEntity.class).stream()
-                    .filter(rm -> module.id().equals(rm.moduleId()))
+                    .filter(rm -> boundedContext.id().equals(rm.boundedContextId()))
                     .filter(rm -> inScope(rm.id()))
                     .forEach(rm -> tables.add(readModelTable(rm)));
         }
@@ -1694,12 +1694,12 @@ public class GenerateCodeUseCase {
 
     // ─── Pages ────────────────────────────────────────────────────────────────
 
-    private void generatePage(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                              String moduleDir, String modulePackageDir, PageEntity page) {
+    private void generatePage(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                              String boundedContextDir, String boundedContextPackageDir, PageEntity page) {
         var pageSlug = page.name().toLowerCase().replaceAll("[^a-z0-9]", "");
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + pageSlug);
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + pageSlug);
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("page", fromJson(toJson(page)));
 
         // Resolve aggregate
@@ -1727,7 +1727,7 @@ public class GenerateCodeUseCase {
             page.componentIds().stream()
                     .map(cId -> repository.findById(cId, ComponentEntity.class).orElse(null))
                     .filter(c -> c != null)
-                    .forEach(component -> generateComponent(project, service, module, moduleDir, modulePackageDir, component));
+                    .forEach(component -> generateComponent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, component));
         }
 
         var pageType = page.type() != null ? page.type().toUpperCase() : "CRUD";
@@ -1745,15 +1745,15 @@ public class GenerateCodeUseCase {
             default -> "page-crud.ftl";
         };
 
-        createFile(moduleDir, model, template,
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/pages/" + pageSlug
+        createFile(boundedContextDir, model, template,
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + pageSlug
                         + "/" + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + "Page.java");
 
         // FORM and WIZARD pages also emit an EventConductor form definition (for USER_TASK steps)
         if ((pageType.equals("FORM") || pageType.equals("PAGE") || pageType.equals("WIZARD")) && page.modelId() != null) {
             var pageModelEntity = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
             if (pageModelEntity != null && pageModelEntity.fields() != null && !pageModelEntity.fields().isEmpty()) {
-                createFile(moduleDir, model, "form-definition.ftl",
+                createFile(boundedContextDir, model, "form-definition.ftl",
                         "src/main/resources/forms/"
                                 + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
             }
@@ -1762,15 +1762,15 @@ public class GenerateCodeUseCase {
 
     // ─── Components ───────────────────────────────────────────────────────────
 
-    private void generateComponent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                   String moduleDir, String modulePackageDir, ComponentEntity component) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/ui/components");
+    private void generateComponent(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                   String boundedContextDir, String boundedContextPackageDir, ComponentEntity component) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/components");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("component", fromJson(toJson(component)));
 
-        createFile(moduleDir, model, "component.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/ui/components/"
+        createFile(boundedContextDir, model, "component.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/components/"
                         + capitalize(component.name().replaceAll("[^a-zA-Z0-9]", "")) + "Component.java");
     }
 
@@ -1876,11 +1876,11 @@ public class GenerateCodeUseCase {
 
     // ─── Projections ──────────────────────────────────────────────────────────
 
-    private void generateProjection(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                    String moduleDir, String modulePackageDir, ProjectionEntity projection) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/projection");
+    private void generateProjection(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                    String boundedContextDir, String boundedContextPackageDir, ProjectionEntity projection) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/projection");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("projection", fromJson(toJson(projection)));
 
         var rawName = capitalize(projection.name());
@@ -1957,8 +1957,8 @@ public class GenerateCodeUseCase {
         }
         model.put("enrichedHandlers", enrichedHandlers);
 
-        createFile(moduleDir, model, "projection.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/projection/" + className + ".java");
+        createFile(boundedContextDir, model, "projection.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/projection/" + className + ".java");
     }
 
     private List<Map<String, Object>> toFieldMaps(List<ModelFieldEntity> fields) {
@@ -2037,19 +2037,19 @@ public class GenerateCodeUseCase {
 
     // ─── Domain events / Subscriptions / Scheduled triggers ──────────────────
 
-    private Map<String, Object> buildBaseModel(ProjectEntity project, ServiceEntity service, ModuleEntity module) {
+    private Map<String, Object> buildBaseModel(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
-        model.put("module", moduleToMap(module));
+        model.put("module", boundedContextToMap(boundedContext));
         return model;
     }
 
-    private void generateDomainEvent(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                     String moduleDir, String modulePackageDir, DomainEventEntity event) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/domain/events");
+    private void generateDomainEvent(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                     String boundedContextDir, String boundedContextPackageDir, DomainEventEntity event) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/domain/events");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         if (event.modelId() != null && !event.modelId().isBlank()) {
             var modelEntity = repository.findById(event.modelId(), ModelEntity.class).orElse(null);
             model.put("eventModel", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
@@ -2058,16 +2058,16 @@ public class GenerateCodeUseCase {
         var schemaVersion = schemaVersionOf(event.schemaVersion());
         model.put("schemaVersion", schemaVersion);
 
-        createFile(moduleDir, model, "domain-event.ftl",
-                "src/main/java/" + modulePackageDir + "/domain/events/" + event.name() + "Event.java");
+        createFile(boundedContextDir, model, "domain-event.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/events/" + event.name() + "Event.java");
 
         // when the event has evolved past v1, scaffold a two-zone upcaster hook to migrate older payloads
         if (schemaVersion > 1) {
             model.put("upcasterClass", event.name() + "EventUpcaster");
-            model.put("upcasterPackage", project.packageName() + "." + moduleSlug(module.name()) + ".domain.events");
+            model.put("upcasterPackage", project.packageName() + "." + boundedContextSlug(boundedContext.name()) + ".domain.events");
             model.put("eventLabel", event.name() + "Event");
-            createFile(moduleDir, model, "event-upcaster.ftl",
-                    "src/main/java/" + modulePackageDir + "/domain/events/" + event.name() + "EventUpcaster.java");
+            createFile(boundedContextDir, model, "event-upcaster.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/domain/events/" + event.name() + "EventUpcaster.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, model, "event-upcaster-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
@@ -2075,11 +2075,11 @@ public class GenerateCodeUseCase {
         }
     }
 
-    private void generateSubscription(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                      String moduleDir, String modulePackageDir, SubscriptionEntity subscription) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/async");
+    private void generateSubscription(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                      String boundedContextDir, String boundedContextPackageDir, SubscriptionEntity subscription) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/async");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("subscription", fromJson(toJson(subscription)));
 
         // Resolve subscription's input model (payload schema)
@@ -2142,41 +2142,41 @@ public class GenerateCodeUseCase {
         }
         model.put("enrichedActions", enrichedActions);
 
-        createFile(moduleDir, model, "subscription.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/async/" + capitalize(subscription.name()) + "Subscription.java");
+        createFile(boundedContextDir, model, "subscription.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/async/" + capitalize(subscription.name()) + "Subscription.java");
     }
 
-    private void generateScheduledTrigger(ProjectEntity project, ServiceEntity service, ModuleEntity module,
-                                          String moduleDir, String modulePackageDir, ScheduledTriggerEntity trigger) {
-        createDir(moduleDir, "src/main/java/" + modulePackageDir + "/infra/in/scheduler");
+    private void generateScheduledTrigger(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                          String boundedContextDir, String boundedContextPackageDir, ScheduledTriggerEntity trigger) {
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/scheduler");
 
-        Map<String, Object> model = buildBaseModel(project, service, module);
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("trigger", fromJson(toJson(trigger)));
 
-        createFile(moduleDir, model, "scheduled-trigger.ftl",
-                "src/main/java/" + modulePackageDir + "/infra/in/scheduler/" + capitalize(trigger.name()) + "Scheduler.java");
+        createFile(boundedContextDir, model, "scheduled-trigger.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/scheduler/" + capitalize(trigger.name()) + "Scheduler.java");
     }
 
     // ─── createFile overloads ─────────────────────────────────────────────────
 
     @SneakyThrows
-    private void createFile(String baseDir, ProjectEntity project, ServiceEntity service, ModuleEntity module,
+    private void createFile(String baseDir, ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                             AggregateEntity aggregate, String template, String destFile) {
-        createFile(baseDir, aggregateModel(project, service, module, aggregate), template, destFile);
+        createFile(baseDir, aggregateModel(project, service, boundedContext, aggregate), template, destFile);
     }
 
     /** Custom (write-once) variant of the aggregate-model file generation. */
-    private void createCustomFile(String baseDir, ProjectEntity project, ServiceEntity service, ModuleEntity module,
+    private void createCustomFile(String baseDir, ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                   AggregateEntity aggregate, String template, String destFile) {
-        createCustomFile(baseDir, aggregateModel(project, service, module, aggregate), template, destFile);
+        createCustomFile(baseDir, aggregateModel(project, service, boundedContext, aggregate), template, destFile);
     }
 
-    private Map<String, Object> aggregateModel(ProjectEntity project, ServiceEntity service, ModuleEntity module,
+    private Map<String, Object> aggregateModel(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                                AggregateEntity aggregate) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
-        model.put("module", moduleToMap(module));
+        model.put("module", boundedContextToMap(boundedContext));
         model.put("aggregate", aggregateToMap(aggregate));
         return model;
     }
@@ -2206,25 +2206,25 @@ public class GenerateCodeUseCase {
     private Map<String, Object> serviceToMap(ServiceEntity service) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(service)));
-        var modules = service.moduleIds().stream()
-                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow())
-                .map(this::moduleToMap)
+        var boundedContexts = service.boundedContextIds().stream()
+                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
+                .map(this::boundedContextToMap)
                 .toList();
-        map.put("modules", modules);
+        map.put("modules", boundedContexts);
         return map;
     }
 
-    private Map<String, Object> moduleToMap(ModuleEntity module) {
+    private Map<String, Object> boundedContextToMap(BoundedContextEntity boundedContext) {
         var map = new HashMap<String, Object>();
-        map.putAll(fromJson(toJson(module)));
+        map.putAll(fromJson(toJson(boundedContext)));
 
-        var aggregates = (module.aggregateIds() != null ? module.aggregateIds() : List.<String>of()).stream()
+        var aggregates = (boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of()).stream()
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .map(this::aggregateToMap)
                 .toList();
 
         map.put("aggregates", aggregates);
-        map.put("slug", moduleSlug(module.name()));
+        map.put("slug", boundedContextSlug(boundedContext.name()));
         return map;
     }
 
@@ -2311,8 +2311,8 @@ public class GenerateCodeUseCase {
 
     // ─── File I/O ─────────────────────────────────────────────────────────────
 
-    /** Generates the developer-owned custom module: structure is generated, contents scaffolded once. */
-    private void generateCustomModule(ProjectEntity project, ServiceEntity service, String serviceDir, String serviceName) {
+    /** Generates the developer-owned custom boundedContext: structure is generated, contents scaffolded once. */
+    private void generateCustomBoundedContext(ProjectEntity project, ServiceEntity service, String serviceDir, String serviceName) {
         var customDir = serviceDir + "/" + serviceName + "-custom";
         var packageDir = project.packageName().replace(".", "/");
         Map<String, Object> model = new HashMap<>();
@@ -2373,7 +2373,7 @@ public class GenerateCodeUseCase {
         }
         var prev = previousManifest.get(relPath(file));
         if (prev != null && !prev.equals(hashFile(file))) {
-            log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom module instead.",
+            log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom boundedContext instead.",
                     relPath(file));
         }
     }
@@ -2491,8 +2491,8 @@ public class GenerateCodeUseCase {
         return service.name().toLowerCase().replaceAll("[\\s_]+", "-");
     }
 
-    /** Converts "My Module" or "my-module" to "mymodule" (no separator, lower) */
-    private String moduleSlug(String name) {
+    /** Converts "My BoundedContext" or "my-boundedContext" to "myboundedContext" (no separator, lower) */
+    private String boundedContextSlug(String name) {
         return name.toLowerCase().replaceAll("[^a-z0-9]", "");
     }
 

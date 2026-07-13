@@ -25,7 +25,7 @@ class SagaFusionTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -45,7 +45,7 @@ class SagaFusionTest {
         var dir = Files.createTempDirectory("saga-fusion");
         repository.loadFrom(dir.resolve("model-driven-store.yaml").toAbsolutePath().toString());
         apply("""
-                {"kind":"add-module","id":"mod-s","name":"Pagos"}""");
+                {"kind":"add-boundedContext","id":"mod-s","name":"Pagos"}""");
         // saga de dos pasos + un paso de compensación puro, propiedad del módulo
         repository.save(new SagaEntity("saga-pago", "Cobro", 30000L, null,
                 List.of("PagoSolicitado", "PagoReintentado"),
@@ -57,9 +57,9 @@ class SagaFusionTest {
                         new SagaStepEntity("sg-undo", "Liberar fondos", null, null, null, null,
                                 null, null, null, "uc-liberar", null)),
                 3, 1000L, "dlq-pagos", true));
-        var module = repository.findById("mod-s",
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).orElseThrow();
-        repository.save(module.toBuilder().sagaIds(List.of("saga-pago")).build());
+        var boundedContext = repository.findById("mod-s",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class).orElseThrow();
+        repository.save(boundedContext.toBuilder().sagaIds(List.of("saga-pago")).build());
 
         apply("""
                 {"kind":"migrate-sagas-to-workflows"}""");
@@ -74,7 +74,7 @@ class SagaFusionTest {
         assertThat(wf.steps().get(1).dependsOnStepIds()).containsExactly("sg-1");
         // el contexto suelta la saga
         var after = repository.findById("mod-s",
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).orElseThrow();
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class).orElseThrow();
         assertThat(after.sagaIds()).isEmpty();
     }
 }

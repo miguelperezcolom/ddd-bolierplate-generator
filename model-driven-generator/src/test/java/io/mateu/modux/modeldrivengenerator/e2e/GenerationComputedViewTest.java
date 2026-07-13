@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies computed views: a view that only names a seed (here a module) resolves to that seed's whole
+ * Verifies computed views: a view that only names a seed (here a boundedContext) resolves to that seed's whole
  * dependency closure — the bounded context — without listing members by hand. Recalculates itself as
  * the model changes. Fast (load + reflection), runs in the normal suite.
  */
@@ -22,7 +22,7 @@ class GenerationComputedViewTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     private static final String VIEW = """
@@ -42,7 +42,7 @@ class GenerationComputedViewTest {
 
     @Test
     void computed_view_resolves_its_seed_bounded_context() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         var file = Files.createTempFile("modux-computed-view", ".yaml");
         Files.writeString(file, store + VIEW);
         repository.loadFrom(file.toAbsolutePath().toString());
@@ -50,11 +50,11 @@ class GenerationComputedViewTest {
         var closure = resolveViewClosureUseCase.resolve("view-frontoffice-bc");
         var ids = closure.closureIds();
 
-        // the seed module and everything it owns are in the closure — no members were listed by hand
-        assertTrue(ids.contains("mod-frontoffice"), "closure must contain the seed module; got " + ids);
-        assertTrue(ids.contains("estancia"), "closure must contain the module's aggregate; got " + ids);
-        assertTrue(ids.contains("uc-crearEstancia"), "closure must contain the module's use case; got " + ids);
-        assertTrue(ids.contains("uc-realizarCheckin"), "closure must contain the module's use case; got " + ids);
+        // the seed boundedContext and everything it owns are in the closure — no members were listed by hand
+        assertTrue(ids.contains("mod-frontoffice"), "closure must contain the seed boundedContext; got " + ids);
+        assertTrue(ids.contains("estancia"), "closure must contain the boundedContext's aggregate; got " + ids);
+        assertTrue(ids.contains("uc-crearEstancia"), "closure must contain the boundedContext's use case; got " + ids);
+        assertTrue(ids.contains("uc-realizarCheckin"), "closure must contain the boundedContext's use case; got " + ids);
         // a different bounded context's aggregate (reserva, in mod-reservas) is NOT pulled in
         assertFalse(ids.contains("reserva"),
                 "closure leaked into another bounded context (reserva); got " + ids);

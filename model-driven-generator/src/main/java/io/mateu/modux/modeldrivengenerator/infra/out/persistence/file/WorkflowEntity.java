@@ -5,7 +5,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 import java.util.List;
 
 /**
- * An orchestrator that lives OUTSIDE every bounded context (it has no owner module, unlike
+ * An orchestrator that lives OUTSIDE every bounded context (it has no owner boundedContext, unlike
  * {@link ProcessEntity}): started by an event, it advances a dependency graph of steps, each of
  * which emits an event that starts a task — a use case, for now — inside a bounded context. The
  * workflow never calls anything directly; all workflow↔context communication travels as events.

@@ -21,12 +21,12 @@ public class Process {
     private ProcessName name;
     private String description;
 
-    // when: the event that starts the process (the source module is the aggregate's module)
+    // when: the event that starts the process (the source boundedContext is the aggregate's boundedContext)
     private String triggerAggregateId;
     private String triggerEvent;
 
     // the bounded context that owns/orchestrates the process
-    private String ownerModuleId;
+    private String ownerBoundedContextId;
 
     private List<ProcessStep> steps;
 
@@ -37,7 +37,7 @@ public class Process {
     private String sla;
 
     public static Process of(ProcessId id, ProcessName name, String description,
-                             String triggerAggregateId, String triggerEvent, String ownerModuleId,
+                             String triggerAggregateId, String triggerEvent, String ownerBoundedContextId,
                              List<ProcessStep> steps, String onCompletionEventName, String sla) {
         var process = new Process();
         process.id = id;
@@ -45,7 +45,7 @@ public class Process {
         process.description = description;
         process.triggerAggregateId = triggerAggregateId;
         process.triggerEvent = triggerEvent;
-        process.ownerModuleId = ownerModuleId;
+        process.ownerBoundedContextId = ownerBoundedContextId;
         process.steps = steps != null ? steps : List.of();
         process.onCompletionEventName = onCompletionEventName;
         process.sla = sla;
@@ -53,20 +53,20 @@ public class Process {
     }
 
     public static Process load(String id, String name, String description,
-                               String triggerAggregateId, String triggerEvent, String ownerModuleId,
+                               String triggerAggregateId, String triggerEvent, String ownerBoundedContextId,
                                List<ProcessStep> steps, String onCompletionEventName, String sla) {
         return of(new ProcessId(id), new ProcessName(name), description,
-                triggerAggregateId, triggerEvent, ownerModuleId, steps, onCompletionEventName, sla);
+                triggerAggregateId, triggerEvent, ownerBoundedContextId, steps, onCompletionEventName, sla);
     }
 
     public void update(ProcessName name, String description,
-                       String triggerAggregateId, String triggerEvent, String ownerModuleId,
+                       String triggerAggregateId, String triggerEvent, String ownerBoundedContextId,
                        List<ProcessStep> steps, String onCompletionEventName, String sla) {
         this.name = name;
         this.description = description;
         this.triggerAggregateId = triggerAggregateId;
         this.triggerEvent = triggerEvent;
-        this.ownerModuleId = ownerModuleId;
+        this.ownerBoundedContextId = ownerBoundedContextId;
         this.steps = steps != null ? steps : List.of();
         this.onCompletionEventName = onCompletionEventName;
         this.sla = sla;

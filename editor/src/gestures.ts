@@ -19,7 +19,7 @@ export interface GestureHost {
   emit(name: string, detail?: unknown): void;
   sceneFor(view: ViewId): Scene;
   owningProcessOf(stepId: string): ModuxModel['processes'] extends (infer T)[] | undefined ? T | undefined : never;
-  owningUseCaseOf(stepId: string): ReturnType<GestureHost['model']['modules'][number]['useCases'] extends (infer U)[] | undefined ? () => U | undefined : never>;
+  owningUseCaseOf(stepId: string): ReturnType<GestureHost['model']['boundedContexts'][number]['useCases'] extends (infer U)[] | undefined ? () => U | undefined : never>;
   owningWorkflowOf(stepId: string): ModuxModel['workflows'] extends (infer W)[] | undefined ? W | undefined : never;
   owningApiOf(operationId: string): ModuxModel['apis'] extends (infer A)[] | undefined ? A | undefined : never;
   menuEntryIn(appId: string, itemId: string): {
@@ -47,10 +47,10 @@ export function applyConnectionGesture(
     // (servicio → módulo). Anything else falls through to the usual meanings.
     if (view === 'context-map' && host.detail === 'distribution') {
       const scene = host.sceneFor('context-map');
-      const codeModules = host.model.codeModules ?? [];
+      const modules = host.model.modules ?? [];
       const boxOf = (id: string): string | null => {
         for (let cur: string | undefined = id; cur; ) {
-          if (codeModules.some((cm) => cm.id === cur)) return cur;
+          if (modules.some((cm) => cm.id === cur)) return cur;
           cur = scene.nodes.find((n) => n.id === cur)?.parentId;
         }
         return null;
@@ -58,15 +58,15 @@ export function applyConnectionGesture(
       const targetBox = boxOf(targetId);
       if (targetBox && targetBox !== sourceId) {
         if ((host.model.services ?? []).some((s) => s.id === sourceId)) {
-          host.command({ kind: 'add-service-code-module', serviceId: sourceId, id: targetBox });
+          host.command({ kind: 'add-service-module', serviceId: sourceId, id: targetBox });
           return;
         }
         const isElement =
-          !codeModules.some((cm) => cm.id === sourceId) &&
-          !host.model.modules.some((mo) => mo.id === sourceId);
+          !modules.some((cm) => cm.id === sourceId) &&
+          !host.model.boundedContexts.some((mo) => mo.id === sourceId);
         if (isElement) {
-          // the backend moves it: an element lives in ONE module of its context
-          host.command({ kind: 'add-code-module-element', id: targetBox, elementId: sourceId });
+          // the backend moves it: an element lives in ONE boundedContext of its context
+          host.command({ kind: 'add-module-element', id: targetBox, elementId: sourceId });
           return;
         }
       }
@@ -178,7 +178,7 @@ export function applyConnectionGesture(
       // botón del grupo → caso de uso o policy: eso es lo que dispara
       const gbtn = /^gbtn:([^:]+):(.+)$/.exec(sourceId);
       if (gbtn) {
-        const isUseCase = host.model.modules.some((mo) => (mo.useCases ?? []).some((u) => u.id === targetId));
+        const isUseCase = host.model.boundedContexts.some((mo) => (mo.useCases ?? []).some((u) => u.id === targetId));
         if (isUseCase) {
           host.command({ kind: 'set-group-button-target', id: gbtn[1], itemId: gbtn[2], useCaseId: targetId });
         } else {
@@ -362,11 +362,11 @@ export function applyConnectionGesture(
           host.emit('modux-notice', { message: 'Un agrupador (con submenú) no puede abrir nada' });
           return;
         }
-        const isUseCase = host.model.modules.some((mod) =>
+        const isUseCase = host.model.boundedContexts.some((mod) =>
           (mod.useCases ?? []).some((u) => u.id === other),
         );
         const isAggregate = (host.model.aggregates ?? []).some((a) => a.id === other);
-        const owningQs = host.model.modules
+        const owningQs = host.model.boundedContexts
           .flatMap((mod) => mod.queryServices ?? [])
           .find((qs) => (qs.operations ?? []).some((op) => op.id === other));
         if (isPage(other)) {
@@ -403,10 +403,10 @@ export function applyConnectionGesture(
           : null;
       if (pair) {
         const useCaseIds = new Set(
-          host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+          host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
         );
         const queryServiceIds = new Set(
-          host.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+          host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
         );
         const page = pages.find((x) => x.id === pair.pageId)!;
         if (useCaseIds.has(pair.other)) {
@@ -541,12 +541,12 @@ export function applyConnectionGesture(
     if (opOcc) {
       const [, operationId, siteId] = opOcc;
       const px = (host.model.proxyApis ?? []).find((p) => p.id === siteId);
-      // The occurrence's API: through the proxy's target, or the site module's implementation.
+      // The occurrence's API: through the proxy's target, or the site boundedContext's implementation.
       const occApiId =
         px?.targetApiId ??
         (host.model.apiImplementations ?? []).find(
           (impl) =>
-            impl.moduleId === siteId &&
+            impl.boundedContextId === siteId &&
             (host.model.apis ?? []).some(
               (a) => a.id === impl.apiId && a.operations.some((o) => o.id === operationId),
             ),
@@ -554,7 +554,7 @@ export function applyConnectionGesture(
       if (!occApiId) return;
       // Occurrence → use case: the fine wiring of the OPERATION itself (any site, same op).
       const occUcIds = new Set(
-        host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (occUcIds.has(targetId)) {
         // From an occurrence, the wiring is ALWAYS per-site: the site is the bounded
@@ -565,7 +565,7 @@ export function applyConnectionGesture(
           kind: 'set-api-operation-implementation',
           apiId: occApiId,
           operationId,
-          moduleId: siteId,
+          boundedContextId: siteId,
           targetUseCaseId: targetId,
         });
         return;
@@ -580,9 +580,9 @@ export function applyConnectionGesture(
         if (implTarget && implTarget[1] === px.targetApiId) {
           targetSiteId = implTarget[2];
         } else if (
-          host.model.modules.some((m) => m.id === targetId) &&
+          host.model.boundedContexts.some((m) => m.id === targetId) &&
           (host.model.apiImplementations ?? []).some(
-            (impl) => impl.apiId === px.targetApiId && impl.moduleId === targetId,
+            (impl) => impl.apiId === px.targetApiId && impl.boundedContextId === targetId,
           )
         ) {
           targetSiteId = targetId;
@@ -607,7 +607,7 @@ export function applyConnectionGesture(
     const agentIds = new Set((host.model.aiAgents ?? []).map((a) => a.id));
     if (agentIds.has(sourceId)) {
       const agentUcIds = new Set(
-        host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (agentUcIds.has(targetId)) {
         const already = (host.model.agentUses ?? []).some(
@@ -670,7 +670,7 @@ export function applyConnectionGesture(
       }
       // Or a query service as a read tool.
       const agentQsIds = new Set(
-        host.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+        host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
       );
       if (agentQsIds.has(targetId)) {
         const already = (host.model.agentQueryUses ?? []).some(
@@ -703,7 +703,7 @@ export function applyConnectionGesture(
         host.model.externalSystems.some((x) => (x.mcpServers ?? []).some((s) => s.id === targetId)) ||
         (host.model.apis ?? []).some((a) => a.id === targetId) ||
         (host.model.apis ?? []).some((a) => a.operations.some((o) => o.id === targetId)) ||
-        host.model.modules.some((m) => (m.useCases ?? []).some((u) => u.id === targetId)) ||
+        host.model.boundedContexts.some((m) => (m.useCases ?? []).some((u) => u.id === targetId)) ||
         (host.model.rags ?? []).some((r) => r.id === targetId);
       const already = [
         ...(gw.mcpServerIds ?? []),
@@ -722,7 +722,7 @@ export function applyConnectionGesture(
     const rag = (host.model.rags ?? []).find((r) => r.id === sourceId);
     if (rag) {
       const readModelIds = new Set(
-        host.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
+        host.model.boundedContexts.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
       );
       if (readModelIds.has(targetId) && !(rag.sourceReadModelIds ?? []).includes(targetId)) {
         host.command({ kind: 'add-rag-source', sourceId, targetId });
@@ -754,8 +754,8 @@ export function applyConnectionGesture(
         return;
       }
       if (
-        host.model.modules.some((mo) => mo.id === targetId) &&
-        !(rag.sourceModuleIds ?? []).includes(targetId)
+        host.model.boundedContexts.some((mo) => mo.id === targetId) &&
+        !(rag.sourceBoundedContextIds ?? []).includes(targetId)
       ) {
         host.command({ kind: 'add-rag-source', sourceId, targetId });
       }
@@ -777,7 +777,7 @@ export function applyConnectionGesture(
         }
         return;
       }
-      const uc = host.model.modules
+      const uc = host.model.boundedContexts
         .flatMap((mo) => mo.useCases ?? [])
         .find((u) => u.id === targetId);
       if (uc) {
@@ -801,10 +801,10 @@ export function applyConnectionGesture(
     }
     // Dragging an EVENT onto a workflow points its trigger at that event.
     if ((host.model.workflows ?? []).some((w) => w.id === targetId)) {
-      const domainEv = host.model.modules
+      const domainEv = host.model.boundedContexts
         .flatMap((mo) => mo.domainEvents ?? [])
         .find((ev) => ev.id === sourceId);
-      const appEv = host.model.modules
+      const appEv = host.model.boundedContexts
         .flatMap((mo) => mo.applicationEvents ?? [])
         .find((ev) => ev.id === sourceId);
       const ev = domainEv ?? appEv;
@@ -813,10 +813,10 @@ export function applyConnectionGesture(
         const emitter = (host.model.emissions ?? []).find((em) => em.domainEventId === sourceId);
         const aggregateIds2 = new Set((host.model.aggregates ?? []).map((a) => a.id));
         const dsIds2 = new Set(
-          host.model.modules.flatMap((mo) => (mo.domainServices ?? []).map((d) => d.id)),
+          host.model.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((d) => d.id)),
         );
         const ucIds2 = new Set(
-          host.model.modules.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)),
+          host.model.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)),
         );
         host.command({
           kind: 'set-workflow-trigger',
@@ -843,13 +843,13 @@ export function applyConnectionGesture(
         }
         return;
       }
-      if (host.model.modules.some((m) => m.id === targetId)) {
+      if (host.model.boundedContexts.some((m) => m.id === targetId)) {
         if (!px.targetApiId) return; // nothing to implement until the proxy fronts an API
         const already = (host.model.apiImplementations ?? []).some(
-          (impl) => impl.apiId === px.targetApiId && impl.moduleId === targetId,
+          (impl) => impl.apiId === px.targetApiId && impl.boundedContextId === targetId,
         );
         if (!already) {
-          host.command({ kind: 'add-api-implementation', apiId: px.targetApiId, moduleId: targetId });
+          host.command({ kind: 'add-api-implementation', apiId: px.targetApiId, boundedContextId: targetId });
         }
         return;
       }
@@ -870,12 +870,12 @@ export function applyConnectionGesture(
         }
         return;
       }
-      if (host.model.modules.some((m) => m.id === targetId)) {
+      if (host.model.boundedContexts.some((m) => m.id === targetId)) {
         const already = (host.model.apiImplementations ?? []).some(
-          (impl) => impl.apiId === sourceId && impl.moduleId === targetId,
+          (impl) => impl.apiId === sourceId && impl.boundedContextId === targetId,
         );
         if (!already) {
-          host.command({ kind: 'add-api-implementation', apiId: sourceId, moduleId: targetId });
+          host.command({ kind: 'add-api-implementation', apiId: sourceId, boundedContextId: targetId });
         }
       }
       return;
@@ -886,8 +886,8 @@ export function applyConnectionGesture(
     const actorIds = new Set((host.model.actors ?? []).map((a) => a.id));
     if (agentIds.has(targetId)) {
       const eventSourceIds = new Set([
-        ...host.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
-        ...host.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
+        ...host.model.boundedContexts.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
+        ...host.model.boundedContexts.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
       ]);
       if (eventSourceIds.has(sourceId)) {
         const already = (host.model.agentTriggers ?? []).some(
@@ -900,10 +900,10 @@ export function applyConnectionGesture(
     }
     if (actorIds.has(sourceId)) {
       const actorUcIds = new Set(
-        host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       const actorQsIds = new Set(
-        host.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+        host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
       );
       if (actorUcIds.has(targetId) || actorQsIds.has(targetId)) {
         const already = (host.model.actorUses ?? []).some(
@@ -938,7 +938,7 @@ export function applyConnectionGesture(
     const owningApi = host.owningApiOf(sourceId);
     if (owningApi) {
       const wireUcIds = new Set(
-        host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (wireUcIds.has(targetId)) {
         host.command({
@@ -949,12 +949,12 @@ export function applyConnectionGesture(
         });
         return;
       }
-      if (host.model.modules.some((m) => m.id === targetId)) {
+      if (host.model.boundedContexts.some((m) => m.id === targetId)) {
         host.command({
           kind: 'set-api-operation-target',
           apiId: owningApi.id,
           id: sourceId,
-          moduleId: targetId,
+          boundedContextId: targetId,
         });
         return;
       }
@@ -966,7 +966,7 @@ export function applyConnectionGesture(
     if (notifOf(sourceId) || notifOf(targetId)) {
       const notif = notifOf(sourceId) ?? notifOf(targetId)!;
       const other = notifOf(sourceId) ? targetId : sourceId;
-      const isEvent = host.model.modules.some((mo) =>
+      const isEvent = host.model.boundedContexts.some((mo) =>
         [...(mo.domainEvents ?? []), ...(mo.applicationEvents ?? [])].some((ev) => ev.id === other),
       );
       if (isEvent) {
@@ -997,8 +997,8 @@ export function applyConnectionGesture(
         host.command({ kind: 'set-document-model', id: doc.id, modelId: other });
         return;
       }
-      const qs = host.model.modules.flatMap((mo) => mo.queryServices ?? []).find((x) => x.id === other);
-      const opOwner = host.model.modules
+      const qs = host.model.boundedContexts.flatMap((mo) => mo.queryServices ?? []).find((x) => x.id === other);
+      const opOwner = host.model.boundedContexts
         .flatMap((mo) => (mo.queryServices ?? []).flatMap((x) => (x.operations ?? []).map((op) => ({ op, qs: x }))))
         .find(({ op }) => op.id === other);
       if (qs || opOwner) {
@@ -1029,9 +1029,9 @@ export function applyConnectionGesture(
         }
         return;
       }
-      const isModule = host.model.modules.some((mo) => mo.id === other);
+      const isBoundedContext = host.model.boundedContexts.some((mo) => mo.id === other);
       const isEtl = (host.model.etlFlows ?? []).some((f) => f.id === other);
-      if (isModule || isEtl) {
+      if (isBoundedContext || isEtl) {
         host.command({ kind: 'set-identity-provider', id: other, targetId: idp.id });
         return;
       }
@@ -1055,7 +1055,7 @@ export function applyConnectionGesture(
       ]);
       const owningApi = (host.model.apis ?? []).find((a) => a.operations.some((o) => o.id === other));
       const evAll = new Set(
-        host.model.modules.flatMap((mo) => [
+        host.model.boundedContexts.flatMap((mo) => [
           ...(mo.domainEvents ?? []).map((ev) => ev.id),
           ...(mo.applicationEvents ?? []).map((ev) => ev.id),
         ]),
@@ -1109,7 +1109,7 @@ export function applyConnectionGesture(
         : { externalTableId: sourceId };
       const alreadyFrom = (p: import('./model.js').ProjectionRef) =>
         externalOp ? p.sourceExternalUseCaseId === sourceId : p.sourceExternalTableId === sourceId;
-      const targetReadModel = host.model.modules
+      const targetReadModel = host.model.boundedContexts
         .flatMap((m) => m.readModels ?? [])
         .find((rm) => rm.id === targetId);
       if (targetReadModel) {
@@ -1127,18 +1127,18 @@ export function applyConnectionGesture(
         }
         return;
       }
-      const targetModule = host.model.modules.find((m) => m.id === targetId);
-      if (targetModule) {
+      const targetBoundedContext = host.model.boundedContexts.find((m) => m.id === targetId);
+      if (targetBoundedContext) {
         const exists = (host.model.projections ?? []).some(
-          (p) => alreadyFrom(p) && p.moduleId === targetId,
+          (p) => alreadyFrom(p) && p.boundedContextId === targetId,
         );
         if (!exists) {
           host.command({
             kind: 'add-projection',
-            id: `proj-${slug(sourceName)}-${slug(targetModule.name)}`,
+            id: `proj-${slug(sourceName)}-${slug(targetBoundedContext.name)}`,
             name: `${sourceName}ViewProjection`,
             ...sourceKey,
-            moduleId: targetId,
+            boundedContextId: targetId,
             readModelName: `${sourceName}View`,
           });
         }
@@ -1151,7 +1151,7 @@ export function applyConnectionGesture(
     // (CDC, snapshots, replication…) is decided later — this only records the intent.
     const projAggregate = (host.model.aggregates ?? []).find((a) => a.id === sourceId);
     if (projAggregate) {
-      const targetReadModel = host.model.modules
+      const targetReadModel = host.model.boundedContexts
         .flatMap((m) => m.readModels ?? [])
         .find((rm) => rm.id === targetId);
       if (targetReadModel) {
@@ -1169,18 +1169,18 @@ export function applyConnectionGesture(
         }
         return;
       }
-      const targetModule = host.model.modules.find((m) => m.id === targetId);
-      if (targetModule) {
+      const targetBoundedContext = host.model.boundedContexts.find((m) => m.id === targetId);
+      if (targetBoundedContext) {
         const exists = (host.model.projections ?? []).some(
-          (p) => p.sourceAggregateId === sourceId && p.moduleId === targetId,
+          (p) => p.sourceAggregateId === sourceId && p.boundedContextId === targetId,
         );
         if (!exists) {
           host.command({
             kind: 'add-projection',
-            id: `proj-${slug(projAggregate.name)}-${slug(targetModule.name)}`,
+            id: `proj-${slug(projAggregate.name)}-${slug(targetBoundedContext.name)}`,
             name: `${projAggregate.name}ViewProjection`,
             aggregateId: sourceId,
-            moduleId: targetId,
+            boundedContextId: targetId,
             readModelName: `${projAggregate.name}View`,
           });
         }
@@ -1190,20 +1190,20 @@ export function applyConnectionGesture(
     }
     // Dragging from an aggregate/use case onto a domain event declares an emission.
     const eventIds = new Set(
-      host.model.modules.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
+      host.model.boundedContexts.flatMap((m) => (m.domainEvents ?? []).map((ev) => ev.id)),
     );
     // Only aggregates and domain services emit domain events; use cases emit
     // application events instead.
     const emitterIds = new Set([
       ...(host.model.aggregates ?? []).map((a) => a.id),
-      ...host.model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
+      ...host.model.boundedContexts.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
     ]);
     const appEventIds = new Set(
-      host.model.modules.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
+      host.model.boundedContexts.flatMap((m) => (m.applicationEvents ?? []).map((ev) => ev.id)),
     );
-    const ucIds = new Set(host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)));
+    const ucIds = new Set(host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)));
     const qsIds = new Set(
-      host.model.modules.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
+      host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
     );
     if (ucIds.has(sourceId) && qsIds.has(targetId)) {
       const already = (host.model.queryCalls ?? []).some(
@@ -1230,7 +1230,7 @@ export function applyConnectionGesture(
       return;
     }
     // Scheduled trigger → use case (or policy): the cron fires it.
-    const sourceTrigger = host.model.modules
+    const sourceTrigger = host.model.boundedContexts
       .flatMap((mo) => mo.scheduledTriggers ?? [])
       .find((t) => t.id === sourceId);
     if (sourceTrigger && ucIds.has(targetId)) {
@@ -1265,23 +1265,23 @@ export function applyConnectionGesture(
     // in the agents-as-target guard.)
     if (eventIds.has(sourceId) || appEventIds.has(sourceId)) {
       const isApplicationEvent = appEventIds.has(sourceId);
-      const event = host.model.modules
+      const event = host.model.boundedContexts
         .flatMap((m) => (isApplicationEvent ? m.applicationEvents : m.domainEvents) ?? [])
         .find((ev) => ev.id === sourceId);
-      const targetUseCase = host.model.modules
-        .flatMap((m) => (m.useCases ?? []).map((u) => ({ u, module: m })))
+      const targetUseCase = host.model.boundedContexts
+        .flatMap((m) => (m.useCases ?? []).map((u) => ({ u, boundedContext: m })))
         .find(({ u }) => u.id === targetId);
-      const targetReadModel = host.model.modules
-        .flatMap((m) => (m.readModels ?? []).map((rm) => ({ rm, module: m })))
+      const targetReadModel = host.model.boundedContexts
+        .flatMap((m) => (m.readModels ?? []).map((rm) => ({ rm, boundedContext: m })))
         .find(({ rm }) => rm.id === targetId);
-      const targetModule =
-        host.model.modules.find((m) => m.id === targetId) ??
-        targetReadModel?.module ??
-        targetUseCase?.module;
-      if (!event || !targetModule) return;
+      const targetBoundedContext =
+        host.model.boundedContexts.find((m) => m.id === targetId) ??
+        targetReadModel?.boundedContext ??
+        targetUseCase?.boundedContext;
+      if (!event || !targetBoundedContext) return;
       const aggregateIds = new Set((host.model.aggregates ?? []).map((a) => a.id));
       const domainServiceIds = new Set(
-        host.model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
+        host.model.boundedContexts.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
       );
       const emitter = (host.model.emissions ?? []).find(
         (em) =>
@@ -1319,7 +1319,7 @@ export function applyConnectionGesture(
             !isApplicationEvent && !emitterIsAggregate ? emitter.sourceId : undefined,
           triggerUseCaseId: isApplicationEvent ? emitter.sourceId : undefined,
           triggerEvent: event.name,
-          targetId: targetModule.id,
+          targetId: targetBoundedContext.id,
           targetUseCaseId: targetUseCase.u.id,
         });
         return;
@@ -1329,7 +1329,7 @@ export function applyConnectionGesture(
         (f) =>
           f.archetype === 'MATERIALIZES' &&
           f.triggerEvent === event.name &&
-          f.targetId === targetModule.id &&
+          f.targetId === targetBoundedContext.id &&
           f.readModelName === readModelName,
       );
       if (exists) return;
@@ -1343,7 +1343,7 @@ export function applyConnectionGesture(
           !isApplicationEvent && !emitterIsAggregate ? emitter.sourceId : undefined,
         triggerUseCaseId: isApplicationEvent ? emitter.sourceId : undefined,
         triggerEvent: event.name,
-        targetId: targetModule.id,
+        targetId: targetBoundedContext.id,
         readModelName,
       });
       return;
@@ -1353,7 +1353,7 @@ export function applyConnectionGesture(
       ...emitterIds,
       ...ucIds,
       ...qsIds,
-      ...host.model.modules.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
+      ...host.model.boundedContexts.flatMap((m) => (m.readModels ?? []).map((rm) => rm.id)),
     ]);
     if (
       childIds.has(sourceId) ||
@@ -1366,7 +1366,7 @@ export function applyConnectionGesture(
     const relationExternalIds = new Set(host.model.externalSystems.map((s) => s.id));
     if (relationExternalIds.has(sourceId)) {
       const extUcIds0 = new Set(
-        host.model.modules.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
+        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
       );
       if (extUcIds0.has(targetId)) {
         const already = (host.model.externalCalls ?? []).some(
@@ -1709,16 +1709,16 @@ export function performDeleteGesture(
       return;
     }
     if (view === 'context-map' && elementType === 'edge' && kind === 'api-impl-wire') {
-      // Edge ids are `apiimplwire:<operationId>@<moduleId>` (see context-map.ts).
+      // Edge ids are `apiimplwire:<operationId>@<boundedContextId>` (see context-map.ts).
       const match = /^apiimplwire:(.+)@(.+)$/.exec(id);
       if (!match) return;
-      const [, operationId, moduleId] = match;
+      const [, operationId, boundedContextId] = match;
       const apiId = (host.model.apis ?? []).find((a) =>
         a.operations.some((o) => o.id === operationId),
       )?.id;
       if (!apiId) return;
       host.clearSelection();
-      host.command({ kind: 'remove-api-operation-implementation', apiId, operationId, moduleId });
+      host.command({ kind: 'remove-api-operation-implementation', apiId, operationId, boundedContextId });
       return;
     }
     if (view === 'context-map' && elementType === 'edge' && kind === 'ext-op-use') {
@@ -1848,22 +1848,22 @@ export function performDeleteGesture(
       const match = /^deploy:(.+)->(.+)$/.exec(id);
       if (match) {
         host.clearSelection();
-        host.command({ kind: 'remove-service-code-module', serviceId: match[1], id: match[2] });
+        host.command({ kind: 'remove-service-module', serviceId: match[1], id: match[2] });
       }
       return;
     }
-    if (view === 'context-map' && elementType === 'node' && kind === 'code-module') {
+    if (view === 'context-map' && elementType === 'node' && kind === 'module') {
       host.clearSelection();
-      host.command({ kind: 'remove-code-module', id });
+      host.command({ kind: 'remove-module', id });
       return;
     }
     if (view === 'context-map' && host.detail === 'distribution' && elementType === 'node') {
-      // Supr on a chip inside a module box UNPACKS it — the element itself survives.
+      // Supr on a chip inside a boundedContext box UNPACKS it — the element itself survives.
       const scene = host.sceneFor('context-map');
       for (let cur = scene.nodes.find((n) => n.id === id)?.parentId; cur; ) {
-        if ((host.model.codeModules ?? []).some((cm) => cm.id === cur)) {
+        if ((host.model.modules ?? []).some((cm) => cm.id === cur)) {
           host.clearSelection();
-          host.command({ kind: 'remove-code-module-element', id: cur, elementId: id });
+          host.command({ kind: 'remove-module-element', id: cur, elementId: id });
           return;
         }
         cur = scene.nodes.find((n) => n.id === cur)?.parentId;
@@ -2053,7 +2053,7 @@ export function performDeleteGesture(
       const match = /^apiimpl:(.+)@(.+)$/.exec(id);
       if (!match) return;
       host.clearSelection();
-      host.command({ kind: 'remove-api-implementation', apiId: match[1], moduleId: match[2] });
+      host.command({ kind: 'remove-api-implementation', apiId: match[1], boundedContextId: match[2] });
       return;
     }
     if (elementType === 'node' && kind === 'proxy-api') {
@@ -2117,11 +2117,11 @@ export function performDeleteGesture(
       host.command({ kind: 'set-proxy-target', id: match[1], targetId: '' });
       return;
     }
-    if (elementType === 'node' && kind === 'module') {
-      const hasAggregates = (host.model.aggregates ?? []).some((a) => a.moduleId === id);
-      if (hasAggregates) return; // integrity guard: empty the module first
+    if (elementType === 'node' && kind === 'boundedContext') {
+      const hasAggregates = (host.model.aggregates ?? []).some((a) => a.boundedContextId === id);
+      if (hasAggregates) return; // integrity guard: empty the boundedContext first
       host.clearSelection();
-      host.command({ kind: 'remove-module', id });
+      host.command({ kind: 'remove-boundedContext', id });
       return;
     }
     if (elementType === 'node' && kind === 'aggregate') {

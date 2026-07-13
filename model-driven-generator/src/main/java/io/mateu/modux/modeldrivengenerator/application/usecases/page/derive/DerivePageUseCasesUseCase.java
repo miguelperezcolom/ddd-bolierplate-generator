@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.page.derive;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * Runs the screen→use-case derivation over every page: creates the missing use-case stubs (and
- * listing query services), rewires the pages to them, and attaches the stubs to the module that
+ * listing query services), rewires the pages to them, and attaches the stubs to the boundedContext that
  * owns the page's aggregate. Idempotent: re-running derives nothing new.
  */
 @Service
@@ -45,7 +45,7 @@ public class DerivePageUseCasesUseCase {
             repository.save(result.rewiredPage());
             pagesRewired++;
 
-            attachToOwnerModule(page, result.newUseCases());
+            attachToOwnerBoundedContext(page, result.newUseCases());
         }
         var summary = useCases + " use cases y " + queryServices + " query services derivados; "
                 + pagesRewired + " páginas recableadas.";
@@ -53,10 +53,10 @@ public class DerivePageUseCasesUseCase {
         return summary;
     }
 
-    /** New stubs belong to the module that owns the page's aggregate (when resolvable). */
-    private void attachToOwnerModule(PageEntity page, List<UseCaseEntity> newUseCases) {
+    /** New stubs belong to the boundedContext that owns the page's aggregate (when resolvable). */
+    private void attachToOwnerBoundedContext(PageEntity page, List<UseCaseEntity> newUseCases) {
         if (page.aggregateId() == null || newUseCases.isEmpty()) return;
-        repository.findAllOfType(ModuleEntity.class).stream()
+        repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(page.aggregateId()))
                 .findFirst()
                 .ifPresent(m -> {

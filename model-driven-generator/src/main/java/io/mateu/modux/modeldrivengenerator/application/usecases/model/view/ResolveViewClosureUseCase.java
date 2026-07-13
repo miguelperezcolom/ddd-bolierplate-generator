@@ -34,7 +34,7 @@ public class ResolveViewClosureUseCase {
                 .orElseThrow(() -> new IllegalArgumentException("No view with id '" + viewId + "'"));
 
         // A computed view derives its members from a seed element; a curated one lists them. Either way
-        // the closure below does the real work — seeding with a module yields its whole bounded context,
+        // the closure below does the real work — seeding with a boundedContext yields its whole bounded context,
         // seeding with a use case yields that use case plus everything it depends on.
         var members = view.isComputed() ? List.of(view.seedId()) : view.memberIds();
 

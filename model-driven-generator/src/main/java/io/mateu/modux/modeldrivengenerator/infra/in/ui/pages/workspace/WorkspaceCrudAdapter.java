@@ -1,9 +1,9 @@
 package io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace;
 
-import io.mateu.modux.modeldrivengenerator.application.out.query.ModuleQueryService;
+import io.mateu.modux.modeldrivengenerator.application.out.query.BoundedContextQueryService;
 import io.mateu.modux.modeldrivengenerator.application.out.query.ProjectQueryService;
 import io.mateu.modux.modeldrivengenerator.application.out.query.ServiceQueryService;
-import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ModuleDto;
+import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.BoundedContextDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ServiceDto;
@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
  * concept's own CRUD adapter. Because ids are unique and unprefixed, the opened editor reports the same
  * id the route carries, so view/edit/save behave exactly like any CRUD.
  *
- * <p>Tree shape: Project ▸ Service ▸ {Gateways} ▸ Module ▸ {Aggregates, Entities, Value Objects,
+ * <p>Tree shape: Project ▸ Service ▸ {Gateways} ▸ BoundedContext ▸ {Aggregates, Entities, Value Objects,
  * Domain Events, Use Cases, Flows, Processes, Sagas, Projections, Read Models, Subscriptions,
  * Query Services, Integration Events, Scheduled Triggers}, plus a global Decisions group. Creation
  * ({@link WorkspaceCreationForm}) and deletion are enabled; both keep parent reference lists in sync.
@@ -52,7 +52,7 @@ public class WorkspaceCrudAdapter
 
   private final ProjectQueryService projectQueryService;
   private final ServiceQueryService serviceQueryService;
-  private final ModuleQueryService moduleQueryService;
+  private final BoundedContextQueryService boundedContextQueryService;
 
   private final ModelStore repository;
   private final ElementTypeRegistry registry;
@@ -61,7 +61,7 @@ public class WorkspaceCrudAdapter
 
   private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.project.ProjectCrudAdapter projectAdapter;
   private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudAdapter serviceAdapter;
-  private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.module.ModuleCrudAdapter moduleAdapter;
+  private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.boundedcontext.BoundedContextCrudAdapter boundedContextAdapter;
   private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudAdapter aggregateAdapter;
   private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudAdapter entityAdapter;
   private final io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudAdapter valueObjectAdapter;
@@ -93,11 +93,11 @@ public class WorkspaceCrudAdapter
           ServiceDto service = serviceQueryService.getById(serviceId).orElse(null);
           if (service == null) continue;
           List<WorkspaceRow> serviceChildren = new ArrayList<>();
-          for (String moduleId : service.moduleIds()) {
-            ModuleDto module = moduleQueryService.getById(moduleId).orElse(null);
-            if (module == null) continue;
+          for (String boundedContextId : service.boundedContextIds()) {
+            BoundedContextDto boundedContext = boundedContextQueryService.getById(boundedContextId).orElse(null);
+            if (boundedContext == null) continue;
             serviceChildren.add(
-                WorkspaceRow.of(module.id(), "Module: " + module.name(), moduleChildren(module)));
+                WorkspaceRow.of(boundedContext.id(), "BoundedContext: " + boundedContext.name(), boundedContextChildren(boundedContext)));
           }
           addGroup(serviceChildren, service.id() + "#gw", "Gateways",
               entityLeaves(GatewayEntity.class, g -> service.id().equals(g.serviceId())));
@@ -130,29 +130,29 @@ public class WorkspaceCrudAdapter
     return out;
   }
 
-  private List<WorkspaceRow> moduleChildren(ModuleDto module) {
-    String base = module.id() + "#";
+  private List<WorkspaceRow> boundedContextChildren(BoundedContextDto boundedContext) {
+    String base = boundedContext.id() + "#";
     List<WorkspaceRow> categories = new ArrayList<>();
     // Operations and invariants are not first-class components (no standalone id/editor); they are
     // edited inline within their aggregate, so they are not shown as tree nodes. Aggregates are leaves.
-    addGroup(categories, base + "agg", "Aggregates", idLeaves(module.aggregateIds()));
-    addGroup(categories, base + "ent", "Entities", idLeaves(module.entityIds()));
-    addGroup(categories, base + "vo", "Value Objects", idLeaves(module.valueObjectIds()));
-    addGroup(categories, base + "de", "Domain Events", idLeaves(module.domainEventIds()));
-    addGroup(categories, base + "uc", "Use Cases", idLeaves(module.useCaseIds()));
+    addGroup(categories, base + "agg", "Aggregates", idLeaves(boundedContext.aggregateIds()));
+    addGroup(categories, base + "ent", "Entities", idLeaves(boundedContext.entityIds()));
+    addGroup(categories, base + "vo", "Value Objects", idLeaves(boundedContext.valueObjectIds()));
+    addGroup(categories, base + "de", "Domain Events", idLeaves(boundedContext.domainEventIds()));
+    addGroup(categories, base + "uc", "Use Cases", idLeaves(boundedContext.useCaseIds()));
     addGroup(categories, base + "flow", "Flows",
-        entityLeaves(FlowEntity.class, f -> module.id().equals(f.targetModuleId())));
+        entityLeaves(FlowEntity.class, f -> boundedContext.id().equals(f.targetBoundedContextId())));
     addGroup(categories, base + "proc", "Processes",
-        entityLeaves(ProcessEntity.class, p -> module.id().equals(p.ownerModuleId())));
-    addGroup(categories, base + "saga", "Sagas", idLeaves(module.sagaIds()));
-    addGroup(categories, base + "proj", "Projections", idLeaves(module.projectionIds()));
-    addGroup(categories, base + "rm", "Read Models", idLeaves(module.readModelIds()));
-    addGroup(categories, base + "sub", "Subscriptions", idLeaves(module.subscriptionIds()));
+        entityLeaves(ProcessEntity.class, p -> boundedContext.id().equals(p.ownerBoundedContextId())));
+    addGroup(categories, base + "saga", "Sagas", idLeaves(boundedContext.sagaIds()));
+    addGroup(categories, base + "proj", "Projections", idLeaves(boundedContext.projectionIds()));
+    addGroup(categories, base + "rm", "Read Models", idLeaves(boundedContext.readModelIds()));
+    addGroup(categories, base + "sub", "Subscriptions", idLeaves(boundedContext.subscriptionIds()));
     addGroup(categories, base + "qs", "Query Services",
-        entityLeaves(QueryServiceEntity.class, q -> module.id().equals(q.moduleId())));
+        entityLeaves(QueryServiceEntity.class, q -> boundedContext.id().equals(q.boundedContextId())));
     addGroup(categories, base + "ie", "Integration Events",
-        entityLeaves(IntegrationEventEntity.class, e -> module.id().equals(e.moduleId())));
-    addGroup(categories, base + "st", "Scheduled Triggers", idLeaves(module.scheduledTriggerIds()));
+        entityLeaves(IntegrationEventEntity.class, e -> boundedContext.id().equals(e.boundedContextId())));
+    addGroup(categories, base + "st", "Scheduled Triggers", idLeaves(boundedContext.scheduledTriggerIds()));
     return categories;
   }
 
@@ -240,7 +240,7 @@ public class WorkspaceCrudAdapter
     return switch (typeName) {
       case "projects" -> projectAdapter;
       case "services" -> serviceAdapter;
-      case "modules" -> moduleAdapter;
+      case "boundedContexts" -> boundedContextAdapter;
       case "aggregates" -> aggregateAdapter;
       case "entities" -> entityAdapter;
       case "valueObjects" -> valueObjectAdapter;
@@ -270,7 +270,7 @@ public class WorkspaceCrudAdapter
 
   @Override
   public void deleteAllById(List<String> ids, HttpRequest httpRequest) {
-    // group/category nodes carry synthetic ids ("module#agg") — never deletable
+    // group/category nodes carry synthetic ids ("boundedContext#agg") — never deletable
     deleteElementsUseCase.handle(ids.stream().filter(id -> !id.contains("#")).toList());
   }
 }

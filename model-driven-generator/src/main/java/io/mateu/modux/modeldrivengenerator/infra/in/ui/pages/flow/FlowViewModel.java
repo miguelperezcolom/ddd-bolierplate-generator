@@ -9,8 +9,8 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.flow.save.SaveFl
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.AggregateIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.AggregateIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.UseCaseIdOptionsSupplier;
 import io.mateu.uidl.annotations.GeneratedValue;
@@ -50,8 +50,8 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     String triggerEvent;
 
     @Tab("Target")
-    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
-    String targetModuleId;
+    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
+    String targetBoundedContextId;
 
     @Hidden("state['archetype'] != 'MATERIALIZES'")
     String readModelName;
@@ -75,7 +75,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Override
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateFlowCommand(id, name, description, archetype,
-                triggerAggregateId, triggerEvent, targetModuleId,
+                triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides));
         return id;
     }
@@ -83,7 +83,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
     @Override
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveFlowCommand(id, name, description, archetype,
-                triggerAggregateId, triggerEvent, targetModuleId,
+                triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides));
     }
 
@@ -99,7 +99,7 @@ public class FlowViewModel implements Identifiable, CrudEditorForm<String>, Crud
         archetype = model.archetype();
         triggerAggregateId = model.triggerAggregateId();
         triggerEvent = model.triggerEvent();
-        targetModuleId = model.targetModuleId();
+        targetBoundedContextId = model.targetBoundedContextId();
         readModelName = model.readModelName();
         materializedFields = model.materializedFields();
         targetUseCaseId = model.targetUseCaseId();

@@ -17,7 +17,7 @@ public class CreateReadModelUseCase {
         var readModel = ReadModel.of(
                 new ReadModelId(command.id()),
                 new ReadModelName(command.name()),
-                command.moduleId(),
+                command.boundedContextId(),
                 command.description(),
                 command.modelId(),
                 command.storageType(),

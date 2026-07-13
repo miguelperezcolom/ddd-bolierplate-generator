@@ -16,8 +16,8 @@ public class ImportAsyncApiMojo extends AbstractMojo {
                defaultValue = "${project.basedir}/.dev/data/model-driven-store.yaml")
     private String specFile;
 
-    @Parameter(property = "modux.moduleId")
-    private String moduleId;
+    @Parameter(property = "modux.boundedContextId")
+    private String boundedContextId;
 
     @Parameter(property = "modux.filePath", required = true)
     private String filePath;
@@ -31,7 +31,7 @@ public class ImportAsyncApiMojo extends AbstractMojo {
             ctx.register(CommonFileRepository.class, ImportAsyncApiUseCase.class);
             ctx.refresh();
             ctx.getBean(ImportAsyncApiUseCase.class)
-               .handle(new ImportAsyncApiCommand(moduleId, filePath));
+               .handle(new ImportAsyncApiCommand(boundedContextId, filePath));
         } catch (Exception e) {
             throw new MojoExecutionException("AsyncAPI import failed: " + e.getMessage(), e);
         }

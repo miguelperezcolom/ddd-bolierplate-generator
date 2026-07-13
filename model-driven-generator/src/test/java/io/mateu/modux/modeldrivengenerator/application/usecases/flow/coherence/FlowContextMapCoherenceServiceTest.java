@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextM
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class FlowContextMapCoherenceServiceTest {
 
-    private static final List<ModuleEntity> MODULES = List.of(
+    private static final List<BoundedContextEntity> BOUNDED_CONTEXTS = List.of(
             mod("mod-reservas", "Reservas", List.of("agg-reserva")),
             mod("mod-frontoffice", "FrontOffice", List.of("agg-estancia")));
 
@@ -32,8 +32,8 @@ class FlowContextMapCoherenceServiceTest {
 
         assertEquals(FlowContextMapFinding.Status.MISSING_RELATION, finding.status());
         assertEquals(ContextMapRelationType.OPEN_HOST_SERVICE, finding.suggestedType());
-        assertEquals("mod-reservas", finding.sourceModuleId());
-        assertEquals("mod-frontoffice", finding.targetModuleId());
+        assertEquals("mod-reservas", finding.sourceBoundedContextId());
+        assertEquals("mod-frontoffice", finding.targetBoundedContextId());
     }
 
     @Test
@@ -86,16 +86,16 @@ class FlowContextMapCoherenceServiceTest {
     private static FlowContextMapFinding analyzeOne(FlowEntity flow, List<ContextMapRelationEntity> relations) {
         var project = proj("proj-hotel", List.of("svc"), relations);
         var findings = FlowContextMapCoherenceService.analyze(
-                List.of(flow), AGGREGATES, MODULES, List.of(project));
+                List.of(flow), AGGREGATES, BOUNDED_CONTEXTS, List.of(project));
         return findings.get(0);
     }
 
     // --- compact factories so the records' long arg lists don't drown the test ---
 
     private static FlowEntity flow(String id, String name, FlowArchetype archetype,
-                                   String triggerAggregateId, String targetModuleId) {
+                                   String triggerAggregateId, String targetBoundedContextId) {
         return new FlowEntity(id, name, null, archetype, triggerAggregateId, "SomeEvent",
-                targetModuleId, null, List.of(), null, List.of(), List.of());
+                targetBoundedContextId, null, List.of(), null, List.of(), List.of());
     }
 
     private static ContextMapRelationEntity rel(String source, String target, String type) {
@@ -107,8 +107,8 @@ class FlowContextMapCoherenceServiceTest {
         return new AggregateEntity(id, id, null, null, null, null, null, false, false, null, null, null, null);
     }
 
-    private static ModuleEntity mod(String id, String name, List<String> aggregateIds) {
-        return new ModuleEntity(id, name, null, aggregateIds, null, null, null, null, null, null, null, null,
+    private static BoundedContextEntity mod(String id, String name, List<String> aggregateIds) {
+        return new BoundedContextEntity(id, name, null, aggregateIds, null, null, null, null, null, null, null, null,
                 null, null, null, null, false, null, null, null, null, null);
     }
 

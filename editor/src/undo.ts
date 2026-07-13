@@ -47,8 +47,8 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'create-ui-app':
         return [{ kind: 'delete-ui-app', id: c.id }];
-      case 'add-code-module':
-        return [{ kind: 'remove-code-module', id: c.id }];
+      case 'add-module':
+        return [{ kind: 'remove-module', id: c.id }];
       case 'add-transformation':
         return [{ kind: 'remove-transformation', id: c.id }];
       case 'add-custom-code':
@@ -500,17 +500,17 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'remove-actor-app', actorId: c.actorId, appId: c.appId }];
       case 'remove-actor-app':
         return [{ kind: 'add-actor-app', actorId: c.actorId, appId: c.appId }];
-      case 'add-module':
-        return [{ kind: 'remove-module', id: c.id }];
-      case 'remove-module': {
-        const m = host.model.modules.find((x) => x.id === c.id);
+      case 'add-boundedContext':
+        return [{ kind: 'remove-boundedContext', id: c.id }];
+      case 'remove-boundedContext': {
+        const m = host.model.boundedContexts.find((x) => x.id === c.id);
         if (!m) return null;
         const rels = host.model.relations.filter(
           (r) => (r.sourceId === c.id || r.targetId === c.id) && r.type != null,
         );
         return [
-          { kind: 'add-module', id: m.id, name: m.name, subdomainType: m.subdomainType ?? 'GENERIC' },
-          // Re-annotate the derived pairs this module participated in.
+          { kind: 'add-boundedContext', id: m.id, name: m.name, subdomainType: m.subdomainType ?? 'GENERIC' },
+          // Re-annotate the derived pairs this boundedContext participated in.
           ...rels.map(
             (r): ModuxCommand => ({
               kind: 'set-relation-type',
@@ -525,16 +525,16 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'remove-aggregate', id: c.id }];
       case 'remove-aggregate': {
         const a = (host.model.aggregates ?? []).find((x) => x.id === c.id);
-        return a ? [{ kind: 'add-aggregate', id: a.id, name: a.name, moduleId: a.moduleId }] : null;
+        return a ? [{ kind: 'add-aggregate', id: a.id, name: a.name, boundedContextId: a.boundedContextId }] : null;
       }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
       case 'add-query-service':
         return [{ kind: 'remove-query-service', id: c.id }];
       case 'remove-query-service': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const qs = (m.queryServices ?? []).find((x) => x.id === c.id);
-          if (qs) return [{ kind: 'add-query-service', id: qs.id, name: qs.name, moduleId: m.id }];
+          if (qs) return [{ kind: 'add-query-service', id: qs.id, name: qs.name, boundedContextId: m.id }];
         }
         return null;
       }
@@ -575,7 +575,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
               id: px.id,
               name: px.name,
               targetId: px.targetApiId,
-              moduleId: px.publishedByExternalSystemId,
+              boundedContextId: px.publishedByExternalSystemId,
             }]
           : null;
       }
@@ -584,9 +584,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return px ? [{ kind: 'set-proxy-target', id: c.id, targetId: px.targetApiId ?? '' }] : null;
       }
       case 'add-api-implementation':
-        return [{ kind: 'remove-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
+        return [{ kind: 'remove-api-implementation', apiId: c.apiId, boundedContextId: c.boundedContextId }];
       case 'remove-api-implementation':
-        return [{ kind: 'add-api-implementation', apiId: c.apiId, moduleId: c.moduleId }];
+        return [{ kind: 'add-api-implementation', apiId: c.apiId, boundedContextId: c.boundedContextId }];
       case 'add-proxy-operation-route':
         return [{
           kind: 'remove-proxy-operation-route',
@@ -617,33 +617,33 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         }];
       case 'set-api-operation-implementation': {
         const prev = (host.model.apiOperationImplementations ?? []).find(
-          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.moduleId === c.moduleId,
+          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.boundedContextId === c.boundedContextId,
         );
         return prev
           ? [{
               kind: 'set-api-operation-implementation',
               apiId: c.apiId,
               operationId: c.operationId,
-              moduleId: c.moduleId,
+              boundedContextId: c.boundedContextId,
               targetUseCaseId: prev.useCaseId,
             }]
           : [{
               kind: 'remove-api-operation-implementation',
               apiId: c.apiId,
               operationId: c.operationId,
-              moduleId: c.moduleId,
+              boundedContextId: c.boundedContextId,
             }];
       }
       case 'remove-api-operation-implementation': {
         const prev = (host.model.apiOperationImplementations ?? []).find(
-          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.moduleId === c.moduleId,
+          (w) => w.apiId === c.apiId && w.operationId === c.operationId && w.boundedContextId === c.boundedContextId,
         );
         return prev
           ? [{
               kind: 'set-api-operation-implementation',
               apiId: c.apiId,
               operationId: c.operationId,
-              moduleId: c.moduleId,
+              boundedContextId: c.boundedContextId,
               targetUseCaseId: prev.useCaseId,
             }]
           : null;
@@ -663,11 +663,11 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'add-use-case':
         return [{ kind: 'remove-use-case', id: c.id }];
       case 'remove-use-case': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const u = (m.useCases ?? []).find((x) => x.id === c.id);
           if (u) {
             return [
-              { kind: 'add-use-case', id: u.id, name: u.name, moduleId: m.id, policy: u.policy },
+              { kind: 'add-use-case', id: u.id, name: u.name, boundedContextId: m.id, policy: u.policy },
             ];
           }
         }
@@ -679,7 +679,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         for (const x of host.model.externalSystems) {
           const u = (x.useCases ?? []).find((e) => e.id === c.id);
           if (u) {
-            return [{ kind: 'add-external-use-case', id: u.id, name: u.name, moduleId: x.id }];
+            return [{ kind: 'add-external-use-case', id: u.id, name: u.name, boundedContextId: x.id }];
           }
         }
         return null;
@@ -702,9 +702,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'remove-notification', id: c.id }];
       case 'remove-notification': {
         const n = (host.model.notifications ?? []).find((x) => x.id === c.id);
-        if (!n?.ownerModuleId) return null;
+        if (!n?.ownerBoundedContextId) return null;
         const ops: ModuxCommand[] = [
-          { kind: 'add-notification', id: n.id, name: n.name, moduleId: n.ownerModuleId, type: (n.channels ?? [])[0] },
+          { kind: 'add-notification', id: n.id, name: n.name, boundedContextId: n.ownerBoundedContextId, type: (n.channels ?? [])[0] },
         ];
         if (n.eventId) ops.push({ kind: 'set-notification-event', id: n.id, targetId: n.eventId });
         for (const r of n.recipientRoleIds ?? []) ops.push({ kind: 'add-notification-recipient', id: n.id, roleId: r });
@@ -722,9 +722,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'remove-document', id: c.id }];
       case 'remove-document': {
         const d = (host.model.documents ?? []).find((x) => x.id === c.id);
-        if (!d?.ownerModuleId) return null;
+        if (!d?.ownerBoundedContextId) return null;
         const ops: ModuxCommand[] = [
-          { kind: 'add-document', id: d.id, name: d.name, moduleId: d.ownerModuleId, type: d.kind },
+          { kind: 'add-document', id: d.id, name: d.name, boundedContextId: d.ownerBoundedContextId, type: d.kind },
         ];
         if (d.modelId) ops.push({ kind: 'set-document-model', id: d.id, modelId: d.modelId });
         if (d.queryServiceId) {
@@ -751,7 +751,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         if (idp.publishedByExternalSystemId) {
           ops.push({ kind: 'set-idp-publisher', id: idp.id, targetId: idp.publishedByExternalSystemId });
         }
-        for (const mo of host.model.modules) {
+        for (const mo of host.model.boundedContexts) {
           if (mo.identityProviderId === c.id) ops.push({ kind: 'set-identity-provider', id: mo.id, targetId: c.id });
         }
         for (const app of host.model.uiApps ?? []) {
@@ -768,7 +768,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'set-identity-provider': {
         const prev =
-          host.model.modules.find((mo) => mo.id === c.id)?.identityProviderId ??
+          host.model.boundedContexts.find((mo) => mo.id === c.id)?.identityProviderId ??
           (host.model.uiApps ?? []).find((a2) => a2.id === c.id)?.identityProviderId ??
           (host.model.etlFlows ?? []).find((f) => f.id === c.id)?.identityProviderId ??
           null;
@@ -779,9 +779,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'remove-etl-flow': {
         const flow = (host.model.etlFlows ?? []).find((f) => f.id === c.id);
         if (!flow) return null;
-        if (!flow.ownerModuleId) return null; // legacy ownerless flows: not rebuildable
+        if (!flow.ownerBoundedContextId) return null; // legacy ownerless flows: not rebuildable
         return [
-          { kind: 'add-etl-flow', id: flow.id, name: flow.name, moduleId: flow.ownerModuleId },
+          { kind: 'add-etl-flow', id: flow.id, name: flow.name, boundedContextId: flow.ownerBoundedContextId },
           ...(flow.steps ?? []).map((s): ModuxCommand => ({
             kind: 'add-etl-step',
             etlFlowId: flow.id,
@@ -818,7 +818,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'add-scheduled-trigger':
         return [{ kind: 'remove-scheduled-trigger', id: c.id }];
       case 'remove-scheduled-trigger': {
-        const owner = host.model.modules.find((mo) =>
+        const owner = host.model.boundedContexts.find((mo) =>
           (mo.scheduledTriggers ?? []).some((t) => t.id === c.id),
         );
         const t = (owner?.scheduledTriggers ?? []).find((x) => x.id === c.id);
@@ -827,13 +827,13 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           kind: 'add-scheduled-trigger',
           id: t.id,
           name: t.name,
-          moduleId: owner.id,
+          boundedContextId: owner.id,
           cronExpression: t.cronExpression,
           targetUseCaseId: t.useCaseId,
         }];
       }
       case 'set-scheduled-trigger-target': {
-        const t = host.model.modules
+        const t = host.model.boundedContexts
           .flatMap((mo) => mo.scheduledTriggers ?? [])
           .find((x) => x.id === c.id);
         if (!t) return null;
@@ -977,7 +977,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           if (s) {
             // Removing the server also unlinks agents; the inverse restores the links.
             return [
-              { kind: 'add-mcp-server', id: s.id, name: s.name, moduleId: x.id, uri: s.uri },
+              { kind: 'add-mcp-server', id: s.id, name: s.name, boundedContextId: x.id, uri: s.uri },
               ...(host.model.agentMcpUses ?? [])
                 .filter((u) => u.mcpServerId === c.id)
                 .map(
@@ -1031,10 +1031,10 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'add-application-event':
         return [{ kind: 'remove-application-event', id: c.id }];
       case 'remove-application-event': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const ev = (m.applicationEvents ?? []).find((x) => x.id === c.id);
           if (ev) {
-            return [{ kind: 'add-application-event', id: ev.id, name: ev.name, moduleId: m.id }];
+            return [{ kind: 'add-application-event', id: ev.id, name: ev.name, boundedContextId: m.id }];
           }
         }
         return null;
@@ -1042,9 +1042,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'add-domain-service':
         return [{ kind: 'remove-domain-service', id: c.id }];
       case 'remove-domain-service': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const ds = (m.domainServices ?? []).find((x) => x.id === c.id);
-          if (ds) return [{ kind: 'add-domain-service', id: ds.id, name: ds.name, moduleId: m.id }];
+          if (ds) return [{ kind: 'add-domain-service', id: ds.id, name: ds.name, boundedContextId: m.id }];
         }
         return null;
       }
@@ -1066,7 +1066,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
                 externalUseCaseId: p.sourceExternalUseCaseId,
                 externalTableId: p.sourceExternalTableId,
                 targetId: p.readModelId,
-                moduleId: p.moduleId,
+                boundedContextId: p.boundedContextId,
               },
             ]
           : null;
@@ -1076,7 +1076,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'remove-external-table': {
         for (const x of host.model.externalSystems) {
           const t = (x.tables ?? []).find((e) => e.id === c.id);
-          if (t) return [{ kind: 'add-external-table', id: t.id, name: t.name, moduleId: x.id }];
+          if (t) return [{ kind: 'add-external-table', id: t.id, name: t.name, boundedContextId: x.id }];
         }
         return null;
       }
@@ -1116,7 +1116,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
                   name: op.name,
                   httpMethod: op.httpMethod,
                   path: op.path,
-                  moduleId: op.targetModuleId,
+                  boundedContextId: op.targetBoundedContextId,
                   targetUseCaseId: op.targetUseCaseId,
                 }),
               ),
@@ -1138,7 +1138,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
                 name: op.name,
                 httpMethod: op.httpMethod,
                 path: op.path,
-                moduleId: op.targetModuleId,
+                boundedContextId: op.targetBoundedContextId,
                 targetUseCaseId: op.targetUseCaseId,
               },
             ]
@@ -1154,14 +1154,14 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
                 kind: 'set-api-operation-target',
                 apiId: c.apiId,
                 id: c.id,
-                moduleId: op.targetModuleId,
+                boundedContextId: op.targetBoundedContextId,
                 targetUseCaseId: op.targetUseCaseId,
               },
             ]
           : null;
       }
       case 'remove-read-model': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const rm = (m.readModels ?? []).find((x) => x.id === c.id);
           if (rm?.aggregateId) {
             return [{ kind: 'add-read-model', id: rm.id, name: rm.name, aggregateId: rm.aggregateId }];
@@ -1170,34 +1170,34 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return null;
       }
       case 'remove-domain-event': {
-        for (const m of host.model.modules) {
+        for (const m of host.model.boundedContexts) {
           const ev = (m.domainEvents ?? []).find((x) => x.id === c.id);
-          if (ev) return [{ kind: 'add-domain-event', id: ev.id, name: ev.name, moduleId: m.id }];
+          if (ev) return [{ kind: 'add-domain-event', id: ev.id, name: ev.name, boundedContextId: m.id }];
         }
         return null;
       }
       case 'rename-element': {
         const list =
-          c.type === 'module'
-            ? host.model.modules
+          c.type === 'boundedContext'
+            ? host.model.boundedContexts
             : c.type === 'aggregate'
               ? host.model.aggregates ?? []
               : c.type === 'domain-event'
-                ? host.model.modules.flatMap((m) => m.domainEvents ?? [])
+                ? host.model.boundedContexts.flatMap((m) => m.domainEvents ?? [])
                 : c.type === 'read-model'
-                  ? host.model.modules.flatMap((m) => m.readModels ?? [])
+                  ? host.model.boundedContexts.flatMap((m) => m.readModels ?? [])
                   : c.type === 'domain-service'
-                    ? host.model.modules.flatMap((m) => m.domainServices ?? [])
+                    ? host.model.boundedContexts.flatMap((m) => m.domainServices ?? [])
                     : c.type === 'query-service'
-                      ? host.model.modules.flatMap((m) => m.queryServices ?? [])
+                      ? host.model.boundedContexts.flatMap((m) => m.queryServices ?? [])
                       : c.type === 'use-case'
-                        ? host.model.modules.flatMap((m) => m.useCases ?? [])
+                        ? host.model.boundedContexts.flatMap((m) => m.useCases ?? [])
                         : c.type === 'external-use-case'
                           ? host.model.externalSystems.flatMap((x) => x.useCases ?? [])
                           : c.type === 'mcp-server'
                             ? host.model.externalSystems.flatMap((x) => x.mcpServers ?? [])
                       : c.type === 'application-event'
-                        ? host.model.modules.flatMap((m) => m.applicationEvents ?? [])
+                        ? host.model.boundedContexts.flatMap((m) => m.applicationEvents ?? [])
                         : c.type === 'external-system'
                           ? host.model.externalSystems
                           : c.type === 'actor'
@@ -1296,7 +1296,7 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
                 kind: 'add-process',
                 id: p.id,
                 name: p.name,
-                moduleId: p.ownerModuleId ?? '',
+                boundedContextId: p.ownerBoundedContextId ?? '',
                 triggerAggregateId: p.triggerAggregateId,
                 triggerEvent: p.triggerEvent,
                 steps: p.steps,

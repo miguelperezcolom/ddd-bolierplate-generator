@@ -9,9 +9,9 @@ import java.io.File;
 class ModelDrivenGeneratorApplicationTests {
 
     static {
-        // the model store lives at the repo root, one level above this module's working directory
+        // the model store lives at the repo root, one level above this boundedContext's working directory
         System.setProperty("modux.model-file",
-                new File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Test

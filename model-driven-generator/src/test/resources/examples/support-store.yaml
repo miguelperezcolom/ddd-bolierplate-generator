@@ -2,7 +2,7 @@
 # the hotel and ecommerce stores barely touch: projections with several handlers, paginated query
 # services, a read model with a dateTime field, value objects, a subscription WITH actions (the hotel's
 # are empty), a scheduled trigger (the hotel has none), and a domain event published as an integration
-# event. One service, one dense module.
+# event. One service, one dense boundedContext.
 projects:
 - id: "support"
   name: "Support"
@@ -14,10 +14,10 @@ projects:
 services:
 - id: "helpdesk"
   name: "Helpdesk"
-  moduleIds:
+  boundedContextIds:
   - "mod-tickets"
 
-modules:
+boundedContexts:
 - id: "mod-tickets"
   name: "Tickets"
   aggregateIds:
@@ -224,7 +224,7 @@ domainEvents:
 readModels:
 - id: "rm-ticketSummary"
   name: "TicketSummaryReadModel"
-  moduleId: "mod-tickets"
+  boundedContextId: "mod-tickets"
   description: "Materialised ticket summaries for reporting"
   modelId: "ticket-summary-model"
   storageType: "Document"
@@ -253,7 +253,7 @@ projections:
 queryServices:
 - id: "qs-tickets"
   name: "TicketQueries"
-  moduleId: "mod-tickets"
+  boundedContextId: "mod-tickets"
   description: "Read-side queries over ticket summaries"
   operations:
   - id: "qop-getTicket"

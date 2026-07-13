@@ -7,7 +7,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 public record IntegrationEventEntity(
         String id,
         String name,
-        String moduleId,
+        String boundedContextId,
         String description,
         String sourceDomainEventId,
         String payloadModelId,

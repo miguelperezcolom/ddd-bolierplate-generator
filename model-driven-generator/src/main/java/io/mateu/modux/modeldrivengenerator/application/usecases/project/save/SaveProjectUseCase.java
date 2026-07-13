@@ -93,7 +93,7 @@ public class SaveProjectUseCase {
                 environments,
                 command.serviceIds().stream().map(ServiceId::new).toList(),
                 command.contextMap() == null ? List.<ContextMapRelation>of() : command.contextMap().stream()
-                        .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceModuleId(), r.targetModuleId(),
+                        .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                 r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
                         .toList());
         repository.save(project);

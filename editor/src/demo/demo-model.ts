@@ -6,7 +6,7 @@ import type { ModuxModel } from '../model.js';
  * JSON from the model store.
  */
 export const demoModel: ModuxModel = {
-  modules: [
+  boundedContexts: [
     { id: 'mod-booking', name: 'Booking', subdomainType: 'CORE', serviceId: 'svc-booking' },
     { id: 'mod-valoracion', name: 'Valoración', subdomainType: 'SUPPORTING', serviceId: 'svc-readside' },
     { id: 'mod-distribution', name: 'Distribution', subdomainType: 'SUPPORTING', serviceId: 'svc-distribution' },
@@ -44,10 +44,10 @@ export const demoModel: ModuxModel = {
     },
   ],
   aggregates: [
-    { id: 'agg-booking', name: 'Booking', moduleId: 'mod-booking' },
-    { id: 'agg-quote', name: 'Quote', moduleId: 'mod-valoracion' },
-    { id: 'agg-listing', name: 'BookingListing', moduleId: 'mod-distribution' },
-    { id: 'agg-notification', name: 'Notification', moduleId: 'mod-notificaciones' },
+    { id: 'agg-booking', name: 'Booking', boundedContextId: 'mod-booking' },
+    { id: 'agg-quote', name: 'Quote', boundedContextId: 'mod-valoracion' },
+    { id: 'agg-listing', name: 'BookingListing', boundedContextId: 'mod-distribution' },
+    { id: 'agg-notification', name: 'Notification', boundedContextId: 'mod-notificaciones' },
   ],
   entities: [
     { id: 'ent-booking-line', name: 'BookingLine', aggregateId: 'agg-booking' },
@@ -64,7 +64,7 @@ export const demoModel: ModuxModel = {
       name: 'Reservar',
       triggerAggregateId: 'agg-booking',
       triggerEvent: 'BookingRequested',
-      ownerModuleId: 'mod-booking',
+      ownerBoundedContextId: 'mod-booking',
       onCompletionEventName: 'BookingConfirmed',
       sla: 'P1D',
       steps: [

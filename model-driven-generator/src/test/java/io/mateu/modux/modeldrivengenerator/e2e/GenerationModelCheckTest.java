@@ -21,7 +21,7 @@ class GenerationModelCheckTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -32,7 +32,7 @@ class GenerationModelCheckTest {
 
     @Test
     void example_store_is_referentially_clean() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         loadStore(store, "modux-check-clean");
 
         var violations = checkModelUseCase.check();
@@ -44,7 +44,7 @@ class GenerationModelCheckTest {
 
     @Test
     void dangling_reference_is_detected() throws Exception {
-        var store = Files.readString(Path.of("..", ".dev", "data", "model-driven-store.yaml"));
+        var store = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         // point an aggregate at a model id that does not exist
         var broken = store.replace(
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",

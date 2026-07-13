@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.e2e;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiInboundCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiInboundUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Inbound OpenAPI import: the EasyTravelAPI contract (mini fixture) lands on the BFF module of the
+ * Inbound OpenAPI import: the EasyTravelAPI contract (mini fixture) lands on the BFF boundedContext of the
  * HLA booking sample as REST-exposed use-case stubs with typed models — the missing half of the
  * outbound (gateway) import.
  */
@@ -22,7 +22,7 @@ class ImportOpenApiInboundTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("../.dev/data/model-driven-store.yaml").getAbsolutePath());
+                new java.io.File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -32,7 +32,7 @@ class ImportOpenApiInboundTest {
     ImportOpenApiInboundUseCase useCase;
 
     @Test
-    void easytravel_contract_becomes_rest_use_cases_on_the_bff_module() throws Exception {
+    void easytravel_contract_becomes_rest_use_cases_on_the_bff_boundedContext() throws Exception {
         // work on a throwaway copy — loadFrom + save persist to the loaded file
         var temp = java.nio.file.Files.createTempDirectory("hla-inbound-test")
                 .resolve("model-driven-store.yaml");
@@ -59,16 +59,16 @@ class ImportOpenApiInboundTest {
         assertEquals(bookHotel.inputModelId(), repositoryModelIdByName("BookHotelRequest"));
         assertEquals(bookHotel.outputModelId(), repositoryModelIdByName("BookingStatus"));
 
-        // attached to the module (idempotent on re-import)
-        var module = repository.findById("mod-distribution", ModuleEntity.class).orElseThrow();
-        assertTrue(module.useCaseIds().contains("uc-bookHotel"));
-        assertTrue(module.useCaseIds().contains("uc-distribution-getBooking"));
-        // the module's own metadata (bff, subdomain) survives the import
-        assertEquals(1, module.bffs().size());
+        // attached to the boundedContext (idempotent on re-import)
+        var boundedContext = repository.findById("mod-distribution", BoundedContextEntity.class).orElseThrow();
+        assertTrue(boundedContext.useCaseIds().contains("uc-bookHotel"));
+        assertTrue(boundedContext.useCaseIds().contains("uc-distribution-getBooking"));
+        // the boundedContext's own metadata (bff, subdomain) survives the import
+        assertEquals(1, boundedContext.bffs().size());
         useCase.handle(new ImportOpenApiInboundCommand("mod-distribution",
                 new java.io.File("src/test/resources/easytravel-mini.yaml").getAbsolutePath()));
-        var again = repository.findById("mod-distribution", ModuleEntity.class).orElseThrow();
-        assertEquals(module.useCaseIds().size(), again.useCaseIds().size());
+        var again = repository.findById("mod-distribution", BoundedContextEntity.class).orElseThrow();
+        assertEquals(boundedContext.useCaseIds().size(), again.useCaseIds().size());
     }
 
     private String repositoryModelIdByName(String name) {

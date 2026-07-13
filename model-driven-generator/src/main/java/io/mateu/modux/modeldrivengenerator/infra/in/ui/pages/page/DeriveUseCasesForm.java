@@ -25,7 +25,7 @@ public class DeriveUseCasesForm {
     final io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume.DeriveConsumptionApisUseCase consumptionApis;
 
     @PlainText
-    @Help("Botones sin use case → stub cableado; página CRUD → create/update/delete; listado sin query service → query service con operación list. Derive APIs: consumos entre módulos de servicios distintos → proveedor expuesto como gRPC.")
+    @Help("Botones sin use case → stub cableado; página CRUD → create/update/delete; listado sin query service → query service con operación list. Derive APIs: consumos entre bounded contexts de servicios distintos → proveedor expuesto como gRPC.")
     String resultado = "Pulsa Derive para generar los stubs desde las pantallas declaradas.";
 
     @Button

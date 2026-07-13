@@ -18,7 +18,7 @@ const STICKY = {
   policy: { fill: '#e9d5ff', stroke: '#7e22ce', w: 170, h: 56 },
   readModel: { fill: '#bbf7d0', stroke: '#15803d', w: 150, h: 48 },
   external: { fill: '#fbcfe8', stroke: '#be185d', w: 150, h: 48 },
-  module: { fill: '#e0e7ff', stroke: '#64748b', w: 150, h: 44 },
+  boundedContext: { fill: '#e0e7ff', stroke: '#64748b', w: 150, h: 44 },
 } as const;
 
 interface Builder {
@@ -39,23 +39,23 @@ const norm = (name: string) => name.trim().toLowerCase();
 export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Scene {
   const b: Builder = { nodes: new Map(), edges: [] };
 
-  const moduleName = new Map(model.modules.map((m) => [m.id, m.name]));
-  const useCases = model.modules.flatMap((m) =>
-    (m.useCases ?? []).map((u) => ({ ...u, moduleId: m.id })),
+  const boundedContextName = new Map(model.boundedContexts.map((m) => [m.id, m.name]));
+  const useCases = model.boundedContexts.flatMap((m) =>
+    (m.useCases ?? []).map((u) => ({ ...u, boundedContextId: m.id })),
   );
   const ucIds = new Set(useCases.map((u) => u.id));
   const aggregates = model.aggregates ?? [];
   const domainServiceIds = new Set(
-    model.modules.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
+    model.boundedContexts.flatMap((m) => (m.domainServices ?? []).map((ds) => ds.id)),
   );
-  const domainEvents = model.modules.flatMap((m) =>
-    (m.domainEvents ?? []).map((ev) => ({ ...ev, moduleId: m.id, application: false })),
+  const domainEvents = model.boundedContexts.flatMap((m) =>
+    (m.domainEvents ?? []).map((ev) => ({ ...ev, boundedContextId: m.id, application: false })),
   );
-  const applicationEvents = model.modules.flatMap((m) =>
-    (m.applicationEvents ?? []).map((ev) => ({ ...ev, moduleId: m.id, application: true })),
+  const applicationEvents = model.boundedContexts.flatMap((m) =>
+    (m.applicationEvents ?? []).map((ev) => ({ ...ev, boundedContextId: m.id, application: true })),
   );
-  const readModels = model.modules.flatMap((m) =>
-    (m.readModels ?? []).map((rm) => ({ ...rm, moduleId: m.id })),
+  const readModels = model.boundedContexts.flatMap((m) =>
+    (m.readModels ?? []).map((rm) => ({ ...rm, boundedContextId: m.id })),
   );
 
   // ---- commands (every use case is a command; policies wear lilac) --------
@@ -73,8 +73,8 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
       stroke: uc.policy ? STICKY.policy.stroke : STICKY.command.stroke,
       badge: uc.policy ? 'POLICY' : 'COMANDO',
       tooltip: uc.policy
-        ? `${uc.name} — policy de ${moduleName.get(uc.moduleId) ?? uc.moduleId} (reacción, no caso de negocio)`
-        : `${uc.name} — caso de uso de ${moduleName.get(uc.moduleId) ?? uc.moduleId}`,
+        ? `${uc.name} — policy de ${boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId} (reacción, no caso de negocio)`
+        : `${uc.name} — caso de uso de ${boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId}`,
     });
   }
 
@@ -154,7 +154,7 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
       fill: STICKY.aggregate.fill,
       stroke: STICKY.aggregate.stroke,
       badge: 'AGREGADO',
-      tooltip: `${agg.name} — agregado de ${moduleName.get(agg.moduleId) ?? agg.moduleId}`,
+      tooltip: `${agg.name} — agregado de ${boundedContextName.get(agg.boundedContextId) ?? agg.boundedContextId}`,
     });
   }
 
@@ -173,7 +173,7 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
       fill: STICKY.event.fill,
       stroke: STICKY.event.stroke,
       badge: ev.application ? 'EVENTO APLICACIÓN' : 'EVENTO',
-      tooltip: `${ev.name} — evento de ${moduleName.get(ev.moduleId) ?? ev.moduleId}`,
+      tooltip: `${ev.name} — evento de ${boundedContextName.get(ev.boundedContextId) ?? ev.boundedContextId}`,
     });
     eventNodeByName.set(norm(ev.name), ev.id);
   }
@@ -693,18 +693,18 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
       // target context or external system.
       const external = externalNode(flow.targetId);
       const targetNodeId = external ?? `tgt:${flow.targetId}`;
-      if (!external && moduleName.has(flow.targetId)) {
+      if (!external && boundedContextName.has(flow.targetId)) {
         addNode(b, {
           id: targetNodeId,
-          label: moduleName.get(flow.targetId) ?? flow.targetId,
+          label: boundedContextName.get(flow.targetId) ?? flow.targetId,
           x: 0,
           y: 0,
-          w: STICKY.module.w,
-          h: STICKY.module.h,
-          kind: 'module',
+          w: STICKY.boundedContext.w,
+          h: STICKY.boundedContext.h,
+          kind: 'boundedContext',
           symbol: 'component',
-          fill: STICKY.module.fill,
-          stroke: STICKY.module.stroke,
+          fill: STICKY.boundedContext.fill,
+          stroke: STICKY.boundedContext.stroke,
           badge: 'CONTEXTO',
         });
       }
