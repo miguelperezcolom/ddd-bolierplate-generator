@@ -34,3 +34,31 @@ export function journeyLegNumbers(journey: JourneyRef): Map<string, string> {
   }
   return numbers;
 }
+
+/**
+ * Every root-to-leaf run of the journey's DAG, as ordered leg-id lists: the
+ * routes a traveller can take. Bifurcations multiply runs; cycles are cut by
+ * the depth guard so a malformed journey still yields something drawable.
+ */
+export function journeyRuns(journey: JourneyRef): string[][] {
+  const legs = journey.legs ?? [];
+  const successors = new Map<string, string[]>();
+  for (const leg of legs) {
+    for (const after of leg.afterLegIds ?? []) {
+      successors.set(after, [...(successors.get(after) ?? []), leg.id]);
+    }
+  }
+  const roots = legs.filter((l) => !(l.afterLegIds ?? []).length).map((l) => l.id);
+  const runs: string[][] = [];
+  const walk = (path: string[]) => {
+    if (path.length > legs.length) return;
+    const next = successors.get(path[path.length - 1]) ?? [];
+    if (!next.length) {
+      runs.push(path);
+      return;
+    }
+    for (const n of next) walk([...path, n]);
+  };
+  for (const root of roots) walk([root]);
+  return runs;
+}

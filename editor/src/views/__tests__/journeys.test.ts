@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { journeyLegNumbers } from '../../journeys.js';
+import { journeyLegNumbers, journeyRuns } from '../../journeys.js';
 
 describe('journeyLegNumbers', () => {
   it('numbers a linear journey 1, 2, 3', () => {
@@ -36,5 +36,33 @@ describe('journeyLegNumbers', () => {
       ],
     });
     expect(n.size).toBe(2);
+  });
+});
+
+describe('journeyRuns', () => {
+  it('a bifurcation yields one run per branch, sharing the trunk', () => {
+    const runs = journeyRuns({
+      id: 'tr', name: 'T',
+      legs: [
+        { id: 'a', sourceId: 'x', targetId: 'y' },
+        { id: 'b1', sourceId: 'y', targetId: 'z', afterLegIds: ['a'] },
+        { id: 'b2', sourceId: 'y', targetId: 'w', afterLegIds: ['a'] },
+        { id: 'c', sourceId: 'z', targetId: 'v', afterLegIds: ['b1'] },
+      ],
+    });
+    expect(runs).toContainEqual(['a', 'b1', 'c']);
+    expect(runs).toContainEqual(['a', 'b2']);
+    expect(runs).toHaveLength(2);
+  });
+
+  it('two roots tour as two separate runs', () => {
+    const runs = journeyRuns({
+      id: 'tr', name: 'T',
+      legs: [
+        { id: 'a', sourceId: 'x', targetId: 'y' },
+        { id: 'b', sourceId: 'p', targetId: 'q' },
+      ],
+    });
+    expect(runs).toHaveLength(2);
   });
 });

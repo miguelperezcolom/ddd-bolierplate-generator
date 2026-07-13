@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
-import { journeyLegNumbers } from './journeys.js';
+import { journeyLegNumbers, journeyRuns } from './journeys.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
@@ -1069,9 +1069,14 @@ export class ModuxEditor extends LitElement {
     for (const id of touched) {
       for (let cur = byId.get(id)?.parentId; cur; cur = byId.get(cur)?.parentId) lit.add(cur);
     }
+    const drawn = new Set(overlay.map((e) => e.id));
+    const runs = journeyRuns(journey)
+      .map((run) => run.map((legId) => `journeyleg:${journey.id}:${legId}`).filter((id) => drawn.has(id)))
+      .filter((run) => run.length > 0);
     return {
       nodes: scene.nodes.map((n) => (lit.has(n.id) ? n : { ...n, dim: true })),
       edges: [...scene.edges.map((e) => ({ ...e, dim: true })), ...overlay],
+      journeyRuns: runs,
     };
   }
 
@@ -1763,7 +1768,11 @@ export class ModuxEditor extends LitElement {
 
   /** The active journey, legs numbered, for the surfaces that draw it themselves. */
   private activeJourneyForSurface():
-    | { name: string; legs: { sourceId: string; targetId: string; num: string; label?: string }[] }
+    | {
+        name: string;
+        legs: { id: string; sourceId: string; targetId: string; num: string; label?: string }[];
+        runs: string[][];
+      }
     | null {
     const journey = (this.model.journeys ?? []).find((j) => j.id === this._activeJourneyId);
     if (!journey) return null;
@@ -1771,11 +1780,13 @@ export class ModuxEditor extends LitElement {
     return {
       name: journey.name,
       legs: (journey.legs ?? []).map((l) => ({
+        id: l.id,
         sourceId: l.sourceId,
         targetId: l.targetId,
         num: numbers.get(l.id) ?? '',
         label: l.label,
       })),
+      runs: journeyRuns(journey),
     };
   }
 

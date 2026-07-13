@@ -159,6 +159,8 @@ export interface SceneEdge {
 export interface Scene {
   nodes: SceneNode[];
   edges: SceneEdge[];
+  /** Ordered edge-id sequences of the active journey — the runner travels them one by one. */
+  journeyRuns?: string[][];
 }
 
 export interface Point {

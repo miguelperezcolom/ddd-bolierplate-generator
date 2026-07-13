@@ -304,9 +304,13 @@ export class ModuxExplorer extends LitElement {
    */
   @property({ attribute: false }) scene: Scene | null = null;
 
-  /** The active journey, precomputed by the host: legs with their step number. */
+  /** The active journey, precomputed by the host: legs with their step number and the DAG's runs. */
   @property({ attribute: false }) journey:
-    | { name: string; legs: { sourceId: string; targetId: string; num: string; label?: string }[] }
+    | {
+        name: string;
+        legs: { id: string; sourceId: string; targetId: string; num: string; label?: string }[];
+        runs: string[][];
+      }
     | null = null;
 
   @property({ attribute: false }) model: ModuxModel = {
@@ -1201,6 +1205,20 @@ export class ModuxExplorer extends LitElement {
     return null;
   }
 
+  /** Quadratic-curve geometry of one leg over the VISIBLE representatives, or null. */
+  private legGeometry(
+    leg: { sourceId: string; targetId: string },
+    nodes: XNode[],
+  ): { a: XNode; b: XNode; cx: number; cy: number } | null {
+    const a = this.visibleRepresentative(leg.sourceId, nodes);
+    const b = this.visibleRepresentative(leg.targetId, nodes);
+    if (!a || !b || a === b) return null;
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const bend = 0.14;
+    return { a, b, cx: mx - (b.y - a.y) * bend, cy: my + (b.x - a.x) * bend };
+  }
+
   /** The active journey as a bold amber layer: directed curves, numbered badges. */
   private drawJourney(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
     if (!this.journey) return;
@@ -1218,15 +1236,12 @@ export class ModuxExplorer extends LitElement {
       const cy = my + dx * bend;
       ctx.strokeStyle = '#d97706';
       ctx.lineWidth = 2.4 / this.cam.k;
-      // dashes march toward the target: the story flows on screen
       ctx.setLineDash([9 / this.cam.k, 7 / this.cam.k]);
-      ctx.lineDashOffset = (-(this.t * 20) % 16) / this.cam.k;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.quadraticCurveTo(cx, cy, b.x, b.y);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
       // arrow head at the target border
       const tx = b.x - cx;
       const ty = b.y - cy;
@@ -1258,6 +1273,63 @@ export class ModuxExplorer extends LitElement {
       ctx.textBaseline = 'middle';
       ctx.fillText(leg.num, bx, by);
     }
+    this.drawJourneyRunner(ctx, nodes);
+    ctx.restore();
+  }
+
+  /**
+   * A traveller tours the journey: it enters at a run's origin, follows its legs
+   * — curve by curve — and when it arrives the NEXT run takes the stage, looping
+   * through every route the DAG offers. Time comes from the explorer's own clock.
+   */
+  private drawJourneyRunner(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
+    if (!this.journey?.runs?.length) return;
+    const byId = new Map(this.journey.legs.map((l) => [l.id, l]));
+    // geometry + chord lengths per run, skipping legs hidden at this depth
+    const runs = this.journey.runs
+      .map((run) =>
+        run
+          .map((legId) => byId.get(legId))
+          .filter((l): l is NonNullable<typeof l> => !!l)
+          .map((l) => this.legGeometry(l, nodes))
+          .filter((g): g is NonNullable<typeof g> => !!g),
+      )
+      .filter((run) => run.length > 0);
+    if (!runs.length) return;
+    const SPEED = 170; // world units per second
+    const GAP = 0.5;   // pause between runs
+    const durations = runs.map((run) =>
+      Math.max(1.2, run.reduce((acc, g) => acc + Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y), 0) / SPEED));
+    const total = durations.reduce((a, b) => a + b + GAP, 0);
+    let t = this.t % total;
+    let k = 0;
+    while (t > durations[k] + GAP) {
+      t -= durations[k] + GAP;
+      k++;
+    }
+    if (t > durations[k]) return; // resting between runs
+    const run = runs[k];
+    const lengths = run.map((g) => Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y));
+    const runLength = lengths.reduce((a, b) => a + b, 0) || 1;
+    let distance = (t / durations[k]) * runLength;
+    let i = 0;
+    while (i < run.length - 1 && distance > lengths[i]) {
+      distance -= lengths[i];
+      i++;
+    }
+    const g = run[i];
+    const lt = Math.min(1, distance / (lengths[i] || 1));
+    const omt = 1 - lt;
+    const x = omt * omt * g.a.x + 2 * omt * lt * g.cx + lt * lt * g.b.x;
+    const y = omt * omt * g.a.y + 2 * omt * lt * g.cy + lt * lt * g.b.y;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 7 / this.cam.k, 0, Math.PI * 2);
+    ctx.fillStyle = '#d97706';
+    ctx.fill();
+    ctx.lineWidth = 2 / this.cam.k;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
     ctx.restore();
   }
 

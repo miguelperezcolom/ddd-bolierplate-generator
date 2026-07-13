@@ -161,13 +161,9 @@ export class ModuxCanvas extends LitElement {
   private _fitted = false;
 
   static styles = css`
-    /* Journey legs march their dashes toward the target: direction made visible. */
+    /* Journey legs wear static dashes; the RUNNER carries the motion. */
     path.journey-flow {
       stroke-dasharray: 9 7;
-      animation: journey-flow 0.8s linear infinite;
-    }
-    @keyframes journey-flow {
-      to { stroke-dashoffset: -16; }
     }
 
     :host {
@@ -1117,6 +1113,47 @@ export class ModuxCanvas extends LitElement {
     `;
   }
 
+  /**
+   * A traveller runs each route of the active journey, one after another: the
+   * circle enters at the origin, follows the legs — bends included — and hands
+   * over to the next route when it arrives. SMIL chains the runs (each begins
+   * when the previous ends; the last one wakes the first), so the whole tour
+   * loops without a line of JS.
+   */
+  private renderJourneyRunners(journeyPts: Map<string, Point[]>): (TemplateResult | typeof svg.prototype)[] {
+    const runs = (this.scene.journeyRuns ?? [])
+      .map((run) => run.map((id) => journeyPts.get(id)).filter((p): p is Point[] => !!p))
+      .filter((run) => run.length > 0);
+    if (!runs.length) return [];
+    const runners: (TemplateResult | typeof svg.prototype)[] = [];
+    runs.forEach((run, k) => {
+      const points: Point[] = [];
+      for (const pts of run) {
+        for (const p of pts) {
+          const last = points[points.length - 1];
+          if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 0.5) points.push(p);
+        }
+      }
+      if (points.length < 2) return;
+      let length = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        length += Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y);
+      }
+      const d = 'M ' + points.map((p) => `${p.x} ${p.y}`).join(' L ');
+      const dur = Math.min(6, Math.max(1.4, length / 260));
+      const id = `jrun${k}`;
+      const begin = k === 0 ? `0s;jrun${runs.length - 1}.end+0.4s` : `jrun${k - 1}.end+0.4s`;
+      runners.push(svg`
+        <circle r="6.5" fill="#d97706" stroke="#ffffff" stroke-width="1.8"
+                opacity="0" pointer-events="none">
+          <animateMotion id=${id} path=${d} dur="${dur}s" begin=${begin} fill="remove"
+                         calcMode="linear"></animateMotion>
+          <set attributeName="opacity" to="1" begin="${id}.begin" end="${id}.end"></set>
+        </circle>`);
+    });
+    return runners;
+  }
+
   private markerId(color: string): string {
     return color.replace(/[^a-zA-Z0-9]/g, '');
   }
@@ -1497,13 +1534,16 @@ export class ModuxCanvas extends LitElement {
     const priorSegments: [Point, Point][] = [];
     const edgeHits: (TemplateResult | typeof svg.prototype)[] = [];
     const edgeInks: (TemplateResult | typeof svg.prototype)[] = [];
+    const journeyPts = new Map<string, Point[]>();
     this.scene.edges.forEach((edge) => {
       const pts = this.edgePolyline(edge);
       if (!pts) return;
+      if (edge.kind === 'journey') journeyPts.set(edge.id, pts);
       edgeHits.push(this.renderEdgeHit(edge, pts));
       edgeInks.push(this.renderEdgeInk(edge, pts, [...priorSegments]));
       for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
     });
+    const journeyRunners = this.renderJourneyRunners(journeyPts);
     return html`
       <svg
         class="main ${this._pendingLink ? 'linking' : ''} ${this._spaceDown ? 'panning' : ''}"
@@ -1536,6 +1576,7 @@ export class ModuxCanvas extends LitElement {
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
           ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
           ${edgeInks}
+          ${journeyRunners}
           ${this._menuSlots
             ? svg`<g pointer-events="none">
                 ${this._menuSlots.slots.map(
