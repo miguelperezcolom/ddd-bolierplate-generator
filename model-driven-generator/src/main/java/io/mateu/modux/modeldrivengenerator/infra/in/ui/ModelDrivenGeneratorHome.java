@@ -11,6 +11,7 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.specsearch.SpecSear
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace.WorkspaceCrudOrchestrator;
 import io.mateu.uidl.annotations.App;
 import io.mateu.uidl.annotations.AppContext;
+import io.mateu.uidl.annotations.AI;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
@@ -18,6 +19,8 @@ import io.mateu.uidl.fluent.AppVariant;
 
 @UI("")
 @Title("Modux")
+// El chat de la app habla con el pseudoagente local (CLI del desarrollador, sin api key).
+@AI(sse = "/mateu/agent/stream")
 // The nested «Modelo» menu made the menu DEEP, and the AUTO variant renders deep
 // menus as a tiles hub; the classic top bar shows them as cascading dropdowns.
 @App(AppVariant.MENU_ON_TOP)

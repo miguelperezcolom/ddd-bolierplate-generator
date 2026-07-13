@@ -110,6 +110,12 @@
             <artifactId>vaadin-lit</artifactId>
             <version>0.0.1-MATEU</version>
         </dependency>
+        <dependency>
+            <!-- Chat en local sin api key: el pseudoagente puentea el CLI del desarrollador -->
+            <groupId>io.mateu</groupId>
+            <artifactId>agent-cli</artifactId>
+            <version>0.0.1-MATEU</version>
+        </dependency>
 
         <dependency>
             <groupId>com.google.googlejavaformat</groupId>
