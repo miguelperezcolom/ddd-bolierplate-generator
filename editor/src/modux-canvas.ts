@@ -1170,14 +1170,14 @@ export class ModuxCanvas extends LitElement {
                     : 'Contraer: oculta los hijos'}</title>
                 </g>`
           : ''}
-        ${node.symbol && SYMBOLS[node.symbol] && !isChild
+        ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer)
           ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
                   stroke=${node.stroke ?? '#64748b'} stroke-width="1.1" stroke-linejoin="round"
                   stroke-linecap="round" opacity="0.85" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
           : ''}
-        ${isChild && node.symbol && SYMBOLS[node.symbol]
+        ${isChild && !isContainer && node.symbol && SYMBOLS[node.symbol]
           ? svg`<g transform="translate(${-hw + 8}, -6)" fill="none"
                   stroke=${node.stroke ?? '#64748b'} stroke-width="1.2" stroke-linejoin="round"
                   stroke-linecap="round" pointer-events="none">
@@ -1200,7 +1200,7 @@ export class ModuxCanvas extends LitElement {
                     this.commitRename(node, (e.target as HTMLInputElement).value)}
                 />
               </foreignObject>`
-          : isChild
+          : isChild && !isContainer
             ? svg`<text x=${-hw + 24} y="4" text-anchor="start" font-size="12" font-weight="600"
                 font-family="ui-sans-serif, system-ui" fill="#1e293b" pointer-events="none">${childLabel}</text>`
             : isContainer

@@ -689,7 +689,7 @@ function detailedContainer(
   const sizeOf = (c: ChildDesc) => {
     const kids = c.children ?? [];
     const min = kids.length
-      ? { w: CHILD_W + 16, h: 22 + kids.length * (CHILD_H + 6) + 8 }
+      ? { w: CHILD_W + 16, h: 36 + kids.length * (CHILD_H + 6) + 6 }
       : { w: CHILD_W, h: CHILD_H };
     const stored = c.kind === 'external-system' ? sizes[c.id] : undefined;
     return { w: Math.max(min.w, stored?.w ?? 0), h: Math.max(min.h, stored?.h ?? 0) };
@@ -731,6 +731,7 @@ function detailedContainer(
       x: center.x + off.x,
       y: center.y + off.y,
       ...dims,
+      container: (c.children ?? []).length > 0 || undefined,
       resizable: c.kind === 'external-system' || undefined,
       symbol: style.symbol,
       fill: style.fill,
@@ -745,7 +746,7 @@ function detailedContainer(
         label: k.name,
         kind: k.kind,
         x: chip.x,
-        y: chip.y - dims.h / 2 + 22 + j * (CHILD_H + 6) + CHILD_H / 2,
+        y: chip.y - dims.h / 2 + 36 + j * (CHILD_H + 6) + CHILD_H / 2,
         w: CHILD_W - 8,
         h: CHILD_H,
         symbol: ks.symbol,
