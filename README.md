@@ -105,6 +105,37 @@ pom.xml
 
 ---
 
+## Run it
+
+The same binary runs against your disk or against a database — see
+[deploy/README.md](deploy/README.md) for the full story:
+
+- `./install.sh` builds the jar and drops a `modux` launcher in `~/.local/bin`
+  that works against `~/.modux` (→ `http://localhost:8192`; `MODUX_PORT` /
+  `MODUX_HOME` to vary).
+- `./install.sh --docker` builds the runtime image instead and the launcher runs
+  the container with `~/.modux` mounted as home. The [`Dockerfile`](Dockerfile)
+  is runtime-only: the jar is built on the host, because the mateu
+  `0.0.1-MATEU` artifacts are not published yet.
+- The Helm chart [`deploy/chart/modux`](deploy/chart/modux) deploys modux
+  together with Bitnami PostgreSQL (`postgresql.enabled=false` plus
+  `externalDatabase.jdbcUrl` to point at an external database). The first boot
+  against a database seeds the repositories catalog — `MODUX_BOOTSTRAP_DB` with
+  `MODUX_DB_USER` / `MODUX_DB_PASSWORD`.
+
+### In-app chat, no API key
+
+Modux's shell is annotated `@AI(sse = "/mateu/agent/stream")` and depends on
+`io.mateu:agent-cli`: on a machine with the `claude` or `gemini` CLI on the
+PATH, the app gets a chat with **no API key** — the pseudo-agent bridges the
+developer's own CLI. This is a local-development convenience; a server exposed
+to others should point `@AI` at a real agent instead. The chat renders markdown
+including inline SVG and images (as of the paired mateu release), so the agent
+can show the output of MCP tools like `render_context_map` right in the
+conversation.
+
+---
+
 ## Getting started
 
 ### 1. Run the generator

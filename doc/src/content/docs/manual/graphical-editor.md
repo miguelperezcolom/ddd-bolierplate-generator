@@ -11,7 +11,9 @@ level) lives in the spec's own `diagrams` section — a separate structure that 
 *references* elements by id, so coordinates never leak into the authored elements
 themselves. Models saved before this section existed kept the geometry in a
 `modux-editor-layout.json` file next to the store; it is still read as a fallback and
-migrates into `diagrams` on the first change made in the editor.
+migrates into `diagrams` on the first change made in the editor. The page carries no
+header of its own: the title lives discreetly in the editor toolbar (its tooltip
+carries the subtitle) and the canvas takes the space.
 
 ## Views
 
@@ -90,6 +92,23 @@ person / gear (human / automated steps), double circle (events), return arrow
   them to record a `CallExternalUseCase` step (slate dashed arrow — the seed of a
   derived gateway/API). Drag from the external system onto one of OUR use cases and
   the call comes in through an **INBOUND ACL** in the target bounded context (violet arrow).
+- **External systems nest — subsystems**: a big partner is rarely one box. Drop
+  «Sistema externo» from the palette **onto another system** and the newcomer is a
+  **subsystem** — a full external system living inside it
+  (`parentExternalSystemId`), with its own APIs, use cases and dependencies; the
+  back-office form offers the same parent as a picker. **Shift+drag** re-nests an
+  existing system onto another; onto empty canvas it un-nests, and nesting in a
+  circle is refused with a clear message. Nesting **strips the dependency edges
+  between the pair** — both directions, DEPENDS and CQRS — because containment
+  replaces dependency; one undo restores parent, position and the stripped edges
+  together. Subsystem chips show from the **coarse** form without forcing it (a
+  system with only subsystems still folds compact); a subsystem's published APIs and
+  proxies nest **inside its chip**, which grows with its content and accepts the
+  corner-resize gesture even collapsed (the content sets the minimum), and at the
+  operations level its APIs unfold as the parent's boxes do. Supr deletes a
+  subsystem with the usual guards — a parent that still has subsystems refuses
+  deletion — and journeys and dependencies can start or end at a subsystem like at
+  any other system.
 - **AI agents consume through MCP**: create an **AI agent** from the palette (robot
   glyph, outside every context) and drag it onto a use case — the consumption is
   recorded on the agent and the use case flips `exposedAsMcp: true` (the bounded
@@ -168,9 +187,17 @@ person / gear (human / automated steps), double circle (events), return arrow
 
 ## Lines
 
-With an edge selected, **dragging it splits the line** into an adjustable bend point;
-bend points drag freely and **double click removes them**. Where lines cross, the one
-drawn later **hops over with a small bridge arc**, so dense maps stay readable.
+On the context map, edges **auto-route around the node boxes**: a line that would
+cross a box takes the smallest detour instead, recomputed on every render — nothing
+is stored for an edge the hand never touched. With an edge selected, **dragging it
+splits the line** into an adjustable bend point, and from that moment **the edge is
+yours**: the auto-router respects the hand's decision and leaves it alone. Bend
+points drag freely; **double click (or Supr) removes one**, and removing the LAST
+bend **pins the edge straight** — the empty route persists as a decision of its own,
+so the router doesn't fall back to automatic detours. Deleting a relation takes its
+bends with it, so a recreated relation is born with default routing; **✨
+Auto-layout** resets every bend (one undo brings them back). Where lines cross, the
+one drawn later **hops over with a small bridge arc**, so dense maps stay readable.
 
 ## Layout & navigation
 
@@ -237,7 +264,25 @@ a leg: a leg leaving the target of an earlier one continues it, two legs leaving
 same element **bifurcate**. The active journey paints as its own numbered layer
 (1, 2, 3a, 3b…) while everything else fades back; **Supr** on a leg removes it
 (its continuations reattach). Journeys are catalog elements (`journeys:` in the YAML,
-authorable over MCP) — a reading layer, never a second topology.
+[authorable over MCP](/manual/mcp-authoring/#journeys-over-mcp)) — a reading layer,
+never a second topology.
+
+The active journey **animates**: legs draw with static dashes and arrowheads, and a
+**traveller** — an amber circle — carries the motion, touring every root-to-leaf
+route of the DAG sequentially: one route, a short pause, the next, then round again.
+The tour runs on all three surfaces: the 2D canvas animates it with SMIL (the runs
+chain themselves, no script), the Yugo keeps its own clock and rides the bezier
+curves (the organism never stops moving, so the runner follows the live geometry),
+and the 3D tilt drives it with `requestAnimationFrame` so the traveller's **elevation
+interpolates between storeys** as a leg climbs from a context's base plate to a
+child's floor.
+
+Continuation is **physical as well as declared**: a leg whose source is another leg's
+target counts as its successor even when `afterLegIds` does not say so — a converging
+entry drawn later still gets toured to the end. The painting gesture also keeps the
+declaration honest: when a new leg lands on an element that other legs already depart
+from, the server auto-wires the convergence into their `afterLegIds`, so the stored
+DAG matches what you painted.
 
 ## Keyboard shortcuts
 
@@ -293,7 +338,10 @@ The server pushes a fingerprint of the store over SSE; when the model changes fr
 anywhere else — the form editors, the [MCP server](/manual/mcp-authoring/), another
 browser — the canvas reloads within a couple of seconds and shows an info toast. The
 local undo history is discarded on external changes, since its inverses no longer
-describe the model.
+describe the model. This reaches across processes too: the backend watches the store
+on disk, so a write from an agent's own MCP server, a `git pull` on the checkout or
+a hand edit in the IDE reloads the catalog and lands on every open canvas through
+the same channel — see [the live store](/manual/mcp-authoring/#the-live-store).
 
 ## Under the hood
 

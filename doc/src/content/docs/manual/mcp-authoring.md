@@ -56,6 +56,7 @@ claude mcp add modux -- java -jar model-driven-generator.jar --modux.mcp --modux
 | `delete_element` | Delete an element and persist; returns the references that become dangling |
 | `check_model` | Referential-integrity check over the whole model |
 | `lint_model` | The full linter: integrity plus the architectural rule catalog, filterable by severity |
+| `render_context_map` | The context map **rendered as a self-contained SVG** (no arguments) — bounded contexts tinted by subdomain, external systems dashed, strategic relations solid, flows dashed and coloured by their live coherence. A read-only projection for the agent to *show* the user: save it to a file, embed it in the chat |
 | `list_recipes` / `apply_recipe` | [Starter recipes](/manual/recipes/): emit intent-layer elements instead of structure |
 | `generate_code` | Generate a project's code, like `--modux.generate` |
 | `propose_implementations` | Run [AI completion](/manual/ai-completion/) over the two-zone hooks (needs `ANTHROPIC_API_KEY` in the server's env) |
@@ -74,8 +75,40 @@ The design intent is a tight loop the agent can run without leaving the conversa
 
 Because `upsert_element` rejects unknown fields and points back at `get_element_schema`, typos and hallucinated fields fail fast instead of landing silently in the store.
 
+At any point in the loop, `render_context_map` gives the agent something to *show*
+rather than tell: the current context map as one self-contained SVG, always drawn
+from the live model.
+
+## Journeys over MCP
+
+[Journeys](/manual/graphical-editor/#journeys-trayectos) are ordinary catalog
+elements, so the generic tools cover them: `get_element_schema` for type
+`journeys`, then `upsert_element`. A journey is `id`, `name`, `description` and a
+list of `legs`; each leg is a hop `sourceId` → `targetId` over existing elements
+(bounded contexts, services, aggregates, use cases, query services, APIs,
+workflows, AI agents, external systems) plus `afterLegIds` naming the legs it
+continues — together the legs form a **DAG**, so one journey can bifurcate and
+converge. Three lint rules keep them honest: `journey-leg-endpoints` (ERROR — both
+endpoints must reference existing elements), `journey-dag` (ERROR — every
+`afterLegIds` entry must be a leg of the same journey and the legs must form no
+cycle) and `journey-leg-without-dependency` (INFO — a leg should ride on a declared
+dependency edge underneath, not invent a second topology).
+
+## The live store
+
+The store is shared, not owned: every modux process — the web UI's backend and the
+MCP server alike — **watches the store on disk**. When *another* process writes it
+(the MCP server an agent spawned, a `git pull` on the checkout, a hand edit in the
+IDE), the catalog reloads — healing included — and every open UI refreshes through
+the existing SSE channel. It works in both directions: the MCP server picks up the
+UI's changes the same way, so agent and human can edit the same model at the same
+time without restarting anything. A process recognises its **own writes** and the
+artifacts it generates (the JSON schema, the editor layout) and ignores them;
+between simultaneous writers the **last write wins** — each write persists the
+whole store.
+
 ## Notes
 
 - Every write persists the store immediately, in the same format it was loaded from (monolithic or granular).
-- The store file stays the source of truth: you can keep editing it in the IDE ([with schema support](/getting-started/yaml-editing/)) alongside agent sessions — the server reads the model at startup, so restart it after external edits.
+- The store file stays the source of truth: you can keep editing it in the IDE ([with schema support](/getting-started/yaml-editing/)) alongside agent sessions — [the live store](#the-live-store) picks external edits up as they land, no restart needed.
 - The linter is the same one behind the **Model health** page and `--modux.lint` in CI, so agent, UI and pipeline all enforce identical rules.
