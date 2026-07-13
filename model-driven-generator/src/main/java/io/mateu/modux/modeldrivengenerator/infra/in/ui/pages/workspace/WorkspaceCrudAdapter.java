@@ -93,7 +93,11 @@ public class WorkspaceCrudAdapter
           ServiceDto service = serviceQueryService.getById(serviceId).orElse(null);
           if (service == null) continue;
           List<WorkspaceRow> serviceChildren = new ArrayList<>();
-          for (String boundedContextId : service.boundedContextIds()) {
+          for (String boundedContextId : service.moduleIds().stream()
+              .map(mid -> repository.findById(mid, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).orElse(null))
+              .filter(java.util.Objects::nonNull)
+              .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity::boundedContextId)
+              .distinct().toList()) {
             BoundedContextDto boundedContext = boundedContextQueryService.getById(boundedContextId).orElse(null);
             if (boundedContext == null) continue;
             serviceChildren.add(

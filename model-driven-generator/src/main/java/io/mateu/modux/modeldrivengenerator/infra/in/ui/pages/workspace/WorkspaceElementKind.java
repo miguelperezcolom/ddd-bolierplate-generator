@@ -22,7 +22,7 @@ public enum WorkspaceElementKind {
     QUERY_SERVICE("queryServices", Scope.BOUNDED_CONTEXT, null, "boundedContextId"),
     INTEGRATION_EVENT("integrationEvents", Scope.BOUNDED_CONTEXT, null, "boundedContextId"),
     GATEWAY("gateways", Scope.SERVICE, "gatewayIds", "serviceId"),
-    BOUNDED_CONTEXT("boundedContexts", Scope.SERVICE, "boundedContextIds", null),
+    BOUNDED_CONTEXT("boundedContexts", Scope.SERVICE, "moduleIds", null),
     SERVICE("services", Scope.PROJECT, "serviceIds", null),
     DECISION("decisions", Scope.GLOBAL, null, null);
 

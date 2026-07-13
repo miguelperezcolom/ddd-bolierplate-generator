@@ -169,22 +169,47 @@ class LintRulesTest {
     // --- helpers ---
 
     @Test
-    void boundedContext_not_in_service_is_flagged_as_undeployed() throws Exception {
-        var boundedContext = boundedContext("mod1", List.of());
+    void module_not_in_service_is_flagged_as_undeployed() throws Exception {
+        var module = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.builder()
+                .id("m1").name("M1").boundedContextId("mod1").main(true).build();
         var service = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
-                "{\"id\":\"s1\",\"name\":\"S1\",\"boundedContextIds\":[\"mod1\"]}",
+                "{\"id\":\"s1\",\"name\":\"S1\",\"moduleIds\":[\"m1\"]}",
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class);
 
-        var orphanFindings = new LintRules.BoundedContextNotInService().apply(new ModelSnapshot(
-                null, null, List.of(boundedContext), null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null));
-        var deployedFindings = new LintRules.BoundedContextNotInService().apply(new ModelSnapshot(
-                null, List.of(service), List.of(boundedContext), null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null));
+        var orphanFindings = new LintRules.ModuleNotInService().apply(snapshotWith(null, module));
+        var deployedFindings = new LintRules.ModuleNotInService().apply(snapshotWith(service, module));
 
-        assertTrue(orphanFindings.stream().anyMatch(f -> "mod1".equals(f.elementId())
+        assertTrue(orphanFindings.stream().anyMatch(f -> "m1".equals(f.elementId())
                 && f.severity() == LintSeverity.WARNING), orphanFindings.toString());
         assertTrue(deployedFindings.isEmpty(), deployedFindings.toString());
+    }
+
+    @Test
+    void module_deployed_by_two_services_is_an_error() throws Exception {
+        var module = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.builder()
+                .id("m1").name("M1").boundedContextId("mod1").main(true).build();
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var s1 = mapper.readValue("{\"id\":\"s1\",\"name\":\"S1\",\"moduleIds\":[\"m1\"]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class);
+        var s2 = mapper.readValue("{\"id\":\"s2\",\"name\":\"S2\",\"moduleIds\":[\"m1\"]}",
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class);
+
+        var findings = new LintRules.ModuleInManyServices().apply(new ModelSnapshot(
+                null, List.of(s1, s2), null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, List.of(module)));
+
+        assertTrue(findings.stream().anyMatch(f -> "m1".equals(f.elementId())
+                && f.severity() == LintSeverity.ERROR), findings.toString());
+    }
+
+    private static ModelSnapshot snapshotWith(
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity service,
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity module) {
+        return new ModelSnapshot(
+                null, service == null ? null : List.of(service), null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, List.of(module));
     }
 
     @Test

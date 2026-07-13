@@ -133,10 +133,14 @@ public class EditorModelProjection {
         var currentProject = projects.currentProject().orElse(null);
         var projectServiceIds = currentProject == null || currentProject.serviceIds() == null
                 ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
+        var allModules = repository.findAllOfType(ModuleEntity.class);
         var wiredElsewhere = services.stream()
                 .filter(s2 -> !projectServiceIds.contains(s2.id()))
-                .flatMap(s2 -> s2.boundedContextIds() == null ? java.util.stream.Stream.<String>empty()
-                        : s2.boundedContextIds().stream())
+                .flatMap(s2 -> s2.moduleIds() == null ? java.util.stream.Stream.<String>empty()
+                        : s2.moduleIds().stream())
+                .map(mid -> allModules.stream().filter(mm -> mm.id().equals(mid)).findFirst().orElse(null))
+                .filter(Objects::nonNull)
+                .map(ModuleEntity::boundedContextId)
                 .collect(java.util.stream.Collectors.toSet());
         var boundedContexts = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> !wiredElsewhere.contains(m.id()))
@@ -144,10 +148,10 @@ public class EditorModelProjection {
                         m.id(),
                         m.name(),
                         m.subdomainType() == null ? null : m.subdomainType().name(),
-                        services.stream()
-                                .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(m.id()))
+                        java.util.Optional.ofNullable(
+                                io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                                        .serviceOfBoundedContext(services, allModules, m.id()))
                                 .map(ServiceEntity::id)
-                                .findFirst()
                                 .orElse(null),
                         (m.useCaseIds() == null ? List.<String>of() : m.useCaseIds()).stream()
                                 .map(useCasesById::get)
@@ -712,10 +716,10 @@ public class EditorModelProjection {
                         .map(x -> new NamedRefDto(x.id(), x.name()))
                         .toList(),
                 repository.findAllOfType(ModuleEntity.class).stream()
-                        .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds()))
+                        .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds(), x.main()))
                         .toList(),
                 services.stream()
-                        .map(s -> new ServiceDto(s.id(), s.name(), s.boundedContextIds(), s.moduleIds(),
+                        .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(),
                                 s.database(), s.outboxEnabled()))
                         .toList(),
                 repository.findAllOfType(TransformationEntity.class).stream()

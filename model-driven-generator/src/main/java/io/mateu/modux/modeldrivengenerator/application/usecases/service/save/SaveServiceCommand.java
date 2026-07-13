@@ -16,7 +16,7 @@ public record SaveServiceCommand(String id, String name, String gitRepository, S
                                  Long connectionTimeoutMs, Long readTimeoutMs, Long writeTimeoutMs,
                                  String deploymentStrategy,
                                  String owner,
-                                 List<String> boundedContextIds,
+                                 List<String> moduleIds,
                                  List<String> gatewayIds,
                                  List<EnvVar> envVars,
                                  String javaVersion,
@@ -24,7 +24,7 @@ public record SaveServiceCommand(String id, String name, String gitRepository, S
                                  String outboxTableName) {
 
     public SaveServiceCommand {
-        if (boundedContextIds == null) boundedContextIds = List.of();
+        if (moduleIds == null) moduleIds = List.of();
         if (gatewayIds == null) gatewayIds = List.of();
         if (envVars == null) envVars = List.of();
     }

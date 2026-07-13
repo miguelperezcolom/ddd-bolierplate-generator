@@ -136,8 +136,8 @@ public class EditorApiController {
 
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     /** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
-    public record ModuleDto(String id, String name, String boundedContextId, List<String> elementIds) {}
-    public record ServiceDto(String id, String name, List<String> boundedContextIds, List<String> moduleIds,
+    public record ModuleDto(String id, String name, String boundedContextId, List<String> elementIds, boolean main) {}
+    public record ServiceDto(String id, String name, List<String> moduleIds,
                              String database, boolean outboxEnabled) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
@@ -999,20 +999,24 @@ public class EditorApiController {
         var serviceId = project == null || project.serviceIds() == null ? null
                 : project.serviceIds().stream().findFirst().orElse(null);
         if (serviceId == null) return;
+        var boundedContext = repository.findById(boundedContextId, BoundedContextEntity.class).orElse(null);
+        if (boundedContext == null) return;
+        // The context is born with its main module; the module is what the service deploys.
+        var main = io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                .mainModuleOf(repository.findAllOfType(ModuleEntity.class), boundedContextId);
+        if (main == null) {
+            main = io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                    .mainModuleFor(boundedContext);
+            repository.save(main);
+        }
+        var mainModuleId = main.id();
+        var alreadyDeployed = repository.findAllOfType(ServiceEntity.class).stream()
+                .anyMatch(s -> s.moduleIds().contains(mainModuleId));
+        if (alreadyDeployed) return;
         repository.findById(serviceId, ServiceEntity.class).ifPresent(service -> {
-            var boundedContextIds = new ArrayList<>(service.boundedContextIds() == null ? List.of() : service.boundedContextIds());
-            if (boundedContextIds.contains(boundedContextId)) return;
-            boundedContextIds.add(boundedContextId);
-            // ServiceEntity is huge; a Jackson round-trip copies it safely field-by-field.
-            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            var node = mapper.valueToTree(service);
-            ((com.fasterxml.jackson.databind.node.ObjectNode) node)
-                    .set("boundedContextIds", mapper.valueToTree(boundedContextIds));
-            try {
-                repository.save(mapper.treeToValue(node, ServiceEntity.class));
-            } catch (com.fasterxml.jackson.core.JacksonException e) {
-                throw new IllegalStateException("No se pudo cablear el bounded context al servicio", e);
-            }
+            var moduleIds = new ArrayList<>(service.moduleIds());
+            moduleIds.add(mainModuleId);
+            repository.save(service.toBuilder().moduleIds(moduleIds).build());
         });
     }
 
@@ -1031,6 +1035,19 @@ public class EditorApiController {
                 .toList();
         if (relations.size() != project.contextMap().size()) {
             repository.save(EditorProjectSupport.withContextMap(project, relations));
+        }
+        // Its modules go with it: services let go of them first.
+        var moduleIds = repository.findAllOfType(ModuleEntity.class).stream()
+                .filter(m -> command.id().equals(m.boundedContextId()))
+                .map(ModuleEntity::id)
+                .toList();
+        if (!moduleIds.isEmpty()) {
+            repository.findAllOfType(ServiceEntity.class).stream()
+                    .filter(s -> s.moduleIds().stream().anyMatch(moduleIds::contains))
+                    .forEach(s -> repository.save(s.toBuilder()
+                            .moduleIds(s.moduleIds().stream().filter(id -> !moduleIds.contains(id)).toList())
+                            .build()));
+            repository.deleteAllById(moduleIds, ModuleEntity.class);
         }
         repository.deleteAllById(List.of(command.id()), BoundedContextEntity.class);
     }
@@ -1200,7 +1217,8 @@ public class EditorApiController {
         if (repository.findById(command.id(), ModuleEntity.class).isPresent()) return;
         repository.findById(command.boundedContextId(), BoundedContextEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
-        repository.save(new ModuleEntity(command.id(), command.name(), command.boundedContextId(), List.of()));
+        repository.save(ModuleEntity.builder().id(command.id()).name(command.name())
+                .boundedContextId(command.boundedContextId()).build());
     }
 
     private void removeModule(EditorCommand command) {

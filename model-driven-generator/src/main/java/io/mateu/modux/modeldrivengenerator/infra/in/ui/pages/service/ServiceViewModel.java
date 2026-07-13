@@ -10,11 +10,12 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.Deployme
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.service.vo.EnvVar;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdLabelSupplier;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.GatewayIdOptionsSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdLabelSupplier;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.BoundedContextIdOptionsSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdLabelSupplier;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ModuleIdOptionsSupplier;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.uidl.annotations.GeneratedValue;
 import io.mateu.uidl.annotations.Hidden;
+import io.mateu.uidl.annotations.Help;
 import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.annotations.Tab;
 import io.mateu.uidl.interfaces.CrudCreationForm;
@@ -73,8 +74,9 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
     Integer kubernetesHpaMaxReplicas;
     Integer kubernetesHpaCpuThreshold;
 
-    @Lookup(search = BoundedContextIdOptionsSupplier.class, label = BoundedContextIdLabelSupplier.class)
-    List<String> boundedContexts;
+    @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
+    @Help("Los módulos que este servicio despliega. Cada bounded context nace con su módulo principal.")
+    List<String> modules;
 
     @Lookup(search = GatewayIdOptionsSupplier.class, label = GatewayIdLabelSupplier.class)
     List<String> gatewayIds;
@@ -104,7 +106,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                boundedContexts, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
         return id;
     }
 
@@ -121,7 +123,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
                 circuitBreakerEnabled, circuitBreakerThreshold,
                 connectionTimeoutMs, readTimeoutMs, writeTimeoutMs,
                 deploymentStrategy != null ? deploymentStrategy.name() : null, owner,
-                boundedContexts, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
+                modules, gatewayIds, toEnvVars(envVars), javaVersion, outboxEnabled, outboxTableName));
     }
 
     @Override
@@ -159,7 +161,7 @@ public class ServiceViewModel implements Identifiable, CrudEditorForm<String>, C
         kubernetesHpaMinReplicas = model.kubernetesHpaMinReplicas();
         kubernetesHpaMaxReplicas = model.kubernetesHpaMaxReplicas();
         kubernetesHpaCpuThreshold = model.kubernetesHpaCpuThreshold();
-        boundedContexts = model.boundedContextIds();
+        modules = model.moduleIds();
         gatewayIds = model.gatewayIds();
         javaVersion = model.javaVersion();
         outboxEnabled = model.outboxEnabled();

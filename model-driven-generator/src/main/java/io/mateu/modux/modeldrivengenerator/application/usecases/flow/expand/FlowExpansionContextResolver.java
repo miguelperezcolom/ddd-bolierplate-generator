@@ -44,6 +44,7 @@ public class FlowExpansionContextResolver {
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class),
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(ModelEntity.class),
                 repository.findAllOfType(UseCaseEntity.class));
@@ -54,10 +55,11 @@ public class FlowExpansionContextResolver {
                                         List<AggregateEntity> aggregates,
                                         List<BoundedContextEntity> boundedContexts,
                                         List<ServiceEntity> services,
+                                        List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity> modules,
                                         List<ProjectEntity> projects,
                                         List<ModelEntity> models,
                                         List<UseCaseEntity> useCases) {
-        return resolve(flow, null, null, aggregates, boundedContexts, services, projects, models, useCases);
+        return resolve(flow, null, null, aggregates, boundedContexts, services, modules, projects, models, useCases);
     }
 
     /** Pure resolution over the given model slices — unit-testable without Spring or files. */
@@ -67,6 +69,7 @@ public class FlowExpansionContextResolver {
                                         List<AggregateEntity> aggregates,
                                         List<BoundedContextEntity> boundedContexts,
                                         List<ServiceEntity> services,
+                                        List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity> modules,
                                         List<ProjectEntity> projects,
                                         List<ModelEntity> models,
                                         List<UseCaseEntity> useCases) {
@@ -88,9 +91,9 @@ public class FlowExpansionContextResolver {
                                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(triggerUseCaseId))
                                 .findFirst().orElse(null));
 
-        var sourceService = sourceBoundedContext == null ? null : services.stream()
-                .filter(s -> s.boundedContextIds().contains(sourceBoundedContext.id()))
-                .findFirst().orElse(null);
+        var sourceService = sourceBoundedContext == null ? null
+                : io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                        .serviceOfElement(services, modules, sourceBoundedContext.id(), aggregateId);
         var sourceServiceName = sourceService != null ? sourceService.name()
                 : (sourceBoundedContext != null ? sourceBoundedContext.name() : aggregateId);
 

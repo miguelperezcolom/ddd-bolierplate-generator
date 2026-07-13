@@ -14,8 +14,8 @@ projects:
 services:
 - id: "helpdesk"
   name: "Helpdesk"
-  boundedContextIds:
-  - "mod-tickets"
+  moduleIds:
+  - "mod-tickets-main"
 
 boundedContexts:
 - id: "mod-tickets"
@@ -296,3 +296,11 @@ scheduledTriggers:
   timezone: "UTC"
   useCaseId: "uc-escalateStale"
   description: "Every morning, escalate tickets left unattended"
+
+# Cada bounded context nace con su módulo principal; los elementos no
+# distribuidos explícitamente viven en él.
+modules:
+- id: "mod-tickets-main"
+  name: "Tickets"
+  boundedContextId: "mod-tickets"
+  main: true

@@ -4,6 +4,8 @@ import com.google.googlejavaformat.java.Formatter;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
@@ -172,10 +174,9 @@ public class GenerateCodeUseCase {
             createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
         }
 
-        // generate each DDD boundedContext
-        service.boundedContextIds().stream()
-                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
-                .forEach(boundedContext -> generateBoundedContext(project, service, serviceDir, boundedContext));
+        // generate each deployed module: the module lends its name, its bounded context lends the meaning
+        deployedUnits(service)
+                .forEach(unit -> generateBoundedContext(project, service, serviceDir, unit));
 
         // generate gateways (outbound adapters at service level)
         if (service.gatewayIds() != null) {
@@ -382,11 +383,10 @@ public class GenerateCodeUseCase {
         appModel.put("project", projectToMap(project));
         appModel.put("service", serviceToMap(service));
 
-        // One Home menu entry per boundedContext (each pointing to that boundedContext's menu class).
-        // Only boundedContexts that own aggregates produce a menu.
+        // One Home menu entry per deployed module (each pointing to that module's menu class).
+        // Only modules that package aggregates produce a menu.
         var menuBoundedContexts = new java.util.ArrayList<Map<String, Object>>();
-        service.boundedContextIds().stream()
-                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
+        deployedUnits(service).stream()
                 .filter(m -> m.aggregateIds() != null && !m.aggregateIds().isEmpty())
                 .forEach(m -> {
                     var entry = new HashMap<String, Object>();
@@ -782,12 +782,11 @@ public class GenerateCodeUseCase {
     // ─── Gateways ─────────────────────────────────────────────────────────────
 
     private void generateGateway(ProjectEntity project, ServiceEntity service, String serviceDir, GatewayEntity gateway) {
-        // Gateways are boundedContext-agnostic at service level; we place them in the first boundedContext or a shared location.
-        // For now we generate them relative to serviceDir in a shared infra area.
-        // Find the first boundedContext to determine the package dir.
-        if (service.boundedContextIds() == null || service.boundedContextIds().isEmpty()) return;
-        var firstBoundedContext = repository.findById(service.boundedContextIds().get(0), BoundedContextEntity.class).orElse(null);
-        if (firstBoundedContext == null) return;
+        // Gateways are module-agnostic at service level; we place them in the first deployed
+        // module's package dir, in a shared infra area.
+        var units = deployedUnits(service);
+        if (units.isEmpty()) return;
+        var firstBoundedContext = units.get(0);
         var boundedContextSlug = boundedContextSlug(firstBoundedContext.name());
         var boundedContextDir = serviceDir + "/" + boundedContextSlug;
         var boundedContextPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug;
@@ -1349,10 +1348,7 @@ public class GenerateCodeUseCase {
         // Flyway (also the default when unset)
 
         var tables = new ArrayList<Map<String, Object>>();
-        for (var boundedContextId : (service.boundedContextIds() != null ? service.boundedContextIds() : List.<String>of())) {
-            var boundedContext = repository.findById(boundedContextId, BoundedContextEntity.class).orElse(null);
-            if (boundedContext == null) continue;
-
+        for (var boundedContext : deployedUnits(service)) {
             for (var aggId : (boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of())) {
                 if (!inScope(aggId)) continue;
                 var agg = repository.findById(aggId, AggregateEntity.class).orElse(null);
@@ -2206,12 +2202,52 @@ public class GenerateCodeUseCase {
     private Map<String, Object> serviceToMap(ServiceEntity service) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(service)));
-        var boundedContexts = service.boundedContextIds().stream()
-                .map(id -> repository.findById(id, BoundedContextEntity.class).orElseThrow())
+        map.put("modules", deployedUnits(service).stream()
                 .map(this::boundedContextToMap)
-                .toList();
-        map.put("modules", boundedContexts);
+                .toList());
         return map;
+    }
+
+    /**
+     * The service's deployed modules, each as a generation unit: a bounded-context
+     * view named after the module and restricted to the elements the module
+     * actually packages. For a main module alone, that is the whole context.
+     */
+    private List<BoundedContextEntity> deployedUnits(ServiceEntity service) {
+        var allModules = repository.findAllOfType(ModuleEntity.class);
+        return (service.moduleIds() == null ? List.<String>of() : service.moduleIds()).stream()
+                .map(id -> repository.findById(id, ModuleEntity.class).orElseThrow(
+                        () -> new IllegalArgumentException("Unknown module: " + id)))
+                .map(module -> restrictedTo(module, allModules))
+                .toList();
+    }
+
+    private BoundedContextEntity restrictedTo(ModuleEntity module, List<ModuleEntity> allModules) {
+        var boundedContext = repository.findById(module.boundedContextId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Module " + module.id() + " distributes an unknown bounded context: " + module.boundedContextId()));
+        var keep = ModuleTopology.effectiveElementIds(allModules, boundedContext, module);
+        return boundedContext.toBuilder()
+                .name(module.name())
+                .aggregateIds(retain(boundedContext.aggregateIds(), keep))
+                .entityIds(retain(boundedContext.entityIds(), keep))
+                .valueObjectIds(retain(boundedContext.valueObjectIds(), keep))
+                .useCaseIds(retain(boundedContext.useCaseIds(), keep))
+                .domainEventIds(retain(boundedContext.domainEventIds(), keep))
+                .projectionIds(retain(boundedContext.projectionIds(), keep))
+                .readModelIds(retain(boundedContext.readModelIds(), keep))
+                .subscriptionIds(retain(boundedContext.subscriptionIds(), keep))
+                .sagaIds(retain(boundedContext.sagaIds(), keep))
+                .scheduledTriggerIds(retain(boundedContext.scheduledTriggerIds(), keep))
+                .decisionIds(retain(boundedContext.decisionIds(), keep))
+                .applicationEventIds(retain(boundedContext.applicationEventIds(), keep))
+                .domainServiceIds(retain(boundedContext.domainServiceIds(), keep))
+                .uiAdapterIds(retain(boundedContext.uiAdapterIds(), keep))
+                .build();
+    }
+
+    private static List<String> retain(List<String> ids, java.util.Set<String> keep) {
+        return ids == null ? List.of() : ids.stream().filter(keep::contains).toList();
     }
 
     private Map<String, Object> boundedContextToMap(BoundedContextEntity boundedContext) {

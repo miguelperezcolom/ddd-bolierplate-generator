@@ -59,10 +59,11 @@ class DbStorageTest {
         assertThat(repository.findAllOfType(SolutionEntity.class)).hasSize(1);
 
         // ---- to-be work: one addition; the semantic diff sees exactly that
+        // (a bounded context is born with its main module, so the diff sees both)
         repository.save(boundedContext("mod-dos", "Dos"));
         var diff = diffService.diffAgainstSystem();
         assertThat(diff.system()).isFalse();
-        assertThat(diff.added()).isEqualTo(1);
+        assertThat(diff.added()).isEqualTo(2);
         assertThat(diff.modified()).isZero();
         // the system itself is untouched
         assertThat(workspaces.systemModel().boundedContexts()).hasSize(1);

@@ -12,6 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
@@ -53,8 +54,29 @@ public record ModelSnapshot(
         List<AiAgentEntity> aiAgents,
         List<RagEntity> rags,
         List<ApiEntity> apis,
-        List<McpGatewayEntity> mcpGateways
+        List<McpGatewayEntity> mcpGateways,
+        List<ModuleEntity> modules
 ) {
+
+    /** Backward-compatible constructor (pre-modules callers). */
+    public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
+                         List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
+                         List<ModelEntity> models, List<UseCaseEntity> useCases,
+                         List<DomainEventEntity> domainEvents,
+                         List<IntegrationEventEntity> integrationEvents,
+                         List<SubscriptionEntity> subscriptions, List<ProjectionEntity> projections,
+                         List<ReadModelEntity> readModels, List<SagaEntity> sagas,
+                         List<FlowEntity> flows, List<ProcessEntity> processes,
+                         List<DecisionEntity> decisions, List<PageEntity> pages,
+                         List<QueryServiceEntity> queryServices,
+                         List<ModelMappingEntity> modelMappings, List<EntityEntity> entities,
+                         List<WorkflowEntity> workflows, List<AiAgentEntity> aiAgents,
+                         List<RagEntity> rags, List<ApiEntity> apis, List<McpGatewayEntity> mcpGateways) {
+        this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
+                integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
+                decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
+                rags, apis, mcpGateways, null);
+    }
 
     /** Backward-compatible constructor (pre-mcpGateways callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
@@ -174,6 +196,7 @@ public record ModelSnapshot(
         rags = nvl(rags);
         apis = nvl(apis);
         mcpGateways = nvl(mcpGateways);
+        modules = nvl(modules);
     }
 
     public static ModelSnapshot from(ModelStore repository) {
@@ -201,7 +224,8 @@ public record ModelSnapshot(
                 repository.findAllOfType(AiAgentEntity.class),
                 repository.findAllOfType(RagEntity.class),
                 repository.findAllOfType(ApiEntity.class),
-                repository.findAllOfType(McpGatewayEntity.class));
+                repository.findAllOfType(McpGatewayEntity.class),
+                repository.findAllOfType(ModuleEntity.class));
     }
 
     /** Snapshot with only the given slices — for tests. Everything else is empty. */

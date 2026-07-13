@@ -6,19 +6,24 @@ import lombok.Builder;
 import java.util.List;
 
 /**
- * A code boundedContext: how a bounded context's elements are DISTRIBUTED into buildable
- * units. The bounded context owns the meaning; the boundedContext owns the packaging (each
- * boundedContext carries its own hexagonal layers, derived from its elements' kinds); the
- * service (ServiceEntity.moduleIds) says where a boundedContext is DEPLOYED.
+ * A module: how a bounded context's elements are DISTRIBUTED into buildable
+ * units. The bounded context owns the meaning; the module owns the packaging (each
+ * module carries its own hexagonal layers, derived from its elements' kinds); the
+ * service (ServiceEntity.moduleIds) says where a module is DEPLOYED.
+ *
+ * Every bounded context has exactly one MAIN module, created with it; elements
+ * not explicitly packaged in another module belong to the main one implicitly.
  */
 @Builder(toBuilder = true)
 public record ModuleEntity(
         String id,
         String name,
-        /** The bounded context this boundedContext distributes elements of. */
+        /** The bounded context this module distributes elements of. */
         String boundedContextId,
-        /** The elements (aggregates, use cases, events…) packaged in this boundedContext. */
-        List<String> elementIds
+        /** The elements (aggregates, use cases, events…) explicitly packaged here. */
+        List<String> elementIds,
+        /** The bounded context's default module: it holds every undistributed element. */
+        boolean main
 ) implements Identifiable {
 
     public ModuleEntity {

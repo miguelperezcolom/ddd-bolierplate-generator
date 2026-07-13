@@ -42,7 +42,7 @@ public class ModuleViewModel implements Identifiable, CrudEditorForm<String>, Cr
 
     @Override
     public String create(HttpRequest httpRequest) {
-        repository.save(new ModuleEntity(id, name, boundedContextId, java.util.List.of()));
+        repository.save(ModuleEntity.builder().id(id).name(name).boundedContextId(boundedContextId).build());
         return id;
     }
 

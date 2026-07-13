@@ -9,18 +9,18 @@ projects:
 services:
 - id: "hotel-svc"
   name: "Hotel"
-  boundedContextIds:
-  - "mod-frontoffice"
-  - "mod-reservas"
-  - "mod-produccion"
-  - "mod-folios"
-  - "mod-facturacion"
-  - "mod-pagos"
-  - "mod-housekeeping"
-  - "mod-servicio-tecnico"
-  - "mod-rack"
-  - "mod-master-data"
-  - "mod-cardex"
+  moduleIds:
+  - "mod-frontoffice-main"
+  - "mod-reservas-main"
+  - "mod-produccion-main"
+  - "mod-folios-main"
+  - "mod-facturacion-main"
+  - "mod-pagos-main"
+  - "mod-housekeeping-main"
+  - "mod-servicio-tecnico-main"
+  - "mod-rack-main"
+  - "mod-master-data-main"
+  - "mod-cardex-main"
   gatewayIds:
   - "gw-reservas"
 boundedContexts:
@@ -1878,3 +1878,51 @@ rags:
 apis:
 - id: "api-eded"
   name: "eded"
+
+# Cada bounded context nace con su módulo principal; los elementos no
+# distribuidos explícitamente viven en él.
+modules:
+- id: "mod-housekeeping-main"
+  name: "Housekeeping"
+  boundedContextId: "mod-housekeeping"
+  main: true
+- id: "mod-servicio-tecnico-main"
+  name: "ServicioTecnico"
+  boundedContextId: "mod-servicio-tecnico"
+  main: true
+- id: "mod-reservas-main"
+  name: "Reservas"
+  boundedContextId: "mod-reservas"
+  main: true
+- id: "mod-cardex-main"
+  name: "Cardex"
+  boundedContextId: "mod-cardex"
+  main: true
+- id: "mod-facturacion-main"
+  name: "Facturacion"
+  boundedContextId: "mod-facturacion"
+  main: true
+- id: "mod-master-data-main"
+  name: "MasterData"
+  boundedContextId: "mod-master-data"
+  main: true
+- id: "mod-pagos-main"
+  name: "Pagos"
+  boundedContextId: "mod-pagos"
+  main: true
+- id: "mod-rack-main"
+  name: "Rack"
+  boundedContextId: "mod-rack"
+  main: true
+- id: "mod-frontoffice-main"
+  name: "FrontOffice"
+  boundedContextId: "mod-frontoffice"
+  main: true
+- id: "mod-folios-main"
+  name: "Folios"
+  boundedContextId: "mod-folios"
+  main: true
+- id: "mod-produccion-main"
+  name: "Produccion"
+  boundedContextId: "mod-produccion"
+  main: true

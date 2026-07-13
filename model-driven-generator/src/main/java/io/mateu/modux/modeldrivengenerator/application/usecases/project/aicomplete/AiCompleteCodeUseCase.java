@@ -40,7 +40,10 @@ public class AiCompleteCodeUseCase {
         var written = new ArrayList<Path>();
         for (var serviceId : project.serviceIds()) {
             var service = repository.findById(serviceId, ServiceEntity.class).orElseThrow();
-            for (var boundedContextId : service.boundedContextIds()) {
+            for (var boundedContextId : service.moduleIds().stream()
+                    .map(id -> repository.findById(id, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class).orElseThrow())
+                    .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity::boundedContextId)
+                    .distinct().toList()) {
                 var boundedContext = repository.findById(boundedContextId, BoundedContextEntity.class).orElseThrow();
                 written.add(processBoundedContext(command, project, service, boundedContext, outputPath));
             }

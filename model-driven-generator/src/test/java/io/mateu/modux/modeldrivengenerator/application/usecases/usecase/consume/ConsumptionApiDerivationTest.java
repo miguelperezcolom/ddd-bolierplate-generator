@@ -22,9 +22,11 @@ class ConsumptionApiDerivationTest {
     private static final BoundedContextEntity MOD_A = boundedContext("mod-a", List.of("uc-consumer"));
     private static final BoundedContextEntity MOD_B = boundedContext("mod-b", List.of("uc-provider"));
     private static final BoundedContextEntity MOD_C = boundedContext("mod-c", List.of("uc-local"));
+    private static final List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity> MODULES = List.of(
+            mainModule("mod-a"), mainModule("mod-b"), mainModule("mod-c"));
     private static final List<ServiceEntity> SERVICES = List.of(
-            service("svc-1", List.of("mod-a", "mod-c")),
-            service("svc-2", List.of("mod-b")));
+            service("svc-1", List.of("mod-a-main", "mod-c-main")),
+            service("svc-2", List.of("mod-b-main")));
 
     @Test
     void cross_service_consumption_exposes_the_provider_as_grpc_with_convention_names() {
@@ -36,7 +38,7 @@ class ConsumptionApiDerivationTest {
 
         var result = ConsumptionApiDerivation.derive(
                 List.of(consumer, provider, local), List.of(),
-                List.of(MOD_A, MOD_B, MOD_C), SERVICES);
+                List.of(MOD_A, MOD_B, MOD_C), SERVICES, MODULES);
 
         // only the cross-service provider is exposed; the in-process one stays an interface
         assertEquals(1, result.useCasesToExpose().size());
@@ -56,13 +58,13 @@ class ConsumptionApiDerivationTest {
         var consumer = useCase("uc-consumer", List.of(callQueryService("s1", "qs-precios", "op1")));
 
         var first = ConsumptionApiDerivation.derive(List.of(consumer), List.of(qs),
-                List.of(MOD_A, MOD_B), SERVICES);
+                List.of(MOD_A, MOD_B), SERVICES, MODULES);
         assertEquals(1, first.queryServicesToExpose().size());
         assertTrue(first.queryServicesToExpose().get(0).exposedAsGrpc());
 
         // re-derive over the already-exposed provider → nothing new
         var second = ConsumptionApiDerivation.derive(List.of(consumer), first.queryServicesToExpose(),
-                List.of(MOD_A, MOD_B), SERVICES);
+                List.of(MOD_A, MOD_B), SERVICES, MODULES);
         assertTrue(second.queryServicesToExpose().isEmpty());
     }
 
@@ -74,10 +76,14 @@ class ConsumptionApiDerivationTest {
                 null, null, null, null, null);
     }
 
-    private static ServiceEntity service(String id, List<String> boundedContextIds) {
-        return new ServiceEntity(id, id, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null, null, null, null, null, false, false, null,
-                null, null, null, null, null, boundedContextIds, null, null, null, false, null);
+    private static ServiceEntity service(String id, List<String> moduleIds) {
+        return ServiceEntity.builder().id(id).name(id).moduleIds(moduleIds).build();
+    }
+
+    private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity mainModule(String boundedContextId) {
+        return io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.builder()
+                .id(boundedContextId + "-main").name(boundedContextId).boundedContextId(boundedContextId)
+                .main(true).build();
     }
 
     private static UseCaseEntity useCase(String id, List<UseCaseStepEntity> steps) {

@@ -161,21 +161,21 @@ services:
 - id: "svc-distribution"
   name: "distribution"
   owner: "equipo journey"
-  boundedContextIds:
-  - "mod-distribution"
+  moduleIds:
+  - "mod-distribution-main"
 - id: "svc-reservas"
   name: "reservas"
   owner: "equipo reservas"
-  boundedContextIds:
-  - "mod-reservas"
-  - "mod-rumbo-writer"
+  moduleIds:
+  - "mod-reservas-main"
+  - "mod-rumbo-writer-main"
 - id: "svc-readside"
   name: "readside"
   owner: "equipo reservas"
-  boundedContextIds:
-  - "mod-dispo"
-  - "mod-valoracion"
-  - "mod-ficha"
+  moduleIds:
+  - "mod-dispo-main"
+  - "mod-valoracion-main"
+  - "mod-ficha-main"
 
 boundedContexts:
 # D8 — BFF/experience-API stateless: fachada fina, el dominio no vive en el borde
@@ -751,3 +751,31 @@ flows:
   - "locator"
   - "status"
   - "holderEmail"   # ⚠ deliberado: PII cruzando la frontera — el linter debe avisar
+
+# Cada bounded context nace con su módulo principal; los elementos no
+# distribuidos explícitamente viven en él.
+modules:
+- id: "mod-distribution-main"
+  name: "Distribution"
+  boundedContextId: "mod-distribution"
+  main: true
+- id: "mod-reservas-main"
+  name: "Reservas"
+  boundedContextId: "mod-reservas"
+  main: true
+- id: "mod-rumbo-writer-main"
+  name: "RumboWriter"
+  boundedContextId: "mod-rumbo-writer"
+  main: true
+- id: "mod-dispo-main"
+  name: "Dispo"
+  boundedContextId: "mod-dispo"
+  main: true
+- id: "mod-valoracion-main"
+  name: "Valoracion"
+  boundedContextId: "mod-valoracion"
+  main: true
+- id: "mod-ficha-main"
+  name: "Ficha"
+  boundedContextId: "mod-ficha"
+  main: true

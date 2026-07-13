@@ -2,6 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
 import io.mateu.uidl.data.Pageable;
@@ -67,6 +68,14 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
     public synchronized void save(Identifiable o) {
         store.put(storeKey(o.id(), o.getClass()), o);
+        // a bounded context is born with its main module, whoever saves it
+        if (o instanceof BoundedContextEntity boundedContext) {
+            var modules = findAllOfType(ModuleEntity.class);
+            if (ModuleTopology.mainModuleOf(modules, boundedContext.id()) == null) {
+                var main = ModuleTopology.mainModuleFor(boundedContext);
+                store.put(storeKey(main.id(), main.getClass()), main);
+            }
+        }
         persist();
     }
 
@@ -172,6 +181,19 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
                 throw new IllegalStateException("Could not read AllData component " + component.getName(), e);
             }
         }
+        healMainModules();
+    }
+
+    /**
+     * The invariant every store must satisfy: a bounded context always has a main
+     * module. Contexts loaded without one (hand-written stores) heal on first read;
+     * the module persists with the next save, like the menus do.
+     */
+    private void healMainModules() {
+        var modules = findAllOfType(ModuleEntity.class);
+        findAllOfType(BoundedContextEntity.class).stream()
+                .filter(bc -> ModuleTopology.mainModuleOf(modules, bc.id()) == null)
+                .forEach(bc -> putTransient(ModuleTopology.mainModuleFor(bc)));
     }
 
     /** The loaded model as an {@link AllData} — a read-only snapshot of the catalog. */

@@ -17,9 +17,9 @@ services:
   gatewayIds:
   - "gw-payments"
   - "gw-warehouse"
-  boundedContextIds:
-  - "mod-ordering"
-  - "mod-inventory"
+  moduleIds:
+  - "mod-ordering-main"
+  - "mod-inventory-main"
 
 boundedContexts:
 - id: "mod-ordering"
@@ -316,3 +316,15 @@ businessRules:
   - id: "act-flag"
     type: "CUSTOM"
     description: "flag as priority"
+
+# Cada bounded context nace con su módulo principal; los elementos no
+# distribuidos explícitamente viven en él.
+modules:
+- id: "mod-ordering-main"
+  name: "Ordering"
+  boundedContextId: "mod-ordering"
+  main: true
+- id: "mod-inventory-main"
+  name: "Inventory"
+  boundedContextId: "mod-inventory"
+  main: true

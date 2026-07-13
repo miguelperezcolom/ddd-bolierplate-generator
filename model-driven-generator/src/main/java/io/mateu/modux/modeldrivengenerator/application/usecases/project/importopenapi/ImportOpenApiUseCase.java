@@ -73,22 +73,7 @@ public class ImportOpenApiUseCase {
                 if (!service.gatewayIds().contains(gatewayEntity.id())) {
                     var updatedIds = new ArrayList<>(service.gatewayIds());
                     updatedIds.add(gatewayEntity.id());
-                    ServiceEntity updated = new ServiceEntity(
-                            service.id(), service.name(), service.gitRepository(),
-                            service.dockerImageRegistry(), service.dockerImageName(), service.port(),
-                            service.contextPath(), service.database(), service.dbMigrationTool(),
-                            service.kubernetesReplicas(), service.kubernetesCpuRequest(),
-                            service.kubernetesCpuLimit(), service.kubernetesMemoryRequest(),
-                            service.kubernetesMemoryLimit(), service.kubernetesHpaEnabled(),
-                            service.kubernetesHpaMinReplicas(), service.kubernetesHpaMaxReplicas(),
-                            service.kubernetesHpaCpuThreshold(), service.livenessProbe(),
-                            service.readinessProbe(), service.startupProbe(),
-                            service.openApiDocumentationEnabled(), service.circuitBreakerEnabled(),
-                            service.circuitBreakerThreshold(), service.connectionTimeoutMs(),
-                            service.readTimeoutMs(), service.writeTimeoutMs(),
-                            service.deploymentStrategy(), service.owner(),
-                            service.boundedContextIds(), updatedIds, service.envVars(),
-                            service.javaVersion(), service.outboxEnabled(), service.outboxTableName());
+                    ServiceEntity updated = service.toBuilder().gatewayIds(updatedIds).build();
                     repository.save(updated);
                 }
             });

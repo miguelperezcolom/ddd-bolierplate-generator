@@ -25,7 +25,8 @@ public class DeriveConsumptionApisUseCase {
                 repository.findAllOfType(UseCaseEntity.class),
                 repository.findAllOfType(QueryServiceEntity.class),
                 repository.findAllOfType(BoundedContextEntity.class),
-                repository.findAllOfType(ServiceEntity.class));
+                repository.findAllOfType(ServiceEntity.class),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class));
 
         result.useCasesToExpose().forEach(repository::save);
         result.queryServicesToExpose().forEach(repository::save);

@@ -12,8 +12,8 @@ projects:
 services:
 - id: "ledger"
   name: "Ledger"
-  boundedContextIds:
-  - "mod-accounts"
+  moduleIds:
+  - "mod-accounts-main"
 
 boundedContexts:
 - id: "mod-accounts"
@@ -85,3 +85,11 @@ domainEvents:
   name: "AccountOpened"
   modelId: "account-event-model"
   schemaVersion: "1"
+
+# Cada bounded context nace con su módulo principal; los elementos no
+# distribuidos explícitamente viven en él.
+modules:
+- id: "mod-accounts-main"
+  name: "Accounts"
+  boundedContextId: "mod-accounts"
+  main: true

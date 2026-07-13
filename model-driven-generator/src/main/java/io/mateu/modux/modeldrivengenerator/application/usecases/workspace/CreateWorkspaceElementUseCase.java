@@ -40,14 +40,24 @@ public class CreateWorkspaceElementUseCase {
         node.put("id", command.id());
         node.put("name", command.name());
         command.elementRefs().forEach(node::put);
-        repository.save(toEntity(node, type, command.typeName()));
+        var entity = toEntity(node, type, command.typeName());
+        repository.save(entity);
+
+        // A bounded context is born with its main module; what the service deploys is the module.
+        var attachId = command.id();
+        if (entity instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity boundedContext) {
+            var main = io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                    .mainModuleFor(boundedContext);
+            repository.save(main);
+            attachId = main.id();
+        }
 
         if (command.parentTypeName() != null) {
-            attachToParent(command);
+            attachToParent(command, attachId);
         }
     }
 
-    private void attachToParent(CreateWorkspaceElementCommand command) {
+    private void attachToParent(CreateWorkspaceElementCommand command, String attachId) {
         var parentType = registry.classFor(command.parentTypeName());
         var parent = repository.findById(command.parentId(), parentType)
                 .orElseThrow(() -> new IllegalArgumentException("No parent " + command.parentTypeName()
@@ -57,7 +67,7 @@ public class CreateWorkspaceElementUseCase {
         var list = node.get(command.parentListField());
         var array = list instanceof com.fasterxml.jackson.databind.node.ArrayNode arrayNode
                 ? arrayNode : node.putArray(command.parentListField());
-        array.add(command.id());
+        array.add(attachId);
         repository.save(toEntity(node, parentType, command.parentTypeName()));
     }
 

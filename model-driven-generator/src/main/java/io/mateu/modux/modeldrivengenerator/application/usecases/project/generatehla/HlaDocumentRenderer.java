@@ -88,7 +88,11 @@ public final class HlaDocumentRenderer {
         md.append("## 3. Vista estructural\n\n```mermaid\nflowchart LR\n");
         for (var service : m.services()) {
             md.append("  subgraph ").append(id(service.id())).append("[\"servicio ").append(service.name()).append("\"]\n");
-            for (var boundedContextId : nvlList(service.boundedContextIds())) {
+            for (var boundedContextId : nvlList(service.moduleIds()).stream()
+                    .map(mid -> m.modules().stream().filter(mm -> mm.id().equals(mid)).findFirst().orElse(null))
+                    .filter(java.util.Objects::nonNull)
+                    .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity::boundedContextId)
+                    .distinct().toList()) {
                 var boundedContext = boundedContextById(m, boundedContextId);
                 if (boundedContext == null) continue;
                 var label = boundedContext.name() + (boundedContext.subdomainType() != null ? " · " + boundedContext.subdomainType().name() : "");

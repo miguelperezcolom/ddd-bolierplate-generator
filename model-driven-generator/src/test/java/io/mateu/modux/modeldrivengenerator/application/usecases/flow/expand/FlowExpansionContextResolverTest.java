@@ -32,7 +32,8 @@ class FlowExpansionContextResolverTest {
                 List.of(agg("agg-reserva", "Reserva", "model-reserva")),
                 List.of(mod("mod-reservas", "reservas", List.of("agg-reserva")),
                         mod("frontoffice", "FrontOffice", List.of())),
-                List.of(svc("svc-reservas", "reservas", List.of("mod-reservas"))),
+                List.of(svc("svc-reservas", "reservas", List.of("mod-reservas-main"))),
+                List.of(mainModule("mod-reservas"), mainModule("frontoffice")),
                 List.of(proj("proj-hotel", "hotel", List.of("svc-reservas"))),
                 List.of(model("model-reserva",
                         field("localizador", FieldDataType.string),
@@ -58,7 +59,7 @@ class FlowExpansionContextResolverTest {
                 "X", List.of("a"), null, List.of(), List.of());
 
         var ctx = FlowExpansionContextResolver.resolve(flow,
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
 
         assertEquals("app", ctx.projectName());
         assertEquals("missing-agg", ctx.aggregateName());
@@ -76,10 +77,14 @@ class FlowExpansionContextResolverTest {
                 null, null, null, null, false, null, null, null, null, null);
     }
 
-    private static ServiceEntity svc(String id, String name, List<String> boundedContextIds) {
-        return new ServiceEntity(id, name, null, null, null, null, null, null, null, null, null, null, null, null,
-                false, null, null, null, null, null, null, false, false, null, null, null, null, null, null,
-                boundedContextIds, null, null, null, false, null);
+    private static ServiceEntity svc(String id, String name, List<String> moduleIds) {
+        return ServiceEntity.builder().id(id).name(name).moduleIds(moduleIds).build();
+    }
+
+    private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity mainModule(String boundedContextId) {
+        return io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.builder()
+                .id(boundedContextId + "-main").name(boundedContextId).boundedContextId(boundedContextId)
+                .main(true).build();
     }
 
     private static ProjectEntity proj(String id, String name, List<String> serviceIds) {

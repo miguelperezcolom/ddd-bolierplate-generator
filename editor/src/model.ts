@@ -673,19 +673,20 @@ export interface DocumentRef {
   queryOperationId?: string;
 }
 
-/** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
+/** A module: distribution unit inside a bounded context; services deploy them. */
 export interface ModuleRef {
   id: string;
   name: string;
-  /** The bounded context whose elements this boundedContext distributes. */
+  /** The bounded context whose elements this module distributes. */
   boundedContextId: string;
   elementIds?: string[];
+  /** The context's default module: it holds every undistributed element. */
+  main?: boolean;
 }
 
 export interface ServiceRef {
   id: string;
   name: string;
-  boundedContextIds?: string[];
   moduleIds?: string[];
   /** Infrastructure it leans on (drawn at the distribution level). */
   database?: string;

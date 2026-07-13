@@ -1,7 +1,9 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -31,15 +33,16 @@ public final class ConsumptionApiDerivation {
     public static Result derive(List<UseCaseEntity> useCases,
                                 List<QueryServiceEntity> queryServices,
                                 List<BoundedContextEntity> boundedContexts,
-                                List<ServiceEntity> services) {
+                                List<ServiceEntity> services,
+                                List<ModuleEntity> modules) {
         var useCasesToExpose = new ArrayList<UseCaseEntity>();
         var queryServicesToExpose = new ArrayList<QueryServiceEntity>();
         int crossService = 0, inProcess = 0;
 
         for (var boundedContext : boundedContexts) {
             if (boundedContext.useCaseIds() == null) continue;
-            var consumerService = serviceOf(services, boundedContext.id());
             for (var useCaseId : boundedContext.useCaseIds()) {
+                var consumerService = ModuleTopology.serviceOfElement(services, modules, boundedContext.id(), useCaseId);
                 var consumer = byId(useCases, useCaseId);
                 if (consumer == null || consumer.steps() == null) continue;
                 for (var step : consumer.steps()) {
@@ -47,7 +50,7 @@ public final class ConsumptionApiDerivation {
                         var provider = byId(useCases, step.useCaseId());
                         var providerBoundedContext = ownerBoundedContext(boundedContexts, step.useCaseId());
                         if (provider == null || providerBoundedContext == null) continue;
-                        if (sameService(consumerService, serviceOf(services, providerBoundedContext.id()))) {
+                        if (sameService(consumerService, ModuleTopology.serviceOfElement(services, modules, providerBoundedContext.id(), provider.id()))) {
                             inProcess++;
                         } else {
                             crossService++;
@@ -62,7 +65,7 @@ public final class ConsumptionApiDerivation {
                                 .filter(qs -> qs.id().equals(step.queryServiceId())).findFirst().orElse(null);
                         if (provider == null) continue;
                         var providerBoundedContextId = provider.boundedContextId();
-                        if (sameService(consumerService, serviceOf(services, providerBoundedContextId))) {
+                        if (sameService(consumerService, ModuleTopology.serviceOfElement(services, modules, providerBoundedContextId, provider.id()))) {
                             inProcess++;
                         } else {
                             crossService++;
@@ -89,13 +92,6 @@ public final class ConsumptionApiDerivation {
     private static BoundedContextEntity ownerBoundedContext(List<BoundedContextEntity> boundedContexts, String useCaseId) {
         return boundedContexts.stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(useCaseId))
-                .findFirst().orElse(null);
-    }
-
-    private static ServiceEntity serviceOf(List<ServiceEntity> services, String boundedContextId) {
-        if (boundedContextId == null) return null;
-        return services.stream()
-                .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(boundedContextId))
                 .findFirst().orElse(null);
     }
 

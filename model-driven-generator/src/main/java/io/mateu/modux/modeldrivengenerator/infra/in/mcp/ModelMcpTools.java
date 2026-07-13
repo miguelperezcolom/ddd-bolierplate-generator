@@ -271,8 +271,12 @@ public class ModelMcpTools {
                 throw new IllegalArgumentException(schemaMismatchMessage("boundedContexts", e));
             }
         }
+        var mainModuleIds = boundedContextIds.stream()
+                .map(io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology::mainModuleId)
+                .toList();
         for (var newId : java.util.stream.Stream.concat(
-                java.util.stream.Stream.of(projectId, serviceId), boundedContextIds.stream()).toList()) {
+                java.util.stream.Stream.concat(java.util.stream.Stream.of(projectId, serviceId),
+                        boundedContextIds.stream()), mainModuleIds.stream()).toList()) {
             var owner = idPolicy.conflict(newId, "n/a").orElse(null);
             if (owner != null) {
                 throw new IllegalArgumentException("Id '" + newId + "' already exists (in " + owner
@@ -295,14 +299,22 @@ public class ModelMcpTools {
         service.put("id", serviceId);
         // the service name drives the generated directory layout — default to the project id
         service.put("name", projectId);
-        var serviceBoundedContexts = service.putArray("boundedContextIds");
-        boundedContextIds.forEach(serviceBoundedContexts::add);
+        var serviceModules = service.putArray("moduleIds");
+        mainModuleIds.forEach(serviceModules::add);
 
         // reuse upsert so uniqueness/shape checks and persistence behave identically
         upsertElement("projects", project);
         upsertElement("services", service);
         for (var boundedContext : boundedContexts) {
             upsertElement("boundedContexts", boundedContext);
+            // every context is born with its main module — the unit the service deploys
+            var module = json.createObjectNode();
+            var boundedContextId = boundedContext.get("id").asText();
+            module.put("id", io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology.mainModuleId(boundedContextId));
+            module.put("name", boundedContext.hasNonNull("name") ? boundedContext.get("name").asText() : boundedContextId);
+            module.put("boundedContextId", boundedContextId);
+            module.put("main", true);
+            upsertElement("modules", module);
         }
 
         return "Project '" + projectId + "' bootstrapped: service '" + serviceId + "' with boundedContext(s) "

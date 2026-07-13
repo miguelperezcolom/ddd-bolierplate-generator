@@ -53,7 +53,8 @@ public final class LintRules {
                 new ModelOrphan(),
                 new CrossContextDataAccess(),
                 new CrossServiceConsumption(),
-                new BoundedContextNotInService(),
+                new ModuleNotInService(),
+                new ModuleInManyServices(),
                 new BoundedContextReadPath(),
                 new BoundedContextWritePath(),
                 new UseCasePipeline(),
@@ -808,8 +809,9 @@ public final class LintRules {
             var findings = new ArrayList<LintFinding>();
             for (var boundedContext : m.boundedContexts()) {
                 if (boundedContext.useCaseIds() == null) continue;
-                var consumerService = serviceOf(m, boundedContext.id());
                 for (var useCaseId : boundedContext.useCaseIds()) {
+                    var consumerService = io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                            .serviceOfElement(m.services(), m.modules(), boundedContext.id(), useCaseId);
                     var consumer = m.useCases().stream().filter(uc -> uc.id().equals(useCaseId)).findFirst().orElse(null);
                     if (consumer == null || consumer.steps() == null) continue;
                     for (var step : consumer.steps()) {
@@ -820,7 +822,7 @@ public final class LintRules {
                                     .filter(other -> other.useCaseIds() != null && other.useCaseIds().contains(step.useCaseId()))
                                     .findFirst().orElse(null);
                             if (provider == null || providerBoundedContext == null) continue;
-                            if (crossesService(m, consumerService, providerBoundedContext.id())
+                            if (crossesService(m, consumerService, providerBoundedContext.id(), provider.id())
                                     && !provider.exposedAsGrpc() && !provider.exposedAsRest()) {
                                 findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
                                         consumer.id(), consumer.name(),
@@ -833,7 +835,7 @@ public final class LintRules {
                             var provider = m.queryServices().stream()
                                     .filter(qs -> qs.id().equals(step.queryServiceId())).findFirst().orElse(null);
                             if (provider == null) continue;
-                            if (crossesService(m, consumerService, provider.boundedContextId()) && !provider.exposedAsGrpc()) {
+                            if (crossesService(m, consumerService, provider.boundedContextId(), provider.id()) && !provider.exposedAsGrpc()) {
                                 findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
                                         consumer.id(), consumer.name(),
                                         "Consumes query service '" + provider.name() + "' deployed in another service — "
@@ -845,14 +847,9 @@ public final class LintRules {
             }
             return findings;
         }
-        private static io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity serviceOf(ModelSnapshot m, String boundedContextId) {
-            if (boundedContextId == null) return null;
-            return m.services().stream()
-                    .filter(s -> s.boundedContextIds() != null && s.boundedContextIds().contains(boundedContextId))
-                    .findFirst().orElse(null);
-        }
-        private static boolean crossesService(ModelSnapshot m, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity consumerService, String providerBoundedContextId) {
-            var providerService = serviceOf(m, providerBoundedContextId);
+        private static boolean crossesService(ModelSnapshot m, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity consumerService, String providerBoundedContextId, String providerElementId) {
+            var providerService = io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                    .serviceOfElement(m.services(), m.modules(), providerBoundedContextId, providerElementId);
             if (consumerService == null || providerService == null) return false;
             return !Objects.equals(consumerService.id(), providerService.id());
         }
@@ -890,20 +887,41 @@ public final class LintRules {
     // modeling sequence — topology → models → read/write sides → relations → operations — into
     // next-step feedback instead of leaving it as tribal knowledge -------------------------------
 
-    /** Step 1 of the path: a boundedContext nobody deploys is a dead end. */
-    static class BoundedContextNotInService implements LintRule {
-        public String id() { return "boundedContext-not-in-service"; }
-        public String description() { return "Every boundedContext should belong to a service"; }
+    /** Step 1 of the path: a module nobody deploys is a dead end (and so is its bounded context). */
+    static class ModuleNotInService implements LintRule {
+        public String id() { return "module-not-in-service"; }
+        public String description() { return "Every module should be deployed by a service"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             var deployed = new HashSet<String>();
             m.services().forEach(s -> {
-                if (s.boundedContextIds() != null) deployed.addAll(s.boundedContextIds());
+                if (s.moduleIds() != null) deployed.addAll(s.moduleIds());
             });
-            return m.boundedContexts().stream()
+            return m.modules().stream()
                     .filter(mod -> !deployed.contains(mod.id()))
-                    .map(mod -> new LintFinding(id(), LintSeverity.WARNING, "BoundedContext", mod.id(), mod.name(),
-                            "Not referenced by any service — it will never be generated or deployed."))
+                    .map(mod -> new LintFinding(id(), LintSeverity.WARNING, "Module", mod.id(), mod.name(),
+                            "Not deployed by any service — it will never be generated or deployed."))
                     .toList();
+        }
+    }
+
+    /** A module deploys in exactly ONE service: two services building the same module is a topology bug. */
+    static class ModuleInManyServices implements LintRule {
+        public String id() { return "module-in-many-services"; }
+        public String description() { return "A module must be deployed by at most one service"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var module : m.modules()) {
+                var owners = m.services().stream()
+                        .filter(s -> s.moduleIds() != null && s.moduleIds().contains(module.id()))
+                        .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity::name)
+                        .toList();
+                if (owners.size() > 1) {
+                    findings.add(new LintFinding(id(), LintSeverity.ERROR, "Module", module.id(), module.name(),
+                            "Deployed by " + owners.size() + " services (" + String.join(", ", owners)
+                                    + ") — every element would run twice. Pick one."));
+                }
+            }
+            return findings;
         }
     }
 

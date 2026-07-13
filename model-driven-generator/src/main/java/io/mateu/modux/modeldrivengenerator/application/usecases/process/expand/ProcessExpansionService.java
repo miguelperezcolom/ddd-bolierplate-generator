@@ -35,6 +35,7 @@ public class ProcessExpansionService {
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class),
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(DomainEventEntity.class));
     }
@@ -44,6 +45,7 @@ public class ProcessExpansionService {
                                            List<AggregateEntity> aggregates,
                                            List<BoundedContextEntity> boundedContexts,
                                            List<ServiceEntity> services,
+                                           List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity> modules,
                                            List<ProjectEntity> projects,
                                            List<DomainEventEntity> events) {
         var aggregateId = process.triggerAggregateId();
@@ -53,9 +55,9 @@ public class ProcessExpansionService {
         var sourceBoundedContext = boundedContexts.stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregateId))
                 .findFirst().orElse(null);
-        var sourceService = sourceBoundedContext == null ? null : services.stream()
-                .filter(s -> s.boundedContextIds().contains(sourceBoundedContext.id()))
-                .findFirst().orElse(null);
+        var sourceService = sourceBoundedContext == null ? null
+                : io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                        .serviceOfElement(services, modules, sourceBoundedContext.id(), aggregateId);
         var sourceServiceName = sourceService != null ? sourceService.name()
                 : (sourceBoundedContext != null ? sourceBoundedContext.name() : aggregateId);
 
