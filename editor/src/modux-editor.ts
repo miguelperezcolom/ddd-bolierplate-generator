@@ -1434,13 +1434,21 @@ export class ModuxEditor extends LitElement {
     const current = this.viewLayout(view);
     // An anchored resize moves the centre; children stayed put on screen, so
     // their offsets (relative to the centre) are re-expressed from the new one.
-    const children = this.sceneFor(view).nodes.filter((n) => n.parentId === id);
+    const scene = this.sceneFor(view);
+    const resized = scene.nodes.find((n) => n.id === id);
+    const parent = resized?.parentId ? scene.nodes.find((n) => n.id === resized.parentId) : undefined;
+    // A chip stores its position as an OFFSET from its parent's centre, and its
+    // own nested chips lay themselves out — only free children re-express.
+    const children = parent ? [] : scene.nodes.filter((n) => n.parentId === id);
     this.pushUndoEntry([
       { kind: 'resize-node', view, id, size: current.sizes?.[id] ?? null },
       { kind: 'move-node', view, id, pos: current.nodes[id] ?? null },
       ...children.map((c): EditOp => ({ kind: 'move-node', view, id: c.id, pos: current.nodes[c.id] ?? null })),
     ]);
-    const nodes = { ...current.nodes, [id]: { x, y } };
+    const nodes = {
+      ...current.nodes,
+      [id]: parent ? { x: x - parent.x, y: y - parent.y } : { x, y },
+    };
     for (const c of children) nodes[c.id] = { x: c.x - x, y: c.y - y };
     this.writeViewLayout(view, {
       ...current,

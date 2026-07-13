@@ -743,10 +743,15 @@ export class ModuxCanvas extends LitElement {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     this.focus();
-    const MIN_W = 160;
-    const MIN_H = 90;
+    // Top-level containers keep their roomy floor; CHIPS — plain or with their
+    // own nested chips — can go down to chip size (their content still clamps).
+    const topContainer = node.container && !node.parentId;
+    const MIN_W = topContainer ? 160 : 90;
+    const MIN_H = topContainer ? 90 : 30;
     const start = { x: node.x, y: node.y, w: node.w, h: node.h };
-    const kids = this.scene.nodes.filter((n) => n.parentId === node.id);
+    // A chip-container's nested chips reflow on every render (they are auto-laid),
+    // so they never clamp the resize; the scene's own minimum size protects them.
+    const kids = topContainer ? this.scene.nodes.filter((n) => n.parentId === node.id) : [];
     const kidsLeft = Math.min(...kids.map((c) => c.x - c.w / 2));
     const kidsRight = Math.max(...kids.map((c) => c.x + c.w / 2));
     const kidsTop = Math.min(...kids.map((c) => c.y - c.h / 2));
