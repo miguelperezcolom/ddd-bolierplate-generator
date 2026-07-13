@@ -398,9 +398,11 @@ export class ModuxEditor extends LitElement {
   @state() private _addMemberKey = '';
   /** Catalog tree panel: curate the active view's members with checkboxes. */
   @state() private _treeOpen = false;
-  /** Pending node deletion while the user picks: delete from model, or only from the view. */
-  @state() private _deletePicker: { elementType: string; id: string; kind: string; memberId: string } | null =
-    null;
+  /** Pending node deletion awaiting confirmation; memberIds non-empty offers «quitar de la vista». */
+  @state() private _deletePicker: {
+    items: { elementType: string; id: string; kind: string }[];
+    memberIds: string[];
+  } | null = null;
 
   static styles = css`
     .canvas-wrap {
@@ -666,6 +668,12 @@ export class ModuxEditor extends LitElement {
     .picker-item.current .abbr::after {
       content: ' ✓';
     }
+    .picker-item.danger .abbr {
+      color: #dc2626;
+    }
+    .picker-item.danger:hover {
+      background: #fef2f2;
+    }
     .tab:disabled {
       opacity: 0.4;
     }
@@ -714,6 +722,12 @@ export class ModuxEditor extends LitElement {
     :host([dark]) .picker-item .abbr,
     :host([dark]) .help-keys {
       color: #60a5fa;
+    }
+    :host([dark]) .picker-item.danger .abbr {
+      color: #f87171;
+    }
+    :host([dark]) .picker-item.danger:hover {
+      background: #451a1a;
     }
     :host([dark]) .help-row {
       color: #e2e8f0;
@@ -1532,32 +1546,41 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  /** Supr with a multi-selection: every selected node goes through the per-kind logic. */
+  /** Supr with a multi-selection: one confirmation covers the whole batch. */
   private onDeleteSelectionRequested(e: CustomEvent): void {
     const { items } = e.detail as { items: { id: string; kind: string }[] };
-    for (const item of items) {
-      this.onDeleteRequested(
-        new CustomEvent('delete-requested', {
-          detail: { elementType: 'node', id: item.id, kind: item.kind },
-        }),
-      );
-    }
     this._multi = [];
+    if (!items.length) return;
+    this.openDeletePicker(items.map((i) => ({ elementType: 'node', id: i.id, kind: i.kind })));
   }
 
   private onDeleteRequested(e: CustomEvent): void {
     const { elementType, id, kind } = e.detail;
-    // With a modux View active, deleting a member node is ambiguous: drop the element
-    // from the MODEL, or only take it out of this view? Ask before touching anything.
-    if (this._activeViewId && elementType === 'node') {
-      const memberId = this.memberIdOf(id, kind);
-      const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
-      if (memberId && view?.memberIds.includes(memberId)) {
-        this._deletePicker = { elementType, id, kind, memberId };
-        return;
-      }
+    // Edges and waypoints are cheap wiring (undoable, guarded per kind): delete directly.
+    // Nodes are catalog ELEMENTS — deleting one from the model always asks first.
+    if (elementType !== 'node') {
+      this.performDelete(elementType, id, kind);
+      return;
     }
-    this.performDelete(elementType, id, kind);
+    this.openDeletePicker([{ elementType, id, kind }]);
+  }
+
+  /**
+   * Model deletions are destructive enough to warrant a stop: the picker confirms them, and —
+   * when a modux View is active and EVERY node is a member — also offers the gentle
+   * alternative of only taking them out of the view.
+   */
+  private openDeletePicker(items: { elementType: string; id: string; kind: string }[]): void {
+    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    const memberIds = view
+      ? items
+          .map((i) => this.memberIdOf(i.id, i.kind))
+          .filter((m): m is string => !!m && view.memberIds.includes(m))
+      : [];
+    this._deletePicker = {
+      items,
+      memberIds: memberIds.length === items.length ? memberIds : [],
+    };
   }
 
   /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
@@ -4656,11 +4679,21 @@ export class ModuxEditor extends LitElement {
     `;
   }
 
-  /** With a View active, Supr on a member asks: drop from the model, or only from the view? */
+  /**
+   * Deleting from the MODEL always confirms here first; with a View active and every node a
+   * member, the picker also offers only taking them out of the view.
+   */
   private renderDeletePicker() {
     const p = this._deletePicker;
     if (!p) return '';
     const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
+    const scene = this.sceneFor(this._view);
+    const names = p.items.map(
+      (it) => scene.nodes.find((n) => n.id === it.id)?.label ?? it.id,
+    );
+    const what =
+      names.length === 1 ? `«${names[0]}»` : `${names.length} elementos (${names.join(', ')})`;
+    const offerView = p.memberIds.length > 0 && view;
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._deletePicker = null)}></div>
       <div
@@ -4668,32 +4701,46 @@ export class ModuxEditor extends LitElement {
         style="left: 50%; top: 120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">¿Eliminar, o solo quitar de la vista?</div>
+        <div class="picker-title">
+          ${offerView ? `¿Eliminar ${what}, o solo quitar de la vista?` : `¿Eliminar ${what} del modelo?`}
+        </div>
+        ${offerView
+          ? html`
+              <button
+                class="picker-item"
+                @click=${() => {
+                  const picked = this._deletePicker!;
+                  this._deletePicker = null;
+                  for (const memberId of new Set(picked.memberIds)) {
+                    this.command({
+                      kind: 'remove-view-member',
+                      id: this._activeViewId,
+                      targetId: memberId,
+                    });
+                  }
+                }}
+              >
+                <span class="abbr">👁</span>
+                <span class="name">Quitar de la vista «${view!.name ?? this._activeViewId}»</span>
+              </button>
+            `
+          : ''}
         <button
-          class="picker-item"
+          class="picker-item danger"
           @click=${() => {
             const picked = this._deletePicker!;
             this._deletePicker = null;
-            this.command({
-              kind: 'remove-view-member',
-              id: this._activeViewId,
-              targetId: picked.memberId,
-            });
-          }}
-        >
-          <span class="abbr">👁</span>
-          <span class="name">Quitar de la vista «${view?.name ?? this._activeViewId}»</span>
-        </button>
-        <button
-          class="picker-item"
-          @click=${() => {
-            const picked = this._deletePicker!;
-            this._deletePicker = null;
-            this.performDelete(picked.elementType, picked.id, picked.kind);
+            for (const it of picked.items) {
+              this.performDelete(it.elementType, it.id, it.kind);
+            }
           }}
         >
           <span class="abbr">🗑</span>
-          <span class="name">Eliminar del modelo</span>
+          <span class="name">Eliminar del modelo — desaparece de todas las vistas y diagramas</span>
+        </button>
+        <button class="picker-item" @click=${() => (this._deletePicker = null)}>
+          <span class="abbr">✕</span>
+          <span class="name">Cancelar</span>
         </button>
       </div>
     `;

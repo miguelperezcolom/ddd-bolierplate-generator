@@ -14594,27 +14594,30 @@ let J = class extends Ge {
     );
     n && n.type !== e && this.command({ kind: "set-relation-type", sourceId: t.sourceId, targetId: t.targetId, type: e });
   }
-  /** Supr with a multi-selection: every selected node goes through the per-kind logic. */
+  /** Supr with a multi-selection: one confirmation covers the whole batch. */
   onDeleteSelectionRequested(e) {
     const { items: t } = e.detail;
-    for (const n of t)
-      this.onDeleteRequested(
-        new CustomEvent("delete-requested", {
-          detail: { elementType: "node", id: n.id, kind: n.kind }
-        })
-      );
-    this._multi = [];
+    this._multi = [], t.length && this.openDeletePicker(t.map((n) => ({ elementType: "node", id: n.id, kind: n.kind })));
   }
   onDeleteRequested(e) {
     const { elementType: t, id: n, kind: i } = e.detail;
-    if (this._activeViewId && t === "node") {
-      const o = this.memberIdOf(n, i), a = (this.model.views ?? []).find((r) => r.id === this._activeViewId);
-      if (o && (a != null && a.memberIds.includes(o))) {
-        this._deletePicker = { elementType: t, id: n, kind: i, memberId: o };
-        return;
-      }
+    if (t !== "node") {
+      this.performDelete(t, n, i);
+      return;
     }
-    this.performDelete(t, n, i);
+    this.openDeletePicker([{ elementType: t, id: n, kind: i }]);
+  }
+  /**
+   * Model deletions are destructive enough to warrant a stop: the picker confirms them, and —
+   * when a modux View is active and EVERY node is a member — also offers the gentle
+   * alternative of only taking them out of the view.
+   */
+  openDeletePicker(e) {
+    const t = (this.model.views ?? []).find((i) => i.id === this._activeViewId), n = t ? e.map((i) => this.memberIdOf(i.id, i.kind)).filter((i) => !!i && t.memberIds.includes(i)) : [];
+    this._deletePicker = {
+      items: e,
+      memberIds: n.length === e.length ? n : []
+    };
   }
   /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
   memberIdOf(e, t) {
@@ -16892,41 +16895,62 @@ let J = class extends Ge {
       </div>
     ` : "";
   }
-  /** With a View active, Supr on a member asks: drop from the model, or only from the view? */
+  /**
+   * Deleting from the MODEL always confirms here first; with a View active and every node a
+   * member, the picker also offers only taking them out of the view.
+   */
   renderDeletePicker() {
-    if (!this._deletePicker) return "";
-    const t = (this.model.views ?? []).find((n) => n.id === this._activeViewId);
+    const e = this._deletePicker;
+    if (!e) return "";
+    const t = (this.model.views ?? []).find((r) => r.id === this._activeViewId), n = this.sceneFor(this._view), i = e.items.map(
+      (r) => {
+        var c;
+        return ((c = n.nodes.find((s) => s.id === r.id)) == null ? void 0 : c.label) ?? r.id;
+      }
+    ), o = i.length === 1 ? `«${i[0]}»` : `${i.length} elementos (${i.join(", ")})`, a = e.memberIds.length > 0 && t;
     return A`
       <div class="picker-backdrop" @pointerdown=${() => this._deletePicker = null}></div>
       <div
         class="relation-picker"
         style="left: 50%; top: 120px"
-        @pointerdown=${(n) => n.stopPropagation()}
+        @pointerdown=${(r) => r.stopPropagation()}
       >
-        <div class="picker-title">¿Eliminar, o solo quitar de la vista?</div>
-        <button
-          class="picker-item"
-          @click=${() => {
-      const n = this._deletePicker;
-      this._deletePicker = null, this.command({
-        kind: "remove-view-member",
-        id: this._activeViewId,
-        targetId: n.memberId
-      });
+        <div class="picker-title">
+          ${a ? `¿Eliminar ${o}, o solo quitar de la vista?` : `¿Eliminar ${o} del modelo?`}
+        </div>
+        ${a ? A`
+              <button
+                class="picker-item"
+                @click=${() => {
+      const r = this._deletePicker;
+      this._deletePicker = null;
+      for (const c of new Set(r.memberIds))
+        this.command({
+          kind: "remove-view-member",
+          id: this._activeViewId,
+          targetId: c
+        });
     }}
-        >
-          <span class="abbr">👁</span>
-          <span class="name">Quitar de la vista «${(t == null ? void 0 : t.name) ?? this._activeViewId}»</span>
-        </button>
+              >
+                <span class="abbr">👁</span>
+                <span class="name">Quitar de la vista «${t.name ?? this._activeViewId}»</span>
+              </button>
+            ` : ""}
         <button
-          class="picker-item"
+          class="picker-item danger"
           @click=${() => {
-      const n = this._deletePicker;
-      this._deletePicker = null, this.performDelete(n.elementType, n.id, n.kind);
+      const r = this._deletePicker;
+      this._deletePicker = null;
+      for (const c of r.items)
+        this.performDelete(c.elementType, c.id, c.kind);
     }}
         >
           <span class="abbr">🗑</span>
-          <span class="name">Eliminar del modelo</span>
+          <span class="name">Eliminar del modelo — desaparece de todas las vistas y diagramas</span>
+        </button>
+        <button class="picker-item" @click=${() => this._deletePicker = null}>
+          <span class="abbr">✕</span>
+          <span class="name">Cancelar</span>
         </button>
       </div>
     `;
@@ -17391,6 +17415,12 @@ J.styles = xt`
     .picker-item.current .abbr::after {
       content: ' ✓';
     }
+    .picker-item.danger .abbr {
+      color: #dc2626;
+    }
+    .picker-item.danger:hover {
+      background: #fef2f2;
+    }
     .tab:disabled {
       opacity: 0.4;
     }
@@ -17439,6 +17469,12 @@ J.styles = xt`
     :host([dark]) .picker-item .abbr,
     :host([dark]) .help-keys {
       color: #60a5fa;
+    }
+    :host([dark]) .picker-item.danger .abbr {
+      color: #f87171;
+    }
+    :host([dark]) .picker-item.danger:hover {
+      background: #451a1a;
     }
     :host([dark]) .help-row {
       color: #e2e8f0;

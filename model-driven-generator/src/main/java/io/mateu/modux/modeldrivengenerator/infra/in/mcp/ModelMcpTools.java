@@ -45,6 +45,7 @@ public class ModelMcpTools {
     private final ElementTypeRegistry registry;
     private final ModelJsonSchemaGenerator schemaGenerator;
     private final CheckModelUseCase checkModelUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.model.clean.CleanModelUseCase cleanModelUseCase;
     private final ModelLintService modelLintService;
     private final SearchModelQueryService searchModelQueryService;
     private final GenerateCodeUseCase generateCodeUseCase;
@@ -142,6 +143,14 @@ public class ModelMcpTools {
                         "Referential-integrity check over the whole model: every *Id/*Ids reference must point at "
                                 + "an existing element. Returns the dangling references (empty = clean).",
                         obj(Map.of(), List.of())),
+                new ToolSpec("clean_model",
+                        "Find the model's orphans: elements that reference nothing and that nothing references "
+                                + "(a bounded context pairs with its auto-created main module). Without 'apply' it "
+                                + "only reports; apply=true deletes them and persists the store.",
+                        obj(Map.of("apply", Map.of(
+                                        "type", "boolean",
+                                        "description", "Delete the orphans (default false: only report them).")),
+                                List.of())),
                 new ToolSpec("lint_model",
                         "Run the full model linter: referential integrity plus the architectural/semantic rule "
                                 + "catalog (lifecycle coherence, idempotency, DLQ, PII, tenancy…). Run this after a "
@@ -237,6 +246,9 @@ public class ModelMcpTools {
             case "upsert_element" -> upsertElement(requireText(args, "type"), args.get("element"));
             case "delete_element" -> deleteElement(requireText(args, "type"), requireText(args, "id"));
             case "check_model" -> checkModel();
+            case "clean_model" -> args != null && args.hasNonNull("apply") && args.get("apply").asBoolean()
+                    ? cleanModelUseCase.deleteOrphans()
+                    : cleanModelUseCase.report();
             case "lint_model" -> lintModel(args != null && args.hasNonNull("severity") ? args.get("severity").asText() : null);
             case "workspace_status" -> workspaceStatus();
             case "create_solution" -> { workspace.createSolution(requireText(args, "name")); yield workspaceStatus(); }
