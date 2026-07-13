@@ -69,10 +69,12 @@ describe('contextMapScene — subsystems', () => {
         { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
       ],
     });
-    // even without unfolding, the subsystem shows as a nested chip (coarse form) —
-    // it is strategic, like a published API — and never as its own top-level box
-    const scene = contextMapScene(model, {}, 'contexts');
-    const sub = scene.nodes.find((n) => n.id === 'ext-ventus');
+    // a system with ONLY subsystems folds to the plain box (chip hidden)…
+    const folded = contextMapScene(model, {}, 'contexts');
+    expect(folded.nodes.find((n) => n.id === 'ext-ventus')).toBeUndefined();
+    // …and unfolds to show the subsystem nested — never as its own top-level box
+    const unfolded = contextMapScene(model, {}, 'contexts', undefined, new Set(['ext-rumbo']));
+    const sub = unfolded.nodes.find((n) => n.id === 'ext-ventus');
     expect(sub?.parentId).toBe('ext-rumbo');
     expect(sub?.kind).toBe('external-system');
   });

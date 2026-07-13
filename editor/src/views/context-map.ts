@@ -1013,7 +1013,9 @@ export function contextMapScene(
         ),
       ];
       const subsystemChips = richChildren.filter((c) => c.kind === 'external-system');
-      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0 || subsystemChips.length > 0;
+      // Subsystems RIDE the coarse form (so an API can be dropped on them) but do
+      // not force it: a system with only subsystems still folds to the plain box.
+      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0;
       const xFoldable = hasChips || richChildren.length > 0;
       const { form: xForm, collapsed: xCollapsed } = resolveForm(
         toggledIds.has(x.id),
