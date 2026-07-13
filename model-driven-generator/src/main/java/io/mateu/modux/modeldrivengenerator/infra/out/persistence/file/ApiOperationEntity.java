@@ -5,6 +5,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
  * whoever implements it — a bounded context (coarse), or a concrete use case / policy.
  * The wiring is architecture information: the published surface mapped onto the domain.
  */
+@lombok.Builder(toBuilder = true)
 public record ApiOperationEntity(
         String id,
         String name,
@@ -31,12 +32,13 @@ public record ApiOperationEntity(
     // drop a field added to the record after the calling code was written.
 
     public ApiOperationEntity withName(String name) {
-        return new ApiOperationEntity(id, name, httpMethod, path, description, targetBoundedContextId,
-                targetUseCaseId, requestModelId, responseModelId);
+        return toBuilder().name(name).build();
     }
 
     public ApiOperationEntity withTargets(String targetBoundedContextId, String targetUseCaseId) {
-        return new ApiOperationEntity(id, name, httpMethod, path, description, targetBoundedContextId,
-                targetUseCaseId, requestModelId, responseModelId);
+        return toBuilder()
+                .targetBoundedContextId(targetBoundedContextId)
+                .targetUseCaseId(targetUseCaseId)
+                .build();
     }
 }

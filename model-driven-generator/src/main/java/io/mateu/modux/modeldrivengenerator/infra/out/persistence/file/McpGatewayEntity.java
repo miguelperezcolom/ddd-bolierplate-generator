@@ -40,32 +40,26 @@ public record McpGatewayEntity(
     // drop a field added to the record after the calling code was written.
 
     public McpGatewayEntity withName(String name) {
-        return new McpGatewayEntity(id, name, description, mcpServerIds, apiIds, apiOperationIds,
-                useCaseIds, ragIds);
+        return toBuilder().name(name).build();
     }
 
     public McpGatewayEntity withMcpServerIds(List<String> ids) {
-        return new McpGatewayEntity(id, name, description, ids, apiIds, apiOperationIds,
-                useCaseIds, ragIds);
+        return toBuilder().mcpServerIds(ids).build();
     }
 
     public McpGatewayEntity withApiIds(List<String> ids) {
-        return new McpGatewayEntity(id, name, description, mcpServerIds, ids, apiOperationIds,
-                useCaseIds, ragIds);
+        return toBuilder().apiIds(ids).build();
     }
 
     public McpGatewayEntity withApiOperationIds(List<String> ids) {
-        return new McpGatewayEntity(id, name, description, mcpServerIds, apiIds, ids,
-                useCaseIds, ragIds);
+        return toBuilder().apiOperationIds(ids).build();
     }
 
     public McpGatewayEntity withUseCaseIds(List<String> ids) {
-        return new McpGatewayEntity(id, name, description, mcpServerIds, apiIds, apiOperationIds,
-                ids, ragIds);
+        return toBuilder().useCaseIds(ids).build();
     }
 
     public McpGatewayEntity withRagIds(List<String> ids) {
-        return new McpGatewayEntity(id, name, description, mcpServerIds, apiIds, apiOperationIds,
-                useCaseIds, ids);
+        return toBuilder().ragIds(ids).build();
     }
 }

@@ -7,6 +7,7 @@ import io.mateu.uidl.interfaces.Identifiable;
  * system (CDN, cache, gateway de terceros) and is consumable exactly like the API it
  * fronts — dependencies can point at the proxy instead of the origin.
  */
+@lombok.Builder(toBuilder = true)
 public record ProxyApiEntity(
         String id,
         String name,
@@ -33,18 +34,18 @@ public record ProxyApiEntity(
     // drop a field added to the record after the calling code was written.
 
     public ProxyApiEntity withName(String name) {
-        return new ProxyApiEntity(id, name, description, targetApiId, publishedByExternalSystemId, operationRoutes);
+        return toBuilder().name(name).build();
     }
 
     public ProxyApiEntity withTargetApiId(String targetApiId) {
-        return new ProxyApiEntity(id, name, description, targetApiId, publishedByExternalSystemId, operationRoutes);
+        return toBuilder().targetApiId(targetApiId).build();
     }
 
     public ProxyApiEntity withPublishedByExternalSystemId(String externalSystemId) {
-        return new ProxyApiEntity(id, name, description, targetApiId, externalSystemId, operationRoutes);
+        return toBuilder().publishedByExternalSystemId(externalSystemId).build();
     }
 
     public ProxyApiEntity withOperationRoutes(java.util.List<ProxyOperationRouteEntity> operationRoutes) {
-        return new ProxyApiEntity(id, name, description, targetApiId, publishedByExternalSystemId, operationRoutes);
+        return toBuilder().operationRoutes(operationRoutes).build();
     }
 }

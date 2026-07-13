@@ -187,51 +187,39 @@ public record ExternalSystemEntity(
     // Single-field copies: unlike the positional constructor, these can never silently
     // drop a field added to the record after the calling code was written.
 
+    // The with* helpers delegate in toBuilder(): a positional constructor here is a
+    // trap — every new component (referencedRepositoryId, parentExternalSystemId…)
+    // would silently vanish on the first rename.
+
     public ExternalSystemEntity withName(String name) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().name(name).build();
     }
 
     public ExternalSystemEntity withUseCases(List<ExternalSystemUseCaseEntity> useCases) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().useCases(useCases).build();
     }
 
     public ExternalSystemEntity withTables(List<ExternalSystemTableEntity> tables) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().tables(tables).build();
     }
 
     public ExternalSystemEntity withDependsOnExternalSystemIds(List<String> ids) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, ids, dependsOnApiIds, cqrsExternalSystemIds,
-                mcpServers, apiOperationUses);
+        return toBuilder().dependsOnExternalSystemIds(ids).build();
     }
 
     public ExternalSystemEntity withDependsOnApiIds(List<String> ids) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, ids,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().dependsOnApiIds(ids).build();
     }
 
     public ExternalSystemEntity withCqrsExternalSystemIds(List<String> ids) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                ids, mcpServers, apiOperationUses);
+        return toBuilder().cqrsExternalSystemIds(ids).build();
     }
 
     public ExternalSystemEntity withMcpServers(List<McpServerEntity> mcpServers) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().mcpServers(mcpServers).build();
     }
 
     public ExternalSystemEntity withApiOperationUses(List<ExternalApiOperationUseEntity> apiOperationUses) {
-        return new ExternalSystemEntity(id, name, description, protocol, direction, gatewayId,
-                owner, decisionIds, useCases, tables, dependsOnExternalSystemIds, dependsOnApiIds,
-                cqrsExternalSystemIds, mcpServers, apiOperationUses);
+        return toBuilder().apiOperationUses(apiOperationUses).build();
     }
 }

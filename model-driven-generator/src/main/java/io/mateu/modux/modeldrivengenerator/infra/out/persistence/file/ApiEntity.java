@@ -10,6 +10,7 @@ import java.util.List;
  * of one boundedContext. Its operations wire to whoever implements them. Usually born from an
  * OpenAPI/WSDL import (Organización › Import API contract, no target), refined on the map.
  */
+@lombok.Builder(toBuilder = true)
 public record ApiEntity(
         String id,
         String name,
@@ -59,22 +60,22 @@ public record ApiEntity(
     // drop a field added to the record after the calling code was written.
 
     public ApiEntity withName(String name) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
+        return toBuilder().name(name).build();
     }
 
     public ApiEntity withOperations(List<ApiOperationEntity> operations) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
+        return toBuilder().operations(operations).build();
     }
 
     public ApiEntity withPublishedByExternalSystemId(String externalSystemId) {
-        return new ApiEntity(id, name, description, operations, externalSystemId, implementedByBoundedContextIds, operationImplementations);
+        return toBuilder().publishedByExternalSystemId(externalSystemId).build();
     }
 
     public ApiEntity withImplementedByBoundedContextIds(List<String> implementedByBoundedContextIds) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
+        return toBuilder().implementedByBoundedContextIds(implementedByBoundedContextIds).build();
     }
 
     public ApiEntity withOperationImplementations(List<ApiOperationImplementationEntity> operationImplementations) {
-        return new ApiEntity(id, name, description, operations, publishedByExternalSystemId, implementedByBoundedContextIds, operationImplementations);
+        return toBuilder().operationImplementations(operationImplementations).build();
     }
 }

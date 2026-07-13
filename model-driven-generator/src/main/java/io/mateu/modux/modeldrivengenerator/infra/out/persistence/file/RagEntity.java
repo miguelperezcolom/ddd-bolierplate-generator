@@ -82,37 +82,30 @@ public record RagEntity(
     // drop a field added to the record after the calling code was written.
 
     public RagEntity withName(String name) {
-        return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
+        return toBuilder().name(name).build();
     }
 
     public RagEntity withSourceReadModelIds(List<String> ids) {
-        return new RagEntity(id, name, description, ids, contentSources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
+        return toBuilder().sourceReadModelIds(ids).build();
     }
 
     public RagEntity withContentSources(List<RagContentSourceEntity> sources) {
-        return new RagEntity(id, name, description, sourceReadModelIds, sources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
+        return toBuilder().contentSources(sources).build();
     }
 
     public RagEntity withSourceExternalTableIds(List<String> ids) {
-        return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                ids, sourceApiIds, sourceExternalSystemIds, sourceBoundedContextIds);
+        return toBuilder().sourceExternalTableIds(ids).build();
     }
 
     public RagEntity withSourceApiIds(List<String> ids) {
-        return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, ids, sourceExternalSystemIds, sourceBoundedContextIds);
+        return toBuilder().sourceApiIds(ids).build();
     }
 
     public RagEntity withSourceExternalSystemIds(List<String> ids) {
-        return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, sourceApiIds, ids, sourceBoundedContextIds);
+        return toBuilder().sourceExternalSystemIds(ids).build();
     }
 
     public RagEntity withSourceBoundedContextIds(List<String> ids) {
-        return new RagEntity(id, name, description, sourceReadModelIds, contentSources,
-                sourceExternalTableIds, sourceApiIds, sourceExternalSystemIds, ids);
+        return toBuilder().sourceBoundedContextIds(ids).build();
     }
 }

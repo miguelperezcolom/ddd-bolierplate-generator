@@ -4,6 +4,7 @@ import io.mateu.uidl.interfaces.Identifiable;
 
 import java.util.List;
 
+@lombok.Builder(toBuilder = true)
 public record RoleEntity(
         String id,
         String name,
@@ -66,32 +67,26 @@ public record RoleEntity(
     // drop a field added to the record after the calling code was written.
 
     public RoleEntity withName(String name) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
-                externalSystemIds, aiAgentIds, uiAdapterIds);
+        return toBuilder().name(name).build();
     }
 
     public RoleEntity withAllowedUseCaseIds(List<String> ids) {
-        return new RoleEntity(id, name, ids, allowedQueryServiceIds, externalSystemIds,
-                aiAgentIds, uiAdapterIds);
+        return toBuilder().allowedUseCaseIds(ids).build();
     }
 
     public RoleEntity withAllowedQueryServiceIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, ids, externalSystemIds,
-                aiAgentIds, uiAdapterIds);
+        return toBuilder().allowedQueryServiceIds(ids).build();
     }
 
     public RoleEntity withExternalSystemIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds, ids,
-                aiAgentIds, uiAdapterIds);
+        return toBuilder().externalSystemIds(ids).build();
     }
 
     public RoleEntity withAiAgentIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
-                externalSystemIds, ids, uiAdapterIds);
+        return toBuilder().aiAgentIds(ids).build();
     }
 
     public RoleEntity withUiAdapterIds(List<String> ids) {
-        return new RoleEntity(id, name, allowedUseCaseIds, allowedQueryServiceIds,
-                externalSystemIds, aiAgentIds, ids);
+        return toBuilder().uiAdapterIds(ids).build();
     }
 }

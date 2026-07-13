@@ -137,77 +137,46 @@ public record AiAgentEntity(
     // drop a field added to the record after the calling code was written.
 
     public AiAgentEntity withName(String name) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().name(name).build();
     }
 
     public AiAgentEntity withAllowedUseCaseIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, ids,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().allowedUseCaseIds(ids).build();
     }
 
     public AiAgentEntity withAllowedExternalUseCaseIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                ids, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().allowedExternalUseCaseIds(ids).build();
     }
 
     public AiAgentEntity withRagIds(List<String> ragIds) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().ragIds(ragIds).build();
     }
 
     public AiAgentEntity withAllowedMcpServerIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, ids, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().allowedMcpServerIds(ids).build();
     }
 
     public AiAgentEntity withAllowedApiOperationIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                ids, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds, reactsToEventIds, allowedApiIds);
+        return toBuilder().allowedApiOperationIds(ids).build();
     }
 
     public AiAgentEntity withAllowedQueryServiceIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, ids, delegateAgentIds, mcpGatewayIds, reactsToEventIds, allowedApiIds);
+        return toBuilder().allowedQueryServiceIds(ids).build();
     }
 
     public AiAgentEntity withDelegateAgentIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, ids, mcpGatewayIds,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().delegateAgentIds(ids).build();
     }
 
     public AiAgentEntity withMcpGatewayIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, ids,
-                reactsToEventIds, allowedApiIds);
+        return toBuilder().mcpGatewayIds(ids).build();
     }
 
     public AiAgentEntity withReactsToEventIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                ids, allowedApiIds);
+        return toBuilder().reactsToEventIds(ids).build();
     }
 
     public AiAgentEntity withAllowedApiIds(List<String> ids) {
-        return new AiAgentEntity(id, name, description, allowedUseCaseIds,
-                allowedExternalUseCaseIds, ragIds, allowedMcpServerIds, external,
-                allowedApiOperationIds, allowedQueryServiceIds, delegateAgentIds, mcpGatewayIds,
-                reactsToEventIds, ids);
+        return toBuilder().allowedApiIds(ids).build();
     }
 }
