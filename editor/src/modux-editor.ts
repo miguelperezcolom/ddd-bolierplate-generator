@@ -3094,7 +3094,7 @@ export class ModuxEditor extends LitElement {
         const parentId = chain.find((cid) => this.model.externalSystems.some((x) => x.id === cid));
         if (parentId) {
           issue({ ...cmd, parentId }, id, parentId);
-          this.emit('modux-notice', { message: 'Subsistema creado — despliega el sistema para verlo' });
+          this.emit('modux-notice', { message: 'Subsistema creado dentro del sistema' });
           return;
         }
       }

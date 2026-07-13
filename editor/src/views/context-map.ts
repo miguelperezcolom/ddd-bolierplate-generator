@@ -967,7 +967,8 @@ export function contextMapScene(
           (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
         ),
       ];
-      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0;
+      const subsystemChips = richChildren.filter((c) => c.kind === 'external-system');
+      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0 || subsystemChips.length > 0;
       const xFoldable = hasChips || richChildren.length > 0;
       const { form: xForm, collapsed: xCollapsed } = resolveForm(
         toggledIds.has(x.id),
@@ -975,9 +976,11 @@ export function contextMapScene(
         distributionLevel ? 'compact' : detailed ? 'full' : hasChips ? 'coarse' : 'compact',
         richChildren.length > 0 || (operationsLevel && hasChips),
       );
+      // Subsystems are strategic, like the published APIs: they show from the
+      // coarse form on — otherwise nobody can drop an API on them.
       const plainChildren: ChildDesc[] = [
         ...proxyChips,
-        ...(xForm === 'full' ? richChildren : []),
+        ...(xForm === 'full' ? richChildren : subsystemChips),
       ];
       const unfoldableProxies = operationsLevel && xForm === 'full'
         ? hostedProxies.filter((px) => {
