@@ -1218,11 +1218,15 @@ export class ModuxExplorer extends LitElement {
       const cy = my + dx * bend;
       ctx.strokeStyle = '#d97706';
       ctx.lineWidth = 2.4 / this.cam.k;
-      ctx.setLineDash([]);
+      // dashes march toward the target: the story flows on screen
+      ctx.setLineDash([9 / this.cam.k, 7 / this.cam.k]);
+      ctx.lineDashOffset = (-(this.t * 20) % 16) / this.cam.k;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.quadraticCurveTo(cx, cy, b.x, b.y);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
       // arrow head at the target border
       const tx = b.x - cx;
       const ty = b.y - cy;

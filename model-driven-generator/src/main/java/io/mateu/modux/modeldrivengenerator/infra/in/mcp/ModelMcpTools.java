@@ -49,6 +49,7 @@ public class ModelMcpTools {
     private final SearchModelQueryService searchModelQueryService;
     private final GenerateCodeUseCase generateCodeUseCase;
     private final ApplyRecipeUseCase applyRecipeUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService coherenceService;
     private final AiCompleteCodeUseCase aiCompleteCodeUseCase;
     private final GlobalIdPolicy idPolicy;
 
@@ -91,6 +92,13 @@ public class ModelMcpTools {
                 new ToolSpec("list_element_types",
                         "List every element type in the modux model (aggregates, useCases, flows, processes…) "
                                 + "with the number of elements currently in the store. Start here to see the model's shape.",
+                        obj(Map.of(), List.of())),
+                new ToolSpec("render_context_map",
+                        "The project's context map RENDERED as a self-contained SVG: bounded contexts "
+                                + "and external systems as nodes, strategic relations as solid edges, "
+                                + "runtime flows dashed and coloured by coherence. Show it to the user "
+                                + "(save to a file, embed in chat) — it is a read-only projection of "
+                                + "the model, always current.",
                         obj(Map.of(), List.of())),
                 new ToolSpec("list_elements",
                         "List the elements of one type (id and name).",
@@ -221,6 +229,7 @@ public class ModelMcpTools {
         return switch (tool) {
             case "bootstrap_project" -> bootstrapProject(args);
             case "list_element_types" -> listElementTypes();
+            case "render_context_map" -> renderContextMap();
             case "list_elements" -> listElements(requireText(args, "type"));
             case "search_elements" -> searchElements(requireText(args, "query"));
             case "get_element" -> getElement(requireText(args, "type"), requireText(args, "id"));
@@ -331,6 +340,38 @@ public class ModelMcpTools {
                 .map(e -> "- " + e.getKey() + ": " + repository.findAllOfType(e.getValue()).size() + " element(s)")
                 .collect(Collectors.joining("\n"));
         return "Element types in the model store:\n" + lines;
+    }
+
+    private String renderContextMap() {
+        var nodes = new java.util.ArrayList<io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node>();
+        repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class)
+                .forEach(m -> nodes.add(new io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node(
+                        m.id(), m.name(), m.subdomainType(), false)));
+        repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
+                .forEach(p -> p.externalSystems().forEach(x -> nodes.add(
+                        io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node.external(x.id(), x.name()))));
+        var relations = repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class).stream()
+                .flatMap(p -> p.contextMap().stream())
+                .map(r -> new io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Relation(
+                        r.sourceBoundedContextId(), r.targetBoundedContextId(), parseRelationType(r.type())))
+                .toList();
+        var flows = coherenceService.analyze().stream()
+                .filter(f -> f.sourceBoundedContextId() != null && f.targetBoundedContextId() != null)
+                .map(f -> new io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Flow(
+                        f.sourceBoundedContextId(), f.targetBoundedContextId(), f.flowName(), f.status(), f.suggestedType()))
+                .toList();
+        var inner = io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.render(nodes, relations, flows);
+        return "<svg viewBox=\"" + io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.viewBox()
+                + "\" xmlns=\"http://www.w3.org/2000/svg\" width=\"960\" height=\"640\">" + inner + "</svg>";
+    }
+
+    private static io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType parseRelationType(String type) {
+        if (type == null) return null;
+        try {
+            return io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextMapRelationType.valueOf(type);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private String listElements(String typeName) {

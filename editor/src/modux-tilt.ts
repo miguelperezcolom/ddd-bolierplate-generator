@@ -117,6 +117,25 @@ export class ModuxTilt extends LitElement {
       transform-origin: 0 50%;
       pointer-events: none;
     }
+    /* The journey's dashes slide toward the target; the tip wears the arrow. */
+    .edge3.journey3 {
+      background-size: 16px 100% !important;
+      animation: journey-flow3 0.8s linear infinite;
+      overflow: visible;
+    }
+    .edge3.journey3::after {
+      content: '';
+      position: absolute;
+      right: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 9px solid #d97706;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+    }
+    @keyframes journey-flow3 {
+      to { background-position-x: 16px; }
+    }
     .journey-badge3 {
       position: absolute;
       min-width: 22px;
@@ -648,11 +667,13 @@ export class ModuxTilt extends LitElement {
               : color;
             const journey = e.kind === 'journey';
             return html`<div
-              class="edge3"
+              class="edge3 ${journey ? 'journey3' : ''}"
               style="
                 left: ${lx(s)}px; top: ${ly(s)}px; width: ${len}px; height: ${journey ? 3 : 1.7}px;
                 transform: translateZ(${z1}px) rotateZ(${bearing}deg) rotateY(${-climb}deg);
-                background: ${stroke};
+                background: ${journey
+                  ? 'repeating-linear-gradient(90deg, #d97706 0 9px, transparent 9px 16px)'
+                  : stroke};
                 opacity: ${e.dim ? 0.12 : 0.9};
               "
             ></div>

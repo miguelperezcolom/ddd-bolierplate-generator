@@ -161,6 +161,15 @@ export class ModuxCanvas extends LitElement {
   private _fitted = false;
 
   static styles = css`
+    /* Journey legs march their dashes toward the target: direction made visible. */
+    path.journey-flow {
+      stroke-dasharray: 9 7;
+      animation: journey-flow 0.8s linear infinite;
+    }
+    @keyframes journey-flow {
+      to { stroke-dashoffset: -16; }
+    }
+
     :host {
       display: block;
       width: 100%;
@@ -1052,7 +1061,8 @@ export class ModuxCanvas extends LitElement {
       <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : 1}>
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
-              stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
+              class=${edge.kind === 'journey' ? 'journey-flow' : ''}
+              stroke=${color} stroke-width=${edge.kind === 'journey' ? 3 : highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashed ? '6 4' : ''}
               opacity="0.92"
               marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
