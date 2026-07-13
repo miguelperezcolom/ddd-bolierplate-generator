@@ -155,7 +155,7 @@ function routeEdgesAroundNodes(
   };
 
   for (const edge of scene.edges) {
-    if (existing[edge.id]?.length) continue; // hand-placed bends win
+    if (existing[edge.id]) continue; // any hand decision wins — even "straight" (empty)
     const src = byId.get(edge.sourceId);
     const tgt = byId.get(edge.targetId);
     if (!src || !tgt) continue;
@@ -1096,7 +1096,8 @@ export class ModuxEditor extends LitElement {
       } else if (op.kind === 'set-edge-points') {
         const current = this.viewLayout(op.view);
         const edges = { ...current.edges };
-        if (op.points && op.points.length) edges[op.id] = op.points;
+        // an empty list is a real value: the edge is pinned straight
+        if (op.points) edges[op.id] = op.points;
         else delete edges[op.id];
         this.writeViewLayout(op.view, { ...current, edges });
       } else if (op.kind === 'resize-node') {
@@ -1377,8 +1378,10 @@ export class ModuxEditor extends LitElement {
       { kind: 'set-edge-points', view, id, points: current.edges[id] ?? null },
     ]);
     const edges = { ...current.edges };
-    if (points.length) edges[id] = points;
-    else delete edges[id];
+    // The empty list is kept on purpose: removing the LAST bend pins the edge
+    // straight — otherwise the auto-router would re-bend it on the next render
+    // and the point would look immortal.
+    edges[id] = points;
     this.writeViewLayout(view, { ...current, edges });
   }
 
