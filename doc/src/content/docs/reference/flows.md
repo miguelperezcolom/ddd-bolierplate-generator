@@ -5,7 +5,7 @@ description: How the building blocks fit together in the flows of an enterprise 
 
 The [manual](/manual/overview/) documents each building block in isolation. This page does the opposite: it walks the **flows of a real enterprise system** end to end and shows which blocks cooperate at each step, and how consistency and reliability are preserved along the way.
 
-A Modux system is composed of several **bounded contexts** (modules). Within a module everything is in-process; across modules everything goes through events or explicit synchronous contracts. Every flow below respects that boundary.
+A Modux system is composed of several **bounded contexts**. Within a context everything is in-process; across contexts everything goes through events or explicit synchronous contracts. Every flow below respects that boundary.
 
 ---
 
@@ -42,7 +42,7 @@ Blocks: [Use Cases](/manual/use-cases/) · [Operations](/manual/operations/) · 
 
 ---
 
-## 3. An operation emits an event that drives another use case (same module)
+## 3. An operation emits an event that drives another use case (same context)
 
 When an aggregate operation emits a [Domain Event](/manual/domain-events/), the event is written to the **outbox in the same transaction** as the state change. A relay then dispatches it in-process to a consumer that calls another use case — possibly on a different aggregate.
 
@@ -51,7 +51,7 @@ UseCase A  ──tx──┐
   Aggregate A    │ emit DomainEvent  ──►  Outbox (same tx)
   save           │
                  ▼
-            Relay (in-module)
+            Relay (in-context)
                  ▼
         in-process consumer  ──►  UseCase B  ──►  Aggregate B   (new tx)
 ```
@@ -64,10 +64,10 @@ Blocks: [Domain Events](/manual/domain-events/) · [Outbox Pattern](/reference/p
 
 ## 4. An event must reach another bounded context (integration event)
 
-A domain event is internal and refactorable. To cross a module boundary it is promoted to an **integration event** — a versioned public contract.
+A domain event is internal and refactorable. To cross a context boundary it is promoted to an **integration event** — a versioned public contract.
 
 ```
-Module A:
+Context A:
   DomainEvent ─► Outbox ─► relay ─► in-process consumer
                                         ▼
                                    UseCase  ─► writes IntegrationEvent
@@ -75,7 +75,7 @@ Module A:
                                         ▼
                                    integration relay ─► Message Broker (Kafka)
 
-Module B:
+Context B:
   Subscription ◄─ topic ◄─ Kafka
       ▼
    action: CallUseCase / StartSaga / UpdateProjection
@@ -102,12 +102,12 @@ Blocks: [Use Cases](/manual/use-cases/) (query services live alongside them) · 
 
 ## 6. Consuming another context synchronously (API + Gateway)
 
-When module B needs data or behaviour from module A **right now** (not via events), A exposes a synchronous contract and B reaches it through a [Gateway](/manual/gateways/) — its anti-corruption layer to the outside world.
+When context B needs data or behaviour from context A **right now** (not via events), A exposes a synchronous contract and B reaches it through a [Gateway](/manual/gateways/) — its anti-corruption layer to the outside world.
 
 ```
-Module A: UseCase / Query Service  ─►  exposed as REST or gRPC
-                                            ▲
-Module B: UseCase step "CallGateway" ──────┘   (circuit breaker, retry, rate limit)
+Context A: UseCase / Query Service  ─►  exposed as REST or gRPC
+                                             ▲
+Context B: UseCase step "CallGateway" ──────┘   (circuit breaker, retry, rate limit)
 ```
 
 The Gateway protects B's domain model from A's wire format and absorbs failures with a circuit breaker.
@@ -138,7 +138,7 @@ Kafka ─► Subscription (action: UpdateProjection)
              ▼
         Projection (event handler)
              ▼
-        ReadModel (table / document in module B)
+        ReadModel (table / document in context B)
 ```
 
 Read models can be rebuilt (`FROM_SCRATCH`, `FROM_SNAPSHOT`, `INCREMENTAL`) by replaying the event stream.

@@ -11,7 +11,7 @@ The **Workspace** page shows the whole model as a navigable tree and is the fast
 Project
 └── Service
     ├── Gateways
-    └── Module
+    └── Bounded Context
         ├── Aggregates          ├── Sagas
         ├── Entities            ├── Projections
         ├── Value Objects       ├── Read Models
@@ -22,15 +22,15 @@ Project
 Decisions (global)
 ```
 
-- Elements attached to the module through its reference lists (aggregates, use cases, sagas…) appear under their group.
-- Intent-layer and reverse-referenced elements are resolved automatically: **flows** by `targetModuleId`, **processes** by `ownerModuleId`, **query services** and **integration events** by `moduleId`, **gateways** by `serviceId`.
+- Elements attached to the bounded context through its reference lists (aggregates, use cases, sagas…) appear under their group.
+- Intent-layer and reverse-referenced elements are resolved automatically: **flows** by `targetBoundedContextId`, **processes** by `ownerBoundedContextId`, **query services** and **integration events** by `boundedContextId`, **gateways** by `serviceId`.
 - **Decisions** (ADRs) are global, so they hang from the root.
 - The search box filters the tree by label, keeping matching branches expanded.
 - Operations and invariants are edited inline within their aggregate — they are not tree nodes.
 
 ## Creating elements
 
-**New** opens a single creation form for every kind: pick the **kind**, give it an **id** and a **name**, and select the **owner** (module, service or project, depending on the kind). A skeleton element is created, attached to its owner (so it appears in the tree immediately), and you fill in the details through its own editor.
+**New** opens a single creation form for every kind: pick the **kind**, give it an **id** and a **name**, and select the **owner** (bounded context, service or project, depending on the kind). A skeleton element is created, attached to its owner (so it appears in the tree immediately), and you fill in the details through its own editor.
 
 The form rejects ids that already exist anywhere in the model — see the uniqueness rule below.
 

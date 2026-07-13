@@ -1,15 +1,19 @@
 ---
-title: Modules
-description: Bounded contexts in Modux
+title: Bounded Contexts & Modules
+description: Bounded contexts own the meaning; modules are how a context is packaged and deployed
 ---
 
-A **Module** is a bounded context within a service. It groups related aggregates, events, and other domain concepts that belong to the same business subdomain.
+A **Bounded Context** is a business subdomain with its own ubiquitous language. It groups related aggregates, events, use cases, and the other domain concepts that share that language — it owns the *meaning*. The strategic [context map](/manual/projects/#context-map) relates bounded contexts to each other.
 
-## Creating a module
+A **Module** is the buildable, deployable unit *inside* a bounded context — pure packaging. Every bounded context is born with exactly one **main** module; you only reach for more when a context needs to split its distribution (e.g. a write side and a read side deployed separately). See [Modules](#modules) below.
 
-1. Open a service and go to **Domain Model → Modules**
+## Creating a bounded context
+
+1. Go to **Organización → Bounded Contexts**
 2. Click **New**
 3. Give it a name and save
+
+Its main module (id `<bcId>-main`, named after the context) is created automatically.
 
 ## Configuration
 
@@ -17,16 +21,16 @@ A **Module** is a bounded context within a service. It groups related aggregates
 
 | Field | Description |
 |---|---|
-| **Name** | Module name — used as a Java sub-package |
-| **Git repository** | Optional separate repository for this module (monorepo vs. multi-repo) |
-| **Table name prefix** | Prefix applied to all JPA table names in this module (e.g. `bkg_`) |
-| **Auto table name prefix** | Derive the prefix automatically from the module name |
-| **Version** | Module version, independent of the service version |
-| **LLM system prompt** | System prompt injected when using LLM-assisted generation for this module |
+| **Name** | Bounded context name — used as a Java sub-package |
+| **Git repository** | Optional separate repository for this context (monorepo vs. multi-repo) |
+| **Table name prefix** | Prefix applied to all JPA table names in this context (e.g. `bkg_`) |
+| **Auto table name prefix** | Derive the prefix automatically from the context name |
+| **Version** | Context version, independent of the service version |
+| **LLM system prompt** | System prompt injected when using LLM-assisted generation for this context |
 
 ### Contents
 
-A module groups references to all the domain artefacts that belong to it:
+A bounded context groups references to all the domain artefacts that belong to it:
 
 | Tab | What it contains |
 |---|---|
@@ -34,7 +38,7 @@ A module groups references to all the domain artefacts that belong to it:
 | **Entities** | Shared entities not owned by a single aggregate |
 | **Value Objects** | Shared value objects |
 | **Use Cases** | Application-layer use cases |
-| **Domain Events** | Events emitted by aggregates in this module |
+| **Domain Events** | Events emitted by aggregates in this context |
 | **Projections** | Event handlers that update Read Models |
 | **Read Models** | Denormalized query views (written by projections, read by query services) |
 | **Subscriptions** | Message handlers |
@@ -64,14 +68,14 @@ Each ACL entry describes a translation boundary with an external system:
 | **Name** | ACL name |
 | **External system** | Name of the external system or bounded context |
 | **Description** | What this ACL translates |
-| **Direction** | `INBOUND` (external → this module) or `OUTBOUND` (this module → external) |
+| **Direction** | `INBOUND` (external → this context) or `OUTBOUND` (this context → external) |
 | **Gateway** | Gateway used for outbound communication |
 | **Translated domain events** | Events whose meaning is translated across the boundary |
 | **Translated use cases** | Use cases whose input/output is translated |
 
 ### Domain Policies
 
-A domain policy links a triggering event to a use case — the module's way of expressing reactive business rules:
+A domain policy links a triggering event to a use case — the context's way of expressing reactive business rules:
 
 | Field | Description |
 |---|---|
@@ -82,7 +86,7 @@ A domain policy links a triggering event to a use case — the module's way of e
 
 ### Invariants
 
-Module-level invariants express business rules that span multiple aggregates within the bounded context — rules that cannot be enforced by a single aggregate alone.
+Context-level invariants express business rules that span multiple aggregates within the bounded context — rules that cannot be enforced by a single aggregate alone.
 
 | Field | Description |
 |---|---|
@@ -100,7 +104,7 @@ Each condition has:
 
 ### BDD Tests
 
-Executable acceptance scenarios for this module, written in Gherkin:
+Executable acceptance scenarios for this bounded context, written in Gherkin:
 
 | Field | Description |
 |---|---|
@@ -109,9 +113,58 @@ Executable acceptance scenarios for this module, written in Gherkin:
 | **Tags** | Gherkin tags (e.g. `@smoke`, `@regression`) |
 | **Steps** | Given / When / Then steps |
 
+## Modules
+
+Where the bounded context owns the meaning, a **module** owns the packaging: it is the unit a [Service](/manual/services/) deploys. A service's `moduleIds` list is the *only* link between topology and content.
+
+| Field | Description |
+|---|---|
+| `id` | Module id |
+| `name` | Module name — it names the generated Maven submodule |
+| `boundedContextId` | The bounded context this module distributes elements of |
+| `elementIds` | Elements (aggregates, use cases, events…) explicitly packaged here |
+| `main` | Whether this is the context's main module |
+
+Every bounded context has exactly one **main** module, auto-created with it (id `<bcId>-main`, name = the context's name). Elements not explicitly packaged into another module implicitly live in the main one — so for most contexts you never touch modules at all.
+
+A context can split into several modules when its parts must build or deploy separately — a classic case is a CQRS write side and read side:
+
+```yaml
+boundedContexts:
+  - id: "bc-bookings"
+    name: "bookings"
+    aggregateIds:
+      - "agg-booking"
+    readModelIds:
+      - "rm-availability"
+
+modules:
+  - id: "bc-bookings-main"          # auto-created with the context
+    name: "bookings"
+    boundedContextId: "bc-bookings"
+    main: true
+  - id: "mod-bookings-read"
+    name: "bookings-read"
+    boundedContextId: "bc-bookings"
+    elementIds:
+      - "rm-availability"
+
+services:
+  - id: "svc-write"
+    moduleIds:
+      - "bc-bookings-main"
+  - id: "svc-read"
+    moduleIds:
+      - "mod-bookings-read"
+```
+
+A module deploys in exactly one service — the linter flags a module listed by several services (`module-in-many-services`) and a module no service deploys (`module-not-in-service`). A bounded context, though, may legitimately span services through different modules, as above.
+
+In the graphical editor, a context with only its main module doesn't show a module box — the deploy edge from the service lands on the context itself. Module boxes appear as soon as a second module joins (palette group **Distribución**, label **Módulo**).
+
 ## Generated code structure
 
-Each module maps to a Java sub-package:
+Each deployed module becomes a Maven submodule of its service's reactor; the module lends its name, its bounded context lends the meaning. For a context with only its main module, the output is a single submodule named after the context:
 
 ```
 com.example.myservice.
@@ -129,4 +182,4 @@ com.example.myservice.
 
 ## Next steps
 
-Add [Aggregates](/manual/aggregates/) to your module.
+Add [Aggregates](/manual/aggregates/) to your bounded context.

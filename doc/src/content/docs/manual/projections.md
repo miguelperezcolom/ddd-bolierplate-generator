@@ -39,11 +39,11 @@ A ReadModel is a denormalized view designed for a specific query or screen. It c
 - **No commands.** It exposes no operations or use cases.
 - **No invariants.** Truth is whatever the events say.
 - **Optimized for read.** Schema follows the query shape, not the domain.
-- **Owned by the consuming module.** It lives where it is read, not where the source data originates.
+- **Owned by the consuming bounded context.** It lives where it is read, not where the source data originates.
 
 ### Creating a ReadModel
 
-1. Open a module and go to **Read Models**
+1. Open a bounded context and go to **Read Models**
 2. Click **New**
 3. Configure and save
 
@@ -70,7 +70,7 @@ A Projection is the **event handler** that keeps a ReadModel up to date. When a 
 
 ### Creating a Projection
 
-1. Open a module and go to **Projections**
+1. Open a bounded context and go to **Projections**
 2. Click **New**
 3. Configure and save
 

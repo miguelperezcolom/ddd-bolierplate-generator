@@ -17,7 +17,7 @@ An event in a source context materializes a denormalized read model in a target 
 | `name` | required | Display name |
 | `triggerAggregateId` | required | Source aggregate emitting the event |
 | `triggerEvent` | required | Domain event name (e.g. `ReservaCreada`) |
-| `targetModuleId` | required | Module that owns the read model |
+| `targetBoundedContextId` | required | Bounded context that owns the read model |
 | `readModelName` | required | Name of the materialized read model |
 | `materializedFields` | optional | Comma-separated fields to materialize |
 
@@ -31,7 +31,7 @@ A long-running process started by a domain event: a human approves (with deadlin
 |---|---|---|
 | `id`, `name` | required | Process identity |
 | `triggerAggregateId`, `triggerEvent` | required | What starts the process |
-| `ownerModuleId` | required | Module that owns the process |
+| `ownerBoundedContextId` | required | Bounded context that owns the process |
 | `approverRoleId` | optional | Role that approves — linted if missing |
 | `deadline` | optional | ISO-8601 duration (default `PT48H`) |
 | `escalationRoleId` | optional | Role escalated to on deadline |
@@ -45,7 +45,7 @@ Emits one Process; saga, worklist and deadline watchers are derived.
 |---|---|---|
 | `id`, `name` | required | Flow identity |
 | `triggerAggregateId`, `triggerEvent` | required | Source of the notification |
-| `targetModuleId` | required | Module that owns the outbound adapter |
+| `targetBoundedContextId` | required | Bounded context that owns the outbound adapter |
 
 Emits one `NOTIFIES` flow; the subscription and the outbound call are derived.
 

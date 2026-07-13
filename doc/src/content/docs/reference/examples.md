@@ -7,7 +7,7 @@ Every example is a complete, generatable model store. They double as the generat
 
 | Example | Where | What it teaches |
 |---|---|---|
-| **Hotel** (default store) | `.dev/data/model-driven-store.yaml` | The reference domain: 11 modules across front office, housekeeping, billing — aggregates, projections, subscriptions, UI pages, RBAC. The store the UI opens by default. |
+| **Hotel** (default store) | `.dev/data/model-driven-store.yaml` | The reference domain: 11 bounded contexts across front office, housekeeping, billing — aggregates, projections, subscriptions, UI pages, RBAC. The store the UI opens by default. |
 | **HLA booking** | `sample/hla-booking/model-driven-store.yaml` | An enterprise write-side modeled from a real high-level architecture: first-class **decisions (ADRs)** with traceability, external systems, strangler-fig legacy integration, orchestrated saga, outbox, BFF. Includes the generated HLA document. |
 | **Hotel check-in** | `sample/hotel-checkin/` | A generated application wired end to end (docker-compose, shell + service) — what the output actually looks like running. |
 | **E-commerce** | `model-driven-generator/src/test/resources/examples/ecommerce-store.yaml` | Order fulfillment: **saga with compensation** orchestrating external services through **gateways**, business rules, invariants, integration events, money fields. |

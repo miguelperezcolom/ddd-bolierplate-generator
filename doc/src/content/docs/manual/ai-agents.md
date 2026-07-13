@@ -45,7 +45,7 @@ bounded contexts: an *automated consumer* of the system. Agents come in two kind
 | RAG | Read model | `sourceReadModelIds` | The domain projecting itself into an index |
 | RAG | External system's table | `sourceExternalTableIds` | Structured legacy content, indexed in place |
 | RAG | API — real or proxy | `sourceApiIds` | Content obtained by calling the contract |
-| RAG | External system / bounded context | `sourceExternalSystemIds` / `sourceModuleIds` | Coarse source: everything it owns |
+| RAG | External system / bounded context | `sourceExternalSystemIds` / `sourceBoundedContextIds` | Coarse source: everything it owns |
 | RAG | External content | `contentSources` (type + URI) | Unstructured content the RAG crawls |
 
 ## Agents
@@ -102,7 +102,7 @@ families — **structured** (elements of the map, declared as relations) and
 | **Read models** | `sourceReadModelIds` — the domain projecting itself into an index | Drag the RAG onto a read model |
 | **External systems' tables** | `sourceExternalTableIds` — structured legacy content | Drag the RAG onto the table chip |
 | **APIs (real or proxy)** | `sourceApiIds` — content obtained by calling the contract | Drag the RAG onto the API or proxy |
-| **Whole external systems / contexts** | `sourceExternalSystemIds` / `sourceModuleIds` — coarse: everything they own | Drag the RAG onto the system or the context |
+| **Whole external systems / contexts** | `sourceExternalSystemIds` / `sourceBoundedContextIds` — coarse: everything they own | Drag the RAG onto the system or the context |
 | **External content** | `contentSources` — a typed URI | Select the RAG and use the **＋ Fuente** toolbar (type + URI) |
 
 The curated type catalog for external content: `WEB`, `REPO`, `FTP`, `DATABASE`,

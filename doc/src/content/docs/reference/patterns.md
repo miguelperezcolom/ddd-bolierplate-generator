@@ -35,7 +35,7 @@ Events are immutable records emitted by aggregates when state changes. They are:
 
 - Named in past tense (`BookingConfirmed`, not `ConfirmBooking`)
 - Published to Kafka after the transaction commits
-- Consumed by projections and sagas in the same module; consumed across bounded contexts via subscriptions (when promoted to integration events)
+- Consumed by projections and sagas in the same bounded context; consumed across bounded contexts via subscriptions (when promoted to integration events)
 
 ---
 
@@ -142,13 +142,13 @@ External event → ACL → Domain event
 Domain command → ACL → External API call
 ```
 
-Configured per module. Modux generates a translation layer with a `ModelMapping` for each ACL.
+Configured per bounded context. Modux generates a translation layer with a `ModelMapping` for each ACL.
 
 ---
 
 ## Context Map relationships
 
-Defines how bounded contexts relate to each other. A relation goes from a **source** (upstream, U) to a **target** (downstream, D) module for the asymmetric types; the symmetric types (`PARTNERSHIP`, `SHARED_KERNEL`, `SEPARATE_WAYS`) carry no up/down role.
+Defines how bounded contexts relate to each other. A relation goes from a **source** (upstream, U) to a **target** (downstream, D) bounded context for the asymmetric types; the symmetric types (`PARTNERSHIP`, `SHARED_KERNEL`, `SEPARATE_WAYS`) carry no up/down role.
 
 | Relationship | Description |
 |---|---|
@@ -163,7 +163,7 @@ Defines how bounded contexts relate to each other. A relation goes from a **sour
 
 ### Subdomain classification
 
-Each module can be classified strategically — it colours the context map and drives investment advice:
+Each bounded context can be classified strategically — it colours the context map and drives investment advice:
 
 | Type | Meaning |
 |---|---|
@@ -209,7 +209,7 @@ Besides folding events, a [projection](/manual/projections/#alternative-sources)
 
 ## Published APIs (contract-first, wired to the domain)
 
-A published API is a **product**, often fronting several bounded contexts — so it lives on the map as a first-class element, not as an implementation detail of one module. Import its contract ([OpenAPI or WSDL](/manual/importers/), no target) and wire each operation to its implementer: a context (coarse) or a use case / policy (fine). The wiring is architecture information — the published surface mapped onto the domain — it survives re-imports of the evolving contract, and `api-operation-unwired` flags broken promises.
+A published API is a **product**, often fronting several bounded contexts — so it lives on the map as a first-class element, not as an implementation detail of one context. Import its contract ([OpenAPI or WSDL](/manual/importers/), no target) and wire each operation to its implementer: a context (coarse) or a use case / policy (fine). The wiring is architecture information — the published surface mapped onto the domain — it survives re-imports of the evolving contract, and `api-operation-unwired` flags broken promises.
 
 ---
 
@@ -233,7 +233,7 @@ Beyond answering when called, an agent can **react**: dragging a domain or appli
 
 ## Authorization: roles and access policies
 
-Use cases carry RBAC (`allowedRoles` / `allowedScopes`). For *data-scoped* authorization — which rows a subject may see — modules declare **access policies** (ABAC-lite): a boolean expression over `subject.*` (token claims) and `resource.*` (row fields), e.g. `subject.hotelId == resource.hotelId`. This is the row-level security that enterprise apps otherwise hand-roll.
+Use cases carry RBAC (`allowedRoles` / `allowedScopes`). For *data-scoped* authorization — which rows a subject may see — bounded contexts declare **access policies** (ABAC-lite): a boolean expression over `subject.*` (token claims) and `resource.*` (row fields), e.g. `subject.hotelId == resource.hotelId`. This is the row-level security that enterprise apps otherwise hand-roll.
 
 ---
 
@@ -247,7 +247,7 @@ Use cases carry RBAC (`allowedRoles` / `allowedScopes`). For *data-scoped* autho
 
 ## KPIs
 
-Modules declare business metrics by intent: a `measure` (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) over a stream of domain events, sliced by `dimensionFields` and bucketed by a `timeGrain`. Example: occupancy per hotel per day from `CheckInCompleted` events. Non-`COUNT` measures require a `valueField` (linted).
+Bounded contexts declare business metrics by intent: a `measure` (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) over a stream of domain events, sliced by `dimensionFields` and bucketed by a `timeGrain`. Example: occupancy per hotel per day from `CheckInCompleted` events. Non-`COUNT` measures require a `valueField` (linted).
 
 ---
 
@@ -283,7 +283,7 @@ Use cases are derived from the surfaces that need them: sketch a **page** (butto
 
 ## Consuming another subdomain
 
-A use case consumes functionality — another use case or a query service — in the same or another subdomain (step types `CallUseCase` / `CallQueryService`). The transport derives from deployment topology: same service → in-process interface; modules distributed into different services → the call crosses a process boundary, which **requires an API** (the provider is exposed as gRPC — *Derive APIs* does it by convention). Reaching into a foreign aggregate directly is linted (`cross-context-data-access`): consume the owner's API or materialize a projection.
+A use case consumes functionality — another use case or a query service — in the same or another subdomain (step types `CallUseCase` / `CallQueryService`). The transport derives from deployment topology: same service → in-process interface; contexts whose modules are distributed into different services → the call crosses a process boundary, which **requires an API** (the provider is exposed as gRPC — *Derive APIs* does it by convention). Reaching into a foreign aggregate directly is linted (`cross-context-data-access`): consume the owner's API or materialize a projection.
 
 ---
 

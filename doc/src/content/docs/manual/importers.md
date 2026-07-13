@@ -8,9 +8,9 @@ Instead of defining every gateway, operation, event and subscription by hand, Mo
 | Importer | Source | Creates |
 |---|---|---|
 | OpenAPI (outbound) | OpenAPI 3.x YAML / JSON | Gateways + operations |
-| OpenAPI (inbound) | OpenAPI 3.x YAML / JSON | REST-exposed **use-case stubs** on a module + typed models |
+| OpenAPI (inbound) | OpenAPI 3.x YAML / JSON | REST-exposed **use-case stubs** on a bounded context + typed models |
 | OpenAPI (partner) | OpenAPI 3.x YAML / JSON | **Operations on an external system** |
-| WSDL | WSDL 1.1 | **Operations on an external system**, or SOAP **use-case stubs** on a module |
+| WSDL | WSDL 1.1 | **Operations on an external system**, or SOAP **use-case stubs** on a bounded context |
 | AsyncAPI | AsyncAPI 2.x YAML | Domain events + subscriptions |
 
 All importers use **upsert** semantics with deterministic ids: if an entity with the same id/name/topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the store in sync.
@@ -33,12 +33,12 @@ the meaning —
   [AI agents](/manual/ai-agents/), or polled by
   [projections](/manual/projections/#alternative-sources). For WSDL, the
   `portType.operation` and its `documentation` travel as the description.
-- **Module id** — the contract is something *we* must expose: OpenAPI operations become
-  REST-exposed use-case stubs (method, path, typed models); WSDL operations become
+- **Bounded context id** — the contract is something *we* must expose: OpenAPI operations
+  become REST-exposed use-case stubs (method, path, typed models); WSDL operations become
   plain use-case stubs (the exposure — SOAP shim, REST — is the developer's call).
 
-At most one target. Module-targeted imports never hijack a use-case id owned by
-another module: the id is scoped (`uc-<module>-<operation>`) instead of silently
+At most one target. Context-targeted imports never hijack a use-case id owned by
+another bounded context: the id is scoped (`uc-<context>-<operation>`) instead of silently
 overwriting.
 
 ## OpenAPI → Gateways
@@ -129,7 +129,7 @@ An AsyncAPI file describes the event-driven interface of a service: which events
 
 1. Navigate to **Import AsyncAPI spec**
 2. Fill in:
-   - **Module ID** — the module that owns these events/subscriptions
+   - **Bounded context ID** — the bounded context that owns these events/subscriptions
    - **File path** — absolute path to the AsyncAPI YAML file
 3. Click **Import AsyncAPI**
 
@@ -138,7 +138,7 @@ An AsyncAPI file describes the event-driven interface of a service: which events
 ```bash
 mvn modux:import-asyncapi \
   -Dmodux.filePath=/path/to/asyncapi.yaml \
-  -Dmodux.moduleId=my-module-id
+  -Dmodux.boundedContextId=my-context-id
 ```
 
 ### What gets created
@@ -188,7 +188,7 @@ mvn modux:import-openapi -Dmodux.filePath=apis/payments.yaml -Dmodux.serviceId=o
 mvn modux:import-openapi -Dmodux.filePath=apis/inventory.yaml -Dmodux.serviceId=orders-svc
 
 # Import the async event contracts
-mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.moduleId=orders-mod
+mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=orders-bc
 
 # Generate the full project
 mvn modux:generate -Dmodux.projectId=acme-platform

@@ -7,7 +7,7 @@ An **Aggregate** is the central DDD building block in Modux. It represents an ag
 
 ## Creating an aggregate
 
-1. Open a module and go to **Aggregates**
+1. Open a bounded context and go to **Aggregates**
 2. Click **New**
 3. Configure the aggregate and save
 

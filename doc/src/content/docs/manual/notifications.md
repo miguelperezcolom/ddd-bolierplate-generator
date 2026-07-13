@@ -10,7 +10,7 @@ names the transport.
 
 | Field | Description |
 |---|---|
-| **Owner module** | The bounded context that owns (and sends) it |
+| **Owner bounded context** | The context that owns (and sends) it |
 | **Event** | The domain/application event that fires it |
 | **Channels** | `EMAIL`, `SMS`, `PUSH`, `WEBHOOK` |
 | **Recipients** | Roles (their contact derives from the subject's profile), plus an optional expression (`resource.cliente.email`) |

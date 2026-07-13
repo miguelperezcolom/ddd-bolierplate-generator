@@ -17,8 +17,8 @@ migrates into `diagrams` on the first change made in the editor.
 
 | Tab | Shows | Extra semantics |
 |---|---|---|
-| **Context map** | Bounded contexts and external systems; strategic relations (solid, DDD abbreviations) and flows (dashed) | Flow colour = live coherence: green OK, amber missing relation, orange reversed |
-| **Agregados** | Aggregates coloured by their module's subdomain, entities as satellites, cross-aggregate references | |
+| **Context map** | Bounded contexts and external systems; strategic relations (solid, DDD abbreviations) and flows (dashed). Its **distribution level** shows services and the modules they deploy — a context with only its main module draws no module box (the deploy edge lands on the context itself); module boxes appear when a second module joins (palette group **Distribución**, label **Módulo**) | Flow colour = live coherence: green OK, amber missing relation, orange reversed |
+| **Agregados** | Aggregates coloured by their bounded context's subdomain, entities as satellites, cross-aggregate references | |
 | **Flows** | Each flow as a pipeline: trigger aggregate → flow (coloured by archetype) → target | |
 | **Workflows** | Each [workflow](/manual/workflows/) as a dependency DAG: trigger source →(event)→ workflow → steps by dependency depth → completion event; **human steps** amber with their **role and form page orbiting them**; loose **join/split gateways** with their semantics badged | step→step declares the dependency; **actor⇆step** makes the task human; **step⇆page** sets its form; double click a gateway toggles semantics, double click an exclusive branch edits its condition |
 | **UI** | The user interface, Mateu-shaped: apps (UiAdapter) as containers holding their **menu tree**, pages floating beside them, and each page's MVVM wiring — its viewmodel (a Model playing that role), the use cases behind its buttons and the query service feeding its listing; actors point at the apps they use | Palette creates apps — plain, **Orquestador** (keeps state and shows nothing of its own, only child pages) and **Maestro-detalle** (a header plus tabs, all of them pages: the first page dropped on it becomes the **header** — a «cabecera» edge, Supr unsets it — and the next ones its tabs) — plus pages, **CRUD** and **Wizard** shortcuts (pages born with that type) and menu entries (pages dropped **on an app** hang from its menu in the same gesture). **Data models** are first-class: every catalog model shows as a chip (the palette creates fresh ones), and wiring one to a page sets its **viewmodel**, to an app its **estado** — the state an orchestrator keeps and shares with its child pages; Supr on the chip deletes the model unlinking everyone (undo re-wires them). Selected nodes also offer **typed handles** (coloured drag points on the top edge): the green one on an app draws its **home** — a page or **another app** — (only plain apps have one: the master-detail is header+tabs and the orchestrator only shows child pages), the blue one on a master-detail (re)draws its **header**, a **CRUD** page offers two more — orange **detalle** (what opens a row) and teal **nuevo** (the new-record form), both reaching a page or an app of any archetype — and a **Vista-editor** app (an orchestrator pairing a read-only detail view with an edit view) offers **vista** and **edición** towards its two pages. A wizard's STEPS are the first-class thing: the palette drops bare steps on the wizard («Paso de wizard»), a page dropped on the wizard body becomes a new mapped step, and each step row **maps to its page by wiring** (drag the row's handle to a page, or drop a page on the row — remapping included; unmapped rows show ⌁). Rows list in numbered order — and the page designer's mockup shows the same steps on its wizard bar, **draggable to reorder them from there too**: **drag one between the drop slots to reorder** (undo puts it back), Supr on a row or on a «paso N» edge removes the step, and deleting a page unmaps its steps instead of losing them; the master-detail's tabs stay menu entries, reorderable the same way; drop a use case on a page for a toolbar button, a query service for the listing, an actor on an app to grant it; Supr on any of those edges undoes the wiring. **Menu entries move by dragging the row itself**: while it flies, **drop slots light up between the options of every app** — release on a slot to land exactly there, on another row's middle to nest under it (the target becomes a grouper), or on an app's end slot for its root — including **another app's** (the subtree travels whole, and undo puts it back in its slot). The connect handle offers the same moves |
@@ -52,7 +52,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   relation derives from; annotations whose dependency disappears stop being painted.
 - **Supr/Backspace** deletes the selection — relations, empty contexts, empty
   aggregates, domain events, flows, processes and steps. Integrity guards reject
-  deleting a module with aggregates or an aggregate with entities (server-checked
+  deleting a bounded context with aggregates or an aggregate with entities (server-checked
   too, shown as a toast).
 - **F2** renames inline — on every surface (2D, 3D and Yugo).
 - **A blank store bootstraps itself**: the palette opens by itself, and the first
@@ -67,7 +67,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   empty canvas to place it, or on a node to connect them — the same gesture
   vocabulary as the handles). The specialized views without a palette keep their
   toolbar creation: aggregates (with owner
-  module, plus a stub state model), flows (archetype, trigger aggregate, event,
+  bounded context, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert
   steps (AUTOMATED or HUMAN with role and deadline) and edit the selected step's
   role, deadline and compensation.
@@ -89,7 +89,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   (the external node becomes a container) and drag from one of our use cases onto
   them to record a `CallExternalUseCase` step (slate dashed arrow — the seed of a
   derived gateway/API). Drag from the external system onto one of OUR use cases and
-  the call comes in through an **INBOUND ACL** in the target module (violet arrow).
+  the call comes in through an **INBOUND ACL** in the target bounded context (violet arrow).
 - **AI agents consume through MCP**: create an **AI agent** from the palette (robot
   glyph, outside every context) and drag it onto a use case — the consumption is
   recorded on the agent and the use case flips `exposedAsMcp: true` (the bounded
@@ -229,9 +229,9 @@ stays amber in the dark.
 ## Keyboard shortcuts
 
 Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·
-**F** fullscreen · **0** fit · **+/−** zoom · **1/2/3** context-map levels (contexts /
-aggregates & use cases / APIs & operations) · **4/5/6/7** the specialized views
-(aggregates · flows · workflows · UI) · **E/D** EventStorming / back to the
+**F** fullscreen · **0** fit · **+/−** zoom · **1/2/3/4** context-map levels (contexts /
+aggregates & use cases / APIs & operations / distribución — módulos y servicios) ·
+**5/6/7/8** the specialized views (flows · processes · workflows · UI) · **E/D** EventStorming / back to the
 diagram · **V** the 3D tilt view · **Y** the Yugo surface · **T** the view's catalog
 tree · plus the editing keys (Supr, F2, Ctrl+Z / Ctrl+Y, space+drag, shift for
 multi-selection) — the same on every surface. Shortcuts never fire while typing in

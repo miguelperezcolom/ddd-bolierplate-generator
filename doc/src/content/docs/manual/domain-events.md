@@ -7,12 +7,12 @@ description: Events emitted by aggregates in Modux
 
 A domain event can be consumed in two ways:
 
-- **Inside the same module** — by **Projections** (which write to ReadModels) and **Sagas** (which coordinate long-running processes). No Subscription is needed for in-module consumers.
-- **From another module or external system** — only after the event is promoted to an **integration event** (see below). Cross-context consumers receive it through a [Subscription](/manual/subscriptions/), which then dispatches it to a use case, projection or saga via its configured action.
+- **Inside the same bounded context** — by **Projections** (which write to ReadModels) and **Sagas** (which coordinate long-running processes). No Subscription is needed for in-context consumers.
+- **From another bounded context or external system** — only after the event is promoted to an **integration event** (see below). Cross-context consumers receive it through a [Subscription](/manual/subscriptions/), which then dispatches it to a use case, projection or saga via its configured action.
 
 ## Creating a domain event
 
-1. Open a module and go to **Domain Events** (or define events directly on an aggregate's operations)
+1. Open a bounded context and go to **Domain Events** (or define events directly on an aggregate's operations)
 2. Click **New**
 3. Configure and save
 
@@ -54,10 +54,10 @@ Events are plain Java records — immutable and serialisable.
 ```
 Aggregate operation
     → domain event emitted
-        → in-module: consumed by Projections / Sagas in the same module
-        → cross-module (if promoted to IntegrationEvent):
+        → in-context: consumed by Projections / Sagas in the same bounded context
+        → cross-context (if promoted to IntegrationEvent):
               → published to Kafka topic
-                  → Subscription in the consuming module
+                  → Subscription in the consuming bounded context
                       → CallUseCase | UpdateProjection | StartSaga
 ```
 

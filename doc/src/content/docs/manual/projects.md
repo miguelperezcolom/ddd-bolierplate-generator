@@ -3,7 +3,7 @@ title: Projects
 description: Creating and configuring a Modux project
 ---
 
-A **Project** is the top-level container for your entire system. It holds global configuration that applies to all generated services and modules.
+A **Project** is the top-level container for your entire system. It holds global configuration that applies to all generated services and bounded contexts.
 
 ## Creating a project
 
@@ -86,7 +86,7 @@ You can define one entry per environment (`DEV`, `STAGING`, `PROD`). Each entry 
 
 ### Context Map
 
-The context map defines how bounded contexts in your project relate to each other. A relation goes from a **source** to a **target** module; for the asymmetric types the source is the **upstream** (U) context and the target is the **downstream** (D) context. Supported relationship types:
+The context map defines how bounded contexts in your project relate to each other. A relation goes from a **source** to a **target** bounded context; for the asymmetric types the source is the **upstream** (U) context and the target is the **downstream** (D) context. Supported relationship types:
 
 | Type | Description |
 |---|---|

@@ -130,16 +130,22 @@ projects:
 services:
   - id: "svc-1"
     name: "booking-service"
-    moduleIds:
-      - "mod-1"
+    moduleIds:            # the modules this service deploys
+      - "bc-1-main"
 
-modules:
-  - id: "mod-1"
+boundedContexts:
+  - id: "bc-1"
     name: "bookings"
     aggregateIds:
       - "agg-1"
     useCaseIds: []
     domainEventIds: []
+
+modules:                  # packaging: every bounded context has a main module
+  - id: "bc-1-main"
+    name: "bookings"
+    boundedContextId: "bc-1"
+    main: true
 
 aggregates:
   - id: "agg-1"
@@ -242,7 +248,7 @@ views:
 ```
 
 A **computed** view names a *seed* instead of listing members, and recalculates itself as the model
-changes — seeding with a module gives its whole bounded context:
+changes — seeding with a bounded context gives the whole context:
 
 ```yaml
 views:

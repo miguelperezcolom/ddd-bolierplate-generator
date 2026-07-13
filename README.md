@@ -63,7 +63,7 @@ The generated code follows **Hexagonal Architecture** (ports & adapters) with cl
 
 ## Domain model overview
 
-A **Project** contains one or more **Services** (microservices), each with one or more **Modules** (bounded contexts). Each module contains:
+A **Project** contains one or more **Bounded Contexts** — each born with a main **Module**, the buildable unit — and one or more **Services** (microservices) that deploy those modules. Each bounded context contains:
 
 - **Aggregates** — DDD aggregate roots with fields, operations, invariants, and events
 - **Entities** — Domain entities belonging to an aggregate
@@ -122,7 +122,7 @@ Use the UI to create:
 
 1. **Project** — name, package, output path
 2. **Services** — one per microservice
-3. **Modules** — bounded contexts within each service
+3. **Bounded Contexts** — each is born with a main module; wire it into a service's modules
 4. **Aggregates** — domain objects with fields, operations, and events
 
 ### 3. Generate code

@@ -35,20 +35,21 @@ A **Service** represents a microservice or deployable unit.
 3. Name it `booking-service`
 4. Save
 
-## 4. Create a Module
+## 4. Create a Bounded Context
 
-A **Module** is a bounded context within a service.
+A **Bounded Context** is a business subdomain with its own language. It is born with a **main module** — the unit your service deploys.
 
-1. Open the service and go to **Modules**
+1. Go to **Organization → Bounded Contexts**
 2. Click **New**
 3. Name it `bookings`
 4. Save
+5. Open the service and add the context's main module (`bookings-main`) to its **Modules**
 
 ## 5. Create an Aggregate
 
 An **Aggregate** is the core DDD building block.
 
-1. Open the module and go to **Aggregates**
+1. Open the bounded context and go to **Aggregates**
 2. Click **New**
 3. Fill in:
    - **Name**: `Booking`

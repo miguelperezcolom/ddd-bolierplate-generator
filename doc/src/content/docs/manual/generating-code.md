@@ -114,6 +114,8 @@ For each aggregate, Modux:
                 └── {Aggregate}.feature               # Gherkin scenarios
 ```
 
+Each deployed [module](/manual/modules/#modules) becomes a Maven submodule of its service's reactor — the module lends its name, its bounded context lends the meaning. For a context with only its main module, the output is identical to a context generated whole.
+
 ## DevOps & operability artifacts
 
 Beyond application code, Modux emits the operability scaffolding a service needs to run — derived
@@ -208,7 +210,7 @@ Run `mvn modux:ai-complete` after generation to get AI-generated proposals for t
 export ANTHROPIC_API_KEY=sk-ant-...
 mvn modux:generate -Dmodux.projectId=my-project-id
 mvn modux:ai-complete -Dmodux.projectId=my-project-id
-# → generated/proposals/{module}/AI-PROPOSALS.md
+# → generated/proposals/{boundedContext}/AI-PROPOSALS.md
 ```
 
 See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.

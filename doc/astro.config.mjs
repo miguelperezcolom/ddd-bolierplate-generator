@@ -35,7 +35,7 @@ export default defineConfig({
 						{ label: 'Graphical Editor', slug: 'manual/graphical-editor' },
 						{ label: 'Projects', slug: 'manual/projects' },
 						{ label: 'Services', slug: 'manual/services' },
-						{ label: 'Modules', slug: 'manual/modules' },
+						{ label: 'Bounded Contexts & Modules', slug: 'manual/modules' },
 						{ label: 'Flows', slug: 'manual/flows' },
 						{ label: 'Aggregates', slug: 'manual/aggregates' },
 						{ label: 'Event Sourcing', slug: 'manual/event-sourcing' },

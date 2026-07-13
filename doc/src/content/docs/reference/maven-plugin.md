@@ -73,7 +73,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 
 **Default phase:** none (run explicitly)
 
-Reads the spec, calls the Claude AI API for each module, and writes `AI-PROPOSALS.md` files with ready-to-paste Java implementations for the parts the generator cannot derive automatically.
+Reads the spec, calls the Claude AI API for each bounded context, and writes `AI-PROPOSALS.md` files with ready-to-paste Java implementations for the parts the generator cannot derive automatically.
 
 ### Parameters
 
@@ -145,14 +145,14 @@ Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channel
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
 | `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
-| `moduleId` | `modux.moduleId` | — | No | Module ID that owns these events/subscriptions |
+| `boundedContextId` | `modux.boundedContextId` | — | No | Bounded context ID that owns these events/subscriptions |
 
 ### Usage
 
 ```bash
 mvn modux:import-asyncapi \
   -Dmodux.filePath=events/orders-events.yaml \
-  -Dmodux.moduleId=my-module-id
+  -Dmodux.boundedContextId=my-context-id
 ```
 
 See [Importing Existing Specs](/manual/importers/) for the full guide.

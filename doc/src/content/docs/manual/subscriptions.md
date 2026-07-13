@@ -1,18 +1,18 @@
 ---
 title: Subscriptions
-description: How a module consumes events published by other bounded contexts
+description: How a bounded context consumes events published by other bounded contexts
 ---
 
-A **Subscription** is how a module consumes an **integration event** published by another bounded context (or by an external system). It defines:
+A **Subscription** is how a bounded context consumes an **integration event** published by another bounded context (or by an external system). It defines:
 
 1. *where* to read from (topic, event, consumer group),
 2. *what to do* with each incoming event (one or more **actions**).
 
-This is the **entry point** for cross-context event-driven integration. Within a single module, domain events are consumed in-process — no Subscription needed.
+This is the **entry point** for cross-context event-driven integration. Within a single bounded context, domain events are consumed in-process — no Subscription needed.
 
 ## Creating a subscription
 
-1. Open a module and go to **Subscriptions**
+1. Open a bounded context and go to **Subscriptions**
 2. Click **New**
 3. Configure and save
 

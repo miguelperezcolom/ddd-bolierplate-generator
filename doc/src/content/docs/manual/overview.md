@@ -9,22 +9,25 @@ Modux organises your system as a hierarchy of concepts:
 
 ```
 Project
-└── Service (microservice)
-    └── Module (bounded context)
-        ├── Aggregate
-        │   ├── Entity
-        │   ├── Value Object
-        │   ├── Operation
-        │   └── Domain Event
-        ├── Saga
-        ├── Projection / Read Model
-        ├── Subscription
-        ├── Scheduled Trigger
-        ├── Role
-        └── Infrastructure adapters
-            ├── Outbound: Gateway
-            └── Inbound (UI): Page, Component, UI Adapter, UI Shell
+├── Bounded Context (owns the meaning)
+│   └── Module (packaging — every context has a main one)
+│       ├── Aggregate
+│       │   ├── Entity
+│       │   ├── Value Object
+│       │   ├── Operation
+│       │   └── Domain Event
+│       ├── Saga
+│       ├── Projection / Read Model
+│       ├── Subscription
+│       ├── Scheduled Trigger
+│       ├── Role
+│       └── Infrastructure adapters
+│           ├── Outbound: Gateway
+│           └── Inbound (UI): Page, Component, UI Adapter, UI Shell
+└── Service (microservice) — deploys Modules
 ```
+
+A **Bounded Context** owns the meaning: aggregates, use cases, events, invariants. A **Module** is the buildable unit inside a context (each context is born with one main module). A **Service** is the deployable: it deploys modules via `moduleIds` — the only link between topology and content.
 
 In hexagonal architecture the UI is an **inbound (driving) adapter** — it sits in the infrastructure layer alongside outbound adapters like Gateways. Pages, Components, UI Adapters and UI Shells are simply the inbound side of that same adapter layer.
 
@@ -38,8 +41,8 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 
 | Section | Contents |
 |---|---|
-| **Organization** | Projects, Services |
-| **Domain Model** | Modules, Aggregates, Entities, Value Objects |
+| **Organization** | Projects, Services, Bounded Contexts, Modules |
+| **Domain Model** | Aggregates, Entities, Value Objects |
 | **Behaviour** | Operations, Use Cases |
 | **Async** | Domain Events, Sagas, Projections, Subscriptions, Scheduled Triggers |
 | **Interfaces** | Gateways (outbound), Read Models, Pages, Components, UI Adapters, UI Shells (inbound) |
@@ -49,7 +52,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 
 1. Create a **Project** with your package name and output path
 2. Add one or more **Services** (one per microservice)
-3. Add **Modules** (bounded contexts) to each service
+3. Add **Bounded Contexts** and wire each context's main module into a service
 4. Define **Aggregates** with their fields, operations, and events
 5. Add **Sagas**, **Projections**, and **Gateways** as needed
 6. Click **Generate Code** to produce the full Spring Boot project
@@ -60,7 +63,7 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 
 - [Projects](/manual/projects/) — top-level project settings
 - [Services](/manual/services/) — microservice configuration
-- [Modules](/manual/modules/) — bounded context settings
+- [Bounded Contexts & Modules](/manual/modules/) — bounded context settings and packaging
 - [Flows](/manual/flows/) — declare cross-context interactions by intent
 - [Aggregates](/manual/aggregates/) — the core DDD building block
 - [Entities & Value Objects](/manual/entities-and-value-objects/) — domain building blocks

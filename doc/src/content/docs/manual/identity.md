@@ -9,7 +9,7 @@ An enterprise information system needs three security answers, and modux models 
 |---|---|---|
 | **Who are you?** (authentication) | **Identity Provider** | This page |
 | **What may you do?** (RBAC) | [Roles](/manual/roles/) + `allowedRoles`/`allowedScopes` on use cases | Behaviour |
-| **On which data?** (ABAC) | **Access policies** on a module | Below |
+| **On which data?** (ABAC) | **Access policies** on a bounded context | Below |
 
 ## Identity providers
 
@@ -35,7 +35,7 @@ portal, a partner's for federated operations.
 
 ## Access policies (row-level authorization)
 
-Beyond role checks, an **access policy** on a module constrains **which rows** a
+Beyond role checks, an **access policy** on a bounded context constrains **which rows** a
 subject may see or act on — ABAC-lite, declared as a boolean expression over subject
 and resource attributes:
 
@@ -46,7 +46,7 @@ subject.hotelId == resource.hotelId
 It applies to an aggregate, a read model or a use case (`appliesToId`), and desugars
 at generation time into query filters on read models/query services, guards on use
 cases and UI hiding — the row-level security enterprise apps otherwise hand-roll.
-Policies are edited in the module's form (**Access policies** section).
+Policies are edited in the bounded context's form (**Access policies** section).
 
 ## Roadmap
 

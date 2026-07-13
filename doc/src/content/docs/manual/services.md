@@ -18,9 +18,10 @@ A **Service** represents a deployable microservice within your project. Each ser
 
 | Field | Description |
 |---|---|
-| **Name** | Service name (used as module name and artifact ID) |
+| **Name** | Service name (used as Maven module name and artifact ID) |
 | **Port** | HTTP port (default: `8080`) |
 | **Context path** | Base URL path (e.g. `/api`) |
+| **Modules** | The [modules](/manual/modules/#modules) this service deploys — the only link between topology and content |
 
 ### Deployment
 
@@ -66,4 +67,4 @@ For each service, Modux generates:
 
 ## Next steps
 
-Add one or more [Modules](/manual/modules/) to your service.
+Create a [Bounded Context](/manual/modules/) and deploy its main module in your service. Each deployed module becomes a Maven submodule of the service's reactor.

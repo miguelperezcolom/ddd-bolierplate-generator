@@ -7,7 +7,7 @@ A **Scheduled Trigger** defines a task that runs automatically on a schedule, li
 
 ## Creating a scheduled trigger
 
-1. Open a module and go to **Scheduled Triggers**
+1. Open a bounded context and go to **Scheduled Triggers**
 2. Click **New**
 3. Configure and save
 

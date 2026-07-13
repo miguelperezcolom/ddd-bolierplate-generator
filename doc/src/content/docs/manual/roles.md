@@ -7,7 +7,7 @@ Modux generates **Role-Based Access Control (RBAC)** definitions for your applic
 
 ## Creating a role
 
-1. Open a module and go to **Roles** (under the Security section)
+1. Open a bounded context and go to **Roles** (under the Security section)
 2. Click **New**
 3. Configure and save
 

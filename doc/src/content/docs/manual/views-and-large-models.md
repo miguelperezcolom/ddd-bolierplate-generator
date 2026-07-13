@@ -71,14 +71,14 @@ pulls in its aggregate, gateway, event and input model):
 mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
 ```
 
-A **computed** view is the powerful one for a large model: seed it with a module to get that whole
-bounded context, with a use case to get the use case plus everything it depends on, with a service to
+A **computed** view is the powerful one for a large model: seed it with a bounded context to get the
+whole context, with a use case to get the use case plus everything it depends on, with a service to
 get everything in it — one uniform mechanism, and it recalculates itself as the model evolves.
 
 ## Generating a slice
 
 Generate just a view's closure instead of the whole project — its domain code is emitted inside the
-normal project skeleton, so the slice still builds (out-of-scope modules are simply empty):
+normal project skeleton, so the slice still builds (out-of-scope contexts are simply empty):
 
 ```bash
 mvn spring-boot:run \
@@ -98,16 +98,16 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--modux.load-view=view-frontoffi
 
 :::note[Honest limits]
 Partial loading optimizes editing, navigation and *scoped* generation. **Full-project generation still
-loads the whole graph** (it resolves cross-module flows and references), as does booting the generator
+loads the whole graph** (it resolves cross-context flows and references), as does booting the generator
 in UI mode today — so lazy loading does not speed up a full generate. Saving while partially loaded is
 disabled (read-only) so a slice can't clobber the rest of the model on disk.
 :::
 
 ## How it fits the hierarchy
 
-Views sit **on top of** the project → service → module → aggregate hierarchy; they don't replace it. The
-hierarchy says where an element lives and who owns it; a view is a curated cross-cut (a saga spanning
-three modules, a journey crossing bounded contexts).
+Views sit **on top of** the project → bounded context → module → aggregate hierarchy; they don't replace
+it. The hierarchy says where an element lives and who owns it; a view is a curated cross-cut (a saga
+spanning three contexts, a journey crossing bounded contexts).
 
 ## Creating curated views from the canvas
 

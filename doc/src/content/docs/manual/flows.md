@@ -39,8 +39,8 @@ In the Modux UI, flows live under **Patrones › Flows**. A flow has:
 - **Name** and optional description.
 - **Archetype** — one of the four above.
 - **Trigger** — the aggregate and the event that starts the flow (the source context is the
-  aggregate's module).
-- **Target module** — the bounded context the flow acts on.
+  aggregate's bounded context).
+- **Target bounded context** — the context the flow acts on.
 - Archetype-specific fields: a **read model name** and the **fields** that cross the boundary
   (`materializes`), or the **target use case** (`triggers`).
 - **Overrides** — optional `scope.property=value` lines to tune derived pieces.
@@ -51,7 +51,7 @@ In the Modux UI, flows live under **Patrones › Flows**. A flow has:
 
 - Archetype: `materializes`
 - Trigger: aggregate `Booking`, event `BookingRecorded`
-- Target module: `FrontOffice`
+- Target bounded context: `FrontOffice`
 - Read model: `BookingSummary`
 - Fields: `locator`, `holder`
 
@@ -66,7 +66,7 @@ the projection.
 
 - Archetype: `triggers`
 - Trigger: aggregate `Booking`, event `BookingRecorded`
-- Target module: `FrontOffice`
+- Target bounded context: `FrontOffice`
 - Target use case: `CreateStay`
 
 Modux derives the event and integration event, an identity model mapping from the event payload to

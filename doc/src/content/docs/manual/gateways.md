@@ -7,7 +7,7 @@ A **Gateway** defines how your service calls an external system — another micr
 
 ## Creating a gateway
 
-1. Open a module and go to **Gateways**
+1. Open a bounded context and go to **Gateways**
 2. Click **New**
 3. Configure and save
 

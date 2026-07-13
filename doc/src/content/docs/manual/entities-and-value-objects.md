@@ -41,7 +41,7 @@ Value objects are defined in two ways in Modux:
 
 **Inline (as a field type):** When you define a field on an aggregate or entity with type `ValueObject`, Modux automatically generates a strongly-typed wrapper class.
 
-**Standalone:** Via the **Value Objects** section of a module for shared value objects used across multiple aggregates.
+**Standalone:** Via the **Value Objects** section of a bounded context for shared value objects used across multiple aggregates.
 
 ### Value object configuration
 
