@@ -1202,7 +1202,6 @@ public class EditorApiController {
 
     private void addBoundedContext(EditorCommand command) {
         if (repository.findById(command.id(), BoundedContextEntity.class).isPresent()) return;
-        wireBoundedContextIntoCurrentProject(command.id());
         repository.save(new BoundedContextEntity(
                 command.id(), command.name(), null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
@@ -1211,6 +1210,8 @@ public class EditorApiController {
                 List.of(), List.of(), List.of(), List.of(),
                 command.subdomainType() == null ? null : SubdomainType.valueOf(command.subdomainType()),
                 List.of(), List.of(), List.of(), null, null, null, null));
+        // saving it created its main module; wiring needs both, so it goes last
+        wireBoundedContextIntoCurrentProject(command.id());
     }
 
     private void addModule(EditorCommand command) {

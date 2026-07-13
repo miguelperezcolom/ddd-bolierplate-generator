@@ -82,7 +82,7 @@ public class McpStdioServer {
         serverInfo.put("version", "0.0.1");
         result.put("instructions", "Authoring tools for the modux model store (the YAML spec that modux "
                 + "turns into code). Model in the natural order (the authoring path): "
-                + "1) topology — bootstrap_project creates project + service + boundedContexts in one call from "
+                + "1) topology — bootstrap_project creates project + service + boundedContexts (each with its main module, wired to the service) in one call from "
                 + "the user's description; external systems live INSIDE the project element; "
                 + "2) models first (data with shape), then escalate only when needed: add an aggregate "
                 + "when there are invariants or a lifecycle to protect — and DECLARE those invariants "

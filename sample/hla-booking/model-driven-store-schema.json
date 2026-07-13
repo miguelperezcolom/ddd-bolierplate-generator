@@ -2315,6 +2315,9 @@
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "main" : {
+          "type" : "boolean"
+        },
         "name" : {
           "type" : "string"
         }
@@ -3624,14 +3627,6 @@
     "ServiceEntity" : {
       "type" : "object",
       "properties" : {
-        "boundedContextIds" : {
-          "description" : "References to existing 'boundedContext' ids (referential integrity is checked by the linter).",
-          "type" : "array",
-          "items" : {
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-          }
-        },
         "circuitBreakerEnabled" : {
           "type" : "boolean"
         },
@@ -4838,6 +4833,7 @@
       }
     },
     "modules" : {
+      "description" : "Buildable units of a bounded context: every context is born with its MAIN module (undistributed elements live there); services deploy modules.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ModuleEntity"
@@ -4925,7 +4921,7 @@
       }
     },
     "services" : {
-      "description" : "Microservices of a project; each owns boundedContexts (bounded contexts).",
+      "description" : "Microservices of a project; each deploys modules (the buildable units of the bounded contexts).",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ServiceEntity"
@@ -4958,7 +4954,7 @@
       }
     },
     "uiShells" : {
-      "description" : "Application shells: menus aggregating pages across boundedContexts.",
+      "description" : "Application shells: menus aggregating pages across bounded contexts.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UiShellEntity"
