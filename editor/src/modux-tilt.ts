@@ -117,6 +117,21 @@ export class ModuxTilt extends LitElement {
       transform-origin: 0 50%;
       pointer-events: none;
     }
+    .journey-badge3 {
+      position: absolute;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 5px;
+      box-sizing: border-box;
+      border-radius: 11px;
+      background: #d97706;
+      color: #ffffff;
+      font: 700 12px ui-sans-serif, system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
     .n3 {
       position: absolute;
       box-sizing: border-box;
@@ -609,7 +624,7 @@ export class ModuxTilt extends LitElement {
               // Faint shadow on the floor: the depth cue under the real 3D line.
               return svg`<line
                 x1=${lx(s)} y1=${ly(s)} x2=${lx(t)} y2=${ly(t)}
-                stroke="#000000" stroke-width="2" opacity="0.22" />`;
+                stroke="#000000" stroke-width="2" opacity=${e.dim ? 0.05 : 0.22} />`;
             })}
           </svg>
           ${this.scene.edges.map((e) => {
@@ -631,15 +646,26 @@ export class ModuxTilt extends LitElement {
             const stroke = e.dashed
               ? `repeating-linear-gradient(90deg, ${color} 0 6px, transparent 6px 10px)`
               : color;
+            const journey = e.kind === 'journey';
             return html`<div
               class="edge3"
               style="
-                left: ${lx(s)}px; top: ${ly(s)}px; width: ${len}px; height: 1.7px;
+                left: ${lx(s)}px; top: ${ly(s)}px; width: ${len}px; height: ${journey ? 3 : 1.7}px;
                 transform: translateZ(${z1}px) rotateZ(${bearing}deg) rotateY(${-climb}deg);
                 background: ${stroke};
-                opacity: 0.9;
+                opacity: ${e.dim ? 0.12 : 0.9};
               "
-            ></div>`;
+            ></div>
+            ${journey && e.label
+              ? html`<div
+                  class="journey-badge3"
+                  style="
+                    left: ${(lx(s) + lx(t)) / 2}px; top: ${(ly(s) + ly(t)) / 2}px;
+                    transform: translate(-50%, -50%) translateZ(${(z1 + z2) / 2 + 6}px);
+                  "
+                  title=${e.tooltip ?? ''}
+                >${e.label}</div>`
+              : ''}`;
           })}
           ${nodes.map((n) => {
             const d = depth.get(n.id) ?? 0;
@@ -655,6 +681,7 @@ export class ModuxTilt extends LitElement {
                 data-kind=${n.kind}
                 title=${n.tooltip ?? n.label}
                 style="
+                  opacity: ${n.dim ? 0.25 : 1};
                   left: ${lx(n) - n.w / 2}px; top: ${ly(n) - n.h / 2}px;
                   width: ${n.w}px; height: ${n.h}px;
                   transform: translateZ(${d * STOREY + (hovered ? 8 : 0)}px)${hovered
