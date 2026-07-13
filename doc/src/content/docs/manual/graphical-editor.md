@@ -231,7 +231,8 @@ stays amber in the dark.
 Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·
 **F** fullscreen · **0** fit · **+/−** zoom · **1/2/3/4** context-map levels (contexts /
 aggregates & use cases / APIs & operations / distribución — módulos y servicios) ·
-**5/6/7/8** the specialized views (flows · processes · workflows · UI) · **E/D** EventStorming / back to the
+**5/6/7/8/9** the specialized views (flows · processes · workflows · UI · design) ·
+**A** the aggregates view · **E/D** EventStorming / back to the
 diagram · **V** the 3D tilt view · **Y** the Yugo surface · **T** the view's catalog
 tree · plus the editing keys (Supr, F2, Ctrl+Z / Ctrl+Y, space+drag, shift for
 multi-selection) — the same on every surface. Shortcuts never fire while typing in

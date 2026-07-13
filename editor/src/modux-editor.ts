@@ -882,11 +882,12 @@ export class ModuxEditor extends LitElement {
           this._view = 'context-map';
         }
         break;
+      case 'a':
+      case 'A': scope('view:aggregates'); break;
       case '1': scope('level:contexts'); break;
       case '2': scope('level:detail'); break;
       case '3': scope('level:operations'); break;
       case '4': scope('level:distribution'); break;
-      case '4': scope('view:aggregates'); break;
       case '5': scope('view:flows'); break;
       case '6': scope('view:processes'); break;
       case '7': scope('view:workflows'); break;
@@ -4416,8 +4417,9 @@ export class ModuxEditor extends LitElement {
       ['F', 'Pantalla completa (Esc sale)'],
       ['0', 'Ajustar el diagrama a la ventana'],
       ['+ / −', 'Zoom (también con la rueda)'],
-      ['1 · 2 · 3', 'Context map: contextos · agregados y casos de uso · APIs y operaciones'],
-      ['4 · 5 · 6 · 7', 'Agregados · Flows · Procesos · Workflows'],
+      ['1 · 2 · 3 · 4', 'Context map: contextos · detalle · operaciones · distribución'],
+      ['5 · 6 · 7 · 8 · 9', 'Flows · Procesos · Workflows · UI · Diseño'],
+      ['A', 'Vista de agregados'],
       ['E / D', 'EventStorming / volver al diagrama'],
       ['V', 'Vista 3D (placas apiladas, tipo Firefox Tilt)'],
       ['T', 'Árbol del catálogo (con una vista activa)'],

@@ -13705,6 +13705,10 @@ let Q = class extends Ge {
         case "D":
           this._view === "eventstorming" && (e.preventDefault(), this._view = "context-map");
           break;
+        case "a":
+        case "A":
+          o("view:aggregates");
+          break;
         case "1":
           o("level:contexts");
           break;
@@ -13716,9 +13720,6 @@ let Q = class extends Ge {
           break;
         case "4":
           o("level:distribution");
-          break;
-        case "4":
-          o("view:aggregates");
           break;
         case "5":
           o("view:flows");
@@ -16364,8 +16365,9 @@ let Q = class extends Ge {
       ["F", "Pantalla completa (Esc sale)"],
       ["0", "Ajustar el diagrama a la ventana"],
       ["+ / −", "Zoom (también con la rueda)"],
-      ["1 · 2 · 3", "Context map: contextos · agregados y casos de uso · APIs y operaciones"],
-      ["4 · 5 · 6 · 7", "Agregados · Flows · Procesos · Workflows"],
+      ["1 · 2 · 3 · 4", "Context map: contextos · detalle · operaciones · distribución"],
+      ["5 · 6 · 7 · 8 · 9", "Flows · Procesos · Workflows · UI · Diseño"],
+      ["A", "Vista de agregados"],
       ["E / D", "EventStorming / volver al diagrama"],
       ["V", "Vista 3D (placas apiladas, tipo Firefox Tilt)"],
       ["T", "Árbol del catálogo (con una vista activa)"],
