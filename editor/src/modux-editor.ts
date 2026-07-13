@@ -1753,6 +1753,24 @@ export class ModuxEditor extends LitElement {
     ].filter((c) => !members.has(c.id));
   }
 
+  /** The active journey, legs numbered, for the surfaces that draw it themselves. */
+  private activeJourneyForSurface():
+    | { name: string; legs: { sourceId: string; targetId: string; num: string; label?: string }[] }
+    | null {
+    const journey = (this.model.journeys ?? []).find((j) => j.id === this._activeJourneyId);
+    if (!journey) return null;
+    const numbers = journeyLegNumbers(journey);
+    return {
+      name: journey.name,
+      legs: (journey.legs ?? []).map((l) => ({
+        sourceId: l.sourceId,
+        targetId: l.targetId,
+        num: numbers.get(l.id) ?? '',
+        label: l.label,
+      })),
+    };
+  }
+
   private createJourneyFromToolbar(): void {
     const name = this._newJourneyName.trim();
     if (!name) return;
@@ -4420,6 +4438,7 @@ export class ModuxEditor extends LitElement {
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
             .scene=${this.sceneFor(this._view)}
+            .journey=${this.activeJourneyForSurface()}
             .sceneKey=${`${this._view}:${this._detail}`}
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
@@ -4439,7 +4458,8 @@ export class ModuxEditor extends LitElement {
               // Two bounded contexts: the strategic relation needs its TYPE — the
               // picker opens at the drop point (create, or retype if declared).
               const isBoundedContext = (id: string) => this.model.boundedContexts.some((mo) => mo.id === id);
-              if (this._view === 'context-map' && isBoundedContext(sourceId) && isBoundedContext(targetId)) {
+              if (this._view === 'context-map' && !this._activeJourneyId
+                  && isBoundedContext(sourceId) && isBoundedContext(targetId)) {
                 const declared = this.model.relations.find(
                   (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
                 );

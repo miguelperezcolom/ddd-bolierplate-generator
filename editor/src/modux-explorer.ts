@@ -304,6 +304,11 @@ export class ModuxExplorer extends LitElement {
    */
   @property({ attribute: false }) scene: Scene | null = null;
 
+  /** The active journey, precomputed by the host: legs with their step number. */
+  @property({ attribute: false }) journey:
+    | { name: string; legs: { sourceId: string; targetId: string; num: string; label?: string }[] }
+    | null = null;
+
   @property({ attribute: false }) model: ModuxModel = {
     boundedContexts: [],
     externalSystems: [],
@@ -1017,8 +1022,10 @@ export class ModuxExplorer extends LitElement {
       ctx.stroke();
     }
 
+    const journeyTouched = this.journeyTouchedIds(nodes);
     const fontPx = (px: number) => `${px}px system-ui, sans-serif`;
     for (const n of nodes) {
+      if (journeyTouched) ctx.globalAlpha = journeyTouched.has(n.refId) ? 1 : 0.22;
       const r = this.radiusOf(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
@@ -1102,6 +1109,8 @@ export class ModuxExplorer extends LitElement {
         ctx.restore();
       }
     }
+    ctx.globalAlpha = 1;
+    if (this.journey) this.drawJourney(ctx, nodes);
     if (this._threads) {
       for (const n of nodes) this.drawThreads(ctx, n, nodes);
     } else if (this.hover) {
@@ -1161,6 +1170,89 @@ export class ModuxExplorer extends LitElement {
       ctx.arc(v.x, v.y, this.radiusOf(v) + 4, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([6, 5]);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Ids the active journey touches, mapped to what is VISIBLE: a folded
+   * endpoint is represented by its nearest visible ancestor (containment via
+   * the scene's parent chain). Null when no journey is on stage.
+   */
+  private journeyTouchedIds(nodes: XNode[]): Set<string> | null {
+    if (!this.journey) return null;
+    const touched = new Set<string>();
+    for (const leg of this.journey.legs) {
+      const a = this.visibleRepresentative(leg.sourceId, nodes);
+      const b = this.visibleRepresentative(leg.targetId, nodes);
+      if (a) touched.add(a.refId);
+      if (b) touched.add(b.refId);
+    }
+    return touched;
+  }
+
+  private visibleRepresentative(refId: string, nodes: XNode[]): XNode | null {
+    const byRef = new Map(nodes.map((n) => [n.refId, n]));
+    const parentOf = new Map((this.scene?.nodes ?? []).map((n) => [n.id, n.parentId]));
+    for (let cur: string | undefined | null = refId; cur; cur = parentOf.get(cur)) {
+      const hit = byRef.get(cur);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /** The active journey as a bold amber layer: directed curves, numbered badges. */
+  private drawJourney(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
+    if (!this.journey) return;
+    ctx.save();
+    for (const leg of this.journey.legs) {
+      const a = this.visibleRepresentative(leg.sourceId, nodes);
+      const b = this.visibleRepresentative(leg.targetId, nodes);
+      if (!a || !b || a === b) continue;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const bend = 0.14;
+      const cx = mx - dy * bend;
+      const cy = my + dx * bend;
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2.4 / this.cam.k;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(cx, cy, b.x, b.y);
+      ctx.stroke();
+      // arrow head at the target border
+      const tx = b.x - cx;
+      const ty = b.y - cy;
+      const tl = Math.hypot(tx, ty) || 1;
+      const ux = tx / tl;
+      const uy = ty / tl;
+      const rB = this.radiusOf(b) + 4;
+      const hx = b.x - ux * rB;
+      const hy = b.y - uy * rB;
+      const ah = 9 / this.cam.k;
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(hx - ux * ah - uy * ah * 0.55, hy - uy * ah + ux * ah * 0.55);
+      ctx.lineTo(hx - ux * ah + uy * ah * 0.55, hy - uy * ah - ux * ah * 0.55);
+      ctx.closePath();
+      ctx.fill();
+      // the step number rides the curve's midpoint
+      const bx = mx - dy * bend * 0.5;
+      const by = my + dx * bend * 0.5;
+      const badge = 11 / this.cam.k;
+      ctx.beginPath();
+      ctx.arc(bx, by, badge, 0, Math.PI * 2);
+      ctx.fillStyle = '#d97706';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${12 / this.cam.k}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(leg.num, bx, by);
     }
     ctx.restore();
   }

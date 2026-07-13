@@ -330,6 +330,7 @@ export class ModuxCanvas extends LitElement {
         node.kind !== 'query-service' &&
         node.kind !== 'use-case' &&
         node.kind !== 'external-use-case' &&
+        node.kind !== 'external-system' &&
         node.kind !== 'external-table' &&
         node.kind !== 'mcp-server' &&
         node.kind !== 'api' &&
@@ -1225,6 +1226,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
             node.kind === 'external-use-case' ||
+            node.kind === 'external-system' ||
             node.kind === 'external-table' ||
             node.kind === 'api-operation' ||
             node.kind === 'api-op-occurrence' ||
