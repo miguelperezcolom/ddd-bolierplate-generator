@@ -344,6 +344,8 @@ export interface ExternalSystemRef {
   mcpServers?: McpServerRef[];
   /** Set when the system IS another modux project (catalog reference). */
   referencedRepositoryId?: string;
+  /** The external system this one lives inside (subsystem). */
+  parentExternalSystemId?: string;
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */

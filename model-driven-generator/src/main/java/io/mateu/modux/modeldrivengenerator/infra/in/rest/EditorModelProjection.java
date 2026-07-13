@@ -213,7 +213,8 @@ public class EditorModelProjection {
                         x.mcpServers().stream()
                                 .map(s -> new McpServerDto(s.id(), s.name(), s.uri()))
                                 .toList(),
-                        x.referencedRepositoryId()))
+                        x.referencedRepositoryId(),
+                        x.parentExternalSystemId()))
                 .toList();
         var flowEntities = repository.findAllOfType(FlowEntity.class);
         var flows = coherenceService.analyze().stream()

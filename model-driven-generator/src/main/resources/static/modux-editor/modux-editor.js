@@ -128,6 +128,7 @@ const cn = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, Ti = {
   "domain-service": { symbol: "gear", fill: "#fff1f2", stroke: "#f43f5e" },
   "query-service": { symbol: "lens", fill: "#f0f9ff", stroke: "#0284c7" },
   "external-use-case": { symbol: "usecase", fill: "#f8fafc", stroke: "#64748b" },
+  "external-system": { symbol: "component", fill: "#ffffff", stroke: "#64748b" },
   "external-table": { symbol: "readmodel", fill: "#fefce8", stroke: "#a16207" },
   "mcp-server": { symbol: "robot", fill: "#faf5ff", stroke: "#9333ea" },
   "api-operation": { symbol: "usecase", fill: "#eef2ff", stroke: "#4f46e5" },
@@ -149,6 +150,7 @@ const cn = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, Ti = {
   "domain-service": "Servicio de dominio",
   "query-service": "Query service",
   "external-use-case": "Caso de uso externo",
+  "external-system": "Subsistema",
   "external-table": "Tabla (legacy)",
   "mcp-server": "Servidor MCP",
   "api-operation": "Operación de API",
@@ -508,7 +510,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
     (u) => u.publishedByExternalSystemId && m.has(u.publishedByExternalSystemId)
   ), d = new Set(v.map((u) => u.id)), c = [
     ...e.boundedContexts.map((u) => ({ ref: u, external: !1, api: !1, proxy: !1 })),
-    ...(a ? [] : e.externalSystems).map((u) => ({ ref: u, external: !0, api: !1, proxy: !1 })),
+    ...(a ? [] : e.externalSystems).filter((u) => !u.parentExternalSystemId || !m.has(u.parentExternalSystemId)).map((u) => ({ ref: u, external: !0, api: !1, proxy: !1 })),
     ...l ? [] : (e.apis ?? []).filter((u) => !h.has(u.id)).map((u) => ({ ref: u, external: !1, api: !0, proxy: !1 })),
     ...l ? [] : (e.proxyApis ?? []).filter((u) => !d.has(u.id)).map((u) => ({ ref: u, external: !1, api: !1, proxy: !0 })),
     ...l ? [] : (e.workflows ?? []).map((u) => ({
@@ -536,17 +538,17 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
   ], g = c.flatMap((u, O) => {
     const B = t[u.ref.id] ?? dt(O, c.length);
     if ("idp" in u && u.idp) {
-      const Y = u.ref, ce = !!Y.publishedByExternalSystemId;
+      const Y = u.ref, pe = !!Y.publishedByExternalSystemId;
       return [{
         id: Y.id,
         label: Y.name,
         kind: "identity-provider",
         symbol: "key",
-        fill: ce ? "#ffffff" : "#fefce8",
+        fill: pe ? "#ffffff" : "#fefce8",
         stroke: "#ca8a04",
-        dashed: ce,
+        dashed: pe,
         badge: Y.type ?? "IDP",
-        tooltip: `${Y.name} — emite las identidades que el sistema confía${ce ? " (federado)" : ""}; arrastra un contexto, app o flujo ETL hasta él`,
+        tooltip: `${Y.name} — emite las identidades que el sistema confía${pe ? " (federado)" : ""}; arrastra un contexto, app o flujo ETL hasta él`,
         x: B.x,
         y: B.y,
         w: Fe,
@@ -590,7 +592,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       }];
     }
     if (u.proxy) {
-      const Y = u.ref, ce = {
+      const Y = u.ref, pe = {
         id: Y.id,
         label: Y.name,
         kind: "proxy-api",
@@ -605,7 +607,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         if (Qe.length > 0)
           return Ht(
             B,
-            ce,
+            pe,
             Qe.map((_t) => ({
               id: ut(_t.id, Y.id),
               name: _t.name,
@@ -615,10 +617,10 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
             n
           );
       }
-      return [{ ...ce, x: B.x, y: B.y, w: Fe, h: We }];
+      return [{ ...pe, x: B.x, y: B.y, w: Fe, h: We }];
     }
     if (u.api) {
-      const Y = u.ref, ce = {
+      const Y = u.ref, pe = {
         id: Y.id,
         label: Y.name,
         kind: "api",
@@ -630,14 +632,14 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       };
       return (o.has(Y.id) ? !p : p) && Y.operations.length > 0 ? Ht(
         B,
-        { ...ce, collapsible: !0, collapsed: !1 },
+        { ...pe, collapsible: !0, collapsed: !1 },
         Y.operations.map(
           (Qe) => ({ id: Qe.id, name: Qe.name, kind: "api-operation" })
         ),
         t,
         n
       ) : [{
-        ...ce,
+        ...pe,
         collapsible: Y.operations.length > 0,
         collapsed: Y.operations.length > 0,
         x: B.x,
@@ -647,7 +649,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       }];
     }
     if (u.external) {
-      const Y = u.ref, ce = {
+      const Y = u.ref, pe = {
         id: Y.id,
         label: Y.name,
         kind: "external-system",
@@ -657,17 +659,18 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         dashed: !0,
         badge: Y.referencedRepositoryId ? "PROYECTO" : "EXTERNAL",
         tooltip: Y.referencedRepositoryId ? `${Y.name} — otro proyecto modux (repositorio ${Y.referencedRepositoryId}), referenciado del catálogo` : `${Y.name} (sistema externo)`
-      }, Xe = f.filter((fe) => fe.publishedByExternalSystemId === Y.id), Qe = v.filter((fe) => fe.publishedByExternalSystemId === Y.id), _t = Qe.map(
-        (fe) => ({ id: fe.id, name: fe.name, kind: "proxy-api" })
+      }, Xe = f.filter((ce) => ce.publishedByExternalSystemId === Y.id), Qe = v.filter((ce) => ce.publishedByExternalSystemId === Y.id), _t = Qe.map(
+        (ce) => ({ id: ce.id, name: ce.name, kind: "proxy-api" })
       ), Ki = [
+        ...e.externalSystems.filter((ce) => ce.parentExternalSystemId === Y.id).map((ce) => ({ id: ce.id, name: ce.name, kind: "external-system" })),
         ...(Y.useCases ?? []).map(
-          (fe) => ({ id: fe.id, name: fe.name, kind: "external-use-case" })
+          (ce) => ({ id: ce.id, name: ce.name, kind: "external-use-case" })
         ),
         ...(Y.tables ?? []).map(
-          (fe) => ({ id: fe.id, name: fe.name, kind: "external-table" })
+          (ce) => ({ id: ce.id, name: ce.name, kind: "external-table" })
         ),
         ...(Y.mcpServers ?? []).map(
-          (fe) => ({ id: fe.id, name: fe.name, kind: "mcp-server" })
+          (ce) => ({ id: ce.id, name: ce.name, kind: "mcp-server" })
         )
       ], ji = Xe.length > 0 || Qe.length > 0, Yi = ji || Ki.length > 0, { form: li, collapsed: Xi } = zn(
         o.has(Y.id),
@@ -677,12 +680,12 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       ), Nn = [
         ..._t,
         ...li === "full" ? Ki : []
-      ], Qi = y && li === "full" ? Qe.filter((fe) => {
-        const Lt = fe.targetApiId ? (e.apis ?? []).find((Se) => Se.id === fe.targetApiId) : void 0;
+      ], Qi = y && li === "full" ? Qe.filter((ce) => {
+        const Lt = ce.targetApiId ? (e.apis ?? []).find((Se) => Se.id === ce.targetApiId) : void 0;
         return ((Lt == null ? void 0 : Lt.operations) ?? []).length > 0;
       }) : [];
       if (y && li === "full" && (Xe.length > 0 || Qi.length > 0)) {
-        const fe = [
+        const ce = [
           ...Xe.map((Se) => ({
             id: Se.id,
             name: Se.name,
@@ -714,8 +717,8 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         ], Lt = new Set(Qi.map((Se) => Se.id));
         return zo(
           B,
-          { ...ce, collapsible: !0, collapsed: Xi },
-          fe,
+          { ...pe, collapsible: !0, collapsed: Xi },
+          ce,
           Nn.filter((Se) => !Lt.has(Se.id)),
           t,
           n,
@@ -723,17 +726,17 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         );
       }
       const Rn = li === "compact" ? [] : [
-        ...Xe.map((fe) => ({ id: fe.id, name: fe.name, kind: "api" })),
+        ...Xe.map((ce) => ({ id: ce.id, name: ce.name, kind: "api" })),
         ...Nn
       ];
       return Rn.length > 0 ? Ht(
         B,
-        { ...ce, collapsible: Yi, collapsed: Xi },
+        { ...pe, collapsible: Yi, collapsed: Xi },
         Rn,
         t,
         n
       ) : [{
-        ...ce,
+        ...pe,
         collapsible: Yi,
         collapsed: Yi && Xi,
         x: B.x,
@@ -742,7 +745,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         h: We
       }];
     }
-    const X = u.ref, j = X.subdomainType ?? "GENERIC", me = {
+    const X = u.ref, j = X.subdomainType ?? "GENERIC", fe = {
       id: X.id,
       label: X.name,
       kind: "boundedContext",
@@ -760,7 +763,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       e,
       X,
       B,
-      { ...me, collapsible: !1, collapsed: !1 },
+      { ...fe, collapsible: !1, collapsed: !1 },
       t,
       n,
       o
@@ -768,18 +771,18 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       e,
       X,
       B,
-      { ...me, collapsible: !0, collapsed: kt },
+      { ...fe, collapsible: !0, collapsed: kt },
       t,
       n,
       y
     ) : Rt === "coarse" && qe.length > 0 ? Ht(
       B,
-      { ...me, collapsible: rt, collapsed: kt },
+      { ...fe, collapsible: rt, collapsed: kt },
       qe,
       t,
       n
     ) : [{
-      ...me,
+      ...fe,
       collapsible: rt,
       collapsed: rt && kt,
       x: B.x,
@@ -866,9 +869,9 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       badge: "RAG",
       tooltip: `${u.name} (base de conocimiento — retrieval para agentes)`
     }), (u.contentSources ?? []).forEach((X, j) => {
-      const me = `ragcs:${u.id}:${X.uri}`, qe = t[me] ?? { x: B.x + 170, y: B.y - 30 + j * 44 };
+      const fe = `ragcs:${u.id}:${X.uri}`, qe = t[fe] ?? { x: B.x + 170, y: B.y - 30 + j * 44 };
       g.push({
-        id: me,
+        id: fe,
         label: X.uri.replace(/^[a-z+]+:\/\//, "").slice(0, 24),
         x: qe.x,
         y: qe.y,
@@ -882,7 +885,7 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         tooltip: `${X.type}: ${X.uri}`
       }), E.push({
         id: `ragcse:${u.id}:${X.uri}`,
-        sourceId: me,
+        sourceId: fe,
         targetId: u.id,
         kind: "rag-content",
         color: "#0e7490",
@@ -970,11 +973,11 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
     tooltip: u.type ? `${u.type} (${u.sourceId} upstream → ${u.targetId} downstream)${u.reasons ? ` — ${u.reasons}` : ""}` : u.inferredType ? `≈ ${u.inferredType} INFERIDO de las dependencias — doble click para declararlo (o corregirlo)${u.reasons ? ` — ${u.reasons}` : ""}` : `Relación derivada — doble click para elegir el patrón${u.reasons ? ` — ${u.reasons}` : ""}`
   })), R = e.flows.map((u) => {
     var qe, Nt, rt, Rt, kt, Y;
-    const O = Ua(e, u), B = p ? e.boundedContexts.find((ce) => ce.id === u.sourceId) : void 0, X = ((qe = B == null ? void 0 : B.domainEvents) == null ? void 0 : qe.find((ce) => ce.name === u.triggerEvent)) ?? ((Nt = B == null ? void 0 : B.applicationEvents) == null ? void 0 : Nt.find((ce) => ce.name === u.triggerEvent)), j = p && u.readModelName ? (Rt = (rt = e.boundedContexts.find((ce) => ce.id === u.targetId)) == null ? void 0 : rt.readModels) == null ? void 0 : Rt.find((ce) => ce.name === u.readModelName) : void 0, me = p && u.targetUseCaseId ? (Y = (kt = e.boundedContexts.find((ce) => ce.id === u.targetId)) == null ? void 0 : kt.useCases) == null ? void 0 : Y.find((ce) => ce.id === u.targetUseCaseId) : void 0;
+    const O = Ua(e, u), B = p ? e.boundedContexts.find((pe) => pe.id === u.sourceId) : void 0, X = ((qe = B == null ? void 0 : B.domainEvents) == null ? void 0 : qe.find((pe) => pe.name === u.triggerEvent)) ?? ((Nt = B == null ? void 0 : B.applicationEvents) == null ? void 0 : Nt.find((pe) => pe.name === u.triggerEvent)), j = p && u.readModelName ? (Rt = (rt = e.boundedContexts.find((pe) => pe.id === u.targetId)) == null ? void 0 : rt.readModels) == null ? void 0 : Rt.find((pe) => pe.name === u.readModelName) : void 0, fe = p && u.targetUseCaseId ? (Y = (kt = e.boundedContexts.find((pe) => pe.id === u.targetId)) == null ? void 0 : kt.useCases) == null ? void 0 : Y.find((pe) => pe.id === u.targetUseCaseId) : void 0;
     return {
       id: `flow:${u.id}`,
       sourceId: (X == null ? void 0 : X.id) ?? u.sourceId,
-      targetId: (me == null ? void 0 : me.id) ?? (j == null ? void 0 : j.id) ?? u.targetId,
+      targetId: (fe == null ? void 0 : fe.id) ?? (j == null ? void 0 : j.id) ?? u.targetId,
       kind: "flow",
       label: u.name,
       color: La[O],
@@ -1231,9 +1234,9 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
         }
       ])
     ).values()
-  ], pe = /* @__PURE__ */ new Map();
+  ], ue = /* @__PURE__ */ new Map();
   for (const u of e.externalSystems)
-    for (const O of u.tables ?? []) pe.set(O.id, u.id);
+    for (const O of u.tables ?? []) ue.set(O.id, u.id);
   const ye = (e.notifications ?? []).flatMap((u) => {
     var X;
     const O = S.has(u.id) ? u.id : u.ownerBoundedContextId && S.has(u.ownerBoundedContextId) ? u.ownerBoundedContextId : null;
@@ -1288,25 +1291,25 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       const X = O.externalTableId ?? O.operationId ?? O.apiId ?? O.eventId;
       if (!X) return [];
       let j = X;
-      if (!S.has(j) && O.operationId && O.apiId && (j = O.apiId), !S.has(j) && O.externalTableId && (j = pe.get(O.externalTableId) ?? j), S.has(j) || (j = D(j)), S.has(j) || (j = G.get(X) ?? j), !S.has(j) || j === B) return [];
-      const me = O.type.startsWith("SOURCE");
+      if (!S.has(j) && O.operationId && O.apiId && (j = O.apiId), !S.has(j) && O.externalTableId && (j = ue.get(O.externalTableId) ?? j), S.has(j) || (j = D(j)), S.has(j) || (j = G.get(X) ?? j), !S.has(j) || j === B) return [];
+      const fe = O.type.startsWith("SOURCE");
       return [{
         id: `etl:${u.id}:${O.id}`,
-        sourceId: me ? j : B,
-        targetId: me ? B : j,
-        kind: me ? "etl-source" : "etl-write",
+        sourceId: fe ? j : B,
+        targetId: fe ? B : j,
+        kind: fe ? "etl-source" : "etl-write",
         color: "#0f766e",
         label: O.type === "SOURCE_PULL" ? "pull" : O.type === "SOURCE_CONSUMER" ? "consume" : O.type === "WRITE_API" ? "api" : O.type === "WRITE_DB" ? "bd" : "evento",
         dashed: !0,
         arrow: !0,
-        tooltip: me ? `${u.name} lee de aquí (${O.type === "SOURCE_PULL" ? "pull" : "consumidor"})` : `${u.name} escribe aquí — Supr quita el paso`
+        tooltip: fe ? `${u.name} lee de aquí (${O.type === "SOURCE_PULL" ? "pull" : "consumidor"})` : `${u.name} escribe aquí — Supr quita el paso`
       }];
     })
   ), V = [
     ...new Map(
       (e.rags ?? []).flatMap(
         (u) => (u.sourceExternalTableIds ?? []).map((O) => ({
-          sourceId: S.has(O) ? O : pe.get(O) ?? O,
+          sourceId: S.has(O) ? O : ue.get(O) ?? O,
           targetId: u.id,
           name: u.name
         }))
@@ -1447,17 +1450,17 @@ function Wa(e, t, i = "contexts", n = {}, o = /* @__PURE__ */ new Set()) {
       (e.externalOperationUses ?? []).map((u) => {
         if (!S.has(u.externalSystemId)) return null;
         const O = (e.apis ?? []).find(
-          (me) => me.operations.some((qe) => qe.id === u.operationId)
+          (fe) => fe.operations.some((qe) => qe.id === u.operationId)
         );
         if (!O) return null;
         const B = u.siteId === O.id, X = B ? u.operationId : ut(u.operationId, u.siteId);
         let j = S.has(X) ? X : null;
         if (!j)
-          if (B || (e.proxyApis ?? []).some((me) => me.id === u.siteId))
+          if (B || (e.proxyApis ?? []).some((fe) => fe.id === u.siteId))
             j = D(u.siteId);
           else {
-            const me = mt(O.id, u.siteId);
-            j = S.has(me) ? me : u.siteId;
+            const fe = mt(O.id, u.siteId);
+            j = S.has(fe) ? fe : u.siteId;
           }
         return !j || !S.has(j) || j === u.externalSystemId ? null : { u, target: j };
       }).filter((u) => u !== null).map((u) => [
@@ -5509,7 +5512,7 @@ const Z = {
 function Me(e, t) {
   e.nodes.has(t.id) || e.nodes.set(t.id, t);
 }
-function ue(e, t) {
+function me(e, t) {
   e.edges.some((i) => i.id === t.id) || e.edges.push(t);
 }
 const $t = (e) => e.trim().toLowerCase();
@@ -5556,7 +5559,7 @@ function dc(e, t) {
         stroke: "#1d4ed8",
         dashed: !!P.customCodeId,
         tooltip: `Paso de ${I.name}${P.customCodeId ? " — delega en código a mano" : ""} — arrastra su asa hasta un CODE para delegar en él`
-      }), ue(i, {
+      }), me(i, {
         id: `esstep:${_ === 0 ? I.id : (I.steps ?? [])[_ - 1].id}->${P.id}`,
         sourceId: _ === 0 ? I.id : (I.steps ?? [])[_ - 1].id,
         targetId: P.id,
@@ -5585,7 +5588,7 @@ function dc(e, t) {
     });
   for (const I of o)
     for (const P of I.steps ?? [])
-      P.customCodeId && ue(i, {
+      P.customCodeId && me(i, {
         id: `escc:${P.id}`,
         sourceId: P.id,
         targetId: P.customCodeId,
@@ -5677,7 +5680,7 @@ function dc(e, t) {
       fill: Z.actor.fill,
       stroke: Z.actor.stroke,
       badge: "ACTOR"
-    }), ue(i, {
+    }), me(i, {
       id: `es-actor:${P.id}->${I.targetId}`,
       sourceId: P.id,
       targetId: I.targetId,
@@ -5704,7 +5707,7 @@ function dc(e, t) {
         tooltip: `${I.name} — agente de IA (consume por MCP)`
       });
       for (const C of P)
-        a.has(C.useCaseId) && ue(i, {
+        a.has(C.useCaseId) && me(i, {
           id: `es-agent:${I.id}->${C.useCaseId}`,
           sourceId: I.id,
           targetId: C.useCaseId,
@@ -5733,7 +5736,7 @@ function dc(e, t) {
           stroke: Z.external.stroke,
           dashed: !0,
           badge: "EXTERNO"
-        }), ue(i, {
+        }), me(i, {
           id: `es-agentx:${I.id}->${C.externalUseCaseId}`,
           sourceId: I.id,
           targetId: T.id,
@@ -5764,7 +5767,7 @@ function dc(e, t) {
           stroke: Z.external.stroke,
           dashed: !0,
           badge: "EXTERNO"
-        }), ue(i, {
+        }), me(i, {
           id: `es-agentmcp:${I.id}->${C.mcpServerId}`,
           sourceId: I.id,
           targetId: T.id,
@@ -5791,7 +5794,7 @@ function dc(e, t) {
             stroke: "#0e7490",
             badge: "RAG",
             tooltip: `${T.name} — base de conocimiento (retrieval)`
-          }), ue(i, {
+          }), me(i, {
             id: `es-agrag:${I.id}->${T.id}`,
             sourceId: I.id,
             targetId: T.id,
@@ -5803,7 +5806,7 @@ function dc(e, t) {
           });
           for (const N of T.sourceReadModelIds ?? []) {
             const D = h({ id: N });
-            D && ue(i, {
+            D && me(i, {
               id: `es-ragsrc:${T.id}->${D}`,
               sourceId: D,
               targetId: T.id,
@@ -5837,7 +5840,7 @@ function dc(e, t) {
   };
   for (const I of e.externalCalls ?? []) {
     const P = v(I.externalSystemId);
-    !P || !a.has(I.useCaseId) || ue(i, {
+    !P || !a.has(I.useCaseId) || me(i, {
       id: `es-extin:${P}->${I.useCaseId}`,
       sourceId: P,
       targetId: I.useCaseId,
@@ -5854,7 +5857,7 @@ function dc(e, t) {
     ), _ = P ? v(P.id) : null;
     if (!_) continue;
     const x = (H = ((P == null ? void 0 : P.useCases) ?? []).find(($) => $.id === I.targetId)) == null ? void 0 : H.name;
-    ue(i, {
+    me(i, {
       id: `es-extout:${I.sourceId}->${I.targetId}`,
       sourceId: I.sourceId,
       targetId: _,
@@ -5867,7 +5870,7 @@ function dc(e, t) {
     });
   }
   for (const I of e.aggregateCalls ?? [])
-    !a.has(I.sourceId) || !i.nodes.has(I.targetId) || ue(i, {
+    !a.has(I.sourceId) || !i.nodes.has(I.targetId) || me(i, {
       id: `es-write:${I.sourceId}->${I.targetId}`,
       sourceId: I.sourceId,
       targetId: I.targetId,
@@ -5880,7 +5883,7 @@ function dc(e, t) {
     ...e.useCaseEmissions ?? []
   ];
   for (const I of d)
-    !i.nodes.has(I.domainEventId) || !(i.nodes.has(I.sourceId) && (a.has(I.sourceId) || r.some((_) => _.id === I.sourceId) || l.has(I.sourceId))) || ue(i, {
+    !i.nodes.has(I.domainEventId) || !(i.nodes.has(I.sourceId) && (a.has(I.sourceId) || r.some((_) => _.id === I.sourceId) || l.has(I.sourceId))) || me(i, {
       id: `es-emit:${I.sourceId}->${I.domainEventId}`,
       sourceId: I.sourceId,
       targetId: I.domainEventId,
@@ -5904,7 +5907,7 @@ function dc(e, t) {
     tooltip: $
   }), I), g = (I, P) => {
     const _ = f(I);
-    _ && ue(i, {
+    _ && me(i, {
       id: `es-trigger:${_}->${P}`,
       sourceId: _,
       targetId: P,
@@ -5914,7 +5917,7 @@ function dc(e, t) {
       arrow: !0
     });
   }, k = (I, P) => {
-    !P || !a.has(P) || ue(i, {
+    !P || !a.has(P) || me(i, {
       id: `es-invoke:${I}->${P}`,
       sourceId: I,
       targetId: P,
@@ -5935,7 +5938,7 @@ function dc(e, t) {
     for (const _ of I.actions ?? []) {
       if (_.type === "CallUseCase" && k(P, _.useCaseId), _.type === "StartSaga" && _.sagaId) {
         const x = `saga:${_.sagaId}`;
-        c(x, _.sagaId, "saga", "SAGA"), ue(i, {
+        c(x, _.sagaId, "saga", "SAGA"), me(i, {
           id: `es-saga:${P}->${x}`,
           sourceId: P,
           targetId: x,
@@ -5946,7 +5949,7 @@ function dc(e, t) {
       }
       if (_.type === "UpdateProjection" && _.projectionId) {
         const x = (e.projections ?? []).find(($) => $.id === _.projectionId);
-        x && ue(i, {
+        x && me(i, {
           id: `es-feeds:${P}->${x.id}`,
           sourceId: P,
           targetId: x.id,
@@ -5967,7 +5970,7 @@ function dc(e, t) {
     );
     for (const $ of I.handledEventIds) {
       const M = i.nodes.has($) ? $ : null;
-      M && ue(i, {
+      M && me(i, {
         id: `es-trigger:${M}->${P}`,
         sourceId: M,
         targetId: P,
@@ -5977,7 +5980,7 @@ function dc(e, t) {
         arrow: !0
       });
     }
-    I.sourceAggregateId && i.nodes.has(I.sourceAggregateId) && ue(i, {
+    I.sourceAggregateId && i.nodes.has(I.sourceAggregateId) && me(i, {
       id: `es-state:${I.id}`,
       sourceId: I.sourceAggregateId,
       targetId: P,
@@ -5994,7 +5997,7 @@ function dc(e, t) {
       ), M = $ ? v($.id) : null;
       if (M) {
         const C = ((ne = ($.useCases ?? []).find((T) => T.id === _)) == null ? void 0 : ne.name) ?? ((te = ($.tables ?? []).find((T) => T.id === _)) == null ? void 0 : te.name);
-        ue(i, {
+        me(i, {
           id: `es-poll:${I.id}`,
           sourceId: M,
           targetId: P,
@@ -6008,7 +6011,7 @@ function dc(e, t) {
       }
     }
     const x = h({ id: I.readModelId, name: I.readModelName });
-    x && ue(i, {
+    x && me(i, {
       id: `es-projects:${P}->${x}`,
       sourceId: P,
       targetId: x,
@@ -6020,7 +6023,7 @@ function dc(e, t) {
   for (const I of e.flows) {
     if (I.archetype === "MATERIALIZES") {
       const _ = f(I.triggerEvent), x = h({ name: I.readModelName ?? `${I.triggerEvent}View` });
-      _ && x && ue(i, {
+      _ && x && me(i, {
         id: `es-mat:${I.id}`,
         sourceId: _,
         targetId: x,
@@ -6054,7 +6057,7 @@ function dc(e, t) {
         fill: Z.boundedContext.fill,
         stroke: Z.boundedContext.stroke,
         badge: "CONTEXTO"
-      }), i.nodes.has(x) && ue(i, {
+      }), i.nodes.has(x) && me(i, {
         id: `es-deliver:${I.id}`,
         sourceId: P,
         targetId: x,
@@ -6075,7 +6078,7 @@ function dc(e, t) {
     g(I.triggerEvent, P);
     for (const x of I.steps) k(P, x.useCaseId);
     const _ = f(I.onCompletionEventName);
-    _ && ue(i, {
+    _ && me(i, {
       id: `es-done:${I.id}`,
       sourceId: P,
       targetId: _,
@@ -6098,7 +6101,7 @@ function dc(e, t) {
       k(P, x.targetUseCaseId);
       for (const $ of [x.emittedEventName, x.completionEventName]) {
         const M = f($);
-        M && ue(i, {
+        M && me(i, {
           id: `es-wfemit:${I.id}:${M}`,
           sourceId: P,
           targetId: M,
@@ -6109,7 +6112,7 @@ function dc(e, t) {
       }
     }
     const _ = f(I.onCompletionEventName);
-    _ && ue(i, {
+    _ && me(i, {
       id: `es-done:${I.id}`,
       sourceId: P,
       targetId: _,
@@ -12031,9 +12034,9 @@ function ya(e, t, i, n, o, a, r) {
       M(J) ? e.command({ kind: "set-identity-provider", id: J, targetId: V }) : e.emit("modux-notice", { message: "En la vista UI, el IdP se relaciona con las APPS (quién autentica dónde)" });
       return;
     }
-    const pe = (V) => (e.model.models ?? []).some((J) => J.id === V);
-    if (pe(i) || pe(n)) {
-      const V = pe(i) ? i : n, J = pe(i) ? n : i;
+    const ue = (V) => (e.model.models ?? []).some((J) => J.id === V);
+    if (ue(i) || ue(n)) {
+      const V = ue(i) ? i : n, J = ue(i) ? n : i;
       if (C(J)) {
         e.command({ kind: "set-page-model", pageId: J, modelId: V });
         return;
@@ -12133,7 +12136,7 @@ function ya(e, t, i, n, o, a, r) {
       const F = (M == null ? void 0 : M.modelId) ?? (x.some((K) => K.id === n) ? n : null);
       if (F) {
         const K = (e.model.modelMappings ?? []).filter(
-          (pe) => pe.sourceModelId === F || pe.targetModelId === F
+          (ue) => ue.sourceModelId === F || ue.targetModelId === F
         );
         K.length === 1 ? e.command({ kind: "set-mapping-custom-code", id: K[0].id, targetId: i }) : e.emit("modux-notice", {
           message: K.length ? "El modelo participa en varios mapeados: elige el mapeado desde su ficha" : "Ese modelo no tiene mapeados donde delegar el código"
@@ -12162,15 +12165,15 @@ function ya(e, t, i, n, o, a, r) {
         (K) => K.sourceModelId === $.modelId && K.targetModelId === M.modelId
       );
       if (!F) {
-        const K = x.find((V) => V.id === $.modelId), pe = x.find((V) => V.id === M.modelId);
-        if (!K || !pe) return;
+        const K = x.find((V) => V.id === $.modelId), ue = x.find((V) => V.id === M.modelId);
+        if (!K || !ue) return;
         const ye = (V) => V.replace(/[^a-zA-Z0-9]/g, ""), Be = new Set((e.model.modelMappings ?? []).map((V) => V.id));
-        let $e = `mapping-${oe(K.name)}-${oe(pe.name)}`;
-        for (let V = 2; Be.has($e); V++) $e = `mapping-${oe(K.name)}-${oe(pe.name)}-${V}`;
+        let $e = `mapping-${oe(K.name)}-${oe(ue.name)}`;
+        for (let V = 2; Be.has($e); V++) $e = `mapping-${oe(K.name)}-${oe(ue.name)}-${V}`;
         e.command(
-          { kind: "add-model-mapping", id: $e, name: `${ye(K.name)}2${ye(pe.name)}`, sourceId: K.id, targetId: pe.id },
+          { kind: "add-model-mapping", id: $e, name: `${ye(K.name)}2${ye(ue.name)}`, sourceId: K.id, targetId: ue.id },
           !1
-        ), F = { id: $e, name: "", sourceModelId: K.id, targetModelId: pe.id };
+        ), F = { id: $e, name: "", sourceModelId: K.id, targetModelId: ue.id };
       }
       e.command({
         kind: "add-model-mapping-rule",
@@ -12539,13 +12542,13 @@ function ya(e, t, i, n, o, a, r) {
   }
   const c = e.model.etlFlows ?? [], g = (x) => c.find(($) => $.id === x);
   if (g(i) || g(n)) {
-    const x = g(i) ?? g(n), $ = g(i) ? n : i, M = !g(i), C = new Set(e.model.externalSystems.flatMap((K) => (K.tables ?? []).map((pe) => pe.id))), T = /* @__PURE__ */ new Set([
+    const x = g(i) ?? g(n), $ = g(i) ? n : i, M = !g(i), C = new Set(e.model.externalSystems.flatMap((K) => (K.tables ?? []).map((ue) => ue.id))), T = /* @__PURE__ */ new Set([
       ...(e.model.apis ?? []).map((K) => K.id),
       ...(e.model.proxyApis ?? []).map((K) => K.id)
-    ]), N = (e.model.apis ?? []).find((K) => K.operations.some((pe) => pe.id === $)), D = new Set(
+    ]), N = (e.model.apis ?? []).find((K) => K.operations.some((ue) => ue.id === $)), D = new Set(
       e.model.boundedContexts.flatMap((K) => [
-        ...(K.domainEvents ?? []).map((pe) => pe.id),
-        ...(K.applicationEvents ?? []).map((pe) => pe.id)
+        ...(K.domainEvents ?? []).map((ue) => ue.id),
+        ...(K.applicationEvents ?? []).map((ue) => ue.id)
       ])
     );
     let q = null, G = {};
@@ -15221,6 +15224,13 @@ let Q = class extends Ge {
         const E = this.dropChain(i).find((L) => this.model.boundedContexts.some((R) => R.id === L));
         if (E) {
           s({ ...k, boundedContextId: E }, c, E);
+          return;
+        }
+      }
+      if (k.kind === "add-external-system") {
+        const E = this.dropChain(i).find((L) => this.model.externalSystems.some((R) => R.id === L));
+        if (E) {
+          s({ ...k, parentId: E }, c, E), this.emit("modux-notice", { message: "Subsistema creado — despliega el sistema para verlo" });
           return;
         }
       }

@@ -39,8 +39,27 @@ public record ExternalSystemEntity(
         /** Specific API operations this system calls (at the published API, a proxy or an implementation). */
         List<ExternalApiOperationUseEntity> apiOperationUses,
         /** ANOTHER modux project referenced as a system: the ~/.modux repository it lives in. */
-        String referencedRepositoryId
+        String referencedRepositoryId,
+        /** The external system this one lives INSIDE — subsystems of a bigger partner. */
+        String parentExternalSystemId
 ) {
+
+    /** Backward-compatible constructor (pre-parentExternalSystemId callers and stores). */
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases,
+                                List<ExternalSystemTableEntity> tables,
+                                List<String> dependsOnExternalSystemIds,
+                                List<String> dependsOnApiIds,
+                                List<String> cqrsExternalSystemIds,
+                                List<McpServerEntity> mcpServers,
+                                List<ExternalApiOperationUseEntity> apiOperationUses,
+                                String referencedRepositoryId) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                tables, dependsOnExternalSystemIds, dependsOnApiIds, cqrsExternalSystemIds,
+                mcpServers, apiOperationUses, referencedRepositoryId, null);
+    }
 
     /** Backward-compatible constructor (pre-referencedRepositoryId callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,

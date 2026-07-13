@@ -166,7 +166,8 @@ interface ChildDesc {
     | 'etl-flow'
     | 'notification'
     | 'document'
-    | 'ui-app';
+    | 'ui-app'
+    | 'external-system';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
 }
@@ -182,6 +183,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
+  'external-system': { symbol: 'component', fill: '#ffffff', stroke: '#64748b' },
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
   'mcp-server': { symbol: 'robot', fill: '#faf5ff', stroke: '#9333ea' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
@@ -205,6 +207,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'domain-service': 'Servicio de dominio',
   'query-service': 'Query service',
   'external-use-case': 'Caso de uso externo',
+  'external-system': 'Subsistema',
   'external-table': 'Tabla (legacy)',
   'mcp-server': 'Servidor MCP',
   'api-operation': 'Operación de API',
@@ -760,6 +763,8 @@ export function contextMapScene(
   const allNodes = [
     ...model.boundedContexts.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
     ...(distributionLevel ? [] : model.externalSystems)
+      // subsystems render INSIDE their parent, never as top-level boxes
+      .filter((e) => !e.parentExternalSystemId || !externalIds.has(e.parentExternalSystemId))
       .map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(bareLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
@@ -941,6 +946,9 @@ export function contextMapScene(
         (px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' }),
       );
       const richChildren: ChildDesc[] = [
+        ...model.externalSystems
+          .filter((sub) => sub.parentExternalSystemId === x.id)
+          .map((sub): ChildDesc => ({ id: sub.id, name: sub.name, kind: 'external-system' })),
         ...(x.useCases ?? []).map(
           (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
         ),

@@ -149,7 +149,9 @@ public class EditorApiController {
                                     List<ExternalTableDto> tables,
                                     List<McpServerDto> mcpServers,
                                     /** Set when the system IS another modux project (catalog reference). */
-                                    String referencedRepositoryId) {}
+                                    String referencedRepositoryId,
+                                    /** Set when this system lives inside another one (subsystem). */
+                                    String parentExternalSystemId) {}
     /** A table/dataset owned by an external system — pollable into a read model. */
     public record ExternalTableDto(String id, String name) {}
     /** An MCP server published by an external system — a tool surface for AI agents. */
@@ -2576,13 +2578,26 @@ public class EditorApiController {
     private void addExternalSystem(EditorCommand command) {
         var project = projects.owningProject();
         if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
+        if (command.parentId() != null
+                && project.externalSystems().stream().noneMatch(x -> x.id().equals(command.parentId()))) {
+            throw new IllegalArgumentException(
+                    "El sistema externo padre " + command.parentId() + " no existe");
+        }
         var externalSystems = new ArrayList<>(project.externalSystems());
-        externalSystems.add(new ExternalSystemEntity(
-                command.id(), command.name(), null, null, null, null, null, List.of()));
+        externalSystems.add(ExternalSystemEntity.builder()
+                .id(command.id()).name(command.name()).decisionIds(List.of())
+                .parentExternalSystemId(command.parentId())
+                .build());
         repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
     private void removeExternalSystem(EditorCommand command) {
+        var hasSubsystems = projects.owningProject().externalSystems().stream()
+                .anyMatch(x -> command.id().equals(x.parentExternalSystemId()));
+        if (hasSubsystems) {
+            throw new IllegalArgumentException(
+                    "El sistema externo " + command.id() + " tiene subsistemas; bórralos primero");
+        }
         var notifiedByFlow = repository.findAllOfType(FlowEntity.class).stream()
                 .anyMatch(f -> command.id().equals(f.targetBoundedContextId()));
         if (notifiedByFlow) {

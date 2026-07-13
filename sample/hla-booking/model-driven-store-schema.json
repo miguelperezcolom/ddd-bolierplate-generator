@@ -1403,6 +1403,11 @@
         "owner" : {
           "type" : "string"
         },
+        "parentExternalSystemId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'parentExternalSystem' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "protocol" : {
           "$ref" : "#/$defs/ExternalSystemProtocol"
         },

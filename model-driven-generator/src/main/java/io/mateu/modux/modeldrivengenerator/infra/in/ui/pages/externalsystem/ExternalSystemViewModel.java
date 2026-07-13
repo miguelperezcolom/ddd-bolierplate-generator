@@ -48,6 +48,12 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
     @Help("Equipo o empresa dueña del sistema — a quién llamar cuando falla.")
     String owner;
 
+    @io.mateu.uidl.annotations.Lookup(
+            search = io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ExternalSystemIdOptionsSupplier.class,
+            label = io.mateu.modux.modeldrivengenerator.infra.in.ui.suppliers.ExternalSystemIdLabelSupplier.class)
+    @Help("El sistema externo dentro del que vive — para modelar subsistemas de un partner grande.")
+    String parentExternalSystemId;
+
     final ModelStore repository;
     final EditorProjectSupport projects;
 
@@ -62,6 +68,7 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
                 .dependsOnExternalSystemIds(List.of()).dependsOnApiIds(List.of())
                 .cqrsExternalSystemIds(List.of()).mcpServers(List.of())
                 .apiOperationUses(List.of())
+                .parentExternalSystemId(parentExternalSystemId)
                 .build());
         repository.save(EditorProjectSupport.withExternalSystems(project, list));
         return id;
@@ -75,6 +82,8 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
                         .map(x -> x.id().equals(id)
                                 ? x.toBuilder().name(name).description(description)
                                         .protocol(protocol).direction(direction).owner(owner)
+                                        .parentExternalSystemId(
+                                                id.equals(parentExternalSystemId) ? null : parentExternalSystemId)
                                         .build()
                                 : x)
                         .toList()));
@@ -92,6 +101,7 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
         protocol = entity.protocol();
         direction = entity.direction();
         owner = entity.owner();
+        parentExternalSystemId = entity.parentExternalSystemId();
         return this;
     }
 

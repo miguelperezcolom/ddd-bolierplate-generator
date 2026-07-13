@@ -2974,6 +2974,16 @@ export class ModuxEditor extends LitElement {
           return;
         }
       }
+      if (cmd.kind === 'add-external-system') {
+        // Dropped on another external system: it is born as its SUBSYSTEM.
+        const chain = this.dropChain(targetId);
+        const parentId = chain.find((cid) => this.model.externalSystems.some((x) => x.id === cid));
+        if (parentId) {
+          issue({ ...cmd, parentId }, id, parentId);
+          this.emit('modux-notice', { message: 'Subsistema creado — despliega el sistema para verlo' });
+          return;
+        }
+      }
       issue(cmd, id);
       return;
     }

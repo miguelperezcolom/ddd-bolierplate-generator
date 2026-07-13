@@ -60,6 +60,35 @@ describe('contextMapScene — contexts level (the strategic map)', () => {
   });
 });
 
+describe('contextMapScene — subsystems', () => {
+  it('a subsystem never floats top-level: it lives inside its parent', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [
+        { id: 'ext-rumbo', name: 'Rumbo' },
+        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
+      ],
+    });
+    // collapsed parent: the subsystem stays inside (not rendered as its own box)
+    const collapsed = contextMapScene(model, {}, 'contexts');
+    expect(collapsed.nodes.find((n) => n.id === 'ext-ventus')).toBeUndefined();
+    // unfolded parent: the subsystem shows as a nested child
+    const unfolded = contextMapScene(model, {}, 'contexts', undefined, new Set(['ext-rumbo']));
+    const sub = unfolded.nodes.find((n) => n.id === 'ext-ventus');
+    expect(sub?.parentId).toBeTruthy();
+    expect(sub?.kind).toBe('external-system');
+  });
+
+  it('an orphaned parent reference falls back to top-level', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [{ id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-gone' }],
+    });
+    const scene = contextMapScene(model, {}, 'contexts');
+    expect(scene.nodes.find((n) => n.id === 'ext-ventus')).toBeDefined();
+  });
+});
+
 describe('contextMapScene — detail level', () => {
   it('unfolds aggregates and use cases inside their context', () => {
     const scene = contextMapScene(strategicModel(), {}, 'detail');

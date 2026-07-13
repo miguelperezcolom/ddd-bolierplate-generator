@@ -67,6 +67,8 @@ export type ModuxCommand =
       kind: 'add-external-system';
       id: string;
       name: string;
+      /** When set, the new system is a SUBSYSTEM living inside this one. */
+      parentId?: string;
     }
   | {
       kind: 'remove-external-system';
