@@ -899,11 +899,15 @@ export class ModuxCanvas extends LitElement {
 
   private startWaypointDrag(edge: SceneEdge, points: Point[], index: number): void {
     this._wpDrag = { edgeId: edge.id, points, index };
+    const origin = points[index];
     let moved = false;
     const onMove = (ev: PointerEvent) => {
       if (!this._wpDrag) return;
-      moved = true;
       const p = this.toScene(ev);
+      // Same threshold as creating a bend: the jitter of a click (or of a
+      // double click heading for removeWaypoint) must not count as a drag.
+      if (!moved && Math.hypot(p.x - origin.x, p.y - origin.y) < 4 / this._t.k) return;
+      moved = true;
       const next = [...this._wpDrag.points];
       next[this._wpDrag.index] = p;
       this._wpDrag = { ...this._wpDrag, points: next };

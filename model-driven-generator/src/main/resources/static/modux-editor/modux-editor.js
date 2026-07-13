@@ -4985,16 +4985,19 @@ let Ie = class extends Ge {
   // ---- edge waypoints (split & adjust) -------------------------------------
   startWaypointDrag(e, t, i) {
     this._wpDrag = { edgeId: e.id, points: t, index: i };
-    let n = !1;
-    const o = (r) => {
+    const n = t[i];
+    let o = !1;
+    const a = (l) => {
       if (!this._wpDrag) return;
-      n = !0;
-      const l = this.toScene(r), s = [...this._wpDrag.points];
-      s[this._wpDrag.index] = l, this._wpDrag = { ...this._wpDrag, points: s };
-    }, a = () => {
-      window.removeEventListener("pointermove", o), window.removeEventListener("pointerup", a), this._wpDrag && n && this.emit("edge-points-changed", { id: this._wpDrag.edgeId, points: this._wpDrag.points }), this._wpDrag = null;
+      const s = this.toScene(l);
+      if (!o && Math.hypot(s.x - n.x, s.y - n.y) < 4 / this._t.k) return;
+      o = !0;
+      const p = [...this._wpDrag.points];
+      p[this._wpDrag.index] = s, this._wpDrag = { ...this._wpDrag, points: p };
+    }, r = () => {
+      window.removeEventListener("pointermove", a), window.removeEventListener("pointerup", r), this._wpDrag && o && this.emit("edge-points-changed", { id: this._wpDrag.edgeId, points: this._wpDrag.points }), this._wpDrag = null;
     };
-    window.addEventListener("pointermove", o), window.addEventListener("pointerup", a);
+    window.addEventListener("pointermove", a), window.addEventListener("pointerup", r);
   }
   /** Index of the polyline segment nearest to point `p`. */
   nearestSegment(e, t) {
