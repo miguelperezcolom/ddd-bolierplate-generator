@@ -136,6 +136,17 @@ export class ModuxTilt extends LitElement {
     @keyframes journey-flow3 {
       to { background-position-x: 16px; }
     }
+    .journey-runner3 {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      margin: -7.5px 0 0 -7.5px;
+      border-radius: 50%;
+      background: #d97706;
+      border: 2px solid #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+    }
     .journey-badge3 {
       position: absolute;
       min-width: 22px;
@@ -341,6 +352,7 @@ export class ModuxTilt extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
+    this.syncJourneyRunnerClock();
     if (changed.has('_renaming') && this._renaming) {
       (this.renderRoot.querySelector('.rename3') as HTMLInputElement | null)?.select();
     }
@@ -581,6 +593,86 @@ export class ModuxTilt extends LitElement {
     this._pan = { x: 0, y: 0 };
   };
 
+  private _runnerRaf: number | undefined;
+  private _runnerT0 = 0;
+
+  /** Starts/stops the runner's clock according to whether a journey is on stage. */
+  private syncJourneyRunnerClock(): void {
+    const wants = (this.scene.journeyRuns ?? []).length > 0;
+    if (wants && this._runnerRaf === undefined) {
+      this._runnerT0 = performance.now();
+      const tick = () => {
+        this.moveJourneyRunner((performance.now() - this._runnerT0) / 1000);
+        this._runnerRaf = requestAnimationFrame(tick);
+      };
+      this._runnerRaf = requestAnimationFrame(tick);
+    } else if (!wants && this._runnerRaf !== undefined) {
+      cancelAnimationFrame(this._runnerRaf);
+      this._runnerRaf = undefined;
+    }
+  }
+
+  /**
+   * The traveller in 3D: same tour as the other surfaces — one run after
+   * another, straight 3D segments between plates — driven by rAF because the
+   * z coordinate must interpolate between storeys, which CSS motion cannot.
+   */
+  private moveJourneyRunner(t: number): void {
+    const el = this.renderRoot.querySelector('.journey-runner3') as HTMLElement | null;
+    if (!el) return;
+    const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
+    const edgeById = new Map(this.scene.edges.map((e) => [e.id, e]));
+    const depth = this.depths();
+    const STOREY = 30;
+    const zOf = (id: string) => (depth.get(id) ?? 0) * STOREY + 8;
+    const runs = (this.scene.journeyRuns ?? [])
+      .map((run) =>
+        run
+          .map((id) => edgeById.get(id))
+          .filter((e): e is NonNullable<typeof e> => !!e)
+          .map((e) => ({ s: byId.get(e.sourceId), tgt: byId.get(e.targetId) }))
+          .filter((g): g is { s: SceneNode; tgt: SceneNode } => !!g.s && !!g.tgt),
+      )
+      .filter((run) => run.length > 0);
+    if (!runs.length) {
+      el.style.display = 'none';
+      return;
+    }
+    const SPEED = 170;
+    const GAP = 0.5;
+    const lengths = runs.map((run) =>
+      run.map((g) => Math.hypot(g.tgt.x - g.s.x, g.tgt.y - g.s.y)));
+    const durations = lengths.map((ls) => Math.max(1.2, ls.reduce((a, b) => a + b, 0) / SPEED));
+    const total = durations.reduce((a, b) => a + b + GAP, 0);
+    let time = t % total;
+    let k = 0;
+    while (time > durations[k] + GAP) {
+      time -= durations[k] + GAP;
+      k++;
+    }
+    if (time > durations[k]) {
+      el.style.display = 'none';
+      return;
+    }
+    const run = runs[k];
+    const runLength = lengths[k].reduce((a, b) => a + b, 0) || 1;
+    let distance = (time / durations[k]) * runLength;
+    let i = 0;
+    while (i < run.length - 1 && distance > lengths[k][i]) {
+      distance -= lengths[k][i];
+      i++;
+    }
+    const g = run[i];
+    const lt = Math.min(1, distance / (lengths[k][i] || 1));
+    const x = g.s.x + (g.tgt.x - g.s.x) * lt;
+    const y = g.s.y + (g.tgt.y - g.s.y) * lt;
+    const z = zOf(g.s.id) + (zOf(g.tgt.id) - zOf(g.s.id)) * lt;
+    el.style.display = 'block';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.transform = `translateZ(${z}px)`;
+  }
+
   /** Containment depth: how many parents above the node (0 = floor plate). */
   private depths(): Map<string, number> {
     const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
@@ -688,6 +780,9 @@ export class ModuxTilt extends LitElement {
                 >${e.label}</div>`
               : ''}`;
           })}
+          ${(this.scene.journeyRuns ?? []).length
+            ? html`<div class="journey-runner3" style="display: none"></div>`
+            : ''}
           ${nodes.map((n) => {
             const d = depth.get(n.id) ?? 0;
             const isPlate = n.container || d === 0;
