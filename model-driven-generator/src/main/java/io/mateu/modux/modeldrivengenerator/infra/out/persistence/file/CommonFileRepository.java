@@ -122,6 +122,13 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     private String overrideModelFile;
 
+    /** When WE last wrote the store — the file watcher must not mistake it for an external edit. */
+    private volatile long lastPersistAt;
+
+    public long lastPersistAt() {
+        return lastPersistAt;
+    }
+
     /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
     public synchronized void loadFrom(String modelFilePath) {
         this.overrideModelFile = modelFilePath;
@@ -242,6 +249,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     @SneakyThrows
     private synchronized void persist() {
+        lastPersistAt = System.currentTimeMillis();
         if (scoped) {
             throw new IllegalStateException("The model is partially loaded (a view scope) and is read-only. "
                     + "Load the full model before saving.");
@@ -287,6 +295,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
 
     @SneakyThrows
     private void generateSchema() {
+        lastPersistAt = System.currentTimeMillis();
         JsonNode schema = schemaGenerator.fullSchema();
         String schemaJson = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
         Path schemaPath = dataDir.resolve("model-driven-store-schema.json");
