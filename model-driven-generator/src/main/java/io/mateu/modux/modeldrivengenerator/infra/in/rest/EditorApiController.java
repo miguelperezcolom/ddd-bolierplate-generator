@@ -613,6 +613,7 @@ public class EditorApiController {
             case "add-service-module" -> addServiceModule(command);
             case "remove-service-module" -> removeServiceModule(command);
             case "add-external-system" -> addExternalSystem(command);
+            case "set-external-system-parent" -> setExternalSystemParent(command);
             case "add-project-reference" -> addProjectReference(command);
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
@@ -2589,6 +2590,39 @@ public class EditorApiController {
                 .parentExternalSystemId(command.parentId())
                 .build());
         repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+    }
+
+    private void setExternalSystemParent(EditorCommand command) {
+        var project = projects.owningProject();
+        var systems = project.externalSystems();
+        if (systems.stream().noneMatch(x -> x.id().equals(command.id()))) {
+            throw new IllegalArgumentException("El sistema externo " + command.id() + " no existe");
+        }
+        if (command.parentId() != null) {
+            if (systems.stream().noneMatch(x -> x.id().equals(command.parentId()))) {
+                throw new IllegalArgumentException(
+                        "El sistema externo padre " + command.parentId() + " no existe");
+            }
+            // no cycles: the new parent must not live inside the system being nested
+            for (var cur = command.parentId(); cur != null; ) {
+                if (cur.equals(command.id())) {
+                    throw new IllegalArgumentException(
+                            "El sistema " + command.parentId() + " vive dentro de " + command.id()
+                                    + " — anidarlos en círculo no tiene sentido");
+                }
+                var curId = cur;
+                cur = systems.stream().filter(x -> x.id().equals(curId))
+                        .map(ExternalSystemEntity::parentExternalSystemId)
+                        .filter(java.util.Objects::nonNull)
+                        .findFirst().orElse(null);
+            }
+        }
+        repository.save(EditorProjectSupport.withExternalSystems(project,
+                systems.stream()
+                        .map(x -> x.id().equals(command.id())
+                                ? x.toBuilder().parentExternalSystemId(command.parentId()).build()
+                                : x)
+                        .toList()));
     }
 
     private void removeExternalSystem(EditorCommand command) {

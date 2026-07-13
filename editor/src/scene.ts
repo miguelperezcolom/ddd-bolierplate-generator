@@ -4,6 +4,8 @@
  */
 
 export interface SceneNode {
+  /** Plain (non-container) nodes that still accept the corner-resize gesture. */
+  resizable?: boolean;
   /** Differentiated drag points: each starts a TYPED connect gesture (its kind). */
   extraHandles?: { kind: string; title: string; color: string }[];
   id: string;

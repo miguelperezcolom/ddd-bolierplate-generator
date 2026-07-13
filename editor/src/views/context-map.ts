@@ -940,8 +940,16 @@ export function contextMapScene(
       };
       // Published APIs and proxies are strategic-level elements: they are the system's
       // chip (coarse) form; operations and tables only unfold in the full form.
-      const publishedApis = nestedApis.filter((a) => a.publishedByExternalSystemId === x.id);
-      const hostedProxies = nestedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
+      // Subsystems publish too: their APIs and proxies show inside the parent box.
+      const subsystemIds = new Set(
+        model.externalSystems.filter((sub) => sub.parentExternalSystemId === x.id).map((sub) => sub.id),
+      );
+      const ownedBy = (publisherId: string | undefined) =>
+        publisherId === x.id || (publisherId !== undefined && subsystemIds.has(publisherId));
+      const publisherName = (publisherId: string | undefined) =>
+        model.externalSystems.find((e) => e.id === publisherId)?.name ?? x.name;
+      const publishedApis = nestedApis.filter((a) => ownedBy(a.publishedByExternalSystemId));
+      const hostedProxies = nestedProxies.filter((px) => ownedBy(px.publishedByExternalSystemId));
       const proxyChips: ChildDesc[] = hostedProxies.map(
         (px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' }),
       );
@@ -991,7 +999,7 @@ export function contextMapScene(
             badge: 'API',
             fill: '#eef2ff',
             stroke: '#4f46e5',
-            tooltip: `${a.name} — API publicada por ${x.name}`,
+            tooltip: `${a.name} — API publicada por ${publisherName(a.publishedByExternalSystemId)}`,
             opKind: 'api-operation',
             ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
           })),
@@ -1037,14 +1045,17 @@ export function contextMapScene(
           children, layout, sizes,
         );
       }
+      // Compact (or empty) form: still resizable — partners are drawn big on purpose.
+      const xSize = sizes[x.id];
       return [{
         ...base,
         collapsible: xFoldable,
         collapsed: xFoldable && xCollapsed,
+        resizable: true,
         x: pos.x,
         y: pos.y,
-        w: NODE_W,
-        h: NODE_H,
+        w: xSize?.w ?? NODE_W,
+        h: xSize?.h ?? NODE_H,
       }];
     }
     const m = entry.ref as ModuxModel['boundedContexts'][number];

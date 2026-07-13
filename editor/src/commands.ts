@@ -71,6 +71,12 @@ export type ModuxCommand =
       parentId?: string;
     }
   | {
+      /** Nest an existing external system inside another (null parentId un-nests it). */
+      kind: 'set-external-system-parent';
+      id: string;
+      parentId: string | null;
+    }
+  | {
       kind: 'remove-external-system';
       id: string;
     }

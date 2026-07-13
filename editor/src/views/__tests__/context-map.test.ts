@@ -79,6 +79,21 @@ describe('contextMapScene — subsystems', () => {
     expect(sub?.kind).toBe('external-system');
   });
 
+  it('a subsystem\'s published APIs show inside the parent box', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [
+        { id: 'ext-rumbo', name: 'Rumbo' },
+        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
+      ],
+      apis: [{ id: 'api-ventus', name: 'Ventus API', operations: [], publishedByExternalSystemId: 'ext-ventus' }],
+    });
+    const scene = contextMapScene(model, {}, 'contexts');
+    const api = scene.nodes.find((n) => n.id === 'api-ventus');
+    // the API neither floats top-level nor disappears: it is a chip in Rumbo's box
+    expect(api?.parentId).toBe('ext-rumbo');
+  });
+
   it('an orphaned parent reference falls back to top-level', () => {
     const model = baseModel({
       ...strategicModel(),

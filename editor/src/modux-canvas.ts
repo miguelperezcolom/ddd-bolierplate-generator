@@ -563,7 +563,9 @@ export class ModuxCanvas extends LitElement {
     // Shift/Ctrl while dragging an API chip frees it from its container: dropping it
     // on another external system re-homes the API (the handle stays for relations).
     const freeDrag = (ev: PointerEvent) =>
-      (ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group;
+      ((ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group)
+      // A top-level external system shift-drags INTO another one (subsystem) or out.
+      || (ev.shiftKey && node.kind === 'external-system' && !group);
     // Row nodes drag FREE, landing on explicit slots between their siblings: menu
     // entries travel across apps; wizard steps reorder inside their own wizard.
     const rowFamily = group
@@ -1302,7 +1304,7 @@ export class ModuxCanvas extends LitElement {
                 </g>`,
             )
           : ''}
-        ${isContainer && selected
+        ${(isContainer || node.resizable) && selected
           ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
               ([sx, sy]) => svg`
                 <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width="13" height="13" rx="2.5"

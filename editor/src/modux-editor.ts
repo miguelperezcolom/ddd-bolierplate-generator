@@ -1180,6 +1180,33 @@ export class ModuxEditor extends LitElement {
       x: number;
       y: number;
     };
+    // An external system dropped on another nests as its subsystem; on the
+    // canvas, it leaves its parent and goes back to the top level.
+    const ext = this.model.externalSystems.find((x) => x.id === id);
+    if (ext) {
+      const target = targetId ? this.model.externalSystems.find((x) => x.id === targetId) : null;
+      if (targetId && !target) return;
+      // no cycles: the new parent must not live (directly or not) inside the dragged one
+      for (let cur = target; cur; ) {
+        if (cur.id === id) return;
+        const up = cur.parentExternalSystemId;
+        cur = up ? this.model.externalSystems.find((x) => x.id === up) ?? null : null;
+      }
+      const next = target?.id ?? null;
+      if ((ext.parentExternalSystemId ?? null) === next) return;
+      const view = this._view;
+      const layout = this.viewLayout(view);
+      const scene = this.sceneFor(view);
+      const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+      const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      this.pushUndoEntry([
+        { kind: 'set-external-system-parent', id, parentId: ext.parentExternalSystemId ?? null },
+        { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+      ]);
+      this.command({ kind: 'set-external-system-parent', id, parentId: next }, false);
+      this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+      return;
+    }
     const api =
       (this.model.apis ?? []).find((a) => a.id === id) ??
       (this.model.proxyApis ?? []).find((px) => px.id === id);
@@ -4426,7 +4453,7 @@ export class ModuxEditor extends LitElement {
       </div>
       <div class="hint">
         ${this._view === 'context-map'
-          ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
+          ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema (y un sistema externo dentro/fuera de otro) · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
             · rueda para zoom`
