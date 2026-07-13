@@ -132,14 +132,14 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
                 Map.of(
                         "import", "/modux-editor/modux-editor.js?v=" + bundleVersion(),
                         "base", "/modux/editor",
-                        "style", "display: block; height: calc(100vh - 220px); min-height: 480px;"),
+                        "style", "display: block; height: calc(100vh - 130px); min-height: 480px;"),
                 Map.of("modux-activate", "openElement"),
                 null,
                 null,
                 null);
+        // Sin cabecera de página: el lienzo es lo que importa — el título viaja,
+        // discreto, dentro de la barra del propio editor.
         return PageView.builder()
-                .title("Editor gráfico")
-                .subtitle("Context map, agregados, flows, procesos y eventstorming sobre lienzo editable — los cambios se guardan en el modelo.")
                 .content(List.of(editor))
                 .build();
     }

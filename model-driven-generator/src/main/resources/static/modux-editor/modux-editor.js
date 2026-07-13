@@ -16239,6 +16239,10 @@ let J = class extends Ge {
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
+        <span
+          class="brand"
+          title="Editor gráfico — context map, agregados, flows, procesos y eventstorming sobre lienzo editable; los cambios se guardan en el modelo"
+        >Editor gráfico</span>
         <button
           class="tab hamburger"
           ?hidden=${!["context-map", "workflows", "ui", "design", "mappings", "integrations"].includes(this._view)}
@@ -17270,6 +17274,15 @@ J.styles = xt`
       border: 1px solid #e2e8f0;
       border-radius: 10px;
       overflow: hidden;
+    }
+    .brand {
+      font: 600 12px ui-sans-serif, system-ui, sans-serif;
+      color: #94a3b8;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      padding: 0 6px 0 2px;
+      cursor: default;
+      user-select: none;
     }
     .toolbar {
       display: flex;
