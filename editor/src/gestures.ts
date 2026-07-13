@@ -61,6 +61,19 @@ export function applyConnectionGesture(
           host.command({ kind: 'add-service-module', serviceId: sourceId, id: targetBox });
           return;
         }
+      }
+      // A collapsed context (single main module) is itself the deployment target:
+      // the service's line lands on the context and deploys its main module.
+      if ((host.model.services ?? []).some((s) => s.id === sourceId)) {
+        const context = host.model.boundedContexts.find((mo) => mo.id === targetId);
+        const own = context ? modules.filter((cm) => cm.boundedContextId === context.id) : [];
+        const main = own.find((cm) => cm.main) ?? own[0];
+        if (main) {
+          host.command({ kind: 'add-service-module', serviceId: sourceId, id: main.id });
+          return;
+        }
+      }
+      if (targetBox && targetBox !== sourceId) {
         const isElement =
           !modules.some((cm) => cm.id === sourceId) &&
           !host.model.boundedContexts.some((mo) => mo.id === sourceId);

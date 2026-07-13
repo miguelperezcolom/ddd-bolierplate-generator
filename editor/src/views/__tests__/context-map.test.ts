@@ -77,4 +77,37 @@ describe('contextMapScene — distribution level (pure topology)', () => {
     expect(ids).not.toContain('ext-pms');
     expect(ids).not.toContain('agg-reserva');
   });
+
+  it('keeps a single main module implicit — the context is the deployment target', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      modules: [
+        { id: 'mod-reservas-main', name: 'Reservas', boundedContextId: 'mod-reservas', main: true },
+      ],
+      services: [{ id: 'svc-1', name: 'S1', moduleIds: ['mod-reservas-main'] }],
+    });
+    const scene = contextMapScene(model, {}, 'distribution');
+    expect(scene.nodes.map((n) => n.id)).not.toContain('mod-reservas-main');
+    const deploy = scene.edges.find((e) => e.kind === 'deploys')!;
+    expect(deploy.targetId).toBe('mod-reservas');
+    // the edge still remembers WHICH module it deploys, so Supr keeps working
+    expect(deploy.id).toBe('deploy:svc-1->mod-reservas-main');
+  });
+
+  it('unfolds the module boxes as soon as a second module joins', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      modules: [
+        { id: 'mod-reservas-main', name: 'Reservas', boundedContextId: 'mod-reservas', main: true },
+        { id: 'mod-reservas-read', name: 'Reservas read', boundedContextId: 'mod-reservas' },
+      ],
+      services: [{ id: 'svc-1', name: 'S1', moduleIds: ['mod-reservas-main', 'mod-reservas-read'] }],
+    });
+    const scene = contextMapScene(model, {}, 'distribution');
+    const ids = scene.nodes.map((n) => n.id);
+    expect(ids).toContain('mod-reservas-main');
+    expect(ids).toContain('mod-reservas-read');
+    const deploys = scene.edges.filter((e) => e.kind === 'deploys');
+    expect(deploys.map((e) => e.targetId).sort()).toEqual(['mod-reservas-main', 'mod-reservas-read']);
+  });
 });

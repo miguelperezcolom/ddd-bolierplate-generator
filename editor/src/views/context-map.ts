@@ -520,6 +520,21 @@ function distributionContext(
   const elements = boundedContextElementDescs(model, boundedContext);
   const byId = new Map(elements.map((e) => [e.id, e]));
   const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === boundedContext.id);
+  // A context with just its main module has nothing to distribute: the module
+  // stays implicit and the context itself is the deployment target. It unfolds
+  // only when a second module joins (from the palette).
+  if (modules.length <= 1) {
+    return [{
+      ...base,
+      collapsible: false,
+      collapsed: false,
+      x: center.x,
+      y: center.y,
+      w: NODE_W,
+      h: NODE_H,
+      tooltip: `${boundedContext.name} — un solo módulo (el principal): el servicio lo despliega entero. Añade un módulo desde la paleta para repartir sus elementos`,
+    }];
+  }
   const assignedElsewhere = new Set(modules.flatMap((cm) => cm.elementIds ?? []));
   // Deployment is topology, not content: boxes stay COMPACT by default — the
   // chevron unfolds one to package elements looking inside, and only then the
@@ -1354,17 +1369,25 @@ export function contextMapScene(
     ? [
         ...(model.services ?? []).flatMap((svc) =>
           (svc.moduleIds ?? [])
-            .filter((cmId) => nodeIds.has(cmId) && nodeIds.has(svc.id))
-            .map((cmId): SceneEdge => ({
-              id: `deploy:${svc.id}->${cmId}`,
-              sourceId: svc.id,
-              targetId: cmId,
-              kind: 'deploys',
-              color: '#334155',
-              dashed: true,
-              arrow: true,
-              tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
-            })),
+            .map((cmId): SceneEdge | null => {
+              if (!nodeIds.has(svc.id)) return null;
+              // A hidden single module (the main one) deploys through its context box.
+              const target = nodeIds.has(cmId)
+                ? cmId
+                : (model.modules ?? []).find((cm) => cm.id === cmId)?.boundedContextId;
+              if (!target || !nodeIds.has(target)) return null;
+              return {
+                id: `deploy:${svc.id}->${cmId}`,
+                sourceId: svc.id,
+                targetId: target,
+                kind: 'deploys',
+                color: '#334155',
+                dashed: true,
+                arrow: true,
+                tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
+              };
+            })
+            .filter((e): e is SceneEdge => e !== null),
         ),
         ...(model.services ?? []).flatMap((svc): SceneEdge[] => {
           const out: SceneEdge[] = [];
