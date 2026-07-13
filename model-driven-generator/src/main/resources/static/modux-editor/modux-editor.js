@@ -13858,10 +13858,29 @@ let Q = class extends Ge {
   }
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   willUpdate(e) {
-    if (e.has("model") && this._pendingIds.clear(), e.has("model") && !this._paletteOpenedForBlank && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0 && (this._paletteOpen = !0, this._paletteOpenedForBlank = !0), e.has("layout")) {
+    if (e.has("model") && this._pendingIds.clear(), e.has("model") && this.pruneStaleEdgePoints(), e.has("model") && !this._paletteOpenedForBlank && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0 && (this._paletteOpen = !0, this._paletteOpenedForBlank = !0), e.has("layout")) {
       const t = pi(this.layout["context-map"]).detail;
       (t === "contexts" || t === "detail" || t === "operations" || t === "distribution") && (this._detail = t);
     }
+  }
+  /**
+   * A deleted relation takes its bends with it. Stored edge points whose edge
+   * no longer exists — though BOTH endpoints are on stage — belong to a
+   * relation the user removed: without this sweep, recreating the relation
+   * would revive the old detour. Endpoints hidden by the level, the active
+   * vista or the single-module collapse keep their points untouched.
+   */
+  pruneStaleEdgePoints() {
+    const e = this.viewLayout(this._view), t = Object.keys(e.edges ?? {});
+    if (!t.length) return;
+    const i = this.sceneFor(this._view), n = new Set(i.edges.map((l) => l.id)), o = new Set(i.nodes.map((l) => l.id)), a = t.filter((l) => {
+      if (n.has(l)) return !1;
+      const s = /^(?:[a-z-]+:)?(.+?)->(.+)$/i.exec(l);
+      return !!s && o.has(s[1]) && o.has(s[2]);
+    });
+    if (!a.length) return;
+    const r = { ...e.edges };
+    a.forEach((l) => delete r[l]), this.writeViewLayout(this._view, { ...e, edges: r });
   }
   /** Detail level changes persist with the layout, so they survive reloads. */
   setDetail(e) {

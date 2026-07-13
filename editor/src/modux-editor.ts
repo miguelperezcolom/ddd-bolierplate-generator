@@ -937,6 +937,7 @@ export class ModuxEditor extends LitElement {
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('model')) this._pendingIds.clear();
+    if (changed.has('model')) this.pruneStaleEdgePoints();
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
         && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0) {
@@ -950,6 +951,31 @@ export class ModuxEditor extends LitElement {
         this._detail = detail;
       }
     }
+  }
+
+  /**
+   * A deleted relation takes its bends with it. Stored edge points whose edge
+   * no longer exists — though BOTH endpoints are on stage — belong to a
+   * relation the user removed: without this sweep, recreating the relation
+   * would revive the old detour. Endpoints hidden by the level, the active
+   * vista or the single-module collapse keep their points untouched.
+   */
+  private pruneStaleEdgePoints(): void {
+    const layout = this.viewLayout(this._view);
+    const refs = Object.keys(layout.edges ?? {});
+    if (!refs.length) return;
+    const scene = this.sceneFor(this._view);
+    const edgeIds = new Set(scene.edges.map((e) => e.id));
+    const nodeIds = new Set(scene.nodes.map((n) => n.id));
+    const stale = refs.filter((ref) => {
+      if (edgeIds.has(ref)) return false;
+      const m = /^(?:[a-z-]+:)?(.+?)->(.+)$/i.exec(ref);
+      return !!m && nodeIds.has(m[1]) && nodeIds.has(m[2]);
+    });
+    if (!stale.length) return;
+    const edges = { ...layout.edges };
+    stale.forEach((ref) => delete edges[ref]);
+    this.writeViewLayout(this._view, { ...layout, edges });
   }
 
   /** Detail level changes persist with the layout, so they survive reloads. */
