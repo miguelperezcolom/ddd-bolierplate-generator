@@ -1043,7 +1043,7 @@ export class ModuxCanvas extends LitElement {
     };
     const waypoints = pts.slice(1, -1);
     return svg`
-      <g data-edge-ink=${edge.id} pointer-events="none">
+      <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : 1}>
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
               stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
@@ -1120,6 +1120,7 @@ export class ModuxCanvas extends LitElement {
       isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
     return svg`
       <g data-node-id=${node.id}
+         opacity=${node.dim ? 0.25 : 1}
          transform="translate(${x}, ${y})${hovered ? ' scale(1.06)' : ''}"
          pointer-events=${(this._dragPos && this._dragPos.id === node.id) ||
            this._dragGroup?.has(node.id)

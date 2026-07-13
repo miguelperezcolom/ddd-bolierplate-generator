@@ -2,7 +2,8 @@ import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
-import type { EditorLayout, Point, SceneNode, ViewLayout } from './scene.js';
+import type { EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
+import { journeyLegNumbers } from './journeys.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
@@ -390,6 +391,8 @@ export class ModuxEditor extends LitElement {
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
   @state() private _activeViewId = '';
+  @state() private _activeJourneyId = '';
+  @state() private _newJourneyName = '';
   @state() private _newRagSourceType = 'WEB';
   @state() private _newRagSourceUri = '';
   @state() private _addMemberKey = '';
@@ -1032,6 +1035,46 @@ export class ModuxEditor extends LitElement {
    * detour bends, recomputed with every scene (no persistence, so they follow
    * every level change and drag). Hand-placed bends always win.
    */
+  /**
+   * The active journey takes the stage: its legs paint as their own numbered
+   * layer (1, 2, 3a, 3b… — letters where it bifurcates) and everything the
+   * story does not touch fades back. Legs whose endpoints are hidden at this
+   * level simply wait for their level.
+   */
+  private withJourneyOverlay(scene: Scene): Scene {
+    const journey = (this.model.journeys ?? []).find((j) => j.id === this._activeJourneyId);
+    if (!journey || (this._view !== 'context-map' && this._view !== 'integrations')) return scene;
+    const nodeIds = new Set(scene.nodes.map((n) => n.id));
+    const numbers = journeyLegNumbers(journey);
+    const touched = new Set<string>();
+    const overlay: SceneEdge[] = [];
+    for (const leg of journey.legs ?? []) {
+      if (!nodeIds.has(leg.sourceId) || !nodeIds.has(leg.targetId)) continue;
+      touched.add(leg.sourceId);
+      touched.add(leg.targetId);
+      overlay.push({
+        id: `journeyleg:${journey.id}:${leg.id}`,
+        sourceId: leg.sourceId,
+        targetId: leg.targetId,
+        kind: 'journey',
+        color: '#d97706',
+        arrow: true,
+        label: `${numbers.get(leg.id) ?? ''}${leg.label ? ` · ${leg.label}` : ''}`,
+        tooltip: `Tramo ${numbers.get(leg.id)} de «${journey.name}» — Supr lo quita`,
+      });
+    }
+    // ancestors of touched nodes stay lit so the chips read in context
+    const lit = new Set(touched);
+    const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+    for (const id of touched) {
+      for (let cur = byId.get(id)?.parentId; cur; cur = byId.get(cur)?.parentId) lit.add(cur);
+    }
+    return {
+      nodes: scene.nodes.map((n) => (lit.has(n.id) ? n : { ...n, dim: true })),
+      edges: [...scene.edges.map((e) => ({ ...e, dim: true })), ...overlay],
+    };
+  }
+
   private routedEdgePoints(scene: {
     nodes: SceneNode[];
     edges: { id: string; sourceId: string; targetId: string }[];
@@ -1542,6 +1585,7 @@ export class ModuxEditor extends LitElement {
     return {
       model: this.model,
       detail: this._detail,
+      activeJourneyId: this._activeJourneyId || undefined,
       command: (c, pushUndo) => this.command(c, pushUndo),
       emit: (name, detail) => this.emit(name, detail),
       sceneFor: (view) => this.sceneFor(view),
@@ -1707,6 +1751,22 @@ export class ModuxEditor extends LitElement {
       ...(this.model.rags ?? []).map((r) => ({ id: r.id, name: r.name, kind: 'rag' })),
       ...(this.model.apis ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'api' })),
     ].filter((c) => !members.has(c.id));
+  }
+
+  private createJourneyFromToolbar(): void {
+    const name = this._newJourneyName.trim();
+    if (!name) return;
+    const id = `tr-${slug(name)}`;
+    if ((this.model.journeys ?? []).some((j) => j.id === id)) {
+      this.emit('modux-notice', { message: `Ya hay un trayecto «${name}»` });
+      return;
+    }
+    this.command({ kind: 'add-journey', id, name });
+    this._activeJourneyId = id;
+    this._newJourneyName = '';
+    this.emit('modux-notice', {
+      message: `Trayecto «${name}» activo — traza líneas entre elementos para contar sus tramos`,
+    });
   }
 
   private addMemberFromToolbar(): void {
@@ -3796,7 +3856,7 @@ export class ModuxEditor extends LitElement {
   }
 
   render() {
-    const scene = this.sceneFor(this._view);
+    const scene = this.withJourneyOverlay(this.sceneFor(this._view));
     return html`
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
@@ -3884,6 +3944,26 @@ export class ModuxEditor extends LitElement {
                 </option>`,
             )}
         </select>
+        <select
+          title="Pintar un trayecto sobre el mapa (las líneas nuevas añaden tramos)"
+          @change=${(e: Event) => (this._activeJourneyId = (e.target as HTMLSelectElement).value)}
+        >
+          <option value="" ?selected=${this._activeJourneyId === ''}>Trayecto: ninguno</option>
+          ${(this.model.journeys ?? []).map(
+            (j) =>
+              html`<option value=${j.id} ?selected=${j.id === this._activeJourneyId}>
+                Trayecto: ${j.name}
+              </option>`,
+          )}
+        </select>
+        <input
+          class="new-name"
+          placeholder="Nuevo trayecto…"
+          title="Crea un trayecto y actívalo: cada línea que traces será un tramo"
+          .value=${this._newJourneyName}
+          @input=${(e: Event) => (this._newJourneyName = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createJourneyFromToolbar()}
+        />
         ${this._activeViewId
           ? html`
               <input

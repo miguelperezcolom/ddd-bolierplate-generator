@@ -1230,6 +1230,31 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             ]
           : null;
       }
+      case 'add-journey':
+        return [{ kind: 'remove-journey', id: c.id }];
+      case 'remove-journey': {
+        const j = (host.model.journeys ?? []).find((x) => x.id === c.id);
+        if (!j) return null;
+        return [
+          { kind: 'add-journey', id: j.id, name: j.name },
+          ...(j.legs ?? []).map((l) => ({
+            kind: 'journey-add-leg' as const, journeyId: j.id, itemId: l.id,
+            sourceId: l.sourceId, targetId: l.targetId,
+            dependsOnStepIds: l.afterLegIds, label: l.label,
+          })),
+        ];
+      }
+      case 'journey-add-leg':
+        return [{ kind: 'journey-remove-leg', journeyId: c.journeyId, itemId: c.itemId }];
+      case 'journey-remove-leg': {
+        const j = (host.model.journeys ?? []).find((x) => x.id === c.journeyId);
+        const l = (j?.legs ?? []).find((x) => x.id === c.itemId);
+        return l ? [{
+          kind: 'journey-add-leg', journeyId: c.journeyId, itemId: l.id,
+          sourceId: l.sourceId, targetId: l.targetId,
+          dependsOnStepIds: l.afterLegIds, label: l.label,
+        }] : null;
+      }
       case 'add-view':
         return [{ kind: 'remove-view', id: c.id }];
       case 'remove-view': {

@@ -1910,6 +1910,62 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "JourneyEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "legs" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/JourneyLegEntity"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "JourneyLegEntity" : {
+      "type" : "object",
+      "properties" : {
+        "afterLegIds" : {
+          "description" : "References to existing 'afterLeg' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "sourceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'source' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'target' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "additionalProperties" : false
+    },
     "KpiEntity" : {
       "type" : "object",
       "properties" : {
@@ -4815,6 +4871,13 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/InvariantEntity"
+      }
+    },
+    "journeys" : {
+      "description" : "Trayectos: named paths through the landscape — DAGs of hops (legs) over existing elements, riding on declared dependencies. A reading layer, never a second topology.",
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/JourneyEntity"
       }
     },
     "mcpGateways" : {

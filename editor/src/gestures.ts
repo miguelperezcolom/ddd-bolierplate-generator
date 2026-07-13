@@ -15,6 +15,8 @@ export interface GestureHost {
   readonly model: ModuxModel;
   /** The context-map detail level (the gestures of `distribution` differ). */
   readonly detail: string;
+  /** The journey being painted, when one is active in the toolbar. */
+  readonly activeJourneyId?: string;
   command(c: ModuxCommand, pushUndo?: boolean): void;
   emit(name: string, detail?: unknown): void;
   sceneFor(view: ViewId): Scene;
@@ -43,6 +45,23 @@ export function applyConnectionGesture(
   y?: number,
   connectKind?: string,
 ): void {
+    // An ACTIVE journey captures the connection gesture: each line is one more
+    // hop of the story. Chaining is automatic (a hop leaving the target of an
+    // earlier hop continues it; two hops leaving the same element bifurcate).
+    if (host.activeJourneyId && (view === 'context-map' || view === 'integrations')) {
+      const journey = (host.model.journeys ?? []).find((j) => j.id === host.activeJourneyId);
+      if (journey && sourceId !== targetId) {
+        const legs = journey.legs ?? [];
+        const after = legs.filter((l) => l.targetId === sourceId).map((l) => l.id);
+        let n = legs.length + 1;
+        while (legs.some((l) => l.id === `leg-${n}`)) n++;
+        host.command({
+          kind: 'journey-add-leg', journeyId: journey.id, itemId: `leg-${n}`,
+          sourceId, targetId, dependsOnStepIds: after,
+        });
+        return;
+      }
+    }
     // Distribution level: a line means packaging (elemento → módulo) or deployment
     // (servicio → módulo). Anything else falls through to the usual meanings.
     if (view === 'context-map' && host.detail === 'distribution') {
@@ -1855,6 +1874,14 @@ export function performDeleteGesture(
     if (view === 'context-map' && elementType === 'node' && kind === 'ui-app') {
       host.clearSelection();
       host.command({ kind: 'delete-ui-app', id });
+      return;
+    }
+    if (elementType === 'edge' && kind === 'journey') {
+      const match = /^journeyleg:([^:]+):(.+)$/.exec(id);
+      if (match) {
+        host.clearSelection();
+        host.command({ kind: 'journey-remove-leg', journeyId: match[1], itemId: match[2] });
+      }
       return;
     }
     if (view === 'context-map' && elementType === 'edge' && kind === 'deploys') {

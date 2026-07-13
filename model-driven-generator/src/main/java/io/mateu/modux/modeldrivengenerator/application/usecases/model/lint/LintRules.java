@@ -55,6 +55,9 @@ public final class LintRules {
                 new CrossServiceConsumption(),
                 new ModuleNotInService(),
                 new ModuleInManyServices(),
+                new JourneyLegEndpoints(),
+                new JourneyDag(),
+                new JourneyLegWithoutDependency(),
                 new BoundedContextReadPath(),
                 new BoundedContextWritePath(),
                 new UseCasePipeline(),
@@ -1054,4 +1057,134 @@ public final class LintRules {
         if (aggregate == null || aggregate.modelId() == null) return null;
         return m.models().stream().filter(mo -> mo.id().equals(aggregate.modelId())).findFirst().orElse(null);
     }
+
+    /** A journey hops over EXISTING elements; a leg pointing nowhere is a broken story. */
+    static class JourneyLegEndpoints implements LintRule {
+        public String id() { return "journey-leg-endpoints"; }
+        public String description() { return "Every journey leg must join two existing elements"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var known = knownElementIds(m);
+            var findings = new ArrayList<LintFinding>();
+            for (var journey : m.journeys()) {
+                for (var leg : journey.legs()) {
+                    for (var endpoint : List.of(leg.sourceId(), leg.targetId())) {
+                        if (endpoint == null || !known.contains(endpoint)) {
+                            findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
+                                    journey.id(), journey.name(),
+                                    "El tramo " + leg.id() + " apunta a '" + endpoint
+                                            + "', que no existe en el modelo."));
+                        }
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** Legs order themselves through afterLegIds: unknown references or cycles break the reading. */
+    static class JourneyDag implements LintRule {
+        public String id() { return "journey-dag"; }
+        public String description() { return "Journey legs must form a DAG over afterLegIds"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var journey : m.journeys()) {
+                var legIds = journey.legs().stream()
+                        .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyLegEntity::id)
+                        .collect(java.util.stream.Collectors.toSet());
+                for (var leg : journey.legs()) {
+                    for (var after : leg.afterLegIds()) {
+                        if (!legIds.contains(after)) {
+                            findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
+                                    journey.id(), journey.name(),
+                                    "El tramo " + leg.id() + " continúa a '" + after
+                                            + "', que no es un tramo del trayecto."));
+                        }
+                    }
+                }
+                // cycle sniffing: repeated deepening beyond the leg count means a loop
+                var depths = new java.util.HashMap<String, Integer>();
+                boolean progress = true;
+                for (int round = 0; progress && round <= journey.legs().size(); round++) {
+                    progress = false;
+                    for (var leg : journey.legs()) {
+                        int depth = leg.afterLegIds().stream()
+                                .mapToInt(a -> depths.getOrDefault(a, 0)).max().orElse(0) + 1;
+                        if (depth != depths.getOrDefault(leg.id(), 0)) {
+                            depths.put(leg.id(), depth);
+                            progress = true;
+                        }
+                    }
+                }
+                if (progress || depths.values().stream().anyMatch(d -> d > journey.legs().size())) {
+                    findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
+                            journey.id(), journey.name(),
+                            "Los tramos forman un ciclo — un trayecto se lee de principio a fin."));
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** A journey rides on declared dependencies; a leg with no edge underneath floats. */
+    static class JourneyLegWithoutDependency implements LintRule {
+        public String id() { return "journey-leg-without-dependency"; }
+        public String description() { return "Journey legs should ride on a declared dependency or relation"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var edges = declaredEdges(m);
+            var findings = new ArrayList<LintFinding>();
+            for (var journey : m.journeys()) {
+                for (var leg : journey.legs()) {
+                    if (leg.sourceId() == null || leg.targetId() == null) continue;
+                    if (!edges.contains(leg.sourceId() + "->" + leg.targetId())
+                            && !edges.contains(leg.targetId() + "->" + leg.sourceId())) {
+                        findings.add(new LintFinding(id(), LintSeverity.INFO, "Journey",
+                                journey.id(), journey.name(),
+                                "El tramo " + leg.id() + " (" + leg.sourceId() + " → " + leg.targetId()
+                                        + ") no tiene debajo ninguna dependencia declarada."));
+                    }
+                }
+            }
+            return findings;
+        }
+    }
+
+    /** Every id a journey can hop over: catalog elements plus the project-scoped strategic cast. */
+    private static Set<String> knownElementIds(ModelSnapshot m) {
+        var ids = new HashSet<String>();
+        m.boundedContexts().forEach(x -> ids.add(x.id()));
+        m.services().forEach(x -> ids.add(x.id()));
+        m.aggregates().forEach(x -> ids.add(x.id()));
+        m.useCases().forEach(x -> ids.add(x.id()));
+        m.queryServices().forEach(x -> ids.add(x.id()));
+        m.apis().forEach(x -> ids.add(x.id()));
+        m.workflows().forEach(x -> ids.add(x.id()));
+        m.aiAgents().forEach(x -> ids.add(x.id()));
+        for (var p : m.projects()) {
+            p.externalSystems().forEach(x -> ids.add(x.id()));
+        }
+        return ids;
+    }
+
+    /** The declared strategic edges a journey can ride on, as "source->target". */
+    private static Set<String> declaredEdges(ModelSnapshot m) {
+        var edges = new HashSet<String>();
+        for (var p : m.projects()) {
+            for (var r : p.contextMap()) {
+                edges.add(r.sourceBoundedContextId() + "->" + r.targetBoundedContextId());
+            }
+            for (var x : p.externalSystems()) {
+                x.dependsOnExternalSystemIds().forEach(t -> edges.add(x.id() + "->" + t));
+                x.cqrsExternalSystemIds().forEach(t -> edges.add(x.id() + "->" + t));
+                x.dependsOnApiIds().forEach(t -> edges.add(x.id() + "->" + t));
+                if (x.parentExternalSystemId() != null) edges.add(x.id() + "->" + x.parentExternalSystemId());
+            }
+        }
+        for (var api : m.apis()) {
+            if (api.publishedByExternalSystemId() != null) {
+                edges.add(api.publishedByExternalSystemId() + "->" + api.id());
+            }
+        }
+        return edges;
+    }
+
 }

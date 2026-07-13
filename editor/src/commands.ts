@@ -76,6 +76,19 @@ export type ModuxCommand =
       id: string;
       parentId: string | null;
     }
+  | { kind: 'add-journey'; id: string; name: string }
+  | { kind: 'remove-journey'; id: string }
+  | {
+      /** One more hop of the journey; afterLegIds (as dependsOnStepIds) chain it into the DAG. */
+      kind: 'journey-add-leg';
+      journeyId: string;
+      itemId: string;
+      sourceId: string;
+      targetId: string;
+      dependsOnStepIds?: string[];
+      label?: string;
+    }
+  | { kind: 'journey-remove-leg'; journeyId: string; itemId: string }
   | {
       kind: 'remove-external-system';
       id: string;

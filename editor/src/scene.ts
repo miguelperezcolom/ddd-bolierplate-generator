@@ -6,6 +6,8 @@
 export interface SceneNode {
   /** Plain (non-container) nodes that still accept the corner-resize gesture. */
   resizable?: boolean;
+  /** Faded to the background while an overlay (e.g. a journey) has the stage. */
+  dim?: boolean;
   /** Differentiated drag points: each starts a TYPED connect gesture (its kind). */
   extraHandles?: { kind: string; title: string; color: string }[];
   id: string;
@@ -150,6 +152,8 @@ export interface SceneEdge {
   dashed?: boolean;
   arrow?: boolean;
   tooltip?: string;
+  /** Faded to the background while an overlay (e.g. a journey) has the stage. */
+  dim?: boolean;
 }
 
 export interface Scene {

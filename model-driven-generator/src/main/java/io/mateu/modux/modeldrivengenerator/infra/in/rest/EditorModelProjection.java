@@ -719,6 +719,11 @@ public class EditorModelProjection {
                 repository.findAllOfType(ModuleEntity.class).stream()
                         .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds(), x.main()))
                         .toList(),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity.class).stream()
+                        .map(j -> new EditorApiController.JourneyDto(j.id(), j.name(), j.description(),
+                                j.legs().stream().map(l -> new EditorApiController.JourneyLegDto(
+                                        l.id(), l.sourceId(), l.targetId(), l.afterLegIds(), l.label())).toList()))
+                        .toList(),
                 services.stream()
                         .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(),
                                 s.database(), s.outboxEnabled()))

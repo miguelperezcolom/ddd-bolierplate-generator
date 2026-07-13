@@ -113,7 +113,8 @@ public class ModelJsonSchemaGenerator {
             java.util.Map.entry("flows", "Intent layer: one line of intent (materializes/triggers/notifies/orchestrates) expanded into structure."),
             java.util.Map.entry("processes", "Intent layer: human/automated step lists expanded into sagas, worklists and deadlines."),
             java.util.Map.entry("decisions", "Architecture decision records (ADRs); elements trace to them via decisionIds."),
-            java.util.Map.entry("views", "Named slices of the model for focused work and partial generation."));
+            java.util.Map.entry("views", "Named slices of the model for focused work and partial generation."),
+            java.util.Map.entry("journeys", "Trayectos: named paths through the landscape — DAGs of hops (legs) over existing elements, riding on declared dependencies. A reading layer, never a second topology."));
 
     /** Schema for a single element type (e.g. {@link AggregateEntity}). */
     public JsonNode schemaFor(Class<?> type) {

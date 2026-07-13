@@ -9,6 +9,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessSte
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyLegEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
@@ -137,6 +139,9 @@ public class EditorApiController {
     public record ScheduledTriggerDto(String id, String name, String cronExpression, String useCaseId) {}
     /** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
     public record ModuleDto(String id, String name, String boundedContextId, List<String> elementIds, boolean main) {}
+
+    public record JourneyDto(String id, String name, String description, List<JourneyLegDto> legs) {}
+    public record JourneyLegDto(String id, String sourceId, String targetId, List<String> afterLegIds, String label) {}
     public record ServiceDto(String id, String name, List<String> moduleIds,
                              String database, boolean outboxEnabled) {}
     public record DomainServiceDto(String id, String name) {}
@@ -400,6 +405,7 @@ public class EditorApiController {
             List<ModelRefDto> models,
             List<NamedRefDto> sagas,
             List<ModuleDto> modules,
+            List<JourneyDto> journeys,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
             List<CustomCodeDto> customCodes,
@@ -538,7 +544,8 @@ public class EditorApiController {
                                 String componentId, String parentComponentId, String componentKind,
                                 String beforeComponentId, String title, String text,
                                 String cronExpression, String beforeItemId, String etlFlowId,
-                                String serviceId, String elementId, String bar) {}
+                                String serviceId, String elementId, String bar,
+                                String journeyId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -613,6 +620,10 @@ public class EditorApiController {
             case "add-service-module" -> addServiceModule(command);
             case "remove-service-module" -> removeServiceModule(command);
             case "add-external-system" -> addExternalSystem(command);
+            case "add-journey" -> addJourney(command);
+            case "remove-journey" -> repository.deleteAllById(List.of(command.id()), JourneyEntity.class);
+            case "journey-add-leg" -> journeyAddLeg(command);
+            case "journey-remove-leg" -> journeyRemoveLeg(command);
             case "set-external-system-parent" -> setExternalSystemParent(command);
             case "add-project-reference" -> addProjectReference(command);
             case "remove-external-system" -> removeExternalSystem(command);
@@ -1123,6 +1134,8 @@ public class EditorApiController {
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
+            case "journey" -> repository.findById(command.id(), JourneyEntity.class)
+                    .ifPresent(j -> repository.save(j.toBuilder().name(command.name()).build()));
             case "external-system" -> {
                 var project = projects.owningProject();
                 repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
@@ -2574,6 +2587,45 @@ public class EditorApiController {
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 command.targetId()));
         repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+    }
+
+    private void addJourney(EditorCommand command) {
+        if (repository.findById(command.id(), JourneyEntity.class).isPresent()) return;
+        repository.save(JourneyEntity.builder().id(command.id()).name(command.name()).build());
+    }
+
+    private void journeyAddLeg(EditorCommand command) {
+        var journey = repository.findById(command.journeyId(), JourneyEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Trayecto desconocido: " + command.journeyId()));
+        var legId = command.itemId() != null ? command.itemId()
+                : "leg-" + (journey.legs().size() + 1);
+        if (journey.legs().stream().anyMatch(l -> l.id().equals(legId))) return;
+        var legs = new ArrayList<>(journey.legs());
+        legs.add(JourneyLegEntity.builder()
+                .id(legId)
+                .sourceId(command.sourceId())
+                .targetId(command.targetId())
+                .afterLegIds(command.dependsOnStepIds() != null ? command.dependsOnStepIds() : List.of())
+                .label(command.label())
+                .build());
+        repository.save(journey.toBuilder().legs(legs).build());
+    }
+
+    private void journeyRemoveLeg(EditorCommand command) {
+        var journey = repository.findById(command.journeyId(), JourneyEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Trayecto desconocido: " + command.journeyId()));
+        // the removed leg's continuations reattach to its predecessors, so the story keeps reading
+        var removed = journey.legs().stream().filter(l -> l.id().equals(command.itemId())).findFirst().orElse(null);
+        if (removed == null) return;
+        var legs = journey.legs().stream()
+                .filter(l -> !l.id().equals(command.itemId()))
+                .map(l -> !l.afterLegIds().contains(command.itemId()) ? l
+                        : l.toBuilder().afterLegIds(java.util.stream.Stream.concat(
+                                        l.afterLegIds().stream().filter(a -> !a.equals(command.itemId())),
+                                        removed.afterLegIds().stream())
+                                .distinct().toList()).build())
+                .toList();
+        repository.save(journey.toBuilder().legs(legs).build());
     }
 
     private void addExternalSystem(EditorCommand command) {

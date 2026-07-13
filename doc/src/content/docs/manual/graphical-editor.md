@@ -226,6 +226,19 @@ The editor follows **mateu's dark mode**: the same `theme="dark"` flag (persiste
 `mateu-theme`), switched live from the top bar — hue-preserving, so a CORE context
 stays amber in the dark.
 
+## Journeys (trayectos)
+
+A **journey** is a named path through the landscape — "the availability request enters
+through the metasearcher, crosses distribution and ends at Rumbo" — a DAG of hops
+(**legs**) over existing elements, riding on the declared dependencies (the
+`journey-leg-without-dependency` lint flags legs with no edge underneath). Create one
+from the toolbar («Nuevo trayecto…»), and while it is active every line you draw adds
+a leg: a leg leaving the target of an earlier one continues it, two legs leaving the
+same element **bifurcate**. The active journey paints as its own numbered layer
+(1, 2, 3a, 3b…) while everything else fades back; **Supr** on a leg removes it
+(its continuations reattach). Journeys are catalog elements (`journeys:` in the YAML,
+authorable over MCP) — a reading layer, never a second topology.
+
 ## Keyboard shortcuts
 
 Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·

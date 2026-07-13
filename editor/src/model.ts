@@ -686,6 +686,23 @@ export interface ModuleRef {
   main?: boolean;
 }
 
+/** One hop of a journey; afterLegIds orders the DAG (several after the same leg = bifurcation). */
+export interface JourneyLegRef {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  afterLegIds?: string[];
+  label?: string;
+}
+
+/** A journey (trayecto): a named path through the landscape, riding on existing elements. */
+export interface JourneyRef {
+  id: string;
+  name: string;
+  description?: string;
+  legs?: JourneyLegRef[];
+}
+
 export interface ServiceRef {
   id: string;
   name: string;
@@ -752,6 +769,8 @@ export interface ModuxModel {
   services?: ServiceRef[];
   boundedContexts: BoundedContextRef[];
   externalSystems: ExternalSystemRef[];
+  /** Trayectos: named DAGs of hops over the landscape. */
+  journeys?: JourneyRef[];
   relations: ContextMapRelation[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];
