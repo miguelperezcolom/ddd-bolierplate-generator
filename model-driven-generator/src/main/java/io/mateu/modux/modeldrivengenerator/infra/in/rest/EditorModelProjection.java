@@ -761,6 +761,9 @@ public class EditorModelProjection {
                                         .map(r -> new MappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId()))
                                         .toList(),
                                 x.customCodeId()))
+                        .toList(),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity.class).stream()
+                        .map(n -> new EditorApiController.NoteDto(n.id(), n.text(), n.targetIds(), n.edgeRefs()))
                         .toList());
     }
 }

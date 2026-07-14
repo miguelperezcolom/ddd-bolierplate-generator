@@ -1028,6 +1028,23 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const a = (host.model.actors ?? []).find((x) => x.id === c.id);
         return a ? [{ kind: 'add-actor', id: a.id, name: a.name }] : null;
       }
+      case 'add-note':
+        return [{ kind: 'remove-note', id: c.id }];
+      case 'remove-note': {
+        const n = (host.model.notes ?? []).find((x) => x.id === c.id);
+        if (!n) return null;
+        // Undo restores the note AND its threads.
+        return [
+          { kind: 'add-note', id: n.id, name: n.text },
+          ...[...(n.targetIds ?? []), ...(n.edgeRefs ?? [])].map(
+            (t): ModuxCommand => ({ kind: 'note-attach', id: n.id, targetId: t }),
+          ),
+        ];
+      }
+      case 'note-attach':
+        return [{ kind: 'note-detach', id: c.id, targetId: c.targetId }];
+      case 'note-detach':
+        return [{ kind: 'note-attach', id: c.id, targetId: c.targetId }];
       case 'add-application-event':
         return [{ kind: 'remove-application-event', id: c.id }];
       case 'remove-application-event': {

@@ -53,7 +53,8 @@ public record AllData(
         List<CustomCodeEntity> customCodes,
         List<ButtonGroupEntity> buttonGroups,
         List<WorkflowGatewayEntity> workflowGateways,
-        List<JourneyEntity> journeys
+        List<JourneyEntity> journeys,
+        List<NoteEntity> notes
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -62,7 +63,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null);
+                null, null);
     }
 
     public AllData {
@@ -117,5 +118,6 @@ public record AllData(
         buttonGroups = buttonGroups != null ? buttonGroups : List.of();
         workflowGateways = workflowGateways != null ? workflowGateways : List.of();
         journeys = journeys != null ? journeys : List.of();
+        notes = notes != null ? notes : List.of();
     }
 }

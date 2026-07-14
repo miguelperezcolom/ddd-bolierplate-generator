@@ -703,6 +703,15 @@ export interface JourneyRef {
   legs?: JourneyLegRef[];
 }
 
+export interface NoteRef {
+  id: string;
+  text: string;
+  /** The elements this note annotates. */
+  targetIds?: string[];
+  /** The diagram relations this note annotates, as view edge ids (e.g. "dep:a->b"). */
+  edgeRefs?: string[];
+}
+
 export interface ServiceRef {
   id: string;
   name: string;
@@ -771,6 +780,8 @@ export interface ModuxModel {
   externalSystems: ExternalSystemRef[];
   /** Trayectos: named DAGs of hops over the landscape. */
   journeys?: JourneyRef[];
+  /** Sticky notes: free commentary pointing at elements (targetIds) and/or relations (edgeRefs). */
+  notes?: NoteRef[];
   relations: ContextMapRelation[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];

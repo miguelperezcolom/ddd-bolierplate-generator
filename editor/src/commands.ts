@@ -287,6 +287,27 @@ export type ModuxCommand =
       name: string;
     }
   | {
+      /** A sticky note; name carries its text. */
+      kind: 'add-note';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-note';
+      id: string;
+    }
+  | {
+      /** Ties the note to an element (plain id) or a relation (edge ref with «->»). */
+      kind: 'note-attach';
+      id: string;
+      targetId: string;
+    }
+  | {
+      kind: 'note-detach';
+      id: string;
+      targetId: string;
+    }
+  | {
       kind: 'remove-actor';
       id: string;
     }

@@ -2834,6 +2834,7 @@ export class ModuxEditor extends LitElement {
       (m.aggregates ?? []).map((x) => x.id),
       (m.entities ?? []).map((x) => x.id),
       (m.actors ?? []).map((x) => x.id),
+      (m.notes ?? []).map((x) => x.id),
       m.externalSystems.map((x) => x.id),
       m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
       m.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)),
@@ -3079,6 +3080,7 @@ export class ModuxEditor extends LitElement {
     };
     if (!def.child) {
       const prefix: Record<string, string> = {
+        note: 'note-',
         boundedContext: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
@@ -3090,6 +3092,8 @@ export class ModuxEditor extends LitElement {
       const cmd: ModuxCommand =
         type === 'boundedContext'
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
+          : type === 'note'
+            ? { kind: 'add-note', id, name }
           : type === 'actor'
             ? { kind: 'add-actor', id, name }
             : type === 'external-system'
@@ -3850,6 +3854,7 @@ export class ModuxEditor extends LitElement {
                     vl.sizes ?? {},
                     new Set(vl.collapsed ?? []),
                   );
+    if (view !== 'design') this.withNotes(scene, view);
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
       for (const node of scene.nodes) {
@@ -3858,6 +3863,66 @@ export class ModuxEditor extends LitElement {
       }
     }
     return scene;
+  }
+
+  /**
+   * The sticky-note layer, view-independent: a note shows wherever it was dropped (it
+   * has a position in that view's layout) and wherever one of its targets is visible —
+   * annotations follow their subject across views. Dashed amber threads tie the note to
+   * each visible target; a thread to a RELATION anchors at that edge's midpoint (the
+   * canvas resolves the `edgeanchor:` pseudo-target).
+   */
+  private withNotes(scene: Scene, view: ViewId): void {
+    const notes = this.model.notes ?? [];
+    if (!notes.length) return;
+    const vl = this.viewLayout(view);
+    const nodeIds = new Set(scene.nodes.map((n) => n.id));
+    const edgeIds = new Set(scene.edges.map((e) => e.id));
+    const sizes = vl.sizes ?? {};
+    for (const note of notes) {
+      const placed = vl.nodes[note.id];
+      const resolveTarget = (t: string): string | null =>
+        nodeIds.has(t) ? t : nodeIds.has(`tgt:${t}`) ? `tgt:${t}` : nodeIds.has(`flow:${t}`) ? `flow:${t}` : null;
+      const targets = (note.targetIds ?? [])
+        .map((t) => ({ raw: t, nodeId: resolveTarget(t) }))
+        .filter((t): t is { raw: string; nodeId: string } => !!t.nodeId);
+      const edgeTargets = (note.edgeRefs ?? []).filter((r) => edgeIds.has(r));
+      if (!placed && !targets.length && !edgeTargets.length) continue;
+      const anchor = targets.length ? scene.nodes.find((n) => n.id === targets[0].nodeId) : undefined;
+      const pos = placed ?? { x: (anchor?.x ?? 0) + 40, y: (anchor?.y ?? 0) - 110 };
+      scene.nodes.push({
+        id: note.id,
+        label: note.text,
+        kind: 'note',
+        x: pos.x,
+        y: pos.y,
+        w: sizes[note.id]?.w ?? 150,
+        h: sizes[note.id]?.h ?? 72,
+        fill: '#fef9c3',
+        symbol: 'note',
+        resizable: true,
+      });
+      for (const t of targets) {
+        scene.edges.push({
+          id: `note:${note.id}->${t.raw}`,
+          sourceId: note.id,
+          targetId: t.nodeId,
+          kind: 'note-link',
+          dashed: true,
+          color: '#ca8a04',
+        });
+      }
+      for (const r of edgeTargets) {
+        scene.edges.push({
+          id: `note:${note.id}->${r}`,
+          sourceId: note.id,
+          targetId: `edgeanchor:${r}`,
+          kind: 'note-link',
+          dashed: true,
+          color: '#ca8a04',
+        });
+      }
+    }
   }
 
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */

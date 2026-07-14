@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchety
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
@@ -87,6 +88,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import io.mateu.modux.modeldrivengenerator.application.usecases.model.CatalogReflection;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -411,7 +414,10 @@ public class EditorApiController {
             List<CustomCodeDto> customCodes,
             List<ButtonGroupDto> buttonGroups,
             List<WorkflowGatewayDto> workflowGateways,
-            List<MappingRefDto> modelMappings) {}
+            List<MappingRefDto> modelMappings,
+            List<NoteDto> notes) {}
+
+    public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
                                 List<MappingRuleDto> rules, String customCodeId) {}
@@ -629,6 +635,10 @@ public class EditorApiController {
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
             case "remove-actor" -> removeActor(command);
+            case "add-note" -> addNote(command);
+            case "remove-note" -> removeNote(command);
+            case "note-attach" -> noteAttach(command);
+            case "note-detach" -> noteDetach(command);
             case "add-ai-agent" -> agentCommands.addAiAgent(command);
             case "remove-ai-agent" -> agentCommands.removeAiAgent(command);
             case "add-agent-use" -> agentCommands.addAgentUse(command);
@@ -1084,6 +1094,8 @@ public class EditorApiController {
         switch (Objects.requireNonNull(command.type(), "rename-element.type (elementType)")) {
             case "boundedContext" -> repository.findById(command.id(), BoundedContextEntity.class)
                     .ifPresent(m -> repository.save(m.toBuilder().name(command.name()).build()));
+            case "note" -> repository.findById(command.id(), NoteEntity.class)
+                    .ifPresent(n -> repository.save(n.toBuilder().text(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
                     .ifPresent(a -> repository.save(new AggregateEntity(
                             a.id(), command.name(), a.modelId(), a.persistenceType(), a.idType(),
@@ -2791,6 +2803,49 @@ public class EditorApiController {
     private void addActor(EditorCommand command) {
         if (repository.findById(command.id(), RoleEntity.class).isPresent()) return;
         repository.save(new RoleEntity(command.id(), command.name(), List.of()));
+    }
+
+    private void addNote(EditorCommand command) {
+        if (repository.findById(command.id(), NoteEntity.class).isPresent()) return;
+        repository.save(new NoteEntity(command.id(), command.name(), List.of(), List.of()));
+    }
+
+    private void removeNote(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), NoteEntity.class);
+    }
+
+    /**
+     * Points the note at one more target. Element targets (plain ids) must exist; relation
+     * targets are recognised by their {@code ->} and stored as edge refs, unchecked — they
+     * are presentation coordinates, not model references.
+     */
+    private void noteAttach(EditorCommand command) {
+        var note = repository.findById(command.id(), NoteEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Nota desconocida: " + command.id()));
+        var ref = Objects.requireNonNull(command.targetId(), "note-attach.targetId");
+        if (ref.contains("->")) {
+            if (note.edgeRefs().contains(ref)) return;
+            var refs = new ArrayList<>(note.edgeRefs());
+            refs.add(ref);
+            repository.save(note.toBuilder().edgeRefs(refs).build());
+            return;
+        }
+        var known = repository.allElements().stream()
+                .anyMatch(e -> CatalogReflection.ids(e).contains(ref));
+        if (!known) {
+            throw new IllegalArgumentException("Elemento desconocido: " + ref);
+        }
+        if (note.targetIds().contains(ref)) return;
+        var ids = new ArrayList<>(note.targetIds());
+        ids.add(ref);
+        repository.save(note.toBuilder().targetIds(ids).build());
+    }
+
+    private void noteDetach(EditorCommand command) {
+        repository.findById(command.id(), NoteEntity.class).ifPresent(n -> repository.save(n.toBuilder()
+                .targetIds(n.targetIds().stream().filter(t -> !t.equals(command.targetId())).toList())
+                .edgeRefs(n.edgeRefs().stream().filter(t -> !t.equals(command.targetId())).toList())
+                .build()));
     }
 
     private void removeActor(EditorCommand command) {

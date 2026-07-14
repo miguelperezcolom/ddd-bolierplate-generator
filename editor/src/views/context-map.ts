@@ -1174,9 +1174,10 @@ export function contextMapScene(
     }];
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
-  // context — and outside the distribution level, which is about packaging.
+  // context — and outside the distribution level, which is about packaging. Actors are
+  // strategic: WHO drives the landscape belongs at the contexts level too.
   const actorsAndAgents = bareLevel
-    ? { actors: [], aiAgents: [], rags: [], mcpGateways: [] }
+    ? { actors: strategicLevel ? model.actors ?? [] : [], aiAgents: [], rags: [], mcpGateways: [] }
     : {
         actors: model.actors ?? [],
         aiAgents: model.aiAgents ?? [],

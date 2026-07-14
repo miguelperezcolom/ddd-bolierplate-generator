@@ -81,6 +81,10 @@ public class CleanModelUseCase {
             if (STRUCTURAL_TYPES.contains(type)) continue;
             // Main modules live and die with their bounded context, never on their own.
             if (element instanceof ModuleEntity module && module.main()) continue;
+            // A note pinned to a RELATION relates through edgeRefs, invisible to the
+            // reference walk — it is not an orphan.
+            if (element instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity note
+                    && !note.edgeRefs().isEmpty()) continue;
             if (!isolated(i, declared, outgoing, referencedBy)) continue;
             // A bounded context's unit includes its main module: a deployed main module
             // (wired into a service) keeps the pair alive.

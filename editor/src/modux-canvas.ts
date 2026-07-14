@@ -39,6 +39,22 @@ function pointToSegment(p: Point, a: Point, b: Point): { dist: number; t: number
  * SVG path along `pts`, hopping over earlier edges with a small arc wherever
  * they cross — the classic wire "bridge".
  */
+/** The point halfway along a polyline's total length — where note threads anchor on edges. */
+function polylineMidpoint(pts: Point[]): Point {
+  let total = 0;
+  for (let i = 0; i < pts.length - 1; i++) total += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+  let remaining = total / 2;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const seg = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    if (seg >= remaining && seg > 0) {
+      const t = remaining / seg;
+      return { x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, y: pts[i].y + (pts[i + 1].y - pts[i].y) * t };
+    }
+    remaining -= seg;
+  }
+  return pts[Math.floor(pts.length / 2)];
+}
+
 function pathWithBridges(pts: Point[], priorSegments: [Point, Point][], radius = 7): string {
   let d = `M ${pts[0].x} ${pts[0].y}`;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -76,6 +92,7 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <rect x="0.5" y="6.9" width="6" height="2.6"></rect>`,
   aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
   shield: svg`<path d="M6 0.5 L11 2.5 V6 C11 9 8.8 11 6 11.8 C3.2 11 1 9 1 6 V2.5 Z"></path>`,
+  note: svg`<path d="M1.5 0.5 H10.5 V7.5 L7 11.5 H1.5 Z"></path><path d="M10.5 7.5 H7 V11.5"></path>`,
   entity: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1"></rect>
     <line x1="0.5" y1="4.6" x2="11.5" y2="4.6"></line>`,
   flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
@@ -537,6 +554,16 @@ export class ModuxCanvas extends LitElement {
     return null;
   }
 
+  /** Topmost edge at a client-space point — note threads can land on relations. */
+  private edgeIdAtClient(clientX: number, clientY: number): string | null {
+    const els = this.shadowRoot?.elementsFromPoint(clientX, clientY) ?? [];
+    for (const el of els) {
+      const g = el.closest?.('[data-edge-id]');
+      if (g) return g.getAttribute('data-edge-id');
+    }
+    return null;
+  }
+
   /** Scene coordinates for a client-space point (palette drops). */
   sceneFromClient(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.getBoundingClientRect();
@@ -845,6 +872,19 @@ export class ModuxCanvas extends LitElement {
           y: ev.clientY,
           connectKind,
         });
+      } else if (node.kind === 'note') {
+        // A note dropped on empty space may still land on a RELATION: notes annotate
+        // edges too, so the drop hit-tests the edge ink before giving up.
+        const edgeId = this.edgeIdAtClient(ev.clientX, ev.clientY);
+        if (edgeId && !edgeId.startsWith('note:')) {
+          this.emit('connect-requested', {
+            sourceId: node.id,
+            targetId: `edge:${edgeId}`,
+            x: ev.clientX,
+            y: ev.clientY,
+            connectKind,
+          });
+        }
       }
       this._pendingLink = null;
       this._hoverNodeId = null;
@@ -883,6 +923,16 @@ export class ModuxCanvas extends LitElement {
   /** Full polyline of an edge: border point → waypoints → border point. */
   private edgePolyline(edge: SceneEdge): Point[] | null {
     const source = this.scene.nodes.find((n) => n.id === edge.sourceId);
+    // A note thread may target a RELATION: it anchors at that edge's midpoint.
+    if (edge.targetId.startsWith('edgeanchor:')) {
+      if (!source) return null;
+      const hostId = edge.targetId.slice('edgeanchor:'.length);
+      const host = this.scene.edges.find((e) => e.id === hostId);
+      const hostPts = host && host.id !== edge.id ? this.edgePolyline(host) : null;
+      if (!hostPts || hostPts.length < 2) return null;
+      const mid = polylineMidpoint(hostPts);
+      return [this.borderPoint(source, mid.x, mid.y), mid];
+    }
     const target = this.scene.nodes.find((n) => n.id === edge.targetId);
     if (!source || !target) return null;
     const waypoints =

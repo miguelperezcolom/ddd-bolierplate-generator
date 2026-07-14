@@ -45,6 +45,20 @@ export function applyConnectionGesture(
   y?: number,
   connectKind?: string,
 ): void {
+    // Notes annotate: a thread from (or to) a note ties it to the other end —
+    // element or relation (edge targets arrive as `edge:<edgeId>`). This wins over
+    // every other meaning, journeys included: a note is never a hop.
+    const noteIds = new Set((host.model.notes ?? []).map((n) => n.id));
+    if (noteIds.has(sourceId) || noteIds.has(targetId)) {
+      const noteId = noteIds.has(sourceId) ? sourceId : targetId;
+      const other = noteIds.has(sourceId) ? targetId : sourceId;
+      if (noteId === other) return;
+      const ref = other.startsWith('edge:')
+        ? other.slice('edge:'.length)
+        : other.replace(/^(tgt:|flow:)/, '');
+      host.command({ kind: 'note-attach', id: noteId, targetId: ref });
+      return;
+    }
     // An ACTIVE journey captures the connection gesture: each line is one more
     // hop of the story. Chaining is automatic (a hop leaving the target of an
     // earlier hop continues it; two hops leaving the same element bifurcate).
@@ -1467,6 +1481,21 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (elementType === 'node' && kind === 'note') {
+    host.clearSelection();
+    host.command({ kind: 'remove-note', id });
+    return;
+  }
+  if (elementType === 'edge' && kind === 'note-link') {
+    // The thread's id carries both ends: note:<noteId>-><target ref>.
+    const body = id.slice('note:'.length);
+    const cut = body.indexOf('->');
+    if (cut > 0) {
+      host.clearSelection();
+      host.command({ kind: 'note-detach', id: body.slice(0, cut), targetId: body.slice(cut + 2) });
+    }
+    return;
+  }
   if (kind === 'invariant' || kind === 'invariant-containment') {
     const invariantId = kind === 'invariant' ? id : id.replace(/^protects:.+->/, '');
     host.clearSelection();
