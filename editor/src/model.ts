@@ -795,6 +795,14 @@ export interface ModuxModel {
   /** Areas: named rectangles that group elements geometrically and anchor notes. */
   areas?: AreaRef[];
   relations: ContextMapRelation[];
+  /** Hand-drawn ArchiMate relationships between any two elements (documentation intent). */
+  archimateRelations?: {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    type: string;
+    label?: string;
+  }[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];
   entities?: EntityRef[];

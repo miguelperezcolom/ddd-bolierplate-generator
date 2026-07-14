@@ -13,6 +13,17 @@ export type ModuxCommand =
       type: ContextMapRelationType;
     }
   | {
+      /** A hand-drawn ArchiMate relationship — the traced line's last word. */
+      kind: 'add-archimate-relation';
+      id: string;
+      sourceId: string;
+      targetId: string;
+      type: string;
+      name?: string;
+    }
+  | { kind: 'set-archimate-relation-type'; id: string; type: string }
+  | { kind: 'remove-archimate-relation'; id: string }
+  | {
       kind: 'remove-relation';
       sourceId: string;
       targetId: string;

@@ -55,7 +55,8 @@ public record AllData(
         List<WorkflowGatewayEntity> workflowGateways,
         List<JourneyEntity> journeys,
         List<NoteEntity> notes,
-        List<AreaEntity> areas
+        List<AreaEntity> areas,
+        List<ArchimateRelationEntity> archimateRelations
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -64,7 +65,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
     }
 
     public AllData {
@@ -121,5 +122,6 @@ public record AllData(
         journeys = journeys != null ? journeys : List.of();
         notes = notes != null ? notes : List.of();
         areas = areas != null ? areas : List.of();
+        archimateRelations = archimateRelations != null ? archimateRelations : List.of();
     }
 }

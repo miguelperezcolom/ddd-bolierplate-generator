@@ -3,6 +3,7 @@ import type { ModuxCommand } from './commands.js';
 import type { Scene } from './scene.js';
 import type { ViewId } from './modux-editor.js';
 import { parseMenuNodeId } from './views/ui.js';
+import { ARCHIMATE_LABEL } from './views/context-map.js';
 import { parseFieldNodeId } from './views/mappings.js';
 import { slug } from './ids.js';
 
@@ -67,6 +68,28 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
   { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
 ];
+
+/** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
+export function archimateOptions(
+  host: GestureHost,
+  sourceId: string,
+  targetId: string,
+): { id: string; label: string; hint: string; apply(): void }[] {
+  return Object.entries(ARCHIMATE_LABEL).map(([type, label]) => ({
+    id: `archimate:${type}`,
+    label: `${label} — ArchiMate`,
+    hint: `Relación ArchiMate «${label}» de documentación entre estos dos elementos`,
+    apply() {
+      host.command({
+        kind: 'add-archimate-relation',
+        id: `ar-${sourceId}-${targetId}-${type}`,
+        sourceId,
+        targetId,
+        type,
+      });
+    },
+  }));
+}
 
 /**
  * The typed meanings a trace between these two elements admits. Each option is
@@ -773,7 +796,11 @@ export function applyConnectionGesture(
     if (connectKind !== '__classic' && connectKind === undefined) {
       const typed = connectionOptions(host, sourceId, targetId);
       if (typed.length > 1) {
-        host.openConnectPicker({ x: x ?? 0, y: y ?? 0, options: typed });
+        host.openConnectPicker({
+          x: x ?? 0,
+          y: y ?? 0,
+          options: [...typed, ...archimateOptions(host, sourceId, targetId)],
+        });
         return;
       }
     }
@@ -1681,6 +1708,16 @@ export function applyConnectionGesture(
       });
       return;
     }
+    // Nothing modux meant anything for this pair: ArchiMate is the last word —
+    // any two elements admit its eleven relationship types (documentation intent).
+    if (!host.activeJourneyId && sourceId !== targetId && connectKind === undefined) {
+      host.openConnectPicker({
+        x: x ?? 0,
+        y: y ?? 0,
+        options: archimateOptions(host, sourceId, targetId),
+      });
+      return;
+    }
     void x;
     void y;
 }
@@ -1692,6 +1729,12 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (kind === 'archimate-relation') {
+    const relId = id.replace(/^archi:/, '');
+    host.clearSelection();
+    host.command({ kind: 'remove-archimate-relation', id: relId });
+    return;
+  }
   if (elementType === 'node' && kind === 'note') {
     host.clearSelection();
     host.command({ kind: 'remove-note', id });

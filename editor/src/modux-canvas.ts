@@ -1134,10 +1134,14 @@ export class ModuxCanvas extends LitElement {
               fill="none"
               class=${edge.kind === 'journey' ? 'journey-flow' : ''}
               stroke=${color} stroke-width=${edge.kind === 'journey' ? 3 : highlighted ? 3 : 1.6}
-              stroke-dasharray=${edge.dashed ? '6 4' : ''}
+              stroke-dasharray=${edge.dashArray ?? (edge.dashed ? '6 4' : '')}
               opacity="0.92"
-              marker-start=${edge.kind === 'contains' ? `url(#diamond-${this.markerId(color)})` : ''}
-              marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
+              marker-start=${edge.markerStart
+                ? `url(#${edge.markerStart}-${this.markerId(color)})`
+                : edge.kind === 'contains' ? `url(#diamond-${this.markerId(color)})` : ''}
+              marker-end=${edge.markerEnd
+                ? `url(#${edge.markerEnd}-${this.markerId(color)})`
+                : edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
         ${edge.label
           ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
                   style="cursor: pointer" pointer-events="all"
@@ -1687,6 +1691,22 @@ export class ModuxCanvas extends LitElement {
               <marker id="diamond-${this.markerId(c)}" viewBox="0 0 12 8" refX="1" refY="4"
                       markerWidth="12" markerHeight="8" orient="auto">
                 <path d="M 1 4 L 6 1 L 11 4 L 6 7 z" fill=${c}></path>
+              </marker>
+              <marker id="diamond-hollow-${this.markerId(c)}" viewBox="0 0 12 8" refX="1" refY="4"
+                      markerWidth="12" markerHeight="8" orient="auto">
+                <path d="M 1 4 L 6 1 L 11 4 L 6 7 z" fill="var(--modux-canvas-bg, #fafafa)" stroke=${c} stroke-width="1"></path>
+              </marker>
+              <marker id="ball-${this.markerId(c)}" viewBox="0 0 8 8" refX="4" refY="4"
+                      markerWidth="7" markerHeight="7" orient="auto">
+                <circle cx="4" cy="4" r="3" fill=${c}></circle>
+              </marker>
+              <marker id="open-arrow-${this.markerId(c)}" viewBox="0 0 10 10" refX="9" refY="5"
+                      markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+                <path d="M 1 1 L 9 5 L 1 9" fill="none" stroke=${c} stroke-width="1.4"></path>
+              </marker>
+              <marker id="hollow-triangle-${this.markerId(c)}" viewBox="0 0 10 10" refX="9" refY="5"
+                      markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+                <path d="M 1 1 L 9 5 L 1 9 z" fill="var(--modux-canvas-bg, #fafafa)" stroke=${c} stroke-width="1.2"></path>
               </marker>`,
           )}
         </defs>

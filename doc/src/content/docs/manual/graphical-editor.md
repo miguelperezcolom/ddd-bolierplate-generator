@@ -72,7 +72,14 @@ person / gear (human / automated steps), double circle (events), return arrow
   trace the line and, if the pair admits several typed meanings, it asks at the
   drop point («¿Qué relación es esta línea?»); between two bounded contexts it
   asks for the **DDD pattern** (or retypes a declared one); the unambiguous rest
-  resolves as always. The specialized views without a palette keep their
+  resolves as always. And when the pair means nothing to modux, **ArchiMate takes
+  the last word**: all eleven relationship types (composition, aggregation,
+  assignment, realization, serving, access, influence, association,
+  specialization, triggering, flow) can be drawn between ANY two elements as
+  documentation intent, rendered with their proper notation (diamonds, hollow
+  triangles, open arrowheads, dotted and dashed lines); they also ride along at
+  the bottom of every ambiguity picker. Double click retypes one in place; Supr
+  deletes it. The specialized views without a palette keep their
   toolbar creation: aggregates (with owner
   bounded context, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert

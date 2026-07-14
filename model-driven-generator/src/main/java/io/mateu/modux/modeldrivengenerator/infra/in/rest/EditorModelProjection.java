@@ -767,6 +767,9 @@ public class EditorModelProjection {
                         .toList(),
                 repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity.class).stream()
                         .map(a -> new EditorApiController.AreaDto(a.id(), a.name()))
+                        .toList(),
+                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity.class).stream()
+                        .map(r -> new ArchimateRelationDto(r.id(), r.sourceId(), r.targetId(), r.type(), r.label()))
                         .toList());
     }
 }

@@ -315,6 +315,29 @@ function boundedContextElementDescs(
  * to a grid); the container size comes from `sizes`. Children are draggable and
  * become connectable once relations between them are added.
  */
+/** ArchiMate 3 notation, per relationship type (drawn source → target). */
+export const ARCHIMATE_NOTATION: Record<string, Partial<SceneEdge>> = {
+  association: {},
+  composition: { markerStart: 'diamond' },
+  aggregation: { markerStart: 'diamond-hollow' },
+  assignment: { markerStart: 'ball', markerEnd: 'arrow' },
+  realization: { markerEnd: 'hollow-triangle', dashArray: '2 3' },
+  specialization: { markerEnd: 'hollow-triangle' },
+  serving: { markerEnd: 'open-arrow' },
+  access: { markerEnd: 'open-arrow', dashArray: '2 3' },
+  influence: { markerEnd: 'open-arrow', dashArray: '2 3' },
+  triggering: { markerEnd: 'arrow' },
+  flow: { markerEnd: 'arrow', dashArray: '6 4' },
+};
+
+/** Human names for the picker and tooltips. */
+export const ARCHIMATE_LABEL: Record<string, string> = {
+  association: 'Asociación', composition: 'Composición', aggregation: 'Agregación',
+  assignment: 'Asignación', realization: 'Realización', specialization: 'Especialización',
+  serving: 'Servicio (serving)', access: 'Acceso', influence: 'Influencia',
+  triggering: 'Disparo (triggering)', flow: 'Flujo',
+};
+
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
@@ -1981,11 +2004,24 @@ function buildScene(
         }))
     : [];
 
+  // ── ArchiMate: the hand-drawn vocabulary, with its notation ────────────────
+  const archimateEdges: SceneEdge[] = (model.archimateRelations ?? []).map((r) => ({
+    id: `archi:${r.id}`,
+    sourceId: r.sourceId,
+    targetId: r.targetId,
+    kind: 'archimate-relation',
+    color: '#475569',
+    label: r.label || undefined,
+    ...(ARCHIMATE_NOTATION[r.type] ?? {}),
+    tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa · Supr la borra`,
+  }));
+
   return {
     nodes,
     edges: reanchorEdges([
       // Composition first: the ownership diamonds paint under the semantic edges.
       ...containsEdges,
+      ...archimateEdges,
       ...deployEdges,
       ...relationEdges,
       ...flowEdges,

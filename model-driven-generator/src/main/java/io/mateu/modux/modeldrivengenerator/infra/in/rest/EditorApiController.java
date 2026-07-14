@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.S
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
@@ -178,6 +179,9 @@ public class EditorApiController {
     public record RelationDto(String sourceId, String targetId, String type,
                               String inferredType,
                               boolean declared, String reasons) {}
+    /** A hand-drawn ArchiMate relationship between any two elements. */
+    public record ArchimateRelationDto(String id, String sourceId, String targetId,
+                                       String type, String label) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
@@ -417,7 +421,8 @@ public class EditorApiController {
             List<WorkflowGatewayDto> workflowGateways,
             List<MappingRefDto> modelMappings,
             List<NoteDto> notes,
-            List<AreaDto> areas) {}
+            List<AreaDto> areas,
+            List<ArchimateRelationDto> archimateRelations) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
@@ -589,6 +594,9 @@ public class EditorApiController {
     public void apply(@RequestBody EditorCommand command) {
         switch (Objects.requireNonNull(command.kind(), "command.kind")) {
             case "add-relation" -> addRelation(command);
+            case "add-archimate-relation" -> addArchimateRelation(command);
+            case "set-archimate-relation-type" -> setArchimateRelationType(command);
+            case "remove-archimate-relation" -> removeArchimateRelation(command);
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
             case "add-boundedContext" -> addBoundedContext(command);
@@ -2533,6 +2541,34 @@ public class EditorApiController {
     /** Record copy with only aggregateIds replaced — every other field preserved verbatim. */
     static BoundedContextEntity withAggregateIds(BoundedContextEntity m, List<String> aggregateIds) {
         return m.toBuilder().aggregateIds(aggregateIds).build();
+    }
+
+    /** The ArchiMate vocabulary — the traced line's last word between any two elements. */
+    private static final java.util.Set<String> ARCHIMATE_TYPES = java.util.Set.of(
+            "association", "composition", "aggregation", "assignment", "realization",
+            "specialization", "serving", "access", "influence", "triggering", "flow");
+
+    private void addArchimateRelation(EditorCommand command) {
+        if (repository.findById(command.id(), ArchimateRelationEntity.class).isPresent()) return;
+        if (command.type() == null || !ARCHIMATE_TYPES.contains(command.type())) {
+            throw new IllegalArgumentException("Tipo ArchiMate desconocido: " + command.type());
+        }
+        repository.save(new ArchimateRelationEntity(
+                command.id(), command.sourceId(), command.targetId(), command.type(),
+                command.name()));
+    }
+
+    private void setArchimateRelationType(EditorCommand command) {
+        var rel = repository.findById(command.id(), ArchimateRelationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Relación desconocida: " + command.id()));
+        if (command.type() == null || !ARCHIMATE_TYPES.contains(command.type())) {
+            throw new IllegalArgumentException("Tipo ArchiMate desconocido: " + command.type());
+        }
+        repository.save(rel.toBuilder().type(command.type()).build());
+    }
+
+    private void removeArchimateRelation(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), ArchimateRelationEntity.class);
     }
 
     private void addRelation(EditorCommand command) {

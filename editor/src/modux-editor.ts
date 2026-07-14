@@ -21,7 +21,7 @@ import './modux-tilt.js';
 import './modux-figma.js';
 import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
-import { applyConnectionGesture, performDeleteGesture, type GestureHost } from './gestures.js';
+import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
@@ -1743,6 +1743,9 @@ export class ModuxEditor extends LitElement {
     return inverseOf(this.gestureHost(), c);
   }
 
+  /** Effects seen during the last gesture — the ArchiMate fallback reads them. */
+  private _gestureEffects = 0;
+
   private applyConnection(
     sourceId: string,
     targetId: string,
@@ -1750,7 +1753,31 @@ export class ModuxEditor extends LitElement {
     y?: number,
     connectKind?: string,
   ): void {
+    const before = this._gestureEffects;
+    const pickers = () =>
+      !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker);
+    const pickersBefore = pickers();
     applyConnectionGesture(this.gestureHost(), this._view, sourceId, targetId, x, y, connectKind);
+    // Nothing modux meant anything for this pair — no command, no picker, no
+    // notice: ArchiMate takes the last word (its eleven types apply to ANY pair).
+    if (
+      this._gestureEffects === before &&
+      pickers() === pickersBefore &&
+      connectKind === undefined &&
+      !this._activeJourneyId &&
+      sourceId !== targetId &&
+      ['context-map', 'aggregates', 'integrations'].includes(this._view)
+    ) {
+      const scene = this.sceneFor(this._view);
+      const onStage = (id: string) => scene.nodes.some((n) => n.id === id);
+      if (onStage(sourceId) && onStage(targetId)) {
+        this._connectPicker = {
+          x: x ?? this.clientWidth / 2,
+          y: y ?? 120,
+          options: archimateOptions(this.gestureHost(), sourceId, targetId),
+        };
+      }
+    }
   }
 
   private performDelete(elementType: string, id: string, kind: string): void {
@@ -1762,8 +1789,14 @@ export class ModuxEditor extends LitElement {
     return {
       model: this.model,
       activeJourneyId: this._activeJourneyId || undefined,
-      command: (c, pushUndo) => this.command(c, pushUndo),
-      emit: (name, detail) => this.emit(name, detail),
+      command: (c, pushUndo) => {
+        this._gestureEffects++;
+        this.command(c, pushUndo);
+      },
+      emit: (name, detail) => {
+        this._gestureEffects++;
+        this.emit(name, detail);
+      },
       sceneFor: (view) => this.sceneFor(view),
       owningProcessOf: (id) => this.owningProcessOf(id),
       owningUseCaseOf: (id) => this.owningUseCaseOf(id),
@@ -2332,6 +2365,29 @@ export class ModuxEditor extends LitElement {
     if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
       this._view = 'design';
       this._selectedId = e.detail.id;
+      return;
+    }
+    // Double-clicking an ArchiMate relation retypes it (same eleven, in place).
+    if (e.detail.elementType === 'edge' && e.detail.kind === 'archimate-relation') {
+      const relId = (e.detail.id as string).replace(/^archi:/, '');
+      const rel = (this.model.archimateRelations ?? []).find((r) => r.id === relId);
+      if (rel) {
+        this._connectPicker = {
+          x: e.detail.x ?? this.clientWidth / 2,
+          y: e.detail.y ?? 120,
+          options: archimateOptions(this.gestureHost(), rel.sourceId, rel.targetId).map((o) => ({
+            ...o,
+            label: o.id === `archimate:${rel.type}` ? `● ${o.label}` : o.label,
+            apply: () => {
+              this.command({
+                kind: 'set-archimate-relation-type',
+                id: relId,
+                type: o.id.replace(/^archimate:/, ''),
+              });
+            },
+          })),
+        };
+      }
       return;
     }
     // Double-clicking a relation's label edits its type rather than opening a CRUD.

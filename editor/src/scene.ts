@@ -157,6 +157,11 @@ export interface SceneEdge {
   color?: string;
   dashed?: boolean;
   arrow?: boolean;
+  /** Explicit marker names (ArchiMate notation) — override kind/arrow defaults. */
+  markerStart?: 'diamond' | 'diamond-hollow' | 'ball';
+  markerEnd?: 'arrow' | 'open-arrow' | 'hollow-triangle';
+  /** Explicit dash pattern (e.g. '2 3' dotted) — overrides the dashed flag. */
+  dashArray?: string;
   tooltip?: string;
   /** Faded to the background while an overlay (e.g. a journey) has the stage. */
   dim?: boolean;
