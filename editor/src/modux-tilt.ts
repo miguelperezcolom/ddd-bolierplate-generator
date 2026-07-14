@@ -207,6 +207,16 @@ export class ModuxTilt extends LitElement {
       border: 1.5px solid #ffffff;
       cursor: crosshair;
     }
+    /* An area: pure graphics — a dashed pane lying on the floor, untouchable. */
+    .area3 {
+      position: absolute;
+      box-sizing: border-box;
+      border: 1.6px dashed #94a3b8;
+      border-radius: 10px;
+      background: rgba(148, 163, 184, 0.14);
+      transform: translateZ(0.6px);
+      pointer-events: none;
+    }
     .rubber {
       position: absolute;
       inset: 0;
@@ -849,6 +859,15 @@ export class ModuxTilt extends LitElement {
                 <div class="journey-fx3" data-fx="end" style="display: none"></div>`
             : ''}
           ${nodes.map((n) => {
+            if (n.kind === 'area') {
+              // Not a component: no plate, no label, no shadow, no pointer — just the frame.
+              return html`<div
+                class="area3"
+                title=${n.tooltip ?? ''}
+                style="left: ${lx(n) - n.w / 2}px; top: ${ly(n) - n.h / 2}px;
+                       width: ${n.w}px; height: ${n.h}px; opacity: ${n.dim ? 0.25 : 1};"
+              ></div>`;
+            }
             const d = depth.get(n.id) ?? 0;
             const isPlate = n.container || d === 0;
             const hovered = this._hoverTargetId === n.id;

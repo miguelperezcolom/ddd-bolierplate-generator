@@ -340,6 +340,9 @@ export class ModuxExplorer extends LitElement {
   private prevByKey = new Map<string, XNode>();
   /** Cross-relations by model id (symmetric) — the faint threads on hover. */
   private related = new Map<string, Set<string>>();
+
+  /** Painted centre of each area's region this frame — where its note threads anchor. */
+  private areaHulls = new Map<string, { x: number; y: number }>();
   /** Every node in the tree, expanded or not — the search space. */
   private allNodes: XNode[] = [];
   /** Camera flight towards a found node (re-aims every frame: nodes move). */
@@ -713,7 +716,9 @@ export class ModuxExplorer extends LitElement {
     const mk = (kind: string, id: string, label: string) => this.makeNode(kind, id, label, d, n);
     if (this.scene) {
       // Scene mode: containment comes straight from the view (parentId chains).
+      // Areas never enter the tree — they are graphics, not components (drawAreas paints them).
       return this.scene.nodes
+        .filter((sn) => sn.kind !== 'area')
         .filter((sn) => (n.kind === 'root' ? !sn.parentId : sn.parentId === n.refId))
         .map((sn) => {
           const node = mk(sn.kind || 'node', sn.id, sn.label);
@@ -1017,6 +1022,8 @@ export class ModuxExplorer extends LitElement {
     ctx.translate(this.cam.x, this.cam.y);
     ctx.scale(this.cam.k, this.cam.k);
 
+    this.drawAreas(ctx, nodes);
+
     ctx.lineWidth = 1.3 / this.cam.k;
     for (const n of nodes) {
       if (!n.parent) continue;
@@ -1198,10 +1205,57 @@ export class ModuxExplorer extends LitElement {
   }
 
   /**
+   * Areas are pure graphics — no tree node, no physics. Each one paints as a dashed
+   * region hugging the LIVE positions of the members its canvas rectangle contains
+   * (geometric membership, read straight off the scene boxes). The region's centre
+   * doubles as the anchor for note threads pointing at the area.
+   */
+  private drawAreas(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
+    this.areaHulls.clear();
+    const sceneNodes = this.scene?.nodes ?? [];
+    const areas = sceneNodes.filter((n) => n.kind === 'area');
+    if (!areas.length) return;
+    const k = this.cam.k;
+    ctx.save();
+    ctx.setLineDash([5 / k, 4 / k]);
+    ctx.lineWidth = 1.4 / k;
+    for (const area of areas) {
+      const members = sceneNodes.filter(
+        (n) =>
+          n.kind !== 'area' &&
+          !n.parentId &&
+          n.x - n.w / 2 >= area.x - area.w / 2 &&
+          n.x + n.w / 2 <= area.x + area.w / 2 &&
+          n.y - n.h / 2 >= area.y - area.h / 2 &&
+          n.y + n.h / 2 <= area.y + area.h / 2,
+      );
+      const pts: { x: number; y: number; r: number }[] = [];
+      for (const m of members) {
+        const rep = this.visibleRepresentative(m.id, nodes);
+        if (rep) pts.push({ x: rep.x, y: rep.y, r: this.radiusOf(rep) + 16 });
+      }
+      if (!pts.length) continue;
+      const minX = Math.min(...pts.map((p) => p.x - p.r));
+      const maxX = Math.max(...pts.map((p) => p.x + p.r));
+      const minY = Math.min(...pts.map((p) => p.y - p.r));
+      const maxY = Math.max(...pts.map((p) => p.y + p.r));
+      this.areaHulls.set(area.id, { x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.09)';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.roundRect(minX, minY, maxX - minX, maxY - minY, 18 / k);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /**
    * The note's threads, always on: the note itself already rides the tree as one more
    * node (the scene brings it in), so here only the dashed amber lines to each visible
    * target are drawn — straight from the scene's note-link edges. Threads to RELATIONS
    * (edgeanchor targets) stay on the 2D/3D maps — the yugo doesn't draw those edges.
+   * A thread to an AREA anchors at its painted region's centre.
    */
   private drawNotes(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
     const links = (this.scene?.edges ?? []).filter((e) => e.kind === 'note-link');
@@ -1214,13 +1268,14 @@ export class ModuxExplorer extends LitElement {
     for (const link of links) {
       if (link.targetId.startsWith('edgeanchor:')) continue;
       const from = this.visibleRepresentative(link.sourceId, nodes);
-      const to = this.visibleRepresentative(link.targetId, nodes);
-      if (!from || !to || from === to) continue;
+      const toNode = this.visibleRepresentative(link.targetId, nodes);
+      const to = toNode ?? this.areaHulls.get(link.targetId);
+      if (!from || !to || toNode === from) continue;
       const dx = to.x - from.x;
       const dy = to.y - from.y;
       const len = Math.hypot(dx, dy) || 1;
       const r1 = this.radiusOf(from);
-      const r2 = this.radiusOf(to);
+      const r2 = toNode ? this.radiusOf(toNode) : 0;
       ctx.beginPath();
       ctx.moveTo(from.x + (dx / len) * r1, from.y + (dy / len) * r1);
       ctx.lineTo(to.x - (dx / len) * r2, to.y - (dy / len) * r2);

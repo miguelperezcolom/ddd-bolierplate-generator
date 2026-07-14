@@ -3966,17 +3966,6 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  /** Yugo and 3D read meaning, not geometry: the area frames (and their threads) stay behind. */
-  private sceneWithoutAreas(scene: Scene): Scene {
-    const areaIds = new Set(scene.nodes.filter((n) => n.kind === 'area').map((n) => n.id));
-    if (!areaIds.size) return scene;
-    return {
-      ...scene,
-      nodes: scene.nodes.filter((n) => !areaIds.has(n.id)),
-      edges: scene.edges.filter((e) => !areaIds.has(e.sourceId) && !areaIds.has(e.targetId)),
-    };
-  }
-
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */
   private fitInsets(): { left: number } {
     const paletteVisible =
@@ -4612,7 +4601,7 @@ export class ModuxEditor extends LitElement {
         : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
-            .scene=${this.sceneWithoutAreas(this.sceneFor(this._view))}
+            .scene=${this.sceneFor(this._view)}
             .journey=${this.activeJourneyForSurface()}
             .sceneKey=${`${this._view}:${this._detail}`}
             ?shifted=${this._paletteOpen}
@@ -4678,7 +4667,7 @@ export class ModuxEditor extends LitElement {
       <modux-tilt
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
-            .scene=${this.sceneWithoutAreas(scene)}
+            .scene=${scene}
             .selectedId=${this._selectedId}
             .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
             @connect-requested=${this.onConnectRequested}
