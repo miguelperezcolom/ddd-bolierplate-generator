@@ -52,6 +52,7 @@ const KIND_COLOR: Record<string, string> = {
   root: '#334155',
   boundedContext: '#0369a1',
   group: '#6366f1',
+  note: '#ca8a04',
   'external-system': '#9333ea',
   'ui-app': '#16a34a',
   page: '#22c55e',
@@ -1033,7 +1034,7 @@ export class ModuxExplorer extends LitElement {
       const r = this.radiusOf(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = n.expanded ? n.color + '22' : '#ffffff';
+      ctx.fillStyle = n.kind === 'note' ? '#fef9c3' : n.expanded ? n.color + '22' : '#ffffff';
       ctx.fill();
       ctx.lineWidth = (n === this.hover ? 2.6 : 1.8) / this.cam.k;
       ctx.strokeStyle = n.color;
@@ -1114,6 +1115,7 @@ export class ModuxExplorer extends LitElement {
       }
     }
     ctx.globalAlpha = 1;
+    this.drawNotes(ctx, nodes);
     if (this.journey) this.drawJourney(ctx, nodes);
     if (this._threads) {
       for (const n of nodes) this.drawThreads(ctx, n, nodes);
@@ -1193,6 +1195,38 @@ export class ModuxExplorer extends LitElement {
       if (b) touched.add(b.refId);
     }
     return touched;
+  }
+
+  /**
+   * The note's threads, always on: the note itself already rides the tree as one more
+   * node (the scene brings it in), so here only the dashed amber lines to each visible
+   * target are drawn — straight from the scene's note-link edges. Threads to RELATIONS
+   * (edgeanchor targets) stay on the 2D/3D maps — the yugo doesn't draw those edges.
+   */
+  private drawNotes(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
+    const links = (this.scene?.edges ?? []).filter((e) => e.kind === 'note-link');
+    if (!links.length) return;
+    const k = this.cam.k;
+    ctx.save();
+    ctx.setLineDash([4 / k, 3 / k]);
+    ctx.strokeStyle = 'rgba(202, 138, 4, 0.75)';
+    ctx.lineWidth = 1.4 / k;
+    for (const link of links) {
+      if (link.targetId.startsWith('edgeanchor:')) continue;
+      const from = this.visibleRepresentative(link.sourceId, nodes);
+      const to = this.visibleRepresentative(link.targetId, nodes);
+      if (!from || !to || from === to) continue;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const r1 = this.radiusOf(from);
+      const r2 = this.radiusOf(to);
+      ctx.beginPath();
+      ctx.moveTo(from.x + (dx / len) * r1, from.y + (dy / len) * r1);
+      ctx.lineTo(to.x - (dx / len) * r2, to.y - (dy / len) * r2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   private visibleRepresentative(refId: string, nodes: XNode[]): XNode | null {
@@ -1439,6 +1473,18 @@ export class ModuxExplorer extends LitElement {
     ctx.lineJoin = 'round';
     ctx.beginPath();
     switch (n.kind) {
+      case 'note': // a post-it with its folded corner
+        ctx.moveTo(x - s * 0.8, y - s * 0.9);
+        ctx.lineTo(x + s * 0.8, y - s * 0.9);
+        ctx.lineTo(x + s * 0.8, y + s * 0.3);
+        ctx.lineTo(x + s * 0.2, y + s * 0.9);
+        ctx.lineTo(x - s * 0.8, y + s * 0.9);
+        ctx.closePath();
+        ctx.moveTo(x + s * 0.8, y + s * 0.3);
+        ctx.lineTo(x + s * 0.2, y + s * 0.3);
+        ctx.lineTo(x + s * 0.2, y + s * 0.9);
+        ctx.stroke();
+        break;
       case 'group': {
         // a cluster in brackets: three dots between two arcs
         ctx.arc(x - s * 0.45, y, s * 0.16, 0, Math.PI * 2);

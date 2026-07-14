@@ -1354,7 +1354,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'api' ||
             node.kind === 'api-impl' ||
             node.kind === 'proxy-api'
-          : node.kind === 'model' ||
+          : node.kind === 'note' ||
+            node.kind === 'model' ||
             node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
             node.kind === 'external-system' ||
@@ -1379,7 +1380,9 @@ export class ModuxCanvas extends LitElement {
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
                   <title>${!isChild
-                    ? node.kind === 'actor'
+                    ? node.kind === 'note'
+                      ? 'Arrastra hasta cualquier elemento o relación: la nota quedará atada con un hilo'
+                    : node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
                       : node.kind === 'ai-agent'
                         ? 'Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG'

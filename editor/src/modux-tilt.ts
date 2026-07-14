@@ -1,6 +1,6 @@
 import { LitElement, html, css, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Scene, SceneNode } from './scene.js';
+import type { Scene, SceneEdge, SceneNode } from './scene.js';
 
 /**
  * The Firefox-Tilt view of a diagram: the SAME Scene every view adapter already
@@ -706,6 +706,33 @@ export class ModuxTilt extends LitElement {
     el.style.transform = `translateZ(${z}px)`;
   }
 
+  /**
+   * The virtual endpoint for a note thread that targets a RELATION: a node-shaped point
+   * at the host edge's midpoint, lifted to the average of its endpoints' storeys.
+   */
+  private edgeAnchorOf(
+    e: SceneEdge,
+    byId: Map<string, SceneNode>,
+  ): (SceneNode & { z: number }) | null {
+    if (!e.targetId.startsWith('edgeanchor:')) return null;
+    const host = this.scene.edges.find((h) => h.id === e.targetId.slice('edgeanchor:'.length));
+    const hs = host ? byId.get(host.sourceId) : undefined;
+    const ht = host ? byId.get(host.targetId) : undefined;
+    if (!hs || !ht) return null;
+    const depth = this.depths();
+    const z = (((depth.get(hs.id) ?? 0) + (depth.get(ht.id) ?? 0)) / 2) * 30 + 2;
+    return {
+      id: '',
+      label: '',
+      kind: 'edge-anchor',
+      x: (hs.x + ht.x) / 2,
+      y: (hs.y + ht.y) / 2,
+      w: 0,
+      h: 0,
+      z,
+    };
+  }
+
   /** Containment depth: how many parents above the node (0 = floor plate). */
   private depths(): Map<string, number> {
     const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
@@ -763,7 +790,7 @@ export class ModuxTilt extends LitElement {
           >
             ${this.scene.edges.map((e) => {
               const s = byId.get(e.sourceId);
-              const t = byId.get(e.targetId);
+              const t = byId.get(e.targetId) ?? this.edgeAnchorOf(e, byId);
               if (!s || !t) return '';
               // Faint shadow on the floor: the depth cue under the real 3D line.
               return svg`<line
@@ -773,12 +800,15 @@ export class ModuxTilt extends LitElement {
           </svg>
           ${this.scene.edges.map((e) => {
             const s = byId.get(e.sourceId);
-            const t = byId.get(e.targetId);
+            // A note thread may target a RELATION: anchor at that edge's midpoint.
+            const t = byId.get(e.targetId) ?? this.edgeAnchorOf(e, byId);
             if (!s || !t) return '';
             // A 3D segment between the two plates: rotateZ sets the bearing on
             // the XY plane, rotateY lifts the far end to the target's storey.
             const z1 = (depth.get(s.id) ?? 0) * STOREY + 2;
-            const z2 = (depth.get(t.id) ?? 0) * STOREY + 2;
+            const z2 = t.id
+              ? (depth.get(t.id) ?? 0) * STOREY + 2
+              : (t as unknown as { z: number }).z;
             const dx = lx(t) - lx(s);
             const dy = ly(t) - ly(s);
             const dz = z2 - z1;

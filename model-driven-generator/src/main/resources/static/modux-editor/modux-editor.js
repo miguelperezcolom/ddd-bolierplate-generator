@@ -5326,7 +5326,7 @@ let be = class extends Ke {
                   font-family="ui-sans-serif, system-ui" fill="#1e293b">${e.label}</text>`}
         ${a ? te`<line x1=${-p + 8} y1=${-y + 28} x2=${p - 8} y2=${-y + 28}
                 stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>` : ""}
-        ${i && this.connectable && (r ? e.kind === "menu-item" || e.kind === "menu-group" || e.kind === "wizard-step-row" || e.kind === "etl-flow" || e.kind === "scheduled-trigger" || e.kind === "aggregate" || e.kind === "domain-service" || e.kind === "use-case" || e.kind === "domain-event" || e.kind === "application-event" || e.kind === "external-use-case" || e.kind === "external-system" || e.kind === "external-table" || e.kind === "api-operation" || e.kind === "api-op-occurrence" || e.kind === "api" || e.kind === "api-impl" || e.kind === "proxy-api" : e.kind === "model" || e.kind === "identity-provider" || e.kind === "etl-flow" || e.kind === "external-system" || e.kind === "actor" || e.kind === "ai-agent" || e.kind === "rag" || e.kind === "mcp-gateway" || e.kind === "api" || e.kind === "proxy-api" || e.kind === "workflow" || e.kind === "workflow-step" || e.kind === "page" || e.kind === "menu-item") ? [
+        ${i && this.connectable && (r ? e.kind === "menu-item" || e.kind === "menu-group" || e.kind === "wizard-step-row" || e.kind === "etl-flow" || e.kind === "scheduled-trigger" || e.kind === "aggregate" || e.kind === "domain-service" || e.kind === "use-case" || e.kind === "domain-event" || e.kind === "application-event" || e.kind === "external-use-case" || e.kind === "external-system" || e.kind === "external-table" || e.kind === "api-operation" || e.kind === "api-op-occurrence" || e.kind === "api" || e.kind === "api-impl" || e.kind === "proxy-api" : e.kind === "note" || e.kind === "model" || e.kind === "identity-provider" || e.kind === "etl-flow" || e.kind === "external-system" || e.kind === "actor" || e.kind === "ai-agent" || e.kind === "rag" || e.kind === "mcp-gateway" || e.kind === "api" || e.kind === "proxy-api" || e.kind === "workflow" || e.kind === "workflow-step" || e.kind === "page" || e.kind === "menu-item") ? [
       [p, 0],
       [-p, 0],
       [0, y],
@@ -5336,7 +5336,7 @@ let be = class extends Ke {
                 <circle data-handle cx=${l} cy=${h} r="6" fill="#2563eb" stroke="#ffffff"
                         stroke-width="1.5"
                         @pointerdown=${(w) => this.onHandlePointerDown(w, e)}>
-                  <title>${r ? e.kind === "api" ? "Arrastra hasta otro sistema externo: la API se moverá a ese publicador" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o a otro sistema externo para moverlo" : e.kind === "domain-event" || e.kind === "application-event" ? "Arrastra hasta otro contexto o un read model para materializarlo (flow)" : e.kind === "external-use-case" || e.kind === "external-table" ? "Arrastra hasta un read model o un contexto para proyectarlo (polling)" : e.kind === "api-operation" ? "Arrastra hasta el caso de uso, policy o contexto que la implementa" : e.kind === "api-op-occurrence" ? "Arrastra hasta la implementación que sirve esta operación (la API publicada o la de un bounded context)" : e.kind === "use-case" ? "Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo" : "Arrastra hasta un evento de dominio para declarar que lo emite" : e.kind === "actor" ? "Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)" : e.kind === "ai-agent" ? "Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG" : e.kind === "mcp-gateway" ? "Arrastra hasta lo que expone: un servidor MCP, una API, una operación, un caso de uso o un RAG" : e.kind === "rag" ? "Arrastra hasta un read model: el RAG indexará su contenido" : e.kind === "workflow-step" ? "Arrastra hasta otro paso: el destino esperará a que éste complete" : e.kind === "external-system" ? "Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo, una API o un proxy (dependencia)" : e.kind === "api" ? "Arrastra hasta el sistema externo que la publica: la API se anida en él" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja" : e.kind === "workflow" ? "Arrastra hasta un caso de uso: el workflow lo orquestará como un paso" : "Arrastra hasta otro nodo para crear una relación"}</title>
+                  <title>${r ? e.kind === "api" ? "Arrastra hasta otro sistema externo: la API se moverá a ese publicador" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o a otro sistema externo para moverlo" : e.kind === "domain-event" || e.kind === "application-event" ? "Arrastra hasta otro contexto o un read model para materializarlo (flow)" : e.kind === "external-use-case" || e.kind === "external-table" ? "Arrastra hasta un read model o un contexto para proyectarlo (polling)" : e.kind === "api-operation" ? "Arrastra hasta el caso de uso, policy o contexto que la implementa" : e.kind === "api-op-occurrence" ? "Arrastra hasta la implementación que sirve esta operación (la API publicada o la de un bounded context)" : e.kind === "use-case" ? "Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo" : "Arrastra hasta un evento de dominio para declarar que lo emite" : e.kind === "note" ? "Arrastra hasta cualquier elemento o relación: la nota quedará atada con un hilo" : e.kind === "actor" ? "Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)" : e.kind === "ai-agent" ? "Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG" : e.kind === "mcp-gateway" ? "Arrastra hasta lo que expone: un servidor MCP, una API, una operación, un caso de uso o un RAG" : e.kind === "rag" ? "Arrastra hasta un read model: el RAG indexará su contenido" : e.kind === "workflow-step" ? "Arrastra hasta otro paso: el destino esperará a que éste complete" : e.kind === "external-system" ? "Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo, una API o un proxy (dependencia)" : e.kind === "api" ? "Arrastra hasta el sistema externo que la publica: la API se anida en él" : e.kind === "proxy-api" ? "Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja" : e.kind === "workflow" ? "Arrastra hasta un caso de uso: el workflow lo orquestará como un paso" : "Arrastra hasta otro nodo para crear una relación"}</title>
                 </circle>`
     ) : ""}
         ${i && this.connectable && ((d = e.extraHandles) != null && d.length) ? e.extraHandles.map(
@@ -7788,6 +7788,26 @@ let Me = class extends Ke {
     const W = h[R], v = Math.min(1, N / (m[l][R] || 1)), S = W.s.x + (W.tgt.x - W.s.x) * v, G = W.s.y + (W.tgt.y - W.s.y) * v, ae = s(W.s.id) + (s(W.tgt.id) - s(W.s.id)) * v;
     t.style.display = "block", t.style.left = `${S}px`, t.style.top = `${G}px`, t.style.transform = `translateZ(${ae}px)`;
   }
+  /**
+   * The virtual endpoint for a note thread that targets a RELATION: a node-shaped point
+   * at the host edge's midpoint, lifted to the average of its endpoints' storeys.
+   */
+  edgeAnchorOf(e, t) {
+    if (!e.targetId.startsWith("edgeanchor:")) return null;
+    const n = this.scene.edges.find((c) => c.id === e.targetId.slice(11)), i = n ? t.get(n.sourceId) : void 0, o = n ? t.get(n.targetId) : void 0;
+    if (!i || !o) return null;
+    const a = this.depths(), r = ((a.get(i.id) ?? 0) + (a.get(o.id) ?? 0)) / 2 * 30 + 2;
+    return {
+      id: "",
+      label: "",
+      kind: "edge-anchor",
+      x: (i.x + o.x) / 2,
+      y: (i.y + o.y) / 2,
+      w: 0,
+      h: 0,
+      z: r
+    };
+  }
   /** Containment depth: how many parents above the node (0 = floor plate). */
   depths() {
     const e = new Map(this.scene.nodes.map((i) => [i.id, i])), t = /* @__PURE__ */ new Map(), n = (i) => {
@@ -7820,16 +7840,16 @@ let Me = class extends Ke {
             viewBox="${i} ${a} ${o - i} ${r - a}"
           >
             ${this.scene.edges.map((l) => {
-      const h = n.get(l.sourceId), w = n.get(l.targetId);
+      const h = n.get(l.sourceId), w = n.get(l.targetId) ?? this.edgeAnchorOf(l, n);
       return !h || !w ? "" : te`<line
                 x1=${b(h)} y1=${d(h)} x2=${b(w)} y2=${d(w)}
                 stroke="#000000" stroke-width="2" opacity=${l.dim ? 0.05 : 0.22} />`;
     })}
           </svg>
           ${this.scene.edges.map((l) => {
-      const h = n.get(l.sourceId), w = n.get(l.targetId);
+      const h = n.get(l.sourceId), w = n.get(l.targetId) ?? this.edgeAnchorOf(l, n);
       if (!h || !w) return "";
-      const x = (t.get(h.id) ?? 0) * m + 2, _ = (t.get(w.id) ?? 0) * m + 2, O = b(w) - b(h), N = d(w) - d(h), R = _ - x, W = Math.hypot(O, N), v = Math.hypot(W, R), S = Math.atan2(N, O) * 180 / Math.PI, G = Math.atan2(R, W) * 180 / Math.PI, ae = l.color ?? "#64748b", V = l.dashed ? `repeating-linear-gradient(90deg, ${ae} 0 6px, transparent 6px 10px)` : ae, I = l.kind === "journey";
+      const x = (t.get(h.id) ?? 0) * m + 2, _ = w.id ? (t.get(w.id) ?? 0) * m + 2 : w.z, O = b(w) - b(h), N = d(w) - d(h), R = _ - x, W = Math.hypot(O, N), v = Math.hypot(W, R), S = Math.atan2(N, O) * 180 / Math.PI, G = Math.atan2(R, W) * 180 / Math.PI, ae = l.color ?? "#64748b", V = l.dashed ? `repeating-linear-gradient(90deg, ${ae} 0 6px, transparent 6px 10px)` : ae, I = l.kind === "journey";
       return M`<div
               class="edge3 ${I ? "journey3" : ""}"
               style="
@@ -9879,6 +9899,7 @@ const Kc = {
   root: "#334155",
   boundedContext: "#0369a1",
   group: "#6366f1",
+  note: "#ca8a04",
   "external-system": "#9333ea",
   "ui-app": "#16a34a",
   page: "#22c55e",
@@ -10372,7 +10393,7 @@ let ge = class extends Ke {
     for (const s of e) {
       o && (t.globalAlpha = o.has(s.refId) ? 1 : 0.22);
       const p = this.radiusOf(s);
-      t.beginPath(), t.arc(s.x, s.y, p, 0, Math.PI * 2), t.fillStyle = s.expanded ? s.color + "22" : "#ffffff", t.fill(), t.lineWidth = (s === this.hover ? 2.6 : 1.8) / this.cam.k, t.strokeStyle = s.color, t.stroke(), this.drawGlyph(t, s, p);
+      t.beginPath(), t.arc(s.x, s.y, p, 0, Math.PI * 2), t.fillStyle = s.kind === "note" ? "#fef9c3" : s.expanded ? s.color + "22" : "#ffffff", t.fill(), t.lineWidth = (s === this.hover ? 2.6 : 1.8) / this.cam.k, t.strokeStyle = s.color, t.stroke(), this.drawGlyph(t, s, p);
       const y = ((r = s.children) == null ? void 0 : r.length) ?? 0;
       if (!s.expanded && y > 0) {
         const m = Math.max(7, p * 0.42), f = s.x + p * 0.75, b = s.y + p * 0.75;
@@ -10402,7 +10423,7 @@ let ge = class extends Ke {
         const y = this.reducedMotion ? 0 : Math.sin(this.t * 5) * 3;
         t.beginPath(), t.arc(s.x, s.y, this.radiusOf(s) + 9 + y, 0, Math.PI * 2), t.stroke(), t.globalAlpha *= 0.4, t.beginPath(), t.arc(s.x, s.y, this.radiusOf(s) + 18 + y * 1.4, 0, Math.PI * 2), t.stroke(), t.restore();
       }
-    if (t.globalAlpha = 1, this.journey && this.drawJourney(t, e), this._threads)
+    if (t.globalAlpha = 1, this.drawNotes(t, e), this.journey && this.drawJourney(t, e), this._threads)
       for (const s of e) this.drawThreads(t, s, e);
     else this.hover && this.drawThreads(t, this.hover, e);
     if (this.hover && !this.hover.expanded && ((c = this.hover.children) != null && c.length) && this.drawGhosts(t, this.hover), this.linking) {
@@ -10443,6 +10464,27 @@ let ge = class extends Ke {
       i && t.add(i.refId), o && t.add(o.refId);
     }
     return t;
+  }
+  /**
+   * The note's threads, always on: the note itself already rides the tree as one more
+   * node (the scene brings it in), so here only the dashed amber lines to each visible
+   * target are drawn — straight from the scene's note-link edges. Threads to RELATIONS
+   * (edgeanchor targets) stay on the 2D/3D maps — the yugo doesn't draw those edges.
+   */
+  drawNotes(e, t) {
+    var o;
+    const n = (((o = this.scene) == null ? void 0 : o.edges) ?? []).filter((a) => a.kind === "note-link");
+    if (!n.length) return;
+    const i = this.cam.k;
+    e.save(), e.setLineDash([4 / i, 3 / i]), e.strokeStyle = "rgba(202, 138, 4, 0.75)", e.lineWidth = 1.4 / i;
+    for (const a of n) {
+      if (a.targetId.startsWith("edgeanchor:")) continue;
+      const r = this.visibleRepresentative(a.sourceId, t), c = this.visibleRepresentative(a.targetId, t);
+      if (!r || !c || r === c) continue;
+      const s = c.x - r.x, p = c.y - r.y, y = Math.hypot(s, p) || 1, g = this.radiusOf(r), m = this.radiusOf(c);
+      e.beginPath(), e.moveTo(r.x + s / y * g, r.y + p / y * g), e.lineTo(c.x - s / y * m, c.y - p / y * m), e.stroke();
+    }
+    e.restore();
   }
   visibleRepresentative(e, t) {
     var o;
@@ -10549,6 +10591,9 @@ let ge = class extends Ke {
     if (i < 3.2) return;
     const { x: o, y: a } = t;
     switch (e.save(), e.strokeStyle = t.color, e.fillStyle = t.color, e.lineWidth = Math.max(1, i * 0.22), e.lineCap = "round", e.lineJoin = "round", e.beginPath(), t.kind) {
+      case "note":
+        e.moveTo(o - i * 0.8, a - i * 0.9), e.lineTo(o + i * 0.8, a - i * 0.9), e.lineTo(o + i * 0.8, a + i * 0.3), e.lineTo(o + i * 0.2, a + i * 0.9), e.lineTo(o - i * 0.8, a + i * 0.9), e.closePath(), e.moveTo(o + i * 0.8, a + i * 0.3), e.lineTo(o + i * 0.2, a + i * 0.3), e.lineTo(o + i * 0.2, a + i * 0.9), e.stroke();
+        break;
       case "group": {
         e.arc(o - i * 0.45, a, i * 0.16, 0, Math.PI * 2), e.moveTo(o + i * 0.16, a), e.arc(o, a, i * 0.16, 0, Math.PI * 2), e.moveTo(o + i * 0.61, a), e.arc(o + i * 0.45, a, i * 0.16, 0, Math.PI * 2), e.fill(), e.beginPath(), e.arc(o, a, i, -Math.PI * 0.35, Math.PI * 0.35), e.moveTo(o - i * Math.cos(Math.PI * 0.35), a + i * Math.sin(Math.PI * 0.35)), e.arc(o, a, i, Math.PI * 0.65, Math.PI * 1.35), e.stroke();
         break;
