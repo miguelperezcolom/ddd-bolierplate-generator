@@ -2,14 +2,11 @@ package io.mateu.modux.modeldrivengenerator.infra.in.ui;
 
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.menu.*;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.editor.GraphicalEditorPage;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.modelhealth.CleanModelPage;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.modelhealth.ModelHealthPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.ModelContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.ProjectContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryContextSelector;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.repository.RepositoryCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.specsearch.SpecSearchCrudOrchestrator;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workspace.WorkspaceCrudOrchestrator;
 import io.mateu.uidl.annotations.App;
 import io.mateu.uidl.annotations.AppContext;
 import io.mateu.uidl.annotations.AI;
@@ -39,9 +36,6 @@ public class ModelDrivenGeneratorHome {
     ModelContextSelector model;
 
     @Menu
-    WorkspaceCrudOrchestrator workspace;
-
-    @Menu
     RepositoryCrudOrchestrator repositories;
 
     @Menu
@@ -51,12 +45,9 @@ public class ModelDrivenGeneratorHome {
     GraphicalEditorPage graphicalEditor;
 
     @Menu
-    ModelHealthPage modelHealth;
-
-    @Menu
-    CleanModelPage limpiarModelo;
-
-    @Menu
     ModelMenu modelo;
+
+    @Menu
+    ToolsMenu tools;
 
 }

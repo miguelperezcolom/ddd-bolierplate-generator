@@ -30,7 +30,6 @@ export default defineConfig({
 					label: 'User Manual',
 					items: [
 						{ label: 'Overview', slug: 'manual/overview' },
-						{ label: 'Workspace', slug: 'manual/workspace' },
 						{ label: 'Search', slug: 'manual/search' },
 						{ label: 'Graphical Editor', slug: 'manual/graphical-editor' },
 						{ label: 'Projects', slug: 'manual/projects' },

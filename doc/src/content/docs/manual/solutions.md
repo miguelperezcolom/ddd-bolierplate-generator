@@ -83,7 +83,7 @@ Modux **never touches remotes**: no fetch, no pull, no push, no rebase.
 The store repo is a perfectly normal git repository — everything modux does not do
 is yours to do with plain git, from the store folder:
 
-- **Where it lives** — for a `LOCAL` [repository](/manual/workspace/) the repo is the
+- **Where it lives** — for a `LOCAL` repository the repo is the
   folder itself; for a `GIT` repository it is the clone under
   `~/.modux/checkouts/<id>`. Point local folders **outside** your code repository —
   the store deserves its own repo (nesting it inside another git repo creates a
