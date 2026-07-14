@@ -29,8 +29,15 @@ export interface GestureHost {
   } | null;
   newMenuItemId(label: string): string;
   openExtDepPicker(p: { sourceId: string; targetId: string; x: number; y: number }): void;
+  /** Two bounded contexts: the strategic relation needs its TYPE — ask at the drop point. */
+  openRelationPicker(p: {
+    sourceId: string;
+    targetId: string;
+    mode: 'create' | 'edit';
+    x: number;
+    y: number;
+  }): void;
   /** The relation type armed from the palette: the next trace applies exactly it. */
-  readonly armedRelation?: string | null;
   /** The magic connector's question: several typed meanings fit — pick one. */
   openConnectPicker(p: {
     x: number;
@@ -43,7 +50,8 @@ export interface GestureHost {
 }
 
 /** The relation palette (Archi style): pick a type, trace, done. */
-export const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
+/** The typed relation vocabulary the traced line offers when several fit. */
+const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'uc-call', label: 'Invocación', hint: 'Caso de uso → caso de uso: lo invoca como un paso' },
   { id: 'query-call', label: 'Consulta', hint: 'Caso de uso → query service: lo consulta' },
   { id: 'aggregate-call', label: 'Opera sobre', hint: 'Caso de uso → agregado: opera sobre él' },
@@ -759,21 +767,11 @@ export function applyConnectionGesture(
       return;
     }
     if (view !== 'context-map') return;
-    // The relation vocabulary, Archi style: an armed palette type applies exactly
-    // itself; the magic connector asks when SEVERAL typed meanings fit. The
-    // classic resolver keeps the unambiguous rest (sentinel: '__classic').
+    // The relation vocabulary: a traced line asks when SEVERAL typed meanings
+    // fit — draw first, decide after. The classic resolver keeps the unambiguous
+    // rest (sentinel: '__classic').
     if (connectKind !== '__classic' && connectKind === undefined) {
       const typed = connectionOptions(host, sourceId, targetId);
-      if (host.armedRelation) {
-        const armed = typed.find((o) => o.id === host.armedRelation);
-        if (armed) armed.apply();
-        else {
-          host.emit('modux-notice', {
-            message: 'Esa relación no aplica entre estos dos elementos',
-          });
-        }
-        return;
-      }
       if (typed.length > 1) {
         host.openConnectPicker({ x: x ?? 0, y: y ?? 0, options: typed });
         return;
@@ -1667,8 +1665,22 @@ export function applyConnectionGesture(
     }
     if (relationExternalIds.has(targetId)) return;
     if (actorIds.has(targetId)) return;
-    // Strategic relations are 100% derived from the concrete dependencies —
-    // there is nothing left to hand-draw between two contexts.
+    // Two bounded contexts: the derived relation carries the mechanics, but the
+    // TYPE is an annotation — the traced line asks for it (or retypes a declared one).
+    const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
+    if (!host.activeJourneyId && isCtx(sourceId) && isCtx(targetId) && sourceId !== targetId) {
+      const declared = host.model.relations.find(
+        (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
+      );
+      host.openRelationPicker({
+        sourceId,
+        targetId,
+        mode: declared ? 'edit' : 'create',
+        x: x ?? 0,
+        y: y ?? 0,
+      });
+      return;
+    }
     void x;
     void y;
 }

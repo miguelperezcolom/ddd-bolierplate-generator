@@ -66,15 +66,13 @@ person / gear (human / automated steps), double circle (events), return arrow
   **vertical tabs on its right edge**: **Nuevos** (every creatable type — drag a
   new element onto the canvas, or onto its owner for child kinds: an aggregate
   onto its context, an operation onto its API, a step onto its workflow or use
-  case), **Relaciones** (on the map, distribution and integrations: **click arms
-  a relation type** — Invocación, Emisión, Flow, Dependencia, Herramienta IA… —
-  and the next line you trace applies exactly it, one-shot, Esc cancels; if the
-  pair does not admit it, a toast says so and nothing changes) and **Catálogo**
-  (every EXISTING element of the model, grouped by kind: drop one on empty canvas
-  to place it, or on a node to connect them — the same gesture vocabulary as the
-  handles). **Without an armed type, the trace is the magic connector**: when the
-  pair admits several typed meanings it asks at the drop point («¿Qué relación es
-  esta línea?»); the unambiguous rest resolves as always. The specialized views without a palette keep their
+  case) and **Catálogo** (every EXISTING element of the model, grouped by kind:
+  drop one on empty canvas to place it, or on a node to connect them — the same
+  gesture vocabulary as the handles). **Relations are never picked first**: you
+  trace the line and, if the pair admits several typed meanings, it asks at the
+  drop point («¿Qué relación es esta línea?»); between two bounded contexts it
+  asks for the **DDD pattern** (or retypes a declared one); the unambiguous rest
+  resolves as always. The specialized views without a palette keep their
   toolbar creation: aggregates (with owner
   bounded context, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert

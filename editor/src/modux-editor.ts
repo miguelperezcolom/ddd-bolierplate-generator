@@ -21,7 +21,7 @@ import './modux-tilt.js';
 import './modux-figma.js';
 import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
-import { applyConnectionGesture, performDeleteGesture, RELATION_TYPES as CONNECT_RELATION_TYPES, type GestureHost } from './gestures.js';
+import { applyConnectionGesture, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
@@ -356,7 +356,7 @@ export class ModuxEditor extends LitElement {
   @state() private _branchCondEditor: { gatewayId: string; targetId: string; value: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
-  @state() private _paletteTab: 'new' | 'relations' | 'catalog' = 'new';
+  @state() private _paletteTab: 'new' | 'catalog' = 'new';
   /** The selected content node on the Diseño surface (one across every frame). */
   @state() private _selectedCmp: { pageId: string; componentId: string } | null = null;
   /** Ctrl+C on a node: its subtree, deep-copied, pasteable on any frame. */
@@ -390,8 +390,6 @@ export class ModuxEditor extends LitElement {
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
 
-  /** Relation type armed from the palette: the next trace applies exactly it. */
-  @state() private _armedRelation: string | null = null;
 
   /** The magic connector's question, at the drop point. */
   @state() private _connectPicker: {
@@ -511,12 +509,6 @@ export class ModuxEditor extends LitElement {
       font-weight: 600;
       color: #475569;
       margin: 8px 2px 2px;
-    }
-    .palette-item.armed {
-      border-color: #2563eb;
-      background: #eff6ff;
-      box-shadow: 0 0 0 1px #2563eb inset;
-      cursor: crosshair;
     }
     .palette-item {
       font-size: 12px;
@@ -938,7 +930,6 @@ export class ModuxEditor extends LitElement {
         break;
       case 'Escape':
         if (this._helpOpen) this._helpOpen = false;
-        if (this._armedRelation) this._armedRelation = null;
         if (this._connectPicker) this._connectPicker = null;
         break;
       default:
@@ -1663,8 +1654,6 @@ export class ModuxEditor extends LitElement {
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y, connectKind } = e.detail;
     this.applyConnection(sourceId, targetId, x, y, connectKind);
-    // The armed relation is one-shot: trace it and the magic connector returns.
-    if (this._armedRelation) this._armedRelation = null;
   }
 
   /** The whole gesture vocabulary, callable from drags AND from palette drops. */
@@ -1787,7 +1776,13 @@ export class ModuxEditor extends LitElement {
       openExtDepPicker: (p) => {
         this._extDepPicker = p;
       },
-      armedRelation: this._armedRelation,
+      openRelationPicker: (p) => {
+        this._relationPicker = {
+          ...p,
+          x: p.x || this.clientWidth / 2,
+          y: p.y || 120,
+        };
+      },
       openConnectPicker: (p) => {
         this._connectPicker = p;
       },
@@ -3894,13 +3889,7 @@ export class ModuxEditor extends LitElement {
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
-    const relationsAvailable = ['context-map', 'distribution', 'integrations'].includes(this._view);
-    const tab =
-      this._view === 'workflows'
-        ? 'new'
-        : this._paletteTab === 'relations' && !relationsAvailable
-          ? 'new'
-          : this._paletteTab;
+    const tab = this._view === 'workflows' ? 'new' : this._paletteTab;
     return html`
       <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? 'shifted' : ''}">
         <div class="palette-body">
@@ -3910,29 +3899,7 @@ export class ModuxEditor extends LitElement {
             .value=${this._paletteFilter}
             @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
           />
-          ${tab === 'relations'
-            ? html`
-                <div class="palette-h">Relaciones — arma y traza</div>
-                <div class="palette-g">Click arma el tipo; la siguiente línea será esa relación (Esc cancela). Sin armar, la línea pregunta cuando hay varias posibles.</div>
-                ${CONNECT_RELATION_TYPES.filter(
-                  (r) => !needle || r.label.toLowerCase().includes(needle),
-                ).map(
-                  (r) => html`
-                    <div
-                      class="palette-item ${this._armedRelation === r.id ? 'armed' : ''}"
-                      title="${r.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
-                      @click=${() =>
-                        (this._armedRelation = this._armedRelation === r.id ? null : r.id)}
-                    >
-                      <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === r.id ? '#2563eb' : '#64748b'}">
-                        ${SYMBOLS['flow']}
-                      </svg>
-                      <span class="pal-label">${r.label}</span>
-                    </div>
-                  `,
-                )}
-              `
-            : tab === 'new'
+          ${tab === 'new'
             ? html`
                 <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
                 ${PALETTE_GROUPS.map((g) => {
@@ -3999,18 +3966,6 @@ export class ModuxEditor extends LitElement {
                 >
                   Nuevos
                 </button>
-                ${relationsAvailable
-                  ? html`
-                      <button
-                        class="palette-vtab"
-                        ?data-active=${tab === 'relations'}
-                        title="Tipos de relación: arma uno y traza la línea"
-                        @click=${() => (this._paletteTab = 'relations')}
-                      >
-                        Relaciones
-                      </button>
-                    `
-                  : ''}
                 <button
                   class="palette-vtab"
                   ?data-active=${tab === 'catalog'}
@@ -4844,26 +4799,9 @@ export class ModuxEditor extends LitElement {
               }));
             }}
             @explorer-connect=${(e: CustomEvent<{ sourceId: string; targetId: string; x?: number; y?: number }>) => {
-              const { sourceId, targetId, x, y } = e.detail;
-              // Two bounded contexts: the strategic relation needs its TYPE — the
-              // picker opens at the drop point (create, or retype if declared).
-              const isBoundedContext = (id: string) => this.model.boundedContexts.some((mo) => mo.id === id);
-              if (this._view === 'context-map' && !this._activeJourneyId
-                  && isBoundedContext(sourceId) && isBoundedContext(targetId)) {
-                const declared = this.model.relations.find(
-                  (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
-                );
-                this._relationPicker = {
-                  sourceId,
-                  targetId,
-                  mode: declared ? 'edit' : 'create',
-                  x: x ?? this.clientWidth / 2,
-                  y: y ?? 120,
-                };
-                return;
-              }
-              // the lines mean whatever the ACTIVE view says they mean
-              this.applyConnection(sourceId, targetId, x, y);
+              // the lines mean whatever the ACTIVE view says they mean — including
+              // context⇆context, which asks the DDD type at the drop point
+              this.applyConnection(e.detail.sourceId, e.detail.targetId, e.detail.x, e.detail.y);
             }}
             @explorer-create-view=${(e: CustomEvent<{ name: string; members: { id: string; kind: string }[] }>) => {
               // Members are the VIEW-able kinds; finer elements ride along with
