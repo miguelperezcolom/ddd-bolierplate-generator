@@ -334,7 +334,7 @@ export class ModuxEditor extends LitElement {
   } | null = null;
   @state() private _selectedId: string | null = null;
   /** The drag-to-create / drag-to-place palette. */
-  @state() private _paletteOpen = false;
+  @state() private _paletteOpen = true;
   /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
   @state() private _yugo = true;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
@@ -356,7 +356,7 @@ export class ModuxEditor extends LitElement {
   @state() private _branchCondEditor: { gatewayId: string; targetId: string; value: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
-  @state() private _paletteTab: 'new' | 'catalog' = 'new';
+  @state() private _paletteTab: 'new' | 'relations' | 'catalog' = 'new';
   /** The selected content node on the Diseño surface (one across every frame). */
   @state() private _selectedCmp: { pageId: string; componentId: string } | null = null;
   /** Ctrl+C on a node: its subtree, deep-copied, pasteable on any frame. */
@@ -1546,8 +1546,8 @@ export class ModuxEditor extends LitElement {
   private onDiagramScopeChange(value: string): void {
     if (value.startsWith('view:')) {
       this._view = value.slice('view:'.length) as ViewId;
-      // Diagram surfaces are working surfaces: arriving opens the palette.
-      if (this._view === 'context-map' || this._view === 'distribution') this._paletteOpen = true;
+      // Every view is a working surface: arriving opens the palette.
+      this._paletteOpen = true;
     }
   }
 
@@ -3894,7 +3894,13 @@ export class ModuxEditor extends LitElement {
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
-    const tab = this._view === 'workflows' ? 'new' : this._paletteTab;
+    const relationsAvailable = ['context-map', 'distribution', 'integrations'].includes(this._view);
+    const tab =
+      this._view === 'workflows'
+        ? 'new'
+        : this._paletteTab === 'relations' && !relationsAvailable
+          ? 'new'
+          : this._paletteTab;
     return html`
       <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? 'shifted' : ''}">
         <div class="palette-body">
@@ -3904,30 +3910,30 @@ export class ModuxEditor extends LitElement {
             .value=${this._paletteFilter}
             @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
           />
-          ${tab === 'new'
+          ${tab === 'relations'
             ? html`
-                ${['context-map', 'distribution', 'integrations'].includes(this._view)
-                  ? html`
-                      <div class="palette-g">Relaciones — arma y traza</div>
-                      ${CONNECT_RELATION_TYPES.filter(
-                        (r) => !needle || r.label.toLowerCase().includes(needle),
-                      ).map(
-                        (r) => html`
-                          <div
-                            class="palette-item ${this._armedRelation === r.id ? 'armed' : ''}"
-                            title="${r.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
-                            @click=${() =>
-                              (this._armedRelation = this._armedRelation === r.id ? null : r.id)}
-                          >
-                            <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === r.id ? '#2563eb' : '#64748b'}">
-                              ${SYMBOLS['flow']}
-                            </svg>
-                            <span class="pal-label">${r.label}</span>
-                          </div>
-                        `,
-                      )}
-                    `
-                  : ''}
+                <div class="palette-h">Relaciones — arma y traza</div>
+                <div class="palette-g">Click arma el tipo; la siguiente línea será esa relación (Esc cancela). Sin armar, la línea pregunta cuando hay varias posibles.</div>
+                ${CONNECT_RELATION_TYPES.filter(
+                  (r) => !needle || r.label.toLowerCase().includes(needle),
+                ).map(
+                  (r) => html`
+                    <div
+                      class="palette-item ${this._armedRelation === r.id ? 'armed' : ''}"
+                      title="${r.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
+                      @click=${() =>
+                        (this._armedRelation = this._armedRelation === r.id ? null : r.id)}
+                    >
+                      <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === r.id ? '#2563eb' : '#64748b'}">
+                        ${SYMBOLS['flow']}
+                      </svg>
+                      <span class="pal-label">${r.label}</span>
+                    </div>
+                  `,
+                )}
+              `
+            : tab === 'new'
+            ? html`
                 <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
                 ${PALETTE_GROUPS.map((g) => {
                   const items = news.filter((k) => k.group === g);
@@ -3993,6 +3999,18 @@ export class ModuxEditor extends LitElement {
                 >
                   Nuevos
                 </button>
+                ${relationsAvailable
+                  ? html`
+                      <button
+                        class="palette-vtab"
+                        ?data-active=${tab === 'relations'}
+                        title="Tipos de relación: arma uno y traza la línea"
+                        @click=${() => (this._paletteTab = 'relations')}
+                      >
+                        Relaciones
+                      </button>
+                    `
+                  : ''}
                 <button
                   class="palette-vtab"
                   ?data-active=${tab === 'catalog'}

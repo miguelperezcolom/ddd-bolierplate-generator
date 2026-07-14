@@ -14124,7 +14124,7 @@ let Z = class extends Ve {
       externalSystems: [],
       relations: [],
       flows: []
-    }, this.layout = {}, this.diff = null, this._view = "context-map", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !1, this._yugo = !0, this.repositories = [], this.dark = !1, this._pendingIds = /* @__PURE__ */ new Set(), this._paletteOpenedForBlank = !1, this._repoPicker = null, this._wfStepPicker = null, this._branchCondEditor = null, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newBoundedContextId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._armedRelation = null, this._connectPicker = null, this._activeViewId = "", this._activeJourneyId = "", this._newJourneyName = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
+    }, this.layout = {}, this.diff = null, this._view = "context-map", this._relationType = "CUSTOMER_SUPPLIER", this._relationPicker = null, this._extDepPicker = null, this._selectedId = null, this._paletteOpen = !0, this._yugo = !0, this.repositories = [], this.dark = !1, this._pendingIds = /* @__PURE__ */ new Set(), this._paletteOpenedForBlank = !1, this._repoPicker = null, this._wfStepPicker = null, this._branchCondEditor = null, this._paletteFilter = "", this._paletteTab = "new", this._selectedCmp = null, this._cmpClipboard = null, this._fullscreen = !1, this._tilt = !1, this._helpOpen = !1, this._newName = "", this._newBoundedContextId = "", this._newArchetype = "TRIGGERS", this._newTriggerAggId = "", this._newTriggerEvent = "", this._newTargetId = "", this._undoStack = [], this._redoStack = [], this._newStepName = "", this._newStepType = "AUTOMATED", this._newStepRole = "", this._newStepDeadline = "", this._editStepRole = "", this._editStepDeadline = "", this._editStepComp = "", this._newStepUseCase = "", this._newStepEmits = "", this._editStepUseCase = "", this._editStepEmits = "", this._editStepAwaits = "", this._multi = [], this._newViewName = "", this._armedRelation = null, this._connectPicker = null, this._activeViewId = "", this._activeJourneyId = "", this._newJourneyName = "", this._newRagSourceType = "WEB", this._newRagSourceUri = "", this._addMemberKey = "", this._treeOpen = !1, this._deletePicker = null, this.onFullscreenChange = () => {
       this._fullscreen = this.matches(":fullscreen");
     }, this.hostKeydown = (e) => {
       var s;
@@ -14691,7 +14691,7 @@ let Z = class extends Ve {
   }
   /** One dropdown drives the diagram: the map, the distribution lens, or a specialized view. */
   onDiagramScopeChange(e) {
-    e.startsWith("view:") && (this._view = e.slice(5), (this._view === "context-map" || this._view === "distribution") && (this._paletteOpen = !0));
+    e.startsWith("view:") && (this._view = e.slice(5), this._paletteOpen = !0);
   }
   /** Expansion is a sheet preference (persisted with the vista, not undoable). */
   onNodeCollapseToggled(e) {
@@ -16307,8 +16307,8 @@ let Z = class extends Ve {
   renderPalette() {
     if (!this._paletteOpen || !["context-map", "distribution", "workflows", "ui", "design", "mappings", "integrations"].includes(this._view)) return "";
     const e = this._paletteFilter.trim().toLowerCase(), t = eo.filter(
-      (i) => (this._view === "workflows" ? ["workflow", "workflow-step", "workflow-join", "workflow-split"].includes(i.type) : this._view === "ui" ? ["ui-app", "ui-app-orchestrator", "ui-app-masterdetail", "ui-app-vieweditor", "page", "ui-page-crud", "ui-page-wizard", "ui-wizard-step", "menu-item", "ui-model", "identity-provider", "custom-code", "button-group", "ui-button"].includes(i.type) : this._view === "design" ? i.type === "page" || i.type === "custom-code" || i.type.startsWith("cmp:") : this._view === "integrations" ? ["etl-flow", "etl-transform", "external-system", "external-table"].includes(i.type) : this._view === "mappings" ? ["ui-model", "model-field", "transformation", "custom-code"].includes(i.type) : !["page", "menu-item", "model-field", "transformation", "custom-code", "ui-button"].includes(i.type) && !i.type.startsWith("cmp:")) && (!e || i.label.toLowerCase().includes(e))
-    ), n = this._view === "workflows" ? "new" : this._paletteTab;
+      (o) => (this._view === "workflows" ? ["workflow", "workflow-step", "workflow-join", "workflow-split"].includes(o.type) : this._view === "ui" ? ["ui-app", "ui-app-orchestrator", "ui-app-masterdetail", "ui-app-vieweditor", "page", "ui-page-crud", "ui-page-wizard", "ui-wizard-step", "menu-item", "ui-model", "identity-provider", "custom-code", "button-group", "ui-button"].includes(o.type) : this._view === "design" ? o.type === "page" || o.type === "custom-code" || o.type.startsWith("cmp:") : this._view === "integrations" ? ["etl-flow", "etl-transform", "external-system", "external-table"].includes(o.type) : this._view === "mappings" ? ["ui-model", "model-field", "transformation", "custom-code"].includes(o.type) : !["page", "menu-item", "model-field", "transformation", "custom-code", "ui-button"].includes(o.type) && !o.type.startsWith("cmp:")) && (!e || o.label.toLowerCase().includes(e))
+    ), n = ["context-map", "distribution", "integrations"].includes(this._view), i = this._view === "workflows" || this._paletteTab === "relations" && !n ? "new" : this._paletteTab;
     return M`
       <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? "shifted" : ""}">
         <div class="palette-body">
@@ -16316,45 +16316,45 @@ let Z = class extends Ve {
             class="palette-filter"
             placeholder="Filtrar…"
             .value=${this._paletteFilter}
-            @input=${(i) => this._paletteFilter = i.target.value}
+            @input=${(o) => this._paletteFilter = o.target.value}
           />
-          ${n === "new" ? M`
-                ${["context-map", "distribution", "integrations"].includes(this._view) ? M`
-                      <div class="palette-g">Relaciones — arma y traza</div>
-                      ${zo.filter(
-      (i) => !e || i.label.toLowerCase().includes(e)
+          ${i === "relations" ? M`
+                <div class="palette-h">Relaciones — arma y traza</div>
+                <div class="palette-g">Click arma el tipo; la siguiente línea será esa relación (Esc cancela). Sin armar, la línea pregunta cuando hay varias posibles.</div>
+                ${zo.filter(
+      (o) => !e || o.label.toLowerCase().includes(e)
     ).map(
-      (i) => M`
-                          <div
-                            class="palette-item ${this._armedRelation === i.id ? "armed" : ""}"
-                            title="${i.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
-                            @click=${() => this._armedRelation = this._armedRelation === i.id ? null : i.id}
-                          >
-                            <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === i.id ? "#2563eb" : "#64748b"}">
-                              ${ht.flow}
-                            </svg>
-                            <span class="pal-label">${i.label}</span>
-                          </div>
-                        `
+      (o) => M`
+                    <div
+                      class="palette-item ${this._armedRelation === o.id ? "armed" : ""}"
+                      title="${o.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
+                      @click=${() => this._armedRelation = this._armedRelation === o.id ? null : o.id}
+                    >
+                      <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === o.id ? "#2563eb" : "#64748b"}">
+                        ${ht.flow}
+                      </svg>
+                      <span class="pal-label">${o.label}</span>
+                    </div>
+                  `
     )}
-                    ` : ""}
+              ` : i === "new" ? M`
                 <div class="palette-h">Nuevos — arrastra al lienzo${""}</div>
-                ${Cc.map((i) => {
-      const o = t.filter((s) => s.group === i);
-      return o.length ? M`
-                        <div class="palette-g">${i}</div>
-                        ${o.map(
-        (s) => M`
+                ${Cc.map((o) => {
+      const s = t.filter((a) => a.group === o);
+      return s.length ? M`
+                        <div class="palette-g">${o}</div>
+                        ${s.map(
+        (a) => M`
                             <div
-                              class="palette-item ${s.child ? "palette-child" : ""}"
+                              class="palette-item ${a.child ? "palette-child" : ""}"
                               draggable="true"
-                              title=${s.type === "workflow-step" ? "Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo" : s.child ? "Suéltalo sobre su contenedor (contexto, sistema externo o API)" : "Suéltalo en el lienzo"}
-                              @dragstart=${(a) => this.onPaletteDragStart(a, { new: s.type })}
+                              title=${a.type === "workflow-step" ? "Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo" : a.child ? "Suéltalo sobre su contenedor (contexto, sistema externo o API)" : "Suéltalo en el lienzo"}
+                              @dragstart=${(r) => this.onPaletteDragStart(r, { new: a.type })}
                             >
-                              <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${s.color}">
-                                ${ht[s.symbol]}
+                              <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${a.color}">
+                                ${ht[a.symbol]}
                               </svg>
-                              <span class="pal-label">${s.label.replace(/^(Layout|Componente) · /, "")}</span>
+                              <span class="pal-label">${a.label.replace(/^(Layout|Componente) · /, "")}</span>
                             </div>
                           `
       )}
@@ -16363,20 +16363,20 @@ let Z = class extends Ve {
               ` : M`
                 <div class="palette-h">Catálogo — arrastra para colocar o conectar</div>
                 ${this.paletteCatalog().map(
-      (i) => M`
-                    <div class="palette-g">${i.label}</div>
-                    ${i.items.map(
-        (o) => M`
+      (o) => M`
+                    <div class="palette-g">${o.label}</div>
+                    ${o.items.map(
+        (s) => M`
                         <div
                           class="palette-item"
                           draggable="true"
                           title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
-                          @dragstart=${(s) => this.onPaletteDragStart(s, { existing: o.id })}
+                          @dragstart=${(a) => this.onPaletteDragStart(a, { existing: s.id })}
                         >
-                          <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${i.color}">
-                            ${ht[i.symbol]}
+                          <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${o.color}">
+                            ${ht[o.symbol]}
                           </svg>
-                          <span class="pal-label">${o.name}</span>
+                          <span class="pal-label">${s.name}</span>
                         </div>
                       `
       )}
@@ -16388,15 +16388,25 @@ let Z = class extends Ve {
               <div class="palette-side">
                 <button
                   class="palette-vtab"
-                  ?data-active=${n === "new"}
+                  ?data-active=${i === "new"}
                   title="Elementos nuevos para arrastrar al lienzo"
                   @click=${() => this._paletteTab = "new"}
                 >
                   Nuevos
                 </button>
+                ${n ? M`
+                      <button
+                        class="palette-vtab"
+                        ?data-active=${i === "relations"}
+                        title="Tipos de relación: arma uno y traza la línea"
+                        @click=${() => this._paletteTab = "relations"}
+                      >
+                        Relaciones
+                      </button>
+                    ` : ""}
                 <button
                   class="palette-vtab"
-                  ?data-active=${n === "catalog"}
+                  ?data-active=${i === "catalog"}
                   title="El catálogo del modelo: colocar o conectar elementos existentes"
                   @click=${() => this._paletteTab = "catalog"}
                 >
