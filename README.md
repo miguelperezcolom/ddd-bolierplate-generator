@@ -140,12 +140,17 @@ conversation.
 
 ### 1. Run the generator
 
+The comfortable way (builds once, installs the `modux` launcher):
+
 ```bash
-cd model-driven-generator
-mvn spring-boot:run
+./install.sh
+modux
 ```
 
-Open `http://localhost:8080` in your browser.
+Open `http://localhost:8192` in your browser. For development straight from the
+sources, `cd model-driven-generator && mvn spring-boot:run` serves the same app
+on the same port. Docker and Kubernetes (Helm) deployments are covered in
+[deploy/README.md](deploy/README.md).
 
 ### 2. Define your domain
 

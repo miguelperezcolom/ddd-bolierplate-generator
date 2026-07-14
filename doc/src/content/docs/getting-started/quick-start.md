@@ -8,11 +8,12 @@ This guide walks you through creating a simple booking domain from scratch.
 ## 1. Start the generator
 
 ```bash
-cd model-driven-generator
-mvn spring-boot:run
+./install.sh   # once: builds the jar and installs the `modux` launcher
+modux
 ```
 
-Open `http://localhost:8080` in your browser.
+Open `http://localhost:8192` in your browser (see
+[Installation](/getting-started/installation/) for Docker and Helm).
 
 ## 2. Create a Project
 
