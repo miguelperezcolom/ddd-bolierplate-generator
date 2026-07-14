@@ -1136,6 +1136,7 @@ export class ModuxCanvas extends LitElement {
               stroke=${color} stroke-width=${edge.kind === 'journey' ? 3 : highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashed ? '6 4' : ''}
               opacity="0.92"
+              marker-start=${edge.kind === 'contains' ? `url(#diamond-${this.markerId(color)})` : ''}
               marker-end=${edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
         ${edge.label
           ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
@@ -1665,6 +1666,10 @@ export class ModuxCanvas extends LitElement {
               <marker id="arrow-${this.markerId(c)}" viewBox="0 0 10 10" refX="9" refY="5"
                       markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" fill=${c}></path>
+              </marker>
+              <marker id="diamond-${this.markerId(c)}" viewBox="0 0 12 8" refX="1" refY="4"
+                      markerWidth="12" markerHeight="8" orient="auto">
+                <path d="M 1 4 L 6 1 L 11 4 L 6 7 z" fill=${c}></path>
               </marker>`,
           )}
         </defs>

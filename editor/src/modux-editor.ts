@@ -2,10 +2,10 @@ import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
-import type { EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
+import type { DiagramLayout, EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
 import { journeyLegNumbers, journeyRuns } from './journeys.js';
 import type { ModuxCommand } from './commands.js';
-import { contextMapScene, distributionScene } from './views/context-map.js';
+import { contextMapScene, distributionScene, ownershipIndex } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
@@ -989,7 +989,64 @@ export class ModuxEditor extends LitElement {
       this._paletteOpen = true;
       this._paletteOpenedForBlank = true;
     }
-    if (changed.has('layout') || changed.has('model')) this.migrateLevelLayouts();
+    if (changed.has('layout') || changed.has('model')) {
+      this.migrateLevelLayouts();
+      this.migrateNestedGeometry();
+    }
+  }
+
+  /**
+   * One-shot migration to the Archi-style flat sheets: pre-flat layouts stored a
+   * child's position as an OFFSET from its container's centre. Every node is a
+   * free box now, so offsets become absolute by walking the ownership chain.
+   * Sizes of ex-containers (they were sized to hold children) are dropped.
+   */
+  private migrateNestedGeometry(): void {
+    if (!this.model.boundedContexts.length && !this.model.externalSystems.length) return;
+    const keys = Object.keys(this.layout).filter(
+      (k) => k === 'context-map' || k.startsWith('context-map@view:')
+        || k === 'distribution' || k.startsWith('distribution@view:'),
+    );
+    let changed = false;
+    const next: EditorLayout = { ...this.layout };
+    for (const key of keys) {
+      const vl = normalizeViewLayout(next[key]);
+      if (vl.flat) continue;
+      const owners = ownershipIndex(
+        this.model,
+        key.startsWith('distribution') ? 'distribution' : 'unified',
+      );
+      const abs = new Map<string, Point>();
+      const resolve = (id: string, guard = 0): Point | null => {
+        if (guard > 12) return vl.nodes[id] ?? null;
+        const cached = abs.get(id);
+        if (cached) return cached;
+        const stored = vl.nodes[id];
+        const owner = owners.get(id);
+        if (!owner) {
+          if (stored) abs.set(id, stored);
+          return stored ?? null;
+        }
+        if (!stored) return null;
+        const ownerPos = resolve(owner, guard + 1);
+        const p = ownerPos ? { x: ownerPos.x + stored.x, y: ownerPos.y + stored.y } : stored;
+        abs.set(id, p);
+        return p;
+      };
+      const nodes: DiagramLayout = {};
+      for (const id of Object.keys(vl.nodes)) {
+        nodes[id] = resolve(id) ?? vl.nodes[id];
+      }
+      // Ex-containers were sized to hold their children: those clothes no longer fit.
+      const parents = new Set(owners.values());
+      const sizes = { ...(vl.sizes ?? {}) };
+      for (const id of Object.keys(sizes)) if (parents.has(id)) delete sizes[id];
+      next[key] = { ...vl, nodes, sizes, flat: true };
+      changed = true;
+    }
+    if (!changed) return;
+    this.layout = next;
+    this.emit('layout-changed', { layout: this.layout });
   }
 
   /**
@@ -2127,6 +2184,7 @@ export class ModuxEditor extends LitElement {
             edges: { ...seed.edges },
             sizes: { ...(seed.sizes ?? {}) },
             expanded: [...(seed.expanded ?? [])],
+            flat: true,
           },
         };
         this.emit('layout-changed', { layout: this.layout });
@@ -2995,7 +3053,8 @@ export class ModuxEditor extends LitElement {
     const chain: string[] = [];
     for (let cur: string | undefined = targetId; cur; ) {
       chain.push(cur);
-      cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+      const n = scene.nodes.find((x) => x.id === cur);
+      cur = n ? n.ownerId ?? n.parentId : undefined;
     }
     return chain;
   }
@@ -3256,7 +3315,7 @@ export class ModuxEditor extends LitElement {
         const chain = this.dropChain(targetId);
         const boundedContextId = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
         if (boundedContextId) {
-          issue({ ...cmd, boundedContextId }, id, boundedContextId);
+          issue({ ...cmd, boundedContextId }, id);
           return;
         }
       }
@@ -3265,8 +3324,8 @@ export class ModuxEditor extends LitElement {
         const chain = this.dropChain(targetId);
         const parentId = chain.find((cid) => this.model.externalSystems.some((x) => x.id === cid));
         if (parentId) {
-          issue({ ...cmd, parentId }, id, parentId);
-          this.emit('modux-notice', { message: 'Subsistema creado dentro del sistema' });
+          issue({ ...cmd, parentId }, id);
+          this.emit('modux-notice', { message: 'Subsistema creado como parte del sistema' });
           return;
         }
       }

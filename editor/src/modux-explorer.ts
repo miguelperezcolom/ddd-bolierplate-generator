@@ -585,7 +585,11 @@ export class ModuxExplorer extends LitElement {
     let max = 1;
     for (const n of this.scene.nodes) {
       let d = 1;
-      for (let cur = n.parentId; cur; cur = byId.get(cur)?.parentId) d++;
+      for (let cur = n.ownerId ?? n.parentId; cur; ) {
+        d++;
+        const up = byId.get(cur);
+        cur = up ? up.ownerId ?? up.parentId : undefined;
+      }
       max = Math.max(max, d);
     }
     return max;
@@ -721,11 +725,12 @@ export class ModuxExplorer extends LitElement {
     const d = n.depth + 1;
     const mk = (kind: string, id: string, label: string) => this.makeNode(kind, id, label, d, n);
     if (this.scene) {
-      // Scene mode: containment comes straight from the view (parentId chains).
+      // Scene mode: containment comes straight from the view — ownerId (Archi style:
+      // free boxes, drawn composition) or parentId (geometric nesting), whichever rules.
       // Areas never enter the tree — they are graphics, not components (drawAreas paints them).
       return this.scene.nodes
         .filter((sn) => sn.kind !== 'area')
-        .filter((sn) => (n.kind === 'root' ? !sn.parentId : sn.parentId === n.refId))
+        .filter((sn) => (n.kind === 'root' ? !(sn.ownerId ?? sn.parentId) : (sn.ownerId ?? sn.parentId) === n.refId))
         .map((sn) => {
           const node = mk(sn.kind || 'node', sn.id, sn.label);
           if (sn.stroke) node.color = sn.stroke;
@@ -1292,7 +1297,7 @@ export class ModuxExplorer extends LitElement {
 
   private visibleRepresentative(refId: string, nodes: XNode[]): XNode | null {
     const byRef = new Map(nodes.map((n) => [n.refId, n]));
-    const parentOf = new Map((this.scene?.nodes ?? []).map((n) => [n.id, n.parentId]));
+    const parentOf = new Map((this.scene?.nodes ?? []).map((n) => [n.id, n.ownerId ?? n.parentId]));
     for (let cur: string | undefined | null = refId; cur; cur = parentOf.get(cur)) {
       const hit = byRef.get(cur);
       if (hit) return hit;

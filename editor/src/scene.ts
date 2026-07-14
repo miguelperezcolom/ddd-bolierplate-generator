@@ -32,6 +32,12 @@ export interface SceneNode {
    * child geometry from the container, so children are typically `fixed`.
    */
   parentId?: string;
+  /**
+   * LOGICAL containment without geometry (Archi style): the node is a free box
+   * and its inclusion is drawn as a `contains` edge. The yugo builds its tree
+   * and the 3D its storeys from this; the canvas ignores it.
+   */
+  ownerId?: string;
   /** A container: renders with a top header instead of a centred label. */
   container?: boolean;
   /** On a solution (to-be): how this element differs from the system (diff ring). */
@@ -191,6 +197,11 @@ export interface ViewLayout {
   collapsed?: string[];
   /** Containers expanded by hand on this sheet (everything folds to a chip by default). */
   expanded?: string[];
+  /**
+   * Positions are ABSOLUTE for every node (Archi style). Pre-flat sheets stored
+   * children as offsets from their container; the editor migrates them once.
+   */
+  flat?: boolean;
 }
 
 /**
@@ -211,6 +222,7 @@ export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefine
       detail: v.detail,
       collapsed: v.collapsed,
       expanded: v.expanded,
+      flat: v.flat,
     };
   }
   return { nodes: value as DiagramLayout, edges: {}, sizes: {} };

@@ -772,7 +772,8 @@ export class ModuxTilt extends LitElement {
     const of = (n: SceneNode): number => {
       const cached = depth.get(n.id);
       if (cached !== undefined) return cached;
-      const parent = n.parentId ? byId.get(n.parentId) : undefined;
+      const up = n.ownerId ?? n.parentId;
+      const parent = up ? byId.get(up) : undefined;
       const d = parent ? of(parent) + 1 : 0;
       depth.set(n.id, d);
       return d;

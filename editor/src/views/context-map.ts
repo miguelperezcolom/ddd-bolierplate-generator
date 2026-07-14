@@ -1,6 +1,5 @@
 import type { ModuxModel, ContextMapRelationType, FlowRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
-import { containerFit, resolveOverlaps } from '../scene.js';
 
 /**
  * Context-map view adapter: projects the modux model into a generic Scene.
@@ -52,31 +51,10 @@ export function apiOpOccurrenceId(operationId: string, siteId: string): string {
  * The three forms a container node can take, ranked by how much it reveals. The level
  * picks the default; the chevron toggles to the OTHER meaningful form: from `full` it
  * folds everything away, from `compact` it unfolds everything the level supports, and
- * from the `coarse` chip form it prefers unfolding when there is detail beyond the
- * chips, folding the chips away otherwise. Any node with children is toggleable.
- */
-type NodeForm = 'compact' | 'coarse' | 'full';
-const FORM_RANK: Record<NodeForm, number> = { compact: 0, coarse: 1, full: 2 };
-
-function resolveForm(
-  toggled: boolean,
-  defaultForm: NodeForm,
-  hasBeyondChips: boolean,
-): { form: NodeForm; collapsed: boolean } {
-  const altForm: NodeForm =
-    defaultForm === 'full' ? 'compact'
-    : defaultForm === 'compact' ? 'full'
-    : hasBeyondChips ? 'full' : 'compact';
-  const form = toggled ? altForm : defaultForm;
-  const other = toggled ? defaultForm : altForm;
-  // ▸ when the click reveals more, ▾ when it hides.
-  return { form, collapsed: FORM_RANK[other] > FORM_RANK[form] };
-}
-
 /**
- * API-implementation occurrences of a bounded context, as nestable children — the SAME
- * ApiRef the external system publishes, so the chip looks exactly like the API nested
- * in its publisher; only the site differs.
+ * API-implementation occurrences of a bounded context (the SAME ApiRef the external
+ * system publishes, so the box looks exactly like the API at its publisher; only the
+ * site differs).
  */
 function apiImplChildren(model: ModuxModel, boundedContextId: string): ChildDesc[] {
   const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
@@ -86,7 +64,6 @@ function apiImplChildren(model: ModuxModel, boundedContextId: string): ChildDesc
       id: apiImplNodeId(impl.apiId, impl.boundedContextId),
       name: apiById.get(impl.apiId)!.name,
       kind: 'api-impl',
-      expandable: (apiById.get(impl.apiId)!.operations ?? []).length > 0,
     }));
 }
 
@@ -99,19 +76,10 @@ function proxyOps(
   return target?.operations ?? [];
 }
 
-// Detail level: a context becomes a resizable container holding small aggregate
-// and use-case boxes the user can rearrange inside it. Children are stored as
-// offsets from the container centre (see ViewLayout.nodes), so they follow the
-// container when it moves; the container size is stored in ViewLayout.sizes.
-const C_HEADER = 34; // header band (context name)
-const C_PAD = 14; // inner padding
-const C_BOTTOM = 14;
+// Child boxes (an element revealed by expanding its owner) are free nodes with
+// their own absolute position; these are just their default dimensions.
 const CHILD_W = 108;
 const CHILD_H = 32;
-const CHILD_GAP_X = 12;
-const CHILD_GAP_Y = 10;
-const CHILD_COLS = 2;
-const C_W_DEFAULT = CHILD_COLS * CHILD_W + (CHILD_COLS - 1) * CHILD_GAP_X + 2 * C_PAD;
 
 export function relationEdgeId(sourceId: string, targetId: string): string {
   return `rel:${sourceId}->${targetId}`;
@@ -142,6 +110,58 @@ export function flowCoherence(model: ModuxModel, flow: FlowRef): FlowCoherence {
     return 'REVERSED';
   }
   return 'MISSING_RELATION';
+}
+
+/**
+ * The ownership tree as a flat child → owner map, over the WHOLE model (expansion
+ * ignored). The editor migrates pre-Archi sheets with it: child positions stored
+ * as offsets from their container become absolute by walking this chain.
+ */
+export function ownershipIndex(
+  model: ModuxModel,
+  mode: 'unified' | 'distribution' = 'unified',
+): Map<string, string> {
+  const owners = new Map<string, string>();
+  if (mode === 'distribution') {
+    for (const m of model.boundedContexts) {
+      const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === m.id);
+      if (modules.length <= 1) continue;
+      for (const cm of modules) {
+        owners.set(cm.id, m.id);
+        for (const eid of cm.elementIds ?? []) owners.set(eid, cm.id);
+      }
+    }
+    return owners;
+  }
+  const apiOps = (apiId: string, siteId: string | null, ownerId: string) => {
+    const api = (model.apis ?? []).find((a) => a.id === apiId);
+    for (const op of api?.operations ?? []) {
+      owners.set(siteId ? apiOpOccurrenceId(op.id, siteId) : op.id, ownerId);
+    }
+  };
+  for (const m of model.boundedContexts) {
+    for (const d of boundedContextElementDescs(model, m)) owners.set(d.id, m.id);
+    for (const impl of apiImplChildren(model, m.id)) {
+      owners.set(impl.id, m.id);
+      const parsed = /^apiimpl:(.+)@(.+)$/.exec(impl.id);
+      if (parsed) apiOps(parsed[1], parsed[2], impl.id);
+    }
+  }
+  for (const x of model.externalSystems) {
+    if (x.parentExternalSystemId) owners.set(x.id, x.parentExternalSystemId);
+    for (const u of x.useCases ?? []) owners.set(u.id, x.id);
+    for (const t of x.tables ?? []) owners.set(t.id, x.id);
+    for (const sv of x.mcpServers ?? []) owners.set(sv.id, x.id);
+  }
+  for (const a of model.apis ?? []) {
+    if (a.publishedByExternalSystemId) owners.set(a.id, a.publishedByExternalSystemId);
+    apiOps(a.id, null, a.id);
+  }
+  for (const px of model.proxyApis ?? []) {
+    if (px.publishedByExternalSystemId) owners.set(px.id, px.publishedByExternalSystemId);
+    if (px.targetApiId) apiOps(px.targetApiId, px.id, px.id);
+  }
+  return owners;
 }
 
 /** Deterministic circular fallback, same spirit as the server renderer. */
@@ -177,15 +197,10 @@ interface ChildDesc {
     | 'notification'
     | 'document'
     | 'ui-app'
-    | 'external-system';
+    | 'external-system'
+    | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
-  /** Nested chips: a subsystem carries its published APIs inside its own chip. */
-  children?: ChildDesc[];
-  /** The chip hides more (an API's operations, a subsystem's content): it wears the chevron. */
-  expandable?: boolean;
-  /** The chip is currently unfolded (its chevron shows ▾ and its extra rows are on stage). */
-  expanded?: boolean;
 }
 
 const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
@@ -212,6 +227,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   notification: { symbol: 'event', fill: '#fdf2f8', stroke: '#db2777' },
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
   'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
@@ -236,26 +252,10 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
+  module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
 /** Default container size that fits `childCount` boxes in a grid. */
-function defaultContainerSize(childCount: number): { w: number; h: number } {
-  const rows = Math.max(1, Math.ceil(childCount / CHILD_COLS));
-  const contentH = rows * CHILD_H + (rows - 1) * CHILD_GAP_Y;
-  return { w: C_W_DEFAULT, h: C_HEADER + contentH + C_BOTTOM };
-}
-
-/** Default grid offset (relative to the container centre) for child index `i`. */
-function defaultChildOffset(i: number, size: { w: number; h: number }): { x: number; y: number } {
-  const col = i % CHILD_COLS;
-  const row = Math.floor(i / CHILD_COLS);
-  return {
-    x: -size.w / 2 + C_PAD + col * (CHILD_W + CHILD_GAP_X) + CHILD_W / 2,
-    y: -size.h / 2 + C_HEADER + row * (CHILD_H + CHILD_GAP_Y) + CHILD_H / 2,
-  };
-}
-
-/** The distributable elements of a bounded context (everything but the API impls). */
 function boundedContextElementDescs(
   model: ModuxModel,
   boundedContext: ModuxModel['boundedContexts'][number],
@@ -313,521 +313,6 @@ function boundedContextElementDescs(
  * to a grid); the container size comes from `sizes`. Children are draggable and
  * become connectable once relations between them are added.
  */
-function detailedContext(
-  model: ModuxModel,
-  boundedContext: ModuxModel['boundedContexts'][number],
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-  expandedIds: ReadonlySet<string> = new Set(),
-): SceneNode[] {
-  const children: ChildDesc[] = [
-    // APIs implemented here nest first: strategic-level elements, like an external
-    // system's published APIs.
-    ...apiImplChildren(model, boundedContext.id),
-    ...boundedContextElementDescs(model, boundedContext),
-  ];
-  if (!children.length) {
-    // Nothing to nest — keep the compact context box.
-    return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
-  }
-  const boxes = implApiBoxes(model, boundedContext, expandedIds);
-  if (boxes.length > 0) {
-    const boxedIds = new Set(boxes.map((b) => b.id));
-    const rest = children.filter((c) => !boxedIds.has(c.id));
-    return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
-  }
-  return detailedContainer(center, base, children, layout, sizes);
-}
-
-/**
- * The EXPANDED implemented APIs of a context, as sub-containers with their operation
- * OCCURRENCES (per-site ids) — so proxy operations can later wire to the implementation
- * here or to the published API, operation by operation.
- */
-function implApiBoxes(
-  model: ModuxModel,
-  boundedContext: ModuxModel['boundedContexts'][number],
-  expandedIds: ReadonlySet<string>,
-): ApiBoxDesc[] {
-  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
-  return (model.apiImplementations ?? [])
-    .filter((impl) =>
-      impl.boundedContextId === boundedContext.id &&
-      apiById.has(impl.apiId) &&
-      expandedIds.has(apiImplNodeId(impl.apiId, impl.boundedContextId)) &&
-      (apiById.get(impl.apiId)!.operations ?? []).length > 0)
-    .map((impl) => {
-      const api = apiById.get(impl.apiId)!;
-      return {
-        id: apiImplNodeId(impl.apiId, impl.boundedContextId),
-        name: api.name,
-        kind: 'api-impl' as const,
-        badge: 'API',
-        fill: '#eef2ff',
-        stroke: '#4f46e5',
-        tooltip: `${api.name} — la misma API, implementada en ${boundedContext.name}`,
-        opKind: 'api-op-occurrence' as const,
-        ops: (api.operations ?? []).map((op) => ({
-          id: apiOpOccurrenceId(op.id, boundedContext.id),
-          name: op.name,
-        })),
-      };
-    });
-}
-
-/**
- * The operations level of an external system: each published API is a SUB-CONTAINER
- * with its operation chips, and the system's box grows (per side) to hold the fitted
- * API boxes plus its plain children. Offsets follow the usual convention: children
- * hang off their parent's STORED centre, even when the painted (fitted) one shifts.
- */
-/** An API-shaped sub-container (a published API, or an implementation occurrence). */
-interface ApiBoxDesc {
-  id: string;
-  name: string;
-  kind: 'api' | 'api-impl' | 'proxy-api';
-  badge: string;
-  fill: string;
-  stroke: string;
-  tooltip: string;
-  /** Kind of the operation chips inside (real operations vs per-site occurrences). */
-  opKind: 'api-operation' | 'api-op-occurrence';
-  ops: { id: string; name: string }[];
-}
-
-/** A container nesting API sub-containers (with their operation chips) plus plain chips. */
-function containerWithApiBoxes(
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  boxes: ApiBoxDesc[],
-  plainChildren: ChildDesc[],
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-): SceneNode[] {
-  const sysSize = sizes[base.id] ?? defaultContainerSize(boxes.length + plainChildren.length);
-  const apiBoxes = boxes.map((a, i) => {
-    const off = layout[a.id] ?? defaultChildOffset(i, sysSize);
-    const ops = a.ops;
-    const apiSize = sizes[a.id] ?? defaultContainerSize(ops.length);
-    const opOffs = ops.map((op, j) => layout[op.id] ?? defaultChildOffset(j, apiSize));
-    const fit = containerFit(
-      { x: off.x, y: off.y },
-      apiSize,
-      opOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
-    );
-    return { a, off, ops, opOffs, fit };
-  });
-  const plainOffs = plainChildren.map(
-    (c, i) => layout[c.id] ?? defaultChildOffset(boxes.length + i, sysSize),
-  );
-  // Siblings NEVER overlap: separate the (large) API boxes and the plain chips
-  // before the system fits around them — display-time, so it always holds.
-  const separated = resolveOverlaps(
-    [
-      ...apiBoxes.map((b) => ({ id: b.a.id, x: b.fit.x, y: b.fit.y, w: b.fit.w, h: b.fit.h })),
-      ...plainChildren.map((c, i) => ({
-        id: c.id,
-        x: plainOffs[i].x,
-        y: plainOffs[i].y,
-        ...chipSize(c, sizes),
-      })),
-    ],
-    24,
-  );
-  for (const b of apiBoxes) {
-    const moved = separated.get(b.a.id);
-    if (moved) {
-      b.off = { x: b.off.x + (moved.x - b.fit.x), y: b.off.y + (moved.y - b.fit.y) };
-      b.fit = { ...b.fit, x: moved.x, y: moved.y };
-    }
-  }
-  plainChildren.forEach((c, i) => {
-    const moved = separated.get(c.id);
-    if (moved) plainOffs[i] = { x: moved.x, y: moved.y };
-  });
-  const sysFit = containerFit(center, sysSize, [
-    ...apiBoxes.map((b) => ({ dx: b.fit.x, dy: b.fit.y, w: b.fit.w, h: b.fit.h })),
-    ...plainOffs.map((o, i) => ({ dx: o.x, dy: o.y, ...chipSize(plainChildren[i], sizes) })),
-  ]);
-  const nodes: SceneNode[] = [
-    { ...base, x: sysFit.x, y: sysFit.y, w: sysFit.w, h: sysFit.h, container: true },
-  ];
-  for (const b of apiBoxes) {
-    nodes.push({
-      id: b.a.id,
-      label: b.a.name,
-      kind: b.a.kind,
-      symbol: 'interface',
-      fill: b.a.fill,
-      stroke: b.a.stroke,
-      badge: b.a.badge,
-      container: true,
-      collapsible: b.a.ops.length > 0,
-      collapsed: false,
-      parentId: base.id,
-      x: center.x + b.fit.x,
-      y: center.y + b.fit.y,
-      w: b.fit.w,
-      h: b.fit.h,
-      tooltip: b.a.tooltip,
-    });
-    b.ops.forEach((op, j) => {
-      nodes.push({
-        id: op.id,
-        label: op.name,
-        kind: b.a.opKind,
-        symbol: 'usecase',
-        fill: '#eef2ff',
-        stroke: '#4f46e5',
-        parentId: b.a.id,
-        x: center.x + b.off.x + b.opOffs[j].x,
-        y: center.y + b.off.y + b.opOffs[j].y,
-        w: CHILD_W,
-        h: CHILD_H,
-        tooltip: `${CHILD_TOOLTIP[b.a.opKind]}: ${op.name}`,
-      });
-    });
-  }
-  plainChildren.forEach((c, i) => {
-    nodes.push(...chipNodes(c, center.x + plainOffs[i].x, center.y + plainOffs[i].y, base.id, sizes));
-  });
-  return nodes;
-}
-
-/** The three hexagonal layers a code boundedContext packages its elements into, by kind. */
-const HEX_LAYERS: { key: string; label: string; fill: string; kinds: ChildDesc['kind'][] }[] = [
-  { key: 'dominio', label: 'dominio', fill: '#f5f3ff', kinds: ['aggregate', 'domain-event', 'domain-service'] },
-  {
-    key: 'aplicacion',
-    label: 'aplicación',
-    fill: '#ecfeff',
-    kinds: ['use-case', 'application-event', 'query-service', 'read-model'],
-  },
-  {
-    key: 'infraestructura',
-    label: 'infraestructura',
-    fill: '#f8fafc',
-    kinds: ['scheduled-trigger', 'etl-flow', 'notification', 'document', 'ui-app'],
-  },
-];
-
-const LAYER_HEADER = 20;
-const BOX_HEADER = 28;
-const BOX_PAD = 10;
-const BOX_W = C_W_DEFAULT + 2 * BOX_PAD;
-
-/**
- * The distribution level: the bounded context DISTRIBUTES its elements into code
- * boundedContexts. Each boundedContext is a sub-box stacking its three hexagonal layers (derived
- * from the element kinds, never stored); undistributed elements stay as plain
- * chips in the context, waiting to be wired into a boundedContext.
- */
-function distributionContext(
-  model: ModuxModel,
-  boundedContext: ModuxModel['boundedContexts'][number],
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-  toggledIds: ReadonlySet<string> = new Set(),
-): SceneNode[] {
-  const elements = boundedContextElementDescs(model, boundedContext);
-  const byId = new Map(elements.map((e) => [e.id, e]));
-  const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === boundedContext.id);
-  // A context with just its main module has nothing to distribute: the module
-  // stays implicit and the context itself is the deployment target. It unfolds
-  // only when a second module joins (from the palette).
-  if (modules.length <= 1) {
-    return [{
-      ...base,
-      collapsible: false,
-      collapsed: false,
-      x: center.x,
-      y: center.y,
-      w: NODE_W,
-      h: NODE_H,
-      tooltip: `${boundedContext.name} — un solo módulo (el principal): el servicio lo despliega entero. Añade un módulo desde la paleta para repartir sus elementos`,
-    }];
-  }
-  const assignedElsewhere = new Set(modules.flatMap((cm) => cm.elementIds ?? []));
-  // Deployment is topology, not content: boxes stay COMPACT by default — the
-  // chevron unfolds one to package elements looking inside, and only then the
-  // context's unassigned elements join as loose chips to wire in.
-  const anyExpanded = modules.some((cm) => toggledIds.has(cm.id));
-  const plain = anyExpanded ? elements.filter((e) => !assignedElsewhere.has(e.id)) : [];
-
-  const mSize = sizes[base.id] ?? defaultContainerSize(modules.length + plain.length);
-  const boxes = modules.map((cm, i) => {
-    const expanded = toggledIds.has(cm.id);
-    const chips = !expanded ? [] : (cm.elementIds ?? [])
-      .map((id) => byId.get(id))
-      .filter((c): c is ChildDesc => !!c);
-    const bands = !expanded ? [] : HEX_LAYERS.map((l) => {
-      const own = chips.filter((c) => l.kinds.includes(c.kind));
-      const rows = Math.ceil(own.length / CHILD_COLS);
-      const h = LAYER_HEADER + (rows ? rows * CHILD_H + (rows - 1) * CHILD_GAP_Y + 8 : 8);
-      return { layer: l, chips: own, rows, h };
-    });
-    const boxH = expanded
-      ? BOX_HEADER + bands.reduce((a, b) => a + b.h, 0) + BOX_PAD
-      : 56;
-    const off = layout[cm.id] ?? defaultChildOffset(i, mSize);
-    return { cm, expanded, bands, boxH, off };
-  });
-  const plainOffs = plain.map(
-    (c, i) => layout[c.id] ?? defaultChildOffset(boxes.length + i, mSize),
-  );
-  // Siblings never overlap: separate boxes and loose chips before fitting.
-  const separated = resolveOverlaps(
-    [
-      ...boxes.map((b) => ({ id: b.cm.id, x: b.off.x, y: b.off.y, w: BOX_W, h: b.boxH })),
-      ...plain.map((c, i) => ({ id: c.id, x: plainOffs[i].x, y: plainOffs[i].y, w: CHILD_W, h: CHILD_H })),
-    ],
-    24,
-  );
-  for (const b of boxes) {
-    const moved = separated.get(b.cm.id);
-    if (moved) b.off = { x: moved.x, y: moved.y };
-  }
-  plain.forEach((c, i) => {
-    const moved = separated.get(c.id);
-    if (moved) plainOffs[i] = { x: moved.x, y: moved.y };
-  });
-  const fit = containerFit(center, mSize, [
-    ...boxes.map((b) => ({ dx: b.off.x, dy: b.off.y, w: BOX_W, h: b.boxH })),
-    ...plainOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
-  ]);
-  const nodes: SceneNode[] = [
-    { ...base, x: fit.x, y: fit.y, w: fit.w, h: fit.h, container: true },
-  ];
-  for (const b of boxes) {
-    const bx = center.x + b.off.x;
-    const by = center.y + b.off.y;
-    nodes.push({
-      id: b.cm.id,
-      label: b.cm.name,
-      kind: 'module',
-      symbol: 'component',
-      fill: '#ffffff',
-      stroke: '#334155',
-      badge: 'MÓDULO',
-      container: true,
-      collapsible: true,
-      collapsed: !b.expanded,
-      parentId: base.id,
-      x: bx,
-      y: by,
-      w: BOX_W,
-      h: b.boxH,
-      tooltip: b.expanded
-        ? `${b.cm.name} — módulo desplegado: arrastra el asa de un elemento suelto hasta él para empaquetarlo; el chevron lo pliega`
-        : `${b.cm.name} — módulo: el chevron lo abre para ver y empaquetar su contenido`,
-    });
-    if (!b.expanded) continue;
-    let cursor = -b.boxH / 2 + BOX_HEADER;
-    for (const band of b.bands) {
-      const bandId = `hexlayer:${b.cm.id}:${band.layer.key}`;
-      nodes.push({
-        id: bandId,
-        label: band.layer.label,
-        kind: 'hex-layer',
-        fill: band.layer.fill,
-        stroke: '#e2e8f0',
-        dashed: true,
-        container: true,
-        parentId: b.cm.id,
-        x: bx,
-        y: by + cursor + band.h / 2,
-        w: BOX_W - 2 * BOX_PAD,
-        h: band.h,
-        tooltip: `Capa de ${band.layer.label} del módulo ${b.cm.name} (derivada del tipo de cada elemento)`,
-      });
-      band.chips.forEach((c, j) => {
-        const col = j % CHILD_COLS;
-        const row = Math.floor(j / CHILD_COLS);
-        const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
-        nodes.push({
-          id: c.id,
-          label: c.name,
-          kind: c.kind,
-          x: bx - (BOX_W - 2 * BOX_PAD) / 2 + BOX_PAD + col * (CHILD_W + CHILD_GAP_X) + CHILD_W / 2,
-          y: by + cursor + LAYER_HEADER + row * (CHILD_H + CHILD_GAP_Y) + CHILD_H / 2,
-          w: CHILD_W,
-          h: CHILD_H,
-          symbol: style.symbol,
-          fill: style.fill,
-          stroke: style.stroke,
-          parentId: bandId,
-          tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name} — en el módulo ${b.cm.name} (Supr lo saca del módulo)`,
-        });
-      });
-      cursor += band.h;
-    }
-  }
-  plain.forEach((c, i) => {
-    const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
-    nodes.push({
-      id: c.id,
-      label: c.name,
-      kind: c.kind,
-      x: center.x + plainOffs[i].x,
-      y: center.y + plainOffs[i].y,
-      w: CHILD_W,
-      h: CHILD_H,
-      symbol: style.symbol,
-      fill: style.fill,
-      stroke: style.stroke,
-      parentId: base.id,
-      tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name} — sin módulo: arrastra su asa hasta un módulo para distribuirlo`,
-    });
-  });
-  return nodes;
-}
-
-/** A resizable container with child boxes — shared by contexts and external systems. */
-function detailedContainer(
-  center: { x: number; y: number },
-  base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
-  children: ChildDesc[],
-  layout: DiagramLayout,
-  sizes: Record<string, { w: number; h: number }>,
-): SceneNode[] {
-  const size = sizes[base.id] ?? defaultContainerSize(children.length);
-  // Subsystem chips accept the corner-resize gesture and grow with their own
-  // nested chips (their published APIs), so they honour BOTH minimum and stored size.
-  const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
-  // Siblings never overlap: nudge the chips apart before fitting the box.
-  const separated = resolveOverlaps(
-    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, ...chipSize(c, sizes) })),
-    10,
-  );
-  children.forEach((c, i) => {
-    const moved = separated.get(c.id);
-    if (moved) offsets[i] = { x: moved.x, y: moved.y };
-  });
-  // Children must always fit inside the box: a stored size that no longer holds
-  // them (new elements, legacy layouts) grows per side instead of letting them
-  // spill. Children keep their absolute spot (offsets are from `center`).
-  const fit = containerFit(
-    center,
-    size,
-    offsets.map((off, i) => ({ dx: off.x, dy: off.y, ...chipSize(children[i], sizes) })),
-  );
-  const container: SceneNode = {
-    ...base,
-    x: fit.x,
-    y: fit.y,
-    w: fit.w,
-    h: fit.h,
-    container: true,
-  };
-  const childNodes: SceneNode[] = children.flatMap((c, i) =>
-    chipNodes(c, center.x + offsets[i].x, center.y + offsets[i].y, base.id, sizes),
-  );
-  return [container, ...childNodes];
-}
-
-/**
- * One chip plus its nested rows (a subsystem's APIs, an expanded API's operations).
- * Chevron flags come from the descriptor: expandable chips fold/unfold on their own.
- */
-function chipNodes(
-  c: ChildDesc,
-  x: number,
-  y: number,
-  parentId: string,
-  sizes: Record<string, { w: number; h: number }>,
-): SceneNode[] {
-  const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
-  const dims = chipSize(c, sizes);
-  const chip: SceneNode = {
-    id: c.id,
-    label: c.name,
-    kind: c.kind,
-    x,
-    y,
-    ...dims,
-    container: (c.children ?? []).length > 0 || undefined,
-    resizable: c.kind === 'external-system' || undefined,
-    symbol: style.symbol,
-    fill: style.fill,
-    stroke: style.stroke,
-    collapsible: c.expandable || undefined,
-    collapsed: c.expandable ? !c.expanded : undefined,
-    parentId,
-    tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
-  };
-  const rows = flatKidRows(c);
-  const cols = kidColumns(rows.length);
-  const kids = rows.map(({ k, owner }, j): SceneNode => {
-    const ks = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
-    const col = j % cols;
-    const row = Math.floor(j / cols);
-    return {
-      id: k.id,
-      label: k.name,
-      kind: k.kind,
-      x: cols === 1 ? x : x - dims.w / 2 + 8 + col * (CHILD_W - 8 + 8) + (CHILD_W - 8) / 2,
-      y: y - dims.h / 2 + 36 + row * (CHILD_H + 6) + CHILD_H / 2,
-      w: CHILD_W - 8,
-      h: CHILD_H,
-      symbol: ks.symbol,
-      fill: ks.fill,
-      stroke: ks.stroke,
-      collapsible: k.expandable || undefined,
-      collapsed: k.expandable ? !k.expanded : undefined,
-      // Grandkid rows (an expanded API's operations) hang off THEIR api, not the
-      // chip: the containment tree stays honest for the yugo and the gestures.
-      parentId: owner,
-      tooltip:
-        k.kind === 'api' || k.kind === 'proxy-api'
-          ? `${CHILD_TOOLTIP[k.kind]} ${k.name} — publicada por ${c.name}`
-          : `${CHILD_TOOLTIP[k.kind]} ${k.name}`,
-    };
-  });
-  return [chip, ...kids];
-}
-
-/** The chip's rows in render order: each kid, then its own rows (an API's operations). */
-function flatKidRows(c: ChildDesc): { k: ChildDesc; owner: string }[] {
-  return (c.children ?? []).flatMap((k) => [
-    { k, owner: c.id },
-    ...(k.children ?? []).map((g) => ({ k: g, owner: k.id })),
-  ]);
-}
-
-/** Many nested rows fold into columns: a 55-operation API must not become a mile-long strip. */
-function kidColumns(n: number): number {
-  return n > 24 ? 3 : n > 6 ? 2 : 1;
-}
-
-/** Chip dimensions: nested rows grow it; external-system chips honour their stored size. */
-function chipSize(
-  c: ChildDesc,
-  sizes: Record<string, { w: number; h: number }>,
-): { w: number; h: number } {
-  const total = flatKidRows(c).length;
-  const cols = kidColumns(total);
-  const rows = Math.ceil(total / cols);
-  const min = total
-    ? {
-        w: Math.max(CHILD_W + 16, cols * (CHILD_W - 8) + (cols - 1) * 8 + 16),
-        h: 36 + rows * (CHILD_H + 6) + 6,
-      }
-    : { w: CHILD_W, h: CHILD_H };
-  const stored = c.kind === 'external-system' ? sizes[c.id] : undefined;
-  return { w: Math.max(min.w, stored?.w ?? 0), h: Math.max(min.h, stored?.h ?? 0) };
-}
-
-/**
- * The single-level map: every element of the landscape is on stage, folded to its
- * chip by default; `expandedIds` opens each container at the user's discretion —
- * a context unfolds its content, an API (top-level, nested or implemented) unfolds
- * its operations, cascade all the way down. Views curate WHO is on stage; this
- * builder only decides HOW MUCH of each one shows.
- */
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
@@ -859,7 +344,7 @@ function buildScene(
 ): Scene {
   const distributionLevel = mode === 'distribution';
   // The yugo wants the WHOLE containment tree — its own folding decides what shows.
-  // Everything expandable joins the set, and the forms skip resolveForm's flip.
+  // Everything with children joins the set — the whole containment tree unfolds.
   if (expandAll) {
     const all = new Set(toggledIds);
     for (const m of model.boundedContexts) all.add(m.id);
@@ -887,10 +372,155 @@ function buildScene(
   // The distribution level narrows the cast: boundedContexts, services and infrastructure —
   // the strategic nodes (externals, APIs, workflows, floating ETLs) stay on the
   // other levels.
+  // ---- the ownership tree (Archi style) ------------------------------------
+  // Nodes are ALWAYS independent boxes; containment is a drawn relation (the
+  // filled diamond on the owner's side). Expanding a node brings its children
+  // on stage as free nodes ringed around it, tied by their composition edge.
+  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
+  const proxyById = new Map((model.proxyApis ?? []).map((px) => [px.id, px]));
+
+  /** Direct children of an element in the ownership tree (mode-aware). */
+  const ownedChildren = (id: string, kind: string): ChildDesc[] => {
+    if (distributionLevel) {
+      if (kind === 'boundedContext') {
+        // A context with just its main module has nothing to distribute: the
+        // module stays implicit and the context is the deployment target.
+        const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === id);
+        if (modules.length <= 1) return [];
+        return modules.map((cm): ChildDesc => ({ id: cm.id, name: cm.name, kind: 'module' }));
+      }
+      if (kind === 'module') {
+        const cm = (model.modules ?? []).find((x) => x.id === id);
+        const bc = model.boundedContexts.find((m) => m.id === cm?.boundedContextId);
+        if (!cm || !bc) return [];
+        const byId = new Map(boundedContextElementDescs(model, bc).map((e) => [e.id, e]));
+        return (cm.elementIds ?? [])
+          .map((eid) => byId.get(eid))
+          .filter((e): e is ChildDesc => !!e);
+      }
+      return [];
+    }
+    switch (kind) {
+      case 'boundedContext': {
+        const bc = model.boundedContexts.find((m) => m.id === id);
+        return bc ? [...apiImplChildren(model, id), ...boundedContextElementDescs(model, bc)] : [];
+      }
+      case 'external-system': {
+        const x = model.externalSystems.find((s) => s.id === id);
+        return [
+          ...model.externalSystems
+            .filter((s) => s.parentExternalSystemId === id)
+            .map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'external-system' })),
+          ...nestedApis
+            .filter((a) => a.publishedByExternalSystemId === id)
+            .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+          ...nestedProxies
+            .filter((px) => px.publishedByExternalSystemId === id)
+            .map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
+          ...(x?.useCases ?? []).map(
+            (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
+          ),
+          ...(x?.tables ?? []).map(
+            (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
+          ),
+          ...(x?.mcpServers ?? []).map(
+            (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
+          ),
+        ];
+      }
+      case 'api':
+        return (apiById.get(id)?.operations ?? []).map(
+          (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),
+        );
+      case 'api-impl': {
+        const impl = /^apiimpl:(.+)@(.+)$/.exec(id);
+        const api = impl ? apiById.get(impl[1]) : undefined;
+        return (api?.operations ?? []).map(
+          (op): ChildDesc => ({
+            id: apiOpOccurrenceId(op.id, impl![2]),
+            name: op.name,
+            kind: 'api-op-occurrence',
+          }),
+        );
+      }
+      case 'proxy-api': {
+        const px = proxyById.get(id);
+        return px
+          ? proxyOps(model, px).map(
+              (op): ChildDesc => ({
+                id: apiOpOccurrenceId(op.id, id),
+                name: op.name,
+                kind: 'api-op-occurrence',
+              }),
+            )
+          : [];
+      }
+      default:
+        return [];
+    }
+  };
+
+  const nodes: SceneNode[] = [];
+  const containsEdges: SceneEdge[] = [];
+
+  /** A child born without a stored position rings around its owner. */
+  const childDefault = (
+    owner: { x: number; y: number },
+    i: number,
+    total: number,
+  ): { x: number; y: number } => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(total, 1);
+    const r = 160 + 12 * Math.min(total, 14);
+    return { x: owner.x + r * Math.cos(angle), y: owner.y + r * Math.sin(angle) };
+  };
+
+  /** Emits the (expanded) children of an owner as free nodes plus their diamonds. */
+  const emitChildren = (
+    ownerId: string,
+    ownerKind: string,
+    ownerName: string,
+    ownerPos: { x: number; y: number },
+  ): void => {
+    const kids = ownedChildren(ownerId, ownerKind);
+    kids.forEach((k, i) => {
+      const pos = layout[k.id] ?? childDefault(ownerPos, i, kids.length);
+      const grand = ownedChildren(k.id, k.kind);
+      const expanded = toggledIds.has(k.id) && grand.length > 0;
+      const style = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
+      const subsystem = k.kind === 'external-system';
+      nodes.push({
+        id: k.id,
+        label: k.name,
+        kind: k.kind,
+        x: pos.x,
+        y: pos.y,
+        w: subsystem ? 150 : CHILD_W + 12,
+        h: subsystem ? 44 : CHILD_H + 4,
+        symbol: style.symbol,
+        fill: style.fill,
+        stroke: style.stroke,
+        dashed: subsystem || undefined,
+        ownerId,
+        collapsible: grand.length > 0,
+        collapsed: grand.length > 0 && !expanded,
+        tooltip: `${k.policy ? 'Policy' : CHILD_TOOLTIP[k.kind]} ${k.name} — parte de ${ownerName}`,
+      });
+      containsEdges.push({
+        id: `contains:${ownerId}->${k.id}`,
+        sourceId: ownerId,
+        targetId: k.id,
+        kind: 'contains',
+        color: '#94a3b8',
+        tooltip: `${ownerName} contiene ${k.name}`,
+      });
+      if (expanded) emitChildren(k.id, k.kind, k.name, pos);
+    });
+  };
+
   const allNodes = [
     ...model.boundedContexts.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
     ...(distributionLevel ? [] : model.externalSystems)
-      // subsystems render INSIDE their parent, never as top-level boxes
+      // subsystems enter the stage through their parent's expansion, never top-level
       .filter((e) => !e.parentExternalSystemId || !externalIds.has(e.parentExternalSystemId))
       .map((e) => ({ ref: e, external: true, api: false, proxy: false })),
     ...(distributionLevel ? [] : (model.apis ?? [])
@@ -906,7 +536,7 @@ function buildScene(
       proxy: false,
       workflow: true,
     }))),
-    // ETL flows without owner (legacy) still float; owned ones nest in their context.
+    // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerBoundedContextId)
       .map((f) => ({
@@ -925,12 +555,12 @@ function buildScene(
     })),
   ];
 
-  const nodes: SceneNode[] = allNodes.flatMap((entry, i) => {
+  allNodes.forEach((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
     if ('idp' in entry && entry.idp) {
       const idp = entry.ref as NonNullable<ModuxModel['identityProviders']>[number];
       const federated = !!idp.publishedByExternalSystemId;
-      return [{
+      nodes.push({
         id: idp.id,
         label: idp.name,
         kind: 'identity-provider',
@@ -944,11 +574,12 @@ function buildScene(
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
-      }];
+      });
+      return;
     }
     if ('etl' in entry && entry.etl) {
       const f = entry.ref as NonNullable<ModuxModel['etlFlows']>[number];
-      return [{
+      nodes.push({
         id: f.id,
         label: f.name,
         kind: 'etl-flow',
@@ -962,11 +593,12 @@ function buildScene(
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
-      }];
+      });
+      return;
     }
     if ('workflow' in entry && entry.workflow) {
       const w = entry.ref as NonNullable<ModuxModel['workflows']>[number];
-      return [{
+      nodes.push({
         id: w.id,
         label: w.name,
         kind: 'workflow',
@@ -980,11 +612,14 @@ function buildScene(
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
-      }];
+      });
+      return;
     }
     if (entry.proxy) {
       const px = entry.ref as NonNullable<ModuxModel['proxyApis']>[number];
-      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+      const kids = ownedChildren(px.id, 'proxy-api');
+      const expanded = toggledIds.has(px.id) && kids.length > 0;
+      nodes.push({
         id: px.id,
         label: px.name,
         kind: 'proxy-api',
@@ -993,39 +628,21 @@ function buildScene(
         stroke: '#0e7490',
         badge: 'PROXY API',
         tooltip: `${px.name} — proxy/cache de una API, consumible como ella`,
-      };
-      // An expanded proxy unfolds its surface: it IS the fronted API, so its
-      // operation OCCURRENCES nest inside — future arrows will route each one to the
-      // published API or to a bounded-context implementation.
-      const pxOps = px.targetApiId
-        ? ((model.apis ?? []).find((a) => a.id === px.targetApiId)?.operations ?? [])
-        : [];
-      if (toggledIds.has(px.id) && pxOps.length > 0) {
-        return detailedContainer(
-          pos,
-          { ...base, collapsible: true, collapsed: false },
-          pxOps.map((op): ChildDesc => ({
-            id: apiOpOccurrenceId(op.id, px.id),
-            name: op.name,
-            kind: 'api-op-occurrence',
-          })),
-          layout,
-          sizes,
-        );
-      }
-      return [{
-        ...base,
-        collapsible: pxOps.length > 0,
-        collapsed: pxOps.length > 0,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
-      }];
+      });
+      if (expanded) emitChildren(px.id, 'proxy-api', px.name, pos);
+      return;
     }
     if (entry.api) {
       const a = entry.ref as NonNullable<ModuxModel['apis']>[number];
-      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+      const kids = ownedChildren(a.id, 'api');
+      const expanded = toggledIds.has(a.id) && kids.length > 0;
+      nodes.push({
         id: a.id,
         label: a.name,
         kind: 'api',
@@ -1034,32 +651,22 @@ function buildScene(
         stroke: '#4f46e5',
         badge: 'API',
         tooltip: `${a.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
-      };
-      const aExpanded = toggledIds.has(a.id);
-      if (aExpanded && a.operations.length > 0) {
-        return detailedContainer(
-          pos,
-          { ...base, collapsible: true, collapsed: false },
-          a.operations.map(
-            (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),
-          ),
-          layout,
-          sizes,
-        );
-      }
-      return [{
-        ...base,
-        collapsible: a.operations.length > 0,
-        collapsed: a.operations.length > 0,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
-      }];
+      });
+      if (expanded) emitChildren(a.id, 'api', a.name, pos);
+      return;
     }
     if (entry.external) {
       const x = entry.ref as ModuxModel['externalSystems'][number];
-      const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+      const kids = ownedChildren(x.id, 'external-system');
+      const expanded = toggledIds.has(x.id) && kids.length > 0;
+      const xSize = sizes[x.id];
+      nodes.push({
         id: x.id,
         label: x.name,
         kind: 'external-system',
@@ -1071,210 +678,23 @@ function buildScene(
         tooltip: x.referencedRepositoryId
           ? `${x.name} — otro proyecto modux (repositorio ${x.referencedRepositoryId}), referenciado del catálogo`
           : `${x.name} (sistema externo)`,
-      };
-      // Published APIs and proxies are strategic-level elements: they are the system's
-      // chip (coarse) form; operations and tables only unfold in the full form.
-      // Subsystems publish too: their APIs and proxies nest INSIDE their own chip
-      // (moving an API to a subsystem must be VISIBLE); the operations level still
-      // unfolds them as boxes of the parent, where the wiring is what matters.
-      const subsystemIds = new Set(
-        model.externalSystems.filter((sub) => sub.parentExternalSystemId === x.id).map((sub) => sub.id),
-      );
-      const ownedBy = (publisherId: string | undefined) =>
-        publisherId === x.id || (publisherId !== undefined && subsystemIds.has(publisherId));
-      const publisherName = (publisherId: string | undefined) =>
-        model.externalSystems.find((e) => e.id === publisherId)?.name ?? x.name;
-      const publishedApis = nestedApis.filter((a) => ownedBy(a.publishedByExternalSystemId));
-      const hostedProxies = nestedProxies.filter((px) => ownedBy(px.publishedByExternalSystemId));
-      const ownApiChips = publishedApis.filter((a) => a.publishedByExternalSystemId === x.id);
-      const ownProxyChips = hostedProxies.filter((px) => px.publishedByExternalSystemId === x.id);
-      const richChildren: ChildDesc[] = [
-        ...model.externalSystems
-          .filter((sub) => sub.parentExternalSystemId === x.id)
-          .map((sub): ChildDesc => {
-            const subExpanded = toggledIds.has(sub.id);
-            // A subsystem is a container in its own right: its APIs/proxies always
-            // ride its chip (expandable one by one into their operation rows), and
-            // its own chevron unfolds the rest of its content.
-            const rows: ChildDesc[] = [
-              ...nestedApis
-                .filter((a) => a.publishedByExternalSystemId === sub.id)
-                .map((a): ChildDesc => ({
-                  id: a.id,
-                  name: a.name,
-                  kind: 'api',
-                  expandable: (a.operations ?? []).length > 0,
-                  expanded: toggledIds.has(a.id),
-                  children: toggledIds.has(a.id)
-                    ? (a.operations ?? []).map((op): ChildDesc => ({
-                        id: op.id, name: op.name, kind: 'api-operation',
-                      }))
-                    : [],
-                })),
-              ...nestedProxies
-                .filter((px) => px.publishedByExternalSystemId === sub.id)
-                .map((px): ChildDesc => ({
-                  id: px.id,
-                  name: px.name,
-                  kind: 'proxy-api',
-                  expandable: proxyOps(model, px).length > 0,
-                  expanded: toggledIds.has(px.id),
-                  children: toggledIds.has(px.id)
-                    ? proxyOps(model, px).map((op): ChildDesc => ({
-                        id: apiOpOccurrenceId(op.id, px.id), name: op.name, kind: 'api-op-occurrence',
-                      }))
-                    : [],
-                })),
-              ...(subExpanded
-                ? [
-                    ...(sub.useCases ?? []).map(
-                      (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
-                    ),
-                    ...(sub.tables ?? []).map(
-                      (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
-                    ),
-                    ...(sub.mcpServers ?? []).map(
-                      (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
-                    ),
-                  ]
-                : []),
-            ];
-            const subBeyond =
-              (sub.useCases ?? []).length + (sub.tables ?? []).length + (sub.mcpServers ?? []).length > 0;
-            return {
-              id: sub.id,
-              name: sub.name,
-              kind: 'external-system',
-              expandable: subBeyond,
-              expanded: subExpanded,
-              children: rows,
-            };
-          }),
-        ...(x.useCases ?? []).map(
-          (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
-        ),
-        ...(x.tables ?? []).map(
-          (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
-        ),
-        ...(x.mcpServers ?? []).map(
-          (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
-        ),
-      ];
-      const subsystemChips = richChildren.filter((c) => c.kind === 'external-system');
-      // Subsystems RIDE the coarse form (so an API can be dropped on them) but do
-      // not force it: a system with only subsystems still folds to the plain box.
-      const hasChips = publishedApis.length > 0 || hostedProxies.length > 0;
-      const xFoldable = hasChips || richChildren.length > 0;
-      const xBeyond = richChildren.some((c) => c.kind !== 'external-system');
-      // Subsystems already ride the coarse form, so they are not detail BEYOND it:
-      // a system with only chips and subsystems must fold to the plain box.
-      const { form: xForm, collapsed: xCollapsed } = expandAll
-        ? { form: (xBeyond ? 'full' : hasChips || richChildren.length ? 'coarse' : 'compact') as NodeForm, collapsed: false }
-        : resolveForm(toggledIds.has(x.id), hasChips ? 'coarse' : 'compact', xBeyond);
-      // Subsystems are strategic, like the published APIs: they show from the
-      // coarse form on — otherwise nobody can drop an API on them.
-      const plainChildren: ChildDesc[] = [
-        ...ownProxyChips.map((px): ChildDesc => ({
-          id: px.id,
-          name: px.name,
-          kind: 'proxy-api',
-          expandable: proxyOps(model, px).length > 0,
-        })),
-        ...(xForm === 'full' ? richChildren : subsystemChips),
-      ];
-      // Each own API (or hosted proxy) unfolds ON ITS OWN into a sub-container with
-      // its operations (occurrences, for a proxy — its surface IS the fronted API).
-      const expandedOwnApis = xForm === 'compact'
-        ? []
-        : ownApiChips.filter((a) => toggledIds.has(a.id) && (a.operations ?? []).length > 0);
-      const expandedOwnProxies = xForm === 'compact'
-        ? []
-        : ownProxyChips.filter((px) => toggledIds.has(px.id) && proxyOps(model, px).length > 0);
-      if (expandedOwnApis.length > 0 || expandedOwnProxies.length > 0) {
-        const boxes: ApiBoxDesc[] = [
-          ...expandedOwnApis.map((a): ApiBoxDesc => ({
-            id: a.id,
-            name: a.name,
-            kind: 'api',
-            badge: 'API',
-            fill: '#eef2ff',
-            stroke: '#4f46e5',
-            tooltip: `${a.name} — API publicada por ${publisherName(a.publishedByExternalSystemId)}`,
-            opKind: 'api-operation',
-            ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
-          })),
-          ...expandedOwnProxies.map((px): ApiBoxDesc => {
-            const target = (model.apis ?? []).find((a) => a.id === px.targetApiId)!;
-            return {
-              id: px.id,
-              name: px.name,
-              kind: 'proxy-api',
-              badge: 'PROXY API',
-              fill: '#ecfeff',
-              stroke: '#0e7490',
-              tooltip: `${px.name} — proxy/cache de ${target.name}`,
-              opKind: 'api-op-occurrence',
-              ops: (target.operations ?? []).map((op) => ({
-                id: apiOpOccurrenceId(op.id, px.id),
-                name: op.name,
-              })),
-            };
-          }),
-        ];
-        const boxedIds = new Set(boxes.map((b) => b.id));
-        return containerWithApiBoxes(
-          pos,
-          { ...base, collapsible: true, collapsed: xCollapsed },
-          boxes,
-          [
-            ...ownApiChips
-              .filter((a) => !boxedIds.has(a.id))
-              .map((a): ChildDesc => ({
-                id: a.id,
-                name: a.name,
-                kind: 'api',
-                expandable: (a.operations ?? []).length > 0,
-              })),
-            ...plainChildren.filter((c) => !boxedIds.has(c.id)),
-          ],
-          layout,
-          sizes,
-        );
-      }
-      const children: ChildDesc[] = xForm === 'compact'
-        ? []
-        : [
-            ...ownApiChips.map((a): ChildDesc => ({
-              id: a.id,
-              name: a.name,
-              kind: 'api',
-              expandable: (a.operations ?? []).length > 0,
-            })),
-            ...plainChildren,
-          ];
-      if (children.length > 0) {
-        return detailedContainer(
-          pos,
-          { ...base, collapsible: xFoldable, collapsed: xCollapsed },
-          children, layout, sizes,
-        );
-      }
-      // Compact (or empty) form: still resizable — partners are drawn big on purpose.
-      const xSize = sizes[x.id];
-      return [{
-        ...base,
-        collapsible: xFoldable,
-        collapsed: xFoldable && xCollapsed,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         resizable: true,
         x: pos.x,
         y: pos.y,
         w: xSize?.w ?? NODE_W,
         h: xSize?.h ?? NODE_H,
-      }];
+      });
+      if (expanded) emitChildren(x.id, 'external-system', x.name, pos);
+      return;
     }
     const m = entry.ref as ModuxModel['boundedContexts'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
-    const base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'> = {
+    const kids = ownedChildren(m.id, 'boundedContext');
+    const expanded = toggledIds.has(m.id) && kids.length > 0;
+    const mSize = sizes[m.id];
+    nodes.push({
       id: m.id,
       label: m.name,
       kind: 'boundedContext',
@@ -1282,67 +702,18 @@ function buildScene(
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#94a3b8',
       badge: subdomain,
-      tooltip: `${m.name} — subdominio ${subdomain}`,
-    };
-    const implChildren = apiImplChildren(model, m.id);
-    const hasDetail =
-      (model.aggregates ?? []).some((a) => a.boundedContextId === m.id) ||
-      (m.useCases ?? []).length > 0 ||
-      (m.domainEvents ?? []).length > 0 ||
-      (m.applicationEvents ?? []).length > 0 ||
-      (m.readModels ?? []).length > 0 ||
-      (m.domainServices ?? []).length > 0 ||
-      (m.queryServices ?? []).length > 0 ||
-      (m.scheduledTriggers ?? []).length > 0 ||
-      (model.etlFlows ?? []).some((f) => f.ownerBoundedContextId === m.id) ||
-      (model.notifications ?? []).some((n) => n.ownerBoundedContextId === m.id) ||
-      (model.documents ?? []).some((d) => d.ownerBoundedContextId === m.id);
-    const mFoldable = hasDetail || implChildren.length > 0;
-    const { form: mForm, collapsed: mCollapsed } = expandAll
-      ? { form: (hasDetail ? 'full' : implChildren.length > 0 ? 'coarse' : 'compact') as NodeForm, collapsed: false }
-      : resolveForm(toggledIds.has(m.id), implChildren.length > 0 ? 'coarse' : 'compact', hasDetail);
-    if (distributionLevel) {
-      return distributionContext(
-        model, m, pos,
-        { ...base, collapsible: false, collapsed: false },
-        layout, sizes, toggledIds,
-      );
-    }
-    if (mForm === 'full' && mFoldable) {
-      return detailedContext(
-        model, m, pos,
-        { ...base, collapsible: true, collapsed: mCollapsed },
-        layout, sizes, toggledIds,
-      );
-    }
-    // Coarse: the strategic form — implemented APIs still nest, and each one
-    // expands ON ITS OWN into its operations, even with the context folded.
-    if (mForm === 'coarse' && implChildren.length > 0) {
-      const boxes = implApiBoxes(model, m, toggledIds);
-      const boxedIds = new Set(boxes.map((b) => b.id));
-      const chips = implChildren.filter((c) => !boxedIds.has(c.id));
-      if (boxes.length > 0) {
-        return containerWithApiBoxes(
-          pos,
-          { ...base, collapsible: mFoldable, collapsed: mCollapsed },
-          boxes, chips, layout, sizes,
-        );
-      }
-      return detailedContainer(
-        pos,
-        { ...base, collapsible: mFoldable, collapsed: mCollapsed },
-        implChildren, layout, sizes,
-      );
-    }
-    return [{
-      ...base,
-      collapsible: mFoldable,
-      collapsed: mFoldable && mCollapsed,
+      tooltip: distributionLevel && kids.length === 0
+        ? `${m.name} — un solo módulo (el principal): el servicio lo despliega entero. Añade un módulo desde la paleta para repartir sus elementos`
+        : `${m.name} — subdominio ${subdomain}`,
+      collapsible: kids.length > 0,
+      collapsed: kids.length > 0 && !expanded,
+      resizable: true,
       x: pos.x,
       y: pos.y,
-      w: NODE_W,
-      h: NODE_H,
-    }];
+      w: mSize?.w ?? NODE_W,
+      h: mSize?.h ?? NODE_H,
+    });
+    if (expanded) emitChildren(m.id, 'boundedContext', m.name, pos);
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
   // context — and outside the distribution lens, which is about packaging.
@@ -2547,6 +1918,8 @@ function buildScene(
   return {
     nodes,
     edges: [
+      // Composition first: the ownership diamonds paint under the semantic edges.
+      ...containsEdges,
       ...deployEdges,
       ...relationEdges,
       ...flowEdges,

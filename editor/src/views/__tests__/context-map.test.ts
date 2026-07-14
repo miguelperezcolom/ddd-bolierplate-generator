@@ -28,16 +28,20 @@ const strategicModel = () =>
     ],
   });
 
-describe('contextMapScene — everything folds to chips by default', () => {
+describe('contextMapScene — free boxes, folded by default (Archi style)', () => {
   const scene = contextMapScene(strategicModel(), {});
 
-  it('shows contexts and external systems as chips — no aggregates, no use cases', () => {
+  it('shows contexts and external systems as plain boxes — no children on stage', () => {
     const ids = scene.nodes.map((n) => n.id);
     expect(ids).toContain('mod-reservas');
     expect(ids).toContain('mod-facturas');
     expect(ids).toContain('ext-pms');
     expect(ids).not.toContain('agg-reserva');
     expect(ids).not.toContain('uc-book');
+  });
+
+  it('nothing nests: no node carries a geometric parent', () => {
+    expect(scene.nodes.every((n) => !n.parentId)).toBe(true);
   });
 
   it('a context with content wears the chevron (it hides more)', () => {
@@ -66,20 +70,20 @@ describe('contextMapScene — everything folds to chips by default', () => {
   });
 });
 
-describe('contextMapScene — per-element expansion', () => {
-  it('an expanded context unfolds its aggregates and use cases', () => {
+describe('contextMapScene — expansion brings children as free nodes with diamonds', () => {
+  it('an expanded context reveals its content, tied by contains edges', () => {
     const scene = contextMapScene(strategicModel(), {}, {}, new Set(['mod-reservas']));
     const agg = scene.nodes.find((n) => n.id === 'agg-reserva')!;
-    expect(agg.parentId).toBe('mod-reservas');
-    const uc = scene.nodes.find((n) => n.id === 'uc-book')!;
-    expect(uc.parentId).toBe('mod-reservas');
-    // the neighbour stays folded: expansion is per element, not global
-    const other = scene.nodes.find((n) => n.id === 'mod-facturas')!;
-    expect(scene.nodes.some((n) => n.parentId === 'mod-facturas')).toBe(false);
-    expect(other.w).toBeLessThan(200);
+    expect(agg.parentId).toBeUndefined(); // free box
+    expect(agg.ownerId).toBe('mod-reservas'); // logical containment (yugo/3D)
+    const edge = scene.edges.find((e) => e.id === 'contains:mod-reservas->agg-reserva')!;
+    expect(edge.kind).toBe('contains');
+    expect(edge.sourceId).toBe('mod-reservas');
+    // the neighbour stays folded: expansion is per element
+    expect(scene.nodes.some((n) => n.ownerId === 'mod-facturas')).toBe(false);
   });
 
-  it('an expanded API unfolds its operations; a folded one stays a chip', () => {
+  it('an expanded API unfolds its operations; a folded one stays a plain box', () => {
     const model = baseModel({
       ...strategicModel(),
       apis: [
@@ -88,14 +92,16 @@ describe('contextMapScene — per-element expansion', () => {
       ],
     });
     const scene = contextMapScene(model, {}, {}, new Set(['api-a']));
-    expect(scene.nodes.find((n) => n.id === 'op-1')?.parentId).toBe('api-a');
+    const op = scene.nodes.find((n) => n.id === 'op-1')!;
+    expect(op.ownerId).toBe('api-a');
+    expect(scene.edges.some((e) => e.id === 'contains:api-a->op-1')).toBe(true);
     expect(scene.nodes.find((n) => n.id === 'op-2')).toBeUndefined();
     const b = scene.nodes.find((n) => n.id === 'api-b')!;
     expect(b.collapsible).toBe(true);
     expect(b.collapsed).toBe(true);
   });
 
-  it('cascade: an API published by an expanded system expands on its own into operations', () => {
+  it('cascade: system → API → operations, one expansion at a time', () => {
     const model = baseModel({
       ...strategicModel(),
       externalSystems: [{ id: 'ext-pms', name: 'PMS' }],
@@ -105,16 +111,33 @@ describe('contextMapScene — per-element expansion', () => {
         publishedByExternalSystemId: 'ext-pms',
       }],
     });
-    // system folded to coarse chip: the API rides as a chip with its chevron
-    const coarse = contextMapScene(model, {});
-    const chip = coarse.nodes.find((n) => n.id === 'api-pms')!;
-    expect(chip.parentId).toBe('ext-pms');
-    expect(chip.collapsible).toBe(true);
-    expect(coarse.nodes.find((n) => n.id === 'op-pms')).toBeUndefined();
-    // the API expanded: its operations nest inside its own sub-container
-    const open = contextMapScene(model, {}, {}, new Set(['api-pms']));
-    expect(open.nodes.find((n) => n.id === 'op-pms')?.parentId).toBe('api-pms');
-    expect(open.nodes.find((n) => n.id === 'api-pms')?.parentId).toBe('ext-pms');
+    // folded system: nothing of its content on stage
+    const folded = contextMapScene(model, {});
+    expect(folded.nodes.find((n) => n.id === 'api-pms')).toBeUndefined();
+    // expanded system: the API joins as a free box with its chevron
+    const sys = contextMapScene(model, {}, {}, new Set(['ext-pms']));
+    const api = sys.nodes.find((n) => n.id === 'api-pms')!;
+    expect(api.ownerId).toBe('ext-pms');
+    expect(api.collapsible).toBe(true);
+    expect(sys.nodes.find((n) => n.id === 'op-pms')).toBeUndefined();
+    // API expanded too: its operation arrives, chained by diamonds
+    const open = contextMapScene(model, {}, {}, new Set(['ext-pms', 'api-pms']));
+    expect(open.nodes.find((n) => n.id === 'op-pms')?.ownerId).toBe('api-pms');
+    expect(open.edges.some((e) => e.id === 'contains:ext-pms->api-pms')).toBe(true);
+    expect(open.edges.some((e) => e.id === 'contains:api-pms->op-pms')).toBe(true);
+  });
+
+  it('an implemented API is a child of its context, expandable to occurrences', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      apis: [{ id: 'api-impl', name: 'Impl API', operations: [{ id: 'op-i', name: 'op' }] }],
+      apiImplementations: [{ apiId: 'api-impl', boundedContextId: 'mod-reservas' }],
+    });
+    const open = contextMapScene(model, {}, {}, new Set(['mod-reservas', 'apiimpl:api-impl@mod-reservas']));
+    const impl = open.nodes.find((n) => n.id === 'apiimpl:api-impl@mod-reservas')!;
+    expect(impl.ownerId).toBe('mod-reservas');
+    const occ = open.nodes.find((n) => n.id === 'apiop:op-i@mod-reservas')!;
+    expect(occ.ownerId).toBe('apiimpl:api-impl@mod-reservas');
   });
 });
 
@@ -133,17 +156,17 @@ describe('contextMapScene — expandAll (the yugo wants the whole tree)', () => 
       }],
     });
     const scene = contextMapScene(model, {}, {}, new Set(), true);
-    const ids = new Set(scene.nodes.map((n) => n.id));
-    expect(ids.has('agg-reserva')).toBe(true); // context content
-    expect(ids.has('xuc-r')).toBe(true); // system content
-    expect(ids.has('op-v')).toBe(true); // subsystem API operations
-    // a system with content did NOT fold to compact (resolveForm flip skipped)
-    expect(scene.nodes.find((n) => n.id === 'xuc-r')?.parentId).toBe('ext-rumbo');
+    const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+    expect(byId.get('agg-reserva')?.ownerId).toBe('mod-reservas');
+    expect(byId.get('xuc-r')?.ownerId).toBe('ext-rumbo');
+    expect(byId.get('ext-ventus')?.ownerId).toBe('ext-rumbo');
+    expect(byId.get('api-v')?.ownerId).toBe('ext-ventus');
+    expect(byId.get('op-v')?.ownerId).toBe('api-v');
   });
 });
 
 describe('contextMapScene — subsystems', () => {
-  it('a subsystem never floats top-level: it lives inside its parent', () => {
+  it('a subsystem never floats top-level: it enters through its parent, with its diamond', () => {
     const model = baseModel({
       ...strategicModel(),
       externalSystems: [
@@ -151,36 +174,16 @@ describe('contextMapScene — subsystems', () => {
         { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
       ],
     });
-    // a system with ONLY subsystems folds to the plain box (chip hidden)…
     const folded = contextMapScene(model, {});
     expect(folded.nodes.find((n) => n.id === 'ext-ventus')).toBeUndefined();
-    // …and unfolds to show the subsystem nested — never as its own top-level box
     const unfolded = contextMapScene(model, {}, undefined, new Set(['ext-rumbo']));
-    const sub = unfolded.nodes.find((n) => n.id === 'ext-ventus');
-    expect(sub?.parentId).toBe('ext-rumbo');
-    expect(sub?.kind).toBe('external-system');
+    const sub = unfolded.nodes.find((n) => n.id === 'ext-ventus')!;
+    expect(sub.ownerId).toBe('ext-rumbo');
+    expect(sub.parentId).toBeUndefined();
+    expect(unfolded.edges.some((e) => e.id === 'contains:ext-rumbo->ext-ventus')).toBe(true);
   });
 
-  it("a subsystem's published APIs show inside the parent box", () => {
-    const model = baseModel({
-      ...strategicModel(),
-      externalSystems: [
-        { id: 'ext-rumbo', name: 'Rumbo' },
-        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
-      ],
-      apis: [{ id: 'api-ventus', name: 'Ventus API', operations: [], publishedByExternalSystemId: 'ext-ventus' }],
-    });
-    const scene = contextMapScene(model, {});
-    const api = scene.nodes.find((n) => n.id === 'api-ventus');
-    // the API nests INSIDE the subsystem's chip — moving it there must be visible
-    expect(api?.parentId).toBe('ext-ventus');
-    const sub = scene.nodes.find((n) => n.id === 'ext-ventus');
-    // and the chip grows to hold it (taller than a plain chip) and accepts resize
-    expect((sub?.h ?? 0)).toBeGreaterThan(40);
-    expect(sub?.resizable).toBe(true);
-  });
-
-  it('a subsystem with content wears its own chevron and unfolds use cases and tables', () => {
+  it('a subsystem with content wears its own chevron and unfolds it', () => {
     const model = baseModel({
       ...strategicModel(),
       externalSystems: [
@@ -192,54 +195,13 @@ describe('contextMapScene — subsystems', () => {
         },
       ],
     });
-    const folded = contextMapScene(model, {}, undefined, new Set(['ext-rumbo']));
-    const sub = folded.nodes.find((n) => n.id === 'ext-ventus')!;
+    const parent = contextMapScene(model, {}, undefined, new Set(['ext-rumbo']));
+    const sub = parent.nodes.find((n) => n.id === 'ext-ventus')!;
     expect(sub.collapsible).toBe(true);
-    expect(folded.nodes.find((n) => n.id === 'xuc-1')).toBeUndefined();
+    expect(parent.nodes.find((n) => n.id === 'xuc-1')).toBeUndefined();
     const open = contextMapScene(model, {}, undefined, new Set(['ext-rumbo', 'ext-ventus']));
-    expect(open.nodes.find((n) => n.id === 'xuc-1')?.parentId).toBe('ext-ventus');
-    expect(open.nodes.find((n) => n.id === 'xt-1')?.parentId).toBe('ext-ventus');
-  });
-
-  it("a subsystem's API expands on its own into operation rows", () => {
-    const model = baseModel({
-      ...strategicModel(),
-      externalSystems: [
-        { id: 'ext-rumbo', name: 'Rumbo' },
-        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
-      ],
-      apis: [{
-        id: 'api-v', name: 'V API',
-        operations: [{ id: 'op-v', name: 'consulta' }],
-        publishedByExternalSystemId: 'ext-ventus',
-      }],
-    });
-    // the coarse form already shows the subsystem chip with its API rows
-    const folded = contextMapScene(model, {});
-    const chip = folded.nodes.find((n) => n.id === 'api-v')!;
-    expect(chip.parentId).toBe('ext-ventus');
-    expect(chip.collapsible).toBe(true);
-    expect(folded.nodes.find((n) => n.id === 'op-v')).toBeUndefined();
-    const open = contextMapScene(model, {}, undefined, new Set(['api-v']));
-    // the operation hangs off ITS API — the containment tree stays honest for the yugo
-    expect(open.nodes.find((n) => n.id === 'op-v')?.parentId).toBe('api-v');
-  });
-
-  it('an implemented API expands even with its context folded to the coarse chip', () => {
-    const model = baseModel({
-      ...strategicModel(),
-      apis: [{ id: 'api-impl', name: 'Impl API', operations: [{ id: 'op-i', name: 'op' }] }],
-      apiImplementations: [{ apiId: 'api-impl', boundedContextId: 'mod-reservas' }],
-    });
-    const coarse = contextMapScene(model, {});
-    const chip = coarse.nodes.find((n) => n.id === 'apiimpl:api-impl@mod-reservas')!;
-    expect(chip.parentId).toBe('mod-reservas');
-    expect(chip.collapsible).toBe(true);
-    const open = contextMapScene(model, {}, undefined, new Set(['apiimpl:api-impl@mod-reservas']));
-    const occ = open.nodes.find((n) => n.id === 'apiop:op-i@mod-reservas');
-    expect(occ?.parentId).toBe('apiimpl:api-impl@mod-reservas');
-    // the context itself stays coarse: its use cases did not unfold
-    expect(open.nodes.find((n) => n.id === 'uc-book')).toBeUndefined();
+    expect(open.nodes.find((n) => n.id === 'xuc-1')?.ownerId).toBe('ext-ventus');
+    expect(open.nodes.find((n) => n.id === 'xt-1')?.ownerId).toBe('ext-ventus');
   });
 
   it('an orphaned parent reference falls back to top-level', () => {
@@ -276,7 +238,7 @@ describe('distributionScene — the distribution lens (pure topology)', () => {
     expect(deploy.id).toBe('deploy:svc-1->mod-reservas-main');
   });
 
-  it('unfolds the module boxes as soon as a second module joins', () => {
+  it('a second module unfolds through the context, as free boxes with diamonds', () => {
     const model = baseModel({
       ...strategicModel(),
       modules: [
@@ -285,10 +247,10 @@ describe('distributionScene — the distribution lens (pure topology)', () => {
       ],
       services: [{ id: 'svc-1', name: 'S1', moduleIds: ['mod-reservas-main', 'mod-reservas-read'] }],
     });
-    const scene = distributionScene(model, {});
-    const ids = scene.nodes.map((n) => n.id);
-    expect(ids).toContain('mod-reservas-main');
-    expect(ids).toContain('mod-reservas-read');
+    const scene = distributionScene(model, {}, {}, new Set(['mod-reservas']));
+    const main = scene.nodes.find((n) => n.id === 'mod-reservas-main')!;
+    expect(main.ownerId).toBe('mod-reservas');
+    expect(scene.edges.some((e) => e.id === 'contains:mod-reservas->mod-reservas-read')).toBe(true);
     const deploys = scene.edges.filter((e) => e.kind === 'deploys');
     expect(deploys.map((e) => e.targetId).sort()).toEqual(['mod-reservas-main', 'mod-reservas-read']);
   });

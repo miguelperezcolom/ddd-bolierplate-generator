@@ -82,7 +82,8 @@ export function applyConnectionGesture(
       const boxOf = (id: string): string | null => {
         for (let cur: string | undefined = id; cur; ) {
           if (modules.some((cm) => cm.id === cur)) return cur;
-          cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+          const n = scene.nodes.find((x) => x.id === cur);
+          cur = n ? n.ownerId ?? n.parentId : undefined;
         }
         return null;
       };
@@ -1933,13 +1934,17 @@ export function performDeleteGesture(
     if (view === 'distribution' && elementType === 'node') {
       // Supr on a chip inside a boundedContext box UNPACKS it — the element itself survives.
       const scene = host.sceneFor('distribution');
-      for (let cur = scene.nodes.find((n) => n.id === id)?.parentId; cur; ) {
+      const upOf = (nid: string): string | undefined => {
+        const n = scene.nodes.find((x) => x.id === nid);
+        return n ? n.ownerId ?? n.parentId : undefined;
+      };
+      for (let cur = upOf(id); cur; ) {
         if ((host.model.modules ?? []).some((cm) => cm.id === cur)) {
           host.clearSelection();
           host.command({ kind: 'remove-module-element', id: cur, elementId: id });
           return;
         }
-        cur = scene.nodes.find((n) => n.id === cur)?.parentId;
+        cur = upOf(cur);
       }
       return;
     }
