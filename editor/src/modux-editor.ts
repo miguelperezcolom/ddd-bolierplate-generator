@@ -961,6 +961,29 @@ export class ModuxEditor extends LitElement {
     this.emit('layout-changed', { layout: this.layout });
   }
 
+  /**
+   * Drops every trace of a node's geometry across ALL views: position and size.
+   * Palette ids are name slugs, so deleting «Área» and creating another revives
+   * the same id — without this sweep the newcomer would inherit the old clothes.
+   */
+  private purgeNodeGeometry(id: string): void {
+    let changed = false;
+    const next: EditorLayout = { ...this.layout };
+    for (const key of Object.keys(next)) {
+      const vl = normalizeViewLayout(next[key]);
+      if (!(id in vl.nodes) && !(id in (vl.sizes ?? {}))) continue;
+      const nodes = { ...vl.nodes };
+      delete nodes[id];
+      const sizes = { ...(vl.sizes ?? {}) };
+      delete sizes[id];
+      next[key] = { ...vl, nodes, sizes };
+      changed = true;
+    }
+    if (!changed) return;
+    this.layout = next;
+    this.emit('layout-changed', { layout: this.layout });
+  }
+
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('model')) this._pendingIds.clear();
@@ -3069,6 +3092,9 @@ export class ModuxEditor extends LitElement {
     const view = this._view;
     const scene = this.sceneFor(view);
     const place = (id: string, container?: string) => {
+      // Born fresh: a deleted namesake's leftover geometry (a size, a position in
+      // another view) must not dress the newcomer — same sweep as stale edge bends.
+      this.purgeNodeGeometry(id);
       const current = this.viewLayout(view);
       const parent = container ? scene.nodes.find((n) => n.id === container) : undefined;
       const p = parent
