@@ -207,6 +207,21 @@ export class ModuxTilt extends LitElement {
       border: 1.5px solid #ffffff;
       cursor: crosshair;
     }
+    /* The chevron folds/unfolds the plate — same sheet the canvas edits. */
+    .chev3 {
+      position: absolute;
+      top: 1px;
+      right: 4px;
+      font-size: 11px;
+      line-height: 1;
+      padding: 3px 4px;
+      color: #475569;
+      cursor: pointer;
+      user-select: none;
+    }
+    .chev3:hover {
+      color: #0f172a;
+    }
     /* An area: pure graphics — a dashed pane lying on the floor, untouchable. */
     .area3 {
       position: absolute;
@@ -395,6 +410,12 @@ export class ModuxTilt extends LitElement {
       /* synthetic events have no active pointer */
     }
     const el = e.composedPath()[0] as HTMLElement | undefined;
+    // The chevron folds/unfolds the SAME sheet the canvas edits — no drag, no select.
+    const chev = el?.closest?.('.chev3') as HTMLElement | null;
+    if (chev?.dataset.nodeId) {
+      this.emit('node-collapse-toggled', { id: chev.dataset.nodeId });
+      return;
+    }
     const handle = el?.closest?.('.h3') as HTMLElement | null;
     if (handle?.dataset.sourceId) {
       const rect = this.getBoundingClientRect();
@@ -540,6 +561,7 @@ export class ModuxTilt extends LitElement {
     // Pointer capture from the drag retargets the derived dblclick to the host,
     // so the plate is resolved by coordinates instead of by composedPath.
     const under = this.shadowRoot?.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    if (under?.closest?.('.chev3')) return; // two fast chevron clicks are two folds, not «open»
     const plate = (under?.closest?.('.n3') as HTMLElement | null) ?? this.plateAt(e);
     if (plate?.dataset.nodeId) {
       this.emit('element-activated', {
@@ -900,6 +922,15 @@ export class ModuxTilt extends LitElement {
               >
                 ${n.badge ? html`<span class="badge3" style="color: ${n.stroke ?? '#94a3b8'}">${n.badge}</span>` : ''}
                 <span>${n.label}</span>
+                ${n.collapsible
+                  ? html`<span
+                      class="chev3"
+                      data-node-id=${n.id}
+                      title=${n.collapsed
+                        ? 'Expandir: muestra los hijos del nodo'
+                        : 'Contraer: oculta los hijos'}
+                      >${n.collapsed ? '▸' : '▾'}</span>`
+                  : ''}
               </div>
             `;
           })}
@@ -983,9 +1014,9 @@ export class ModuxTilt extends LitElement {
           })()
         : ''}
       <div class="hud">
-        click selecciona · arrastra el fondo: selección múltiple · alt+arrastra orbita · doble click abre ·
-        arrastra una placa para moverla · shift, espacio o botón central+arrastra panea · rueda para zoom ·
-        Supr borra · F2 renombra · doble click en el fondo resetea
+        click selecciona · ▸ despliega el nodo · arrastra el fondo: selección múltiple · alt+arrastra orbita ·
+        doble click abre · arrastra una placa para moverla · shift, espacio o botón central+arrastra panea ·
+        rueda para zoom · Supr borra · F2 renombra · doble click en el fondo resetea
       </div>
     `;
   }

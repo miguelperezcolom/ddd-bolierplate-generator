@@ -4776,6 +4776,7 @@ export class ModuxEditor extends LitElement {
             @connect-requested=${this.onConnectRequested}
             @element-selected=${this.onElementSelected}
             @element-activated=${this.onElementActivated}
+            @node-collapse-toggled=${this.onNodeCollapseToggled}
             @node-moved=${this.onNodeMoved}
             @delete-requested=${this.onDeleteRequested}
             @delete-selection-requested=${this.onDeleteSelectionRequested}
