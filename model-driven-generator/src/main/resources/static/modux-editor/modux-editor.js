@@ -707,7 +707,9 @@ function Ja(e, t, n = "contexts", i = {}, o = /* @__PURE__ */ new Set()) {
         o.has(Y.id),
         // Deployment is topology: external systems join compact, like the boundedContexts.
         a ? "compact" : p ? "full" : Zn ? "coarse" : "compact",
-        mn.length > 0 || y && Zn
+        // Subsystems already ride the coarse form, so they are not detail BEYOND it:
+        // a system with only chips and subsystems must fold to the plain box.
+        mn.some((ie) => ie.kind !== "external-system") || y && Zn
       ), Di = [
         ...qa.map((ie) => ({ id: ie.id, name: ie.name, kind: "proxy-api" })),
         ...fn === "full" ? mn : Fa

@@ -1021,7 +1021,9 @@ export function contextMapScene(
         toggledIds.has(x.id),
         // Deployment is topology: external systems join compact, like the boundedContexts.
         distributionLevel ? 'compact' : detailed ? 'full' : hasChips ? 'coarse' : 'compact',
-        richChildren.length > 0 || (operationsLevel && hasChips),
+        // Subsystems already ride the coarse form, so they are not detail BEYOND it:
+        // a system with only chips and subsystems must fold to the plain box.
+        richChildren.some((c) => c.kind !== 'external-system') || (operationsLevel && hasChips),
       );
       // Subsystems are strategic, like the published APIs: they show from the
       // coarse form on — otherwise nobody can drop an API on them.
