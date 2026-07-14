@@ -182,8 +182,10 @@ interface ChildDesc {
   policy?: boolean;
   /** Nested chips: a subsystem carries its published APIs inside its own chip. */
   children?: ChildDesc[];
-  /** The chip hides more (an API's operations): it wears the ▸ chevron. */
+  /** The chip hides more (an API's operations, a subsystem's content): it wears the chevron. */
   expandable?: boolean;
+  /** The chip is currently unfolded (its chevron shows ▾ and its extra rows are on stage). */
+  expanded?: boolean;
 }
 
 const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
@@ -330,11 +332,27 @@ function detailedContext(
     // Nothing to nest — keep the compact context box.
     return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
   }
-  // An EXPANDED implemented API unfolds into a sub-container with its operation
-  // OCCURRENCES (per-site ids) — so proxy operations can later wire to the
-  // implementation here or to the published API, operation by operation.
+  const boxes = implApiBoxes(model, boundedContext, expandedIds);
+  if (boxes.length > 0) {
+    const boxedIds = new Set(boxes.map((b) => b.id));
+    const rest = children.filter((c) => !boxedIds.has(c.id));
+    return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
+  }
+  return detailedContainer(center, base, children, layout, sizes);
+}
+
+/**
+ * The EXPANDED implemented APIs of a context, as sub-containers with their operation
+ * OCCURRENCES (per-site ids) — so proxy operations can later wire to the implementation
+ * here or to the published API, operation by operation.
+ */
+function implApiBoxes(
+  model: ModuxModel,
+  boundedContext: ModuxModel['boundedContexts'][number],
+  expandedIds: ReadonlySet<string>,
+): ApiBoxDesc[] {
   const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
-  const boxes: ApiBoxDesc[] = (model.apiImplementations ?? [])
+  return (model.apiImplementations ?? [])
     .filter((impl) =>
       impl.boundedContextId === boundedContext.id &&
       apiById.has(impl.apiId) &&
@@ -357,12 +375,6 @@ function detailedContext(
         })),
       };
     });
-  if (boxes.length > 0) {
-    const boxedIds = new Set(boxes.map((b) => b.id));
-    const rest = children.filter((c) => !boxedIds.has(c.id));
-    return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
-  }
-  return detailedContainer(center, base, children, layout, sizes);
 }
 
 /**
@@ -419,8 +431,7 @@ function containerWithApiBoxes(
         id: c.id,
         x: plainOffs[i].x,
         y: plainOffs[i].y,
-        w: CHILD_W,
-        h: CHILD_H,
+        ...chipSize(c, sizes),
       })),
     ],
     24,
@@ -438,7 +449,7 @@ function containerWithApiBoxes(
   });
   const sysFit = containerFit(center, sysSize, [
     ...apiBoxes.map((b) => ({ dx: b.fit.x, dy: b.fit.y, w: b.fit.w, h: b.fit.h })),
-    ...plainOffs.map((o) => ({ dx: o.x, dy: o.y, w: CHILD_W, h: CHILD_H })),
+    ...plainOffs.map((o, i) => ({ dx: o.x, dy: o.y, ...chipSize(plainChildren[i], sizes) })),
   ]);
   const nodes: SceneNode[] = [
     { ...base, x: sysFit.x, y: sysFit.y, w: sysFit.w, h: sysFit.h, container: true },
@@ -480,23 +491,7 @@ function containerWithApiBoxes(
     });
   }
   plainChildren.forEach((c, i) => {
-    const style = CHILD_STYLE[c.kind];
-    nodes.push({
-      id: c.id,
-      label: c.name,
-      kind: c.kind,
-      x: center.x + plainOffs[i].x,
-      y: center.y + plainOffs[i].y,
-      w: CHILD_W,
-      h: CHILD_H,
-      symbol: style.symbol,
-      fill: style.fill,
-      stroke: style.stroke,
-      collapsible: c.expandable || undefined,
-      collapsed: c.expandable ? true : undefined,
-      parentId: base.id,
-      tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
-    });
+    nodes.push(...chipNodes(c, center.x + plainOffs[i].x, center.y + plainOffs[i].y, base.id, sizes));
   });
   return nodes;
 }
@@ -702,18 +697,10 @@ function detailedContainer(
   const size = sizes[base.id] ?? defaultContainerSize(children.length);
   // Subsystem chips accept the corner-resize gesture and grow with their own
   // nested chips (their published APIs), so they honour BOTH minimum and stored size.
-  const sizeOf = (c: ChildDesc) => {
-    const kids = c.children ?? [];
-    const min = kids.length
-      ? { w: CHILD_W + 16, h: 36 + kids.length * (CHILD_H + 6) + 6 }
-      : { w: CHILD_W, h: CHILD_H };
-    const stored = c.kind === 'external-system' ? sizes[c.id] : undefined;
-    return { w: Math.max(min.w, stored?.w ?? 0), h: Math.max(min.h, stored?.h ?? 0) };
-  };
   const offsets = children.map((c, i) => layout[c.id] ?? defaultChildOffset(i, size));
   // Siblings never overlap: nudge the chips apart before fitting the box.
   const separated = resolveOverlaps(
-    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, ...sizeOf(c) })),
+    children.map((c, i) => ({ id: c.id, x: offsets[i].x, y: offsets[i].y, ...chipSize(c, sizes) })),
     10,
   );
   children.forEach((c, i) => {
@@ -726,7 +713,7 @@ function detailedContainer(
   const fit = containerFit(
     center,
     size,
-    offsets.map((off, i) => ({ dx: off.x, dy: off.y, ...sizeOf(children[i]) })),
+    offsets.map((off, i) => ({ dx: off.x, dy: off.y, ...chipSize(children[i], sizes) })),
   );
   const container: SceneNode = {
     ...base,
@@ -736,47 +723,92 @@ function detailedContainer(
     h: fit.h,
     container: true,
   };
-  const childNodes: SceneNode[] = children.flatMap((c, i) => {
-    const off = offsets[i];
-    const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
-    const dims = sizeOf(c);
-    const chip: SceneNode = {
-      id: c.id,
-      label: c.name,
-      kind: c.kind,
-      x: center.x + off.x,
-      y: center.y + off.y,
-      ...dims,
-      container: (c.children ?? []).length > 0 || undefined,
-      resizable: c.kind === 'external-system' || undefined,
-      symbol: style.symbol,
-      fill: style.fill,
-      stroke: style.stroke,
-      collapsible: c.expandable || undefined,
-      collapsed: c.expandable ? true : undefined,
-      parentId: base.id,
-      tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
-    };
-    const kids = (c.children ?? []).map((k, j): SceneNode => {
-      const ks = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
-      return {
-        id: k.id,
-        label: k.name,
-        kind: k.kind,
-        x: chip.x,
-        y: chip.y - dims.h / 2 + 36 + j * (CHILD_H + 6) + CHILD_H / 2,
-        w: CHILD_W - 8,
-        h: CHILD_H,
-        symbol: ks.symbol,
-        fill: ks.fill,
-        stroke: ks.stroke,
-        parentId: c.id,
-        tooltip: `${CHILD_TOOLTIP[k.kind]} ${k.name} — publicada por ${c.name}`,
-      };
-    });
-    return [chip, ...kids];
-  });
+  const childNodes: SceneNode[] = children.flatMap((c, i) =>
+    chipNodes(c, center.x + offsets[i].x, center.y + offsets[i].y, base.id, sizes),
+  );
   return [container, ...childNodes];
+}
+
+/**
+ * One chip plus its nested rows (a subsystem's APIs, an expanded API's operations).
+ * Chevron flags come from the descriptor: expandable chips fold/unfold on their own.
+ */
+function chipNodes(
+  c: ChildDesc,
+  x: number,
+  y: number,
+  parentId: string,
+  sizes: Record<string, { w: number; h: number }>,
+): SceneNode[] {
+  const style = c.policy ? POLICY_STYLE : CHILD_STYLE[c.kind];
+  const dims = chipSize(c, sizes);
+  const chip: SceneNode = {
+    id: c.id,
+    label: c.name,
+    kind: c.kind,
+    x,
+    y,
+    ...dims,
+    container: (c.children ?? []).length > 0 || undefined,
+    resizable: c.kind === 'external-system' || undefined,
+    symbol: style.symbol,
+    fill: style.fill,
+    stroke: style.stroke,
+    collapsible: c.expandable || undefined,
+    collapsed: c.expandable ? !c.expanded : undefined,
+    parentId,
+    tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
+  };
+  const kidList = c.children ?? [];
+  const cols = kidColumns(kidList.length);
+  const kids = kidList.map((k, j): SceneNode => {
+    const ks = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
+    const col = j % cols;
+    const row = Math.floor(j / cols);
+    return {
+      id: k.id,
+      label: k.name,
+      kind: k.kind,
+      x: cols === 1 ? x : x - dims.w / 2 + 8 + col * (CHILD_W - 8 + 8) + (CHILD_W - 8) / 2,
+      y: y - dims.h / 2 + 36 + row * (CHILD_H + 6) + CHILD_H / 2,
+      w: CHILD_W - 8,
+      h: CHILD_H,
+      symbol: ks.symbol,
+      fill: ks.fill,
+      stroke: ks.stroke,
+      collapsible: k.expandable || undefined,
+      collapsed: k.expandable ? !k.expanded : undefined,
+      parentId: c.id,
+      tooltip:
+        k.kind === 'api' || k.kind === 'proxy-api'
+          ? `${CHILD_TOOLTIP[k.kind]} ${k.name} — publicada por ${c.name}`
+          : `${CHILD_TOOLTIP[k.kind]} ${k.name}`,
+    };
+  });
+  return [chip, ...kids];
+}
+
+/** Many nested rows fold into columns: a 55-operation API must not become a mile-long strip. */
+function kidColumns(n: number): number {
+  return n > 24 ? 3 : n > 6 ? 2 : 1;
+}
+
+/** Chip dimensions: nested rows grow it; external-system chips honour their stored size. */
+function chipSize(
+  c: ChildDesc,
+  sizes: Record<string, { w: number; h: number }>,
+): { w: number; h: number } {
+  const kids = c.children ?? [];
+  const cols = kidColumns(kids.length);
+  const rows = Math.ceil(kids.length / cols);
+  const min = kids.length
+    ? {
+        w: Math.max(CHILD_W + 16, cols * (CHILD_W - 8) + (cols - 1) * 8 + 16),
+        h: 36 + rows * (CHILD_H + 6) + 6,
+      }
+    : { w: CHILD_W, h: CHILD_H };
+  const stored = c.kind === 'external-system' ? sizes[c.id] : undefined;
+  return { w: Math.max(min.w, stored?.w ?? 0), h: Math.max(min.h, stored?.h ?? 0) };
 }
 
 /**
@@ -1032,19 +1064,69 @@ function buildScene(
       const richChildren: ChildDesc[] = [
         ...model.externalSystems
           .filter((sub) => sub.parentExternalSystemId === x.id)
-          .map((sub): ChildDesc => ({
-            id: sub.id,
-            name: sub.name,
-            kind: 'external-system',
-            children: [
+          .map((sub): ChildDesc => {
+            const subExpanded = toggledIds.has(sub.id);
+            // A subsystem is a container in its own right: its APIs/proxies always
+            // ride its chip (expandable one by one into their operation rows), and
+            // its own chevron unfolds the rest of its content.
+            const rows: ChildDesc[] = [
               ...nestedApis
                 .filter((a) => a.publishedByExternalSystemId === sub.id)
-                .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+                .flatMap((a): ChildDesc[] => [
+                  {
+                    id: a.id,
+                    name: a.name,
+                    kind: 'api',
+                    expandable: (a.operations ?? []).length > 0,
+                    expanded: toggledIds.has(a.id),
+                  },
+                  ...(toggledIds.has(a.id)
+                    ? (a.operations ?? []).map((op): ChildDesc => ({
+                        id: op.id, name: op.name, kind: 'api-operation',
+                      }))
+                    : []),
+                ]),
               ...nestedProxies
                 .filter((px) => px.publishedByExternalSystemId === sub.id)
-                .map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
-            ],
-          })),
+                .flatMap((px): ChildDesc[] => [
+                  {
+                    id: px.id,
+                    name: px.name,
+                    kind: 'proxy-api',
+                    expandable: proxyOps(model, px).length > 0,
+                    expanded: toggledIds.has(px.id),
+                  },
+                  ...(toggledIds.has(px.id)
+                    ? proxyOps(model, px).map((op): ChildDesc => ({
+                        id: apiOpOccurrenceId(op.id, px.id), name: op.name, kind: 'api-op-occurrence',
+                      }))
+                    : []),
+                ]),
+              ...(subExpanded
+                ? [
+                    ...(sub.useCases ?? []).map(
+                      (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
+                    ),
+                    ...(sub.tables ?? []).map(
+                      (t): ChildDesc => ({ id: t.id, name: t.name, kind: 'external-table' }),
+                    ),
+                    ...(sub.mcpServers ?? []).map(
+                      (s): ChildDesc => ({ id: s.id, name: s.name, kind: 'mcp-server' }),
+                    ),
+                  ]
+                : []),
+            ];
+            const subBeyond =
+              (sub.useCases ?? []).length + (sub.tables ?? []).length + (sub.mcpServers ?? []).length > 0;
+            return {
+              id: sub.id,
+              name: sub.name,
+              kind: 'external-system',
+              expandable: subBeyond,
+              expanded: subExpanded,
+              children: rows,
+            };
+          }),
         ...(x.useCases ?? []).map(
           (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'external-use-case' }),
         ),
@@ -1213,8 +1295,19 @@ function buildScene(
         layout, sizes, toggledIds,
       );
     }
-    // Coarse: the strategic form — implemented APIs still nest.
+    // Coarse: the strategic form — implemented APIs still nest, and each one
+    // expands ON ITS OWN into its operations, even with the context folded.
     if (mForm === 'coarse' && implChildren.length > 0) {
+      const boxes = implApiBoxes(model, m, toggledIds);
+      const boxedIds = new Set(boxes.map((b) => b.id));
+      const chips = implChildren.filter((c) => !boxedIds.has(c.id));
+      if (boxes.length > 0) {
+        return containerWithApiBoxes(
+          pos,
+          { ...base, collapsible: mFoldable, collapsed: mCollapsed },
+          boxes, chips, layout, sizes,
+        );
+      }
       return detailedContainer(
         pos,
         { ...base, collapsible: mFoldable, collapsed: mCollapsed },

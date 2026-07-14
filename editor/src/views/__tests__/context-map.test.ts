@@ -156,6 +156,67 @@ describe('contextMapScene — subsystems', () => {
     expect(sub?.resizable).toBe(true);
   });
 
+  it('a subsystem with content wears its own chevron and unfolds use cases and tables', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [
+        { id: 'ext-rumbo', name: 'Rumbo' },
+        {
+          id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo',
+          useCases: [{ id: 'xuc-1', name: 'Disponibilidad' }],
+          tables: [{ id: 'xt-1', name: 'RESERVAS' }],
+        },
+      ],
+    });
+    const folded = contextMapScene(model, {}, undefined, new Set(['ext-rumbo']));
+    const sub = folded.nodes.find((n) => n.id === 'ext-ventus')!;
+    expect(sub.collapsible).toBe(true);
+    expect(folded.nodes.find((n) => n.id === 'xuc-1')).toBeUndefined();
+    const open = contextMapScene(model, {}, undefined, new Set(['ext-rumbo', 'ext-ventus']));
+    expect(open.nodes.find((n) => n.id === 'xuc-1')?.parentId).toBe('ext-ventus');
+    expect(open.nodes.find((n) => n.id === 'xt-1')?.parentId).toBe('ext-ventus');
+  });
+
+  it("a subsystem's API expands on its own into operation rows", () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [
+        { id: 'ext-rumbo', name: 'Rumbo' },
+        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
+      ],
+      apis: [{
+        id: 'api-v', name: 'V API',
+        operations: [{ id: 'op-v', name: 'consulta' }],
+        publishedByExternalSystemId: 'ext-ventus',
+      }],
+    });
+    // the coarse form already shows the subsystem chip with its API rows
+    const folded = contextMapScene(model, {});
+    const chip = folded.nodes.find((n) => n.id === 'api-v')!;
+    expect(chip.parentId).toBe('ext-ventus');
+    expect(chip.collapsible).toBe(true);
+    expect(folded.nodes.find((n) => n.id === 'op-v')).toBeUndefined();
+    const open = contextMapScene(model, {}, undefined, new Set(['api-v']));
+    expect(open.nodes.find((n) => n.id === 'op-v')?.parentId).toBe('ext-ventus');
+  });
+
+  it('an implemented API expands even with its context folded to the coarse chip', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      apis: [{ id: 'api-impl', name: 'Impl API', operations: [{ id: 'op-i', name: 'op' }] }],
+      apiImplementations: [{ apiId: 'api-impl', boundedContextId: 'mod-reservas' }],
+    });
+    const coarse = contextMapScene(model, {});
+    const chip = coarse.nodes.find((n) => n.id === 'apiimpl:api-impl@mod-reservas')!;
+    expect(chip.parentId).toBe('mod-reservas');
+    expect(chip.collapsible).toBe(true);
+    const open = contextMapScene(model, {}, undefined, new Set(['apiimpl:api-impl@mod-reservas']));
+    const occ = open.nodes.find((n) => n.id === 'apiop:op-i@mod-reservas');
+    expect(occ?.parentId).toBe('apiimpl:api-impl@mod-reservas');
+    // the context itself stays coarse: its use cases did not unfold
+    expect(open.nodes.find((n) => n.id === 'uc-book')).toBeUndefined();
+  });
+
   it('an orphaned parent reference falls back to top-level', () => {
     const model = baseModel({
       ...strategicModel(),
