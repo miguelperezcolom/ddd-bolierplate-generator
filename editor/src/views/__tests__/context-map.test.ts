@@ -141,6 +141,64 @@ describe('contextMapScene — expansion brings children as free nodes with diamo
   });
 });
 
+describe('contextMapScene — relations never hide (roll-up to the visible ancestor)', () => {
+  const coupledModel = () =>
+    baseModel({
+      ...strategicModel(),
+      boundedContexts: [
+        {
+          id: 'mod-reservas', name: 'Reservas', subdomainType: 'CORE',
+          useCases: [{ id: 'uc-book', name: 'Reservar' }], domainEvents: [],
+        },
+        {
+          id: 'mod-facturas', name: 'Facturación', subdomainType: 'SUPPORTING',
+          useCases: [{ id: 'uc-bill', name: 'Facturar' }, { id: 'uc-notify', name: 'Avisar' }],
+        },
+      ],
+      useCaseCalls: [
+        { sourceId: 'uc-book', targetId: 'uc-bill' },
+        { sourceId: 'uc-book', targetId: 'uc-notify' },
+      ],
+    });
+
+  it('a folded context shows its children\'s couplings, re-anchored at its box', () => {
+    const scene = contextMapScene(coupledModel(), {});
+    const rolled = scene.edges.filter((e) => e.kind === 'uc-call');
+    expect(rolled).toHaveLength(1); // two calls collapse onto the same pair: one line
+    expect(rolled[0].sourceId).toBe('mod-reservas');
+    expect(rolled[0].targetId).toBe('mod-facturas');
+    expect(rolled[0].tooltip).toContain('plegado');
+  });
+
+  it('half-open: the visible child anchors fine, the folded side rolls up', () => {
+    const scene = contextMapScene(coupledModel(), {}, {}, new Set(['mod-reservas']));
+    const rolled = scene.edges.filter((e) => e.kind === 'uc-call');
+    expect(rolled).toHaveLength(1);
+    expect(rolled[0].sourceId).toBe('uc-book');
+    expect(rolled[0].targetId).toBe('mod-facturas');
+  });
+
+  it('fully open: the fine edges return, one per call', () => {
+    const scene = contextMapScene(coupledModel(), {}, {}, new Set(['mod-reservas', 'mod-facturas']));
+    const fine = scene.edges.filter((e) => e.kind === 'uc-call');
+    expect(fine.map((e) => `${e.sourceId}->${e.targetId}`).sort()).toEqual([
+      'uc-book->uc-bill',
+      'uc-book->uc-notify',
+    ]);
+  });
+
+  it('internal couplings fold WITH the box (both ends inside)', () => {
+    const model = baseModel({
+      ...coupledModel(),
+      useCaseCalls: [{ sourceId: 'uc-bill', targetId: 'uc-notify' }],
+    });
+    const folded = contextMapScene(model, {});
+    expect(folded.edges.filter((e) => e.kind === 'uc-call')).toHaveLength(0);
+    const open = contextMapScene(model, {}, {}, new Set(['mod-facturas']));
+    expect(open.edges.filter((e) => e.kind === 'uc-call')).toHaveLength(1);
+  });
+});
+
 describe('contextMapScene — expandAll (the yugo wants the whole tree)', () => {
   it('unfolds everything without touching the expanded set', () => {
     const model = baseModel({

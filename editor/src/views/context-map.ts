@@ -974,7 +974,61 @@ function buildScene(
 
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
-  const nodeIds = new Set(nodes.map((n) => n.id));
+  const stagedIds = new Set(nodes.map((n) => n.id));
+  // Relations never hide. An edge whose endpoint folded away re-anchors at the
+  // nearest VISIBLE ancestor of the ownership chain, so a folded box keeps
+  // showing its children's coupling. The guards below see THROUGH the folds:
+  // an id counts when some visible ancestor can stand for it — the roll-up
+  // pass at the end does the re-anchoring.
+  const owners = ownershipIndex(model, mode);
+  const repCache = new Map<string, string | null>();
+  const representative = (id: string): string | null => {
+    const cached = repCache.get(id);
+    if (cached !== undefined) return cached;
+    let cur: string | undefined = id;
+    for (let guard = 0; cur && guard < 16; guard++) {
+      if (stagedIds.has(cur)) {
+        repCache.set(id, cur);
+        return cur;
+      }
+      cur = owners.get(cur);
+    }
+    repCache.set(id, null);
+    return null;
+  };
+  const nodeIds = { has: (id: string) => representative(id) !== null };
+  /**
+   * Re-anchors every edge at its endpoints' representatives. Edges whose two
+   * ends fold into the SAME box are internal — they fold with it. Several
+   * edges collapsing onto the same (kind, source, target) merge into one.
+   */
+  const reanchorEdges = (edges: SceneEdge[]): SceneEdge[] => {
+    const seen = new Set<string>();
+    const out: SceneEdge[] = [];
+    for (const e of edges) {
+      if (e.kind === 'contains' || e.targetId.startsWith('edgeanchor:')) {
+        out.push(e);
+        continue;
+      }
+      const s = representative(e.sourceId);
+      const t = representative(e.targetId);
+      if (!s || !t || s === t) continue;
+      if (s === e.sourceId && t === e.targetId) {
+        out.push(e);
+        continue;
+      }
+      const key = `${e.kind}|${s}|${t}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        ...e,
+        sourceId: s,
+        targetId: t,
+        tooltip: `${e.tooltip ?? e.kind} — de un elemento plegado dentro`,
+      });
+    }
+    return out;
+  };
 
   // Deployment wiring (distribution level): service → the code boundedContexts it deploys,
   // plus the infrastructure each service leans on.
@@ -1917,7 +1971,7 @@ function buildScene(
 
   return {
     nodes,
-    edges: [
+    edges: reanchorEdges([
       // Composition first: the ownership diamonds paint under the semantic edges.
       ...containsEdges,
       ...deployEdges,
@@ -1964,6 +2018,6 @@ function buildScene(
       ...ragContentEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
-    ],
+    ]),
   };
 }
