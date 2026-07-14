@@ -127,6 +127,23 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
 
     @Override
     public Component component(HttpRequest httpRequest) {
+        // The editor needs a working context: without a repository open, the first
+        // gesture is choosing one — Inicio owns that conversation.
+        if (context.getBean(io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class)
+                .currentRepositoryId().isEmpty()) {
+            return io.mateu.uidl.fluent.PageView.builder()
+                    .title("Editor gráfico")
+                    .subtitle("No hay ningún repositorio abierto")
+                    .content(java.util.List.of(
+                            new io.mateu.uidl.data.Text(null,
+                                    "El editor trabaja sobre el modelo de un repositorio. Elige o crea uno en Inicio."),
+                            io.mateu.uidl.data.Button.builder()
+                                    .label("Ir a Inicio")
+                                    .actionId("goInicio")
+                                    .buttonStyle(io.mateu.uidl.data.ButtonStyle.primary)
+                                    .build()))
+                    .build();
+        }
         var editor = new Element(
                 "modux-editor-connected",
                 Map.of(
@@ -146,12 +163,13 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
 
     @Override
     public List<String> supportedActions() {
-        return List.of("openElement");
+        return List.of("openElement", "goInicio");
     }
 
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Object handleAction(String actionId, HttpRequest httpRequest) {
+        if ("goInicio".equals(actionId)) return URI.create("/inicio");
         if (!"openElement".equals(actionId)) return null;
         var event = (Map<String, Object>) httpRequest.runActionRq().parameters().get("event");
         if (event == null) return null;
