@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchety
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
@@ -415,9 +416,12 @@ public class EditorApiController {
             List<ButtonGroupDto> buttonGroups,
             List<WorkflowGatewayDto> workflowGateways,
             List<MappingRefDto> modelMappings,
-            List<NoteDto> notes) {}
+            List<NoteDto> notes,
+            List<AreaDto> areas) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
+
+    public record AreaDto(String id, String name) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
                                 List<MappingRuleDto> rules, String customCodeId) {}
@@ -637,6 +641,8 @@ public class EditorApiController {
             case "remove-actor" -> removeActor(command);
             case "add-note" -> addNote(command);
             case "remove-note" -> removeNote(command);
+            case "add-area" -> addArea(command);
+            case "remove-area" -> removeArea(command);
             case "note-attach" -> noteAttach(command);
             case "note-detach" -> noteDetach(command);
             case "add-ai-agent" -> agentCommands.addAiAgent(command);
@@ -1096,6 +1102,8 @@ public class EditorApiController {
                     .ifPresent(m -> repository.save(m.toBuilder().name(command.name()).build()));
             case "note" -> repository.findById(command.id(), NoteEntity.class)
                     .ifPresent(n -> repository.save(n.toBuilder().text(command.name()).build()));
+            case "area" -> repository.findById(command.id(), AreaEntity.class)
+                    .ifPresent(a -> repository.save(a.toBuilder().name(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
                     .ifPresent(a -> repository.save(new AggregateEntity(
                             a.id(), command.name(), a.modelId(), a.persistenceType(), a.idType(),
@@ -2812,6 +2820,16 @@ public class EditorApiController {
 
     private void removeNote(EditorCommand command) {
         repository.deleteAllById(List.of(command.id()), NoteEntity.class);
+    }
+
+    private void addArea(EditorCommand command) {
+        if (repository.findById(command.id(), AreaEntity.class).isPresent()) return;
+        repository.save(new AreaEntity(command.id(), command.name()));
+    }
+
+    /** Notes pointing at the area keep their (now dangling) ref — the threads just stop drawing. */
+    private void removeArea(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), AreaEntity.class);
     }
 
     /**

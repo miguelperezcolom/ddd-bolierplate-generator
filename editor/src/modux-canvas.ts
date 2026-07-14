@@ -93,6 +93,7 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
   shield: svg`<path d="M6 0.5 L11 2.5 V6 C11 9 8.8 11 6 11.8 C3.2 11 1 9 1 6 V2.5 Z"></path>`,
   note: svg`<path d="M1.5 0.5 H10.5 V7.5 L7 11.5 H1.5 Z"></path><path d="M10.5 7.5 H7 V11.5"></path>`,
+  area: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1" stroke-dasharray="2.4 1.8"></rect>`,
   entity: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1"></rect>
     <line x1="0.5" y1="4.6" x2="11.5" y2="4.6"></line>`,
   flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
@@ -537,6 +538,24 @@ export class ModuxCanvas extends LitElement {
   }
 
   /**
+   * An area's cargo: the frame plus every top-level node whose box sits fully
+   * inside it. Children ride with their container, so only top-level counts.
+   */
+  private areaCargo(area: SceneNode): SceneNode[] {
+    const inside = this.scene.nodes.filter((n) => {
+      if (n.id === area.id || n.parentId) return false;
+      const p = this.nodePos(n);
+      return (
+        p.x - n.w / 2 >= area.x - area.w / 2 &&
+        p.x + n.w / 2 <= area.x + area.w / 2 &&
+        p.y - n.h / 2 >= area.y - area.h / 2 &&
+        p.y + n.h / 2 <= area.y + area.h / 2
+      );
+    });
+    return [area, ...inside];
+  }
+
+  /**
    * Topmost node under the pointer. elementFromPoint alone is not enough: an
    * edge's fat invisible hit-line can sit on top of a node and swallow the hit.
    */
@@ -584,13 +603,17 @@ export class ModuxCanvas extends LitElement {
 
     // Grabbing a node of the multi-selection drags the whole selection. Nodes whose
     // container is also selected are left out: they follow their container anyway.
+    // Grabbing an AREA drags its cargo: membership is geometric, so everything
+    // fully inside the frame travels with it.
     const selectedSet = new Set(this.selectedIds);
     const group =
       selectedSet.has(node.id) && this.selectedIds.length > 1
         ? this.scene.nodes.filter(
             (n) => selectedSet.has(n.id) && !(n.parentId && selectedSet.has(n.parentId)),
           )
-        : null;
+        : node.kind === 'area'
+          ? this.areaCargo(node)
+          : null;
     const groupOrigins = group ? new Map(group.map((n) => [n.id, this.nodePos(n)])) : null;
 
     // Shift/Ctrl while dragging an API chip frees it from its container: dropping it
@@ -777,9 +800,11 @@ export class ModuxCanvas extends LitElement {
     this.focus();
     // Top-level containers keep their roomy floor; CHIPS — plain or with their
     // own nested chips — can go down to chip size (their content still clamps).
+    // An AREA is a bare rectangle (no title, no glyph) — it may shrink to a sliver.
+    const isArea = node.kind === 'area';
     const topContainer = node.container && !node.parentId;
-    const MIN_W = topContainer ? 160 : 90;
-    const MIN_H = topContainer ? 90 : 30;
+    const MIN_W = isArea ? 30 : topContainer ? 160 : 90;
+    const MIN_H = isArea ? 20 : topContainer ? 90 : 30;
     const start = { x: node.x, y: node.y, w: node.w, h: node.h };
     // A chip-container's nested chips reflow on every render (they are auto-laid),
     // so they never clamp the resize; the scene's own minimum size protects them.
@@ -1327,7 +1352,9 @@ export class ModuxCanvas extends LitElement {
             : isContainer
               ? svg`<text x=${-hw + 12} y=${-hh + 21} text-anchor="start" font-size="13"
                   font-weight="700" font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`
-              : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
+              : node.kind === 'area'
+                ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
+                : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
                   font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}

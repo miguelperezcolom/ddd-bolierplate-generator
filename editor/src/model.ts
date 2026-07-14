@@ -703,6 +703,16 @@ export interface JourneyRef {
   legs?: JourneyLegRef[];
 }
 
+/**
+ * An area: a named rectangle that visually groups elements and anchors notes not tied
+ * to any concrete element. Membership is geometric — whatever sits inside the rectangle
+ * belongs to it — so the ref carries no member ids; geometry lives in each view's layout.
+ */
+export interface AreaRef {
+  id: string;
+  name: string;
+}
+
 export interface NoteRef {
   id: string;
   text: string;
@@ -782,6 +792,8 @@ export interface ModuxModel {
   journeys?: JourneyRef[];
   /** Sticky notes: free commentary pointing at elements (targetIds) and/or relations (edgeRefs). */
   notes?: NoteRef[];
+  /** Areas: named rectangles that group elements geometrically and anchor notes. */
+  areas?: AreaRef[];
   relations: ContextMapRelation[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];

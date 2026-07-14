@@ -1045,6 +1045,13 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'note-detach', id: c.id, targetId: c.targetId }];
       case 'note-detach':
         return [{ kind: 'note-attach', id: c.id, targetId: c.targetId }];
+      case 'add-area':
+        return [{ kind: 'remove-area', id: c.id }];
+      case 'remove-area': {
+        // Notes keep their (dangling) refs to the area, so restoring it revives the threads.
+        const a = (host.model.areas ?? []).find((x) => x.id === c.id);
+        return a ? [{ kind: 'add-area', id: a.id, name: a.name }] : null;
+      }
       case 'add-application-event':
         return [{ kind: 'remove-application-event', id: c.id }];
       case 'remove-application-event': {

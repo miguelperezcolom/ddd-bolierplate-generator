@@ -85,6 +85,9 @@ public class CleanModelUseCase {
             // reference walk — it is not an orphan.
             if (element instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity note
                     && !note.edgeRefs().isEmpty()) continue;
+            // An area groups by GEOMETRY (whatever sits inside its rectangle) — it makes
+            // no references by design, so the reference walk cannot judge it.
+            if (element instanceof io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity) continue;
             if (!isolated(i, declared, outgoing, referencedBy)) continue;
             // A bounded context's unit includes its main module: a deployed main module
             // (wired into a service) keeps the pair alive.

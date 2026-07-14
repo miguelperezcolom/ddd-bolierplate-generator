@@ -1486,6 +1486,12 @@ export function performDeleteGesture(
     host.command({ kind: 'remove-note', id });
     return;
   }
+  if (elementType === 'node' && kind === 'area') {
+    // Only the frame goes: its members are geometric and the anchored notes survive.
+    host.clearSelection();
+    host.command({ kind: 'remove-area', id });
+    return;
+  }
   if (elementType === 'edge' && kind === 'note-link') {
     // The thread's id carries both ends: note:<noteId>-><target ref>.
     const body = id.slice('note:'.length);

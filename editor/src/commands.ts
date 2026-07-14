@@ -308,6 +308,16 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** An area: a named rectangle grouping elements geometrically. */
+      kind: 'add-area';
+      id: string;
+      name: string;
+    }
+  | {
+      kind: 'remove-area';
+      id: string;
+    }
+  | {
       kind: 'remove-actor';
       id: string;
     }

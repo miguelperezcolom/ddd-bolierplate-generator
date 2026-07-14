@@ -127,7 +127,8 @@ function routeEdgesAroundNodes(
     return out;
   };
   // Children count as obstacles too (with a tighter margin — grids are dense).
-  const obstacles = scene.nodes;
+  // Areas are background frames: edges cross them as if they weren't there.
+  const obstacles = scene.nodes.filter((n) => n.kind !== 'area');
   const marginOf = (o: SceneNode) => (o.parentId ? Math.min(margin, 6) : margin);
   const routed = new Map<string, Pt[]>();
 
@@ -1030,7 +1031,8 @@ export class ModuxEditor extends LitElement {
     // container that unfolds at this level may now sit on top of its neighbours.
     // Nudge the top-level nodes apart (one undoable step) so the map stays legible.
     const current = this.viewLayout('context-map');
-    const top = this.sceneFor('context-map').nodes.filter((n) => !n.parentId);
+    // Areas group by overlapping — pushing them apart would defeat them.
+    const top = this.sceneFor('context-map').nodes.filter((n) => !n.parentId && n.kind !== 'area');
     const moves = declump(top);
     const ops: EditOp[] = [...moves.keys()].map((id) => ({
       kind: 'move-node',
@@ -1681,6 +1683,7 @@ export class ModuxEditor extends LitElement {
     const { id, kind, name } = e.detail;
     if (
       kind === 'note' ||
+      kind === 'area' ||
       kind === 'boundedContext' ||
       kind === 'aggregate' ||
       kind === 'entity' ||
@@ -2836,6 +2839,7 @@ export class ModuxEditor extends LitElement {
       (m.entities ?? []).map((x) => x.id),
       (m.actors ?? []).map((x) => x.id),
       (m.notes ?? []).map((x) => x.id),
+      (m.areas ?? []).map((x) => x.id),
       m.externalSystems.map((x) => x.id),
       m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
       m.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)),
@@ -3081,7 +3085,7 @@ export class ModuxEditor extends LitElement {
     };
     if (!def.child) {
       const prefix: Record<string, string> = {
-        note: 'note-',
+        note: 'note-', area: 'area-',
         boundedContext: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
@@ -3095,6 +3099,8 @@ export class ModuxEditor extends LitElement {
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
           : type === 'note'
             ? { kind: 'add-note', id, name }
+          : type === 'area'
+            ? { kind: 'add-area', id, name }
           : type === 'actor'
             ? { kind: 'add-actor', id, name }
             : type === 'external-system'
@@ -3855,7 +3861,10 @@ export class ModuxEditor extends LitElement {
                     vl.sizes ?? {},
                     new Set(vl.collapsed ?? []),
                   );
-    if (view !== 'design') this.withNotes(scene, view);
+    if (view !== 'design') {
+      this.withAreas(scene, view);
+      this.withNotes(scene, view);
+    }
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
       for (const node of scene.nodes) {
@@ -3864,6 +3873,37 @@ export class ModuxEditor extends LitElement {
       }
     }
     return scene;
+  }
+
+  /**
+   * The area layer, per view: an area shows only in the view where it was dropped (its
+   * rectangle is that view's layout). It renders BEHIND everything — a named frame whose
+   * membership is geometric — and anchors note threads like any other element.
+   */
+  private withAreas(scene: Scene, view: ViewId): void {
+    const areas = this.model.areas ?? [];
+    if (!areas.length) return;
+    const vl = this.viewLayout(view);
+    const sizes = vl.sizes ?? {};
+    for (const area of areas) {
+      const placed = vl.nodes[area.id];
+      if (!placed) continue;
+      // Bare rectangle: no title, no glyph — the name lives in the tooltip (and F2 edits it).
+      scene.nodes.unshift({
+        id: area.id,
+        label: area.name,
+        kind: 'area',
+        x: placed.x,
+        y: placed.y,
+        w: sizes[area.id]?.w ?? 340,
+        h: sizes[area.id]?.h ?? 220,
+        fill: 'rgba(148, 163, 184, 0.07)',
+        stroke: '#94a3b8',
+        dashed: true,
+        tooltip: area.name,
+        resizable: true,
+      });
+    }
   }
 
   /**
@@ -3926,6 +3966,17 @@ export class ModuxEditor extends LitElement {
     }
   }
 
+  /** Yugo and 3D read meaning, not geometry: the area frames (and their threads) stay behind. */
+  private sceneWithoutAreas(scene: Scene): Scene {
+    const areaIds = new Set(scene.nodes.filter((n) => n.kind === 'area').map((n) => n.id));
+    if (!areaIds.size) return scene;
+    return {
+      ...scene,
+      nodes: scene.nodes.filter((n) => !areaIds.has(n.id)),
+      edges: scene.edges.filter((e) => !areaIds.has(e.sourceId) && !areaIds.has(e.targetId)),
+    };
+  }
+
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */
   private fitInsets(): { left: number } {
     const paletteVisible =
@@ -3944,8 +3995,9 @@ export class ModuxEditor extends LitElement {
     const scene = this.sceneFor(view);
     if (!scene.nodes.length) return;
     // Nested children (aggregates/use cases) are derived from their container's
-    // position, so only top-level nodes take part in the layout.
-    const topNodes = scene.nodes.filter((n) => !n.parentId);
+    // position, so only top-level nodes take part in the layout. Areas are frames:
+    // the layout ignores them (they stay where their author framed them).
+    const topNodes = scene.nodes.filter((n) => !n.parentId && n.kind !== 'area');
     const topIds = new Set(topNodes.map((n) => n.id));
     const layoutScene = {
       nodes: topNodes,
@@ -4560,7 +4612,7 @@ export class ModuxEditor extends LitElement {
         : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
-            .scene=${this.sceneFor(this._view)}
+            .scene=${this.sceneWithoutAreas(this.sceneFor(this._view))}
             .journey=${this.activeJourneyForSurface()}
             .sceneKey=${`${this._view}:${this._detail}`}
             ?shifted=${this._paletteOpen}
@@ -4626,7 +4678,7 @@ export class ModuxEditor extends LitElement {
       <modux-tilt
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
-            .scene=${scene}
+            .scene=${this.sceneWithoutAreas(scene)}
             .selectedId=${this._selectedId}
             .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
             @connect-requested=${this.onConnectRequested}

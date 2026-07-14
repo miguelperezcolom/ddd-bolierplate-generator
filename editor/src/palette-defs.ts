@@ -18,6 +18,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'boundedContext', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
   { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
   { type: 'note', label: 'Nota', symbol: 'note', color: '#ca8a04', group: 'Estratégico' },
+  { type: 'area', label: 'Área', symbol: 'area', color: '#64748b', group: 'Estratégico' },
   { type: 'project-reference', label: 'Proyecto (catálogo)', symbol: 'component', color: '#334155', group: 'Estratégico' },
   { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
   { type: 'identity-provider', label: 'IdP (identidad)', symbol: 'key', color: '#ca8a04', group: 'Estratégico' },

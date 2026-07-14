@@ -54,7 +54,8 @@ public record AllData(
         List<ButtonGroupEntity> buttonGroups,
         List<WorkflowGatewayEntity> workflowGateways,
         List<JourneyEntity> journeys,
-        List<NoteEntity> notes
+        List<NoteEntity> notes,
+        List<AreaEntity> areas
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -63,7 +64,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null);
+                null, null, null);
     }
 
     public AllData {
@@ -119,5 +120,6 @@ public record AllData(
         workflowGateways = workflowGateways != null ? workflowGateways : List.of();
         journeys = journeys != null ? journeys : List.of();
         notes = notes != null ? notes : List.of();
+        areas = areas != null ? areas : List.of();
     }
 }
