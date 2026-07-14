@@ -1396,7 +1396,22 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'workflow' ||
             node.kind === 'workflow-step' ||
             node.kind === 'page' ||
-            node.kind === 'menu-item')
+            node.kind === 'menu-item' ||
+            // Archi style: the ex-nested kinds are free boxes now — same handles.
+            node.kind === 'aggregate' ||
+            node.kind === 'domain-service' ||
+            node.kind === 'use-case' ||
+            node.kind === 'domain-event' ||
+            node.kind === 'application-event' ||
+            node.kind === 'read-model' ||
+            node.kind === 'query-service' ||
+            node.kind === 'scheduled-trigger' ||
+            node.kind === 'external-use-case' ||
+            node.kind === 'external-table' ||
+            node.kind === 'api-operation' ||
+            node.kind === 'api-op-occurrence' ||
+            node.kind === 'api-impl' ||
+            node.kind === 'service')
           ? [
               [hw, 0],
               [-hw, 0],
@@ -1410,6 +1425,8 @@ export class ModuxCanvas extends LitElement {
                   <title>${!isChild
                     ? node.kind === 'note'
                       ? 'Arrastra hasta cualquier elemento o relación: la nota quedará atada con un hilo'
+                    : node.kind === 'service'
+                      ? 'Arrastra hasta un módulo (o su contexto) para desplegarlo en este servicio'
                     : node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
                       : node.kind === 'ai-agent'

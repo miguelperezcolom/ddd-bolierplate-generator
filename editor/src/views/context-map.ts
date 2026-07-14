@@ -126,6 +126,8 @@ export function ownershipIndex(
     for (const m of model.boundedContexts) {
       const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === m.id);
       if (modules.length <= 1) continue;
+      // Unassigned elements hang off the context itself (the loose packing pool).
+      for (const d of boundedContextElementDescs(model, m)) owners.set(d.id, m.id);
       for (const cm of modules) {
         owners.set(cm.id, m.id);
         for (const eid of cm.elementIds ?? []) owners.set(eid, cm.id);
@@ -387,7 +389,17 @@ function buildScene(
         // module stays implicit and the context is the deployment target.
         const modules = (model.modules ?? []).filter((cm) => cm.boundedContextId === id);
         if (modules.length <= 1) return [];
-        return modules.map((cm): ChildDesc => ({ id: cm.id, name: cm.name, kind: 'module' }));
+        // Unassigned elements ride along as loose boxes: they are what you drag
+        // into a module to package it.
+        const assigned = new Set(modules.flatMap((cm) => cm.elementIds ?? []));
+        const bc = model.boundedContexts.find((m) => m.id === id);
+        const loose = bc
+          ? boundedContextElementDescs(model, bc).filter((e) => !assigned.has(e.id))
+          : [];
+        return [
+          ...modules.map((cm): ChildDesc => ({ id: cm.id, name: cm.name, kind: 'module' })),
+          ...loose,
+        ];
       }
       if (kind === 'module') {
         const cm = (model.modules ?? []).find((x) => x.id === id);

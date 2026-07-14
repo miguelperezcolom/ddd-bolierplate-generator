@@ -296,6 +296,22 @@ describe('distributionScene — the distribution lens (pure topology)', () => {
     expect(deploy.id).toBe('deploy:svc-1->mod-reservas-main');
   });
 
+  it('an expanded context offers modules AND its loose elements to package', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      modules: [
+        { id: 'mod-reservas-main', name: 'Reservas', boundedContextId: 'mod-reservas', main: true, elementIds: ['uc-book'] },
+        { id: 'mod-reservas-read', name: 'Reservas read', boundedContextId: 'mod-reservas' },
+      ],
+    });
+    const scene = distributionScene(model, {}, {}, new Set(['mod-reservas', 'mod-reservas-main']));
+    // the aggregate is unassigned: it floats off the context, ready to be packed
+    expect(scene.nodes.find((n) => n.id === 'agg-reserva')?.ownerId).toBe('mod-reservas');
+    // the packed use case hangs off ITS module
+    expect(scene.nodes.find((n) => n.id === 'uc-book')?.ownerId).toBe('mod-reservas-main');
+    expect(scene.edges.some((e) => e.id === 'contains:mod-reservas-main->uc-book')).toBe(true);
+  });
+
   it('a second module unfolds through the context, as free boxes with diamonds', () => {
     const model = baseModel({
       ...strategicModel(),
