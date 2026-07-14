@@ -86,7 +86,17 @@ function apiImplChildren(model: ModuxModel, boundedContextId: string): ChildDesc
       id: apiImplNodeId(impl.apiId, impl.boundedContextId),
       name: apiById.get(impl.apiId)!.name,
       kind: 'api-impl',
+      expandable: (apiById.get(impl.apiId)!.operations ?? []).length > 0,
     }));
+}
+
+/** The operations a proxy fronts (those of its target API). */
+function proxyOps(
+  model: ModuxModel,
+  px: NonNullable<ModuxModel['proxyApis']>[number],
+): { id: string; name: string }[] {
+  const target = px.targetApiId ? (model.apis ?? []).find((a) => a.id === px.targetApiId) : undefined;
+  return target?.operations ?? [];
 }
 
 // Detail level: a context becomes a resizable container holding small aggregate
@@ -172,6 +182,8 @@ interface ChildDesc {
   policy?: boolean;
   /** Nested chips: a subsystem carries its published APIs inside its own chip. */
   children?: ChildDesc[];
+  /** The chip hides more (an API's operations): it wears the ▸ chevron. */
+  expandable?: boolean;
 }
 
 const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
@@ -306,7 +318,7 @@ function detailedContext(
   base: Omit<SceneNode, 'x' | 'y' | 'w' | 'h'>,
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
-  operationsLevel = false,
+  expandedIds: ReadonlySet<string> = new Set(),
 ): SceneNode[] {
   const children: ChildDesc[] = [
     // APIs implemented here nest first: strategic-level elements, like an external
@@ -318,34 +330,37 @@ function detailedContext(
     // Nothing to nest — keep the compact context box.
     return [{ ...base, x: center.x, y: center.y, w: NODE_W, h: NODE_H }];
   }
-  // The deepest level unfolds the implemented APIs into sub-containers with their
-  // operation OCCURRENCES (per-site ids) — so proxy operations can later wire to the
+  // An EXPANDED implemented API unfolds into a sub-container with its operation
+  // OCCURRENCES (per-site ids) — so proxy operations can later wire to the
   // implementation here or to the published API, operation by operation.
-  if (operationsLevel) {
-    const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
-    const boxes: ApiBoxDesc[] = (model.apiImplementations ?? [])
-      .filter((impl) => impl.boundedContextId === boundedContext.id && apiById.has(impl.apiId))
-      .map((impl) => {
-        const api = apiById.get(impl.apiId)!;
-        return {
-          id: apiImplNodeId(impl.apiId, impl.boundedContextId),
-          name: api.name,
-          kind: 'api-impl' as const,
-          badge: 'API',
-          fill: '#eef2ff',
-          stroke: '#4f46e5',
-          tooltip: `${api.name} — la misma API, implementada en ${boundedContext.name}`,
-          opKind: 'api-op-occurrence' as const,
-          ops: (api.operations ?? []).map((op) => ({
-            id: apiOpOccurrenceId(op.id, boundedContext.id),
-            name: op.name,
-          })),
-        };
-      });
-    if (boxes.length > 0) {
-      const rest = children.filter((c) => c.kind !== 'api-impl');
-      return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
-    }
+  const apiById = new Map((model.apis ?? []).map((a) => [a.id, a]));
+  const boxes: ApiBoxDesc[] = (model.apiImplementations ?? [])
+    .filter((impl) =>
+      impl.boundedContextId === boundedContext.id &&
+      apiById.has(impl.apiId) &&
+      expandedIds.has(apiImplNodeId(impl.apiId, impl.boundedContextId)) &&
+      (apiById.get(impl.apiId)!.operations ?? []).length > 0)
+    .map((impl) => {
+      const api = apiById.get(impl.apiId)!;
+      return {
+        id: apiImplNodeId(impl.apiId, impl.boundedContextId),
+        name: api.name,
+        kind: 'api-impl' as const,
+        badge: 'API',
+        fill: '#eef2ff',
+        stroke: '#4f46e5',
+        tooltip: `${api.name} — la misma API, implementada en ${boundedContext.name}`,
+        opKind: 'api-op-occurrence' as const,
+        ops: (api.operations ?? []).map((op) => ({
+          id: apiOpOccurrenceId(op.id, boundedContext.id),
+          name: op.name,
+        })),
+      };
+    });
+  if (boxes.length > 0) {
+    const boxedIds = new Set(boxes.map((b) => b.id));
+    const rest = children.filter((c) => !boxedIds.has(c.id));
+    return containerWithApiBoxes(center, base, boxes, rest, layout, sizes);
   }
   return detailedContainer(center, base, children, layout, sizes);
 }
@@ -378,12 +393,11 @@ function containerWithApiBoxes(
   plainChildren: ChildDesc[],
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }>,
-  collapsedIds: ReadonlySet<string> = new Set(),
 ): SceneNode[] {
   const sysSize = sizes[base.id] ?? defaultContainerSize(boxes.length + plainChildren.length);
   const apiBoxes = boxes.map((a, i) => {
     const off = layout[a.id] ?? defaultChildOffset(i, sysSize);
-    const ops = collapsedIds.has(a.id) ? [] : a.ops;
+    const ops = a.ops;
     const apiSize = sizes[a.id] ?? defaultContainerSize(ops.length);
     const opOffs = ops.map((op, j) => layout[op.id] ?? defaultChildOffset(j, apiSize));
     const fit = containerFit(
@@ -439,8 +453,8 @@ function containerWithApiBoxes(
       stroke: b.a.stroke,
       badge: b.a.badge,
       container: true,
-      collapsible: b.a.ops.length > 0 || collapsedIds.has(b.a.id),
-      collapsed: collapsedIds.has(b.a.id),
+      collapsible: b.a.ops.length > 0,
+      collapsed: false,
       parentId: base.id,
       x: center.x + b.fit.x,
       y: center.y + b.fit.y,
@@ -478,6 +492,8 @@ function containerWithApiBoxes(
       symbol: style.symbol,
       fill: style.fill,
       stroke: style.stroke,
+      collapsible: c.expandable || undefined,
+      collapsed: c.expandable ? true : undefined,
       parentId: base.id,
       tooltip: `${CHILD_TOOLTIP[c.kind]} ${c.name}`,
     });
@@ -736,6 +752,8 @@ function detailedContainer(
       symbol: style.symbol,
       fill: style.fill,
       stroke: style.stroke,
+      collapsible: c.expandable || undefined,
+      collapsed: c.expandable ? true : undefined,
       parentId: base.id,
       tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
     };
@@ -761,25 +779,43 @@ function detailedContainer(
   return [container, ...childNodes];
 }
 
+/**
+ * The single-level map: every element of the landscape is on stage, folded to its
+ * chip by default; `expandedIds` opens each container at the user's discretion —
+ * a context unfolds its content, an API (top-level, nested or implemented) unfolds
+ * its operations, cascade all the way down. Views curate WHO is on stage; this
+ * builder only decides HOW MUCH of each one shows.
+ */
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
-  detail: 'contexts' | 'detail' | 'operations' | 'distribution' = 'contexts',
+  sizes: Record<string, { w: number; h: number }> = {},
+  expandedIds: ReadonlySet<string> = new Set(),
+): Scene {
+  return buildScene(model, layout, 'unified', sizes, expandedIds);
+}
+
+/** The distribution lens: contexts as module packagers, plus services and infrastructure. */
+export function distributionScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  sizes: Record<string, { w: number; h: number }> = {},
+  expandedIds: ReadonlySet<string> = new Set(),
+): Scene {
+  return buildScene(model, layout, 'distribution', sizes, expandedIds);
+}
+
+function buildScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  mode: 'unified' | 'distribution',
   sizes: Record<string, { w: number; h: number }> = {},
   toggledIds: ReadonlySet<string> = new Set(),
 ): Scene {
-  const distributionLevel = detail === 'distribution';
-  // The CONTEXTS level is the strategic map: contexts, external systems and their
-  // relations — everything else lives on the deeper levels.
-  const strategicLevel = detail === 'contexts';
-  const bareLevel = distributionLevel || strategicLevel;
-  // The per-node chevron OVERRIDES the level's default: it expands a node the
-  // level draws compact, and folds one the level draws unfolded.
-  const collapsedIds = toggledIds; // sub-boxes at the operations level: same semantics
-  const detailed = detail !== 'contexts';
-  // The deepest level: every API surfaces as a container with its operations,
-  // and its containment in the host system becomes a "publicada por" edge.
-  const operationsLevel = detail === 'operations';
+  const distributionLevel = mode === 'distribution';
+  // Fine-grained edges always TRY to draw; the nodeIds guards roll them up or
+  // drop them when their endpoints are folded away.
+  const detailed = !distributionLevel;
   const externalIds = new Set(model.externalSystems.map((x) => x.id));
   const nestedApis = (model.apis ?? []).filter(
     (a) => a.publishedByExternalSystemId && externalIds.has(a.publishedByExternalSystemId),
@@ -798,13 +834,13 @@ export function contextMapScene(
       // subsystems render INSIDE their parent, never as top-level boxes
       .filter((e) => !e.parentExternalSystemId || !externalIds.has(e.parentExternalSystemId))
       .map((e) => ({ ref: e, external: true, api: false, proxy: false })),
-    ...(bareLevel ? [] : (model.apis ?? [])
+    ...(distributionLevel ? [] : (model.apis ?? [])
       .filter((a) => !nestedApiIds.has(a.id))
       .map((a) => ({ ref: a, external: false, api: true, proxy: false }))),
-    ...(bareLevel ? [] : (model.proxyApis ?? [])
+    ...(distributionLevel ? [] : (model.proxyApis ?? [])
       .filter((px) => !nestedProxyIds.has(px.id))
       .map((px) => ({ ref: px, external: false, api: false, proxy: true }))),
-    ...(bareLevel ? [] : (model.workflows ?? []).map((w) => ({
+    ...(distributionLevel ? [] : (model.workflows ?? []).map((w) => ({
       ref: w,
       external: false,
       api: false,
@@ -812,7 +848,7 @@ export function contextMapScene(
       workflow: true,
     }))),
     // ETL flows without owner (legacy) still float; owned ones nest in their context.
-    ...(bareLevel ? [] : (model.etlFlows ?? [])
+    ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerBoundedContextId)
       .map((f) => ({
         ref: f,
@@ -821,7 +857,7 @@ export function contextMapScene(
         proxy: false,
         etl: true,
       }))),
-    ...(strategicLevel ? [] : (model.identityProviders ?? [])).map((idp) => ({
+    ...(model.identityProviders ?? []).map((idp) => ({
       ref: idp,
       external: false,
       api: false,
@@ -899,27 +935,34 @@ export function contextMapScene(
         badge: 'PROXY API',
         tooltip: `${px.name} — proxy/cache de una API, consumible como ella`,
       };
-      // The deepest level unfolds the proxy too: its surface IS the fronted API, so its
+      // An expanded proxy unfolds its surface: it IS the fronted API, so its
       // operation OCCURRENCES nest inside — future arrows will route each one to the
       // published API or to a bounded-context implementation.
-      if (operationsLevel && px.targetApiId) {
-        const target = (model.apis ?? []).find((a) => a.id === px.targetApiId);
-        const ops = target?.operations ?? [];
-        if (ops.length > 0) {
-          return detailedContainer(
-            pos,
-            base,
-            ops.map((op): ChildDesc => ({
-              id: apiOpOccurrenceId(op.id, px.id),
-              name: op.name,
-              kind: 'api-op-occurrence',
-            })),
-            layout,
-            sizes,
-          );
-        }
+      const pxOps = px.targetApiId
+        ? ((model.apis ?? []).find((a) => a.id === px.targetApiId)?.operations ?? [])
+        : [];
+      if (toggledIds.has(px.id) && pxOps.length > 0) {
+        return detailedContainer(
+          pos,
+          { ...base, collapsible: true, collapsed: false },
+          pxOps.map((op): ChildDesc => ({
+            id: apiOpOccurrenceId(op.id, px.id),
+            name: op.name,
+            kind: 'api-op-occurrence',
+          })),
+          layout,
+          sizes,
+        );
       }
-      return [{ ...base, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H }];
+      return [{
+        ...base,
+        collapsible: pxOps.length > 0,
+        collapsed: pxOps.length > 0,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      }];
     }
     if (entry.api) {
       const a = entry.ref as NonNullable<ModuxModel['apis']>[number];
@@ -933,7 +976,7 @@ export function contextMapScene(
         badge: 'API',
         tooltip: `${a.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
       };
-      const aExpanded = toggledIds.has(a.id) ? !detailed : detailed;
+      const aExpanded = toggledIds.has(a.id);
       if (aExpanded && a.operations.length > 0) {
         return detailedContainer(
           pos,
@@ -1019,32 +1062,33 @@ export function contextMapScene(
       const xFoldable = hasChips || richChildren.length > 0;
       const { form: xForm, collapsed: xCollapsed } = resolveForm(
         toggledIds.has(x.id),
-        // Deployment is topology: external systems join compact, like the boundedContexts.
-        distributionLevel ? 'compact' : detailed ? 'full' : hasChips ? 'coarse' : 'compact',
+        hasChips ? 'coarse' : 'compact',
         // Subsystems already ride the coarse form, so they are not detail BEYOND it:
         // a system with only chips and subsystems must fold to the plain box.
-        richChildren.some((c) => c.kind !== 'external-system') || (operationsLevel && hasChips),
+        richChildren.some((c) => c.kind !== 'external-system'),
       );
       // Subsystems are strategic, like the published APIs: they show from the
       // coarse form on — otherwise nobody can drop an API on them.
       const plainChildren: ChildDesc[] = [
-        ...ownProxyChips.map((px): ChildDesc => ({ id: px.id, name: px.name, kind: 'proxy-api' })),
+        ...ownProxyChips.map((px): ChildDesc => ({
+          id: px.id,
+          name: px.name,
+          kind: 'proxy-api',
+          expandable: proxyOps(model, px).length > 0,
+        })),
         ...(xForm === 'full' ? richChildren : subsystemChips),
       ];
-      const unfoldableProxies = operationsLevel && xForm === 'full'
-        ? hostedProxies.filter((px) => {
-            const target = px.targetApiId
-              ? (model.apis ?? []).find((a) => a.id === px.targetApiId)
-              : undefined;
-            return (target?.operations ?? []).length > 0;
-          })
-        : [];
-      if (operationsLevel && xForm === 'full' && (publishedApis.length > 0 || unfoldableProxies.length > 0)) {
-        // The deepest level nests twice: the system wraps each API's (and hosted
-        // proxy's) own container, which in turn wraps its operations. A hosted
-        // proxy's surface IS its fronted API, so it unfolds operation OCCURRENCES.
+      // Each own API (or hosted proxy) unfolds ON ITS OWN into a sub-container with
+      // its operations (occurrences, for a proxy — its surface IS the fronted API).
+      const expandedOwnApis = xForm === 'compact'
+        ? []
+        : ownApiChips.filter((a) => toggledIds.has(a.id) && (a.operations ?? []).length > 0);
+      const expandedOwnProxies = xForm === 'compact'
+        ? []
+        : ownProxyChips.filter((px) => toggledIds.has(px.id) && proxyOps(model, px).length > 0);
+      if (expandedOwnApis.length > 0 || expandedOwnProxies.length > 0) {
         const boxes: ApiBoxDesc[] = [
-          ...publishedApis.map((a): ApiBoxDesc => ({
+          ...expandedOwnApis.map((a): ApiBoxDesc => ({
             id: a.id,
             name: a.name,
             kind: 'api',
@@ -1055,7 +1099,7 @@ export function contextMapScene(
             opKind: 'api-operation',
             ops: (a.operations ?? []).map((op) => ({ id: op.id, name: op.name })),
           })),
-          ...unfoldableProxies.map((px): ApiBoxDesc => {
+          ...expandedOwnProxies.map((px): ApiBoxDesc => {
             const target = (model.apis ?? []).find((a) => a.id === px.targetApiId)!;
             return {
               id: px.id,
@@ -1073,21 +1117,35 @@ export function contextMapScene(
             };
           }),
         ];
-        const unfoldedIds = new Set(unfoldableProxies.map((px) => px.id));
+        const boxedIds = new Set(boxes.map((b) => b.id));
         return containerWithApiBoxes(
           pos,
           { ...base, collapsible: true, collapsed: xCollapsed },
           boxes,
-          plainChildren.filter((c) => !unfoldedIds.has(c.id)),
+          [
+            ...ownApiChips
+              .filter((a) => !boxedIds.has(a.id))
+              .map((a): ChildDesc => ({
+                id: a.id,
+                name: a.name,
+                kind: 'api',
+                expandable: (a.operations ?? []).length > 0,
+              })),
+            ...plainChildren.filter((c) => !boxedIds.has(c.id)),
+          ],
           layout,
           sizes,
-          collapsedIds,
         );
       }
       const children: ChildDesc[] = xForm === 'compact'
         ? []
         : [
-            ...ownApiChips.map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'api' })),
+            ...ownApiChips.map((a): ChildDesc => ({
+              id: a.id,
+              name: a.name,
+              kind: 'api',
+              expandable: (a.operations ?? []).length > 0,
+            })),
             ...plainChildren,
           ];
       if (children.length > 0) {
@@ -1138,7 +1196,7 @@ export function contextMapScene(
     const mFoldable = hasDetail || implChildren.length > 0;
     const { form: mForm, collapsed: mCollapsed } = resolveForm(
       toggledIds.has(m.id),
-      detailed ? 'full' : implChildren.length > 0 ? 'coarse' : 'compact',
+      implChildren.length > 0 ? 'coarse' : 'compact',
       hasDetail,
     );
     if (distributionLevel) {
@@ -1152,7 +1210,7 @@ export function contextMapScene(
       return detailedContext(
         model, m, pos,
         { ...base, collapsible: true, collapsed: mCollapsed },
-        layout, sizes, operationsLevel,
+        layout, sizes, toggledIds,
       );
     }
     // Coarse: the strategic form — implemented APIs still nest.
@@ -1174,10 +1232,9 @@ export function contextMapScene(
     }];
   });
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
-  // context — and outside the distribution level, which is about packaging. Actors are
-  // strategic: WHO drives the landscape belongs at the contexts level too.
-  const actorsAndAgents = bareLevel
-    ? { actors: strategicLevel ? model.actors ?? [] : [], aiAgents: [], rags: [], mcpGateways: [] }
+  // context — and outside the distribution lens, which is about packaging.
+  const actorsAndAgents = distributionLevel
+    ? { actors: [], aiAgents: [], rags: [], mcpGateways: [] }
     : {
         actors: model.actors ?? [],
         aiAgents: model.aiAgents ?? [],

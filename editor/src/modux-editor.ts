@@ -5,7 +5,7 @@ import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
 import { journeyLegNumbers, journeyRuns } from './journeys.js';
 import type { ModuxCommand } from './commands.js';
-import { contextMapScene } from './views/context-map.js';
+import { contextMapScene, distributionScene } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
@@ -41,7 +41,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-export type ViewId = 'context-map' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations';
+export type ViewId = 'context-map' | 'distribution' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations';
 
 
 /**
@@ -315,8 +315,6 @@ export class ModuxEditor extends LitElement {
 
   /** The front door is graphics-first: the context map on the yugo surface. */
   @state() private _view: ViewId = 'context-map';
-  /** Context-map detail level: bounded contexts only, or their aggregates + use cases. */
-  @state() private _detail: 'contexts' | 'detail' | 'operations' | 'distribution' = 'contexts';
   /** Last chosen relation type — the default pre-selection in the picker. */
   @state() private _relationType: ContextMapRelationType = 'CUSTOMER_SUPPLIER';
   /** Open type picker: creating a new relation, or editing an existing one. */
@@ -853,7 +851,7 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) {
+        if (['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
@@ -911,10 +909,8 @@ export class ModuxEditor extends LitElement {
         break;
       case 'a':
       case 'A': scope('view:aggregates'); break;
-      case '1': scope('level:contexts'); break;
-      case '2': scope('level:detail'); break;
-      case '3': scope('level:operations'); break;
-      case '4': scope('level:distribution'); break;
+      case '1': scope('view:context-map'); break;
+      case '4': scope('view:distribution'); break;
       case '5': scope('view:flows'); break;
       case '6': scope('view:processes'); break;
       case '7': scope('view:workflows'); break;
@@ -941,14 +937,13 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * Every detail level of the context map keeps ITS OWN geometry: coming back
-   * to a level must look exactly as it was left there, untouched by whatever
-   * the auto-separation did at the other levels. The legacy 'context-map'
-   * entry doubles as the Contextos level.
+   * Each vista is a full sheet of its own: with one active, the diagram (and the
+   * distribution lens) keep geometry AND expansion under the vista's key — coming
+   * back must look exactly as it was left. «Todo el modelo» lives on the base keys.
    */
   private layoutKey(view: ViewId): string {
-    return view === 'context-map' && this._detail !== 'contexts'
-      ? `context-map@${this._detail}`
+    return (view === 'context-map' || view === 'distribution') && this._activeViewId
+      ? `${view}@view:${this._activeViewId}`
       : view;
   }
 
@@ -994,13 +989,77 @@ export class ModuxEditor extends LitElement {
       this._paletteOpen = true;
       this._paletteOpenedForBlank = true;
     }
-    if (changed.has('layout')) {
-      const detail = normalizeViewLayout(this.layout['context-map']).detail;
-      if (detail === 'contexts' || detail === 'detail' || detail === 'operations'
-          || detail === 'distribution') {
-        this._detail = detail;
-      }
+    if (changed.has('layout') || changed.has('model')) this.migrateLevelLayouts();
+  }
+
+  /**
+   * One-shot migration from the pre-single-level world: the four per-level sheets
+   * (contexts / detail / operations / distribution) fold into ONE diagram sheet plus
+   * the distribution lens. The level the user last worked on wins the geometry; the
+   * other levels contribute what it lacks (chip offsets, container sizes). The old
+   * global levels become per-element expansion: detail/operations layouts expanded
+   * every container, so the migrated `expanded` set reproduces that look.
+   */
+  private migrateLevelLayouts(): void {
+    const baseVl = normalizeViewLayout(this.layout['context-map']);
+    const legacyKeys = ['context-map@detail', 'context-map@operations', 'context-map@distribution'];
+    const hasLegacy = baseVl.detail !== undefined || legacyKeys.some((k) => this.layout[k]);
+    if (!hasLegacy) return;
+    // The expansion seed needs the model on stage; wait for both props.
+    if (!this.model.boundedContexts.length && !this.model.externalSystems.length) return;
+    const next: EditorLayout = { ...this.layout };
+    const pick = (key: string) => normalizeViewLayout(next[key]);
+    const detail = baseVl.detail ?? 'contexts';
+    const chosen =
+      detail === 'detail' && next['context-map@detail']
+        ? pick('context-map@detail')
+        : detail === 'operations' && next['context-map@operations']
+          ? pick('context-map@operations')
+          : baseVl;
+    const merged: ViewLayout = {
+      nodes: { ...chosen.nodes },
+      edges: { ...chosen.edges },
+      sizes: { ...(chosen.sizes ?? {}) },
+    };
+    for (const key of ['context-map', 'context-map@detail', 'context-map@operations']) {
+      const vl = pick(key);
+      for (const [id, p] of Object.entries(vl.nodes)) if (!(id in merged.nodes)) merged.nodes[id] = p;
+      for (const [id, s] of Object.entries(vl.sizes ?? {})) if (!(id in merged.sizes!)) merged.sizes![id] = s;
     }
+    // detail/operations drew every container unfolded; their old `collapsed` toggles folded.
+    // At the contexts level the toggle meant the opposite: expand.
+    const expanded = new Set<string>();
+    if (detail === 'contexts' || detail === 'distribution') {
+      for (const id of baseVl.collapsed ?? []) expanded.add(id);
+    } else {
+      const folded = new Set(chosen.collapsed ?? []);
+      for (const m of this.model.boundedContexts) expanded.add(m.id);
+      for (const x of this.model.externalSystems) expanded.add(x.id);
+      if (detail === 'operations') {
+        for (const a of this.model.apis ?? []) expanded.add(a.id);
+        for (const px of this.model.proxyApis ?? []) expanded.add(px.id);
+        for (const impl of this.model.apiImplementations ?? []) {
+          expanded.add(`apiimpl:${impl.apiId}@${impl.boundedContextId}`);
+        }
+      }
+      for (const id of folded) expanded.delete(id);
+    }
+    next['context-map'] = { nodes: merged.nodes, edges: merged.edges, sizes: merged.sizes, expanded: [...expanded] };
+    // The distribution level moves to its own view, sheet included (its toggles
+    // already meant «expand this module»).
+    const dist = next['context-map@distribution'];
+    if (dist && !next['distribution']) {
+      const dvl = normalizeViewLayout(dist);
+      next['distribution'] = {
+        nodes: dvl.nodes,
+        edges: dvl.edges,
+        sizes: dvl.sizes,
+        expanded: dvl.collapsed ?? [],
+      };
+    }
+    for (const k of legacyKeys) delete next[k];
+    this.layout = next;
+    this.emit('layout-changed', { layout: this.layout });
   }
 
   /**
@@ -1028,38 +1087,18 @@ export class ModuxEditor extends LitElement {
     this.writeViewLayout(this._view, { ...layout, edges });
   }
 
-  /** Detail level changes persist with the layout, so they survive reloads. */
-  private setDetail(detail: 'contexts' | 'detail' | 'operations' | 'distribution'): void {
-    if (detail === this._detail) return;
-    // First visit to a level: it starts as a copy of what the user is looking
-    // at; from then on each level's geometry lives its own life.
-    const seed = this.viewLayout('context-map');
-    const targetKey = detail === 'contexts' ? 'context-map' : `context-map@${detail}`;
-    const raw = normalizeViewLayout(this.layout[targetKey]);
-    this._detail = detail;
-    // Each level is a working surface: arriving opens the palette, ready to drop.
-    this._paletteOpen = true;
-    if (!Object.keys(raw.nodes).length && !Object.keys(raw.sizes ?? {}).length) {
-      this.writeViewLayout('context-map', {
-        nodes: { ...seed.nodes },
-        edges: { ...seed.edges },
-        sizes: { ...(seed.sizes ?? {}) },
-      });
-    }
-    // The chosen level persists on the BASE entry — where load-time adoption looks.
-    const base = normalizeViewLayout(this.layout['context-map']);
-    this.layout = { ...this.layout, 'context-map': { ...base, detail } };
-    this.emit('layout-changed', { layout: this.layout });
-    // Positions persist per element across detail levels, but sizes don't: a
-    // container that unfolds at this level may now sit on top of its neighbours.
-    // Nudge the top-level nodes apart (one undoable step) so the map stays legible.
-    const current = this.viewLayout('context-map');
-    // Areas group by overlapping — pushing them apart would defeat them.
-    const top = this.sceneFor('context-map').nodes.filter((n) => !n.parentId && n.kind !== 'area');
+  /**
+   * Expanding a node grows its container over the neighbours: nudge the
+   * top-level boxes apart (one undoable step) so the map stays legible.
+   * Areas group by overlapping — pushing them apart would defeat them.
+   */
+  private declumpView(view: ViewId): void {
+    const current = this.viewLayout(view);
+    const top = this.sceneFor(view).nodes.filter((n) => !n.parentId && n.kind !== 'area');
     const moves = declump(top);
     const ops: EditOp[] = [...moves.keys()].map((id) => ({
       kind: 'move-node',
-      view: 'context-map',
+      view,
       id,
       pos: current.nodes[id] ?? null,
     }));
@@ -1074,7 +1113,7 @@ export class ModuxEditor extends LitElement {
         y: Math.round(base.y + (p.y - orig.y)),
       };
     }
-    this.writeViewLayout('context-map', { ...current, nodes });
+    this.writeViewLayout(view, { ...current, nodes });
     if (ops.length) this.pushUndoEntry(ops);
   }
 
@@ -1428,27 +1467,27 @@ export class ModuxEditor extends LitElement {
     });
   }
 
-  /** One dropdown drives the diagram: a context-map detail level, or a specialized view. */
+  /** One dropdown drives the diagram: the map, the distribution lens, or a specialized view. */
   private onDiagramScopeChange(value: string): void {
-    if (value.startsWith('level:')) {
-      this._view = 'context-map';
-      this.setDetail(value.slice('level:'.length) as 'contexts' | 'detail' | 'operations' | 'distribution');
-      return;
-    }
     if (value.startsWith('view:')) {
       this._view = value.slice('view:'.length) as ViewId;
+      // Diagram surfaces are working surfaces: arriving opens the palette.
+      if (this._view === 'context-map' || this._view === 'distribution') this._paletteOpen = true;
     }
   }
 
-  /** Folding is a view preference (like the detail level): persisted, not undoable. */
+  /** Expansion is a sheet preference (persisted with the vista, not undoable). */
   private onNodeCollapseToggled(e: CustomEvent): void {
     const { id } = e.detail as { id: string };
     const view = this._view;
     const current = this.viewLayout(view);
-    const set = new Set(current.collapsed ?? []);
-    if (set.has(id)) set.delete(id);
-    else set.add(id);
-    this.writeViewLayout(view, { ...current, collapsed: [...set] });
+    const set = new Set(current.expanded ?? []);
+    const opening = !set.has(id);
+    if (opening) set.add(id);
+    else set.delete(id);
+    this.writeViewLayout(view, { ...current, expanded: [...set] });
+    // An unfolding container grows over its neighbours: keep the map legible.
+    if (opening) this.declumpView(view);
   }
 
   /** A multi-selection drag: every position lands in ONE layout write and ONE undo entry. */
@@ -1656,7 +1695,6 @@ export class ModuxEditor extends LitElement {
   private gestureHost(): GestureHost & UndoHost {
     return {
       model: this.model,
-      detail: this._detail,
       activeJourneyId: this._activeJourneyId || undefined,
       command: (c, pushUndo) => this.command(c, pushUndo),
       emit: (name, detail) => this.emit(name, detail),
@@ -2042,14 +2080,58 @@ export class ModuxEditor extends LitElement {
 
   private createViewFromSelection(): void {
     const name = this._newViewName.trim();
-    const memberIds = this.memberIdsFromSelection();
+    // No selection: the whole diagram on screen becomes the vista.
+    const selected = this.memberIdsFromSelection();
+    const memberIds = selected.length ? selected : this.visibleMemberIds();
     if (!name || !memberIds.length) return;
     const id = `view-${slug(name)}`;
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
-    // You created it to work in it: the new view becomes the active one (the
-    // canvas scopes as soon as the refreshed model lands).
+    // You created it to work in it: the new vista opens with the CURRENT sheet
+    // (geometry + expansion) as the seed of its own.
+    this.activateVista(id);
+  }
+
+  /** The catalog members currently on stage as top-level nodes (vista candidates). */
+  private visibleMemberIds(): string[] {
+    const MEMBER_KINDS = new Set([
+      'boundedContext', 'external-system', 'process', 'workflow', 'actor', 'ai-agent',
+      'rag', 'mcp-gateway', 'api', 'proxy-api', 'ui-app', 'page', 'aggregate', 'entity',
+    ]);
+    return [...new Set(
+      this.sceneFor(this._view)
+        .nodes.filter((n) => !n.parentId && MEMBER_KINDS.has(n.kind))
+        .map((n) => n.id.replace(/^tgt:/, '')),
+    )];
+  }
+
+  /**
+   * Activating a vista opens ITS sheet; the first visit seeds it as a copy of
+   * what the user is looking at — from then on each vista lives its own life.
+   */
+  private activateVista(id: string): void {
+    if (id && (this._view === 'context-map' || this._view === 'distribution')) {
+      const key = `${this._view}@view:${id}`;
+      const raw = normalizeViewLayout(this.layout[key]);
+      const blank =
+        !Object.keys(raw.nodes).length &&
+        !Object.keys(raw.sizes ?? {}).length &&
+        !(raw.expanded ?? []).length;
+      if (blank) {
+        const seed = this.viewLayout(this._view);
+        this.layout = {
+          ...this.layout,
+          [key]: {
+            nodes: { ...seed.nodes },
+            edges: { ...seed.edges },
+            sizes: { ...(seed.sizes ?? {}) },
+            expanded: [...(seed.expanded ?? [])],
+          },
+        };
+        this.emit('layout-changed', { layout: this.layout });
+      }
+    }
     this._activeViewId = id;
   }
 
@@ -3710,7 +3792,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = PALETTE_NEW.filter(
@@ -3880,13 +3962,9 @@ export class ModuxEditor extends LitElement {
                 ? mappingsScene(model, vl.nodes)
                 : view === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes)
-                : contextMapScene(
-                    model,
-                    vl.nodes,
-                    this._detail,
-                    vl.sizes ?? {},
-                    new Set(vl.collapsed ?? []),
-                  );
+                : view === 'distribution'
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []))
+                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []));
     if (view !== 'design') {
       this.withAreas(scene, view);
       this.withNotes(scene, view);
@@ -3995,7 +4073,7 @@ export class ModuxEditor extends LitElement {
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */
   private fitInsets(): { left: number } {
     const paletteVisible =
-      this._paletteOpen && ['context-map', 'workflows', 'ui'].includes(this._view);
+      this._paletteOpen && ['context-map', 'distribution', 'workflows', 'ui'].includes(this._view);
     const treeVisible = this._treeOpen && !!this._activeViewId;
     // Geometry mirrors the CSS: tree at 8+264, palette 244 wide (shifted past the tree).
     if (treeVisible && paletteVisible) return { left: 280 + 244 + 8 };
@@ -4071,7 +4149,7 @@ export class ModuxEditor extends LitElement {
         >Editor gráfico</span>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)}
+          ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -4098,28 +4176,16 @@ export class ModuxEditor extends LitElement {
           </button>
           <select
             ?hidden=${this._view === 'eventstorming'}
-            title="Qué pinta el diagrama: un nivel de detalle del context map, o una vista especializada"
+            title="Qué pinta el diagrama: el mapa (expande cada elemento a discreción), o una vista especializada"
             @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
           >
-            <optgroup label="Context map">
-              <option value="level:contexts"
-                ?selected=${this._view === 'context-map' && this._detail === 'contexts'}>
-                Contextos
-              </option>
-              <option value="level:detail"
-                ?selected=${this._view === 'context-map' && this._detail === 'detail'}>
-                Agregados y casos de uso
-              </option>
-              <option value="level:operations"
-                ?selected=${this._view === 'context-map' && this._detail === 'operations'}>
-                APIs y operaciones
-              </option>
-              <option value="level:distribution"
-                ?selected=${this._view === 'context-map' && this._detail === 'distribution'}>
+            <option value="view:context-map" ?selected=${this._view === 'context-map'}>
+              Mapa del sistema
+            </option>
+            <optgroup label="Vistas especializadas">
+              <option value="view:distribution" ?selected=${this._view === 'distribution'}>
                 Distribución (módulos y servicios)
               </option>
-            </optgroup>
-            <optgroup label="Vistas especializadas">
               <option value="view:aggregates" ?selected=${this._view === 'aggregates'}>
                 Agregados y referencias
               </option>
@@ -4139,8 +4205,8 @@ export class ModuxEditor extends LitElement {
           </select>
         </div>
         <select
-          title="Limitar el lienzo a una vista del modelo"
-          @change=${(e: Event) => (this._activeViewId = (e.target as HTMLSelectElement).value)}
+          title="Limitar el lienzo a una vista del modelo — cada vista guarda su propia lámina (posiciones y expansión)"
+          @change=${(e: Event) => this.activateVista((e.target as HTMLSelectElement).value)}
         >
           <option value="" ?selected=${this._activeViewId === ''}>Vista: todo el modelo</option>
           ${(this.model.views ?? [])
@@ -4202,17 +4268,27 @@ export class ModuxEditor extends LitElement {
             `
           : ''}
         <div class="spacer"></div>
-        ${this.viewSelection().length
+        ${this.viewSelection().length ||
+        (!this._activeViewId && (this._view === 'context-map' || this._view === 'distribution'))
           ? html`
               <input
                 class="new-name"
                 placeholder="Nombre de la vista…"
+                title=${this.viewSelection().length
+                  ? 'Crear una vista modux con la selección'
+                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
                 .value=${this._newViewName}
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
               />
-              <button class="tab" title="Crear una vista modux con la selección" @click=${this.createViewFromSelection}>
-                ⊞ Vista (${this.viewSelection().length})
+              <button
+                class="tab"
+                title=${this.viewSelection().length
+                  ? 'Crear una vista modux con la selección'
+                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
+                @click=${this.createViewFromSelection}
+              >
+                ⊞ Vista${this.viewSelection().length ? ` (${this.viewSelection().length})` : ''}
               </button>
               <span class="sep"></span>
             `
@@ -4629,7 +4705,7 @@ export class ModuxEditor extends LitElement {
             class="yugo"
             .scene=${this.sceneFor(this._view)}
             .journey=${this.activeJourneyForSurface()}
-            .sceneKey=${`${this._view}:${this._detail}`}
+            .sceneKey=${`${this._view}:${this._activeViewId || 'base'}`}
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
             @drop=${this.onPaletteDrop}
@@ -4681,7 +4757,7 @@ export class ModuxEditor extends LitElement {
               }
               const id = `view-${slug(e.detail.name)}`;
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
-              this._activeViewId = id;
+              this.activateVista(id);
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });
@@ -4695,7 +4771,7 @@ export class ModuxEditor extends LitElement {
             @drop=${this.onPaletteDrop}
             .scene=${scene}
             .selectedId=${this._selectedId}
-            .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
+            .connectable=${['context-map', 'distribution', 'workflows', 'ui'].includes(this._view)}
             @connect-requested=${this.onConnectRequested}
             @element-selected=${this.onElementSelected}
             @element-activated=${this.onElementActivated}
@@ -4722,7 +4798,7 @@ export class ModuxEditor extends LitElement {
         .edgePoints=${this.routedEdgePoints(scene)}
         .selectedId=${this._selectedId}
         .selectedIds=${this._multi}
-        .connectable=${['context-map', 'workflows', 'ui'].includes(this._view)}
+        .connectable=${['context-map', 'distribution', 'workflows', 'ui'].includes(this._view)}
         @node-moved=${this.onNodeMoved}
         @nodes-moved=${this.onNodesMoved}
         @node-reparent-requested=${this.onNodeReparentRequested}
@@ -4782,7 +4858,7 @@ export class ModuxEditor extends LitElement {
       ['F', 'Pantalla completa (Esc sale)'],
       ['0', 'Ajustar el diagrama a la ventana'],
       ['+ / −', 'Zoom (también con la rueda)'],
-      ['1 · 2 · 3 · 4', 'Context map: contextos · detalle · operaciones · distribución'],
+      ['1 · 4', 'Mapa del sistema · Distribución'],
       ['5 · 6 · 7 · 8 · 9', 'Flows · Procesos · Workflows · UI · Diseño'],
       ['A', 'Vista de agregados'],
       ['E / D', 'EventStorming / volver al diagrama'],

@@ -13,8 +13,6 @@ import { slug } from './ids.js';
  */
 export interface GestureHost {
   readonly model: ModuxModel;
-  /** The context-map detail level (the gestures of `distribution` differ). */
-  readonly detail: string;
   /** The journey being painted, when one is active in the toolbar. */
   readonly activeJourneyId?: string;
   command(c: ModuxCommand, pushUndo?: boolean): void;
@@ -78,8 +76,8 @@ export function applyConnectionGesture(
     }
     // Distribution level: a line means packaging (elemento → módulo) or deployment
     // (servicio → módulo). Anything else falls through to the usual meanings.
-    if (view === 'context-map' && host.detail === 'distribution') {
-      const scene = host.sceneFor('context-map');
+    if (view === 'distribution') {
+      const scene = host.sceneFor('distribution');
       const modules = host.model.modules ?? [];
       const boxOf = (id: string): string | null => {
         for (let cur: string | undefined = id; cur; ) {
@@ -1919,7 +1917,7 @@ export function performDeleteGesture(
       }
       return;
     }
-    if (view === 'context-map' && elementType === 'edge' && kind === 'deploys') {
+    if (view === 'distribution' && elementType === 'edge' && kind === 'deploys') {
       const match = /^deploy:(.+)->(.+)$/.exec(id);
       if (match) {
         host.clearSelection();
@@ -1927,14 +1925,14 @@ export function performDeleteGesture(
       }
       return;
     }
-    if (view === 'context-map' && elementType === 'node' && kind === 'module') {
+    if ((view === 'context-map' || view === 'distribution') && elementType === 'node' && kind === 'module') {
       host.clearSelection();
       host.command({ kind: 'remove-module', id });
       return;
     }
-    if (view === 'context-map' && host.detail === 'distribution' && elementType === 'node') {
+    if (view === 'distribution' && elementType === 'node') {
       // Supr on a chip inside a boundedContext box UNPACKS it — the element itself survives.
-      const scene = host.sceneFor('context-map');
+      const scene = host.sceneFor('distribution');
       for (let cur = scene.nodes.find((n) => n.id === id)?.parentId; cur; ) {
         if ((host.model.modules ?? []).some((cm) => cm.id === cur)) {
           host.clearSelection();

@@ -182,10 +182,15 @@ export interface ViewLayout {
   edges: Record<string, Point[]>;
   /** Node id → explicit size, for resizable containers. */
   sizes?: Record<string, { w: number; h: number }>;
-  /** Persisted detail level (context-map only): contexts, their contents, API operations, or distribution. */
+  /**
+   * LEGACY (pre single-level): the persisted detail level. Only read by the
+   * one-shot migration that folds the old per-level sheets into this one.
+   */
   detail?: 'contexts' | 'detail' | 'operations' | 'distribution';
-  /** Containers collapsed by hand at this level (they render compact). */
+  /** LEGACY (pre single-level): per-node chevron toggles. Migrated into `expanded`. */
   collapsed?: string[];
+  /** Containers expanded by hand on this sheet (everything folds to a chip by default). */
+  expanded?: string[];
 }
 
 /**
@@ -205,6 +210,7 @@ export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefine
       sizes: v.sizes ?? {},
       detail: v.detail,
       collapsed: v.collapsed,
+      expanded: v.expanded,
     };
   }
   return { nodes: value as DiagramLayout, edges: {}, sizes: {} };
