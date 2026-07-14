@@ -37,7 +37,24 @@ const wfModel = () =>
   });
 
 describe('workflowsScene', () => {
-  const scene = workflowsScene(wfModel(), {});
+  const scene = workflowsScene(wfModel(), {}, new Set(), true);
+
+  it('folded by default: steps hide, their edges roll up to the workflow (Archi style)', () => {
+    const folded = workflowsScene(wfModel(), {});
+    const wf = folded.nodes.find((n) => n.id === 'wf-alta')!;
+    expect(wf.collapsible).toBe(true);
+    expect(wf.collapsed).toBe(true);
+    expect(folded.nodes.some((n) => n.kind === 'workflow-step')).toBe(false);
+    // no edge dangles from a hidden step
+    const staged = new Set(folded.nodes.map((n) => n.id));
+    expect(folded.edges.every((e) => staged.has(e.sourceId) && staged.has(e.targetId))).toBe(true);
+  });
+
+  it('expanded: steps are free boxes owned by their workflow', () => {
+    const step = scene.nodes.find((n) => n.kind === 'workflow-step')!;
+    expect(step.parentId).toBeUndefined();
+    expect(step.ownerId).toBe('wf-alta');
+  });
 
   it('draws the workflow, its steps and the completion event', () => {
     const ids = scene.nodes.map((n) => n.id);
@@ -87,7 +104,7 @@ describe('workflowsScene', () => {
   it('labels the guarded branch with its condition', () => {
     const m = wfModel();
     m.workflowGateways![0].branchConditions = [{ targetId: 's2', expression: 'importe > 1000' }];
-    const s = workflowsScene(m, {});
+    const s = workflowsScene(m, {}, new Set(), true);
     const out = s.edges.find((e) => e.id === 'wflink:sp1->s2')!;
     expect(out.label).toBe('importe > 1000');
     expect(out.dashed).toBeFalsy();
@@ -97,7 +114,7 @@ describe('workflowsScene', () => {
     const m = wfModel();
     m.workflows!.push({ id: 'wf-b', name: 'B', steps: [] });
     m.workflows![0].steps[1].handoffWorkflowId = 'wf-b';
-    const s = workflowsScene(m, {});
+    const s = workflowsScene(m, {}, new Set(), true);
     expect(s.edges.some((e) => e.kind === 'wf-link' && e.id === 'wflink:s2->wf-b')).toBe(true);
   });
 });

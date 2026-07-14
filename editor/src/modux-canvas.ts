@@ -638,10 +638,10 @@ export class ModuxCanvas extends LitElement {
       const containers =
         rowFamily === 'menu'
           ? this.scene.nodes.filter((n) => n.kind === 'ui-app')
-          : this.scene.nodes.filter((n) => n.id === node.parentId);
+          : this.scene.nodes.filter((n) => n.id === (node.ownerId ?? node.parentId));
       for (const app of containers) {
         const rows = this.scene.nodes
-          .filter((n) => n.parentId === app.id && rowKinds.includes(n.kind ?? '') && n.id !== node.id)
+          .filter((n) => (n.ownerId ?? n.parentId) === app.id && rowKinds.includes(n.kind ?? '') && n.id !== node.id)
           .sort((r1, r2) => r1.y - r2.y);
         const x1 = app.x - app.w / 2 + CONTAINER_INSET;
         const x2 = app.x + app.w / 2 - CONTAINER_INSET;

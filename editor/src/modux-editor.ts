@@ -4075,9 +4075,9 @@ export class ModuxEditor extends LitElement {
           : view === 'processes'
             ? processesScene(model, vl.nodes)
             : view === 'workflows'
-              ? workflowsScene(model, vl.nodes)
+              ? workflowsScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
               : view === 'ui'
-                ? uiScene(model, vl.nodes)
+                ? uiScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'design'
                   ? { nodes: [], edges: [] }
               : view === 'integrations'

@@ -54,7 +54,12 @@ function triggerSource(model: ModuxModel, workflow: WorkflowRef):
   return null;
 }
 
-export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene {
+export function workflowsScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  expandedIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
+): Scene {
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
   const seenSources = new Set<string>();
@@ -95,6 +100,10 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
     }
 
     const wfPos = layout[workflow.id] ?? { x: 420, y: rowY };
+    // Archi style: the workflow folds its steps away by default; the chevron
+    // unfolds them as free boxes owned by it (the completion event stays — it
+    // is the workflow's public face, other workflows chain from it).
+    const wfExpanded = expandAll || expandedIds.has(workflow.id);
     nodes.push({
       id: workflow.id,
       label: workflow.name,
@@ -107,6 +116,8 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
       fill: '#ede9fe',
       stroke: '#6d28d9',
       badge: 'WORKFLOW',
+      collapsible: workflow.steps.length > 0,
+      collapsed: workflow.steps.length > 0 && !wfExpanded,
       tooltip: `${workflow.name}${workflow.triggerEvent ? ` — arranca con ${workflow.triggerEvent}` : ''}${workflow.onCompletionEventName ? ` · emite ${workflow.onCompletionEventName} al completar` : ''}`,
     });
     if (source) {
@@ -123,10 +134,10 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
       });
     }
 
-    // steps, one column per dependency depth
+    // steps, one column per dependency depth — free boxes owned by the workflow
     const placed = new Map<number, number>();
     let maxDepth = 0;
-    for (const step of workflow.steps) {
+    for (const step of wfExpanded ? workflow.steps : []) {
       const d = depths.get(step.id) ?? 0;
       maxDepth = Math.max(maxDepth, d);
       const lane = placed.get(d) ?? 0;
@@ -137,6 +148,7 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
       };
       const target = useCaseName(step.targetUseCaseId);
       nodes.push({
+        ownerId: workflow.id,
         id: step.id,
         label: step.name,
         x: pos.x,
@@ -388,5 +400,37 @@ export function workflowsScene(model: ModuxModel, layout: DiagramLayout): Scene 
     }
   }
 
-  return { nodes, edges };
+  // Relations never hide: edges touching a folded step re-anchor at its workflow
+  // (internal ones fold with it; identical roll-ups merge).
+  const owners = new Map<string, string>();
+  for (const wf of model.workflows ?? []) {
+    for (const st of wf.steps) owners.set(st.id, wf.id);
+  }
+  const staged = new Set(nodes.map((n) => n.id));
+  const rep = (id: string): string | null => {
+    if (staged.has(id)) return id;
+    const up = owners.get(id);
+    return up && staged.has(up) ? up : null;
+  };
+  const seen = new Set<string>();
+  const rolled: SceneEdge[] = [];
+  for (const e of edges) {
+    const sRep = rep(e.sourceId);
+    const tRep = rep(e.targetId);
+    if (!sRep || !tRep || sRep === tRep) continue;
+    if (sRep === e.sourceId && tRep === e.targetId) {
+      rolled.push(e);
+      continue;
+    }
+    const key = `${e.kind}|${sRep}|${tRep}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rolled.push({
+      ...e,
+      sourceId: sRep,
+      targetId: tRep,
+      tooltip: `${e.tooltip ?? e.kind} — de un paso plegado dentro`,
+    });
+  }
+  return { nodes, edges: rolled };
 }

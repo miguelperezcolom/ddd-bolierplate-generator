@@ -1,6 +1,6 @@
 import type { ModuxModel, UiAppRef, UiMenuEntryRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
-import { CONTAINER_HEADER, CONTAINER_INSET } from '../scene.js';
+import { CONTAINER_INSET } from '../scene.js';
 
 /**
  * UI view: the model of the user interface, Mateu-shaped. Apps (UiAdapter) are
@@ -49,7 +49,12 @@ function flattenMenu(app: UiAppRef): { entry: UiMenuEntryRef; path: string[]; de
   return out;
 }
 
-export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
+export function uiScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  expandedIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
+): Scene {
   const nodes: SceneNode[] = [];
   const edges: SceneEdge[] = [];
   const apps = model.uiApps ?? [];
@@ -62,16 +67,16 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
 
   const chipMeta = new Map<string, { label: string; kind: string; symbol: string; stroke: string }>();
 
-  // ---- apps: containers with their menu tree stacked inside ---------------
+  // ---- apps (Archi style): compact boxes; the chevron unfolds the menu tree
+  // as free rows glued under the box, owned by it (slots keep the reorder drag).
   let appY = 160;
   for (const app of apps) {
     const entries = flattenMenu(app);
-    const h = Math.max(
-      90,
-      CONTAINER_HEADER + CONTAINER_INSET * 2 + entries.length * (ENTRY_H + ENTRY_GAP),
-    );
+    const appExpanded = expandAll || expandedIds.has(app.id);
+    const h = 90;
+    const stackH = appExpanded ? entries.length * (ENTRY_H + ENTRY_GAP) : 0;
     const pos = layout[app.id] ?? { x: 190, y: appY + h / 2 };
-    appY = pos.y + h / 2 + 70;
+    appY = pos.y + h / 2 + stackH + 70;
     const appType = app.type ?? 'APP';
     nodes.push({
       id: app.id,
@@ -84,7 +89,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       symbol: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? 'process' : 'component',
       fill: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? '#fdf4ff' : '#f0f9ff',
       stroke: appType === 'ORCHESTRATOR' || appType === 'VIEW_EDITOR' ? '#c026d3' : '#0ea5e9',
-      container: true,
+      collapsible: entries.length > 0,
+      collapsed: entries.length > 0 && !appExpanded,
       badge:
         appType === 'ORCHESTRATOR'
           ? 'ORQUESTADOR'
@@ -172,8 +178,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         tooltip: 'la página que hace de cabecera; las demás son pestañas',
       });
     }
-    let entryY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
-    for (const { entry, path, depth } of entries) {
+    let entryY = pos.y + h / 2 + CONTAINER_INSET + ENTRY_H / 2;
+    for (const { entry, path, depth } of appExpanded ? entries : []) {
       const id = menuNodeId(app.id, entry, path);
       const indent = depth * INDENT;
       nodes.push({
@@ -188,7 +194,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         symbol: 'process',
         fill: entry.children?.length ? '#f0f9ff' : '#ffffff',
         stroke: '#7dd3fc',
-        parentId: app.id,
+        ownerId: app.id,
         tooltip: entry.children?.length
           ? 'Agrupador (con submenú): no puede abrir nada'
           : entry.pageId
@@ -291,11 +297,11 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
   for (const page of pages) {
     const pos = layout[page.id] ?? { x: 640, y: pageY };
     const wizSteps = page.type === 'WIZARD' ? (page.wizardSteps ?? []) : [];
-    // a wizard with steps is a CONTAINER: its steps stack inside as ordered rows
-    const h = wizSteps.length
-      ? CONTAINER_HEADER + CONTAINER_INSET * 2 + wizSteps.length * (ENTRY_H + ENTRY_GAP)
-      : PAGE_H;
-    pageY = pos.y + h + 90;
+    // Archi style: the wizard folds its steps; expanded, they glue under the page.
+    const pageExpanded = expandAll || expandedIds.has(page.id);
+    const h = PAGE_H;
+    const stackH = pageExpanded ? wizSteps.length * (ENTRY_H + ENTRY_GAP) : 0;
+    pageY = pos.y + h + stackH + 90;
     nodes.push({
       id: page.id,
       label: page.name,
@@ -306,7 +312,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       kind: 'page',
       symbol: 'interface',
       badge: page.customCodeId ? 'CODE' : page.type ?? 'PAGE',
-      container: wizSteps.length > 0,
+      collapsible: wizSteps.length > 0,
+      collapsed: wizSteps.length > 0 && !pageExpanded,
       extraHandles: [
         { kind: 'viewmodel', title: 'Viewmodel: arrastra hasta el modelo de datos de la página', color: '#8b5cf6' },
         ...(page.type === 'CRUD'
@@ -320,8 +327,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: '#0284c7',
       tooltip: page.route ? `${page.type ?? 'PAGE'} · ${page.route}` : (page.type ?? 'PAGE'),
     });
-    let stepY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
-    wizSteps.forEach((step, i) => {
+    let stepY = pos.y + h / 2 + CONTAINER_INSET + ENTRY_H / 2;
+    (pageExpanded ? wizSteps : []).forEach((step, i) => {
       const key = step.id ?? step.pageId ?? String(i);
       nodes.push({
         id: `wizrow:${page.id}:${key}`,
@@ -334,7 +341,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         symbol: 'flow',
         fill: step.pageId ? '#faf5ff' : '#ffffff',
         stroke: '#c4b5fd',
-        parentId: page.id,
+        ownerId: page.id,
         tooltip: step.pageId
           ? `Paso ${i + 1}: ${pageNameOf(step.pageId)} — arrastra el asa hasta otra página para re-mapearlo`
           : `Paso ${i + 1}, sin página — arrastra el asa hasta la página que lo implementa`,
@@ -442,9 +449,11 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
     const buttons = g.buttons ?? [];
     const subs = g.groupIds ?? [];
     const rows = buttons.length + subs.length;
+    const grpExpanded = expandAll || expandedIds.has(g.id);
     const pos = layout[g.id] ?? { x: 1000, y: grpY };
-    const h = Math.max(70, CONTAINER_HEADER + CONTAINER_INSET * 2 + rows * (ENTRY_H + ENTRY_GAP));
-    grpY = pos.y + h + 80;
+    const h = 70;
+    const stackH = grpExpanded ? rows * (ENTRY_H + ENTRY_GAP) : 0;
+    grpY = pos.y + h + stackH + 80;
     nodes.push({
       id: g.id,
       label: g.name,
@@ -455,7 +464,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       kind: 'button-group',
       symbol: 'usecase',
       badge: 'BOTONES',
-      container: true,
+      collapsible: rows > 0,
+      collapsed: rows > 0 && !grpExpanded,
       fill: '#ffffff',
       stroke: '#0e7490',
       extraHandles: [
@@ -464,8 +474,8 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
       ],
       tooltip: `${g.name} — grupo de botones: la paleta añade botones dentro; sus asas lo enganchan al toolbar o la botonera de una página`,
     });
-    let rowY = pos.y - h / 2 + CONTAINER_HEADER + CONTAINER_INSET + ENTRY_H / 2;
-    for (const bt of buttons) {
+    let rowY = pos.y + h / 2 + CONTAINER_INSET + ENTRY_H / 2;
+    for (const bt of grpExpanded ? buttons : []) {
       nodes.push({
         id: `gbtn:${g.id}:${bt.id}`,
         label: bt.label ?? bt.id,
@@ -478,12 +488,12 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         fill: bt.useCaseId || bt.apiOperationId ? '#ecfeff' : '#ffffff',
         stroke: '#0e7490',
         dashed: !bt.useCaseId && !bt.apiOperationId,
-        parentId: g.id,
+        ownerId: g.id,
         tooltip: `${bt.label ?? bt.id} — arrastra su asa hasta un caso de uso o policy para fijar qué dispara; Supr lo quita del grupo`,
       });
       rowY += ENTRY_H + ENTRY_GAP;
     }
-    for (const sub of subs) {
+    for (const sub of grpExpanded ? subs : []) {
       nodes.push({
         id: `gsub:${g.id}:${sub}`,
         label: `▸ ${groupName(sub)}`,
@@ -495,7 +505,7 @@ export function uiScene(model: ModuxModel, layout: DiagramLayout): Scene {
         symbol: 'process',
         fill: '#f0fdfa',
         stroke: '#0e7490',
-        parentId: g.id,
+        ownerId: g.id,
         tooltip: `Subgrupo ${groupName(sub)} — Supr lo desanida (el grupo sigue existiendo)`,
       });
       rowY += ENTRY_H + ENTRY_GAP;
