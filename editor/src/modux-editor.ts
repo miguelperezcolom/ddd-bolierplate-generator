@@ -4085,7 +4085,7 @@ export class ModuxEditor extends LitElement {
               : view === 'mappings'
                 ? mappingsScene(model, vl.nodes)
                 : view === 'eventstorming'
-                  ? eventstormingScene(model, vl.nodes)
+                  ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
                 : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);

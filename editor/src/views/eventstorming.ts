@@ -36,7 +36,12 @@ function addEdge(b: Builder, edge: SceneEdge): void {
 
 const norm = (name: string) => name.trim().toLowerCase();
 
-export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Scene {
+export function eventstormingScene(
+  model: ModuxModel,
+  layout: DiagramLayout,
+  expandedIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
+): Scene {
   const b: Builder = { nodes: new Map(), edges: [] };
 
   const boundedContextName = new Map(model.boundedContexts.map((m) => [m.id, m.name]));
@@ -78,9 +83,19 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
     });
   }
 
-  // ---- the pipeline: each command's steps chain under it; CODE stickies ----
+  // ---- the pipeline (Archi style): a command folds its steps away by default;
+  // its chevron unfolds them as free stickies chained under it, owned by it.
   for (const uc of useCases) {
-    (uc.steps ?? []).forEach((st, i) => {
+    const steps = uc.steps ?? [];
+    if (!steps.length) continue;
+    const cmd = b.nodes.get(uc.id);
+    const expanded = expandAll || expandedIds.has(uc.id);
+    if (cmd) {
+      cmd.collapsible = true;
+      cmd.collapsed = !expanded;
+    }
+    if (!expanded) continue;
+    steps.forEach((st, i) => {
       addNode(b, {
         id: st.id,
         label: `${i + 1}. ${st.name || st.type || 'paso'}`,
@@ -93,11 +108,12 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
         fill: '#eff6ff',
         stroke: '#1d4ed8',
         dashed: !!st.customCodeId,
+        ownerId: uc.id,
         tooltip: `Paso de ${uc.name}${st.customCodeId ? ' — delega en código a mano' : ''} — arrastra su asa hasta un CODE para delegar en él`,
       });
       addEdge(b, {
-        id: `esstep:${i === 0 ? uc.id : (uc.steps ?? [])[i - 1].id}->${st.id}`,
-        sourceId: i === 0 ? uc.id : (uc.steps ?? [])[i - 1].id,
+        id: `esstep:${i === 0 ? uc.id : steps[i - 1].id}->${st.id}`,
+        sourceId: i === 0 ? uc.id : steps[i - 1].id,
         targetId: st.id,
         kind: 'es-step',
         color: '#94a3b8',
@@ -127,15 +143,24 @@ export function eventstormingScene(model: ModuxModel, layout: DiagramLayout): Sc
   for (const uc of useCases) {
     for (const st of uc.steps ?? []) {
       if (!st.customCodeId) continue;
+      // Folded command: the sticky stands for its hidden step (roll-up), one line per CODE.
+      const rolled = !b.nodes.has(st.id);
+      const sourceId = rolled ? uc.id : st.id;
+      if (
+        rolled &&
+        b.edges.some((e) => e.kind === 'es-custom' && e.sourceId === sourceId && e.targetId === st.customCodeId)
+      ) continue;
       addEdge(b, {
         id: `escc:${st.id}`,
-        sourceId: st.id,
+        sourceId,
         targetId: st.customCodeId,
         kind: 'es-custom',
         color: '#0f172a',
         dashed: true,
         arrow: true,
-        tooltip: `El paso delega en código a mano — Supr lo desconecta`,
+        tooltip: rolled
+          ? `Un paso plegado de ${uc.name} delega en este código — expande el comando para verlo`
+          : `El paso delega en código a mano — Supr lo desconecta`,
       });
     }
   }
