@@ -1680,6 +1680,7 @@ export class ModuxEditor extends LitElement {
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
     if (
+      kind === 'note' ||
       kind === 'boundedContext' ||
       kind === 'aggregate' ||
       kind === 'entity' ||
