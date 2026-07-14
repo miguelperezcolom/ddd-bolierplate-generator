@@ -15,7 +15,18 @@ modux
 Open `http://localhost:8192` in your browser (see
 [Installation](/getting-started/installation/) for Docker and Helm).
 
-## 2. Create a Project
+## 2. Choose where to work
+
+Modux works on ONE repository + ONE project + ONE model at a time, and everything
+else needs them: **until a repository is open, the menu folds down to «Inicio» and
+«Repositorios»**. Inicio lists the `~/.modux` catalog — or invites you to create
+the first repository (a local folder, a git remote or a database) — and opening
+one settles the project too (the current one, the first one, or a fresh default
+with its service when the store is empty) and lands you on the graphical editor.
+The header selectors (Repositorio / Proyecto / Modelo) remain the quick way to
+switch once inside.
+
+## 3. Create a Project
 
 A **Project** is the top-level container for your entire system.
 
@@ -27,7 +38,7 @@ A **Project** is the top-level container for your entire system.
    - **Output path**: `/path/to/output/dir`
 4. Save
 
-## 3. Create a Service
+## 4. Create a Service
 
 A **Service** represents a microservice or deployable unit.
 
@@ -36,7 +47,7 @@ A **Service** represents a microservice or deployable unit.
 3. Name it `booking-service`
 4. Save
 
-## 4. Create a Bounded Context
+## 5. Create a Bounded Context
 
 A **Bounded Context** is a business subdomain with its own language. It is born with a **main module** — the unit your service deploys.
 
@@ -46,7 +57,7 @@ A **Bounded Context** is a business subdomain with its own language. It is born 
 4. Save
 5. Open the service and add the context's main module (`bookings-main`) to its **Modules**
 
-## 5. Create an Aggregate
+## 6. Create an Aggregate
 
 An **Aggregate** is the core DDD building block.
 
@@ -64,13 +75,13 @@ An **Aggregate** is the core DDD building block.
    | endDate | LocalDate |
 5. Save
 
-## 6. Generate code
+## 7. Generate code
 
 1. Go back to your **Project**
 2. Click **Generate Code**
 3. The generated project will be written to the output path you configured
 
-## 7. Build and run the generated project
+## 8. Build and run the generated project
 
 ```bash
 cd /path/to/output/dir/booking-system
@@ -79,7 +90,7 @@ mvn spring-boot:run
 
 Your application starts at `http://localhost:8080` with a working CRUD interface for your `Booking` aggregate.
 
-## 8. Add your business logic
+## 9. Add your business logic
 
 The generated code is designed to be extended. Implement the generated interfaces in a separate Maven module with your custom logic:
 
