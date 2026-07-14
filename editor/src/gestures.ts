@@ -29,9 +29,189 @@ export interface GestureHost {
   } | null;
   newMenuItemId(label: string): string;
   openExtDepPicker(p: { sourceId: string; targetId: string; x: number; y: number }): void;
+  /** The relation type armed from the palette: the next trace applies exactly it. */
+  readonly armedRelation?: string | null;
+  /** The magic connector's question: several typed meanings fit — pick one. */
+  openConnectPicker(p: {
+    x: number;
+    y: number;
+    options: { id: string; label: string; hint: string; apply(): void }[];
+  }): void;
   /** Screen rect of a canvas node (menu drops slot by vertical position). */
   nodeClientRect(nodeId: string): DOMRect | null | undefined;
   clearSelection(): void;
+}
+
+/** The relation palette (Archi style): pick a type, trace, done. */
+export const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
+  { id: 'uc-call', label: 'Invocación', hint: 'Caso de uso → caso de uso: lo invoca como un paso' },
+  { id: 'query-call', label: 'Consulta', hint: 'Caso de uso → query service: lo consulta' },
+  { id: 'aggregate-call', label: 'Opera sobre', hint: 'Caso de uso → agregado: opera sobre él' },
+  { id: 'emission', label: 'Emisión', hint: 'Agregado/servicio → evento de dominio · caso de uso → evento de aplicación' },
+  { id: 'flow-triggers', label: 'Flow · dispara', hint: 'Evento → caso de uso de otro contexto (TRIGGERS)' },
+  { id: 'flow-materializes', label: 'Flow · materializa', hint: 'Evento → contexto o read model (MATERIALIZES)' },
+  { id: 'actor-use', label: 'Uso (actor)', hint: 'Actor → caso de uso, query service, agregado (CRUD) o agente' },
+  { id: 'ext-dep', label: 'Dependencia', hint: 'Sistema externo/actor → sistema, API o proxy' },
+  { id: 'external-call', label: 'Llamada ACL', hint: 'Sistema externo → caso de uso nuestro (entra por ACL)' },
+  { id: 'external-uc-call', label: 'Llamada saliente', hint: 'Caso de uso nuestro → operación de un sistema externo' },
+  { id: 'agent-tool', label: 'Herramienta IA', hint: 'Agente → caso de uso, operación, MCP, gateway, API o query service' },
+  { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
+  { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
+  { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
+];
+
+/**
+ * The typed meanings a trace between these two elements admits. Each option is
+ * self-contained (guards + command); the armed palette applies exactly one, the
+ * magic connector asks when several fit and lets the classic resolver handle
+ * the unambiguous rest.
+ */
+export function connectionOptions(
+  host: GestureHost,
+  sourceId: string,
+  targetId: string,
+): { id: string; label: string; hint: string; apply(): void }[] {
+  const m = host.model;
+  const out: { id: string; apply(): void }[] = [];
+  const offer = (id: string, apply: () => void) => out.push({ id, apply });
+
+  const ucIds = new Set(m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)));
+  const qsIds = new Set(m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((q) => q.id)));
+  const eventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((ev) => ev.id)));
+  const appEventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((ev) => ev.id)));
+  const emitterIds = new Set([
+    ...(m.aggregates ?? []).map((a) => a.id),
+    ...m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((ds) => ds.id)),
+  ]);
+  const externalUcIds = new Set(m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)));
+  const isAgent = (id: string) => (m.aiAgents ?? []).some((a) => a.id === id);
+  const isActor = (id: string) => (m.actors ?? []).some((a) => a.id === id);
+  const isExternal = (id: string) => m.externalSystems.some((x) => x.id === id);
+  const isContext = (id: string) => m.boundedContexts.some((mo) => mo.id === id);
+  const isAggregate = (id: string) => (m.aggregates ?? []).some((a) => a.id === id);
+
+  if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
+    offer('uc-call', () => {
+      if (!(m.useCaseCalls ?? []).some((c) => c.sourceId === sourceId && c.targetId === targetId)) {
+        host.command({ kind: 'add-use-case-call', sourceId, targetId });
+      }
+    });
+  }
+  if (ucIds.has(sourceId) && qsIds.has(targetId)) {
+    offer('query-call', () => {
+      if (!(m.queryCalls ?? []).some((c) => c.sourceId === sourceId && c.targetId === targetId)) {
+        host.command({ kind: 'add-query-call', sourceId, targetId });
+      }
+    });
+  }
+  if (ucIds.has(sourceId) && isAggregate(targetId)) {
+    offer('aggregate-call', () => {
+      if (!(m.aggregateCalls ?? []).some((c) => c.sourceId === sourceId && c.targetId === targetId)) {
+        host.command({ kind: 'add-aggregate-call', sourceId, targetId });
+      }
+    });
+  }
+  if (
+    (emitterIds.has(sourceId) && eventIds.has(targetId)) ||
+    (ucIds.has(sourceId) && appEventIds.has(targetId))
+  ) {
+    offer('emission', () => {
+      if (!(m.emissions ?? []).some((em) => em.sourceId === sourceId && em.domainEventId === targetId)) {
+        host.command({ kind: 'add-emission', sourceId, targetId });
+      }
+    });
+  }
+  if ((eventIds.has(sourceId) || appEventIds.has(sourceId)) && ucIds.has(targetId)) {
+    offer('flow-triggers', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
+  }
+  if (
+    (eventIds.has(sourceId) || appEventIds.has(sourceId)) &&
+    (isContext(targetId) ||
+      m.boundedContexts.some((mo) => (mo.readModels ?? []).some((rm) => rm.id === targetId)))
+  ) {
+    offer('flow-materializes', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
+  }
+  if (isActor(sourceId)) {
+    if (ucIds.has(targetId) || qsIds.has(targetId) || isAggregate(targetId) || isAgent(targetId)) {
+      offer('actor-use', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
+    }
+    if (isExternal(targetId)) {
+      offer('ext-dep', () => {
+        if (!(m.actorExternalDependencies ?? []).some((d) => d.actorId === sourceId && d.externalSystemId === targetId)) {
+          host.command({ kind: 'add-actor-external', sourceId, targetId });
+        }
+      });
+    }
+  }
+  if (isExternal(sourceId)) {
+    if (isExternal(targetId) && sourceId !== targetId) {
+      offer('ext-dep', () => {
+        if (!(m.externalSystemDependencies ?? []).some((d) => d.sourceId === sourceId && d.targetId === targetId)) {
+          host.command({ kind: 'add-external-dependency', sourceId, targetId });
+        }
+      });
+    }
+    if ((m.apis ?? []).some((a) => a.id === targetId) || (m.proxyApis ?? []).some((px) => px.id === targetId)) {
+      offer('ext-dep', () => {
+        if (!(m.externalSystemDependencies ?? []).some((d) => d.sourceId === sourceId && d.targetId === targetId)) {
+          host.command({ kind: 'add-external-dependency', sourceId, targetId });
+        }
+      });
+    }
+    if (ucIds.has(targetId)) {
+      offer('external-call', () => {
+        if (!(m.externalCalls ?? []).some((c) => c.externalSystemId === sourceId && c.useCaseId === targetId)) {
+          host.command({ kind: 'add-external-call', sourceId, targetId });
+        }
+      });
+    }
+  }
+  if (ucIds.has(sourceId) && externalUcIds.has(targetId)) {
+    offer('external-uc-call', () => {
+      if (!(m.externalUseCaseCalls ?? []).some((c) => c.sourceId === sourceId && c.targetId === targetId)) {
+        host.command({ kind: 'add-external-uc-call', sourceId, targetId });
+      }
+    });
+  }
+  if (isAgent(sourceId)) {
+    const mcpIds = new Set(m.externalSystems.flatMap((x) => (x.mcpServers ?? []).map((s) => s.id)));
+    const apiOpIds = new Set((m.apis ?? []).flatMap((a) => a.operations.map((o) => o.id)));
+    if (
+      ucIds.has(targetId) || externalUcIds.has(targetId) || mcpIds.has(targetId) ||
+      (m.mcpGateways ?? []).some((g) => g.id === targetId) || apiOpIds.has(targetId) ||
+      (m.apis ?? []).some((a) => a.id === targetId) ||
+      (m.proxyApis ?? []).some((px) => px.id === targetId) || qsIds.has(targetId)
+    ) {
+      offer('agent-tool', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
+    }
+    if (isAgent(targetId) && targetId !== sourceId) {
+      offer('agent-delegate', () => {
+        if (!(m.agentDelegations ?? []).some((d) => d.agentId === sourceId && d.delegateAgentId === targetId)) {
+          host.command({ kind: 'add-agent-delegate', sourceId, targetId });
+        }
+      });
+    }
+    if ((m.rags ?? []).some((r) => r.id === targetId)) {
+      offer('agent-rag', () => {
+        if (!(m.agentRags ?? []).some((ar) => ar.agentId === sourceId && ar.ragId === targetId)) {
+          host.command({ kind: 'add-agent-rag', sourceId, targetId });
+        }
+      });
+    }
+  }
+  const isIdp = (id: string) => (m.identityProviders ?? []).some((idp) => idp.id === id);
+  if (isIdp(targetId) && (isContext(sourceId) || (m.etlFlows ?? []).some((f) => f.id === sourceId) || (m.uiApps ?? []).some((a) => a.id === sourceId))) {
+    offer('idp-trust', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
+  }
+
+  // dedupe by type id (e.g. ext-dep offered by two guards) and dress with metadata
+  const seen = new Set<string>();
+  return out
+    .filter((o) => (seen.has(o.id) ? false : (seen.add(o.id), true)))
+    .map((o) => {
+      const meta = RELATION_TYPES.find((r) => r.id === o.id)!;
+      return { ...o, label: meta.label, hint: meta.hint };
+    });
 }
 
 export function applyConnectionGesture(
@@ -579,6 +759,26 @@ export function applyConnectionGesture(
       return;
     }
     if (view !== 'context-map') return;
+    // The relation vocabulary, Archi style: an armed palette type applies exactly
+    // itself; the magic connector asks when SEVERAL typed meanings fit. The
+    // classic resolver keeps the unambiguous rest (sentinel: '__classic').
+    if (connectKind !== '__classic' && connectKind === undefined) {
+      const typed = connectionOptions(host, sourceId, targetId);
+      if (host.armedRelation) {
+        const armed = typed.find((o) => o.id === host.armedRelation);
+        if (armed) armed.apply();
+        else {
+          host.emit('modux-notice', {
+            message: 'Esa relación no aplica entre estos dos elementos',
+          });
+        }
+        return;
+      }
+      if (typed.length > 1) {
+        host.openConnectPicker({ x: x ?? 0, y: y ?? 0, options: typed });
+        return;
+      }
+    }
     // A proxy's operation occurrence → an implementation SITE of the fronted API: the
     // published API node (in its external system) or an api-impl occurrence (in a
     // bounded context; the bare context also counts when it implements the API).

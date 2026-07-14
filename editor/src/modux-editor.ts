@@ -21,7 +21,7 @@ import './modux-tilt.js';
 import './modux-figma.js';
 import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
-import { applyConnectionGesture, performDeleteGesture, type GestureHost } from './gestures.js';
+import { applyConnectionGesture, performDeleteGesture, RELATION_TYPES as CONNECT_RELATION_TYPES, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
@@ -389,6 +389,16 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
+
+  /** Relation type armed from the palette: the next trace applies exactly it. */
+  @state() private _armedRelation: string | null = null;
+
+  /** The magic connector's question, at the drop point. */
+  @state() private _connectPicker: {
+    x: number;
+    y: number;
+    options: { id: string; label: string; hint: string; apply(): void }[];
+  } | null = null;
   @state() private _activeViewId = '';
   @state() private _activeJourneyId = '';
   @state() private _newJourneyName = '';
@@ -501,6 +511,12 @@ export class ModuxEditor extends LitElement {
       font-weight: 600;
       color: #475569;
       margin: 8px 2px 2px;
+    }
+    .palette-item.armed {
+      border-color: #2563eb;
+      background: #eff6ff;
+      box-shadow: 0 0 0 1px #2563eb inset;
+      cursor: crosshair;
     }
     .palette-item {
       font-size: 12px;
@@ -922,6 +938,8 @@ export class ModuxEditor extends LitElement {
         break;
       case 'Escape':
         if (this._helpOpen) this._helpOpen = false;
+        if (this._armedRelation) this._armedRelation = null;
+        if (this._connectPicker) this._connectPicker = null;
         break;
       default:
         break;
@@ -1645,6 +1663,8 @@ export class ModuxEditor extends LitElement {
   private onConnectRequested(e: CustomEvent): void {
     const { sourceId, targetId, x, y, connectKind } = e.detail;
     this.applyConnection(sourceId, targetId, x, y, connectKind);
+    // The armed relation is one-shot: trace it and the magic connector returns.
+    if (this._armedRelation) this._armedRelation = null;
   }
 
   /** The whole gesture vocabulary, callable from drags AND from palette drops. */
@@ -1766,6 +1786,10 @@ export class ModuxEditor extends LitElement {
         this.rebuildComponentOps(pageId, node, parentId, beforeId, fresh, used),
       openExtDepPicker: (p) => {
         this._extDepPicker = p;
+      },
+      armedRelation: this._armedRelation,
+      openConnectPicker: (p) => {
+        this._connectPicker = p;
       },
       nodeClientRect: (nodeId) => {
         const g = this.renderRoot
@@ -3882,6 +3906,28 @@ export class ModuxEditor extends LitElement {
           />
           ${tab === 'new'
             ? html`
+                ${['context-map', 'distribution', 'integrations'].includes(this._view)
+                  ? html`
+                      <div class="palette-g">Relaciones — arma y traza</div>
+                      ${CONNECT_RELATION_TYPES.filter(
+                        (r) => !needle || r.label.toLowerCase().includes(needle),
+                      ).map(
+                        (r) => html`
+                          <div
+                            class="palette-item ${this._armedRelation === r.id ? 'armed' : ''}"
+                            title="${r.hint} — click para armar; la siguiente línea que traces será esta relación (Esc cancela)"
+                            @click=${() =>
+                              (this._armedRelation = this._armedRelation === r.id ? null : r.id)}
+                          >
+                            <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${this._armedRelation === r.id ? '#2563eb' : '#64748b'}">
+                              ${SYMBOLS['flow']}
+                            </svg>
+                            <span class="pal-label">${r.label}</span>
+                          </div>
+                        `,
+                      )}
+                    `
+                  : ''}
                 <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
                 ${PALETTE_GROUPS.map((g) => {
                   const items = news.filter((k) => k.group === g);
@@ -4906,7 +4952,7 @@ export class ModuxEditor extends LitElement {
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
       </div>
-      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
       ${this.renderHelpPopover()}
     `;
   }
@@ -5030,6 +5076,36 @@ export class ModuxEditor extends LitElement {
       targetId: p.targetId,
       type,
     });
+  }
+
+  /** The magic connector's question: which of the fitting relation types is this line? */
+  private renderConnectPicker() {
+    const p = this._connectPicker;
+    if (!p) return '';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._connectPicker = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${p.x}px; top:${p.y}px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">¿Qué relación es esta línea?</div>
+        ${p.options.map(
+          (o) => html`
+            <button
+              class="picker-item"
+              title=${o.hint}
+              @click=${() => {
+                this._connectPicker = null;
+                o.apply();
+              }}
+            >
+              <span class="name">${o.label}</span>
+            </button>
+          `,
+        )}
+      </div>
+    `;
   }
 
   private renderExtDepPicker() {
