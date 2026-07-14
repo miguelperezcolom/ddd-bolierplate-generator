@@ -3940,9 +3940,10 @@ export class ModuxEditor extends LitElement {
     this._newName = '';
   }
 
-  private sceneFor(view: ViewId) {
+  private sceneFor(view: ViewId, opts?: { expandAll?: boolean }) {
     const vl = this.viewLayout(view);
     const model = this.filteredModel();
+    const expandAll = opts?.expandAll ?? false;
     const scene =
       view === 'aggregates'
         ? aggregatesScene(model, vl.nodes)
@@ -3963,8 +3964,8 @@ export class ModuxEditor extends LitElement {
                 : view === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes)
                 : view === 'distribution'
-                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []))
-                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []));
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
+                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
     if (view !== 'design') {
       this.withAreas(scene, view);
       this.withNotes(scene, view);
@@ -4703,7 +4704,7 @@ export class ModuxEditor extends LitElement {
         : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
-            .scene=${this.sceneFor(this._view)}
+            .scene=${this.sceneFor(this._view, { expandAll: true })}
             .journey=${this.activeJourneyForSurface()}
             .sceneKey=${`${this._view}:${this._activeViewId || 'base'}`}
             ?shifted=${this._paletteOpen}

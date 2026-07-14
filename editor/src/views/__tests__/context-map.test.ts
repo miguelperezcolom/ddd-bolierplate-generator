@@ -118,6 +118,30 @@ describe('contextMapScene — per-element expansion', () => {
   });
 });
 
+describe('contextMapScene — expandAll (the yugo wants the whole tree)', () => {
+  it('unfolds everything without touching the expanded set', () => {
+    const model = baseModel({
+      ...strategicModel(),
+      externalSystems: [
+        { id: 'ext-rumbo', name: 'Rumbo', useCases: [{ id: 'xuc-r', name: 'R' }] },
+        { id: 'ext-ventus', name: 'Ventus', parentExternalSystemId: 'ext-rumbo' },
+      ],
+      apis: [{
+        id: 'api-v', name: 'V API',
+        operations: [{ id: 'op-v', name: 'consulta' }],
+        publishedByExternalSystemId: 'ext-ventus',
+      }],
+    });
+    const scene = contextMapScene(model, {}, {}, new Set(), true);
+    const ids = new Set(scene.nodes.map((n) => n.id));
+    expect(ids.has('agg-reserva')).toBe(true); // context content
+    expect(ids.has('xuc-r')).toBe(true); // system content
+    expect(ids.has('op-v')).toBe(true); // subsystem API operations
+    // a system with content did NOT fold to compact (resolveForm flip skipped)
+    expect(scene.nodes.find((n) => n.id === 'xuc-r')?.parentId).toBe('ext-rumbo');
+  });
+});
+
 describe('contextMapScene — subsystems', () => {
   it('a subsystem never floats top-level: it lives inside its parent', () => {
     const model = baseModel({
@@ -197,7 +221,8 @@ describe('contextMapScene — subsystems', () => {
     expect(chip.collapsible).toBe(true);
     expect(folded.nodes.find((n) => n.id === 'op-v')).toBeUndefined();
     const open = contextMapScene(model, {}, undefined, new Set(['api-v']));
-    expect(open.nodes.find((n) => n.id === 'op-v')?.parentId).toBe('ext-ventus');
+    // the operation hangs off ITS API — the containment tree stays honest for the yugo
+    expect(open.nodes.find((n) => n.id === 'op-v')?.parentId).toBe('api-v');
   });
 
   it('an implemented API expands even with its context folded to the coarse chip', () => {

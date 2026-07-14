@@ -759,9 +759,9 @@ function chipNodes(
     parentId,
     tooltip: `${c.policy ? 'Policy' : CHILD_TOOLTIP[c.kind]} ${c.name}`,
   };
-  const kidList = c.children ?? [];
-  const cols = kidColumns(kidList.length);
-  const kids = kidList.map((k, j): SceneNode => {
+  const rows = flatKidRows(c);
+  const cols = kidColumns(rows.length);
+  const kids = rows.map(({ k, owner }, j): SceneNode => {
     const ks = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
     const col = j % cols;
     const row = Math.floor(j / cols);
@@ -778,7 +778,9 @@ function chipNodes(
       stroke: ks.stroke,
       collapsible: k.expandable || undefined,
       collapsed: k.expandable ? !k.expanded : undefined,
-      parentId: c.id,
+      // Grandkid rows (an expanded API's operations) hang off THEIR api, not the
+      // chip: the containment tree stays honest for the yugo and the gestures.
+      parentId: owner,
       tooltip:
         k.kind === 'api' || k.kind === 'proxy-api'
           ? `${CHILD_TOOLTIP[k.kind]} ${k.name} — publicada por ${c.name}`
@@ -786,6 +788,14 @@ function chipNodes(
     };
   });
   return [chip, ...kids];
+}
+
+/** The chip's rows in render order: each kid, then its own rows (an API's operations). */
+function flatKidRows(c: ChildDesc): { k: ChildDesc; owner: string }[] {
+  return (c.children ?? []).flatMap((k) => [
+    { k, owner: c.id },
+    ...(k.children ?? []).map((g) => ({ k: g, owner: k.id })),
+  ]);
 }
 
 /** Many nested rows fold into columns: a 55-operation API must not become a mile-long strip. */
@@ -798,10 +808,10 @@ function chipSize(
   c: ChildDesc,
   sizes: Record<string, { w: number; h: number }>,
 ): { w: number; h: number } {
-  const kids = c.children ?? [];
-  const cols = kidColumns(kids.length);
-  const rows = Math.ceil(kids.length / cols);
-  const min = kids.length
+  const total = flatKidRows(c).length;
+  const cols = kidColumns(total);
+  const rows = Math.ceil(total / cols);
+  const min = total
     ? {
         w: Math.max(CHILD_W + 16, cols * (CHILD_W - 8) + (cols - 1) * 8 + 16),
         h: 36 + rows * (CHILD_H + 6) + 6,
@@ -823,8 +833,9 @@ export function contextMapScene(
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }> = {},
   expandedIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
 ): Scene {
-  return buildScene(model, layout, 'unified', sizes, expandedIds);
+  return buildScene(model, layout, 'unified', sizes, expandedIds, expandAll);
 }
 
 /** The distribution lens: contexts as module packagers, plus services and infrastructure. */
@@ -833,8 +844,9 @@ export function distributionScene(
   layout: DiagramLayout,
   sizes: Record<string, { w: number; h: number }> = {},
   expandedIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
 ): Scene {
-  return buildScene(model, layout, 'distribution', sizes, expandedIds);
+  return buildScene(model, layout, 'distribution', sizes, expandedIds, expandAll);
 }
 
 function buildScene(
@@ -843,8 +855,23 @@ function buildScene(
   mode: 'unified' | 'distribution',
   sizes: Record<string, { w: number; h: number }> = {},
   toggledIds: ReadonlySet<string> = new Set(),
+  expandAll = false,
 ): Scene {
   const distributionLevel = mode === 'distribution';
+  // The yugo wants the WHOLE containment tree — its own folding decides what shows.
+  // Everything expandable joins the set, and the forms skip resolveForm's flip.
+  if (expandAll) {
+    const all = new Set(toggledIds);
+    for (const m of model.boundedContexts) all.add(m.id);
+    for (const x of model.externalSystems) all.add(x.id);
+    for (const a of model.apis ?? []) all.add(a.id);
+    for (const px of model.proxyApis ?? []) all.add(px.id);
+    for (const impl of model.apiImplementations ?? []) {
+      all.add(apiImplNodeId(impl.apiId, impl.boundedContextId));
+    }
+    for (const cm of model.modules ?? []) all.add(cm.id);
+    toggledIds = all;
+  }
   // Fine-grained edges always TRY to draw; the nodeIds guards roll them up or
   // drop them when their endpoints are folded away.
   const detailed = !distributionLevel;
@@ -1072,36 +1099,32 @@ function buildScene(
             const rows: ChildDesc[] = [
               ...nestedApis
                 .filter((a) => a.publishedByExternalSystemId === sub.id)
-                .flatMap((a): ChildDesc[] => [
-                  {
-                    id: a.id,
-                    name: a.name,
-                    kind: 'api',
-                    expandable: (a.operations ?? []).length > 0,
-                    expanded: toggledIds.has(a.id),
-                  },
-                  ...(toggledIds.has(a.id)
+                .map((a): ChildDesc => ({
+                  id: a.id,
+                  name: a.name,
+                  kind: 'api',
+                  expandable: (a.operations ?? []).length > 0,
+                  expanded: toggledIds.has(a.id),
+                  children: toggledIds.has(a.id)
                     ? (a.operations ?? []).map((op): ChildDesc => ({
                         id: op.id, name: op.name, kind: 'api-operation',
                       }))
-                    : []),
-                ]),
+                    : [],
+                })),
               ...nestedProxies
                 .filter((px) => px.publishedByExternalSystemId === sub.id)
-                .flatMap((px): ChildDesc[] => [
-                  {
-                    id: px.id,
-                    name: px.name,
-                    kind: 'proxy-api',
-                    expandable: proxyOps(model, px).length > 0,
-                    expanded: toggledIds.has(px.id),
-                  },
-                  ...(toggledIds.has(px.id)
+                .map((px): ChildDesc => ({
+                  id: px.id,
+                  name: px.name,
+                  kind: 'proxy-api',
+                  expandable: proxyOps(model, px).length > 0,
+                  expanded: toggledIds.has(px.id),
+                  children: toggledIds.has(px.id)
                     ? proxyOps(model, px).map((op): ChildDesc => ({
                         id: apiOpOccurrenceId(op.id, px.id), name: op.name, kind: 'api-op-occurrence',
                       }))
-                    : []),
-                ]),
+                    : [],
+                })),
               ...(subExpanded
                 ? [
                     ...(sub.useCases ?? []).map(
@@ -1142,13 +1165,12 @@ function buildScene(
       // not force it: a system with only subsystems still folds to the plain box.
       const hasChips = publishedApis.length > 0 || hostedProxies.length > 0;
       const xFoldable = hasChips || richChildren.length > 0;
-      const { form: xForm, collapsed: xCollapsed } = resolveForm(
-        toggledIds.has(x.id),
-        hasChips ? 'coarse' : 'compact',
-        // Subsystems already ride the coarse form, so they are not detail BEYOND it:
-        // a system with only chips and subsystems must fold to the plain box.
-        richChildren.some((c) => c.kind !== 'external-system'),
-      );
+      const xBeyond = richChildren.some((c) => c.kind !== 'external-system');
+      // Subsystems already ride the coarse form, so they are not detail BEYOND it:
+      // a system with only chips and subsystems must fold to the plain box.
+      const { form: xForm, collapsed: xCollapsed } = expandAll
+        ? { form: (xBeyond ? 'full' : hasChips || richChildren.length ? 'coarse' : 'compact') as NodeForm, collapsed: false }
+        : resolveForm(toggledIds.has(x.id), hasChips ? 'coarse' : 'compact', xBeyond);
       // Subsystems are strategic, like the published APIs: they show from the
       // coarse form on — otherwise nobody can drop an API on them.
       const plainChildren: ChildDesc[] = [
@@ -1276,11 +1298,9 @@ function buildScene(
       (model.notifications ?? []).some((n) => n.ownerBoundedContextId === m.id) ||
       (model.documents ?? []).some((d) => d.ownerBoundedContextId === m.id);
     const mFoldable = hasDetail || implChildren.length > 0;
-    const { form: mForm, collapsed: mCollapsed } = resolveForm(
-      toggledIds.has(m.id),
-      implChildren.length > 0 ? 'coarse' : 'compact',
-      hasDetail,
-    );
+    const { form: mForm, collapsed: mCollapsed } = expandAll
+      ? { form: (hasDetail ? 'full' : implChildren.length > 0 ? 'coarse' : 'compact') as NodeForm, collapsed: false }
+      : resolveForm(toggledIds.has(m.id), implChildren.length > 0 ? 'coarse' : 'compact', hasDetail);
     if (distributionLevel) {
       return distributionContext(
         model, m, pos,

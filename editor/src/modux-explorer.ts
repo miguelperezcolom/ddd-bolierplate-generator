@@ -343,6 +343,11 @@ export class ModuxExplorer extends LitElement {
 
   /** Painted centre of each area's region this frame — where its note threads anchor. */
   private areaHulls = new Map<string, { x: number; y: number }>();
+
+  /** Single-click unfold deferred one beat, so a DOUBLE click opens the ficha cleanly. */
+  private clickTimer?: number;
+  private lastClickKey?: string;
+  private lastClickAt = 0;
   /** Every node in the tree, expanded or not — the search space. */
   private allNodes: XNode[] = [];
   /** Camera flight towards a found node (re-aims every frame: nodes move). */
@@ -589,10 +594,11 @@ export class ModuxExplorer extends LitElement {
   protected updated(changed: Map<string, unknown>): void {
     if (changed.has('model') || changed.has('scene')) this.buildTree();
     if (changed.has('sceneKey') && changed.get('sceneKey') !== undefined) {
-      // A different view/level took the stage: restore the hand-picked depth if
-      // this scene has one, else unfold to the scene's own depth — what matters
-      // at that level is on stage either way.
-      this.applyLevels(this.manualLevels.get(this.sceneKey) ?? this.sceneDepth());
+      // A different view/vista took the stage: restore the hand-picked depth if
+      // this scene has one. The scene now carries the WHOLE containment tree
+      // (operations included), so the automatic unfold stops at a readable depth
+      // — the slider and per-node clicks reach the rest.
+      this.applyLevels(this.manualLevels.get(this.sceneKey) ?? Math.min(this.sceneDepth(), 3));
     }
     if (changed.has('renaming') && this.renaming) {
       (this.renderRoot.querySelector('.rename') as HTMLInputElement | null)?.select();
@@ -2051,9 +2057,16 @@ export class ModuxExplorer extends LitElement {
     if (n && !this.moved) {
       if (e.altKey) this.focusOn(n);
       else {
-        // click both SELECTS (Supr/F2 target) and unfolds — one gesture, two truths
+        // click both SELECTS (Supr/F2 target) and unfolds — one gesture, two truths.
+        // The unfold waits a beat: the second click of a DOUBLE click must open
+        // the ficha, not flap the node open and shut on its way there.
         this.selected = new Set(n.kind !== 'root' && n.refId ? [n.key] : []);
-        this.toggle(n);
+        const now = performance.now();
+        const secondClick = this.lastClickKey === n.key && now - this.lastClickAt < 350;
+        this.lastClickKey = n.key;
+        this.lastClickAt = now;
+        window.clearTimeout(this.clickTimer);
+        if (!secondClick) this.clickTimer = window.setTimeout(() => this.toggle(n), 240);
       }
     } else if (!n && !this.moved && this.focusKeys) {
       // a plain click on the background lets go of the focus
@@ -2087,6 +2100,8 @@ export class ModuxExplorer extends LitElement {
   }
 
   private onDblClick(e: MouseEvent): void {
+    // The pending single-click unfold dies here: double click means «open», only that.
+    window.clearTimeout(this.clickTimer);
     const rect = this.getBoundingClientRect();
     const wx = (e.clientX - rect.left - this.cam.x) / this.cam.k;
     const wy = (e.clientY - rect.top - this.cam.y) / this.cam.k;
@@ -2177,7 +2192,7 @@ export class ModuxExplorer extends LitElement {
         <input
           type="range"
           min="0"
-          max="5"
+          max=${Math.max(5, this.sceneDepth())}
           step="1"
           .value=${String(this._levels)}
           title="Cuántos niveles se ven abiertos"
