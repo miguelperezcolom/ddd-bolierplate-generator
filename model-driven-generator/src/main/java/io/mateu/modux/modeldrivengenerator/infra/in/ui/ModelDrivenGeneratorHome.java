@@ -22,7 +22,63 @@ import io.mateu.uidl.fluent.AppVariant;
 // The nested «Modelo» menu made the menu DEEP, and the AUTO variant renders deep
 // menus as a tiles hub; the classic top bar shows them as cascading dropdowns.
 @App(AppVariant.MENU_ON_TOP)
-public class ModelDrivenGeneratorHome implements io.mateu.uidl.interfaces.HomeRouteSupplier {
+public class ModelDrivenGeneratorHome
+        implements io.mateu.uidl.interfaces.HomeRouteSupplier, io.mateu.uidl.interfaces.MenuSupplier {
+
+    /**
+     * Without a repository there is NOTHING to navigate: the whole menu folds
+     * down to «Inicio» until one is created/opened. With one, the menu is the
+     * SAME declared @Menu tree, derived reflectively (labels from @Title, paths
+     * from the field-name chain) — one source of truth, projected per state.
+     */
+    @Override
+    public java.util.List<io.mateu.uidl.interfaces.Actionable> menu(
+            io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        var homeStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.ModuxHomeStore.class);
+        var ready = projectStore.currentRepositoryId().isPresent()
+                && !homeStore.loadRepositories().isEmpty();
+        if (!ready) {
+            // Route resolution follows the menu: the folded state keeps ONLY what
+            // works without a repository — Inicio, and the catalog it needs to
+            // create/manage one. Everything else waits.
+            return java.util.List.of(
+                    new io.mateu.uidl.data.FieldLink("Inicio", ModelDrivenGeneratorHome.class, "inicio")
+                            .withPath("/inicio"),
+                    new io.mateu.uidl.data.FieldLink("Repositorios", ModelDrivenGeneratorHome.class, "repositories")
+                            .withPath("/repositories"));
+        }
+        return menuTree(ModelDrivenGeneratorHome.class);
+    }
+
+    /** The declared @Menu tree as public Actionables: FieldLinks and nested Menus. */
+    private static java.util.List<io.mateu.uidl.interfaces.Actionable> menuTree(Class<?> owner) {
+        var out = new java.util.ArrayList<io.mateu.uidl.interfaces.Actionable>();
+        for (var field : owner.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(io.mateu.uidl.annotations.Menu.class)) continue;
+            // Paths are SEGMENT-relative: the resolver matches token by token,
+            // accumulating the prefix as it descends the tree.
+            var path = "/" + field.getName();
+            var label = titleOf(field.getType(), field.getName());
+            var nested = java.util.Arrays.stream(field.getType().getDeclaredFields())
+                    .anyMatch(f -> f.isAnnotationPresent(io.mateu.uidl.annotations.Menu.class));
+            if (nested) {
+                out.add(new io.mateu.uidl.data.Menu(path, label, menuTree(field.getType())));
+            } else {
+                out.add(new io.mateu.uidl.data.FieldLink(label, owner, field.getName()).withPath(path));
+            }
+        }
+        return out;
+    }
+
+    private static String titleOf(Class<?> type, String fieldName) {
+        var title = type.getAnnotation(io.mateu.uidl.annotations.Title.class);
+        if (title != null) return title.value();
+        var human = fieldName.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
+        return Character.toUpperCase(human.charAt(0)) + human.substring(1);
+    }
 
     /**
      * The landing depends on the working context: with a repository open you
