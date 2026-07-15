@@ -34,7 +34,7 @@ public class ScheduledTriggerFileQueryService implements ScheduledTriggerQuerySe
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ScheduledTriggerEntity.class).map(ScheduledTriggerEntity::name).orElseThrow();
+        return repository.findById(id, ScheduledTriggerEntity.class).map(ScheduledTriggerEntity::name).orElse(null);
     }
 
     @Override

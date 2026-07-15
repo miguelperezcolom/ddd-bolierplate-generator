@@ -144,7 +144,7 @@ class WorkspaceElementLifecycleTest {
         var existingAggregateId = repository.findAllOfType(AggregateEntity.class).get(0).id();
         // bypass the use-case guard by saving directly, as a hand-edit of the YAML would
         repository.save(new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity(
-                existingAggregateId, "Dup", "d", "r", null, null));
+                existingAggregateId, "Dup", "d", "r", null, null, null));
 
         var duplicates = modelLintService.lint().stream()
                 .filter(f -> "duplicate-id".equals(f.ruleId()))

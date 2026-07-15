@@ -40,7 +40,7 @@ public class ButtonGroupViewModel implements Identifiable, CrudEditorForm<String
 
     @Override
     public String create(HttpRequest httpRequest) {
-        repository.save(new ButtonGroupEntity(id, name, toButtons(java.util.List.of()), java.util.List.of()));
+        repository.save(new ButtonGroupEntity(id, name, toButtons(java.util.List.of()), java.util.List.of(), null));
         return id;
     }
 

@@ -39,7 +39,7 @@ public class ComponentFileQueryService implements ComponentQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ComponentEntity.class).map(ComponentEntity::name).orElseThrow();
+        return repository.findById(id, ComponentEntity.class).map(ComponentEntity::name).orElse(null);
     }
 
     @Override

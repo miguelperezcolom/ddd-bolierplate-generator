@@ -71,7 +71,8 @@ public class CreatePageUseCase {
                 command.completionActions().stream()
                         .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                         .toList(),
-                command.listingQueryServiceId());
+                command.listingQueryServiceId(),
+                command.favicon(), command.title(), command.style());
         repository.save(page);
     }
 }

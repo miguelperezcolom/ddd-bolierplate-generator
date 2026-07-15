@@ -78,6 +78,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Projection
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
@@ -149,7 +150,7 @@ public class EditorApiController {
     public record JourneyDto(String id, String name, String description, List<JourneyLegDto> legs) {}
     public record JourneyLegDto(String id, String sourceId, String targetId, List<String> afterLegIds, String label) {}
     public record ServiceDto(String id, String name, List<String> moduleIds,
-                             String database, boolean outboxEnabled) {}
+                             String database, boolean outboxEnabled, List<String> urlIds) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
     public record DomainEventDto(String id, String name) {}
@@ -427,11 +428,14 @@ public class EditorApiController {
             List<NoteDto> notes,
             List<AreaDto> areas,
             List<ArchimateRelationDto> archimateRelations,
-            List<UiDto> uis) {}
+            List<UiDto> uis,
+            List<UrlDto> urls) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
     public record AreaDto(String id, String name) {}
+
+    public record UrlDto(String id, String name, String url) {}
 
     public record MappingRefDto(String id, String name, String sourceModelId, String targetModelId,
                                 List<MappingRuleDto> rules, String customCodeId) {}
@@ -656,6 +660,10 @@ public class EditorApiController {
             case "remove-note" -> removeNote(command);
             case "add-area" -> addArea(command);
             case "remove-area" -> removeArea(command);
+            case "add-url" -> addUrl(command);
+            case "remove-url" -> removeUrl(command);
+            case "add-service-url" -> addServiceUrl(command);
+            case "remove-service-url" -> removeServiceUrl(command);
             case "note-attach" -> noteAttach(command);
             case "note-detach" -> noteDetach(command);
             case "add-ai-agent" -> agentCommands.addAiAgent(command);
@@ -877,7 +885,7 @@ public class EditorApiController {
                 command.triggerAggregateId(), command.triggerEvent(), command.targetId(),
                 command.readModelName(), List.of(), command.targetUseCaseId(),
                 List.of(), List.of(), List.of(), command.triggerDomainServiceId(),
-                command.triggerUseCaseId()));
+                command.triggerUseCaseId(), null));
     }
 
     private void removeFlow(EditorCommand command) {
@@ -897,7 +905,7 @@ public class EditorApiController {
         repository.save(new ProcessEntity(
                 command.id(), command.name(), null,
                 command.triggerAggregateId(), command.triggerEvent(), command.boundedContextId(),
-                steps, null, null, List.of()));
+                steps, null, null, List.of(), null));
     }
 
     private void removeProcess(EditorCommand command) {
@@ -941,7 +949,7 @@ public class EditorApiController {
         if (repository.findById(command.id(), ViewEntity.class).isPresent()) return;
         repository.save(new ViewEntity(
                 command.id(), command.name(), null, "CURATED",
-                command.memberIds() == null ? List.of() : command.memberIds(), null));
+                command.memberIds() == null ? List.of() : command.memberIds(), null, null));
     }
 
     private void removeView(EditorCommand command) {
@@ -984,7 +992,7 @@ public class EditorApiController {
     static ProcessEntity withSteps(ProcessEntity p, List<ProcessStepEntity> steps) {
         return new ProcessEntity(
                 p.id(), p.name(), p.description(), p.triggerAggregateId(), p.triggerEvent(),
-                p.ownerBoundedContextId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds());
+                p.ownerBoundedContextId(), steps, p.onCompletionEventName(), p.sla(), p.decisionIds(), null);
     }
 
 
@@ -999,7 +1007,7 @@ public class EditorApiController {
         return new WorkflowEntity(
                 w.id(), w.name(), w.description(), w.triggerAggregateId(),
                 w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
-                steps, w.onCompletionEventName(), w.decisionIds());
+                steps, w.onCompletionEventName(), w.decisionIds(), null);
     }
 
     /** Record copy with only dependsOnStepIds replaced — every other field preserved verbatim. */
@@ -1122,7 +1130,15 @@ public class EditorApiController {
                     .ifPresent(m -> repository.save(m.toBuilder().name(command.name()).build()));
             case "note" -> repository.findById(command.id(), NoteEntity.class)
                     .ifPresent(n -> repository.save(n.toBuilder().text(command.name()).build()));
+            case "url" -> repository.findById(command.id(), UrlEntity.class)
+                    .ifPresent(u -> repository.save(u.toBuilder().name(command.name()).build()));
             case "area" -> repository.findById(command.id(), AreaEntity.class)
+                    .ifPresent(a -> repository.save(a.toBuilder().name(command.name()).build()));
+            case "ui" -> repository.findById(command.id(), UiEntity.class)
+                    .ifPresent(u -> repository.save(u.toBuilder().name(command.name()).build()));
+            case "page" -> repository.findById(command.id(), PageEntity.class)
+                    .ifPresent(pg -> repository.save(pg.toBuilder().name(command.name()).build()));
+            case "ui-app" -> repository.findById(command.id(), UiAdapterEntity.class)
                     .ifPresent(a -> repository.save(a.toBuilder().name(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
                     .ifPresent(a -> repository.save(new AggregateEntity(
@@ -1130,10 +1146,10 @@ public class EditorApiController {
                             a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
                             a.eventSourcingEnabled(), a.snapshotFrequency(), a.operations(),
                             a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(),
-                            a.decisionIds())));
+                            a.decisionIds(), null)));
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
-                            e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection())));
+                            e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection(), null)));
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
                     .ifPresent(a -> repository.save(a.withName(command.name())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
@@ -1184,25 +1200,25 @@ public class EditorApiController {
             }
             case "application-event" -> repository.findById(command.id(), ApplicationEventEntity.class)
                     .ifPresent(ev -> repository.save(new ApplicationEventEntity(
-                            ev.id(), command.name(), ev.modelId())));
+                            ev.id(), command.name(), ev.modelId(), null)));
             case "domain-service" -> repository.findById(command.id(), DomainServiceEntity.class)
                     .ifPresent(ds -> repository.save(new DomainServiceEntity(
-                            ds.id(), command.name(), ds.description(), ds.operations())));
+                            ds.id(), command.name(), ds.description(), ds.operations(), null)));
             case "query-service" -> repository.findById(command.id(), QueryServiceEntity.class)
                     .ifPresent(qs -> repository.save(new QueryServiceEntity(
                             qs.id(), command.name(), qs.boundedContextId(), qs.description(),
-                            qs.operations(), qs.exposedAsGrpc())));
+                            qs.operations(), qs.exposedAsGrpc(), null)));
             case "read-model" -> repository.findById(command.id(), ReadModelEntity.class)
                     .ifPresent(rm -> repository.save(new ReadModelEntity(
                             rm.id(), command.name(), rm.boundedContextId(), rm.description(), rm.modelId(),
-                            rm.storageType(), rm.consistency(), rm.aggregateId())));
+                            rm.storageType(), rm.consistency(), rm.aggregateId(), null)));
             case "domain-event" -> repository.findById(command.id(), DomainEventEntity.class)
                     .ifPresent(ev -> repository.save(new DomainEventEntity(
                             ev.id(), command.name(), ev.modelId(), ev.publishAsIntegrationEvent(),
                             ev.integrationModelId(), ev.topicName(), ev.partitions(), ev.retentionMs(),
                             ev.serializationFormat(), ev.compressionType(), ev.deadLetterQueueEnabled(),
                             ev.deadLetterQueueName(), ev.maxDeliveryAttempts(), ev.schemaVersion(),
-                            ev.routingKeyField(), ev.replayable())));
+                            ev.routingKeyField(), ev.replayable(), null)));
             case "process-step" -> repository.findAllOfType(ProcessEntity.class).stream()
                     .filter(p -> p.steps().stream().anyMatch(s -> s.id().equals(command.id())))
                     .findFirst()
@@ -1226,7 +1242,7 @@ public class EditorApiController {
                             uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(),
                             uc.idempotencyEnabled(), uc.idempotencyKeyField(), uc.rateLimitEnabled(),
                             uc.rateLimitRequestsPerSecond(), uc.grpcServiceName(), uc.grpcMethodName(),
-                            uc.decisionIds(), uc.policy())));
+                            uc.decisionIds(), uc.policy(), null)));
             case "external-use-case" -> {
                 var project = projects.owningProject();
                 repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
@@ -1242,7 +1258,7 @@ public class EditorApiController {
                     .ifPresent(w -> repository.save(new WorkflowEntity(
                             w.id(), command.name(), w.description(), w.triggerAggregateId(),
                             w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
-                            w.steps(), w.onCompletionEventName(), w.decisionIds())));
+                            w.steps(), w.onCompletionEventName(), w.decisionIds(), null)));
             case "workflow-step" -> repository.findAllOfType(WorkflowEntity.class).stream()
                     .filter(w -> w.steps().stream().anyMatch(s -> s.id().equals(command.id())))
                     .findFirst()
@@ -1335,7 +1351,7 @@ public class EditorApiController {
                         "Agregado desconocido: " + command.aggregateId()));
         if (aggregate.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
         var invariants = new ArrayList<>(aggregate.invariants());
-        invariants.add(new InvariantEntity(command.id(), command.name(), List.of()));
+        invariants.add(new InvariantEntity(command.id(), command.name(), List.of(), null));
         repository.save(aggregate.toBuilder().invariants(invariants).build());
     }
 
@@ -1359,12 +1375,12 @@ public class EditorApiController {
         // fields get filled in later through the CRUD.
         var modelId = "model-" + command.id().replaceFirst("^agg-", "");
         if (repository.findById(modelId, ModelEntity.class).isEmpty()) {
-            repository.save(new ModelEntity(modelId, command.name(), List.of(), List.of()));
+            repository.save(new ModelEntity(modelId, command.name(), List.of(), List.of(), null));
         }
         repository.save(new AggregateEntity(
                 command.id(), command.name(), modelId,
                 null, null, null, null, false, false, null,
-                List.of(), List.of(), List.of(), null, false, List.of()));
+                List.of(), List.of(), List.of(), null, false, List.of(), null));
         var aggregateIds = new ArrayList<>(boundedContext.aggregateIds() == null ? List.of() : boundedContext.aggregateIds());
         aggregateIds.add(command.id());
         repository.save(withAggregateIds(boundedContext, aggregateIds));
@@ -1377,7 +1393,7 @@ public class EditorApiController {
         repository.save(new DomainEventEntity(
                 command.id(), command.name(), null,
                 false, null, null, null, null, null, null,
-                false, null, null, null, null, false));
+                false, null, null, null, null, false, null));
         // The event belongs to the bounded context through the boundedContext's id list.
         var domainEventIds = new ArrayList<>(
                 boundedContext.domainEventIds() == null ? List.of() : boundedContext.domainEventIds());
@@ -1424,7 +1440,7 @@ public class EditorApiController {
                                 + command.sourceId()));
         var operations = withEmissionAdded(ds.operations(), event);
         if (operations != null) {
-            repository.save(new DomainServiceEntity(ds.id(), ds.name(), ds.description(), operations));
+            repository.save(new DomainServiceEntity(ds.id(), ds.name(), ds.description(), operations, null));
         }
     }
 
@@ -1462,7 +1478,7 @@ public class EditorApiController {
                 repository.save(withOperations(a, withEmissionRemoved(a.operations(), event))));
         repository.findById(command.sourceId(), DomainServiceEntity.class).ifPresent(ds ->
                 repository.save(new DomainServiceEntity(ds.id(), ds.name(), ds.description(),
-                        withEmissionRemoved(ds.operations(), event))));
+                        withEmissionRemoved(ds.operations(), event), null)));
     }
 
     static List<OperationEntity> withEmissionRemoved(List<OperationEntity> current, DomainEventEntity event) {
@@ -1481,7 +1497,7 @@ public class EditorApiController {
         if (repository.findById(command.id(), ApplicationEventEntity.class).isPresent()) return;
         var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
-        repository.save(new ApplicationEventEntity(command.id(), command.name(), null));
+        repository.save(new ApplicationEventEntity(command.id(), command.name(), null, null));
         var applicationEventIds = new ArrayList<>(boundedContext.applicationEventIds());
         applicationEventIds.add(command.id());
         repository.save(boundedContext.toBuilder().applicationEventIds(applicationEventIds).build());
@@ -1597,7 +1613,7 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new ScheduledTriggerEntity(command.id(), command.name(),
                 command.cronExpression() != null ? command.cronExpression() : "0 0 * * *",
-                null, command.targetUseCaseId(), null, null, null, null, null, null, null, false, false, null));
+                null, command.targetUseCaseId(), null, null, null, null, null, null, null, false, false, null, null));
         var ids = new ArrayList<>(boundedContext.scheduledTriggerIds() == null ? List.of() : boundedContext.scheduledTriggerIds());
         ids.add(command.id());
         repository.save(boundedContext.toBuilder().scheduledTriggerIds(ids).build());
@@ -1624,7 +1640,7 @@ public class EditorApiController {
         repository.save(new ScheduledTriggerEntity(t.id(), t.name(), t.cronExpression(), t.timezone(),
                 command.targetUseCaseId(), t.modelMappingId(), t.description(), t.executionEnvironment(),
                 t.lockProvider(), t.maxExecutionTimeMs(), t.failureNotificationEmail(), t.misfirePolicy(),
-                t.allowConcurrentExecution(), t.retryOnFailure(), t.retryCount()));
+                t.allowConcurrentExecution(), t.retryOnFailure(), t.retryCount(), null));
     }
 
     private void addQueryService(EditorCommand command) {
@@ -1632,7 +1648,7 @@ public class EditorApiController {
         repository.findById(command.boundedContextId(), BoundedContextEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
         repository.save(new QueryServiceEntity(
-                command.id(), command.name(), command.boundedContextId(), null, List.of(), false));
+                command.id(), command.name(), command.boundedContextId(), null, List.of(), false, null));
     }
 
     private void removeQueryService(EditorCommand command) {
@@ -2239,7 +2255,7 @@ public class EditorApiController {
         return new UseCaseEntity(id, name, false, false, false, false, exposedAsUi,
                 null, null, steps, List.of(), List.of(), null, null, null, null,
                 null, null, null, null, null, false, null, null, null, false, null,
-                false, null, null, null, List.of(), policy);
+                false, null, null, null, List.of(), policy, null);
     }
 
     static String capitalize(String s) {
@@ -2250,7 +2266,7 @@ public class EditorApiController {
         if (repository.findById(command.id(), DomainServiceEntity.class).isPresent()) return;
         var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown boundedContext: " + command.boundedContextId()));
-        repository.save(new DomainServiceEntity(command.id(), command.name(), null, List.of()));
+        repository.save(new DomainServiceEntity(command.id(), command.name(), null, List.of(), null));
         var domainServiceIds = new ArrayList<>(boundedContext.domainServiceIds());
         domainServiceIds.add(command.id());
         repository.save(boundedContext.toBuilder().domainServiceIds(domainServiceIds).build());
@@ -2285,7 +2301,7 @@ public class EditorApiController {
                 a.id(), a.name(), a.modelId(), a.persistenceType(), a.idType(),
                 a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
                 a.eventSourcingEnabled(), a.snapshotFrequency(), operations,
-                a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(), a.decisionIds());
+                a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(), a.decisionIds(), null);
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
@@ -2298,7 +2314,7 @@ public class EditorApiController {
                 uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy());
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy(), null);
     }
 
     /**
@@ -2315,7 +2331,7 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El agregado " + aggregate.id() + " no pertenece a ningún bounded context"));
         repository.save(new ReadModelEntity(command.id(), command.name(), boundedContext.id(),
-                null, aggregate.modelId(), null, null, aggregate.id()));
+                null, aggregate.modelId(), null, null, aggregate.id(), null));
         var readModelIds = new ArrayList<>(
                 boundedContext.readModelIds() == null ? List.of() : boundedContext.readModelIds());
         readModelIds.add(command.id());
@@ -2403,7 +2419,7 @@ public class EditorApiController {
                         owner.id(), null,
                         aggregate != null ? aggregate.modelId() : null,
                         null, null,
-                        aggregate != null ? aggregate.id() : null));
+                        aggregate != null ? aggregate.id() : null, null));
                 var readModelIds = new ArrayList<>(
                         owner.readModelIds() == null ? List.of() : owner.readModelIds());
                 readModelIds.add(readModelId);
@@ -2414,7 +2430,7 @@ public class EditorApiController {
         repository.save(new ProjectionEntity(command.id(), command.name(), readModelId,
                 List.of(), null, null, null, false, null,
                 aggregate != null ? aggregate.id() : null,
-                command.externalUseCaseId(), command.externalTableId()));
+                command.externalUseCaseId(), command.externalTableId(), null));
         var projectionIds = new ArrayList<>(
                 owner.projectionIds() == null ? List.of() : owner.projectionIds());
         projectionIds.add(command.id());
@@ -2650,7 +2666,7 @@ public class EditorApiController {
         }
         repository.save(new ArchimateRelationEntity(
                 command.id(), command.sourceId(), command.targetId(), command.type(),
-                command.name()));
+                command.name(), null));
     }
 
     private void setArchimateRelationType(EditorCommand command) {
@@ -2922,7 +2938,7 @@ public class EditorApiController {
         var members = new ArrayList<>(view.memberIds());
         members.add(command.targetId());
         repository.save(new ViewEntity(view.id(), view.name(), view.description(), view.kind(),
-                members, view.seedId()));
+                members, view.seedId(), null));
     }
 
     /** Removes an element from the view WITHOUT touching the element itself. */
@@ -2932,7 +2948,7 @@ public class EditorApiController {
                         view.kind(),
                         view.memberIds().stream()
                                 .filter(id -> !id.equals(command.targetId())).toList(),
-                        view.seedId())));
+                        view.seedId(), null)));
     }
 
     /** exposedAsMcp holds only while some agent consumes the use case. */
@@ -2946,7 +2962,7 @@ public class EditorApiController {
 
     private void addNote(EditorCommand command) {
         if (repository.findById(command.id(), NoteEntity.class).isPresent()) return;
-        repository.save(new NoteEntity(command.id(), command.name(), List.of(), List.of()));
+        repository.save(new NoteEntity(command.id(), command.name(), List.of(), List.of(), null));
     }
 
     private void removeNote(EditorCommand command) {
@@ -2955,7 +2971,42 @@ public class EditorApiController {
 
     private void addArea(EditorCommand command) {
         if (repository.findById(command.id(), AreaEntity.class).isPresent()) return;
-        repository.save(new AreaEntity(command.id(), command.name()));
+        repository.save(new AreaEntity(command.id(), command.name(), null));
+    }
+
+    private void addUrl(EditorCommand command) {
+        if (repository.findById(command.id(), UrlEntity.class).isPresent()) return;
+        repository.save(UrlEntity.builder().id(command.id()).name(command.name())
+                .url(command.uri()).build());
+    }
+
+    /** Removing the url also unlinks it from every service that answered at it. */
+    private void removeUrl(EditorCommand command) {
+        repository.findAllOfType(ServiceEntity.class).stream()
+                .filter(sv -> sv.urlIds().contains(command.id()))
+                .forEach(sv -> repository.save(sv.toBuilder()
+                        .urlIds(sv.urlIds().stream().filter(x -> !x.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), UrlEntity.class);
+    }
+
+    private void addServiceUrl(EditorCommand command) {
+        var service = repository.findById(command.serviceId(), ServiceEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown service: " + command.serviceId()));
+        repository.findById(command.id(), UrlEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown url: " + command.id()));
+        if (service.urlIds().contains(command.id())) return;
+        repository.save(service.toBuilder()
+                .urlIds(java.util.stream.Stream.concat(service.urlIds().stream(),
+                        java.util.stream.Stream.of(command.id())).toList())
+                .build());
+    }
+
+    private void removeServiceUrl(EditorCommand command) {
+        repository.findById(command.serviceId(), ServiceEntity.class)
+                .ifPresent(sv -> repository.save(sv.toBuilder()
+                        .urlIds(sv.urlIds().stream().filter(x -> !x.equals(command.id())).toList())
+                        .build()));
     }
 
     /** Notes pointing at the area keep their (now dangling) ref — the threads just stop drawing. */
@@ -3124,7 +3175,7 @@ public class EditorApiController {
                 if (c.isTextual()) collapsed.add(c.asText());
             });
         }
-        return new DiagramEntity(id, detail, nodes, edges, collapsed);
+        return new DiagramEntity(id, detail, nodes, edges, collapsed, null);
     }
 
     /** Emissions declared by an emitter's operations (CSV of event names in emits). */

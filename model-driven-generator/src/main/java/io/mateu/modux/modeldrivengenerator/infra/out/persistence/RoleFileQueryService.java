@@ -34,7 +34,7 @@ public class RoleFileQueryService implements RoleQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, RoleEntity.class).map(RoleEntity::name).orElseThrow();
+        return repository.findById(id, RoleEntity.class).map(RoleEntity::name).orElse(null);
     }
 
     @Override

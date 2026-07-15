@@ -39,7 +39,7 @@ public class PageFileQueryService implements PageQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, PageEntity.class).map(PageEntity::name).orElseThrow();
+        return repository.findById(id, PageEntity.class).map(PageEntity::name).orElse(null);
     }
 
     @Override
@@ -63,6 +63,7 @@ public class PageFileQueryService implements PageQueryService {
                         entity.fieldConfigs(),
                         entity.wizardSteps(),
                         entity.completionActions(),
-                        entity.listingQueryServiceId()));
+                        entity.listingQueryServiceId(),
+                        entity.favicon(), entity.title(), entity.style()));
     }
 }

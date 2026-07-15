@@ -36,7 +36,7 @@ public class UiAdapterFileQueryService implements UiAdapterQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, UiAdapterEntity.class).map(UiAdapterEntity::name).orElseThrow();
+        return repository.findById(id, UiAdapterEntity.class).map(UiAdapterEntity::name).orElse(null);
     }
 
     @Override

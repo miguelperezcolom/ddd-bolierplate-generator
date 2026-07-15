@@ -73,7 +73,7 @@ public class BoundedContextFileRepository implements BoundedContextRepository {
     public BoundedContext save(BoundedContext entity) {
         var bddScenarioEntities = entity.getBddScenarios() == null ? List.<BddScenarioEntity>of() :
                 entity.getBddScenarios().stream()
-                        .map(s -> new BddScenarioEntity(s.id(), s.feature(), s.name(), s.tags(), s.steps()))
+                        .map(s -> new BddScenarioEntity(s.id(), s.feature(), s.name(), s.tags(), s.steps(), null))
                         .toList();
         // Carry over fields the domain BoundedContext does not (yet) model, so a UI save never wipes
         // what was authored in the YAML store.
@@ -105,7 +105,7 @@ public class BoundedContextFileRepository implements BoundedContextRepository {
                         .map(inv -> new InvariantEntity(inv.getId().id(), inv.getName().name(),
                                 inv.getConditions() == null ? List.of() : inv.getConditions().stream()
                                         .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
-                                        .toList()))
+                                        .toList(), null))
                         .toList(),
                 existing != null ? existing.subdomainType() : null,
                 existing != null ? existing.accessPolicies() : List.of(),

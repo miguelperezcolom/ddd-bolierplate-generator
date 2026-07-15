@@ -64,14 +64,20 @@ public class UiAdapterFileRepository implements UiAdapterRepository {
                                 stored.stream().filter(e -> java.util.Objects.equals(e.label(), m.label()))
                                         .findFirst().orElse(null)))
                         .toList();
-        repository.save(new UiAdapterEntity(
-                entity.getId().id(),
-                entity.getName().name(),
-                entity.getServiceId(),
-                entity.getTitle(),
-                entity.getPath(),
-                entity.getAppVariant(),
-                menuItemEntities));
+        // The domain UiAdapter does not model everything (appType, home/header pages,
+        // viewmodel…) — start from the stored entity so a domain save never wipes
+        // what the editor authored.
+        var storedEntity = repository.findById(entity.getId().id(), UiAdapterEntity.class).orElse(null);
+        var builder = storedEntity != null ? storedEntity.toBuilder() : UiAdapterEntity.builder();
+        repository.save(builder
+                .id(entity.getId().id())
+                .name(entity.getName().name())
+                .serviceId(entity.getServiceId())
+                .title(entity.getTitle())
+                .path(entity.getPath())
+                .appVariant(entity.getAppVariant())
+                .menuItems(menuItemEntities)
+                .build());
         return entity;
     }
 

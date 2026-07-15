@@ -27,6 +27,9 @@ public record RagEntity(
         List<String> sourceExternalSystemIds,
         /** Whole bounded contexts it indexes (coarse: the context's content). */
         List<String> sourceBoundedContextIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre coarse-sources callers and stores). */
@@ -36,7 +39,7 @@ public record RagEntity(
                      List<String> sourceExternalTableIds,
                      List<String> sourceApiIds) {
         this(id, name, description, sourceReadModelIds, contentSources, sourceExternalTableIds,
-                sourceApiIds, List.of(), List.of());
+                sourceApiIds, List.of(), List.of(), null);
     }
 
     /** Backward-compatible constructor (pre structured-sources callers and stores). */
@@ -44,14 +47,14 @@ public record RagEntity(
                      List<String> sourceReadModelIds,
                      List<RagContentSourceEntity> contentSources) {
         this(id, name, description, sourceReadModelIds, contentSources, List.of(), List.of(),
-                List.of(), List.of());
+                List.of(), List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-contentSources callers and stores). */
     public RagEntity(String id, String name, String description,
                      List<String> sourceReadModelIds) {
         this(id, name, description, sourceReadModelIds, List.of(), List.of(), List.of(),
-                List.of(), List.of());
+                List.of(), List.of(), null);
     }
 
     public List<String> sourceReadModelIds() {

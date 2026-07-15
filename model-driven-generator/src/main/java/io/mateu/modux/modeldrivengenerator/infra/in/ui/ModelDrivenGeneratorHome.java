@@ -23,7 +23,57 @@ import io.mateu.uidl.fluent.AppVariant;
 // menus as a tiles hub; the classic top bar shows them as cascading dropdowns.
 @App(AppVariant.MENU_ON_TOP)
 public class ModelDrivenGeneratorHome
-        implements io.mateu.uidl.interfaces.HomeRouteSupplier, io.mateu.uidl.interfaces.MenuSupplier {
+        implements io.mateu.uidl.interfaces.HomeRouteSupplier, io.mateu.uidl.interfaces.MenuSupplier,
+        io.mateu.uidl.interfaces.AppActionsSupplier {
+
+    /**
+     * Generate, next to the repo-project-model selectors — only when the whole
+     * app context is resolved (the model selector always holds a value: as-is
+     * or a solution, so repository + project decide).
+     */
+    @Override
+    public java.util.List<io.mateu.uidl.data.AppHeaderAction> appActions(
+            io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        if (projectStore.currentRepositoryId().isEmpty() || projectStore.currentProjectId().isEmpty()) {
+            return java.util.List.of();
+        }
+        return java.util.List.of(
+                new io.mateu.uidl.data.AppHeaderAction("generateCurrentProject", "Generar", "vaadin:cogs"),
+                new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar", "vaadin:rocket"));
+    }
+
+    /** The header's Deploy: generated services → images → the environment's cluster. */
+    public Object deployCurrentProject(io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        var projectId = projectStore.currentProjectId().orElseThrow(
+                () -> new IllegalStateException("No hay proyecto seleccionado"));
+        // A STREAM of milestones: served over mateu's SSE action channel, each one
+        // reaches the user as a toast while the pipeline advances.
+        return SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
+                .handle(new io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectCommand(
+                        projectId, null));
+    }
+
+    /** The header's Generate: the CURRENT project, to its declared outputPath. */
+    public Object generateCurrentProject(io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        var repository = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository.class);
+        var projectId = projectStore.currentProjectId().orElseThrow(
+                () -> new IllegalStateException("No hay proyecto seleccionado"));
+        var project = repository.findById(projectId,
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
+                .orElseThrow(() -> new IllegalStateException("Proyecto desconocido: " + projectId));
+        SpringBeans.get(io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase.class)
+                .handle(new io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand(
+                        projectId, null, null, false));
+        return io.mateu.uidl.data.Message.success("Código generado en " + project.outputPath());
+    }
 
     /**
      * Without a repository there is NOTHING to navigate: the whole menu folds

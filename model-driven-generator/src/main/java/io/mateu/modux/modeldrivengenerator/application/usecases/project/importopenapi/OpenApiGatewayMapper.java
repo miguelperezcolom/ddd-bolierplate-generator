@@ -64,7 +64,7 @@ public final class OpenApiGatewayMapper {
                     fields.add(field(name, prop.getKey(), prop.getValue(), nameToId));
                 }
             }
-            models.add(new ModelEntity(nameToId.get(name), name, fields, List.of()));
+            models.add(new ModelEntity(nameToId.get(name), name, fields, List.of(), null));
         }
         return models;
     }

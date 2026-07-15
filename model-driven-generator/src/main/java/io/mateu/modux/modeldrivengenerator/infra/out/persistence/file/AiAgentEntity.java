@@ -41,6 +41,9 @@ public record AiAgentEntity(
         List<String> reactsToEventIds,
         /** Whole APIs — or API proxies — this agent may call: every operation of them. */
         List<String> allowedApiIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-allowedApiIds callers and stores). */
@@ -57,7 +60,7 @@ public record AiAgentEntity(
                          List<String> reactsToEventIds) {
         this(id, name, description, allowedUseCaseIds, allowedExternalUseCaseIds, ragIds,
                 allowedMcpServerIds, external, allowedApiOperationIds, allowedQueryServiceIds,
-                delegateAgentIds, mcpGatewayIds, reactsToEventIds, List.of());
+                delegateAgentIds, mcpGatewayIds, reactsToEventIds, List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-gateway callers and stores). */

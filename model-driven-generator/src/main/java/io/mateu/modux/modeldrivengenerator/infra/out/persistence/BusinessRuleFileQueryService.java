@@ -39,7 +39,7 @@ public class BusinessRuleFileQueryService implements BusinessRuleQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, BusinessRuleEntity.class).map(BusinessRuleEntity::name).orElseThrow();
+        return repository.findById(id, BusinessRuleEntity.class).map(BusinessRuleEntity::name).orElse(null);
     }
 
     @Override

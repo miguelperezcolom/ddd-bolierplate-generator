@@ -69,7 +69,7 @@ public class GatewayFileRepository implements GatewayRepository {
                 operationEntities,
                 entity.isRateLimitEnabled(), entity.getRateLimitRequestsPerSecond(), entity.getRateLimitBurstSize(),
                 entity.isCorsEnabled(), entity.getCorsAllowedOrigins(),
-                entity.getGlobalTimeoutMs()));
+                entity.getGlobalTimeoutMs(), null));
         return entity;
     }
 

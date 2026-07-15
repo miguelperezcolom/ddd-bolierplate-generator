@@ -39,7 +39,7 @@ public class RoleFileRepository implements RoleRepository {
                 existing != null ? existing.allowedQueryServiceIds() : List.of(),
                 existing != null ? existing.externalSystemIds() : List.of(),
                 existing != null ? existing.aiAgentIds() : List.of(),
-                existing != null ? existing.uiAdapterIds() : List.of()));
+                existing != null ? existing.uiAdapterIds() : List.of(), null));
         return entity;
     }
 

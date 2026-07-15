@@ -75,11 +75,11 @@ public final class PageUseCaseDerivation {
             changed = true;
         }
 
-        var rewired = new PageEntity(page.id(), page.name(), page.route(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), toolbar.buttons, bottomBar.buttons, page.triggers(),
-                page.rules(), page.validations(), page.fieldConfigs(), page.wizardSteps(),
-                completion.buttons, listingQueryServiceId, page.content());
+        var rewired = page.toBuilder()
+                .toolbar(toolbar.buttons).bottomBar(bottomBar.buttons)
+                .completionActions(completion.buttons)
+                .listingQueryServiceId(listingQueryServiceId)
+                .build();
 
         return new Result(newUseCases, newQueryService, rewired, changed || !newUseCases.isEmpty());
     }

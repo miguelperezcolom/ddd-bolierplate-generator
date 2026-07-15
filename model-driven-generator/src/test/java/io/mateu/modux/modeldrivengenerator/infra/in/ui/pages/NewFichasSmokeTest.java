@@ -80,7 +80,7 @@ class NewFichasSmokeTest {
                 .isEqualTo("cc-1");
 
         // button group with one button
-        repository.save(new ButtonGroupEntity("bg-1", "Acciones", List.of(), List.of()));
+        repository.save(new ButtonGroupEntity("bg-1", "Acciones", List.of(), List.of(), null));
         var bg = context.getBean(ButtonGroupCrudAdapter.class).getEditor("bg-1", null);
         setField(bg, "name", "Acciones rápidas");
         bg.save(null);

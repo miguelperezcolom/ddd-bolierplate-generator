@@ -32,6 +32,9 @@ public record UiAdapterEntity(
         String editPageId,
         /** The IdP this app authenticates its users against. */
         String identityProviderId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
@@ -40,7 +43,7 @@ public record UiAdapterEntity(
                            UiAppType appType, String headerPageId, String homePageId,
                            String homeAppId, String modelId, String viewPageId, String editPageId) {
         this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
-                homePageId, homeAppId, modelId, viewPageId, editPageId, null);
+                homePageId, homeAppId, modelId, viewPageId, editPageId, null, null);
     }
 
     /** Backward-compatible constructor (pre-viewPageId callers and stores). */

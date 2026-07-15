@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.page.save;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageStyle;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageFieldConfigEntity;
@@ -29,7 +30,10 @@ public record SavePageCommand(
         List<PageFieldConfigEntity> fieldConfigs,
         List<PageWizardStepEntity> wizardSteps,
         List<PageButtonEntity> completionActions,
-        String listingQueryServiceId
+        String listingQueryServiceId,
+        String favicon,
+        String title,
+        PageStyle style
 ) {
     public SavePageCommand {
         if (componentIds == null) componentIds = List.of();

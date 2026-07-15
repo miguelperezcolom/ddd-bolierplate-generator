@@ -31,7 +31,7 @@ public class EnumDefinitionFileRepository implements EnumDefinitionRepository {
                 entity.getValues().stream()
                         .map(v -> new EnumValueEntity(v.id(), v.name()))
                         .toList();
-        repository.save(new EnumEntity(entity.getId().id(), valueEntities));
+        repository.save(new EnumEntity(entity.getId().id(), valueEntities, null));
         return entity;
     }
 

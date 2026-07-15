@@ -37,7 +37,7 @@ public class ProcessFileQueryService implements ProcessQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ProcessEntity.class).map(ProcessEntity::name).orElseThrow();
+        return repository.findById(id, ProcessEntity.class).map(ProcessEntity::name).orElse(null);
     }
 
     @Override

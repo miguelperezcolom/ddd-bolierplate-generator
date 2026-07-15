@@ -18,12 +18,15 @@ public record ProxyApiEntity(
         String publishedByExternalSystemId,
         /** Per-operation routing to the fronted API's implementation sites. */
         java.util.List<ProxyOperationRouteEntity> operationRoutes
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-operationRoutes callers and stores). */
     public ProxyApiEntity(String id, String name, String description,
                           String targetApiId, String publishedByExternalSystemId) {
-        this(id, name, description, targetApiId, publishedByExternalSystemId, java.util.List.of());
+        this(id, name, description, targetApiId, publishedByExternalSystemId, java.util.List.of(), null);
     }
 
     public java.util.List<ProxyOperationRouteEntity> operationRoutes() {

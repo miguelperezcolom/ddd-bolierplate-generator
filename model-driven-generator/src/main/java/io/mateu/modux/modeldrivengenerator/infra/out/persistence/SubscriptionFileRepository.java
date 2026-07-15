@@ -57,7 +57,7 @@ public class SubscriptionFileRepository implements SubscriptionRepository {
                 entity.getFilterExpression(),
                 entity.getBatchSize(), entity.getBatchTimeout(), entity.getOffsetResetStrategy(),
                 entity.getConsumerTimeout(),
-                entity.isIdempotencyEnabled(), entity.getIdempotencyKeyField()));
+                entity.isIdempotencyEnabled(), entity.getIdempotencyKeyField(), null));
         return entity;
     }
 

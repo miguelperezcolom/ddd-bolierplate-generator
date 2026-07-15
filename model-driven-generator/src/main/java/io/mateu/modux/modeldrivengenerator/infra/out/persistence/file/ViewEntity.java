@@ -17,6 +17,9 @@ public record ViewEntity(
         String kind,            // "CURATED" (members listed) or "COMPUTED" (members derived from a seed)
         List<String> memberIds,
         String seedId           // COMPUTED: the element whose dependency closure is the view
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     @Override

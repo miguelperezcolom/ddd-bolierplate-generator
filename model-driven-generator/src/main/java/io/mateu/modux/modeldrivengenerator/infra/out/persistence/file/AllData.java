@@ -57,7 +57,8 @@ public record AllData(
         List<NoteEntity> notes,
         List<AreaEntity> areas,
         List<ArchimateRelationEntity> archimateRelations,
-        List<UiEntity> uis
+        List<UiEntity> uis,
+        List<UrlEntity> urls
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -66,7 +67,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     public AllData {
@@ -125,5 +126,6 @@ public record AllData(
         areas = areas != null ? areas : List.of();
         archimateRelations = archimateRelations != null ? archimateRelations : List.of();
         uis = uis != null ? uis : List.of();
+        urls = urls != null ? urls : List.of();
     }
 }

@@ -124,6 +124,11 @@
         "persistenceType" : {
           "$ref" : "#/$defs/AggregatePersistenceType"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "snapshotFrequency" : {
           "type" : "integer"
         },
@@ -234,6 +239,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "ragIds" : {
           "description" : "References to existing 'rag' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -291,6 +301,11 @@
           "items" : {
             "$ref" : "#/$defs/ApiOperationEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "publishedByExternalSystemId" : {
           "type" : "string",
@@ -380,6 +395,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -395,6 +415,11 @@
         },
         "label" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sourceId" : {
           "type" : "string",
@@ -423,6 +448,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -441,6 +471,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "steps" : {
           "type" : "string"
@@ -603,6 +638,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "projectionIds" : {
           "description" : "References to existing 'projection' ids (referential integrity is checked by the linter).",
@@ -783,6 +823,11 @@
         "priority" : {
           "type" : "integer"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "ruleGroup" : {
           "type" : "string"
         }
@@ -814,6 +859,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -844,6 +894,11 @@
         },
         "presentationType" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "queryServiceId" : {
           "type" : "string",
@@ -909,6 +964,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "usedElementIds" : {
           "description" : "References to existing 'usedElement' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -938,6 +998,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rationale" : {
           "type" : "string"
@@ -999,6 +1064,11 @@
           "items" : {
             "$ref" : "#/$defs/DiagramNodeEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -1064,6 +1134,11 @@
           "description" : "Reference to an existing 'ownerBoundedContext' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "queryOperationId" : {
           "type" : "string",
           "description" : "Reference to an existing 'queryOperation' id (referential integrity is checked by the linter).",
@@ -1116,6 +1191,11 @@
         },
         "partitions" : {
           "type" : "integer"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "publishAsIntegrationEvent" : {
           "type" : "boolean"
@@ -1188,6 +1268,11 @@
           "items" : {
             "$ref" : "#/$defs/OperationEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -1220,6 +1305,11 @@
           "type" : "string",
           "description" : "Reference to an existing 'parentAggregate' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -1231,6 +1321,11 @@
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "values" : {
@@ -1300,6 +1395,11 @@
         "ownerBoundedContextId" : {
           "type" : "string",
           "description" : "Reference to an existing 'ownerBoundedContext' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "steps" : {
@@ -1567,6 +1667,11 @@
             "type" : "string"
           }
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "readModelName" : {
           "type" : "string"
         },
@@ -1677,6 +1782,11 @@
           "items" : {
             "$ref" : "#/$defs/GatewayOperationEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rateLimitBurstSize" : {
           "type" : "integer"
@@ -1823,6 +1933,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "publishedByExternalSystemId" : {
           "type" : "string",
           "description" : "Reference to an existing 'publishedByExternalSystem' id (referential integrity is checked by the linter).",
@@ -1876,6 +1991,11 @@
         "payloadModelId" : {
           "type" : "string",
           "description" : "Reference to an existing 'payloadModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "replayable" : {
@@ -1948,6 +2068,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -1972,6 +2097,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -2152,6 +2282,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "ragIds" : {
           "description" : "References to existing 'rag' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -2216,6 +2351,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "validations" : {
           "type" : "array",
@@ -2311,6 +2451,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rules" : {
           "type" : "array",
@@ -2424,6 +2569,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -2441,6 +2591,11 @@
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "targetIds" : {
@@ -2486,6 +2641,11 @@
         "ownerBoundedContextId" : {
           "type" : "string",
           "description" : "Reference to an existing 'ownerBoundedContext' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "recipientExpression" : {
@@ -2646,6 +2806,9 @@
           "description" : "Reference to an existing 'customCode' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "favicon" : {
+          "type" : "string"
+        },
         "fieldConfigs" : {
           "type" : "array",
           "items" : {
@@ -2678,6 +2841,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "route" : {
           "type" : "string"
         },
@@ -2686,6 +2854,12 @@
           "items" : {
             "$ref" : "#/$defs/PageRuleEntity"
           }
+        },
+        "style" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
         },
         "toolbar" : {
           "type" : "array",
@@ -2889,6 +3063,11 @@
         "ownerBoundedContextId" : {
           "type" : "string",
           "description" : "Reference to an existing 'ownerBoundedContext' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sla" : {
@@ -3229,6 +3408,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "readModelId" : {
           "type" : "string",
           "description" : "Reference to an existing 'readModel' id (referential integrity is checked by the linter).",
@@ -3312,6 +3496,11 @@
           "items" : {
             "$ref" : "#/$defs/ProxyOperationRouteEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "publishedByExternalSystemId" : {
           "type" : "string",
@@ -3404,6 +3593,11 @@
           "items" : {
             "$ref" : "#/$defs/QueryOperationEntity"
           }
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -3440,6 +3634,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "sourceApiIds" : {
           "description" : "References to existing 'sourceApi' ids (referential integrity is checked by the linter).",
@@ -3521,6 +3720,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "storageType" : {
           "$ref" : "#/$defs/ReadModelStorageType"
         }
@@ -3575,6 +3779,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "uiAdapterIds" : {
           "description" : "References to existing 'uiAdapter' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -3609,6 +3818,11 @@
         },
         "persistenceEnabled" : {
           "type" : "boolean"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "retryBackoffMs" : {
           "type" : "integer"
@@ -3734,6 +3948,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "retryCount" : {
           "type" : "integer"
@@ -3868,6 +4087,11 @@
         "port" : {
           "type" : "integer"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "readTimeoutMs" : {
           "type" : "integer"
         },
@@ -3876,6 +4100,14 @@
         },
         "startupProbe" : {
           "type" : "string"
+        },
+        "urlIds" : {
+          "description" : "References to existing 'url' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
         },
         "writeTimeoutMs" : {
           "type" : "integer"
@@ -4010,6 +4242,11 @@
         "offsetResetStrategy" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "retryCount" : {
           "type" : "integer"
         },
@@ -4066,6 +4303,11 @@
         },
         "output" : {
           "$ref" : "#/$defs/TransformationRefEntity"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -4142,6 +4384,11 @@
         },
         "path" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "serviceId" : {
           "type" : "string",
@@ -4241,6 +4488,14 @@
     "UiEntity" : {
       "type" : "object",
       "properties" : {
+        "actorIds" : {
+          "description" : "References to existing 'actor' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
         "appIds" : {
           "description" : "References to existing 'app' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -4257,10 +4512,16 @@
         "description" : {
           "type" : "string"
         },
+        "frontendComponentPath" : {
+          "type" : "string"
+        },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "indexHtmlPath" : {
+          "type" : "string"
         },
         "name" : {
           "type" : "string"
@@ -4272,6 +4533,14 @@
             "type" : "string",
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
+        },
+        "path" : {
+          "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "required" : [ "id" ],
@@ -4378,6 +4647,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "serviceIds" : {
           "description" : "References to existing 'service' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -4388,6 +4662,32 @@
         },
         "title" : {
           "type" : "string"
+        },
+        "url" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "UrlEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "url" : {
           "type" : "string"
@@ -4493,6 +4793,11 @@
         },
         "policy" : {
           "type" : "boolean"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "rateLimitEnabled" : {
           "type" : "boolean"
@@ -4623,6 +4928,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "type" : {
           "type" : "string"
         },
@@ -4658,6 +4968,11 @@
         "name" : {
           "type" : "string"
         },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "seedId" : {
           "type" : "string",
           "description" : "Reference to an existing 'seed' id (referential integrity is checked by the linter).",
@@ -4691,6 +5006,11 @@
         },
         "onCompletionEventName" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "steps" : {
           "type" : "array",
@@ -4736,6 +5056,11 @@
         },
         "name" : {
           "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "semantics" : {
           "type" : "string"
@@ -5161,6 +5486,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UiEntity"
+      }
+    },
+    "urls" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/UrlEntity"
       }
     },
     "useCases" : {

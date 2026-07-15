@@ -14,12 +14,15 @@ public record ReadModelEntity(
         ReadModelConsistency consistency,
         /** The aggregate this read model is a view of (optional; its model seeds the shape). */
         String aggregateId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-aggregateId callers and stores). */
     public ReadModelEntity(String id, String name, String boundedContextId, String description,
                            String modelId, ReadModelStorageType storageType,
                            ReadModelConsistency consistency) {
-        this(id, name, boundedContextId, description, modelId, storageType, consistency, null);
+        this(id, name, boundedContextId, description, modelId, storageType, consistency, null, null);
     }
 }

@@ -22,6 +22,9 @@ public record ProcessEntity(
         String sla,
         /** Architecture decisions (ADRs) this process traces back to. */
         List<String> decisionIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public ProcessEntity {
@@ -33,6 +36,6 @@ public record ProcessEntity(
                          String triggerEvent, String ownerBoundedContextId, List<ProcessStepEntity> steps,
                          String onCompletionEventName, String sla) {
         this(id, name, description, triggerAggregateId, triggerEvent, ownerBoundedContextId, steps,
-                onCompletionEventName, sla, List.of());
+                onCompletionEventName, sla, List.of(), null);
     }
 }

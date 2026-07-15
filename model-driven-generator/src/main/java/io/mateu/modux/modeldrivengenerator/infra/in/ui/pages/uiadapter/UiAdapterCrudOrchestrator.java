@@ -47,15 +47,24 @@ public class UiAdapterCrudOrchestrator extends Crud<
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object saveNew(HttpRequest httpRequest) {
-        return adapter.getCreationForm(httpRequest).create(httpRequest);
+        // The creation form's values travel as initiatorState too — a fresh bean
+        // from the adapter would persist an EMPTY element.
+        var form = (io.mateu.uidl.interfaces.CrudCreationForm<Object>)
+                httpRequest.getInitiatorState(creationFormClass());
+        return form.create(httpRequest);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object save(HttpRequest httpRequest) {
-        var id = httpRequest.getString(getIdFieldForRow());
-        adapter.getEditor(toId(id), httpRequest).save(httpRequest);
-        return id;
+        // The EDITED state travels as initiatorState — the store still holds the old
+        // values, so reloading the editor here would silently discard the edit.
+        var edited = (io.mateu.uidl.interfaces.CrudEditorForm<Object>)
+                httpRequest.getInitiatorState(editorClass());
+        edited.save(httpRequest);
+        return edited.id();
     }
 
     @Override

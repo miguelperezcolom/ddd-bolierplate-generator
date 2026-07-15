@@ -58,7 +58,7 @@ public class ProcessExpander {
                         "act-" + base, "start" + process.name(), SubscriptionActionType.StartSaga,
                         null, sagaId, null, null)),
                 null, null, null, null, null, null,
-                true, "id");
+                true, "id", null);
 
         var humanSteps = process.steps().stream().filter(s -> s.type() == ProcessStepType.HUMAN).toList();
         ModelEntity taskModel = null;
@@ -74,7 +74,7 @@ public class ProcessExpander {
                     field(modelId, "status", FieldDataType.status),
                     field(modelId, "dueAt", FieldDataType.dateTime),
                     field(modelId, "createdAt", FieldDataType.dateTime)),
-                    List.of());
+                    List.of(), null);
             taskReadModel = new ReadModelEntity(
                     "rm-" + base + "-tasks", process.name() + "Tasks", process.ownerBoundedContextId(),
                     "Worklist of pending human tasks of the " + process.name() + " process.",
@@ -92,7 +92,7 @@ public class ProcessExpander {
                     "Escalates '" + step.name() + "' tasks overdue past " + step.deadline()
                             + (step.escalationRoleId() != null ? " to role " + step.escalationRoleId() : "") + ".",
                     null, null, null, null, null,
-                    false, true, 3));
+                    false, true, 3, null));
         }
 
         var completionName = process.onCompletionEventName() != null && !process.onCompletionEventName().isBlank()
@@ -103,7 +103,7 @@ public class ProcessExpander {
                 true, null, completionTopic, null, null,
                 IntegrationEventSerializationFormat.JSON.name(),
                 IntegrationEventCompressionType.NONE.name(),
-                true, completionTopic + ".dlq", 5, "v1", null, true);
+                true, completionTopic + ".dlq", 5, "v1", null, true, null);
 
         return new ProcessExpansion(subscription, saga, taskModel, taskReadModel, deadlineTriggers, completionEvent);
     }
@@ -134,7 +134,7 @@ public class ProcessExpander {
                 sagaId, process.name() + "Saga",
                 slaMillis(process.sla()), null,
                 triggerEventId != null ? List.of(triggerEventId) : List.of(),
-                steps, 3, null, dlq, true);
+                steps, 3, null, dlq, true, null);
     }
 
     /** Rough ISO-8601 duration → millis for the saga timeout; null when no SLA is declared. */

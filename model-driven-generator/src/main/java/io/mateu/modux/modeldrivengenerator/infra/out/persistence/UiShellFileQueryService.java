@@ -34,7 +34,7 @@ public class UiShellFileQueryService implements UiShellQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, UiShellEntity.class).map(UiShellEntity::name).orElseThrow();
+        return repository.findById(id, UiShellEntity.class).map(UiShellEntity::name).orElse(null);
     }
 
     @Override

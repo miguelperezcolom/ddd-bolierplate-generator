@@ -42,7 +42,7 @@ public class BoundedContextFileQueryService implements BoundedContextQueryServic
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, BoundedContextEntity.class).map(BoundedContextEntity::name).orElseThrow();
+        return repository.findById(id, BoundedContextEntity.class).map(BoundedContextEntity::name).orElse(null);
     }
 
     @Override

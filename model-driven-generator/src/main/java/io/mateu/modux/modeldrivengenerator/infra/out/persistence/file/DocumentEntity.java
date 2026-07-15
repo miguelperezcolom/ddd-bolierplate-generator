@@ -25,6 +25,9 @@ public record DocumentEntity(
         /** Where the template lives (URI), or its intent in prose. */
         String templateUri,
         String description
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public static final Set<String> KINDS = Set.of("DOCUMENT", "REPORT");

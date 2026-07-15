@@ -12,11 +12,14 @@ public record QueryServiceEntity(
         List<QueryOperationEntity> operations,
         /** Exposed as a gRPC API — required when consumed from a boundedContext deployed in another service. */
         boolean exposedAsGrpc
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-exposedAsGrpc callers and stores). */
     public QueryServiceEntity(String id, String name, String boundedContextId, String description,
                               List<QueryOperationEntity> operations) {
-        this(id, name, boundedContextId, description, operations, false);
+        this(id, name, boundedContextId, description, operations, false, null);
     }
 }

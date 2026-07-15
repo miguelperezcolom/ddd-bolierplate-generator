@@ -1,10 +1,20 @@
-<#assign pageSlug = page.name?lower_case?replace("[^a-z0-9]","",'r')>
+<#assign pageSlug = pageSlug!(page.name?lower_case?replace("[^a-z0-9]","",'r'))>
 <#assign aggregateSlug = aggregate.name?lower_case>
 <#assign moduleSlugVal = module.name?lower_case?replace("[^a-z0-9]","",'r')>
 package ${project.packageName}.${moduleSlugVal}.infra.in.ui.pages.${pageSlug};
 
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
+<#if ui??>
+import io.mateu.uidl.annotations.UI;
+</#if>
 import io.mateu.uidl.annotations.Title;
+<#if page.favicon?has_content>
+import io.mateu.uidl.annotations.FavIcon;
+</#if>
+<#if page.style?has_content>
+import io.mateu.uidl.StyleConstants;
+import io.mateu.uidl.annotations.Style;
+</#if>
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
@@ -28,8 +38,18 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
-@Title("${page.name}")
-public class ${page.name?cap_first?replace("[^a-zA-Z0-9]","",'r')}Page extends Crud<
+<#if ui??>
+<#assign uiPath = (ui.path?has_content)?then(ui.path, '')>
+@UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)
+</#if>
+@Title("${page.title!page.name}")
+<#if page.favicon?has_content>
+@FavIcon("${page.favicon}")
+</#if>
+<#if page.style?has_content>
+@Style(StyleConstants.${page.style})
+</#if>
+public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} extends Crud<
         ${aggregate.name}ViewModel,
         ${aggregate.name}ViewModel,
         ${aggregate.name}ViewModel,

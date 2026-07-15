@@ -51,6 +51,9 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     String outputPath;
     @NotEmpty
     String packageName;
+
+    @io.mateu.uidl.annotations.Help("Registry/usuario por defecto para las imágenes de los servicios (p. ej. docker.io/miguelperezcolom). Cada servicio puede sobreescribirlo.")
+    String dockerRegistry;
     String gitRepository;
     String database;
     DbMigrationTool dbMigrationTool;
@@ -100,6 +103,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
     @Tab("Context Map")
     List<ContextMapRelationViewModel> contextMap = new ArrayList<>();
 
+    final io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore store;
     final CreateProjectUseCase createUseCase;
     final SaveProjectUseCase saveUseCase;
 
@@ -124,6 +128,7 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 toEnvironmentEntityList(environments),
                 services,
                 toContextMapData(contextMap)));
+        stampExtras();
         return id;
     }
 
@@ -148,6 +153,15 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
                 toEnvironmentEntityList(environments),
                 services,
                 toContextMapData(contextMap)));
+        stampExtras();
+    }
+
+    /** Fields the domain does not model yet: straight onto the stored entity. */
+    private void stampExtras() {
+        store.findById(id, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
+                .ifPresent(p -> store.save(p.toBuilder()
+                        .dockerRegistry(dockerRegistry == null || dockerRegistry.isBlank() ? null : dockerRegistry.trim())
+                        .build()));
     }
 
     @Override
@@ -160,6 +174,10 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         outputPath = model.outputPath();
         packageName = model.packageName();
+        dockerRegistry = store.findById(id,
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::dockerRegistry)
+                .orElse(null);
         gitRepository = model.gitRepository();
         database = model.database();
         dbMigrationTool = model.dbMigrationTool();

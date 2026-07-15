@@ -48,7 +48,7 @@ public class BusinessRuleFileRepository implements BusinessRuleRepository {
                 entity.isEnabled(),
                 entity.getRuleGroup(),
                 toConditionEntities(entity.getConditions()),
-                toActionEntities(entity.getActions())));
+                toActionEntities(entity.getActions()), null));
         return entity;
     }
 

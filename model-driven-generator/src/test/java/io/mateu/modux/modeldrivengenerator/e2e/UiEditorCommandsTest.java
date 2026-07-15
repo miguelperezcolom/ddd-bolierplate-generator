@@ -49,7 +49,7 @@ class UiEditorCommandsTest {
                 {"kind":"add-query-service","id":"test-qs","name":"ReservasDelDia","boundedContextId":"test-mod"}""");
         apply("""
                 {"kind":"add-actor","id":"test-actor","name":"Recepción"}""");
-        repository.save(new ModelEntity("test-model", "ReservaForm", List.of(), List.of()));
+        repository.save(new ModelEntity("test-model", "ReservaForm", List.of(), List.of(), null));
 
         // ── the UI map: app → page (born on the menu) → button, listing, viewmodel, actor ──
         apply("""

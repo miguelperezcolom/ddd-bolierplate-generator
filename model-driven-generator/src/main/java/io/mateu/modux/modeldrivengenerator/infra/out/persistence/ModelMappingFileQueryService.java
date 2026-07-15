@@ -38,7 +38,7 @@ public class ModelMappingFileQueryService implements ModelMappingQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ModelMappingEntity.class).map(ModelMappingEntity::name).orElseThrow();
+        return repository.findById(id, ModelMappingEntity.class).map(ModelMappingEntity::name).orElse(null);
     }
 
     @Override

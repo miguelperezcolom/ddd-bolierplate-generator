@@ -52,7 +52,7 @@ public class ImportOpenApiUseCase {
                     g.authBearerToken(), g.authOAuth2ClientId(), g.authOAuth2ClientSecret(),
                     g.authOAuth2TokenUrl(), g.authOAuth2Scopes(), result.operations(),
                     g.rateLimitEnabled(), g.rateLimitRequestsPerSecond(), g.rateLimitBurstSize(),
-                    g.corsEnabled(), g.corsAllowedOrigins(), g.globalTimeoutMs());
+                    g.corsEnabled(), g.corsAllowedOrigins(), g.globalTimeoutMs(), null);
         } else {
             String serviceId = command.serviceId() != null && !command.serviceId().isBlank()
                     ? command.serviceId() : null;
@@ -61,7 +61,7 @@ public class ImportOpenApiUseCase {
                     UUID.randomUUID().toString(), name, serviceId, baseUrl,
                     auth.type(), null, null, auth.apiKeyHeaderName(),
                     null, null, null, auth.oauthTokenUrl(), auth.oauthScopes(), result.operations(),
-                    false, null, null, false, null, null);
+                    false, null, null, false, null, null, null);
         }
 
         repository.save(gatewayEntity);

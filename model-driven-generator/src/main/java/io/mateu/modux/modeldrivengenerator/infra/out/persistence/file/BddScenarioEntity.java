@@ -8,5 +8,8 @@ public record BddScenarioEntity(
         String name,
         String tags,
         String steps
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

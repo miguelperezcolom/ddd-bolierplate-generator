@@ -59,6 +59,9 @@ public record BoundedContextEntity(
         String identityProviderId,
         /** UI apps owned by this bounded context (dropped inside it on the context map). */
         List<String> uiAdapterIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-uiAdapterIds callers and stores). */
@@ -80,7 +83,7 @@ public record BoundedContextEntity(
                 autoTableNamePrefix, version, bffs, acls, domainPolicies, invariants, subdomainType,
                 accessPolicies, kpis, decisionIds, description, readSideBoundedContextId,
                 readSideExternalSystemId, readSideVia, domainServiceIds, applicationEventIds,
-                identityProviderId, List.of());
+                identityProviderId, List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-identityProviderId callers and stores). */

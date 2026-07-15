@@ -34,7 +34,7 @@ public class FlowFileQueryService implements FlowQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, FlowEntity.class).map(FlowEntity::name).orElseThrow();
+        return repository.findById(id, FlowEntity.class).map(FlowEntity::name).orElse(null);
     }
 
     @Override

@@ -36,7 +36,7 @@ public class ServiceFileQueryService implements ServiceQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ServiceEntity.class).map(ServiceEntity::name).orElseThrow();
+        return repository.findById(id, ServiceEntity.class).map(ServiceEntity::name).orElse(null);
     }
 
     @Override

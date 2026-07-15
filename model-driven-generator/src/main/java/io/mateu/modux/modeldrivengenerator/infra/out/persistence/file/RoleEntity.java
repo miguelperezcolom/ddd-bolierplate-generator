@@ -17,13 +17,16 @@ public record RoleEntity(
         List<String> aiAgentIds,
         /** UI apps (UiAdapter) this actor uses — the actor→app link of the UI map. */
         List<String> uiAdapterIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-uiAdapterIds callers and stores). */
     public RoleEntity(String id, String name, List<String> allowedUseCaseIds,
                       List<String> allowedQueryServiceIds, List<String> externalSystemIds,
                       List<String> aiAgentIds) {
-        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds, aiAgentIds, List.of());
+        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds, aiAgentIds, List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-aiAgentIds callers and stores). */

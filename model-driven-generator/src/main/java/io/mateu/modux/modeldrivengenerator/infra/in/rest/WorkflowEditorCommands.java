@@ -122,7 +122,7 @@ public class WorkflowEditorCommands {
                 command.id(), command.name(), null,
                 command.triggerAggregateId(), command.triggerDomainServiceId(),
                 command.triggerUseCaseId(), command.triggerEvent(),
-                steps, command.completionEventName(), List.of()));
+                steps, command.completionEventName(), List.of(), null));
     }
 
     public void removeWorkflow(EditorCommand command) {
@@ -135,7 +135,7 @@ public class WorkflowEditorCommands {
         repository.save(new WorkflowEntity(wf.id(), wf.name(), wf.description(),
                 command.triggerAggregateId(), command.triggerDomainServiceId(),
                 command.triggerUseCaseId(), command.triggerEvent(),
-                wf.steps(), wf.onCompletionEventName(), wf.decisionIds()));
+                wf.steps(), wf.onCompletionEventName(), wf.decisionIds(), null));
     }
 
     /**
@@ -164,7 +164,7 @@ public class WorkflowEditorCommands {
             }
             repository.save(new WorkflowEntity(process.id(), process.name(), process.description(),
                     process.triggerAggregateId(), null, null, process.triggerEvent(),
-                    steps, process.onCompletionEventName(), process.decisionIds()));
+                    steps, process.onCompletionEventName(), process.decisionIds(), null));
             repository.deleteAllById(List.of(process.id()), ProcessEntity.class);
         }
     }
@@ -221,7 +221,7 @@ public class WorkflowEditorCommands {
                     notes.isEmpty() ? null : String.join(" · ", notes),
                     null, null, null,
                     triggers.isEmpty() ? null : triggers.get(0),
-                    chain, null, List.of()));
+                    chain, null, List.of(), null));
             // the owning contexts let go: workflows live outside every context
             repository.findAllOfType(BoundedContextEntity.class).stream()
                     .filter(mo -> mo.sagaIds() != null && mo.sagaIds().contains(saga.id()))

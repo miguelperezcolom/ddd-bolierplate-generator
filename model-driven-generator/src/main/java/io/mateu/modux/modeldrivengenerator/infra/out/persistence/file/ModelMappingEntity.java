@@ -20,11 +20,14 @@ public record ModelMappingEntity(
         List<ModelMappingRuleEntity> rules,
         /** The hand-written code this mapping delegates to (CustomCodeEntity). */
         String customCodeId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */
     public ModelMappingEntity(String id, String name, String sourceModelId, String targetModelId,
                               boolean hasCustomPart, List<ModelMappingRuleEntity> rules) {
-        this(id, name, sourceModelId, targetModelId, hasCustomPart, rules, null);
+        this(id, name, sourceModelId, targetModelId, hasCustomPart, rules, null, null);
     }
 }

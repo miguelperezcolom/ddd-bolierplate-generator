@@ -37,7 +37,7 @@ public class GatewayFileQueryService implements GatewayQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, GatewayEntity.class).map(GatewayEntity::name).orElseThrow();
+        return repository.findById(id, GatewayEntity.class).map(GatewayEntity::name).orElse(null);
     }
 
     @Override

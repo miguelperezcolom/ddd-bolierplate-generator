@@ -42,7 +42,7 @@ public class ProcessFileRepository implements ProcessRepository {
                 toStepEntities(entity.getSteps()),
                 entity.getOnCompletionEventName(),
                 entity.getSla(),
-                existing != null ? existing.decisionIds() : List.of()));
+                existing != null ? existing.decisionIds() : List.of(), null));
         return entity;
     }
 

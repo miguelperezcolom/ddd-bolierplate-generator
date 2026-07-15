@@ -139,7 +139,7 @@ public class AgentEditorCommands {
     public void addMcpGateway(EditorCommand command) {
         if (repository.findById(command.id(), McpGatewayEntity.class).isPresent()) return;
         repository.save(new McpGatewayEntity(command.id(), command.name(), null,
-                List.of(), List.of(), List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of(), List.of(), null));
     }
 
     /** Removing a gateway also unlinks it from every agent that consumed it. */

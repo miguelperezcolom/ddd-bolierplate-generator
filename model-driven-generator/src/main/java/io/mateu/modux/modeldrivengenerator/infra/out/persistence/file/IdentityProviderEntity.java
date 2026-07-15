@@ -22,6 +22,9 @@ public record IdentityProviderEntity(
         /** Federation: the external system publishing this IdP; null = ours. */
         String publishedByExternalSystemId,
         String description
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public static final Set<String> TYPES = Set.of("CORPORATE", "B2C", "SOCIAL", "PARTNER");

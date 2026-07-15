@@ -24,6 +24,9 @@ public record ModuleEntity(
         List<String> elementIds,
         /** The bounded context's default module: it holds every undistributed element. */
         boolean main
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public ModuleEntity {

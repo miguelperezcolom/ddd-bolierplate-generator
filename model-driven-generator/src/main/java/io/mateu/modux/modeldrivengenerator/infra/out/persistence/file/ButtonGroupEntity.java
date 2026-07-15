@@ -17,6 +17,9 @@ public record ButtonGroupEntity(
         List<GroupButtonEntity> buttons,
         /** Nested groups, by reference. */
         List<String> groupIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public ButtonGroupEntity {

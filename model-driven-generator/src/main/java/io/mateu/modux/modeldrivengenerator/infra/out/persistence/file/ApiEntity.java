@@ -22,18 +22,21 @@ public record ApiEntity(
         List<String> implementedByBoundedContextIds,
         /** Per-site wiring: the use case implementing an operation at a given implementation site. */
         List<ApiOperationImplementationEntity> operationImplementations
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-publishedByExternalSystemId callers and stores). */
     public ApiEntity(String id, String name, String description,
                      List<ApiOperationEntity> operations) {
-        this(id, name, description, operations, null, List.of(), List.of());
+        this(id, name, description, operations, null, List.of(), List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-implementedByBoundedContextIds callers and stores). */
     public ApiEntity(String id, String name, String description,
                      List<ApiOperationEntity> operations, String publishedByExternalSystemId) {
-        this(id, name, description, operations, publishedByExternalSystemId, List.of(), List.of());
+        this(id, name, description, operations, publishedByExternalSystemId, List.of(), List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-operationImplementations callers and stores). */
@@ -41,7 +44,7 @@ public record ApiEntity(
                      List<ApiOperationEntity> operations, String publishedByExternalSystemId,
                      List<String> implementedByBoundedContextIds) {
         this(id, name, description, operations, publishedByExternalSystemId,
-                implementedByBoundedContextIds, List.of());
+                implementedByBoundedContextIds, List.of(), null);
     }
 
     public List<ApiOperationEntity> operations() {

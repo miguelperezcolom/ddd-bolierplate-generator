@@ -19,6 +19,9 @@ public record CustomCodeEntity(
         String description,
         /** The elements this code touches (UI, use cases, models… — free-form intent). */
         java.util.List<String> usedElementIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public CustomCodeEntity {
@@ -27,6 +30,6 @@ public record CustomCodeEntity(
 
     /** Backward-compatible constructor (pre-usedElementIds callers and stores). */
     public CustomCodeEntity(String id, String name, String language, String description) {
-        this(id, name, language, description, null);
+        this(id, name, language, description, null, null);
     }
 }

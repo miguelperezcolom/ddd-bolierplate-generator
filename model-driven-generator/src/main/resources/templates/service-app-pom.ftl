@@ -27,6 +27,11 @@
             <version>${project.version!'0.0.1-SNAPSHOT'}</version>
         </dependency>
         <dependency>
+            <groupId>io.mateu</groupId>
+            <artifactId>annotation-processor-mvc</artifactId>
+            <version>0.0.1-MATEU</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
@@ -71,6 +76,23 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                        <path>
+                            <groupId>io.mateu</groupId>
+                            <artifactId>annotation-processor-mvc</artifactId>
+                            <version>0.0.1-MATEU</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

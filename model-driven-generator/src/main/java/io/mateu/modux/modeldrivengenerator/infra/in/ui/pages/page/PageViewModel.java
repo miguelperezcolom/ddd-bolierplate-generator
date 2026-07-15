@@ -10,6 +10,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageFieldSt
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageListingDataSourceType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleAction;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageStyle;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleFieldAttribute;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleResult;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageTriggerType;
@@ -30,6 +31,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageTrigge
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageValidationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageWizardStepEntity;
 import io.mateu.uidl.annotations.GeneratedValue;
+import io.mateu.uidl.annotations.Help;
 import io.mateu.uidl.annotations.Hidden;
 import io.mateu.uidl.annotations.Lookup;
 import io.mateu.uidl.annotations.MasterDetail;
@@ -61,6 +63,15 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
     String route;
 
     PageType type;
+
+    @Help("Título de la página — el @Title que llevará la clase generada.")
+    String title;
+
+    @Help("Favicon de la pestaña del navegador (ruta o URL).")
+    String favicon;
+
+    @Help("Preset de estilo — una de las StyleConstants de mateu.")
+    PageStyle style;
 
     @Hidden("state['type'] != 'CRUD'")
     @Lookup(search = AggregateIdOptionsSupplier.class, label = AggregateIdLabelSupplier.class)
@@ -160,7 +171,8 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 completionActions != null ? completionActions.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
-                listingQueryServiceId));
+                listingQueryServiceId,
+                favicon, title, style));
         return id;
     }
 
@@ -203,7 +215,8 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 completionActions != null ? completionActions.stream()
                         .map(v -> new PageButtonEntity(v.label(), v.icon(), v.useCaseId(), v.actionId(), v.mappingId()))
                         .toList() : List.of(),
-                listingQueryServiceId));
+                listingQueryServiceId,
+                favicon, title, style));
     }
 
     @Override
@@ -223,6 +236,9 @@ public class PageViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 ? PageListingDataSourceType.valueOf(model.listingDataSourceType()) : null;
         listingGatewayId = model.listingGatewayId();
         listingQueryServiceId = model.listingQueryServiceId();
+        favicon = model.favicon();
+        title = model.title();
+        style = model.style() != null ? PageStyle.valueOf(model.style()) : null;
         toolbar = model.toolbar() != null ? new ArrayList<>(model.toolbar().stream()
                 .map(e -> new PageButtonViewModel(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                 .toList()) : new ArrayList<>();

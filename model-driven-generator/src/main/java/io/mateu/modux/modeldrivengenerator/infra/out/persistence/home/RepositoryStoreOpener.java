@@ -44,6 +44,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         home.saveCurrentRepositoryId(repo.getId().id());
         // A project selection from another repository does not survive the switch.
         selectProject(home.loadCurrentProjectId().orElse(null));
+        adoptOrphans();
         log.info("proyecto abierto desde el repositorio {} en {}", repo.getName().name(), storePath);
         return storePath;
     }
@@ -69,6 +70,18 @@ public class RepositoryStoreOpener implements ProjectStorePort {
                 .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::id)
                 .orElse(null);
         home.saveCurrentProjectId(resolved);
+        // The store scopes the CRUD listings to the selection and stamps new elements with it.
+        repository.setCurrentProjectId(resolved);
+    }
+
+    /** Elements predating project scoping get adopted by the working project on open. */
+    private void adoptOrphans() {
+        currentProjectId().ifPresent(projectId -> {
+            var claimed = repository.claimOrphans(projectId);
+            if (claimed > 0) {
+                log.info("{} elementos sin proyecto adoptados por el proyecto '{}'", claimed, projectId);
+            }
+        });
     }
 
     /** A DATABASE repository: the catalog loads from rows; workspaces are rows too. */
@@ -82,6 +95,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
                 new io.mateu.modux.modeldrivengenerator.infra.out.db.DbWorkspaceStore(db, repository));
         home.saveCurrentRepositoryId(repo.getId().id());
         selectProject(home.loadCurrentProjectId().orElse(null));
+        adoptOrphans();
         log.info("proyecto abierto desde el repositorio DATABASE {} ({})",
                 repo.getName().name(), repo.getJdbcUrl());
         return home.homeDir();

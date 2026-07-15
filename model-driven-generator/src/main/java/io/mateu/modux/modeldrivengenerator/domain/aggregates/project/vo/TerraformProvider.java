@@ -5,5 +5,6 @@ public enum TerraformProvider {
     Azure,
     GCP,
     DigitalOcean,
+    Hetzner,
     Custom
 }

@@ -15,6 +15,9 @@ public record DomainServiceEntity(
         String name,
         String description,
         List<OperationEntity> operations
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public List<OperationEntity> operations() {

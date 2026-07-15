@@ -37,7 +37,7 @@ public class WorkflowFileQueryService implements WorkflowQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, WorkflowEntity.class).map(WorkflowEntity::name).orElseThrow();
+        return repository.findById(id, WorkflowEntity.class).map(WorkflowEntity::name).orElse(null);
     }
 
     @Override

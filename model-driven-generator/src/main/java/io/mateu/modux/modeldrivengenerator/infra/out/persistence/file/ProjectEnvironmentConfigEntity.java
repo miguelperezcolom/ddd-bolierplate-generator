@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
+@lombok.Builder(toBuilder = true)
 public record ProjectEnvironmentConfigEntity(
         String environment,
         String kubernetesClusterUrl,

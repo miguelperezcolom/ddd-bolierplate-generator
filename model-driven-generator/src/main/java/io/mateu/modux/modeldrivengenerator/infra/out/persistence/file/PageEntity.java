@@ -40,7 +40,16 @@ public record PageEntity(
         /** Button groups hooked to the page's toolbar. */
         List<String> toolbarGroupIds,
         /** Button groups hooked to the page's bottom bar. */
-        List<String> bottomBarGroupIds
+        List<String> bottomBarGroupIds,
+        /** The browser-tab favicon the page declares (path or URL). */
+        String favicon,
+        /** The page's {@code @Title}. */
+        String title,
+        /** Style preset — the name of one of mateu's {@code StyleConstants}. */
+        String style
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-buttonGroups callers and stores). */
@@ -57,7 +66,8 @@ public record PageEntity(
         this(id, name, route, type, aggregateId, modelId, componentIds, listingDataSourceType,
                 listingGatewayId, toolbar, bottomBar, triggers, rules, validations, fieldConfigs,
                 wizardSteps, completionActions, listingQueryServiceId, content, crudDetailPageId,
-                crudDetailAppId, crudCreatePageId, crudCreateAppId, customCodeId, null, null);
+                crudDetailAppId, crudCreatePageId, crudCreateAppId, customCodeId, null, null,
+                null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */

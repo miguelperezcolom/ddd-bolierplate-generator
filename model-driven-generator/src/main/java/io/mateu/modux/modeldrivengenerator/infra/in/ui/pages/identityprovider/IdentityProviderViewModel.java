@@ -45,7 +45,7 @@ public class IdentityProviderViewModel implements Identifiable, CrudEditorForm<S
     @Override
     public String create(HttpRequest httpRequest) {
         repository.save(new IdentityProviderEntity(id, name,
-                type == null ? null : type.name(), issuer, null, description));
+                type == null ? null : type.name(), issuer, null, description, null));
         return id;
     }
 

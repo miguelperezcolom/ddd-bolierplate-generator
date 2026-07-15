@@ -35,7 +35,7 @@ public class ReadModelFileQueryService implements ReadModelQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ReadModelEntity.class).map(ReadModelEntity::name).orElseThrow();
+        return repository.findById(id, ReadModelEntity.class).map(ReadModelEntity::name).orElse(null);
     }
 
     @Override

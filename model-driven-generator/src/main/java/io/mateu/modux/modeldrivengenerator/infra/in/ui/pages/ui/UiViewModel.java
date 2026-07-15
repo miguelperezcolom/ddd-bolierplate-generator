@@ -34,8 +34,17 @@ public class UiViewModel implements Identifiable, CrudEditorForm<String>, CrudCr
     @NotEmpty
     String name;
 
+    @Help("El path donde monta la UI — el parámetro value de @UI en mateu (p. ej. vacío para la raíz, o /backoffice).")
+    String path;
+
     @Help("Qué ofrece esta interfaz a las personas que la usan.")
     String description;
+
+    @Help("Ruta del index.html — @UI.indexHtmlPath; vacío = el default de mateu (/static/_index.html).")
+    String indexHtmlPath;
+
+    @Help("Ruta del componente frontend — @UI.frontendComponentPath; vacío = el default de mateu (/assets/mateu.js).")
+    String frontendComponentPath;
 
     @Lookup(search = ModuleIdOptionsSupplier.class, label = ModuleIdLabelSupplier.class)
     @Help("El bounded context que la expone (vacío = suelta).")
@@ -47,6 +56,7 @@ public class UiViewModel implements Identifiable, CrudEditorForm<String>, CrudCr
     public String create(HttpRequest httpRequest) {
         repository.save(UiEntity.builder()
                 .id(id).name(name).description(description)
+                .path(path).indexHtmlPath(indexHtmlPath).frontendComponentPath(frontendComponentPath)
                 .boundedContextId(boundedContextId)
                 .build());
         return id;
@@ -57,7 +67,9 @@ public class UiViewModel implements Identifiable, CrudEditorForm<String>, CrudCr
         var current = repository.findById(id, UiEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Desconocida: " + id));
         repository.save(current.toBuilder()
-                .name(name).description(description).boundedContextId(boundedContextId)
+                .name(name).description(description)
+                .path(path).indexHtmlPath(indexHtmlPath).frontendComponentPath(frontendComponentPath)
+                .boundedContextId(boundedContextId)
                 .build());
     }
 
@@ -70,6 +82,9 @@ public class UiViewModel implements Identifiable, CrudEditorForm<String>, CrudCr
         id = entity.id();
         name = entity.name();
         description = entity.description();
+        path = entity.path();
+        indexHtmlPath = entity.indexHtmlPath();
+        frontendComponentPath = entity.frontendComponentPath();
         boundedContextId = entity.boundedContextId();
         return this;
     }

@@ -16,12 +16,12 @@ class ModelJourneyRendererTest {
 
     @Test
     void a_model_shows_every_role_it_plays_and_its_mapping_edges() {
-        var reserva = new ModelEntity("m-reserva", "Reserva", List.of(), List.of());
-        var bookInput = new ModelEntity("m-book", "BookInput", List.of(), List.of());
+        var reserva = new ModelEntity("m-reserva", "Reserva", List.of(), List.of(), null);
+        var bookInput = new ModelEntity("m-book", "BookInput", List.of(), List.of(), null);
 
         var aggregate = new AggregateEntity("agg", "Reserva", "m-reserva", null, null, null, null,
                 false, true, null, List.of(), List.of(), List.of(), null, false);
-        var pax = new EntityEntity("ent-pax", "Pax", "m-book", "agg", true);
+        var pax = new EntityEntity("ent-pax", "Pax", "m-book", "agg", true, null);
         var book = new UseCaseEntity("uc-book", "BookHotel", false, true, false, false, false,
                 "m-book", "m-reserva", List.of(), List.of(), List.of(), null, null, null, null,
                 null, null, null, null, null, false, null, null, null, false, null, false, null,
@@ -46,7 +46,7 @@ class ModelJourneyRendererTest {
 
     @Test
     void an_unused_model_is_flagged_in_the_journey() {
-        var orphan = new ModelEntity("m-x", "Huerfano", List.of(), List.of());
+        var orphan = new ModelEntity("m-x", "Huerfano", List.of(), List.of(), null);
         var snapshot = new ModelSnapshot(null, null, null, null, List.of(orphan), null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null);
 

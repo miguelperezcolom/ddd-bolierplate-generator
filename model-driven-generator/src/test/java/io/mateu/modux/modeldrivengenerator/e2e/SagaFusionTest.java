@@ -56,7 +56,7 @@ class SagaFusionTest {
                                 null, null, null, "uc-confirmar", null),
                         new SagaStepEntity("sg-undo", "Liberar fondos", null, null, null, null,
                                 null, null, null, "uc-liberar", null)),
-                3, 1000L, "dlq-pagos", true));
+                3, 1000L, "dlq-pagos", true, null));
         var boundedContext = repository.findById("mod-s",
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class).orElseThrow();
         repository.save(boundedContext.toBuilder().sagaIds(List.of("saga-pago")).build());

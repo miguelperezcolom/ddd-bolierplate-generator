@@ -35,7 +35,7 @@ public class IntegrationEventFileQueryService implements IntegrationEventQuerySe
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, IntegrationEventEntity.class).map(IntegrationEventEntity::name).orElseThrow();
+        return repository.findById(id, IntegrationEventEntity.class).map(IntegrationEventEntity::name).orElse(null);
     }
 
     @Override

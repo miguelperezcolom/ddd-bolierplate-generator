@@ -37,7 +37,7 @@ public class ComponentFileRepository implements ComponentRepository {
                 entity.getDataSourceType() != null ? entity.getDataSourceType().name() : null,
                 entity.getGatewayId(),
                 entity.getPresentationType() != null ? entity.getPresentationType().name() : null,
-                entity.getQueryServiceId()));
+                entity.getQueryServiceId(), null));
         return entity;
     }
 

@@ -42,7 +42,7 @@ public class DomainEventFileRepository implements DomainEventRepository {
                 entity.getCompressionType() != null ? entity.getCompressionType().name() : null,
                 entity.isDeadLetterQueueEnabled(), entity.getDeadLetterQueueName(),
                 entity.getMaxDeliveryAttempts(), entity.getSchemaVersion(), entity.getRoutingKeyField(),
-                entity.isReplayable()));
+                entity.isReplayable(), null));
         return entity;
     }
 

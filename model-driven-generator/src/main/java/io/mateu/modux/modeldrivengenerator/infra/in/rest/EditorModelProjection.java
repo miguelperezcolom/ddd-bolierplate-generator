@@ -112,28 +112,28 @@ public class EditorModelProjection {
     private final UiEditorCommands uiCommands;
 
     public EditorModelDto build() {
-        var services = repository.findAllOfType(ServiceEntity.class);
-        var useCasesById = repository.findAllOfType(UseCaseEntity.class).stream()
+        var services = scoped(ServiceEntity.class);
+        var useCasesById = scoped(UseCaseEntity.class).stream()
                 .collect(Collectors.toMap(UseCaseEntity::id, uc -> uc, (a, b) -> a));
-        var domainEventsById = repository.findAllOfType(DomainEventEntity.class).stream()
+        var domainEventsById = scoped(DomainEventEntity.class).stream()
                 .collect(Collectors.toMap(DomainEventEntity::id, ev -> ev, (a, b) -> a));
-        var readModelsById = repository.findAllOfType(ReadModelEntity.class).stream()
+        var readModelsById = scoped(ReadModelEntity.class).stream()
                 .collect(Collectors.toMap(ReadModelEntity::id, rm -> rm, (a, b) -> a));
-        var domainServicesById = repository.findAllOfType(DomainServiceEntity.class).stream()
+        var domainServicesById = scoped(DomainServiceEntity.class).stream()
                 .collect(Collectors.toMap(DomainServiceEntity::id, ds -> ds, (a, b) -> a));
-        var applicationEventsById = repository.findAllOfType(ApplicationEventEntity.class).stream()
+        var applicationEventsById = scoped(ApplicationEventEntity.class).stream()
                 .collect(Collectors.toMap(ApplicationEventEntity::id, ev -> ev, (a, b) -> a));
-        var queryServicesByBoundedContext = repository.findAllOfType(QueryServiceEntity.class).stream()
+        var queryServicesByBoundedContext = scoped(QueryServiceEntity.class).stream()
                 .filter(qs -> qs.boundedContextId() != null)
                 .collect(Collectors.groupingBy(QueryServiceEntity::boundedContextId));
-        var scheduledTriggersById = repository.findAllOfType(ScheduledTriggerEntity.class).stream()
+        var scheduledTriggersById = scoped(ScheduledTriggerEntity.class).stream()
                 .collect(Collectors.toMap(ScheduledTriggerEntity::id, t -> t, (a, b) -> a));
         // The editor works on the current project: its services' boundedContexts, plus any
         // boundedContext not wired to a service yet (legacy orphans stay visible).
         var currentProject = projects.currentProject().orElse(null);
         var projectServiceIds = currentProject == null || currentProject.serviceIds() == null
                 ? java.util.Set.<String>of() : java.util.Set.copyOf(currentProject.serviceIds());
-        var allModules = repository.findAllOfType(ModuleEntity.class);
+        var allModules = scoped(ModuleEntity.class);
         var wiredElsewhere = services.stream()
                 .filter(s2 -> !projectServiceIds.contains(s2.id()))
                 .flatMap(s2 -> s2.moduleIds() == null ? java.util.stream.Stream.<String>empty()
@@ -142,7 +142,7 @@ public class EditorModelProjection {
                 .filter(Objects::nonNull)
                 .map(ModuleEntity::boundedContextId)
                 .collect(java.util.stream.Collectors.toSet());
-        var boundedContexts = repository.findAllOfType(BoundedContextEntity.class).stream()
+        var boundedContexts = scoped(BoundedContextEntity.class).stream()
                 .filter(m -> !wiredElsewhere.contains(m.id()))
                 .map(m -> new BoundedContextDto(
                         m.id(),
@@ -201,7 +201,7 @@ public class EditorModelProjection {
                         m.uiAdapterIds()))
                 .toList();
 
-        var projects = repository.findAllOfType(ProjectEntity.class);
+        var projects = scoped(ProjectEntity.class);
         var externalSystems = java.util.stream.Stream.ofNullable(currentProject)
                 .flatMap(p -> p.externalSystems().stream())
                 .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
@@ -216,7 +216,7 @@ public class EditorModelProjection {
                         x.referencedRepositoryId(),
                         x.parentExternalSystemId()))
                 .toList();
-        var flowEntities = repository.findAllOfType(FlowEntity.class);
+        var flowEntities = scoped(FlowEntity.class);
         var flows = coherenceService.analyze().stream()
                 .filter(f -> f.sourceBoundedContextId() != null && f.targetBoundedContextId() != null)
                 .map(f -> {
@@ -236,9 +236,9 @@ public class EditorModelProjection {
                 })
                 .toList();
 
-        var allAggregates = repository.findAllOfType(AggregateEntity.class);
+        var allAggregates = scoped(AggregateEntity.class);
         var aggregates = new ArrayList<AggregateDto>();
-        for (var boundedContext : repository.findAllOfType(BoundedContextEntity.class)) {
+        for (var boundedContext : scoped(BoundedContextEntity.class)) {
             if (boundedContext.aggregateIds() == null) continue;
             for (var aggregateId : boundedContext.aggregateIds()) {
                 allAggregates.stream()
@@ -251,7 +251,7 @@ public class EditorModelProjection {
             }
         }
 
-        var entities = repository.findAllOfType(EntityEntity.class).stream()
+        var entities = scoped(EntityEntity.class).stream()
                 .filter(e -> e.parentAggregateId() != null && !e.parentAggregateId().isBlank())
                 .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId()))
                 .toList();
@@ -259,7 +259,7 @@ public class EditorModelProjection {
         // A field of aggregate A's state model typed as another aggregate's state
         // model is projected as a cross-aggregate reference (heuristic; the model
         // remains the source of truth).
-        var models = repository.findAllOfType(ModelEntity.class);
+        var models = scoped(ModelEntity.class);
         var references = new ArrayList<AggregateReferenceDto>();
         for (var source : allAggregates) {
             var stateModel = models.stream()
@@ -277,7 +277,7 @@ public class EditorModelProjection {
             }
         }
 
-        var processes = repository.findAllOfType(ProcessEntity.class).stream()
+        var processes = scoped(ProcessEntity.class).stream()
                 .map(p -> new ProcessDto(
                         p.id(), p.name(), p.triggerAggregateId(), p.triggerEvent(),
                         p.ownerBoundedContextId(), p.onCompletionEventName(), p.sla(),
@@ -290,11 +290,11 @@ public class EditorModelProjection {
                                 .toList()))
                 .toList();
 
-        var views = repository.findAllOfType(ViewEntity.class).stream()
+        var views = scoped(ViewEntity.class).stream()
                 .map(v -> new ViewDto(v.id(), v.name(), v.kind(), v.memberIds()))
                 .toList();
 
-        var workflows = repository.findAllOfType(WorkflowEntity.class).stream()
+        var workflows = scoped(WorkflowEntity.class).stream()
                 .map(w -> new WorkflowDto(
                         w.id(), w.name(), w.triggerAggregateId(), w.triggerDomainServiceId(),
                         w.triggerUseCaseId(), w.triggerEvent(), w.onCompletionEventName(),
@@ -317,13 +317,13 @@ public class EditorModelProjection {
                 .collect(Collectors.toMap(ev -> ev.name().trim().toLowerCase(),
                         DomainEventEntity::id, (a, b) -> a));
         var emissions = new ArrayList<EmissionDto>();
-        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+        for (var a : scoped(AggregateEntity.class)) {
             EditorApiController.collectEmissions(a.id(), a.operations(), eventIdByName, emissions);
         }
-        for (var ds : repository.findAllOfType(DomainServiceEntity.class)) {
+        for (var ds : scoped(DomainServiceEntity.class)) {
             EditorApiController.collectEmissions(ds.id(), ds.operations(), eventIdByName, emissions);
         }
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+        for (var uc : scoped(UseCaseEntity.class)) {
             if (uc.steps() == null) continue;
             for (var step : uc.steps()) {
                 if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishApplicationEvent
@@ -333,10 +333,10 @@ public class EditorModelProjection {
             }
         }
 
-        var actors = repository.findAllOfType(RoleEntity.class).stream()
+        var actors = scoped(RoleEntity.class).stream()
                 .map(r -> new ActorDto(r.id(), r.name()))
                 .toList();
-        var aiAgents = repository.findAllOfType(AiAgentEntity.class).stream()
+        var aiAgents = scoped(AiAgentEntity.class).stream()
                 .map(a -> new AiAgentDto(a.id(), a.name(), a.external()))
                 .toList();
         var agentUses = new ArrayList<AgentUseDto>();
@@ -349,7 +349,7 @@ public class EditorModelProjection {
         var agentQueryUses = new ArrayList<AgentQueryUseDto>();
         var agentDelegations = new ArrayList<AgentDelegationDto>();
         var agentTriggers = new ArrayList<AgentTriggerDto>();
-        for (var agent : repository.findAllOfType(AiAgentEntity.class)) {
+        for (var agent : scoped(AiAgentEntity.class)) {
             agent.allowedUseCaseIds().forEach(id -> agentUses.add(new AgentUseDto(agent.id(), id)));
             agent.allowedExternalUseCaseIds().forEach(
                     id -> agentExternalUses.add(new AgentExternalUseDto(agent.id(), id)));
@@ -369,15 +369,15 @@ public class EditorModelProjection {
             agent.reactsToEventIds().forEach(
                     id -> agentTriggers.add(new AgentTriggerDto(id, agent.id())));
         }
-        var mcpGateways = repository.findAllOfType(McpGatewayEntity.class).stream()
+        var mcpGateways = scoped(McpGatewayEntity.class).stream()
                 .map(g -> new McpGatewayDto(g.id(), g.name(), g.mcpServerIds(), g.apiIds(),
                         g.apiOperationIds(), g.useCaseIds(), g.ragIds()))
                 .toList();
         var actorAgentUses = new ArrayList<ActorAgentUseDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
+        for (var role : scoped(RoleEntity.class)) {
             role.aiAgentIds().forEach(id -> actorAgentUses.add(new ActorAgentUseDto(role.id(), id)));
         }
-        var rags = repository.findAllOfType(RagEntity.class).stream()
+        var rags = scoped(RagEntity.class).stream()
                 .map(r -> new RagDto(r.id(), r.name(), r.description(), r.sourceReadModelIds(),
                         r.contentSources().stream()
                                 .map(s -> new RagContentSourceDto(s.type(), s.uri()))
@@ -385,7 +385,7 @@ public class EditorModelProjection {
                         r.sourceExternalTableIds(), r.sourceApiIds(),
                         r.sourceExternalSystemIds(), r.sourceBoundedContextIds()))
                 .toList();
-        var apis = repository.findAllOfType(ApiEntity.class).stream()
+        var apis = scoped(ApiEntity.class).stream()
                 .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
                         .map(op -> new ApiOperationDto(op.id(), op.name(), op.httpMethod(),
                                 op.path(), op.targetBoundedContextId(), op.targetUseCaseId()))
@@ -394,7 +394,7 @@ public class EditorModelProjection {
                 .toList();
 
         var useCaseCalls = new ArrayList<UseCaseCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+        for (var uc : scoped(UseCaseEntity.class)) {
             if (uc.steps() == null) continue;
             for (var step : uc.steps()) {
                 if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
@@ -409,7 +409,7 @@ public class EditorModelProjection {
         // projections; flows/processes/workflows are already projected above).
         var aggregateCalls = new ArrayList<AggregateCallDto>();
         var useCaseEmissions = new ArrayList<EmissionDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+        for (var uc : scoped(UseCaseEntity.class)) {
             if (uc.steps() == null) continue;
             for (var step : uc.steps()) {
                 var type = step.type();
@@ -424,7 +424,7 @@ public class EditorModelProjection {
                 }
             }
         }
-        var subscriptions = repository.findAllOfType(SubscriptionEntity.class).stream()
+        var subscriptions = scoped(SubscriptionEntity.class).stream()
                 .map(s -> new SubscriptionDto(s.id(), s.name(), s.eventName(), s.consumerGroup(),
                         (s.actions() == null ? List.<SubscriptionActionDto>of() : s.actions().stream()
                                 .map(a -> new SubscriptionActionDto(
@@ -432,7 +432,7 @@ public class EditorModelProjection {
                                         a.useCaseId(), a.sagaId(), a.projectionId()))
                                 .toList())))
                 .toList();
-        var projectionDtos = repository.findAllOfType(ProjectionEntity.class).stream()
+        var projectionDtos = scoped(ProjectionEntity.class).stream()
                 .map(p -> new ProjectionDto(p.id(), p.name(), p.readModelId(),
                         p.readModelId() == null ? null
                                 : repository.findById(p.readModelId(), ReadModelEntity.class)
@@ -440,7 +440,7 @@ public class EditorModelProjection {
                         (p.handlers() == null ? List.<String>of() : p.handlers().stream()
                                 .map(h -> h.domainEventId()).filter(Objects::nonNull).distinct().toList()),
                         p.sourceAggregateId(),
-                        repository.findAllOfType(BoundedContextEntity.class).stream()
+                        scoped(BoundedContextEntity.class).stream()
                                 .filter(m -> m.projectionIds() != null
                                         && m.projectionIds().contains(p.id()))
                                 .map(BoundedContextEntity::id).findFirst().orElse(null),
@@ -448,7 +448,7 @@ public class EditorModelProjection {
                 .toList();
 
         var queryCalls = new ArrayList<QueryCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+        for (var uc : scoped(UseCaseEntity.class)) {
             if (uc.steps() == null) continue;
             for (var step : uc.steps()) {
                 if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService
@@ -458,7 +458,7 @@ public class EditorModelProjection {
             }
         }
         var externalCalls = new ArrayList<ExternalCallDto>();
-        for (var m : repository.findAllOfType(BoundedContextEntity.class)) {
+        for (var m : scoped(BoundedContextEntity.class)) {
             if (m.acls() == null) continue;
             for (var acl : m.acls()) {
                 if (!"INBOUND".equalsIgnoreCase(acl.direction()) || acl.externalSystem() == null) continue;
@@ -468,7 +468,7 @@ public class EditorModelProjection {
             }
         }
         var externalUseCaseCalls = new ArrayList<ExternalUseCaseCallDto>();
-        for (var uc : repository.findAllOfType(UseCaseEntity.class)) {
+        for (var uc : scoped(UseCaseEntity.class)) {
             if (uc.steps() == null) continue;
             for (var step : uc.steps()) {
                 if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallExternalUseCase
@@ -479,7 +479,7 @@ public class EditorModelProjection {
         }
         var actorUses = new ArrayList<ActorUseDto>();
         var actorExternalDependencies = new ArrayList<ActorExternalDependencyDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
+        for (var role : scoped(RoleEntity.class)) {
             role.allowedUseCaseIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
             role.allowedQueryServiceIds().forEach(id -> actorUses.add(new ActorUseDto(role.id(), id)));
             role.externalSystemIds().forEach(id ->
@@ -496,15 +496,15 @@ public class EditorModelProjection {
                         new ExternalSystemDependencyDto(x.id(), id, "CQRS")));
             }
         }
-        var proxyApis = repository.findAllOfType(ProxyApiEntity.class).stream()
+        var proxyApis = scoped(ProxyApiEntity.class).stream()
                 .map(px -> new ProxyApiDto(px.id(), px.name(), px.targetApiId(),
                         px.publishedByExternalSystemId()))
                 .toList();
-        var apiImplementations = repository.findAllOfType(ApiEntity.class).stream()
+        var apiImplementations = scoped(ApiEntity.class).stream()
                 .flatMap(a -> a.implementedByBoundedContextIds().stream()
                         .map(mid -> new ApiImplementationDto(a.id(), mid)))
                 .toList();
-        var proxyOperationRoutes = repository.findAllOfType(ProxyApiEntity.class).stream()
+        var proxyOperationRoutes = scoped(ProxyApiEntity.class).stream()
                 .flatMap(px -> px.operationRoutes().stream()
                         .map(r -> new ProxyOperationRouteDto(px.id(), r.operationId(), r.targetSiteId())))
                 .toList();
@@ -513,7 +513,7 @@ public class EditorModelProjection {
                 .flatMap(x -> x.apiOperationUses().stream()
                         .map(u -> new ExternalOperationUseDto(x.id(), u.operationId(), u.siteId())))
                 .toList();
-        var apiOperationImplementations = repository.findAllOfType(ApiEntity.class).stream()
+        var apiOperationImplementations = scoped(ApiEntity.class).stream()
                 .flatMap(a -> a.operationImplementations().stream()
                         .map(w -> new ApiOperationImplementationDto(a.id(), w.operationId(), w.boundedContextId(), w.useCaseId())))
                 .toList();
@@ -521,13 +521,13 @@ public class EditorModelProjection {
         // The UI map: apps (menu trees), pages (with their buttons) and who uses which app.
         // Pre-id stores (and entries created before ids existed) self-heal on first read:
         // duplicate labels made selection and gestures ambiguous without a stable identity.
-        for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
+        for (var app : scoped(UiAdapterEntity.class)) {
             var healed = UiEditorCommands.withMenuItemIds(app.menuItems(), new java.util.HashSet<>());
             if (healed != null) {
                 repository.save(UiEditorCommands.withMenuItems(app, healed));
             }
         }
-        var uiApps = repository.findAllOfType(UiAdapterEntity.class).stream()
+        var uiApps = scoped(UiAdapterEntity.class).stream()
                 .map(a -> new UiAppDto(a.id(), a.name(), a.title(),
                         (a.menuItems() == null ? List.<UiMenuItemEntity>of() : a.menuItems()).stream()
                                 .map(EditorApiController::toMenuEntry)
@@ -535,7 +535,7 @@ public class EditorModelProjection {
                         a.appType().name(), a.headerPageId(), a.homePageId(), a.homeAppId(),
                         a.modelId(), a.viewPageId(), a.editPageId(), a.identityProviderId()))
                 .toList();
-        var pages = repository.findAllOfType(PageEntity.class).stream()
+        var pages = scoped(PageEntity.class).stream()
                 .map(p -> new UiPageDto(p.id(), p.name(), p.type(), p.route(), p.modelId(),
                         p.modelId() == null ? null
                                 : repository.findById(p.modelId(), ModelEntity.class)
@@ -560,7 +560,7 @@ public class EditorModelProjection {
                         p.bottomBarGroupIds() == null ? List.of() : p.bottomBarGroupIds()))
                 .toList();
         var actorAppUses = new ArrayList<ActorAppUseDto>();
-        for (var role : repository.findAllOfType(RoleEntity.class)) {
+        for (var role : scoped(RoleEntity.class)) {
             role.uiAdapterIds().forEach(id -> actorAppUses.add(new ActorAppUseDto(role.id(), id)));
         }
 
@@ -568,7 +568,7 @@ public class EditorModelProjection {
         // upstream (provider) → downstream (consumer). contextMap entries only
         // annotate the DDD pattern of a derived pair; orphaned annotations
         // (no concrete dependency behind them) are not painted.
-        var allBoundedContexts = repository.findAllOfType(BoundedContextEntity.class);
+        var allBoundedContexts = scoped(BoundedContextEntity.class);
         java.util.function.Function<String, String> boundedContextOfUseCase = ucId -> allBoundedContexts.stream()
                 .filter(m -> m.useCaseIds() != null && m.useCaseIds().contains(ucId))
                 .map(BoundedContextEntity::id).findFirst().orElse(null);
@@ -660,22 +660,22 @@ public class EditorModelProjection {
                 aiAgents,
                 agentUses.stream().distinct().toList(),
                 workflows,
-                repository.findAllOfType(EtlFlowEntity.class).stream()
+                scoped(EtlFlowEntity.class).stream()
                         .map(f -> new EtlFlowDto(f.id(), f.name(), f.ownerBoundedContextId(), f.steps().stream()
                                 .map(s -> new EtlStepDto(s.id(), s.name(), s.type(), s.externalTableId(),
                                         s.apiId(), s.operationId(), s.eventId(), s.modelMappingId()))
                                 .toList(),
                                 f.identityProviderId()))
                         .toList(),
-                repository.findAllOfType(IdentityProviderEntity.class).stream()
+                scoped(IdentityProviderEntity.class).stream()
                         .map(x -> new IdentityProviderDto(x.id(), x.name(), x.type(), x.issuer(),
                                 x.publishedByExternalSystemId()))
                         .toList(),
-                repository.findAllOfType(NotificationEntity.class).stream()
+                scoped(NotificationEntity.class).stream()
                         .map(x -> new NotificationDto(x.id(), x.name(), x.ownerBoundedContextId(), x.eventId(),
                                 x.channels(), x.recipientRoleIds()))
                         .toList(),
-                repository.findAllOfType(DocumentEntity.class).stream()
+                scoped(DocumentEntity.class).stream()
                         .map(x -> new DocumentDto(x.id(), x.name(), x.ownerBoundedContextId(), x.kind(),
                                 x.modelId(), x.queryServiceId(), x.queryOperationId()))
                         .toList(),
@@ -706,29 +706,29 @@ public class EditorModelProjection {
                 uiApps,
                 pages,
                 actorAppUses.stream().distinct().toList(),
-                repository.findAllOfType(ModelEntity.class).stream()
+                scoped(ModelEntity.class).stream()
                         .map(x -> new ModelRefDto(x.id(), x.name(),
                                 (x.fields() == null ? List.<ModelFieldEntity>of() : x.fields()).stream()
                                         .map(f -> new ModelFieldDto(f.id(), f.name(),
                                                 f.type() == null ? null : f.type().name()))
                                         .toList()))
                         .toList(),
-                repository.findAllOfType(SagaEntity.class).stream()
+                scoped(SagaEntity.class).stream()
                         .map(x -> new NamedRefDto(x.id(), x.name()))
                         .toList(),
-                repository.findAllOfType(ModuleEntity.class).stream()
+                scoped(ModuleEntity.class).stream()
                         .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds(), x.main()))
                         .toList(),
-                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity.class).stream()
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity.class).stream()
                         .map(j -> new EditorApiController.JourneyDto(j.id(), j.name(), j.description(),
                                 j.legs().stream().map(l -> new EditorApiController.JourneyLegDto(
                                         l.id(), l.sourceId(), l.targetId(), l.afterLegIds(), l.label())).toList()))
                         .toList(),
                 services.stream()
                         .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(),
-                                s.database(), s.outboxEnabled()))
+                                s.database(), s.outboxEnabled(), s.urlIds()))
                         .toList(),
-                repository.findAllOfType(TransformationEntity.class).stream()
+                scoped(TransformationEntity.class).stream()
                         .map(t -> new TransformationDto(t.id(), t.name(),
                                 t.inputs().stream()
                                         .map(r -> new TransformationRefDto(r.modelId(), r.fieldId()))
@@ -737,10 +737,10 @@ public class EditorModelProjection {
                                         : new TransformationRefDto(t.output().modelId(), t.output().fieldId()),
                                 t.customCodeId()))
                         .toList(),
-                repository.findAllOfType(CustomCodeEntity.class).stream()
+                scoped(CustomCodeEntity.class).stream()
                         .map(x -> new CustomCodeDto(x.id(), x.name(), x.usedElementIds()))
                         .toList(),
-                repository.findAllOfType(ButtonGroupEntity.class).stream()
+                scoped(ButtonGroupEntity.class).stream()
                         .map(g -> new ButtonGroupDto(g.id(), g.name(),
                                 g.buttons().stream()
                                         .map(bt -> new GroupButtonDto(bt.id(), bt.label(), bt.useCaseId(),
@@ -748,31 +748,45 @@ public class EditorModelProjection {
                                         .toList(),
                                 g.groupIds()))
                         .toList(),
-                repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                scoped(WorkflowGatewayEntity.class).stream()
                         .map(g -> new WorkflowGatewayDto(g.id(), g.name(), g.type(), g.semantics(),
                                 g.sourceIds(), g.targetIds(),
                                 g.branchConditions().stream()
                                         .map(c -> new GatewayBranchConditionDto(c.targetId(), c.expression()))
                                         .toList()))
                         .toList(),
-                repository.findAllOfType(ModelMappingEntity.class).stream()
+                scoped(ModelMappingEntity.class).stream()
                         .map(x -> new MappingRefDto(x.id(), x.name(), x.sourceModelId(), x.targetModelId(),
                                 (x.rules() == null ? List.<ModelMappingRuleEntity>of() : x.rules()).stream()
                                         .map(r -> new MappingRuleDto(r.id(), r.sourceFieldId(), r.targetFieldId()))
                                         .toList(),
                                 x.customCodeId()))
                         .toList(),
-                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity.class).stream()
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity.class).stream()
                         .map(n -> new EditorApiController.NoteDto(n.id(), n.text(), n.targetIds(), n.edgeRefs()))
                         .toList(),
-                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity.class).stream()
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity.class).stream()
                         .map(a -> new EditorApiController.AreaDto(a.id(), a.name()))
                         .toList(),
-                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity.class).stream()
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity.class).stream()
                         .map(r -> new ArchimateRelationDto(r.id(), r.sourceId(), r.targetId(), r.type(), r.label()))
                         .toList(),
-                repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class).stream()
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class).stream()
                         .map(u -> new UiDto(u.id(), u.name(), u.boundedContextId(), u.appIds(), u.pageIds(), u.actorIds()))
+                        .toList(),
+                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity.class).stream()
+                        .map(u -> new EditorApiController.UrlDto(u.id(), u.name(), u.url()))
                         .toList());
+    }
+
+    /** The pool narrowed to the SELECTED project (unstamped legacy elements stay visible). */
+    private <T> List<T> scoped(Class<T> type) {
+        var current = projects.currentProject()
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::id)
+                .orElse(null);
+        return repository.findAllOfType(type).stream()
+                .filter(x -> io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectScope
+                        .inProject(x, current))
+                .toList();
     }
 }

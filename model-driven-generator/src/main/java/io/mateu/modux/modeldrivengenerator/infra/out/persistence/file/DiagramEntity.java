@@ -20,12 +20,15 @@ public record DiagramEntity(
         List<DiagramEdgeEntity> edges,
         /** Containers folded by hand at this view/level (they render compact). */
         List<String> collapsed
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-collapsed callers and stores). */
     public DiagramEntity(String id, String detail,
                          List<DiagramNodeEntity> nodes, List<DiagramEdgeEntity> edges) {
-        this(id, detail, nodes, edges, List.of());
+        this(id, detail, nodes, edges, List.of(), null);
     }
 
     public DiagramEntity {

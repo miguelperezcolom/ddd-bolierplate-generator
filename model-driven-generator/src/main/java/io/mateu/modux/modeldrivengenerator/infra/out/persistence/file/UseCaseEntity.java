@@ -44,6 +44,9 @@ public record UseCaseEntity(
          * an EventStorming). Policies stay out of business catalogs and UI derivations.
          */
         boolean policy
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-policy callers). */
@@ -64,7 +67,7 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                decisionIds, false);
+                decisionIds, false, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -85,6 +88,6 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                List.of(), false);
+                List.of(), false, null);
     }
 }

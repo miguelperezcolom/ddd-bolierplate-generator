@@ -47,7 +47,7 @@ public class SagaFileRepository implements SagaRepository {
                 entity.getMaxRetries(),
                 entity.getRetryBackoffMs(),
                 entity.getDeadLetterQueue(),
-                entity.isPersistenceEnabled()));
+                entity.isPersistenceEnabled(), null));
         return entity;
     }
 

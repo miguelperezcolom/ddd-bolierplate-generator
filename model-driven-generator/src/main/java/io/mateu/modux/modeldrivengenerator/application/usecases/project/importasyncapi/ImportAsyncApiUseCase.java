@@ -52,14 +52,14 @@ public class ImportAsyncApiUseCase {
                             e.integrationModelId(), channelKey, e.partitions(), e.retentionMs(),
                             e.serializationFormat(), e.compressionType(), e.deadLetterQueueEnabled(),
                             e.deadLetterQueueName(), e.maxDeliveryAttempts(), e.schemaVersion(),
-                            e.routingKeyField(), e.replayable());
+                            e.routingKeyField(), e.replayable(), null);
                 } else {
                     event = new DomainEventEntity(
                             UUID.randomUUID().toString(), name, null, false,
                             null, channelKey, null, null,
                             null, null, false,
                             null, null, null,
-                            null, false);
+                            null, false, null);
                 }
                 repository.save(event);
                 log.info("Saved domain event '{}' for topic '{}'", name, channelKey);
@@ -82,7 +82,7 @@ public class ImportAsyncApiUseCase {
                             s.deadLetterTopic(), s.actions(), s.scalingStrategy(),
                             s.filterExpression(), s.batchSize(), s.batchTimeout(),
                             s.offsetResetStrategy(), s.consumerTimeout(),
-                            s.idempotencyEnabled(), s.idempotencyKeyField());
+                            s.idempotencyEnabled(), s.idempotencyKeyField(), null);
                 } else {
                     subscription = new SubscriptionEntity(
                             UUID.randomUUID().toString(), name, channelKey, null,
@@ -90,7 +90,7 @@ public class ImportAsyncApiUseCase {
                             null, null, null,
                             null, null, null,
                             null, null,
-                            true, null);
+                            true, null, null);
                 }
                 repository.save(subscription);
                 log.info("Saved subscription '{}' for topic '{}'", name, channelKey);

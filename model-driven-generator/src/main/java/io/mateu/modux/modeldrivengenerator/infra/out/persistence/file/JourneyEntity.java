@@ -20,6 +20,9 @@ public record JourneyEntity(
         String name,
         String description,
         List<JourneyLegEntity> legs
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public JourneyEntity {

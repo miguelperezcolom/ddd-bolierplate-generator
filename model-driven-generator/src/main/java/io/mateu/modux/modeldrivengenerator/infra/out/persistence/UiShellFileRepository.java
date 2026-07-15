@@ -54,7 +54,7 @@ public class UiShellFileRepository implements UiShellRepository {
                 entity.getBucketName(),
                 entity.getBucketRegion(),
                 entity.getDeploymentServiceId(),
-                entity.getDesignSystem() != null ? entity.getDesignSystem().name() : null));
+                entity.getDesignSystem() != null ? entity.getDesignSystem().name() : null, null));
         return entity;
     }
 

@@ -19,5 +19,8 @@ public record DomainEventEntity(
         String schemaVersion,
         String routingKeyField,
         boolean replayable
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

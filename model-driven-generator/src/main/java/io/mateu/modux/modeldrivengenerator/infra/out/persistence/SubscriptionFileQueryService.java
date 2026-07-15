@@ -36,7 +36,7 @@ public class SubscriptionFileQueryService implements SubscriptionQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, SubscriptionEntity.class).map(SubscriptionEntity::name).orElseThrow();
+        return repository.findById(id, SubscriptionEntity.class).map(SubscriptionEntity::name).orElse(null);
     }
 
     @Override

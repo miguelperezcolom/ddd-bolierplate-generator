@@ -114,8 +114,10 @@ public class UiEditorCommands {
         var appType = command.type() == null || command.type().isBlank()
                 ? io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.APP
                 : io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType.valueOf(command.type());
-        repository.save(new UiAdapterEntity(command.id(), command.name(), null,
-                command.name(), null, null, List.of(), appType, null, null, null, null));
+        repository.save(UiAdapterEntity.builder()
+                .id(command.id()).name(command.name()).title(command.name())
+                .menuItems(List.of()).appType(appType)
+                .build());
         if (command.boundedContextId() == null || command.boundedContextId().isBlank()) return;
         // Born inside a bounded context: the boundedContext owns the app from the start.
         var boundedContext = repository.findById(command.boundedContextId(), BoundedContextEntity.class)
@@ -134,10 +136,9 @@ public class UiEditorCommands {
             repository.findById(command.pageId(), PageEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
         }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(),
-                command.pageId() == null || command.pageId().isBlank() ? null : command.pageId(),
-                app.homePageId(), app.homeAppId(), app.modelId()));
+        repository.save(app.toBuilder()
+                .headerPageId(command.pageId() == null || command.pageId().isBlank() ? null : command.pageId())
+                .build());
     }
 
     /** What the app opens first — a page (pageId) or another app (toAppId); null clears. */
@@ -161,9 +162,10 @@ public class UiEditorCommands {
             repository.findById(toAppId, UiAdapterEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + toAppId));
         }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
-                toAppId != null ? null : pageId, toAppId, app.modelId()));
+        repository.save(app.toBuilder()
+                .homePageId(toAppId != null ? null : pageId)
+                .homeAppId(toAppId)
+                .build());
     }
 
     /** An identity provider — ours, or federated when published by an external system. */
@@ -174,7 +176,7 @@ public class UiEditorCommands {
             throw new IllegalArgumentException("Unknown IdP type: " + type);
         }
         repository.save(new IdentityProviderEntity(command.id(), command.name(), type,
-                null, null, null));
+                null, null, null, null));
     }
 
     /** Deletes the IdP and clears every trust edge pointing at it. */
@@ -192,7 +194,7 @@ public class UiEditorCommands {
         for (var flow : repository.findAllOfType(EtlFlowEntity.class)) {
             if (command.id().equals(flow.identityProviderId())) {
                 repository.save(new EtlFlowEntity(flow.id(), flow.name(), flow.description(),
-                        flow.ownerBoundedContextId(), flow.steps(), null));
+                        flow.ownerBoundedContextId(), flow.steps(), null, null));
             }
         }
         repository.deleteAllById(List.of(command.id()), IdentityProviderEntity.class);
@@ -211,7 +213,7 @@ public class UiEditorCommands {
         }
         repository.save(new IdentityProviderEntity(idp.id(), idp.name(), idp.type(), idp.issuer(),
                 command.targetId() == null || command.targetId().isBlank() ? null : command.targetId(),
-                idp.description()));
+                idp.description(), null));
     }
 
     /** Wires (or, with null, unwires) an app / bounded context / ETL flow to its IdP. */
@@ -235,7 +237,7 @@ public class UiEditorCommands {
         if (flow.isPresent()) {
             var f = flow.get();
             repository.save(new EtlFlowEntity(f.id(), f.name(), f.description(),
-                    f.ownerBoundedContextId(), f.steps(), idpId));
+                    f.ownerBoundedContextId(), f.steps(), idpId, null));
             return;
         }
         throw new IllegalArgumentException(
@@ -252,7 +254,7 @@ public class UiEditorCommands {
             throw new IllegalArgumentException("Unknown channel: " + channel);
         }
         repository.save(new NotificationEntity(command.id(), command.name(), command.boundedContextId(),
-                null, List.of(channel), List.of(), null, null, null));
+                null, List.of(channel), List.of(), null, null, null, null));
     }
 
     public void removeNotification(EditorCommand command) {
@@ -270,7 +272,7 @@ public class UiEditorCommands {
             throw new IllegalArgumentException("Unknown event: " + eventId);
         }
         repository.save(new NotificationEntity(n.id(), n.name(), n.ownerBoundedContextId(), eventId,
-                n.channels(), n.recipientRoleIds(), n.recipientExpression(), n.subject(), n.body()));
+                n.channels(), n.recipientRoleIds(), n.recipientExpression(), n.subject(), n.body(), null));
     }
 
     /** Adds/removes a recipient role. */
@@ -285,7 +287,7 @@ public class UiEditorCommands {
         if (add && !roles.contains(command.roleId())) roles.add(command.roleId());
         if (!add) roles.remove(command.roleId());
         repository.save(new NotificationEntity(n.id(), n.name(), n.ownerBoundedContextId(), n.eventId(),
-                n.channels(), roles, n.recipientExpression(), n.subject(), n.body()));
+                n.channels(), roles, n.recipientExpression(), n.subject(), n.body(), null));
     }
 
     /** A generated document (template + model) or report (query-fed dataset). */
@@ -298,7 +300,7 @@ public class UiEditorCommands {
             throw new IllegalArgumentException("Unknown document kind: " + kind);
         }
         repository.save(new DocumentEntity(command.id(), command.name(), command.boundedContextId(),
-                kind, null, null, null, null, null));
+                kind, null, null, null, null, null, null));
     }
 
     public void removeDocument(EditorCommand command) {
@@ -315,7 +317,7 @@ public class UiEditorCommands {
                     .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + modelId));
         }
         repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerBoundedContextId(), doc.kind(),
-                modelId, doc.queryServiceId(), doc.queryOperationId(), doc.templateUri(), doc.description()));
+                modelId, doc.queryServiceId(), doc.queryOperationId(), doc.templateUri(), doc.description(), null));
     }
 
     /** REPORT: the query operation feeding the dataset (nulls clear). */
@@ -325,23 +327,17 @@ public class UiEditorCommands {
         var qs = command.queryServiceId() == null || command.queryServiceId().isBlank() ? null : command.queryServiceId();
         var op = command.queryOperationId() == null || command.queryOperationId().isBlank() ? null : command.queryOperationId();
         repository.save(new DocumentEntity(doc.id(), doc.name(), doc.ownerBoundedContextId(), doc.kind(),
-                doc.modelId(), qs, op, doc.templateUri(), doc.description()));
+                doc.modelId(), qs, op, doc.templateUri(), doc.description(), null));
     }
 
     /** i18n: the locales the system speaks. */
     public void setProjectLocales(EditorCommand command) {
         var project = projects.currentProject()
                 .orElseThrow(() -> new IllegalArgumentException("No current project"));
-        repository.save(new ProjectEntity(project.id(), project.name(), project.outputPath(),
-                project.packageName(), project.gitRepository(), project.database(),
-                project.dbMigrationTool(), project.terraformProvider(), project.terraformProviderVersion(),
-                project.terraformBackendType(), project.iamProvider(), project.messageBrokerType(),
-                project.tracingProvider(), project.metricsProvider(), project.loggingProvider(),
-                project.llmProvider(), project.cacheProvider(), project.fileStorageProvider(),
-                project.emailProvider(), project.secretsProvider(), project.cicdProvider(),
-                project.environments(), project.serviceIds(), project.contextMap(),
-                project.tenancyStrategy(), project.externalSystems(), project.objective(),
-                command.fieldIds(), command.label()));
+        repository.save(project.toBuilder()
+                .locales(command.fieldIds())
+                .defaultLocale(command.label())
+                .build());
     }
 
     public void addEtlFlow(EditorCommand command) {
@@ -432,7 +428,7 @@ public class UiEditorCommands {
 
     public void addButtonGroup(EditorCommand command) {
         if (repository.findById(command.id(), ButtonGroupEntity.class).isPresent()) return;
-        repository.save(new ButtonGroupEntity(command.id(), command.name(), List.of(), List.of()));
+        repository.save(new ButtonGroupEntity(command.id(), command.name(), List.of(), List.of(), null));
     }
 
     public void removeButtonGroup(EditorCommand command) {
@@ -684,7 +680,7 @@ public class UiEditorCommands {
         var grown = new ArrayList<>(fields);
         grown.add(new ModelFieldEntity(command.fieldId(), command.name(), true, type,
                 null, false, null, List.of()));
-        repository.save(new ModelEntity(model.id(), model.name(), grown, model.validations()));
+        repository.save(new ModelEntity(model.id(), model.name(), grown, model.validations(), null));
     }
 
     public void removeModelField(EditorCommand command) {
@@ -693,7 +689,7 @@ public class UiEditorCommands {
         var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
         repository.save(new ModelEntity(model.id(), model.name(),
                 fields.stream().filter(f -> !f.id().equals(command.fieldId())).toList(),
-                model.validations()));
+                model.validations(), null));
         pruneMappingRulesReferencing(model.id(), command.fieldId());
     }
 
@@ -711,7 +707,7 @@ public class UiEditorCommands {
                                 f.piiClassification(), f.anonymizationStrategy())
                         : f)
                 .toList();
-        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations()));
+        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
     }
 
     /** Moves a field to another model; the rules that mapped it no longer apply and drop. */
@@ -731,10 +727,10 @@ public class UiEditorCommands {
         }
         repository.save(new ModelEntity(source.id(), source.name(),
                 source.fields().stream().filter(f -> !f.id().equals(moving.id())).toList(),
-                source.validations()));
+                source.validations(), null));
         var grown = new ArrayList<>(targetFields);
         grown.add(moving);
-        repository.save(new ModelEntity(target.id(), target.name(), grown, target.validations()));
+        repository.save(new ModelEntity(target.id(), target.name(), grown, target.validations(), null));
         pruneMappingRulesReferencing(source.id(), moving.id());
     }
 
@@ -792,7 +788,7 @@ public class UiEditorCommands {
     /** A fresh empty data model, ready to be a viewmodel; fields grow in its form. */
     public void addModel(EditorCommand command) {
         if (repository.findById(command.id(), ModelEntity.class).isPresent()) return;
-        repository.save(new ModelEntity(command.id(), command.name(), List.of(), List.of()));
+        repository.save(new ModelEntity(command.id(), command.name(), List.of(), List.of(), null));
     }
 
     /** Deletes the model and unlinks whoever used it as a viewmodel. */
@@ -801,19 +797,15 @@ public class UiEditorCommands {
             var pageModel = command.id().equals(pg.modelId());
             var content = pg.content() == null ? null : withoutComponentModel(pg.content(), command.id());
             if (pageModel || content != null) {
-                repository.save(new PageEntity(pg.id(), pg.name(), pg.route(), pg.type(),
-                        pg.aggregateId(), pageModel ? null : pg.modelId(), pg.componentIds(),
-                        pg.listingDataSourceType(), pg.listingGatewayId(), pg.toolbar(), pg.bottomBar(),
-                        pg.triggers(), pg.rules(), pg.validations(), pg.fieldConfigs(), pg.wizardSteps(),
-                        pg.completionActions(), pg.listingQueryServiceId(),
-                        content != null ? content : pg.content()));
+                repository.save(pg.toBuilder()
+                        .modelId(pageModel ? null : pg.modelId())
+                        .content(content != null ? content : pg.content())
+                        .build());
             }
         }
         for (var app : repository.findAllOfType(UiAdapterEntity.class)) {
             if (command.id().equals(app.modelId())) {
-                repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                        app.path(), app.appVariant(), app.menuItems(), app.appType(),
-                        app.headerPageId(), app.homePageId(), app.homeAppId(), null));
+                repository.save(app.toBuilder().modelId(null).build());
             }
         }
         repository.deleteAllById(List.of(command.id()), ModelEntity.class);
@@ -849,10 +841,9 @@ public class UiEditorCommands {
             repository.findById(command.modelId(), ModelEntity.class)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
         }
-        repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), app.menuItems(), app.appType(), app.headerPageId(),
-                app.homePageId(), app.homeAppId(),
-                command.modelId() == null || command.modelId().isBlank() ? null : command.modelId()));
+        repository.save(app.toBuilder()
+                .modelId(command.modelId() == null || command.modelId().isBlank() ? null : command.modelId())
+                .build());
     }
 
     /** CRUD: what opens a row / the new-record form — a page OR an app; nulls clear. */
@@ -975,11 +966,7 @@ public class UiEditorCommands {
 
     /** Record copy with only wizardSteps replaced. */
     static PageEntity withWizardSteps(PageEntity page, List<PageWizardStepEntity> steps) {
-        return new PageEntity(page.id(), page.name(), page.route(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), steps, page.completionActions(),
-                page.listingQueryServiceId(), page.content());
+        return page.toBuilder().wizardSteps(steps).build();
     }
 
     /** Removing an app also unlinks it from every actor that used it. */
@@ -1039,9 +1026,13 @@ public class UiEditorCommands {
         if (repository.findById(command.id(), PageEntity.class).isPresent()) return;
         var type = command.pageType() == null || command.pageType().isBlank()
                 ? "PAGE" : command.pageType();
-        repository.save(new PageEntity(command.id(), command.name(), "/" + command.id(), type,
-                null, null, List.of(), null, null, List.of(), List.of(), List.of(), List.of(),
-                List.of(), List.of(), List.of(), List.of(), null, List.of()));
+        repository.save(PageEntity.builder()
+                .id(command.id()).name(command.name()).route("/" + command.id()).type(type)
+                .componentIds(List.of()).toolbar(List.of()).bottomBar(List.of())
+                .triggers(List.of()).rules(List.of()).validations(List.of())
+                .fieldConfigs(List.of()).wizardSteps(List.of()).completionActions(List.of())
+                .content(List.of())
+                .build());
         if (command.appId() == null || command.appId().isBlank()) return;
         // Born reachable: the page hangs from the app's menu right away.
         var app = repository.findById(command.appId(), UiAdapterEntity.class)
@@ -1064,9 +1055,9 @@ public class UiEditorCommands {
             if (!pruned.equals(items)
                     || !java.util.Objects.equals(header, app.headerPageId())
                     || !java.util.Objects.equals(home, app.homePageId())) {
-                repository.save(new UiAdapterEntity(app.id(), app.name(), app.serviceId(),
-                        app.title(), app.path(), app.appVariant(), pruned, app.appType(),
-                        header, home, app.homeAppId(), app.modelId()));
+                repository.save(app.toBuilder()
+                        .menuItems(pruned).headerPageId(header).homePageId(home)
+                        .build());
             }
         }
         // CRUDs pointing at the deleted page (detail/create) and view-editors lose the ref
@@ -1379,8 +1370,7 @@ public class UiEditorCommands {
 
     /** Record copy with only menuItems replaced — every other field preserved verbatim. */
     static UiAdapterEntity withMenuItems(UiAdapterEntity app, List<UiMenuItemEntity> menuItems) {
-        return new UiAdapterEntity(app.id(), app.name(), app.serviceId(), app.title(),
-                app.path(), app.appVariant(), menuItems, app.appType(), app.headerPageId());
+        return app.toBuilder().menuItems(menuItems).build();
     }
 
     /** Record copy with only toolbar/bottomBar replaced — every other field preserved verbatim. */
@@ -1665,31 +1655,19 @@ public class UiEditorCommands {
     public void renameUiPage(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), command.name(), page.route(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
+        repository.save(page.toBuilder().name(command.name()).build());
     }
 
     public void setPageType(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), page.name(), page.route(), command.pageType(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
+        repository.save(page.toBuilder().type(command.pageType()).build());
     }
 
     public void setPageRoute(EditorCommand command) {
         var page = repository.findById(command.pageId(), PageEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown page: " + command.pageId()));
-        repository.save(new PageEntity(page.id(), page.name(), command.path(), page.type(),
-                page.aggregateId(), page.modelId(), page.componentIds(), page.listingDataSourceType(),
-                page.listingGatewayId(), page.toolbar(), page.bottomBar(), page.triggers(), page.rules(),
-                page.validations(), page.fieldConfigs(), page.wizardSteps(), page.completionActions(),
-                page.listingQueryServiceId(), page.content()));
+        repository.save(page.toBuilder().route(command.path()).build());
     }
 
     /** Edits an existing toolbar/bottomBar button (matched by useCaseId): label and mapping. */
@@ -1715,42 +1693,27 @@ public class UiEditorCommands {
 
     /** Record copy with only fieldConfigs replaced — every other field preserved verbatim. */
     static PageEntity withFieldConfigs(PageEntity p, List<PageFieldConfigEntity> fieldConfigs) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), fieldConfigs,
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
+        return p.toBuilder().fieldConfigs(fieldConfigs).build();
     }
 
     static PageEntity withButtons(PageEntity p, List<PageButtonEntity> toolbar,
                                           List<PageButtonEntity> bottomBar) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), toolbar,
-                bottomBar, p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
+        return p.toBuilder().toolbar(toolbar).bottomBar(bottomBar).build();
     }
 
     /** Record copy with only listingQueryServiceId replaced — every other field preserved verbatim. */
     static PageEntity withListingQueryServiceId(PageEntity p, String listingQueryServiceId) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), listingQueryServiceId, p.content());
+        return p.toBuilder().listingQueryServiceId(listingQueryServiceId).build();
     }
 
     /** Record copy with only modelId replaced — every other field preserved verbatim. */
     static PageEntity withModelId(PageEntity p, String modelId) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), modelId,
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), p.content());
+        return p.toBuilder().modelId(modelId).build();
     }
 
     /** Record copy with only content replaced — every other field preserved verbatim. */
     static PageEntity withContent(PageEntity p, List<UiComponentNodeEntity> content) {
-        return new PageEntity(p.id(), p.name(), p.route(), p.type(), p.aggregateId(), p.modelId(),
-                p.componentIds(), p.listingDataSourceType(), p.listingGatewayId(), p.toolbar(),
-                p.bottomBar(), p.triggers(), p.rules(), p.validations(), p.fieldConfigs(),
-                p.wizardSteps(), p.completionActions(), p.listingQueryServiceId(), content);
+        return p.toBuilder().content(content).build();
     }
 
     static List<PageButtonEntity> withoutUseCaseButtons(List<PageButtonEntity> buttons,

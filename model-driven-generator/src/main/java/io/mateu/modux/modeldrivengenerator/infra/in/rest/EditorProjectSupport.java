@@ -111,14 +111,7 @@ public class EditorProjectSupport {
 
     public static ProjectEntity withExternalSystems(
             ProjectEntity p, List<ExternalSystemEntity> externalSystems) {
-        return new ProjectEntity(
-                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
-                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), p.contextMap(), p.tenancyStrategy(),
-                externalSystems, p.objective());
+        return p.toBuilder().externalSystems(externalSystems).build();
     }
 
     public ProjectEntity owningProject() {
@@ -136,14 +129,7 @@ public class EditorProjectSupport {
     /** Record copy with only contextMap replaced — every other field is preserved verbatim. */
     public static ProjectEntity withContextMap(
             ProjectEntity p, List<ContextMapRelationEntity> contextMap) {
-        return new ProjectEntity(
-                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
-                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), contextMap, p.tenancyStrategy(),
-                p.externalSystems(), p.objective());
+        return p.toBuilder().contextMap(contextMap).build();
     }
 
     public WorkflowEntity requireWorkflow(String workflowId) {
@@ -170,6 +156,6 @@ public class EditorProjectSupport {
                 uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
                 uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy());
+                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy(), null);
     }
 }

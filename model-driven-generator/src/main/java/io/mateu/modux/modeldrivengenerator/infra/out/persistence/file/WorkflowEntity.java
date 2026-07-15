@@ -27,6 +27,9 @@ public record WorkflowEntity(
         String onCompletionEventName,
         /** Architecture decisions (ADRs) this workflow traces back to. */
         List<String> decisionIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public WorkflowEntity {

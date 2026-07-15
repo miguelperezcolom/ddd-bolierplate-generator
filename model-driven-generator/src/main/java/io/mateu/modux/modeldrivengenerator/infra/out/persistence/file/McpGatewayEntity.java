@@ -26,6 +26,9 @@ public record McpGatewayEntity(
         List<String> useCaseIds,
         /** Knowledge bases exposed as retrieval tools. */
         List<String> ragIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public McpGatewayEntity {

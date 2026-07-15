@@ -24,6 +24,9 @@ public record FlowEntity(
         String triggerDomainServiceId,
         /** Alternative trigger: the use case publishing the trigger APPLICATION event. */
         String triggerUseCaseId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-triggerUseCaseId callers and stores). */
@@ -34,7 +37,7 @@ public record FlowEntity(
                       String triggerDomainServiceId) {
         this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
-                decisionIds, triggerDomainServiceId, null);
+                decisionIds, triggerDomainServiceId, null, null);
     }
 
     /** Backward-compatible constructor (pre-triggerDomainServiceId callers and stores). */
@@ -44,7 +47,7 @@ public record FlowEntity(
                       List<String> inputMappings, List<String> overrides, List<String> decisionIds) {
         this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
-                decisionIds, null, null);
+                decisionIds, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -54,6 +57,6 @@ public record FlowEntity(
                       List<String> inputMappings, List<String> overrides) {
         this(id, name, description, archetype, triggerAggregateId, triggerEvent, targetBoundedContextId,
                 readModelName, materializedFields, targetUseCaseId, inputMappings, overrides,
-                List.of(), null, null);
+                List.of(), null, null, null);
     }
 }

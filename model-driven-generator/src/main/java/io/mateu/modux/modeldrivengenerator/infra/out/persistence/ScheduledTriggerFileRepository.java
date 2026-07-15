@@ -53,7 +53,7 @@ public class ScheduledTriggerFileRepository implements ScheduledTriggerRepositor
                 entity.getFailureNotificationEmail(),
                 entity.getMisfirePolicy() != null ? entity.getMisfirePolicy().name() : null,
                 entity.isAllowConcurrentExecution(),
-                entity.isRetryOnFailure(), entity.getRetryCount()));
+                entity.isRetryOnFailure(), entity.getRetryCount(), null));
         return entity;
     }
 

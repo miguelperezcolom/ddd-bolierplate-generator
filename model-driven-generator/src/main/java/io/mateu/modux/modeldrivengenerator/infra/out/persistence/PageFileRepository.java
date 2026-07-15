@@ -83,37 +83,41 @@ public class PageFileRepository implements PageRepository {
                         entity.completionActions() != null ? entity.completionActions().stream()
                                 .map(e -> new PageButton(e.label(), e.icon(), e.useCaseId(), e.actionId(), e.mappingId()))
                                 .toList() : List.of(),
-                        entity.listingQueryServiceId()));
+                        entity.listingQueryServiceId(),
+                        entity.favicon(), entity.title(), entity.style()));
     }
 
     @Override
     public Page save(Page entity) {
-        // content (the page's component tree) is not modeled in the domain Page yet — carry it
-        // over from the stored entity so a domain save never wipes what the editor authored.
+        // The domain Page does not model everything (content, crud targets, button
+        // groups…) — start from the stored entity so a domain save never wipes what
+        // the editor authored, and overwrite only the domain-managed fields.
         var stored = repository.findById(entity.getId().id(), PageEntity.class).orElse(null);
-        repository.save(new PageEntity(
-                entity.getId().id(),
-                entity.getName().name(),
-                entity.getRoute(),
-                entity.getType() != null ? entity.getType().name() : null,
-                entity.getAggregateId(),
-                entity.getModelId(),
-                entity.getComponentIds(),
-                entity.getListingDataSourceType() != null ? entity.getListingDataSourceType().name() : null,
-                entity.getListingGatewayId(),
-                entity.getToolbar().stream()
+        var builder = stored != null ? stored.toBuilder() : PageEntity.builder()
+                .content(List.of());
+        repository.save(builder
+                .id(entity.getId().id())
+                .name(entity.getName().name())
+                .route(entity.getRoute())
+                .type(entity.getType() != null ? entity.getType().name() : null)
+                .aggregateId(entity.getAggregateId())
+                .modelId(entity.getModelId())
+                .componentIds(entity.getComponentIds())
+                .listingDataSourceType(entity.getListingDataSourceType() != null ? entity.getListingDataSourceType().name() : null)
+                .listingGatewayId(entity.getListingGatewayId())
+                .toolbar(entity.getToolbar().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
-                        .toList(),
-                entity.getBottomBar().stream()
+                        .toList())
+                .bottomBar(entity.getBottomBar().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
-                        .toList(),
-                entity.getTriggers().stream()
+                        .toList())
+                .triggers(entity.getTriggers().stream()
                         .map(t -> new PageTriggerEntity(
                                 t.type() != null ? t.type().name() : null,
                                 t.actionId(), t.timeoutMillis(), t.times(), t.condition(),
                                 t.calledActionId(), t.propertyName(), t.eventName()))
-                        .toList(),
-                entity.getRules().stream()
+                        .toList())
+                .rules(entity.getRules().stream()
                         .map(r -> new PageRuleEntity(
                                 r.filter(),
                                 r.action() != null ? r.action().name() : null,
@@ -121,24 +125,27 @@ public class PageFileRepository implements PageRepository {
                                 r.fieldAttribute() != null ? r.fieldAttribute().name() : null,
                                 r.value(), r.expression(), r.actionId(),
                                 r.result() != null ? r.result().name() : null))
-                        .toList(),
-                entity.getValidations().stream()
+                        .toList())
+                .validations(entity.getValidations().stream()
                         .map(v -> new PageValidationEntity(v.condition(), v.fieldId(), v.message()))
-                        .toList(),
-                entity.getFieldConfigs().stream()
+                        .toList())
+                .fieldConfigs(entity.getFieldConfigs().stream()
                         .map(f -> new PageFieldConfigEntity(
                                 f.fieldId(),
                                 f.stereotype() != null ? f.stereotype().name() : null,
                                 f.colspan(), f.style(), f.cssClass(), f.label(), f.help()))
-                        .toList(),
-                entity.getWizardSteps().stream()
+                        .toList())
+                .wizardSteps(entity.getWizardSteps().stream()
                         .map(s -> new PageWizardStepEntity(s.pageId(), s.label()))
-                        .toList(),
-                entity.getCompletionActions().stream()
+                        .toList())
+                .completionActions(entity.getCompletionActions().stream()
                         .map(b -> new PageButtonEntity(b.label(), b.icon(), b.useCaseId(), b.actionId(), b.mappingId()))
-                        .toList(),
-                entity.getListingQueryServiceId(),
-                stored != null && stored.content() != null ? stored.content() : List.of()));
+                        .toList())
+                .listingQueryServiceId(entity.getListingQueryServiceId())
+                .favicon(entity.getFavicon())
+                .title(entity.getTitle())
+                .style(entity.getStyle() != null ? entity.getStyle().name() : null)
+                .build());
         return entity;
     }
 

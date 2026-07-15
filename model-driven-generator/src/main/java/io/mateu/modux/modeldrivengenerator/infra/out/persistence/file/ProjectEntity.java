@@ -53,7 +53,9 @@ public record ProjectEntity(
         /** i18n: the locales the system speaks (e.g. es-ES, en, de); labels become keys at generation. */
         List<String> locales,
         String defaultLocale
-) implements Identifiable {
+,
+        /** Default image registry/user for the project's services (e.g. docker.io/<user>). */
+        String dockerRegistry) implements Identifiable {
 
     /** Backward-compatible constructor (pre-locales callers and stores). */
     public ProjectEntity(String id, String name, String outputPath, String packageName,
@@ -73,7 +75,7 @@ public record ProjectEntity(
                 messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
                 cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
                 environments, serviceIds, contextMap, tenancyStrategy, externalSystems, objective,
-                null, null);
+                null, null, null);
     }
 
     public ProjectEntity {

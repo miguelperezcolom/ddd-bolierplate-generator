@@ -3,8 +3,17 @@ package ${project.packageName}.infra.in.ui;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
+<#if homePage??>
+import ${project.packageName}.${homePage.moduleSlug}.infra.in.ui.pages.${homePage.pageSlug}.${homePage.className};
+</#if>
+<#if menuPages?? && menuPages?has_content>
+<#list menuPages as pg>
+import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.${pg.className};
+</#list>
+</#if>
 <#if adapter.menuItems?has_content>
 <#list adapter.menuItems as item>
+<#if item.route?has_content>
 <#assign routeSlug = item.route?lower_case?replace("[^a-z0-9]","",'r')>
 <#list service.modules as m>
 <#list m.aggregates as agg>
@@ -14,6 +23,7 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
 </#if>
 </#list>
 </#list>
+</#if>
 </#list>
 </#if>
 
@@ -21,33 +31,54 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
  * Home page generated from UIAdapter: ${adapter.name}
  * Path: ${adapter.path!''}
  */
+<#if ui??>
+<#assign uiPath = (ui.path?has_content)?then(ui.path, (adapter.path)!'')>
+@UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)
+@Title("${adapter.title!ui.name}")
+<#else>
 @UI("${adapter.path!''}")
 @Title("${adapter.title!service.name}")
-public class Home {
+</#if>
+public class Home<#if homePage??> implements io.mateu.uidl.interfaces.HomeRouteSupplier</#if> {
 
+<#if homePage??>
+    @Menu(selected = true)
+    ${homePage.className} ${homePage.field};
+
+</#if>
+<#if menuPages?? && menuPages?has_content>
+<#list menuPages as pg>
+    @Menu
+    ${pg.className} ${pg.field};
+
+</#list>
+</#if>
 <#if adapter.menuItems?has_content>
 <#list adapter.menuItems as item>
+<#if item.route?has_content>
 <#assign routeSlug = item.route?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign fieldName = item.label?lower_case?replace("[^a-z0-9]","_",'r')?replace("_+","_",'r')>
-<#assign matched = false>
 <#list service.modules as m>
 <#list m.aggregates as agg>
 <#assign aggSlug = agg.name?lower_case?replace("[^a-z0-9]","",'r')>
-<#if aggSlug == routeSlug && !matched>
-<#assign matched = true>
-    @Menu("${item.label}")
+<#if aggSlug == routeSlug>
+    @Menu
     ${agg.name}CrudOrchestrator ${fieldName};
+
 </#if>
 </#list>
 </#list>
-<#if !matched>
-    @Menu("${item.label}")
-    // TODO: resolve type for route "${item.route!''}"
-    Object ${fieldName};
 </#if>
 </#list>
-<#else>
+</#if>
+<#if !(menuPages?? && menuPages?has_content) && !(adapter.menuItems?has_content)>
     // TODO: add menu items
 </#if>
-
+<#if homePage??>
+    /** Opening the app's root lands on its declared home page. */
+    @Override
+    public String homeRoute() {
+        return "/${homePage.field}";
+    }
+</#if>
 }

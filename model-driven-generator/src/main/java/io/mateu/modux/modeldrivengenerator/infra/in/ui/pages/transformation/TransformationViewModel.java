@@ -42,7 +42,7 @@ public class TransformationViewModel implements Identifiable, CrudEditorForm<Str
 
     @Override
     public String create(HttpRequest httpRequest) {
-        repository.save(new TransformationEntity(id, name, java.util.List.of(), null, customCodeId));
+        repository.save(new TransformationEntity(id, name, java.util.List.of(), null, customCodeId, null));
         return id;
     }
 

@@ -17,5 +17,8 @@ public record ArchimateRelationEntity(
         String type,
         /** Optional label (e.g. the influence sign, or a name for an association). */
         String label
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

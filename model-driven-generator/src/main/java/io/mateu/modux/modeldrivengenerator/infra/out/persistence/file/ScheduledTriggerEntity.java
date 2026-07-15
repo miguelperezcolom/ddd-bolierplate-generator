@@ -18,5 +18,8 @@ public record ScheduledTriggerEntity(
         boolean allowConcurrentExecution,
         boolean retryOnFailure,
         Integer retryCount
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

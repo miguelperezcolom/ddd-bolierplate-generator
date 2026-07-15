@@ -36,7 +36,7 @@ public class SagaFileQueryService implements SagaQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, SagaEntity.class).map(SagaEntity::name).orElseThrow();
+        return repository.findById(id, SagaEntity.class).map(SagaEntity::name).orElse(null);
     }
 
     @Override

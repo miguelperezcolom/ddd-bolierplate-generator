@@ -93,7 +93,7 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getRateLimitRequestsPerSecond(),
                 entity.getGrpcServiceName(), entity.getGrpcMethodName(),
                 existing != null ? existing.decisionIds() : List.of(),
-                existing != null && existing.policy()));
+                existing != null && existing.policy(), null));
         return entity;
     }
 

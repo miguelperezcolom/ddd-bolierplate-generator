@@ -48,7 +48,7 @@ public class IntegrationEventFileRepository implements IntegrationEventRepositor
                 entity.getMaxDeliveryAttempts(),
                 entity.getSchemaVersion(),
                 entity.getRoutingKeyField(),
-                entity.isReplayable()));
+                entity.isReplayable(), null));
         return entity;
     }
 

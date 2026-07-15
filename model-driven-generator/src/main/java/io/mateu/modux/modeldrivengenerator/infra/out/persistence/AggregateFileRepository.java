@@ -115,11 +115,11 @@ public class AggregateFileRepository implements AggregateRepository {
                                 invariant.getConditions() != null ? invariant.getConditions().stream()
                                         .map(c -> new InvariantConditionEntity(c.id(), c.expression(), c.custom(), c.description(), c.errorMessage()))
                                         .toList() : List.of()
-                        )).toList(),
+                        , null)).toList(),
                 entity.getValueObjectIds(),
                 existing != null ? existing.lifecycle() : null,
                 existing != null && existing.audited(),
-                existing != null ? existing.decisionIds() : List.of()));
+                existing != null ? existing.decisionIds() : List.of(), null));
         return entity;
     }
 

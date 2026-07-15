@@ -27,7 +27,10 @@ public record AggregateEntity(
         boolean audited,
         /** Architecture decisions (ADRs) this aggregate traces back to. */
         List<String> decisionIds
-        ) implements Identifiable {
+        ,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
+) implements Identifiable {
 
     /** Backward-compatible constructor (pre-lifecycle/audited callers and stores). */
     public AggregateEntity(String id, String name, String modelId,
@@ -38,7 +41,7 @@ public record AggregateEntity(
                            List<InvariantEntity> invariants, List<String> valueObjectIds) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, null, false, List.of());
+                operations, invariants, valueObjectIds, null, false, List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -51,7 +54,7 @@ public record AggregateEntity(
                            LifecycleEntity lifecycle, boolean audited) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, lifecycle, audited, List.of());
+                operations, invariants, valueObjectIds, lifecycle, audited, List.of(), null);
     }
 
     @Override

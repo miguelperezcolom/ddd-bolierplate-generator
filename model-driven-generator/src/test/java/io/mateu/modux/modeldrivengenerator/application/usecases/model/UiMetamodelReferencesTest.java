@@ -28,7 +28,7 @@ class UiMetamodelReferencesTest {
     void buttonMappingAndRoleAppsAreReferences() {
         var button = new PageButtonEntity("Guardar", null, "uc-guardar", null, "map-vm-a-request");
         var role = new RoleEntity("role-recepcionista", "Recepcionista",
-                List.of(), List.of(), List.of(), List.of(), List.of("app-recepcion"));
+                List.of(), List.of(), List.of(), List.of(), List.of("app-recepcion"), null);
 
         assertThat(CatalogReflection.references(button).stream().map(r -> r.id()))
                 .contains("uc-guardar", "map-vm-a-request");

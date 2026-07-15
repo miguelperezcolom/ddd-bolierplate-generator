@@ -36,6 +36,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledT
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiShellEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -99,10 +101,12 @@ public class GenerateCodeUseCase {
     private void generate(GenerateCodeCommand command) {
 
         var stored = repository.findById(command.projectId(), ProjectEntity.class).orElseThrow();
-        // honor an explicit output path from the command (e.g. CLI), overriding the stored one
-        var project = (command.outputPath() != null && !command.outputPath().isBlank())
-                ? withOutputPath(stored, command.outputPath())
-                : stored;
+        // honor an explicit output path from the command (e.g. CLI), overriding the stored one;
+        // a leading ~ is the user's home (Path.of would create a LITERAL «~» directory)
+        var rawOutput = command.outputPath() != null && !command.outputPath().isBlank()
+                ? command.outputPath()
+                : stored.outputPath();
+        var project = withOutputPath(stored, expandTilde(rawOutput));
 
         // view scope: when a view id is given, restrict generation to its dependency closure
         generationScope = (command.viewId() != null && !command.viewId().isBlank())
@@ -121,19 +125,27 @@ public class GenerateCodeUseCase {
             generateRootPom(project);
         }
 
-        project.serviceIds().stream()
-                .map(id -> repository.findById(id, ServiceEntity.class).orElseThrow())
-                .forEach(service -> generateService(project, service, command.sourceOnly()));
+        // Declared services, or the synthesized default when the project has content
+        // but no deployment yet — shared with the deploy pipeline.
+        var services = effectiveServices(project);
 
-        // DevOps / infrastructure-as-code at project root (skipped when generating sources only)
-        if (!command.sourceOnly()) {
+        // The README is the one thing EVERY project gets — an empty project generates
+        // its folder with just this file (plus the manifest).
+        generateReadme(project, services);
+
+        services.forEach(service -> generateService(project, service, command.sourceOnly()));
+
+        // DevOps / infrastructure-as-code at project root (skipped when generating sources
+        // only, and pointless while the project has nothing to deploy)
+        if (!command.sourceOnly() && !services.isEmpty()) {
             generateDockerCompose(project);
             generateCiWorkflow(project);
             generateTerraform(project);
         }
 
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
-        repository.findAllOfType(UiShellEntity.class)
+        repository.findAllOfType(UiShellEntity.class).stream()
+                .filter(shell -> inProject(shell.projectId(), project))
                 .forEach(shell -> generateUiShell(project, shell));
 
         // The manifest tracks the full project; a partial (view-scoped) run must not overwrite it or
@@ -145,6 +157,83 @@ public class GenerateCodeUseCase {
     }
 
     // ─── Root pom (monorepo) ──────────────────────────────────────────────────
+
+    /** Does the element belong to the project? Unstamped (legacy) elements count as everyone's. */
+    private boolean inProject(String elementProjectId, ProjectEntity project) {
+        return elementProjectId == null || elementProjectId.equals(project.id());
+    }
+
+    /** The project's contexts, by their projectId stamp. */
+    private List<BoundedContextEntity> projectContexts(ProjectEntity project) {
+        return repository.findAllOfType(BoundedContextEntity.class).stream()
+                .filter(m -> inProject(m.projectId(), project))
+                .toList();
+    }
+
+    /**
+     * The services generation (and deployment) actually works with: the declared ones,
+     * or the synthesized default when the project has content but no deployment yet.
+     */
+    public List<ServiceEntity> effectiveServices(ProjectEntity project) {
+        var declared = (project.serviceIds() == null ? List.<String>of() : project.serviceIds()).stream()
+                .map(id -> repository.findById(id, ServiceEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        var services = !declared.isEmpty()
+                ? declared
+                : java.util.stream.Stream.ofNullable(defaultServiceFor(project)).toList();
+        // The project's default registry lands ON the service, so the generated
+        // manifests reference the same image the deploy pipeline pushes.
+        return services.stream()
+                .map(sv -> (sv.dockerImageRegistry() == null || sv.dockerImageRegistry().isBlank())
+                        && project.dockerRegistry() != null && !project.dockerRegistry().isBlank()
+                        ? sv.toBuilder().dockerImageRegistry(project.dockerRegistry()).build()
+                        : sv)
+                .toList();
+    }
+
+    /**
+     * A service named after the project that deploys the project's contexts (their main
+     * modules) — synthesized IN MEMORY when the project declares content but no services,
+     * never persisted. Null when there is nothing to deploy.
+     */
+    private ServiceEntity defaultServiceFor(ProjectEntity project) {
+        var allModules = repository.findAllOfType(ModuleEntity.class);
+        var mainModuleIds = projectContexts(project).stream()
+                .map(m -> io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology
+                        .mainModuleOf(allModules, m.id()))
+                .filter(java.util.Objects::nonNull)
+                .map(ModuleEntity::id)
+                .toList();
+        if (mainModuleIds.isEmpty()) return null;
+        return ServiceEntity.builder()
+                .id(project.id() + "-service")
+                .name(project.name())
+                .moduleIds(mainModuleIds)
+                .projectId(project.id())
+                .build();
+    }
+
+    private void generateReadme(ProjectEntity project, List<ServiceEntity> services) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("services", services.stream()
+                .map(sv -> Map.of(
+                        "name", sv.name(),
+                        "slug", serviceName(sv),
+                        "modules", deployedUnits(sv).stream().map(BoundedContextEntity::name).toList()))
+                .toList());
+        model.put("contexts", projectContexts(project).stream().map(BoundedContextEntity::name).toList());
+        createFile(project.outputPath(), model, "readme.ftl", "README.md");
+    }
+
+    private static String expandTilde(String path) {
+        var trimmed = path == null ? "" : path.trim();
+        if (trimmed.equals("~") || trimmed.startsWith("~/")) {
+            return System.getProperty("user.home") + trimmed.substring(1);
+        }
+        return trimmed;
+    }
 
     private void generateRootPom(ProjectEntity project) {
         createDir(project.outputPath(), "");
@@ -170,7 +259,8 @@ public class GenerateCodeUseCase {
         if (!sourceOnly) {
             // containerization: a multi-stage Dockerfile that builds the service reactor
             createFile(serviceDir, serviceModel, "dockerfile.ftl", "Dockerfile");
-            // Kubernetes manifests (Deployment + Service + optional HPA)
+            // Kubernetes manifests (Deployment + Service + optional HPA + Ingress per declared URL)
+            serviceModel.put("ingressUrls", ingressUrls(service));
             createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
         }
 
@@ -199,9 +289,17 @@ public class GenerateCodeUseCase {
         // Roles (all project roles, once per service in app boundedContext)
         generateRolesConfig(project, service, serviceDir);
 
-        // UIAdapters (find by serviceId — generates custom Home.java)
+        // UIAdapters: assigned to the service by id, or realizing the declared UI of a
+        // context this service deploys (the App is how that UI materializes).
+        var deployedIds = deployedUnits(service).stream()
+                .map(BoundedContextEntity::id)
+                .collect(java.util.stream.Collectors.toSet());
+        var realizingAppIds = repository.findAllOfType(UiEntity.class).stream()
+                .filter(u -> u.boundedContextId() != null && deployedIds.contains(u.boundedContextId()))
+                .flatMap(u -> u.appIds().stream())
+                .collect(java.util.stream.Collectors.toSet());
         repository.findAllOfType(UiAdapterEntity.class).stream()
-                .filter(a -> service.id().equals(a.serviceId()))
+                .filter(a -> service.id().equals(a.serviceId()) || realizingAppIds.contains(a.id()))
                 .forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
     }
 
@@ -363,6 +461,28 @@ public class GenerateCodeUseCase {
                 .filter(p -> p.aggregateId() != null && boundedContextAggregateIds.contains(p.aggregateId()))
                 .filter(p -> inScope(p.aggregateId()))
                 .forEach(page -> generatePage(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, page));
+
+        // Pages REALIZED by the context's declared UIs (no aggregate behind them):
+        // the human interface says they exist, so they generate with the context —
+        // whether the UI lists them directly or through a realizing App's menu.
+        repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class).stream()
+                .filter(u -> boundedContext.id().equals(u.boundedContextId()))
+                .flatMap(u -> java.util.stream.Stream.concat(
+                        u.pageIds().stream(),
+                        u.appIds().stream()
+                                .map(aid -> repository.findById(aid, UiAdapterEntity.class).orElse(null))
+                                .filter(java.util.Objects::nonNull)
+                                .flatMap(a -> java.util.stream.Stream.of(
+                                                menuPageIds(a.menuItems()),
+                                                java.util.stream.Stream.of(a.homePageId(), a.headerPageId(),
+                                                        a.viewPageId(), a.editPageId()))
+                                        .flatMap(x -> x))))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .map(pid -> repository.findById(pid, PageEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .filter(p -> p.aggregateId() == null || p.aggregateId().isBlank())
+                .forEach(page -> generatePage(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, page));
     }
 
     // ─── Service app ─────────────────────────────────────────────────────────
@@ -383,6 +503,45 @@ public class GenerateCodeUseCase {
         appModel.put("project", projectToMap(project));
         appModel.put("service", serviceToMap(service));
 
+        // The declared UI (the context's human interface) lends the @UI annotation its
+        // parameters: path (= mateu's value), indexHtmlPath and frontendComponentPath.
+        var deployedContextIds = deployedUnits(service).stream()
+                .map(BoundedContextEntity::id)
+                .collect(java.util.stream.Collectors.toSet());
+        var declaredUi = repository.findAllOfType(UiEntity.class).stream()
+                .filter(u -> u.boundedContextId() != null && deployedContextIds.contains(u.boundedContextId()))
+                .findFirst()
+                .orElse(null);
+        // A UI realized DIRECTLY by pages needs no Home wrapper: the page itself
+        // carries @UI (see generatePage) — generating a Home too would fight it
+        // for the same path.
+        var uiCarriedByPage = declaredUi != null
+                && !declaredUi.pageIds().isEmpty() && declaredUi.appIds().isEmpty();
+        java.util.Optional.ofNullable(declaredUi)
+                .filter(u -> !uiCarriedByPage)
+                .ifPresent(u -> {
+                    appModel.put("ui", fromJson(toJson(u)));
+                    // The pages the UI realizes hang from the Home menu.
+                    var unitName = deployedUnits(service).stream()
+                            .filter(unit -> unit.id().equals(u.boundedContextId()))
+                            .map(BoundedContextEntity::name)
+                            .findFirst().orElse(null);
+                    if (unitName == null) return;
+                    var moduleSlug = boundedContextSlug(unitName);
+                    appModel.put("uiPages", u.pageIds().stream()
+                            .map(pid -> repository.findById(pid, PageEntity.class).orElse(null))
+                            .filter(java.util.Objects::nonNull)
+                            .map(pg -> Map.of(
+                                    "label", pg.title() != null && !pg.title().isBlank() ? pg.title() : pg.name(),
+                                    "className", pageClassName(pg),
+                                    "field", fieldNameFromLabel(
+                                            pg.title() != null && !pg.title().isBlank() ? pg.title() : pg.name(),
+                                            pageSlug(pg) + "Page"),
+                                    "moduleSlug", moduleSlug,
+                                    "pageSlug", pageSlug(pg)))
+                            .toList());
+                });
+
         // One Home menu entry per deployed module (each pointing to that module's menu class).
         // Only modules that package aggregates produce a menu.
         var menuBoundedContexts = new java.util.ArrayList<Map<String, Object>>();
@@ -401,8 +560,10 @@ public class GenerateCodeUseCase {
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
                 "src/main/java/" + packageDir + "/" + toClassName(service.name()) + "Application.java");
-        createFile(appDir, appModel, "home.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+        if (!uiCarriedByPage) {
+            createFile(appDir, appModel, "home.ftl",
+                    "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+        }
     }
 
     // ─── Aggregate level ─────────────────────────────────────────────────────
@@ -1692,11 +1853,21 @@ public class GenerateCodeUseCase {
 
     private void generatePage(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                               String boundedContextDir, String boundedContextPackageDir, PageEntity page) {
-        var pageSlug = page.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        var pageSlug = pageSlug(page);
         createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + pageSlug);
 
         Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("page", fromJson(toJson(page)));
+        model.put("pageSlug", pageSlug);
+        model.put("pageClassName", pageClassName(page));
+
+        // The ui→page assignment says the page IS the interface: the page class itself
+        // carries @UI (path and mateu parameters from the declared UI) — no Home wrapper.
+        repository.findAllOfType(UiEntity.class).stream()
+                .filter(u -> u.appIds().isEmpty() && !u.pageIds().isEmpty()
+                        && u.pageIds().get(0).equals(page.id()))
+                .findFirst()
+                .ifPresent(u -> model.put("ui", fromJson(toJson(u))));
 
         // Resolve aggregate
         if (page.aggregateId() != null && !page.aggregateId().isBlank()) {
@@ -1743,7 +1914,7 @@ public class GenerateCodeUseCase {
 
         createFile(boundedContextDir, model, template,
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + pageSlug
-                        + "/" + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + "Page.java");
+                        + "/" + pageClassName(page) + ".java");
 
         // FORM and WIZARD pages also emit an EventConductor form definition (for USER_TASK steps)
         if ((pageType.equals("FORM") || pageType.equals("PAGE") || pageType.equals("WIZARD")) && page.modelId() != null) {
@@ -1773,7 +1944,13 @@ public class GenerateCodeUseCase {
     // ─── Roles / Security ─────────────────────────────────────────────────────
 
     private void generateRolesConfig(ProjectEntity project, ServiceEntity service, String serviceDir) {
-        var roles = repository.findAllOfType(RoleEntity.class);
+        // Only the project's roles, deduped by name (same-named roles in other
+        // projects once produced a duplicated ROLE_X constant).
+        var seenNames = new java.util.HashSet<String>();
+        var roles = repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> inProject(r.projectId(), project))
+                .filter(r -> seenNames.add(r.name() == null ? r.id() : r.name().trim().toUpperCase()))
+                .toList();
         if (roles.isEmpty()) return;
 
         var serviceName = serviceName(service);
@@ -1793,6 +1970,53 @@ public class GenerateCodeUseCase {
 
     // ─── UIAdapter Home ───────────────────────────────────────────────────────
 
+    /** Accents out ("página" → "pagina") so identifiers stay plain ASCII. */
+    private static String stripAccents(String text) {
+        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+    }
+
+    /** The page's package slug, accent-free ("página 3" → "pagina3"). */
+    private String pageSlug(PageEntity page) {
+        return stripAccents(page.name()).toLowerCase().replaceAll("[^a-z0-9]", "");
+    }
+
+    /** The page's class name, accent-free ("página 3" → "Pagina3Page"). */
+    private String pageClassName(PageEntity page) {
+        return capitalize(stripAccents(page.name()).replaceAll("[^a-zA-Z0-9]", "")) + "Page";
+    }
+
+    /** A Java field name out of a human label ("Entrada 2" → "entrada2") — mateu humanizes it back. */
+    private static String fieldNameFromLabel(String label, String fallback) {
+        var base = stripAccents(label == null ? "" : label).replaceAll("[^a-zA-Z0-9 ]", "").trim();
+        if (base.isEmpty()) return fallback;
+        var parts = base.split("\\s+");
+        var sb = new StringBuilder(parts[0].toLowerCase());
+        for (var i = 1; i < parts.length; i++) {
+            sb.append(parts[i].substring(0, 1).toUpperCase()).append(parts[i].substring(1).toLowerCase());
+        }
+        var name = sb.toString();
+        return Character.isJavaIdentifierStart(name.charAt(0)) ? name : "m" + name;
+    }
+
+    /** The app's menu tree flattened, document order. */
+    private List<UiMenuItemEntity> flattenMenu(List<UiMenuItemEntity> items) {
+        if (items == null) return List.of();
+        return items.stream()
+                .flatMap(it -> java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(it), flattenMenu(it.children()).stream()))
+                .toList();
+    }
+
+    /** Every pageId referenced anywhere in an app's menu tree. */
+    private java.util.stream.Stream<String> menuPageIds(List<UiMenuItemEntity> items) {
+        if (items == null) return java.util.stream.Stream.empty();
+        return items.stream().flatMap(it -> java.util.stream.Stream.concat(
+                it.pageId() == null || it.pageId().isBlank()
+                        ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(it.pageId()),
+                menuPageIds(it.children())));
+    }
+
     private void generateUiAdapter(ProjectEntity project, ServiceEntity service, String serviceDir, UiAdapterEntity adapter) {
         var serviceName = serviceName(service);
         var appDir = serviceDir + "/" + serviceName + "-app";
@@ -1804,6 +2028,46 @@ public class GenerateCodeUseCase {
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
         model.put("adapter", fromJson(toJson(adapter)));
+
+        // The declared UI this app REALIZES lends @UI its parameters (path wins over
+        // the adapter's own; indexHtmlPath/frontendComponentPath only live on the UI).
+        var realizedUi = repository.findAllOfType(UiEntity.class).stream()
+                .filter(u -> u.appIds() != null && u.appIds().contains(adapter.id()))
+                .findFirst()
+                .orElse(null);
+        if (realizedUi != null) {
+            model.put("ui", fromJson(toJson(realizedUi)));
+            // Menu entries pointing at PAGES resolve to the page classes generated
+            // with the UI's context (aggregate-slug entries keep their own path).
+            var unitName = deployedUnits(service).stream()
+                    .filter(unit -> unit.id().equals(realizedUi.boundedContextId()))
+                    .map(BoundedContextEntity::name)
+                    .findFirst().orElse(null);
+            if (unitName != null) {
+                var moduleSlug = boundedContextSlug(unitName);
+                // The app's declared home page opens on entry: first menu entry, selected.
+                java.util.Optional.ofNullable(adapter.homePageId())
+                        .flatMap(hid -> repository.findById(hid, PageEntity.class))
+                        .ifPresent(pg -> model.put("homePage", Map.of(
+                                "className", pageClassName(pg),
+                                "field", fieldNameFromLabel(
+                                        pg.title() != null && !pg.title().isBlank() ? pg.title() : pg.name(),
+                                        pageSlug(pg) + "Page"),
+                                "moduleSlug", moduleSlug,
+                                "pageSlug", pageSlug(pg))));
+                model.put("menuPages", flattenMenu(adapter.menuItems()).stream()
+                        .filter(it -> it.pageId() != null && !it.pageId().isBlank())
+                        .map(it -> Map.entry(it, repository.findById(it.pageId(), PageEntity.class).orElse(null)))
+                        .filter(e -> e.getValue() != null)
+                        .map(e -> Map.of(
+                                "label", e.getKey().label() != null ? e.getKey().label() : e.getValue().name(),
+                                "className", pageClassName(e.getValue()),
+                                "field", fieldNameFromLabel(e.getKey().label(), pageSlug(e.getValue()) + "Page"),
+                                "moduleSlug", moduleSlug,
+                                "pageSlug", pageSlug(e.getValue())))
+                        .toList());
+            }
+        }
 
         // Overwrite Home.java with UIAdapter-driven version
         createFile(appDir, model, "ui-adapter-home.ftl",
@@ -1827,6 +2091,13 @@ public class GenerateCodeUseCase {
     private void generateTerraform(ProjectEntity project) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
+        // The declared URLs become DNS records (Cloudflare) pointing at the cluster ingress.
+        model.put("dnsRecords", effectiveServices(project).stream()
+                .flatMap(sv -> ingressUrls(sv).stream())
+                .map(u -> u.get("host"))
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList());
         createFile(project.outputPath(), model, "terraform-main.ftl", "terraform/main.tf");
     }
 
@@ -2180,12 +2451,7 @@ public class GenerateCodeUseCase {
     // ─── Model mappers ────────────────────────────────────────────────────────
 
     private ProjectEntity withOutputPath(ProjectEntity p, String outputPath) {
-        return new ProjectEntity(p.id(), p.name(), outputPath, p.packageName(), p.gitRepository(),
-                p.database(), p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), p.contextMap());
+        return p.toBuilder().outputPath(outputPath).build();
     }
 
     private Map<String, Object> projectToMap(ProjectEntity project) {
@@ -2197,6 +2463,32 @@ public class GenerateCodeUseCase {
                 .toList();
         map.put("services", services);
         return map;
+    }
+
+    /**
+     * The service's declared URLs resolved to ingress rules (host + path). A bare
+     * host (no scheme) is accepted; entries that don't parse to a host are skipped.
+     */
+    private List<Map<String, Object>> ingressUrls(ServiceEntity service) {
+        return (service.urlIds() == null ? List.<String>of() : service.urlIds()).stream()
+                .map(id -> repository.findById(id, UrlEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(u -> {
+                    var raw = u.url() != null && !u.url().isBlank() ? u.url().trim() : u.name().trim();
+                    var withScheme = raw.matches("^[a-z][a-z0-9+.-]*://.*") ? raw : "https://" + raw;
+                    try {
+                        var uri = java.net.URI.create(withScheme);
+                        if (uri.getHost() == null) return null;
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("host", uri.getHost());
+                        m.put("path", uri.getPath() == null || uri.getPath().isBlank() ? "/" : uri.getPath());
+                        return m;
+                    } catch (IllegalArgumentException e) {
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
     }
 
     private Map<String, Object> serviceToMap(ServiceEntity service) {
@@ -2455,13 +2747,34 @@ public class GenerateCodeUseCase {
                 .forEach(rel -> log.info("Previously generated file is no longer produced by the model: {}", rel));
     }
 
+    /**
+     * google-java-format needs jdk.compiler internals opened up; a JVM launched without
+     * the --add-exports flags (an IDE run config, typically) can't format AT ALL —
+     * probe once, warn once with the fix, and generate unformatted quietly after that.
+     */
+    private static volatile Boolean formatterAvailable;
+
     private void formatIfJava(File file) {
+        if (Boolean.FALSE.equals(formatterAvailable) || !file.getName().endsWith(".java")) {
+            return;
+        }
         try {
-            if (file.getName().endsWith(".java")) {
-                var source = Files.readString(file.toPath());
-                var formatted = new Formatter().formatSource(source);
-                Files.writeString(file.toPath(), formatted);
-            }
+            var source = Files.readString(file.toPath());
+            var formatted = new Formatter().formatSource(source);
+            Files.writeString(file.toPath(), formatted);
+            formatterAvailable = Boolean.TRUE;
+        } catch (NoClassDefFoundError | IllegalAccessError e) {
+            formatterAvailable = Boolean.FALSE;
+            log.warn("""
+                    El formateador de código generado no puede arrancar en esta JVM — los .java \
+                    se generan SIN formatear. Añade a las opciones de arranque (VM options):
+                    --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+                    --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED""");
         } catch (Throwable e) {
             log.warn("Could not format generated file {}", file.getAbsolutePath(), e);
         }

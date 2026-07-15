@@ -36,7 +36,7 @@ public class InvariantFileQueryService implements InvariantQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, InvariantEntity.class).map(InvariantEntity::name).orElseThrow();
+        return repository.findById(id, InvariantEntity.class).map(InvariantEntity::name).orElse(null);
     }
 
     @Override

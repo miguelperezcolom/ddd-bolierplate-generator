@@ -36,7 +36,7 @@ public class UseCaseFileQueryService implements UseCaseQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, UseCaseEntity.class).map(UseCaseEntity::name).orElseThrow();
+        return repository.findById(id, UseCaseEntity.class).map(UseCaseEntity::name).orElse(null);
     }
 
     @Override

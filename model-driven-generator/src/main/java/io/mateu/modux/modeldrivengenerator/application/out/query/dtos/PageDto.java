@@ -28,7 +28,10 @@ public record PageDto(
         List<PageFieldConfigEntity> fieldConfigs,
         List<PageWizardStepEntity> wizardSteps,
         List<PageButtonEntity> completionActions,
-        String listingQueryServiceId
+        String listingQueryServiceId,
+        String favicon,
+        String title,
+        String style
 ) {
     public PageDto {
         if (componentIds == null) componentIds = List.of();

@@ -26,5 +26,8 @@ public record GatewayEntity(
         boolean corsEnabled,
         String corsAllowedOrigins,
         Long globalTimeoutMs
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

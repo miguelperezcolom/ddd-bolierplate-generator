@@ -36,7 +36,7 @@ public class ProjectionFileQueryService implements ProjectionQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ProjectionEntity.class).map(ProjectionEntity::name).orElseThrow();
+        return repository.findById(id, ProjectionEntity.class).map(ProjectionEntity::name).orElse(null);
     }
 
     @Override

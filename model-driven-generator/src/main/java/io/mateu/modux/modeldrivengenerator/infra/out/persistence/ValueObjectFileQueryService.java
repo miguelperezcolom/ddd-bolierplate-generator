@@ -40,7 +40,7 @@ public class ValueObjectFileQueryService implements ValueObjectQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ValueObjectEntity.class).map(ValueObjectEntity::name).orElseThrow();
+        return repository.findById(id, ValueObjectEntity.class).map(ValueObjectEntity::name).orElse(null);
     }
 
     @Override

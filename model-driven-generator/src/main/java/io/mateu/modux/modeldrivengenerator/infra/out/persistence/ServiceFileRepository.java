@@ -45,44 +45,49 @@ public class ServiceFileRepository implements ServiceRepository {
 
     @Override
     public Service save(Service entity) {
-        repository.save(new ServiceEntity(
-                entity.getId().id(),
-                entity.getName().name(),
-                entity.getGitRepository(),
-                entity.getDockerImageRegistry(),
-                entity.getDockerImageName(),
-                entity.getPort(),
-                entity.getContextPath(),
-                entity.getDatabase(),
-                entity.getDbMigrationTool(),
-                entity.getKubernetesReplicas(),
-                entity.getKubernetesCpuRequest(),
-                entity.getKubernetesCpuLimit(),
-                entity.getKubernetesMemoryRequest(),
-                entity.getKubernetesMemoryLimit(),
-                entity.isKubernetesHpaEnabled(),
-                entity.getKubernetesHpaMinReplicas(),
-                entity.getKubernetesHpaMaxReplicas(),
-                entity.getKubernetesHpaCpuThreshold(),
-                entity.getLivenessProbe(),
-                entity.getReadinessProbe(),
-                entity.getStartupProbe(),
-                entity.isOpenApiDocumentationEnabled(),
-                entity.isCircuitBreakerEnabled(),
-                entity.getCircuitBreakerThreshold(),
-                entity.getConnectionTimeoutMs(),
-                entity.getReadTimeoutMs(),
-                entity.getWriteTimeoutMs(),
-                entity.getDeploymentStrategy() != null ? entity.getDeploymentStrategy().name() : null,
-                entity.getOwner(),
-                entity.getGatewayIds(),
-                entity.getEnvVars() != null ? entity.getEnvVars().stream()
+        // The domain Service does not model urlIds — start from the stored entity so a
+        // domain save never wipes what the editor authored.
+        var stored = repository.findById(entity.getId().id(), ServiceEntity.class).orElse(null);
+        var builder = stored != null ? stored.toBuilder() : ServiceEntity.builder();
+        repository.save(builder
+                .id(entity.getId().id())
+                .name(entity.getName().name())
+                .gitRepository(entity.getGitRepository())
+                .dockerImageRegistry(entity.getDockerImageRegistry())
+                .dockerImageName(entity.getDockerImageName())
+                .port(entity.getPort())
+                .contextPath(entity.getContextPath())
+                .database(entity.getDatabase())
+                .dbMigrationTool(entity.getDbMigrationTool())
+                .kubernetesReplicas(entity.getKubernetesReplicas())
+                .kubernetesCpuRequest(entity.getKubernetesCpuRequest())
+                .kubernetesCpuLimit(entity.getKubernetesCpuLimit())
+                .kubernetesMemoryRequest(entity.getKubernetesMemoryRequest())
+                .kubernetesMemoryLimit(entity.getKubernetesMemoryLimit())
+                .kubernetesHpaEnabled(entity.isKubernetesHpaEnabled())
+                .kubernetesHpaMinReplicas(entity.getKubernetesHpaMinReplicas())
+                .kubernetesHpaMaxReplicas(entity.getKubernetesHpaMaxReplicas())
+                .kubernetesHpaCpuThreshold(entity.getKubernetesHpaCpuThreshold())
+                .livenessProbe(entity.getLivenessProbe())
+                .readinessProbe(entity.getReadinessProbe())
+                .startupProbe(entity.getStartupProbe())
+                .openApiDocumentationEnabled(entity.isOpenApiDocumentationEnabled())
+                .circuitBreakerEnabled(entity.isCircuitBreakerEnabled())
+                .circuitBreakerThreshold(entity.getCircuitBreakerThreshold())
+                .connectionTimeoutMs(entity.getConnectionTimeoutMs())
+                .readTimeoutMs(entity.getReadTimeoutMs())
+                .writeTimeoutMs(entity.getWriteTimeoutMs())
+                .deploymentStrategy(entity.getDeploymentStrategy() != null ? entity.getDeploymentStrategy().name() : null)
+                .owner(entity.getOwner())
+                .gatewayIds(entity.getGatewayIds())
+                .envVars(entity.getEnvVars() != null ? entity.getEnvVars().stream()
                         .map(e -> new EnvVarEntity(e.name(), e.defaultValue(), e.secret(), e.required(), e.description()))
-                        .toList() : List.of(),
-                entity.getJavaVersion(),
-                entity.isOutboxEnabled(),
-                entity.getOutboxTableName(),
-                entity.getModules().stream().map(ModuleId::id).toList()));
+                        .toList() : List.of())
+                .javaVersion(entity.getJavaVersion())
+                .outboxEnabled(entity.isOutboxEnabled())
+                .outboxTableName(entity.getOutboxTableName())
+                .moduleIds(entity.getModules().stream().map(ModuleId::id).toList())
+                .build());
         return entity;
     }
 

@@ -9,5 +9,8 @@ public record ModelEntity(
         String name,
         List<ModelFieldEntity> fields,
         List<ModelValidationEntity> validations
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

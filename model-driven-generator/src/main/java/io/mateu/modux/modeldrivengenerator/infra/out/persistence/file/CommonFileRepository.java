@@ -67,16 +67,48 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         return Optional.ofNullable((T) store.get(storeKey(id, type)));
     }
     public synchronized void save(Identifiable o) {
+        o = ProjectScope.stamped(o, currentProjectId);
         store.put(storeKey(o.id(), o.getClass()), o);
         // a bounded context is born with its main module, whoever saves it
         if (o instanceof BoundedContextEntity boundedContext) {
             var modules = findAllOfType(ModuleEntity.class);
             if (ModuleTopology.mainModuleOf(modules, boundedContext.id()) == null) {
-                var main = ModuleTopology.mainModuleFor(boundedContext);
+                var main = ProjectScope.stamped(ModuleTopology.mainModuleFor(boundedContext), currentProjectId);
                 store.put(storeKey(main.id(), main.getClass()), main);
             }
         }
         persist();
+    }
+
+    /**
+     * The selected project: new elements are stamped with it on save, and the CRUD
+     * listing (findAll) narrows to it. Kept here (pushed by the project selector)
+     * so the store needs no dependency on the selection port.
+     */
+    private volatile String currentProjectId;
+
+    public void setCurrentProjectId(String projectId) {
+        this.currentProjectId = projectId;
+    }
+
+    /**
+     * Adopts every element that predates project scoping: whatever has a projectId
+     * component still null gets the given project. One persist for the whole sweep.
+     */
+    public synchronized int claimOrphans(String projectId) {
+        if (projectId == null || projectId.isBlank()) return 0;
+        var claimed = 0;
+        for (var entry : new java.util.ArrayList<>(store.entrySet())) {
+            var element = entry.getValue();
+            if (element instanceof ProjectEntity) continue;
+            var stampedElement = ProjectScope.stamped(element, projectId);
+            if (stampedElement != element) {
+                store.put(entry.getKey(), stampedElement);
+                claimed++;
+            }
+        }
+        if (claimed > 0) persist();
+        return claimed;
     }
 
     /** Puts an entity into the in-memory store without persisting to disk (transient/derived data). */
@@ -85,7 +117,12 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     }
 
     public synchronized <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> entityClass) {
-        var data = (List<T>) store.values().stream().filter(v -> v.getClass().equals(entityClass)).toList();
+        // The CRUD listing works on the SELECTED project only; whole-model passes
+        // (generation, lint, projections) use findAllOfType and see everything.
+        var data = (List<T>) store.values().stream()
+                .filter(v -> v.getClass().equals(entityClass))
+                .filter(v -> ProjectScope.inProject(v, currentProjectId))
+                .toList();
         return new ListingData<T>(new Page<T>(searchText, pageable.size(), pageable.page(), data.size(),
                 data.stream().skip(pageable.page() * pageable.size()).limit(pageable.size()).toList()));
     }
@@ -132,6 +169,9 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     /** Loads the model from a specific store file (replacing whatever is loaded), then re-initialises. */
     public synchronized void loadFrom(String modelFilePath) {
         this.overrideModelFile = modelFilePath;
+        // The selection belongs to the OLD store: whoever opens the new one selects
+        // again (RepositoryStoreOpener does); a stale id would mis-stamp new elements.
+        this.currentProjectId = null;
         init();
     }
 
@@ -148,6 +188,7 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     /** Open a DATABASE-backed repository: the catalog loads from rows and persists to rows. */
     public synchronized void openDatabase(io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase db) {
         this.jdbc = db;
+        this.currentProjectId = null;
         this.scoped = false;
         this.startedFromScratch = false;
         loadIntoStore(db.load(db.getCurrentWorkspace()));

@@ -93,7 +93,7 @@ class FlowExpansionContextResolverTest {
     }
 
     private static ModelEntity model(String id, ModelFieldEntity... fields) {
-        return new ModelEntity(id, id, List.of(fields), List.of());
+        return new ModelEntity(id, id, List.of(fields), List.of(), null);
     }
 
     private static ModelFieldEntity field(String name, FieldDataType type) {

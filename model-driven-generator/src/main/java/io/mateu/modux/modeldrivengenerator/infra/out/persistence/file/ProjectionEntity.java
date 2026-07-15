@@ -24,6 +24,9 @@ public record ProjectionEntity(
         String sourceExternalUseCaseId,
         /** Alternative source: poll a legacy/external system's table into the read model. */
         String sourceExternalTableId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-external-sources callers and stores). */
@@ -33,7 +36,7 @@ public record ProjectionEntity(
                             boolean snapshotEnabled, Integer snapshotFrequency,
                             String sourceAggregateId) {
         this(id, name, readModelId, handlers, rebuildStrategy, errorHandlingStrategy, maxRetries,
-                snapshotEnabled, snapshotFrequency, sourceAggregateId, null, null);
+                snapshotEnabled, snapshotFrequency, sourceAggregateId, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-sourceAggregateId callers and stores). */
@@ -42,6 +45,6 @@ public record ProjectionEntity(
                             String errorHandlingStrategy, Integer maxRetries,
                             boolean snapshotEnabled, Integer snapshotFrequency) {
         this(id, name, readModelId, handlers, rebuildStrategy, errorHandlingStrategy, maxRetries,
-                snapshotEnabled, snapshotFrequency, null, null, null);
+                snapshotEnabled, snapshotFrequency, null, null, null, null);
     }
 }

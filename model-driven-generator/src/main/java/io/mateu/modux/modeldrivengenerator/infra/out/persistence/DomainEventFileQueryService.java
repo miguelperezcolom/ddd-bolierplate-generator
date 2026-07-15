@@ -34,7 +34,7 @@ public class DomainEventFileQueryService implements DomainEventQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, DomainEventEntity.class).map(DomainEventEntity::name).orElseThrow();
+        return repository.findById(id, DomainEventEntity.class).map(DomainEventEntity::name).orElse(null);
     }
 
     @Override

@@ -72,7 +72,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
      * opens mateu's own drawer with that read-only detail inside — the editor only
      * emits the event; mateu draws.
      */
-    private static final Map<String, Class<?>> ADAPTERS = Map.ofEntries(
+    static final Map<String, Class<?>> ADAPTERS = Map.ofEntries(
             Map.entry("boundedContext", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.boundedcontext.BoundedContextCrudAdapter.class),
             Map.entry("service", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudAdapter.class),
             Map.entry("aggregate", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudAdapter.class),
@@ -89,6 +89,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("projection", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.projection.ProjectionCrudAdapter.class),
             Map.entry("read-model", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.readmodel.ReadModelCrudAdapter.class),
             Map.entry("page", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.page.PageCrudAdapter.class),
+            Map.entry("url", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.url.UrlCrudAdapter.class),
             Map.entry("component", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.component.ComponentCrudAdapter.class),
             Map.entry("ui-adapter", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.uiadapter.UiAdapterCrudAdapter.class),
             Map.entry("query-service", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.queryservice.QueryServiceCrudAdapter.class),
@@ -191,24 +192,38 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             // the detail could not load (stale id, scoped store…): fall back to navigating
             return route == null ? null : URI.create(route + "/" + id + "/edit");
         }
-        // The DETAIL, read-only, without the crud toolbar: no «Back to list» here —
-        // the drawer overlays the diagram, there is no listing to go back to.
-        var content = new java.util.ArrayList<io.mateu.uidl.fluent.Component>(
-                io.mateu.core.domain.out.componentmapper.PageFormBuilder.getView(
-                        viewModel, "base_url",
-                        httpRequest.runActionRq().route(),
-                        httpRequest.runActionRq().consumedRoute(),
-                        httpRequest.runActionRq().initiatorComponentId(),
-                        httpRequest, true, false));
+        // The ficha is an EditableView embedded as a mediator: the read-only DETAIL
+        // opens first, its Edit button toggles to the concept editor IN PLACE
+        // (save/cancel land back on the view) — no «Back to list», the drawer
+        // overlays the diagram.
+        var fichaRoute = "/element-ficha/" + type + "/" + id;
+        var markedRoute = fichaRoute + "?_embeddedMediator=1";
+        var mediatorType = ElementFichaView.class.getName();
+        var app = io.mateu.uidl.fluent.AppShell.builder()
+                .clientSideComponentId("modux-element-ficha_app")
+                .serverSideType(mediatorType)
+                .homeServerSideType(mediatorType)
+                .homeRoute(markedRoute)
+                .homeConsumedRoute(fichaRoute)
+                .homeBaseUrl("")
+                .route(fichaRoute)
+                .variant(io.mateu.uidl.fluent.AppVariant.MEDIATOR)
+                .style("width: 100%;")
+                .build();
+        var mediator = io.mateu.uidl.data.ServerSideComponent.builder()
+                .id("modux-element-ficha")
+                .serverSideType(mediatorType)
+                .route(markedRoute)
+                .initialData(java.util.Map.of("_embeddedMediator", true, "elementType", type, "elementId", id))
+                .actions(java.util.List.of(io.mateu.uidl.fluent.Action.builder().id("*").build()))
+                .children(java.util.List.of(app))
+                .style("width: 100%;")
+                .build();
         return io.mateu.uidl.data.Drawer.builder()
                 .id("modux-element-drawer")
                 .headerTitle(String.valueOf(viewModel))
-                // the drawer's state: the viewmodel, serialized the mateu way (field
-                // access — our viewmodels have no getters)
-                .initialData(io.mateu.core.infra.JsonSerializer.fromJson(
-                        io.mateu.core.infra.JsonSerializer.toJson(viewModel)))
                 .content(io.mateu.uidl.data.VerticalLayout.builder()
-                        .content(content)
+                        .content(java.util.List.of(mediator))
                         .spacing(true)
                         .build())
                 .position(io.mateu.uidl.data.DrawerPosition.end)

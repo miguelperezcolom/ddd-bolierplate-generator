@@ -27,6 +27,9 @@ public record NotificationEntity(
         /** Template: subject and body with {placeholders} over the event payload. */
         String subject,
         String body
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public static final Set<String> CHANNELS = Set.of("EMAIL", "SMS", "PUSH", "WEBHOOK");

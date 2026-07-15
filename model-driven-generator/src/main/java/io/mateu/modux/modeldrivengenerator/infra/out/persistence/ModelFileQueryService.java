@@ -40,7 +40,7 @@ public class ModelFileQueryService implements ModelQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ModelEntity.class).map(ModelEntity::name).orElseThrow();
+        return repository.findById(id, ModelEntity.class).map(ModelEntity::name).orElse(null);
     }
 
     @Override

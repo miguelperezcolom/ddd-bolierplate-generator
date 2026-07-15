@@ -42,7 +42,7 @@ public class AggregateFileQueryService implements AggregateQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, AggregateEntity.class).map(AggregateEntity::name).orElseThrow();
+        return repository.findById(id, AggregateEntity.class).map(AggregateEntity::name).orElse(null);
     }
 
     @Override

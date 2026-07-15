@@ -32,7 +32,7 @@ public class DecisionFileRepository implements DecisionRepository {
                 entity.getDecision(),
                 entity.getRationale(),
                 entity.getStatus(),
-                entity.getSource()));
+                entity.getSource(), null));
         return entity;
     }
 

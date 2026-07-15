@@ -58,7 +58,7 @@ class LintRulesTest {
     void pii_cross_context_flags_flows_materializing_pii_fields() {
         var model = new ModelEntity("m1", "Reserva", List.of(
                 field("titular", PiiClassification.PII),
-                field("localizador", null)), List.of());
+                field("localizador", null)), List.of(), null);
         var aggregate = new AggregateEntity("a1", "Reserva", "m1", null, null, null, null,
                 false, false, null, List.of(), List.of(), List.of(), null, false);
         var flow = new FlowEntity("f1", "ReservaVisible", null,
@@ -117,10 +117,10 @@ class LintRulesTest {
     void proposed_decisions_surface_as_open_points() {
         var open = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity(
                 "d-hold", "¿Hold de cupo?", "¿Hace falta bloquear cupo antes del book?",
-                null, io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.PROPOSED, null);
+                null, io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.PROPOSED, null, null);
         var resolved = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity(
                 "d-outbox", "Outbox siempre", "Eventos por outbox",
-                null, io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.ACCEPTED, null);
+                null, io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.ACCEPTED, null, null);
         var snapshot = new ModelSnapshot(null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, List.of(open, resolved), null, null, null, null);
 

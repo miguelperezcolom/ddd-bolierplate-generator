@@ -30,7 +30,7 @@ public class InvariantFileRepository implements InvariantRepository {
         repository.save(new InvariantEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                toConditionEntities(entity.getConditions())));
+                toConditionEntities(entity.getConditions()), null));
         return entity;
     }
 

@@ -13,5 +13,8 @@ import lombok.Builder;
 public record AreaEntity(
         String id,
         String name
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

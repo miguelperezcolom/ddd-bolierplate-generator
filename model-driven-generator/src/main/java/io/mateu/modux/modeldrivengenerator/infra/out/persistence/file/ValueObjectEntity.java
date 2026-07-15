@@ -8,5 +8,8 @@ public record ValueObjectEntity(
         String type,
         String valuesJson,
         String fieldsJson,
-        String dataType) implements Identifiable {
+        String dataType,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
+) implements Identifiable {
 }

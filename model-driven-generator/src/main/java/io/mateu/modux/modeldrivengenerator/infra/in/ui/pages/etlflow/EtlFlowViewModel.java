@@ -51,7 +51,7 @@ public class EtlFlowViewModel implements Identifiable, CrudEditorForm<String>, C
     @Override
     public String create(HttpRequest httpRequest) {
         repository.save(new EtlFlowEntity(id, name, description, ownerBoundedContextId,
-                java.util.List.of(), identityProviderId));
+                java.util.List.of(), identityProviderId, null));
         return id;
     }
 

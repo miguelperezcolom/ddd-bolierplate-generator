@@ -15,5 +15,8 @@ public record SagaEntity(
         Long retryBackoffMs,
         String deadLetterQueue,
         boolean persistenceEnabled
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

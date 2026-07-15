@@ -85,7 +85,7 @@ public class WorkflowGatewayViewModel implements Identifiable, CrudEditorForm<St
         validatePair();
         repository.save(new WorkflowGatewayEntity(id, name, type.name(),
                 semantics == null ? null : semantics.name(), null, null,
-                conditionsToPersist(java.util.List.of())));
+                conditionsToPersist(java.util.List.of()), null));
         return id;
     }
 

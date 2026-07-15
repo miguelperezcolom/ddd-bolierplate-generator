@@ -19,6 +19,9 @@ public record TransformationEntity(
         TransformationRefEntity output,
         /** The hand-written code that implements it (CustomCodeEntity). */
         String customCodeId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public TransformationEntity {
@@ -28,6 +31,6 @@ public record TransformationEntity(
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */
     public TransformationEntity(String id, String name, List<TransformationRefEntity> inputs,
                                 TransformationRefEntity output) {
-        this(id, name, inputs, output, null);
+        this(id, name, inputs, output, null, null);
     }
 }

@@ -34,7 +34,7 @@ public class DecisionFileQueryService implements DecisionQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, DecisionEntity.class).map(DecisionEntity::name).orElseThrow();
+        return repository.findById(id, DecisionEntity.class).map(DecisionEntity::name).orElse(null);
     }
 
     @Override

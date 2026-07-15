@@ -27,7 +27,7 @@ public class EntityFileRepository implements EntityRepository {
     @Override
     public Entity save(Entity entity) {
         repository.save(new EntityEntity(entity.getId().id(), entity.getName().name(),
-                entity.getModelId(), entity.getParentAggregateId(), entity.isCollection()));
+                entity.getModelId(), entity.getParentAggregateId(), entity.isCollection(), null));
         return entity;
     }
 

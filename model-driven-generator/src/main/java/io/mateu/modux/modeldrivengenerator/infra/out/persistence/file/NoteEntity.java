@@ -19,6 +19,9 @@ public record NoteEntity(
         List<String> targetIds,
         /** The diagram relations this note annotates, as view edge refs. */
         List<String> edgeRefs
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public NoteEntity {

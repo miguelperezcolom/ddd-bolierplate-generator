@@ -36,7 +36,7 @@ public class EnumDefinitionFileQueryService implements EnumDefinitionQueryServic
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, EnumEntity.class).map(EnumEntity::id).orElseThrow();
+        return repository.findById(id, EnumEntity.class).map(EnumEntity::id).orElse(null);
     }
 
     @Override

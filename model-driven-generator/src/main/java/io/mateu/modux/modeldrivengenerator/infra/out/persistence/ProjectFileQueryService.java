@@ -36,7 +36,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, ProjectEntity.class).map(ProjectEntity::name).orElseThrow();
+        return repository.findById(id, ProjectEntity.class).map(ProjectEntity::name).orElse(null);
     }
 
     @Override

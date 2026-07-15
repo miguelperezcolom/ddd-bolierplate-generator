@@ -8,5 +8,8 @@ public record InvariantEntity(
         String id,
         String name,
         List<InvariantConditionEntity> conditions
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

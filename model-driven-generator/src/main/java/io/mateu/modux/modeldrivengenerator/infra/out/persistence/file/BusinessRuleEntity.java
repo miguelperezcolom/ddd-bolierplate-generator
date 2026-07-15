@@ -14,5 +14,8 @@ public record BusinessRuleEntity(
         String ruleGroup,
         List<BusinessRuleConditionEntity> conditions,
         List<BusinessRuleActionEntity> actions
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

@@ -19,5 +19,8 @@ public record UiShellEntity(
         String bucketRegion,
         String deploymentServiceId,
         String designSystem
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 }

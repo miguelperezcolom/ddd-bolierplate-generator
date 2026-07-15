@@ -43,7 +43,7 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 entity.getTriggerEvent(),
                 toStepEntities(entity.getSteps()),
                 entity.getOnCompletionEventName(),
-                existing != null ? existing.decisionIds() : List.of()));
+                existing != null ? existing.decisionIds() : List.of(), null));
         return entity;
     }
 

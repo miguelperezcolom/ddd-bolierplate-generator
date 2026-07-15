@@ -20,17 +20,20 @@ public record EtlFlowEntity(
         List<EtlStepEntity> steps,
         /** The service identity the pipeline runs as (a non-human subject). */
         String identityProviderId
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
     public EtlFlowEntity(String id, String name, String description, String ownerBoundedContextId,
                          List<EtlStepEntity> steps) {
-        this(id, name, description, ownerBoundedContextId, steps, null);
+        this(id, name, description, ownerBoundedContextId, steps, null, null);
     }
 
     /** Backward-compatible constructor (pre-owner callers and stores). */
     public EtlFlowEntity(String id, String name, String description, List<EtlStepEntity> steps) {
-        this(id, name, description, null, steps, null);
+        this(id, name, description, null, steps, null, null);
     }
 
     public EtlFlowEntity {

@@ -73,7 +73,7 @@ public final class ConsumptionApiDerivation {
                                     && queryServicesToExpose.stream().noneMatch(q -> q.id().equals(provider.id()))) {
                                 queryServicesToExpose.add(new QueryServiceEntity(
                                         provider.id(), provider.name(), provider.boundedContextId(),
-                                        provider.description(), provider.operations(), true));
+                                        provider.description(), provider.operations(), true, null));
                             }
                         }
                     }
@@ -112,6 +112,6 @@ public final class ConsumptionApiDerivation {
                 uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
                 uc.grpcServiceName() != null ? uc.grpcServiceName() : providerBoundedContext.name(),
                 uc.grpcMethodName() != null ? uc.grpcMethodName() : uc.name(),
-                uc.decisionIds(), uc.policy());
+                uc.decisionIds(), uc.policy(), null);
     }
 }

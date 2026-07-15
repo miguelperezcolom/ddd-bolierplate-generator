@@ -47,7 +47,7 @@ public class QueryServiceFileRepository implements QueryServiceRepository {
                 entity.getBoundedContextId(),
                 entity.getDescription(),
                 operationEntities,
-                existing != null && existing.exposedAsGrpc()));
+                existing != null && existing.exposedAsGrpc(), null));
         return entity;
     }
 

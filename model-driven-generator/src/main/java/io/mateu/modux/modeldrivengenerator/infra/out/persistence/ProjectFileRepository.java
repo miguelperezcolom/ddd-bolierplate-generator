@@ -104,28 +104,32 @@ public class ProjectFileRepository implements ProjectRepository {
         // Carry over fields the domain Project does not (yet) model, so a UI save never wipes
         // what was authored in the YAML store.
         var existing = repository.findById(entity.getId().id(), ProjectEntity.class).orElse(null);
-        repository.save(new ProjectEntity(
-                entity.getId().id(),
-                entity.getName().name(),
-                entity.getOutputPath().path(),
-                entity.getPackageName().packageName(),
-                entity.getGitRepository(),
-                entity.getDatabase(),
-                entity.getDbMigrationTool(),
-                entity.getTerraformProvider(), entity.getTerraformProviderVersion(),
-                entity.getTerraformBackendType(),
-                entity.getIamProvider(),
-                entity.getMessageBrokerType(),
-                entity.getTracingProvider(),
-                entity.getMetricsProvider(),
-                entity.getLoggingProvider(),
-                entity.getLlmProvider(),
-                entity.getCacheProvider(),
-                entity.getFileStorageProvider(),
-                entity.getEmailProvider(),
-                entity.getSecretsProvider(),
-                entity.getCicdProvider() != null ? entity.getCicdProvider().name() : null,
-                entity.getEnvironments() == null ? List.<ProjectEnvironmentConfigEntity>of() :
+        // Start from the STORED entity: whatever the domain Project does not model
+        // (tenancy, external systems, objective, locales, dockerRegistry…) survives.
+        var builder = existing != null ? existing.toBuilder() : ProjectEntity.builder();
+        repository.save(builder
+                .id(entity.getId().id())
+                .name(entity.getName().name())
+                .outputPath(entity.getOutputPath().path())
+                .packageName(entity.getPackageName().packageName())
+                .gitRepository(entity.getGitRepository())
+                .database(entity.getDatabase())
+                .dbMigrationTool(entity.getDbMigrationTool())
+                .terraformProvider(entity.getTerraformProvider())
+                .terraformProviderVersion(entity.getTerraformProviderVersion())
+                .terraformBackendType(entity.getTerraformBackendType())
+                .iamProvider(entity.getIamProvider())
+                .messageBrokerType(entity.getMessageBrokerType())
+                .tracingProvider(entity.getTracingProvider())
+                .metricsProvider(entity.getMetricsProvider())
+                .loggingProvider(entity.getLoggingProvider())
+                .llmProvider(entity.getLlmProvider())
+                .cacheProvider(entity.getCacheProvider())
+                .fileStorageProvider(entity.getFileStorageProvider())
+                .emailProvider(entity.getEmailProvider())
+                .secretsProvider(entity.getSecretsProvider())
+                .cicdProvider(entity.getCicdProvider() != null ? entity.getCicdProvider().name() : null)
+                .environments(entity.getEnvironments() == null ? List.<ProjectEnvironmentConfigEntity>of() :
                         entity.getEnvironments().stream().map(e -> new ProjectEnvironmentConfigEntity(
                                 e.environment() != null ? e.environment().name() : null,
                                 e.kubernetesClusterUrl(),
@@ -169,11 +173,11 @@ public class ProjectFileRepository implements ProjectRepository {
                                 e.ingressDomain(),
                                 e.ingressTlsEnabled(),
                                 e.ingressClassName()
-                        )).toList(),
-                entity.getServices().stream()
+                        )).toList())
+                .serviceIds(entity.getServices().stream()
                         .map(s -> s.id())
-                        .toList(),
-                entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
+                        .toList())
+                .contextMap(entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
                         .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                 r.type() != null ? r.type().name() : null, r.description(),
                                 // per-relation decisionIds carry-over (not modeled in the domain yet)
@@ -181,10 +185,8 @@ public class ProjectFileRepository implements ProjectRepository {
                                         .filter(e -> e.id() != null && e.id().equals(r.id()))
                                         .findFirst().map(ContextMapRelationEntity::decisionIds)
                                         .orElse(List.of())))
-                        .toList(),
-                existing != null ? existing.tenancyStrategy() : null,
-                existing != null ? existing.externalSystems() : List.of(),
-                existing != null ? existing.objective() : null));
+                        .toList())
+                .build());
         return entity;
     }
 

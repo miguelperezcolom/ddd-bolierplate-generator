@@ -21,9 +21,20 @@ spec:
       labels:
         app: ${slug}
     spec:
+      # Created by the modux deploy pipeline from the local docker login when the
+      # registry is private; a missing secret is harmless for public images.
+      imagePullSecrets:
+        - name: modux-regcred
       containers:
         - name: ${slug}
           image: ${image}:latest
+<#if !(service.database?? && service.database?has_content)>
+          # No database declared on the service: the app runs self-contained on the
+          # local profile (in-memory H2). Declare one to switch to real infrastructure.
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: local
+</#if>
           ports:
             - containerPort: ${port}
           resources:
@@ -76,4 +87,25 @@ spec:
         target:
           type: Utilization
           averageUtilization: ${(service.kubernetesHpaCpuThreshold!70)?c}
+</#if>
+<#if ingressUrls?? && ingressUrls?has_content>
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${slug}
+spec:
+  rules:
+<#list ingressUrls as u>
+    - host: ${u.host}
+      http:
+        paths:
+          - path: ${u.path}
+            pathType: Prefix
+            backend:
+              service:
+                name: ${slug}
+                port:
+                  number: ${port}
+</#list>
 </#if>

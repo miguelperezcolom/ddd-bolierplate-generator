@@ -78,7 +78,7 @@ public class FlowExpander {
                         "act-" + base, "updateProjection", SubscriptionActionType.UpdateProjection,
                         null, null, projId, null)),
                 null, null, null, null, null, null,
-                true, "id");
+                true, "id", null);
 
         return new FlowExpansion(domainEvent, payloadModel, integrationEvent, readModel, projection, subscription, null, null);
     }
@@ -112,7 +112,7 @@ public class FlowExpander {
                         "act-" + base, lowerFirst(useCaseName), SubscriptionActionType.CallUseCase,
                         flow.getTargetUseCaseId(), null, null, mappingId)),
                 null, null, null, null, null, null,
-                true, "id");
+                true, "id", null);
 
         return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, modelMapping, null);
     }
@@ -155,7 +155,7 @@ public class FlowExpander {
         var saga = new SagaEntity(
                 sagaId, flow.getName().name() + "Saga",
                 null, null, List.of(eventId), List.of(firstStep),
-                3, null, dlq, true);
+                3, null, dlq, true, null);
 
         var subscription = new SubscriptionEntity(
                 "sub-" + base, ctx.targetBoundedContextName() + eventName,
@@ -165,7 +165,7 @@ public class FlowExpander {
                         "act-" + base, "start" + flow.getName().name(), SubscriptionActionType.StartSaga,
                         null, sagaId, null, null)),
                 null, null, null, null, null, null,
-                true, "id");
+                true, "id", null);
 
         return new FlowExpansion(domainEvent, payloadModel, integrationEvent, null, null, subscription, null, saga);
     }
@@ -185,7 +185,7 @@ public class FlowExpander {
                                 modelId + "-" + fieldName, fieldName, true, ctx.typeOf(fieldName),
                                 null, false, null, List.of()))
                         .toList(),
-                List.of());
+                List.of(), null);
     }
 
     private DomainEventEntity domainEvent(String eventId, String eventName, String modelId, String topic, String dlq) {
@@ -194,7 +194,7 @@ public class FlowExpander {
                 true, modelId, topic, null, null,
                 IntegrationEventSerializationFormat.JSON.name(),
                 IntegrationEventCompressionType.NONE.name(),
-                true, dlq, 5, "v1", null, true);
+                true, dlq, 5, "v1", null, true, null);
     }
 
     private IntegrationEventEntity integrationEvent(String ieId, String eventName, String modelId, String eventId,
@@ -204,7 +204,7 @@ public class FlowExpander {
                 eventId, modelId, topic, null, null,
                 IntegrationEventSerializationFormat.JSON,
                 IntegrationEventCompressionType.NONE,
-                true, dlq, 5, "v1", null, true);
+                true, dlq, 5, "v1", null, true, null);
     }
 
     /** Turns "targetInput=sourcePayload" lines into model-mapping rules (by field name). */

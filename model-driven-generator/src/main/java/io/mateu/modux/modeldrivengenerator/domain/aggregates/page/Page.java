@@ -7,6 +7,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageName;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleAction;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleFieldAttribute;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageRuleResult;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageStyle;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageTriggerType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageType;
 import lombok.Getter;
@@ -34,6 +35,9 @@ public class Page {
     private List<PageWizardStep> wizardSteps;
     private List<PageButton> completionActions;
     private String listingQueryServiceId;
+    private String favicon;
+    private String title;
+    private PageStyle style;
 
     public static Page of(PageId id, PageName name, String route, PageType type,
                           String aggregateId, String modelId, List<String> componentIds,
@@ -43,7 +47,8 @@ public class Page {
                           List<PageTrigger> triggers, List<PageRule> rules,
                           List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
                           List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
-                          String listingQueryServiceId) {
+                          String listingQueryServiceId,
+                          String favicon, String title, PageStyle style) {
         var page = new Page();
         page.id = id;
         page.name = name;
@@ -63,6 +68,9 @@ public class Page {
         page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         page.completionActions = completionActions != null ? completionActions : List.of();
         page.listingQueryServiceId = listingQueryServiceId;
+        page.favicon = favicon;
+        page.title = title;
+        page.style = style;
         return page;
     }
 
@@ -74,7 +82,8 @@ public class Page {
                             List<PageTrigger> triggers, List<PageRule> rules,
                             List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
                             List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
-                            String listingQueryServiceId) {
+                            String listingQueryServiceId,
+                            String favicon, String title, String style) {
         var page = new Page();
         page.id = new PageId(id);
         page.name = new PageName(name);
@@ -95,6 +104,9 @@ public class Page {
         page.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         page.completionActions = completionActions != null ? completionActions : List.of();
         page.listingQueryServiceId = listingQueryServiceId;
+        page.favicon = favicon;
+        page.title = title;
+        page.style = style != null ? PageStyle.valueOf(style) : null;
         return page;
     }
 
@@ -106,7 +118,8 @@ public class Page {
                        List<PageTrigger> triggers, List<PageRule> rules,
                        List<PageValidation> validations, List<PageFieldConfig> fieldConfigs,
                        List<PageWizardStep> wizardSteps, List<PageButton> completionActions,
-                       String listingQueryServiceId) {
+                       String listingQueryServiceId,
+                       String favicon, String title, PageStyle style) {
         this.name = name;
         this.route = route;
         this.type = type;
@@ -124,5 +137,8 @@ public class Page {
         this.wizardSteps = wizardSteps != null ? wizardSteps : List.of();
         this.completionActions = completionActions != null ? completionActions : List.of();
         this.listingQueryServiceId = listingQueryServiceId;
+        this.favicon = favicon;
+        this.title = title;
+        this.style = style;
     }
 }

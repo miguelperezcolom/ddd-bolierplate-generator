@@ -34,7 +34,7 @@ public class EntityFileQueryService implements EntityQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, EntityEntity.class).map(EntityEntity::name).orElseThrow();
+        return repository.findById(id, EntityEntity.class).map(EntityEntity::name).orElse(null);
     }
 
     @Override

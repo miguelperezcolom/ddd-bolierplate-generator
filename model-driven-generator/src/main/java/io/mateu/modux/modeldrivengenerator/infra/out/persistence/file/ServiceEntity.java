@@ -43,12 +43,18 @@ public record ServiceEntity(
         boolean outboxEnabled,
         String outboxTableName,
         /** The modules this service deploys — the ONLY link between topology and content. */
-        List<String> moduleIds
+        List<String> moduleIds,
+        /** The URLs this service answers at (one or more). */
+        List<String> urlIds
+,
+        /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
+        String projectId
 ) implements Identifiable {
 
     public ServiceEntity {
         if (gatewayIds == null) gatewayIds = List.of();
         if (envVars == null) envVars = List.of();
         if (moduleIds == null) moduleIds = List.of();
+        if (urlIds == null) urlIds = List.of();
     }
 }

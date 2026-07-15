@@ -58,7 +58,7 @@ public class ModelFileRepository implements ModelRepository {
         repository.save(new ModelEntity(
                 entity.getId().id(),
                 entity.getName().name(),
-                fieldEntities, validationEntities));
+                fieldEntities, validationEntities, null));
         return entity;
     }
 

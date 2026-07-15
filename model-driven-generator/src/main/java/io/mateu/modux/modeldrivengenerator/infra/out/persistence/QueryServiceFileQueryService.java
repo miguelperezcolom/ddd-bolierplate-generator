@@ -37,7 +37,7 @@ public class QueryServiceFileQueryService implements QueryServiceQueryService {
 
     @Override
     public String getLabel(String id) {
-        return repository.findById(id, QueryServiceEntity.class).map(QueryServiceEntity::name).orElseThrow();
+        return repository.findById(id, QueryServiceEntity.class).map(QueryServiceEntity::name).orElse(null);
     }
 
     @Override
