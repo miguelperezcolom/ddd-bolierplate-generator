@@ -4238,6 +4238,45 @@
       },
       "additionalProperties" : false
     },
+    "UiEntity" : {
+      "type" : "object",
+      "properties" : {
+        "appIds" : {
+          "description" : "References to existing 'app' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "boundedContextId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'boundedContext' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "pageIds" : {
+          "description" : "References to existing 'page' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "UiMenuItemEntity" : {
       "type" : "object",
       "properties" : {
@@ -5116,6 +5155,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/UiShellEntity"
+      }
+    },
+    "uis" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/UiEntity"
       }
     },
     "useCases" : {

@@ -1,6 +1,7 @@
 notas:
 
 - construir varios casos de uso, empezando por un hola mundo
+- pulir relaciones posibles entre elementos
 - desplegar en test.modux.mateu.io
 - finalizar el despliegue de aplicaciones en x.test.modux.mateu.io
 - desplegar eventconductor en test.eventconductor.mateu.io
