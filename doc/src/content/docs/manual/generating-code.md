@@ -7,10 +7,21 @@ Once you have defined your domain model in the Modux UI, you can generate the fu
 
 ## From the UI
 
-1. Open your **Project** in the Modux UI
-2. Click the **Generate Code** button
-3. Modux processes all aggregates, events, and other concepts in your project
-4. The generated code is written to the **Output path** you configured on the project
+The fastest way is the **⚙ Generar** button on the app header, next to the
+repository · project · model selectors: it generates the CURRENT project to its
+configured output path. It shows up as soon as the app context is fully resolved.
+The project's detail view keeps its own **Generate Code** button with the same effect.
+
+What generation guarantees:
+
+- **A README, always.** Every project generates `README.md` — name, objective,
+  services and contexts, how to build and run locally, how to regenerate. An **empty
+  project** generates exactly its folder with that README, nothing else.
+- **A default service when none is declared.** A project with contexts but no
+  services generates (and [deploys](/manual/deploying/)) through an in-memory service
+  named after the project that deploys every context — nothing is persisted into
+  your model.
+- The output path may use `~` for your home directory.
 
 ## From a Maven build (Maven plugin)
 
