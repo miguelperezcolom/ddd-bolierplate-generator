@@ -1390,6 +1390,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'model' ||
             node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
+            node.kind === 'boundedContext' ||
+            node.kind === 'ui-app' ||
             node.kind === 'external-system' ||
             node.kind === 'actor' ||
             node.kind === 'ai-agent' ||
@@ -1431,6 +1433,8 @@ export class ModuxCanvas extends LitElement {
                       ? 'Arrastra hasta cualquier elemento o relación: la nota quedará atada con un hilo'
                     : node.kind === 'service'
                       ? 'Arrastra hasta un módulo (o su contexto) para desplegarlo en este servicio'
+                    : node.kind === 'boundedContext'
+                      ? 'Arrastra hasta otro contexto (elige el patrón DDD), un IdP (identidad) o cualquier elemento (relación ArchiMate)'
                     : node.kind === 'actor'
                       ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
                       : node.kind === 'ai-agent'
