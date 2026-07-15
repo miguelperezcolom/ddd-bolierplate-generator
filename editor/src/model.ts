@@ -729,6 +729,15 @@ export interface ServiceRef {
   /** Infrastructure it leans on (drawn at the distribution level). */
   database?: string;
   outboxEnabled?: boolean;
+  /** The URLs this service answers at (one or more). */
+  urlIds?: string[];
+}
+
+/** A URL: an address the system answers at, served by services. */
+export interface UrlRef {
+  id: string;
+  name: string;
+  url?: string;
 }
 
 export interface ModuxModel {
@@ -794,6 +803,8 @@ export interface ModuxModel {
   notes?: NoteRef[];
   /** Areas: named rectangles that group elements geometrically and anchor notes. */
   areas?: AreaRef[];
+  /** URLs on the distribution map — services declare which ones they answer at. */
+  urls?: UrlRef[];
   relations: ContextMapRelation[];
   /** Declared human interfaces (the UI twin of an API), realized by apps and pages. */
   uis?: {

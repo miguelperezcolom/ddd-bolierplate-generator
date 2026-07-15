@@ -1047,6 +1047,22 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'note-attach', id: c.id, targetId: c.targetId }];
       case 'add-area':
         return [{ kind: 'remove-area', id: c.id }];
+      case 'add-url':
+        return [{ kind: 'remove-url', id: c.id }];
+      case 'remove-url': {
+        const u = (host.model.urls ?? []).find((x) => x.id === c.id);
+        if (!u) return null;
+        return [
+          { kind: 'add-url', id: u.id, name: u.name, uri: u.url },
+          ...(host.model.services ?? [])
+            .filter((sv) => (sv.urlIds ?? []).includes(c.id))
+            .map((sv): ModuxCommand => ({ kind: 'add-service-url', serviceId: sv.id, id: c.id })),
+        ];
+      }
+      case 'add-service-url':
+        return [{ kind: 'remove-service-url', serviceId: c.serviceId, id: c.id }];
+      case 'remove-service-url':
+        return [{ kind: 'add-service-url', serviceId: c.serviceId, id: c.id }];
       case 'remove-area': {
         // Notes keep their (dangling) refs to the area, so restoring it revives the threads.
         const a = (host.model.areas ?? []).find((x) => x.id === c.id);

@@ -245,6 +245,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'page', id };
     case 'service':
       return { elementType: 'service', id };
+    case 'url':
+      return { elementType: 'url', id };
     case 'ui':
       return { elementType: 'ui', id };
     case 'actor':
@@ -346,7 +348,7 @@ export class ModuxEditor extends LitElement {
   @property({ type: Boolean, reflect: true }) dark = false;
 
   /** Ids issued by palette drops still in flight — the projection hasn't caught up. */
-  private _pendingIds = new Set<string>();
+  private _pendingNames = new Set<string>();
 
   /** The blank-canvas palette auto-open fired already (once per mount). */
   private _paletteOpenedForBlank = false;
@@ -992,7 +994,7 @@ export class ModuxEditor extends LitElement {
 
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
   protected willUpdate(changed: PropertyValues): void {
-    if (changed.has('model')) this._pendingIds.clear();
+    if (changed.has('model')) this._pendingNames.clear();
     if (changed.has('model')) this.pruneStaleEdgePoints();
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
@@ -1856,6 +1858,10 @@ export class ModuxEditor extends LitElement {
     if (
       kind === 'note' ||
       kind === 'area' ||
+      kind === 'ui' ||
+      kind === 'page' ||
+      kind === 'ui-app' ||
+      kind === 'url' ||
       kind === 'boundedContext' ||
       kind === 'aggregate' ||
       kind === 'entity' ||
@@ -2003,11 +2009,11 @@ export class ModuxEditor extends LitElement {
   private createJourneyFromToolbar(): void {
     const name = this._newJourneyName.trim();
     if (!name) return;
-    const id = `tr-${slug(name)}`;
-    if ((this.model.journeys ?? []).some((j) => j.id === id)) {
+    if ((this.model.journeys ?? []).some((j) => j.name === name)) {
       this.emit('modux-notice', { message: `Ya hay un trayecto «${name}»` });
       return;
     }
+    const id = crypto.randomUUID();
     this.command({ kind: 'add-journey', id, name });
     this._activeJourneyId = id;
     this._newJourneyName = '';
@@ -2195,7 +2201,7 @@ export class ModuxEditor extends LitElement {
     const selected = this.memberIdsFromSelection();
     const memberIds = selected.length ? selected : this.visibleMemberIds();
     if (!name || !memberIds.length) return;
-    const id = `view-${slug(name)}`;
+    const id = crypto.randomUUID();
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
@@ -3056,63 +3062,59 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * A name (and its slug id, WITH the kind's prefix) that does not collide with
-   * anything already in the model. The pool sweeps every element: testing the raw
-   * slug against a partial pool once made a second «Caso de uso» silently reuse
-   * the first one's id — and the backend ignores duplicate adds.
+   * A fresh element: the id is an opaque UUID — the granular store names files
+   * after it, so it must never derive from the (renamable, duplicable) name.
+   * Only the NAME needs uniquifying, so two drops of «Contexto» read apart.
    */
-  private uniquePaletteName(base: string, prefix: string): { id: string; name: string } {
-    // Ids from drops still in flight count as taken: two quick drops of the
-    // same type must not collide while the projection catches up.
-    const ids = new Set([...this._pendingIds, ...this.sceneFor(this._view).nodes.map((n) => n.id)]);
+  private uniquePaletteName(base: string): { id: string; name: string } {
+    // Names from drops still in flight count as taken: two quick drops of the
+    // same type must not read alike while the projection catches up.
+    const taken = new Set(this._pendingNames);
     const m = this.model;
     for (const pool of [
-      m.boundedContexts.map((x) => x.id),
-      m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.readModels ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((x) => x.id)),
-      m.boundedContexts.flatMap((mo) => (mo.scheduledTriggers ?? []).map((x) => x.id)),
-      (m.aggregates ?? []).map((x) => x.id),
-      (m.entities ?? []).map((x) => x.id),
-      (m.actors ?? []).map((x) => x.id),
-      (m.notes ?? []).map((x) => x.id),
-      (m.areas ?? []).map((x) => x.id),
-      m.externalSystems.map((x) => x.id),
-      m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.id)),
-      m.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.id)),
-      m.externalSystems.flatMap((x) => (x.mcpServers ?? []).map((s) => s.id)),
-      (m.apis ?? []).map((x) => x.id),
-      (m.apis ?? []).flatMap((a) => (a.operations ?? []).map((o) => o.id)),
-      (m.proxyApis ?? []).map((x) => x.id),
-      (m.aiAgents ?? []).map((x) => x.id),
-      (m.mcpGateways ?? []).map((x) => x.id),
-      (m.rags ?? []).map((x) => x.id),
-      (m.workflows ?? []).map((x) => x.id),
-      (m.workflows ?? []).flatMap((w) => (w.steps ?? []).map((s) => s.id)),
-      (m.etlFlows ?? []).map((x) => x.id),
-      (m.identityProviders ?? []).map((x) => x.id),
-      (m.notifications ?? []).map((x) => x.id),
-      (m.documents ?? []).map((x) => x.id),
-      (m.uiApps ?? []).map((x) => x.id),
-      (m.pages ?? []).map((x) => x.id),
-      (m.modules ?? []).map((x) => x.id),
-      (m.services ?? []).map((x) => x.id),
-      (m.models ?? []).flatMap((mo) => (mo.fields ?? []).map((f) => f.id)),
-      (m.customCodes ?? []).map((x) => x.id),
-      (m.buttonGroups ?? []).map((x) => x.id),
-      (m.workflowGateways ?? []).map((x) => x.id),
+      m.boundedContexts.map((x) => x.name),
+      m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.readModels ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((x) => x.name)),
+      m.boundedContexts.flatMap((mo) => (mo.scheduledTriggers ?? []).map((x) => x.name)),
+      (m.aggregates ?? []).map((x) => x.name),
+      (m.entities ?? []).map((x) => x.name),
+      (m.actors ?? []).map((x) => x.name),
+      (m.areas ?? []).map((x) => x.name),
+      m.externalSystems.map((x) => x.name),
+      m.externalSystems.flatMap((x) => (x.useCases ?? []).map((u) => u.name)),
+      m.externalSystems.flatMap((x) => (x.tables ?? []).map((t) => t.name)),
+      m.externalSystems.flatMap((x) => (x.mcpServers ?? []).map((s) => s.name)),
+      (m.apis ?? []).map((x) => x.name),
+      (m.apis ?? []).flatMap((a) => (a.operations ?? []).map((o) => o.name)),
+      (m.proxyApis ?? []).map((x) => x.name),
+      (m.aiAgents ?? []).map((x) => x.name),
+      (m.mcpGateways ?? []).map((x) => x.name),
+      (m.rags ?? []).map((x) => x.name),
+      (m.workflows ?? []).map((x) => x.name),
+      (m.etlFlows ?? []).map((x) => x.name),
+      (m.identityProviders ?? []).map((x) => x.name),
+      (m.notifications ?? []).map((x) => x.name),
+      (m.documents ?? []).map((x) => x.name),
+      (m.uiApps ?? []).map((x) => x.name),
+      (m.pages ?? []).map((x) => x.name),
+      (m.modules ?? []).map((x) => x.name),
+      (m.services ?? []).map((x) => x.name),
+      (m.customCodes ?? []).map((x) => x.name),
+      (m.buttonGroups ?? []).map((x) => x.name),
+      (m.workflowGateways ?? []).map((x) => x.name),
+      (m.urls ?? []).map((x) => x.name),
     ]) {
-      pool.forEach((id) => ids.add(id));
+      pool.forEach((name) => { if (name) taken.add(name); });
     }
     for (let n = 1; ; n++) {
       const name = n === 1 ? base : `${base} ${n}`;
-      const id = `${prefix}${slug(name)}`;
-      if (!ids.has(id)) {
-        this._pendingIds.add(id);
-        return { id, name };
+      if (!taken.has(name)) {
+        this._pendingNames.add(name);
+        return { id: crypto.randomUUID(), name };
       }
     }
   }
@@ -3225,7 +3227,7 @@ export class ModuxEditor extends LitElement {
         this.emit('modux-notice', { message: 'Suelta el custom code sobre una página o un componente' });
         return;
       }
-      const { id, name } = this.uniquePaletteName('Custom code', 'cc-');
+      const { id, name } = this.uniquePaletteName('Custom code');
       this.command({ kind: 'add-custom-code', id, name }, false);
       if (m) {
         this.command({ kind: 'set-page-component-custom-code', pageId, componentId: m[2], targetId: id });
@@ -3328,17 +3330,7 @@ export class ModuxEditor extends LitElement {
       this.pushUndoEntry([...inverse, moveOp]);
     };
     if (!def.child) {
-      const prefix: Record<string, string> = {
-        note: 'note-', area: 'area-',
-        boundedContext: 'mod-', actor: '', 'external-system': 'ext-', 'ai-agent': 'agent-',
-        'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
-        'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
-        'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
-        ui: '',
-        'identity-provider': 'idp-', transformation: 'tf-', 'custom-code': 'cc-',
-        'button-group': 'bg-', service: 'svc-',
-      };
-      const { id, name } = this.uniquePaletteName(def.label, prefix[type] ?? '');
+      const { id, name } = this.uniquePaletteName(def.label);
       const cmd: ModuxCommand =
         type === 'boundedContext'
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
@@ -3384,6 +3376,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'add-identity-provider', id, name }
                                   : type === 'service'
                                   ? { kind: 'add-service', id, name }
+                                  : type === 'url'
+                                  ? { kind: 'add-url', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
@@ -3440,7 +3434,7 @@ export class ModuxEditor extends LitElement {
     if (type === 'page' || type === 'ui-page-crud' || type === 'ui-page-wizard') {
       const pageType = type === 'ui-page-crud' ? 'CRUD' : type === 'ui-page-wizard' ? 'WIZARD' : 'PAGE';
       const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : 'Página';
-      const { id, name } = this.uniquePaletteName(base, 'page-');
+      const { id, name } = this.uniquePaletteName(base);
       // Dropped on an app (or on one of its menu entries): the page hangs from its menu.
       const chain = this.dropChain(targetId);
       const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
@@ -3533,7 +3527,7 @@ export class ModuxEditor extends LitElement {
     }
     if (type === 'etl-flow' && !this.dropContainerFor(type, targetId)) {
       // In the open it floats: the pipeline exists before deciding who operates it.
-      const loose = this.uniquePaletteName(def.label, 'etl-');
+      const loose = this.uniquePaletteName(def.label);
       issue({ kind: 'add-etl-flow', id: loose.id, name: loose.name }, loose.id);
       this.emit('modux-notice', {
         message: 'Integrador creado suelto — su contexto dueño se fija en la ficha; cablea fuentes y escrituras aquí',
@@ -3542,7 +3536,7 @@ export class ModuxEditor extends LitElement {
     }
     if (type === 'workflow-join' || type === 'workflow-split') {
       // Gateways are born LOOSE: no workflow declared — their links will say.
-      const { id, name } = this.uniquePaletteName(type === 'workflow-join' ? 'Join' : 'Split', 'wfg-');
+      const { id, name } = this.uniquePaletteName(type === 'workflow-join' ? 'Join' : 'Split');
       issue({ kind: 'add-workflow-gateway', id, name,
         stepType: type === 'workflow-join' ? 'JOIN' : 'SPLIT' }, id);
       this.emit('modux-notice', {
@@ -3575,7 +3569,7 @@ export class ModuxEditor extends LitElement {
         return;
       }
       const { id, name } = this.uniquePaletteName(
-        stepType === 'JOIN' ? 'Join' : stepType === 'SPLIT' ? 'Split' : 'Paso', 'wfs-');
+        stepType === 'JOIN' ? 'Join' : stepType === 'SPLIT' ? 'Split' : 'Paso');
       // Chained onto a step: land beside it, downstream (dependencies flow left→right).
       if (stepHit) pos = { x: pos.x + 190, y: pos.y };
       issue(
@@ -3606,7 +3600,7 @@ export class ModuxEditor extends LitElement {
         });
         return;
       }
-      const { id, name } = this.uniquePaletteName('API', 'api-');
+      const { id, name } = this.uniquePaletteName('API');
       const addCmd: ModuxCommand = { kind: 'add-api', id, name };
       const inverse = this.inverseOf(addCmd) ?? [];
       this.command(addCmd, false);
@@ -3638,15 +3632,7 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    const prefixOf: Record<string, string> = {
-      aggregate: 'agg-', 'use-case': 'uc-', policy: 'uc-', 'domain-event': 'ev-',
-      'application-event': 'aev-', 'domain-service': 'ds-', 'query-service': 'qs-',
-      'scheduled-trigger': 'st-', 'etl-flow': 'etl-', notification: 'ntf-', document: 'doc-',
-      'read-model': 'rm-', 'external-use-case': 'xuc-',
-      'external-table': 'tbl-', 'mcp-server': 'mcpsrv-', 'module': 'cm-',
-      'model-field': 'f-', invariant: 'inv-',
-    };
-    const { id, name } = this.uniquePaletteName(def.label, prefixOf[type] ?? '');
+    const { id, name } = this.uniquePaletteName(def.label);
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, boundedContextId: container }, id, container);
     } else if (type === 'invariant') {
@@ -4886,7 +4872,7 @@ export class ModuxEditor extends LitElement {
                 this.emit('modux-notice', { message: 'Despliega algo antes de crear la vista' });
                 return;
               }
-              const id = `view-${slug(e.detail.name)}`;
+              const id = crypto.randomUUID();
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
               this.activateVista(id);
               this.emit('modux-notice', {
@@ -5265,8 +5251,7 @@ export class ModuxEditor extends LitElement {
                 const picked = p;
                 this._wfStepPicker = null;
                 const { id, name } = this.uniquePaletteName(
-                  picked.stepType === 'JOIN' ? 'Join' : picked.stepType === 'SPLIT' ? 'Split' : 'Paso',
-                  'wfs-');
+                  picked.stepType === 'JOIN' ? 'Join' : picked.stepType === 'SPLIT' ? 'Split' : 'Paso');
                 this.command(
                   { kind: 'add-workflow-step', workflowId: w.id, id, name,
                     ...(picked.stepType ? { stepType: picked.stepType } : {}) },

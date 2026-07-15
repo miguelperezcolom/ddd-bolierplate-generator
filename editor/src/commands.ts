@@ -353,6 +353,27 @@ export type ModuxCommand =
       name: string;
     }
   | {
+      kind: 'add-url';
+      id: string;
+      name: string;
+      /** The address itself (optional at birth). */
+      uri?: string;
+    }
+  | {
+      kind: 'remove-url';
+      id: string;
+    }
+  | {
+      kind: 'add-service-url';
+      serviceId: string;
+      id: string;
+    }
+  | {
+      kind: 'remove-service-url';
+      serviceId: string;
+      id: string;
+    }
+  | {
       kind: 'remove-area';
       id: string;
     }

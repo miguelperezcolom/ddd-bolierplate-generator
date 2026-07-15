@@ -1282,6 +1282,7 @@ export class ModuxPageDesigner extends LitElement {
           : html`<span class="route" title="Click para editar la ruta" @click=${() => (this._route = page.route ?? '/')}
               >${page.route ?? '/…'}</span
             >`}
+        <button class="ficha" @click=${() => this.emitEvent('open-crud')} title="Abrir la ficha de la página (detalle y edición)">Ficha</button>
         <button class="close" @click=${() => this.emitEvent('designer-closed')} title="Cerrar el diseñador">✕</button>
       </div>
       <div class="zone zhdr" title="Cabecera de la página: título y descripción se infieren de la declaración">

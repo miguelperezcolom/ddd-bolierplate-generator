@@ -910,6 +910,25 @@ function buildScene(
         h: NODE_H,
       });
     });
+    const urls = model.urls ?? [];
+    urls.forEach((u, i) => {
+      const pos = layout[u.id] ?? defaultPosition(allNodes.length + services.length + i,
+        allNodes.length + services.length + urls.length);
+      nodes.push({
+        id: u.id,
+        label: u.name,
+        kind: 'url',
+        symbol: 'interface',
+        fill: '#f8fafc',
+        stroke: '#0e7490',
+        badge: 'URL',
+        tooltip: `${u.url ?? u.name} — traza una línea desde un servicio para servirla aquí`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+    });
     const infra: { id: string; label: string; badge: string; symbol: string; tooltip: string }[] = [];
     [...new Set(services.filter((sv) => sv.database).map((sv) => sv.database as string))].forEach((db) =>
       infra.push({ id: `infra-db:${db}`, label: db, badge: 'BD', symbol: 'readmodel',
@@ -927,8 +946,8 @@ function buildScene(
         tooltip: 'Motor de formularios (Mateu) — sirve las páginas declaradas' });
     }
     infra.forEach((inf, i) => {
-      const pos = layout[inf.id] ?? defaultPosition(allNodes.length + services.length + i,
-        allNodes.length + services.length + infra.length);
+      const pos = layout[inf.id] ?? defaultPosition(allNodes.length + services.length + urls.length + i,
+        allNodes.length + services.length + urls.length + infra.length);
       nodes.push({
         id: inf.id,
         label: inf.label,
@@ -1117,6 +1136,19 @@ function buildScene(
               };
             })
             .filter((e): e is SceneEdge => e !== null),
+        ),
+        ...(model.services ?? []).flatMap((svc) =>
+          (svc.urlIds ?? [])
+            .filter((uid) => nodeIds.has(svc.id) && nodeIds.has(uid))
+            .map((uid): SceneEdge => ({
+              id: `svcurl:${svc.id}->${uid}`,
+              sourceId: svc.id,
+              targetId: uid,
+              kind: 'service-url',
+              color: '#0e7490',
+              arrow: true,
+              tooltip: `${svc.name} responde en esta URL — Supr lo desconecta`,
+            })),
         ),
         ...(model.services ?? []).flatMap((svc): SceneEdge[] => {
           const out: SceneEdge[] = [];

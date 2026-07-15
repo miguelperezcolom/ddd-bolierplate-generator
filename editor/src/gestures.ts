@@ -334,6 +334,17 @@ export function applyConnectionGesture(
         }
         return null;
       };
+      // A line from a service to a URL says the service answers there (either direction).
+      const urlIdsOnMap = new Set((host.model.urls ?? []).map((u) => u.id));
+      const svcIds = new Set((host.model.services ?? []).map((sv) => sv.id));
+      if (svcIds.has(sourceId) && urlIdsOnMap.has(targetId)) {
+        host.command({ kind: 'add-service-url', serviceId: sourceId, id: targetId });
+        return;
+      }
+      if (urlIdsOnMap.has(sourceId) && svcIds.has(targetId)) {
+        host.command({ kind: 'add-service-url', serviceId: targetId, id: sourceId });
+        return;
+      }
       const targetBox = boxOf(targetId);
       if (targetBox && targetBox !== sourceId) {
         if ((host.model.services ?? []).some((s) => s.id === sourceId)) {
@@ -1815,6 +1826,19 @@ export function performDeleteGesture(
   if (elementType === 'node' && kind === 'note') {
     host.clearSelection();
     host.command({ kind: 'remove-note', id });
+    return;
+  }
+  if (elementType === 'node' && kind === 'url') {
+    host.clearSelection();
+    host.command({ kind: 'remove-url', id });
+    return;
+  }
+  if (elementType === 'edge' && kind === 'service-url') {
+    const m = /^svcurl:(.+)->(.+)$/.exec(id);
+    if (m) {
+      host.clearSelection();
+      host.command({ kind: 'remove-service-url', serviceId: m[1], id: m[2] });
+    }
     return;
   }
   if (elementType === 'node' && kind === 'area') {
