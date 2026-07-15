@@ -420,6 +420,17 @@ export function applyConnectionGesture(
       const apps = host.model.uiApps ?? [];
       const isApp = (id: string) => apps.some((a) => a.id === id);
       const isPage = (id: string) => pages.some((x) => x.id === id);
+      // UI declarada ⇆ app/página: la ASIGNACIÓN (cualquier dirección) — antes
+      // que el resto del vocabulario de la vista, que no la conoce.
+      const isUi = (id: string) => (host.model.uis ?? []).some((u) => u.id === id);
+      if (isUi(sourceId) !== isUi(targetId)) {
+        const ui = isUi(sourceId) ? sourceId : targetId;
+        const other = ui === sourceId ? targetId : sourceId;
+        if (isApp(other) || isPage(other)) {
+          host.command({ kind: 'add-ui-assignment', id: ui, targetId: other });
+          return;
+        }
+      }
       const isCC = (id: string) => (host.model.customCodes ?? []).some((cc) => cc.id === id);
       // custom code: página ↔ CODE la hace custom; CODE → cualquier otro elemento = «lo usa»
       if (isCC(sourceId) || isCC(targetId)) {
