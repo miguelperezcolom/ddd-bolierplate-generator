@@ -68,6 +68,8 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
   { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
   { id: 'ui-assignment', label: 'Asignación a la UI', hint: 'App o página ⇆ UI declarada: se le asigna (assignment)' },
+  { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
+  { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -125,6 +127,26 @@ export function connectionOptions(
   const uiIds = new Set((m.uis ?? []).map((u) => u.id));
   const appIds = new Set((m.uiApps ?? []).map((a) => a.id));
   const pageIds = new Set((m.pages ?? []).map((p) => p.id));
+  {
+    // contexto ⇆ ui: SOLO composición — el contexto posee la interfaz que expone
+    const ui = uiIds.has(sourceId) ? sourceId : uiIds.has(targetId) ? targetId : null;
+    const other = ui === sourceId ? targetId : sourceId;
+    if (ui && isContext(other)) {
+      offer('ui-composition', () => {
+        host.command({ kind: 'set-ui-context', id: ui, boundedContextId: other });
+      });
+    }
+  }
+  {
+    // ui ⇆ actor: SOLO servidumbre — la interfaz sirve a la persona
+    const ui = uiIds.has(sourceId) ? sourceId : uiIds.has(targetId) ? targetId : null;
+    const other = ui === sourceId ? targetId : sourceId;
+    if (ui && isActor(other)) {
+      offer('ui-serving', () => {
+        host.command({ kind: 'add-ui-serving', id: ui, targetId: other });
+      });
+    }
+  }
   {
     // ui ⇆ app/página: la asignación (cualquier dirección)
     const ui = uiIds.has(sourceId) ? sourceId : uiIds.has(targetId) ? targetId : null;
@@ -428,6 +450,10 @@ export function applyConnectionGesture(
         const other = ui === sourceId ? targetId : sourceId;
         if (isApp(other) || isPage(other)) {
           host.command({ kind: 'add-ui-assignment', id: ui, targetId: other });
+          return;
+        }
+        if ((host.model.actors ?? []).some((a) => a.id === other)) {
+          host.command({ kind: 'add-ui-serving', id: ui, targetId: other });
           return;
         }
       }
@@ -1759,6 +1785,14 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (kind === 'ui-serving') {
+    const m = /^uisrv:(.+)->(.+)$/.exec(id);
+    if (m) {
+      host.clearSelection();
+      host.command({ kind: 'remove-ui-serving', id: m[1], targetId: m[2] });
+    }
+    return;
+  }
   if (kind === 'ui-assignment') {
     const m = /^uiasg:(.+)->(.+)$/.exec(id);
     if (m) {

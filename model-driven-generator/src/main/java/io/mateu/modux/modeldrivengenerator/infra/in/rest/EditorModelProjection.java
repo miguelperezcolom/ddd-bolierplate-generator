@@ -772,7 +772,7 @@ public class EditorModelProjection {
                         .map(r -> new ArchimateRelationDto(r.id(), r.sourceId(), r.targetId(), r.type(), r.label()))
                         .toList(),
                 repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class).stream()
-                        .map(u -> new UiDto(u.id(), u.name(), u.boundedContextId(), u.appIds(), u.pageIds()))
+                        .map(u -> new UiDto(u.id(), u.name(), u.boundedContextId(), u.appIds(), u.pageIds(), u.actorIds()))
                         .toList());
     }
 }

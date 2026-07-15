@@ -185,7 +185,7 @@ public class EditorApiController {
                                        String type, String label) {}
     /** The declared human interface of a context, realized by apps and pages. */
     public record UiDto(String id, String name, String boundedContextId,
-                        List<String> appIds, List<String> pageIds) {}
+                        List<String> appIds, List<String> pageIds, List<String> actorIds) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
@@ -793,8 +793,11 @@ public class EditorApiController {
             case "create-ui-app" -> uiCommands.createUiApp(command);
             case "add-ui" -> addUi(command);
             case "remove-ui" -> removeUi(command);
+            case "set-ui-context" -> setUiContext(command);
             case "add-ui-assignment" -> addUiAssignment(command);
             case "remove-ui-assignment" -> removeUiAssignment(command);
+            case "add-ui-serving" -> addUiServing(command);
+            case "remove-ui-serving" -> removeUiServing(command);
             case "set-app-header-page" -> uiCommands.setAppHeaderPage(command);
             case "set-app-home-page" -> uiCommands.setAppHomePage(command);
             case "set-app-model" -> uiCommands.setAppModel(command);
@@ -2574,6 +2577,20 @@ public class EditorApiController {
         repository.deleteAllById(List.of(command.id()), UiEntity.class);
     }
 
+    /**
+     * Context ⇆ UI is COMPOSITION and nothing else: the context owns the
+     * interface it exposes. Tracing to another context re-parents; null looses.
+     */
+    private void setUiContext(EditorCommand command) {
+        var ui = repository.findById(command.id(), UiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
+        if (command.boundedContextId() != null && repository
+                .findById(command.boundedContextId(), BoundedContextEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Contexto desconocido: " + command.boundedContextId());
+        }
+        repository.save(ui.toBuilder().boundedContextId(command.boundedContextId()).build());
+    }
+
     /** ui ⇆ app or page: the ASSIGNMENT — who is assigned to work this interface. */
     private void addUiAssignment(EditorCommand command) {
         var ui = repository.findById(command.id(), UiEntity.class)
@@ -2594,6 +2611,27 @@ public class EditorApiController {
             return;
         }
         throw new IllegalArgumentException("La UI se asigna a una app o una página: " + target);
+    }
+
+    /** ui ⇆ actor: SERVING and nothing else — the interface serves the person. */
+    private void addUiServing(EditorCommand command) {
+        var ui = repository.findById(command.id(), UiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
+        if (repository.findById(command.targetId(), RoleEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Actor desconocido: " + command.targetId());
+        }
+        if (ui.actorIds().contains(command.targetId())) return;
+        var ids = new ArrayList<>(ui.actorIds());
+        ids.add(command.targetId());
+        repository.save(ui.toBuilder().actorIds(ids).build());
+    }
+
+    private void removeUiServing(EditorCommand command) {
+        var ui = repository.findById(command.id(), UiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
+        repository.save(ui.toBuilder()
+                .actorIds(ui.actorIds().stream().filter(x -> !x.equals(command.targetId())).toList())
+                .build());
     }
 
     private void removeUiAssignment(EditorCommand command) {

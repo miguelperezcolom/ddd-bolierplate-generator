@@ -731,6 +731,18 @@ export function uiScene(
         tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
       });
     }
+    for (const actor of u.actorIds ?? []) {
+      if (!nodes.some((n) => n.id === actor)) continue;
+      edges.push({
+        id: `uisrv:${u.id}->${actor}`,
+        sourceId: u.id,
+        targetId: actor,
+        kind: 'ui-serving',
+        color: '#0ea5e9',
+        markerEnd: 'open-arrow',
+        tooltip: 'la UI sirve a este actor (serving) — Supr la desconecta',
+      });
+    }
   });
 
   return { nodes, edges };

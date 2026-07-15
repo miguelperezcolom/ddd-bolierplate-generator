@@ -37,6 +37,19 @@ export type ModuxCommand =
       targetId: string;
     }
   | { kind: 'remove-ui-assignment'; id: string; targetId: string }
+  | {
+      /** Context ⇆ UI is COMPOSITION and nothing else (omit context to loose it). */
+      kind: 'set-ui-context';
+      id: string;
+      boundedContextId?: string;
+    }
+  | {
+      /** ui ⇆ actor: SERVING and nothing else — the interface serves the person. */
+      kind: 'add-ui-serving';
+      id: string;
+      targetId: string;
+    }
+  | { kind: 'remove-ui-serving'; id: string; targetId: string }
   | { kind: 'remove-archimate-relation'; id: string }
   | {
       kind: 'remove-relation';

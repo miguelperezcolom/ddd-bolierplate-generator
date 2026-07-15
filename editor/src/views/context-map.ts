@@ -2032,18 +2032,28 @@ function buildScene(
     : [];
 
   // ── UI assignments: apps/pages assigned to the declared interface ─────────
-  const uiAssignmentEdges: SceneEdge[] = (model.uis ?? []).flatMap((u) =>
-    [...(u.appIds ?? []), ...(u.pageIds ?? [])].map((target) => ({
+  const uiAssignmentEdges: SceneEdge[] = (model.uis ?? []).flatMap((u) => [
+    ...[...(u.appIds ?? []), ...(u.pageIds ?? [])].map((target): SceneEdge => ({
       id: `uiasg:${u.id}->${target}`,
       sourceId: target,
       targetId: u.id,
       kind: 'ui-assignment',
       color: '#0ea5e9',
-      markerStart: 'ball' as const,
-      markerEnd: 'arrow' as const,
+      markerStart: 'ball',
+      markerEnd: 'arrow',
       tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
     })),
-  );
+    // serving: la interfaz SIRVE al actor (flecha abierta hacia la persona)
+    ...(u.actorIds ?? []).map((actor): SceneEdge => ({
+      id: `uisrv:${u.id}->${actor}`,
+      sourceId: u.id,
+      targetId: actor,
+      kind: 'ui-serving',
+      color: '#0ea5e9',
+      markerEnd: 'open-arrow',
+      tooltip: 'la UI sirve a este actor (serving) — Supr la desconecta',
+    })),
+  ]);
 
   // ── ArchiMate: the hand-drawn vocabulary, with its notation ────────────────
   const archimateEdges: SceneEdge[] = (model.archimateRelations ?? []).map((r) => ({

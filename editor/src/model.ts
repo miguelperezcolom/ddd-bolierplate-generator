@@ -802,6 +802,7 @@ export interface ModuxModel {
     boundedContextId?: string;
     appIds?: string[];
     pageIds?: string[];
+    actorIds?: string[];
   }[];
   /** Hand-drawn ArchiMate relationships between any two elements (documentation intent). */
   archimateRelations?: {
