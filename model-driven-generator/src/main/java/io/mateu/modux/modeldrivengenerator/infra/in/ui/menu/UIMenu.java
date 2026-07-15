@@ -13,6 +13,10 @@ import io.mateu.uidl.annotations.Title;
 public class UIMenu {
 
     @Menu
+    io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.ui.UiCrudOrchestrator uis;
+
+
+    @Menu
     PageCrudOrchestrator pages;
 
     @Menu

@@ -245,6 +245,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'page', id };
     case 'service':
       return { elementType: 'service', id };
+    case 'ui':
+      return { elementType: 'ui', id };
     case 'actor':
       return { elementType: 'actor', id };
     case 'query-service':
@@ -3360,7 +3362,9 @@ export class ModuxEditor extends LitElement {
                         ? { kind: 'add-api', id, name }
                         : type === 'proxy-api'
                           ? { kind: 'add-proxy-api', id, name }
-                          : type === 'ui' || type === 'ui-app'
+                          : type === 'ui'
+                            ? { kind: 'add-ui', id, name }
+                          : type === 'ui-app'
                             ? { kind: 'create-ui-app', id, name }
                             : type === 'ui-app-orchestrator'
                               ? { kind: 'create-ui-app', id, name, type: 'ORCHESTRATOR' }
@@ -3386,6 +3390,14 @@ export class ModuxEditor extends LitElement {
                                 name,
                                 completionEventName: `${name.replace(/\s+/g, '')}Completado`,
                               };
+      if (cmd.kind === 'add-ui') {
+        const chain = this.dropChain(targetId);
+        const boundedContextId = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
+        if (boundedContextId) {
+          issue({ ...cmd, boundedContextId }, id);
+          return;
+        }
+      }
       if (cmd.kind === 'create-ui-app') {
         // Dropped inside a bounded context: the boundedContext owns the app from the start.
         const chain = this.dropChain(targetId);

@@ -198,6 +198,7 @@ interface ChildDesc {
     | 'etl-flow'
     | 'notification'
     | 'document'
+    | 'ui'
     | 'ui-app'
     | 'external-system'
     | 'module';
@@ -228,7 +229,8 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'etl-flow': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
   notification: { symbol: 'event', fill: '#fdf2f8', stroke: '#db2777' },
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
-  'ui-app': { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  ui: { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -254,6 +256,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
+  ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se realiza en apps y páginas',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -301,6 +304,9 @@ function boundedContextElementDescs(
     ...(model.documents ?? [])
       .filter((d) => d.ownerBoundedContextId === boundedContext.id)
       .map((d): ChildDesc => ({ id: d.id, name: d.name, kind: 'document' })),
+    ...(model.uis ?? [])
+      .filter((u) => u.boundedContextId === boundedContext.id)
+      .map((u): ChildDesc => ({ id: u.id, name: u.name, kind: 'ui' })),
     ...(model.uiApps ?? [])
       .filter((a) => (boundedContext.uiAppIds ?? []).includes(a.id))
       .map((a): ChildDesc => ({ id: a.id, name: a.name, kind: 'ui-app' })),
@@ -1006,6 +1012,27 @@ function buildScene(
   const implEntries = (model.apiImplementations ?? []).filter(
     (impl) => implApiIds.has(impl.apiId) && implBoundedContextIds.has(impl.boundedContextId),
   );
+
+  // ── UIs: the declared human interface — loose ones float like loose APIs ──
+  (model.uis ?? [])
+    .filter((u) => !u.boundedContextId)
+    .forEach((u, i) => {
+      const pos = layout[u.id] ?? { x: 180 + i * 200, y: 40 };
+      nodes.push({
+        id: u.id,
+        label: u.name,
+        x: pos.x,
+        y: pos.y,
+        w: 150,
+        h: 44,
+        kind: 'ui',
+        symbol: 'interface',
+        fill: '#f0f9ff',
+        stroke: '#0ea5e9',
+        badge: 'UI',
+        tooltip: `${u.name} — interfaz humana suelta; trázala a un contexto para declarar quién la expone`,
+      });
+    });
 
   // Emission edges (aggregate/use case → domain event) only exist at the detail
   // level, where publisher and event both render as children.
@@ -2004,6 +2031,20 @@ function buildScene(
         }))
     : [];
 
+  // ── UI realizations: apps/pages materialize the declared interface ────────
+  const uiRealizationEdges: SceneEdge[] = (model.uis ?? []).flatMap((u) =>
+    [...(u.appIds ?? []), ...(u.pageIds ?? [])].map((target) => ({
+      id: `uireal:${u.id}->${target}`,
+      sourceId: target,
+      targetId: u.id,
+      kind: 'ui-realization',
+      color: '#0ea5e9',
+      dashArray: '2 3',
+      markerEnd: 'hollow-triangle' as const,
+      tooltip: 'realiza la UI (realization) — Supr la desconecta',
+    })),
+  );
+
   // ── ArchiMate: the hand-drawn vocabulary, with its notation ────────────────
   const archimateEdges: SceneEdge[] = (model.archimateRelations ?? []).map((r) => ({
     id: `archi:${r.id}`,
@@ -2022,6 +2063,7 @@ function buildScene(
       // Composition first: the ownership diamonds paint under the semantic edges.
       ...containsEdges,
       ...archimateEdges,
+      ...uiRealizationEdges,
       ...deployEdges,
       ...relationEdges,
       ...flowEdges,

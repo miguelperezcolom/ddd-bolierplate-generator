@@ -795,6 +795,14 @@ export interface ModuxModel {
   /** Areas: named rectangles that group elements geometrically and anchor notes. */
   areas?: AreaRef[];
   relations: ContextMapRelation[];
+  /** Declared human interfaces (the UI twin of an API), realized by apps and pages. */
+  uis?: {
+    id: string;
+    name: string;
+    boundedContextId?: string;
+    appIds?: string[];
+    pageIds?: string[];
+  }[];
   /** Hand-drawn ArchiMate relationships between any two elements (documentation intent). */
   archimateRelations?: {
     id: string;

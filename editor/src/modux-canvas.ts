@@ -1391,6 +1391,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
             node.kind === 'boundedContext' ||
+            node.kind === 'ui' ||
             node.kind === 'ui-app' ||
             node.kind === 'external-system' ||
             node.kind === 'actor' ||

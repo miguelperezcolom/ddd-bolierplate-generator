@@ -56,7 +56,8 @@ public record AllData(
         List<JourneyEntity> journeys,
         List<NoteEntity> notes,
         List<AreaEntity> areas,
-        List<ArchimateRelationEntity> archimateRelations
+        List<ArchimateRelationEntity> archimateRelations,
+        List<UiEntity> uis
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -65,7 +66,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     public AllData {
@@ -123,5 +124,6 @@ public record AllData(
         notes = notes != null ? notes : List.of();
         areas = areas != null ? areas : List.of();
         archimateRelations = archimateRelations != null ? archimateRelations : List.of();
+        uis = uis != null ? uis : List.of();
     }
 }

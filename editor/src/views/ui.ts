@@ -701,5 +701,37 @@ export function uiScene(
     }
   }
 
+  // ── declared UIs: the interface the apps and pages REALIZE ────────────────
+  (model.uis ?? []).forEach((u, i) => {
+    const pos = layout[u.id] ?? { x: 120 + i * 220, y: 40 };
+    nodes.push({
+      id: u.id,
+      label: u.name,
+      x: pos.x,
+      y: pos.y,
+      w: 150,
+      h: 44,
+      kind: 'ui',
+      symbol: 'interface',
+      fill: '#f0f9ff',
+      stroke: '#0ea5e9',
+      badge: 'UI',
+      tooltip: `${u.name} — interfaz declarada: traza una línea hasta la app o la página que la realiza`,
+    });
+    for (const target of [...(u.appIds ?? []), ...(u.pageIds ?? [])]) {
+      if (!nodes.some((n) => n.id === target)) continue;
+      edges.push({
+        id: `uireal:${u.id}->${target}`,
+        sourceId: target,
+        targetId: u.id,
+        kind: 'ui-realization',
+        color: '#0ea5e9',
+        dashArray: '2 3',
+        markerEnd: 'hollow-triangle',
+        tooltip: 'realiza la UI (realization) — Supr la desconecta',
+      });
+    }
+  });
+
   return { nodes, edges };
 }

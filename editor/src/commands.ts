@@ -22,6 +22,21 @@ export type ModuxCommand =
       name?: string;
     }
   | { kind: 'set-archimate-relation-type'; id: string; type: string }
+  | {
+      /** The declared human interface — loose, or exposed by a context. */
+      kind: 'add-ui';
+      id: string;
+      name: string;
+      boundedContextId?: string;
+    }
+  | { kind: 'remove-ui'; id: string }
+  | {
+      /** ui → app or ui → page: who REALIZES the interface (targetId decides). */
+      kind: 'add-ui-realization';
+      id: string;
+      targetId: string;
+    }
+  | { kind: 'remove-ui-realization'; id: string; targetId: string }
   | { kind: 'remove-archimate-relation'; id: string }
   | {
       kind: 'remove-relation';

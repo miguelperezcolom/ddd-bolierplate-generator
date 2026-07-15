@@ -7,6 +7,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessS
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NoteEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
@@ -182,6 +183,9 @@ public class EditorApiController {
     /** A hand-drawn ArchiMate relationship between any two elements. */
     public record ArchimateRelationDto(String id, String sourceId, String targetId,
                                        String type, String label) {}
+    /** The declared human interface of a context, realized by apps and pages. */
+    public record UiDto(String id, String name, String boundedContextId,
+                        List<String> appIds, List<String> pageIds) {}
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
@@ -422,7 +426,8 @@ public class EditorApiController {
             List<MappingRefDto> modelMappings,
             List<NoteDto> notes,
             List<AreaDto> areas,
-            List<ArchimateRelationDto> archimateRelations) {}
+            List<ArchimateRelationDto> archimateRelations,
+            List<UiDto> uis) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
@@ -786,6 +791,10 @@ public class EditorApiController {
             case "set-workflow-trigger" -> workflowCommands.setWorkflowTrigger(command);
             case "remove-workflow-dependency" -> workflowCommands.removeWorkflowDependency(command);
             case "create-ui-app" -> uiCommands.createUiApp(command);
+            case "add-ui" -> addUi(command);
+            case "remove-ui" -> removeUi(command);
+            case "add-ui-realization" -> addUiRealization(command);
+            case "remove-ui-realization" -> removeUiRealization(command);
             case "set-app-header-page" -> uiCommands.setAppHeaderPage(command);
             case "set-app-home-page" -> uiCommands.setAppHomePage(command);
             case "set-app-model" -> uiCommands.setAppModel(command);
@@ -2547,6 +2556,54 @@ public class EditorApiController {
     private static final java.util.Set<String> ARCHIMATE_TYPES = java.util.Set.of(
             "association", "composition", "aggregation", "assignment", "realization",
             "specialization", "serving", "access", "influence", "triggering", "flow");
+
+    /** The declared human interface — the UI twin of an API on the map. */
+    private void addUi(EditorCommand command) {
+        if (repository.findById(command.id(), UiEntity.class).isPresent()) return;
+        if (command.boundedContextId() != null && repository
+                .findById(command.boundedContextId(), BoundedContextEntity.class).isEmpty()) {
+            throw new IllegalArgumentException("Contexto desconocido: " + command.boundedContextId());
+        }
+        repository.save(UiEntity.builder()
+                .id(command.id()).name(command.name())
+                .boundedContextId(command.boundedContextId())
+                .build());
+    }
+
+    private void removeUi(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), UiEntity.class);
+    }
+
+    /** ui → app or ui → page: the REALIZATION — who materializes the interface. */
+    private void addUiRealization(EditorCommand command) {
+        var ui = repository.findById(command.id(), UiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
+        var target = command.targetId();
+        if (repository.findById(target, UiAdapterEntity.class).isPresent()) {
+            if (ui.appIds().contains(target)) return;
+            var ids = new ArrayList<>(ui.appIds());
+            ids.add(target);
+            repository.save(ui.toBuilder().appIds(ids).build());
+            return;
+        }
+        if (repository.findById(target, PageEntity.class).isPresent()) {
+            if (ui.pageIds().contains(target)) return;
+            var ids = new ArrayList<>(ui.pageIds());
+            ids.add(target);
+            repository.save(ui.toBuilder().pageIds(ids).build());
+            return;
+        }
+        throw new IllegalArgumentException("La UI se realiza en una app o una página: " + target);
+    }
+
+    private void removeUiRealization(EditorCommand command) {
+        var ui = repository.findById(command.id(), UiEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
+        repository.save(ui.toBuilder()
+                .appIds(ui.appIds().stream().filter(x -> !x.equals(command.targetId())).toList())
+                .pageIds(ui.pageIds().stream().filter(x -> !x.equals(command.targetId())).toList())
+                .build());
+    }
 
     private void addArchimateRelation(EditorCommand command) {
         if (repository.findById(command.id(), ArchimateRelationEntity.class).isPresent()) return;

@@ -67,6 +67,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
   { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
   { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
+  { id: 'ui-realization', label: 'Realiza la UI', hint: 'App o página → UI declarada: la materializa (realization)' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -121,6 +122,19 @@ export function connectionOptions(
   const isContext = (id: string) => m.boundedContexts.some((mo) => mo.id === id);
   const isAggregate = (id: string) => (m.aggregates ?? []).some((a) => a.id === id);
 
+  const uiIds = new Set((m.uis ?? []).map((u) => u.id));
+  const appIds = new Set((m.uiApps ?? []).map((a) => a.id));
+  const pageIds = new Set((m.pages ?? []).map((p) => p.id));
+  {
+    // ui ⇆ app/página: la realización (cualquier dirección)
+    const ui = uiIds.has(sourceId) ? sourceId : uiIds.has(targetId) ? targetId : null;
+    const other = ui === sourceId ? targetId : sourceId;
+    if (ui && (appIds.has(other) || pageIds.has(other))) {
+      offer('ui-realization', () => {
+        host.command({ kind: 'add-ui-realization', id: ui, targetId: other });
+      });
+    }
+  }
   if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
     offer('uc-call', () => {
       if (!(m.useCaseCalls ?? []).some((c) => c.sourceId === sourceId && c.targetId === targetId)) {
@@ -795,6 +809,11 @@ export function applyConnectionGesture(
     // rest (sentinel: '__classic').
     if (connectKind !== '__classic' && connectKind === undefined) {
       const typed = connectionOptions(host, sourceId, targetId);
+      if (typed.length === 1) {
+        // one meaning: no question, no detour — the trace IS that relation
+        typed[0].apply();
+        return;
+      }
       if (typed.length > 1) {
         host.openConnectPicker({
           x: x ?? 0,
@@ -1729,6 +1748,19 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (kind === 'ui-realization') {
+    const m = /^uireal:(.+)->(.+)$/.exec(id);
+    if (m) {
+      host.clearSelection();
+      host.command({ kind: 'remove-ui-realization', id: m[1], targetId: m[2] });
+    }
+    return;
+  }
+  if (kind === 'ui' && elementType === 'node') {
+    host.clearSelection();
+    host.command({ kind: 'remove-ui', id });
+    return;
+  }
   if (kind === 'archimate-relation') {
     const relId = id.replace(/^archi:/, '');
     host.clearSelection();

@@ -64,7 +64,8 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("identity-provider", "/modelo/security/identityProviders"),
             Map.entry("ai-agent", "/modelo/ia/aiAgents"),
             Map.entry("rag", "/modelo/ia/rags"),
-            Map.entry("mcp-gateway", "/modelo/ia/mcpGateways"));
+            Map.entry("mcp-gateway", "/modelo/ia/mcpGateways"),
+            Map.entry("ui", "/modelo/inbound/ui/uis"));
 
     /**
      * elementType → the CRUD adapter that loads its DETAIL view. The double click
@@ -101,7 +102,8 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("identity-provider", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.identityprovider.IdentityProviderCrudAdapter.class),
             Map.entry("ai-agent", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aiagent.AiAgentCrudAdapter.class),
             Map.entry("rag", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.rag.RagCrudAdapter.class),
-            Map.entry("mcp-gateway", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.mcpgateway.McpGatewayCrudAdapter.class));
+            Map.entry("mcp-gateway", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.mcpgateway.McpGatewayCrudAdapter.class),
+            Map.entry("ui", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.ui.UiCrudAdapter.class));
 
     /**
      * Cache-busting fingerprint of the editor bundle. A rebuilt bundle gets a new URL, so
