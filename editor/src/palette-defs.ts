@@ -53,6 +53,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
   { type: 'service', label: 'Servicio (despliegue)', symbol: 'gear', color: '#334155', group: 'Distribución' },
   { type: 'module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },
+  { type: 'ui', label: 'UI', symbol: 'interface', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app', label: 'App', symbol: 'component', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app-orchestrator', label: 'Orquestador', symbol: 'process', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },

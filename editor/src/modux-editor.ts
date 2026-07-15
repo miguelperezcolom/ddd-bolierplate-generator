@@ -3332,6 +3332,7 @@ export class ModuxEditor extends LitElement {
         'external-ai-agent': 'agent-', 'mcp-gateway': 'mcpgw-', rag: 'rag-', api: 'api-',
         'proxy-api': 'proxy-', workflow: 'wf-', 'ui-app': 'app-',
         'ui-app-orchestrator': 'app-', 'ui-app-masterdetail': 'app-', 'ui-app-vieweditor': 'app-', 'ui-model': 'model-',
+        ui: '',
         'identity-provider': 'idp-', transformation: 'tf-', 'custom-code': 'cc-',
         'button-group': 'bg-', service: 'svc-',
       };
@@ -3359,7 +3360,7 @@ export class ModuxEditor extends LitElement {
                         ? { kind: 'add-api', id, name }
                         : type === 'proxy-api'
                           ? { kind: 'add-proxy-api', id, name }
-                          : type === 'ui-app'
+                          : type === 'ui' || type === 'ui-app'
                             ? { kind: 'create-ui-app', id, name }
                             : type === 'ui-app-orchestrator'
                               ? { kind: 'create-ui-app', id, name, type: 'ORCHESTRATOR' }
@@ -3934,7 +3935,7 @@ export class ModuxEditor extends LitElement {
         (this._view === 'workflows'
           ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'
-            ? ['ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
+            ? ['ui', 'ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
             : this._view === 'design'
               ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
               : this._view === 'integrations'

@@ -228,7 +228,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'etl-flow': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
   notification: { symbol: 'event', fill: '#fdf2f8', stroke: '#db2777' },
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
-  'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  'ui-app': { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 

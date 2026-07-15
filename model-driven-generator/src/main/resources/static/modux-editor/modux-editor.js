@@ -181,7 +181,7 @@ const Ia = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, xa = {
   "etl-flow": { symbol: "gear", fill: "#f0fdfa", stroke: "#0f766e" },
   notification: { symbol: "event", fill: "#fdf2f8", stroke: "#db2777" },
   document: { symbol: "readmodel", fill: "#f8fafc", stroke: "#475569" },
-  "ui-app": { symbol: "component", fill: "#f0f9ff", stroke: "#0ea5e9" },
+  "ui-app": { symbol: "interface", fill: "#f0f9ff", stroke: "#0ea5e9" },
   module: { symbol: "component", fill: "#ffffff", stroke: "#334155" }
 }, va = {
   aggregate: "Agregado",
@@ -14029,6 +14029,7 @@ const Mc = [
   { type: "mcp-server", label: "Servidor MCP", child: !0, symbol: "robot", color: "#9333ea", group: "Sistema externo" },
   { type: "service", label: "Servicio (despliegue)", symbol: "gear", color: "#334155", group: "Distribución" },
   { type: "module", label: "Módulo", child: !0, symbol: "component", color: "#334155", group: "Distribución" },
+  { type: "ui", label: "UI", symbol: "interface", color: "#0ea5e9", group: "UI" },
   { type: "ui-app", label: "App", symbol: "component", color: "#0ea5e9", group: "UI" },
   { type: "ui-app-orchestrator", label: "Orquestador", symbol: "process", color: "#0ea5e9", group: "UI" },
   { type: "ui-app-masterdetail", label: "Maestro-detalle", symbol: "component", color: "#0ea5e9", group: "UI" },
@@ -16069,12 +16070,13 @@ let ee = class extends He {
         "ui-app-masterdetail": "app-",
         "ui-app-vieweditor": "app-",
         "ui-model": "model-",
+        ui: "",
         "identity-provider": "idp-",
         transformation: "tf-",
         "custom-code": "cc-",
         "button-group": "bg-",
         service: "svc-"
-      }, { id: r, name: m } = this.uniquePaletteName(o.label, l[e] ?? ""), w = e === "boundedContext" ? { kind: "add-boundedContext", id: r, name: m, subdomainType: "SUPPORTING" } : e === "note" ? { kind: "add-note", id: r, name: m } : e === "area" ? { kind: "add-area", id: r, name: m } : e === "actor" ? { kind: "add-actor", id: r, name: m } : e === "external-system" ? { kind: "add-external-system", id: r, name: m } : e === "ai-agent" ? { kind: "add-ai-agent", id: r, name: m } : e === "external-ai-agent" ? { kind: "add-ai-agent", id: r, name: m, external: !0 } : e === "mcp-gateway" ? { kind: "add-mcp-gateway", id: r, name: m } : e === "rag" ? { kind: "add-rag", id: r, name: m } : e === "api" ? { kind: "add-api", id: r, name: m } : e === "proxy-api" ? { kind: "add-proxy-api", id: r, name: m } : e === "ui-app" ? { kind: "create-ui-app", id: r, name: m } : e === "ui-app-orchestrator" ? { kind: "create-ui-app", id: r, name: m, type: "ORCHESTRATOR" } : e === "ui-app-masterdetail" ? { kind: "create-ui-app", id: r, name: m, type: "MASTER_DETAIL" } : e === "ui-app-vieweditor" ? { kind: "create-ui-app", id: r, name: m, type: "VIEW_EDITOR" } : e === "ui-model" ? { kind: "add-model", id: r, name: m } : e === "transformation" ? { kind: "add-transformation", id: r, name: m } : e === "custom-code" ? { kind: "add-custom-code", id: r, name: m } : e === "button-group" ? { kind: "add-button-group", id: r, name: m } : e === "identity-provider" ? { kind: "add-identity-provider", id: r, name: m } : e === "service" ? { kind: "add-service", id: r, name: m } : {
+      }, { id: r, name: m } = this.uniquePaletteName(o.label, l[e] ?? ""), w = e === "boundedContext" ? { kind: "add-boundedContext", id: r, name: m, subdomainType: "SUPPORTING" } : e === "note" ? { kind: "add-note", id: r, name: m } : e === "area" ? { kind: "add-area", id: r, name: m } : e === "actor" ? { kind: "add-actor", id: r, name: m } : e === "external-system" ? { kind: "add-external-system", id: r, name: m } : e === "ai-agent" ? { kind: "add-ai-agent", id: r, name: m } : e === "external-ai-agent" ? { kind: "add-ai-agent", id: r, name: m, external: !0 } : e === "mcp-gateway" ? { kind: "add-mcp-gateway", id: r, name: m } : e === "rag" ? { kind: "add-rag", id: r, name: m } : e === "api" ? { kind: "add-api", id: r, name: m } : e === "proxy-api" ? { kind: "add-proxy-api", id: r, name: m } : e === "ui" || e === "ui-app" ? { kind: "create-ui-app", id: r, name: m } : e === "ui-app-orchestrator" ? { kind: "create-ui-app", id: r, name: m, type: "ORCHESTRATOR" } : e === "ui-app-masterdetail" ? { kind: "create-ui-app", id: r, name: m, type: "MASTER_DETAIL" } : e === "ui-app-vieweditor" ? { kind: "create-ui-app", id: r, name: m, type: "VIEW_EDITOR" } : e === "ui-model" ? { kind: "add-model", id: r, name: m } : e === "transformation" ? { kind: "add-transformation", id: r, name: m } : e === "custom-code" ? { kind: "add-custom-code", id: r, name: m } : e === "button-group" ? { kind: "add-button-group", id: r, name: m } : e === "identity-provider" ? { kind: "add-identity-provider", id: r, name: m } : e === "service" ? { kind: "add-service", id: r, name: m } : {
         kind: "add-workflow",
         id: r,
         name: m,
@@ -16469,7 +16471,7 @@ let ee = class extends He {
   renderPalette() {
     if (!this._paletteOpen || !["context-map", "distribution", "workflows", "ui", "design", "mappings", "integrations"].includes(this._view)) return "";
     const e = this._paletteFilter.trim().toLowerCase(), t = no.filter(
-      (i) => (this._view === "workflows" ? ["workflow", "workflow-step", "workflow-join", "workflow-split"].includes(i.type) : this._view === "ui" ? ["ui-app", "ui-app-orchestrator", "ui-app-masterdetail", "ui-app-vieweditor", "page", "ui-page-crud", "ui-page-wizard", "ui-wizard-step", "menu-item", "ui-model", "identity-provider", "custom-code", "button-group", "ui-button"].includes(i.type) : this._view === "design" ? i.type === "page" || i.type === "custom-code" || i.type.startsWith("cmp:") : this._view === "integrations" ? ["etl-flow", "etl-transform", "external-system", "external-table"].includes(i.type) : this._view === "mappings" ? ["ui-model", "model-field", "transformation", "custom-code"].includes(i.type) : !["page", "menu-item", "model-field", "transformation", "custom-code", "ui-button"].includes(i.type) && !i.type.startsWith("cmp:")) && (!e || i.label.toLowerCase().includes(e))
+      (i) => (this._view === "workflows" ? ["workflow", "workflow-step", "workflow-join", "workflow-split"].includes(i.type) : this._view === "ui" ? ["ui", "ui-app", "ui-app-orchestrator", "ui-app-masterdetail", "ui-app-vieweditor", "page", "ui-page-crud", "ui-page-wizard", "ui-wizard-step", "menu-item", "ui-model", "identity-provider", "custom-code", "button-group", "ui-button"].includes(i.type) : this._view === "design" ? i.type === "page" || i.type === "custom-code" || i.type.startsWith("cmp:") : this._view === "integrations" ? ["etl-flow", "etl-transform", "external-system", "external-table"].includes(i.type) : this._view === "mappings" ? ["ui-model", "model-field", "transformation", "custom-code"].includes(i.type) : !["page", "menu-item", "model-field", "transformation", "custom-code", "ui-button"].includes(i.type) && !i.type.startsWith("cmp:")) && (!e || i.label.toLowerCase().includes(e))
     ), n = this._view === "workflows" ? "new" : this._paletteTab;
     return E`
       <div class="palette ${!this._tilt && this._treeOpen && this._activeViewId ? "shifted" : ""}">
