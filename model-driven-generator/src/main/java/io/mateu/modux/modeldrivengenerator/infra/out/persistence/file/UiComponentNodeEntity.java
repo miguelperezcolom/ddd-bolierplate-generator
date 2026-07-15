@@ -37,8 +37,23 @@ public record UiComponentNodeEntity(
         /** Nested content — layouts are trees. */
         List<UiComponentNodeEntity> children,
         /** The hand-written code this component delegates to (the component is CUSTOM). */
-        String customCodeId
+        String customCodeId,
+        /**
+         * Extra kind-specific parameters (theme, slim, gridLayout…) — the Mateu component
+         * catalog's knobs, populated e.g. by the Figma importer from the design contract.
+         */
+        java.util.Map<String, String> params
 ) {
+
+    /** Backward-compatible constructor (pre-params callers and stores). */
+    public UiComponentNodeEntity(String id, String kind, String title, String text, String label,
+                                 String useCaseId, String mappingId, String modelId,
+                                 String queryServiceId, String queryOperationId, String fieldId,
+                                 String stereotype, Integer colspan,
+                                 List<UiComponentNodeEntity> children, String customCodeId) {
+        this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
+                queryOperationId, fieldId, stereotype, colspan, children, customCodeId, null);
+    }
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */
     public UiComponentNodeEntity(String id, String kind, String title, String text, String label,
@@ -47,18 +62,27 @@ public record UiComponentNodeEntity(
                                  String stereotype, Integer colspan,
                                  List<UiComponentNodeEntity> children) {
         this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
-                queryOperationId, fieldId, stereotype, colspan, children, null);
+                queryOperationId, fieldId, stereotype, colspan, children, null, null);
     }
 
     /** Kinds that lay out other nodes — only these carry children. */
     public static final Set<String> LAYOUT_KINDS = Set.of(
             "verticalLayout", "horizontalLayout", "formLayout", "splitLayout", "tabLayout",
             "tab", "accordionLayout", "card", "gridLayout", "boardLayout", "dashboardLayout",
-            "masterDetailLayout", "foldoutLayout", "carouselLayout", "appLayout");
+            "masterDetailLayout", "foldoutLayout", "carouselLayout", "appLayout",
+            // Mateu design-contract containers (Figma importer)
+            "section", "zones", "wizard", "app", "hero", "toolbar", "scoreboard", "pageHeader");
 
     /** Leaf components. */
     public static final Set<String> COMPONENT_KINDS = Set.of(
-            "form", "listing", "button", "field", "text", "metricCard", "menuBar");
+            "form", "listing", "button", "field", "text", "metricCard", "menuBar",
+            // Mateu design-contract components (see mateu design/figma/contract.json)
+            "notice", "bulletedList", "separator", "statusList", "entityHeader", "kpi",
+            "taskProgress", "meter", "progressBar", "progressSteps", "banner", "calloutCard",
+            "emptyState", "skeleton", "timeline", "kanban", "gantt", "calendar", "stat",
+            "trendChart", "heatmap", "funnel", "orgChart", "featureGrid", "testimonials", "faq",
+            "commentThread", "fileList", "checklist", "comparisonCard", "crud", "filterBar",
+            "fab", "appContext");
 
     /** Every valid node kind. */
     public static final Set<String> KINDS;

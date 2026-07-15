@@ -1,0 +1,83 @@
+{
+  "name": "Front Office — screens",
+  "components": {
+    "1:100": { "name": "Mateu/Page/Header" },
+    "1:101": { "name": "propertyList=true, frameless=true, sticky=false", "componentSetId": "1:200" },
+    "1:102": { "name": "Mateu/Field/TextField" },
+    "1:103": { "name": "theme=danger, slim=true", "componentSetId": "1:201" },
+    "1:104": { "name": "progress=steps, layout=steps", "componentSetId": "1:202" }
+  },
+  "componentSets": {
+    "1:200": { "name": "Mateu/Layout/Section" },
+    "1:201": { "name": "Mateu/Display/Notice" },
+    "1:202": { "name": "Mateu/Page/Wizard" }
+  },
+  "document": {
+    "id": "0:0",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "0:1",
+        "type": "CANVAS",
+        "name": "Screens",
+        "children": [
+          {
+            "id": "10:1",
+            "type": "FRAME",
+            "name": "Check In",
+            "layoutMode": "VERTICAL",
+            "children": [
+              {
+                "id": "10:2",
+                "type": "INSTANCE",
+                "componentId": "1:104",
+                "children": [
+                  { "id": "10:2:1", "type": "TEXT", "name": "Title", "characters": "Check-In" }
+                ]
+              },
+              {
+                "id": "10:3",
+                "type": "INSTANCE",
+                "componentId": "1:101",
+                "children": [
+                  { "id": "10:3:1", "type": "TEXT", "name": "Title", "characters": "Documento" }
+                ]
+              },
+              {
+                "id": "10:4",
+                "type": "INSTANCE",
+                "componentId": "1:102",
+                "children": [
+                  { "id": "10:4:1", "type": "TEXT", "name": "Label", "characters": "Email" },
+                  { "id": "10:4:2", "type": "TEXT", "name": "#config", "characters": "fieldId=email" }
+                ]
+              },
+              {
+                "id": "10:5",
+                "type": "INSTANCE",
+                "componentId": "1:103",
+                "children": [
+                  { "id": "10:5:1", "type": "TEXT", "name": "Text", "characters": "2 quejas pendientes" }
+                ]
+              },
+              {
+                "id": "10:6",
+                "type": "TEXT",
+                "name": "free text",
+                "characters": "Nota suelta"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "0:2",
+        "type": "CANVAS",
+        "name": "Mateu · Display",
+        "children": [
+          { "id": "20:1", "type": "FRAME", "name": "library page, must be skipped", "children": [] }
+        ]
+      }
+    ]
+  }
+}
