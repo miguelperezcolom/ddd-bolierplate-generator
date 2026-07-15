@@ -385,6 +385,49 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "ArchimateRelationEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "sourceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'source' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'target' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "type" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "AreaEntity" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "BddScenarioEntity" : {
       "type" : "object",
       "properties" : {
@@ -2380,6 +2423,35 @@
           "type" : "boolean"
         },
         "name" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "NoteEntity" : {
+      "type" : "object",
+      "properties" : {
+        "edgeRefs" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetIds" : {
+          "description" : "References to existing 'target' ids (referential integrity is checked by the linter).",
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "text" : {
           "type" : "string"
         }
       },
@@ -4747,6 +4819,18 @@
         "$ref" : "#/$defs/ApplicationEventEntity"
       }
     },
+    "archimateRelations" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ArchimateRelationEntity"
+      }
+    },
+    "areas" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/AreaEntity"
+      }
+    },
     "bddScenarios" : {
       "description" : "Given/when/then scenarios attached to use cases.",
       "type" : "array",
@@ -4905,6 +4989,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ModuleEntity"
+      }
+    },
+    "notes" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/NoteEntity"
       }
     },
     "notifications" : {

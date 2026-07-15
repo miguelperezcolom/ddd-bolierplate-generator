@@ -1,27 +1,11 @@
-2. Los invariantes. Son el corazón de tu tesis del agregado y no recuerdo que tengan una edición cómoda ni presencia visual en el diagrama. Si el agregado se define por sus
-  invariantes, deberían ser lo más fácil de declarar de todo.
-  3. La ficha vs el diagrama. Hay cosas que solo se pueden hacer en ficha y cosas que solo en diagrama; cuando modelas en serio, el ping-pong se nota. Habría que repasar que
-  los flujos frecuentes completos se puedan hacer sin cambiar de mundo.
-  4. El camino IA. Si «amigable» incluye modelar conversando (y tu reel lo promete), los tools MCP tienen que cubrir toda la superficie de comandos — y han crecido mucho por
-  detrás últimamente (workflows, gateways, formularios, custom code…). Sospecho que hay desfase.
-  5. Brownfield. Los casos reales nunca empiezan de cero: el importador OpenAPI existe a medias, ArchiMate está pendiente. Para modelar un sistema existente con 40 endpoints,
-  importar es la diferencia entre una tarde y una semana.
-  6. Los flecos ya anotados: el yugo no enseña módulos ni transformaciones, drift de referencias entre proyectos, cobertura de undo.
+notas:
 
-  Mi propuesta concreta: hago una sesión de dogfooding — modelo yo un caso realista completo usando solo el editor (y otra pasada solo por MCP, para probar el camino IA),
-  registrando cada fricción con su severidad, y te traigo la lista priorizada con lo que arreglaría primero. Puede ser sobre hla-booking extendido o sobre un caso que tú elijas
-  — si tienes uno real en la cabeza (¿el ecosistema del PMS?), mejor ese: cuanto más real, más fricción de verdad aflora.
-
-  ¿Te va bien así? ¿Con qué caso quieres que lo haga?
-
-
-
-  -
-
-- revisar las vistas.
+- construir varios casos de uso, empezando por un hola mundo
+- desplegar en test.modux.mateu.io
+- finalizar el despliegue de aplicaciones en x.test.modux.mateu.io
+- desplegar eventconductor en test.eventconductor.mateu.io
 - luego llevar el editor de workflow a eventconductor
 
-fal
 notas ara checkin:
 
 - explorador reserva
