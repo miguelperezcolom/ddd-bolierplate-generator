@@ -31,12 +31,12 @@ export type ModuxCommand =
     }
   | { kind: 'remove-ui'; id: string }
   | {
-      /** ui → app or ui → page: who REALIZES the interface (targetId decides). */
-      kind: 'add-ui-realization';
+      /** ui ⇆ app or page: the ASSIGNMENT — who works this interface (targetId decides). */
+      kind: 'add-ui-assignment';
       id: string;
       targetId: string;
     }
-  | { kind: 'remove-ui-realization'; id: string; targetId: string }
+  | { kind: 'remove-ui-assignment'; id: string; targetId: string }
   | { kind: 'remove-archimate-relation'; id: string }
   | {
       kind: 'remove-relation';

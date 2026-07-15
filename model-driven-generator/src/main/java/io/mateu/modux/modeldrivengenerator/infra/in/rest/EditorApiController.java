@@ -793,8 +793,8 @@ public class EditorApiController {
             case "create-ui-app" -> uiCommands.createUiApp(command);
             case "add-ui" -> addUi(command);
             case "remove-ui" -> removeUi(command);
-            case "add-ui-realization" -> addUiRealization(command);
-            case "remove-ui-realization" -> removeUiRealization(command);
+            case "add-ui-assignment" -> addUiAssignment(command);
+            case "remove-ui-assignment" -> removeUiAssignment(command);
             case "set-app-header-page" -> uiCommands.setAppHeaderPage(command);
             case "set-app-home-page" -> uiCommands.setAppHomePage(command);
             case "set-app-model" -> uiCommands.setAppModel(command);
@@ -2574,8 +2574,8 @@ public class EditorApiController {
         repository.deleteAllById(List.of(command.id()), UiEntity.class);
     }
 
-    /** ui → app or ui → page: the REALIZATION — who materializes the interface. */
-    private void addUiRealization(EditorCommand command) {
+    /** ui ⇆ app or page: the ASSIGNMENT — who is assigned to work this interface. */
+    private void addUiAssignment(EditorCommand command) {
         var ui = repository.findById(command.id(), UiEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
         var target = command.targetId();
@@ -2593,10 +2593,10 @@ public class EditorApiController {
             repository.save(ui.toBuilder().pageIds(ids).build());
             return;
         }
-        throw new IllegalArgumentException("La UI se realiza en una app o una página: " + target);
+        throw new IllegalArgumentException("La UI se asigna a una app o una página: " + target);
     }
 
-    private void removeUiRealization(EditorCommand command) {
+    private void removeUiAssignment(EditorCommand command) {
         var ui = repository.findById(command.id(), UiEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("UI desconocida: " + command.id()));
         repository.save(ui.toBuilder()

@@ -256,7 +256,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
-  ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se realiza en apps y páginas',
+  ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -2031,17 +2031,17 @@ function buildScene(
         }))
     : [];
 
-  // ── UI realizations: apps/pages materialize the declared interface ────────
-  const uiRealizationEdges: SceneEdge[] = (model.uis ?? []).flatMap((u) =>
+  // ── UI assignments: apps/pages assigned to the declared interface ─────────
+  const uiAssignmentEdges: SceneEdge[] = (model.uis ?? []).flatMap((u) =>
     [...(u.appIds ?? []), ...(u.pageIds ?? [])].map((target) => ({
-      id: `uireal:${u.id}->${target}`,
+      id: `uiasg:${u.id}->${target}`,
       sourceId: target,
       targetId: u.id,
-      kind: 'ui-realization',
+      kind: 'ui-assignment',
       color: '#0ea5e9',
-      dashArray: '2 3',
-      markerEnd: 'hollow-triangle' as const,
-      tooltip: 'realiza la UI (realization) — Supr la desconecta',
+      markerStart: 'ball' as const,
+      markerEnd: 'arrow' as const,
+      tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
     })),
   );
 
@@ -2063,7 +2063,7 @@ function buildScene(
       // Composition first: the ownership diamonds paint under the semantic edges.
       ...containsEdges,
       ...archimateEdges,
-      ...uiRealizationEdges,
+      ...uiAssignmentEdges,
       ...deployEdges,
       ...relationEdges,
       ...flowEdges,

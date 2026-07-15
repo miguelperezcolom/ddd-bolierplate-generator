@@ -67,7 +67,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
   { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
   { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
-  { id: 'ui-realization', label: 'Realiza la UI', hint: 'App o página → UI declarada: la materializa (realization)' },
+  { id: 'ui-assignment', label: 'Asignación a la UI', hint: 'App o página ⇆ UI declarada: se le asigna (assignment)' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -126,12 +126,12 @@ export function connectionOptions(
   const appIds = new Set((m.uiApps ?? []).map((a) => a.id));
   const pageIds = new Set((m.pages ?? []).map((p) => p.id));
   {
-    // ui ⇆ app/página: la realización (cualquier dirección)
+    // ui ⇆ app/página: la asignación (cualquier dirección)
     const ui = uiIds.has(sourceId) ? sourceId : uiIds.has(targetId) ? targetId : null;
     const other = ui === sourceId ? targetId : sourceId;
     if (ui && (appIds.has(other) || pageIds.has(other))) {
-      offer('ui-realization', () => {
-        host.command({ kind: 'add-ui-realization', id: ui, targetId: other });
+      offer('ui-assignment', () => {
+        host.command({ kind: 'add-ui-assignment', id: ui, targetId: other });
       });
     }
   }
@@ -1748,11 +1748,11 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
-  if (kind === 'ui-realization') {
-    const m = /^uireal:(.+)->(.+)$/.exec(id);
+  if (kind === 'ui-assignment') {
+    const m = /^uiasg:(.+)->(.+)$/.exec(id);
     if (m) {
       host.clearSelection();
-      host.command({ kind: 'remove-ui-realization', id: m[1], targetId: m[2] });
+      host.command({ kind: 'remove-ui-assignment', id: m[1], targetId: m[2] });
     }
     return;
   }

@@ -716,19 +716,19 @@ export function uiScene(
       fill: '#f0f9ff',
       stroke: '#0ea5e9',
       badge: 'UI',
-      tooltip: `${u.name} — interfaz declarada: traza una línea hasta la app o la página que la realiza`,
+      tooltip: `${u.name} — interfaz declarada: traza una línea hasta la app o la página asignada`,
     });
     for (const target of [...(u.appIds ?? []), ...(u.pageIds ?? [])]) {
       if (!nodes.some((n) => n.id === target)) continue;
       edges.push({
-        id: `uireal:${u.id}->${target}`,
+        id: `uiasg:${u.id}->${target}`,
         sourceId: target,
         targetId: u.id,
-        kind: 'ui-realization',
+        kind: 'ui-assignment',
         color: '#0ea5e9',
-        dashArray: '2 3',
-        markerEnd: 'hollow-triangle',
-        tooltip: 'realiza la UI (realization) — Supr la desconecta',
+        markerStart: 'ball',
+        markerEnd: 'arrow',
+        tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
       });
     }
   });
