@@ -37,12 +37,14 @@ public class DeployProjectUseCase {
     private final ModelStore repository;
 
     /**
-     * Launches the deployment and returns the STREAM of milestones: one message per
-     * step (regenerate, build, push, apply…), completing with the outcome. Returned
-     * through mateu's SSE action channel, each milestone reaches the user as a toast
-     * while the pipeline advances; the full command output stays in the log file.
+     * Launches the deployment and returns a {@link io.mateu.uidl.data.LongTask} flux:
+     * a modal progress dialog opens with the action, each pipeline step updates its
+     * text and bar, and on completion the declared URL opens in a new tab
+     * ({@code UICommand.navigateTo}). A failure aborts the closing segment, so the
+     * dialog keeps the failing step and the URL never opens on a broken deploy.
+     * The full command output stays in {@code <outputPath>/.modux/deploy.log}.
      */
-    public reactor.core.publisher.Flux<Object> handle(DeployProjectCommand command) {
+    public reactor.core.publisher.Flux<?> handle(DeployProjectCommand command) {
         var project = repository.findById(command.projectId(), ProjectEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto desconocido: " + command.projectId()));
         var services = generateCodeUseCase.effectiveServices(project);
@@ -58,8 +60,40 @@ public class DeployProjectUseCase {
         var environment = environmentFor(project, command.environment());
         var outputPath = expandTilde(project.outputPath());
         var logFile = Path.of(outputPath, ".modux", "deploy.log");
+        var url = firstDeclaredUrl(services);
+
+        var task = io.mateu.uidl.data.LongTask
+                .create("Desplegando «" + project.name() + "»")
+                .withProgressBar()
+                .done("Despliegue completado",
+                        url != null ? "Abriendo " + url + "…" : "Manifiestos aplicados en el cluster")
+                .closeAfter(4);
+        if (url != null) {
+            task.withCommand(io.mateu.uidl.data.UICommand.navigateTo(url));
+        }
+        return task.run(progress -> deployFlux(project, services, environment, outputPath, logFile, progress));
+    }
+
+    /** The first URL the services declare — where the finished deploy opens. */
+    private String firstDeclaredUrl(List<ServiceEntity> services) {
+        return services.stream()
+                .flatMap(sv -> sv.urlIds().stream())
+                .map(id -> repository.findById(id,
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(u -> u.url() != null && !u.url().isBlank() ? u.url().trim() : u.name().trim())
+                .filter(raw -> !raw.isBlank())
+                .map(raw -> raw.matches("^[a-z][a-z0-9+.-]*://.*") ? raw : "http://" + raw)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private reactor.core.publisher.Flux<Object> deployFlux(
+            ProjectEntity project, List<ServiceEntity> services,
+            ProjectEnvironmentConfigEntity environment, String outputPath, Path logFile,
+            io.mateu.uidl.data.ProgressReporter progress) {
         var sink = reactor.core.publisher.Sinks.many().unicast().<Object>onBackpressureBuffer();
-        var thread = new Thread(() -> run(project, services, environment, outputPath, logFile, sink),
+        var thread = new Thread(() -> run(project, services, environment, outputPath, logFile, sink, progress),
                 "modux-deploy-" + project.name());
         thread.setDaemon(true);
         thread.start();
@@ -68,18 +102,22 @@ public class DeployProjectUseCase {
 
     private void run(ProjectEntity project, List<ServiceEntity> services,
                      ProjectEnvironmentConfigEntity environment, String outputPath, Path logFile,
-                     reactor.core.publisher.Sinks.Many<Object> sink) {
+                     reactor.core.publisher.Sinks.Many<Object> sink,
+                     io.mateu.uidl.data.ProgressReporter progress) {
+        // dialog fractions: regenerate + 4 steps per service
+        var totalSteps = 1 + services.size() * 4;
+        var stepCount = new java.util.concurrent.atomic.AtomicInteger();
         try {
             Files.createDirectories(logFile.getParent());
             Files.writeString(logFile, "── Despliegue de «" + project.name() + "» — " + LocalDateTime.now() + "\n");
-            milestone(sink, logFile, "Despliegue de «" + project.name() + "» lanzado — log en " + logFile);
-            milestone(sink, logFile, "Regenerando el proyecto…");
+            milestone(sink, progress, logFile, stepCount.incrementAndGet(), totalSteps,
+                    "Regenerando el proyecto…");
             generateCodeUseCase.handle(new GenerateCodeCommand(project.id(), null, null, false));
 
-            var context = environment.kubernetesContext() != null && !environment.kubernetesContext().isBlank()
-                    ? environment.kubernetesContext() : null;
             // Without an explicit namespace the deploy RESPECTS the kubeconfig context's
             // default one (kubectl without -n) instead of inventing a per-project namespace.
+            var context = environment.kubernetesContext() != null && !environment.kubernetesContext().isBlank()
+                    ? environment.kubernetesContext() : null;
             var namespace = environment.kubernetesNamespace() != null && !environment.kubernetesNamespace().isBlank()
                     ? environment.kubernetesNamespace() : null;
             append(logFile, "Contexto kubectl: " + (context != null ? context : "(el actual)")
@@ -91,7 +129,8 @@ public class DeployProjectUseCase {
                 var image = registryFor(service, project) + "/" + imageNameFor(service) + ":latest";
 
                 append(logFile, "── " + service.name() + " → " + image);
-                milestone(sink, logFile, "«" + service.name() + "»: compilando y empaquetando…");
+                milestone(sink, progress, logFile, stepCount.incrementAndGet(), totalSteps,
+                        "«" + service.name() + "»: compilando y empaquetando…");
                 exec(logFile, serviceDir, "mvn", "-B", "-q", "package", "-DskipTests");
 
                 // A runtime-only image: the build already happened locally with ~/.m2
@@ -109,23 +148,24 @@ public class DeployProjectUseCase {
                         ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
                         """.formatted(service.javaVersion() != null ? service.javaVersion() : "21",
                         serviceSlug, service.port() != null ? service.port() : 8080));
-                milestone(sink, logFile, "«" + service.name() + "»: construyendo la imagen…");
+                milestone(sink, progress, logFile, stepCount.incrementAndGet(), totalSteps,
+                        "«" + service.name() + "»: construyendo la imagen…");
                 exec(logFile, serviceDir, "docker", "build", "-f", dockerfile.toString(),
                         "-t", image, serviceDir.toString());
-                milestone(sink, logFile, "«" + service.name() + "»: subiendo " + image + "…");
+                milestone(sink, progress, logFile, stepCount.incrementAndGet(), totalSteps,
+                        "«" + service.name() + "»: subiendo " + image + "…");
                 exec(logFile, serviceDir, "docker", "push", image);
 
-                milestone(sink, logFile, "«" + service.name() + "»: aplicando manifiestos en "
-                        + (context != null ? context : "el contexto actual") + " · "
-                        + (namespace != null ? namespace : "su namespace por defecto") + "…");
+                milestone(sink, progress, logFile, stepCount.incrementAndGet(), totalSteps,
+                        "«" + service.name() + "»: aplicando manifiestos en "
+                                + (context != null ? context : "el contexto actual") + " · "
+                                + (namespace != null ? namespace : "su namespace por defecto") + "…");
                 var kubectlBase = context != null
                         ? new String[]{"kubectl", "--context", context}
                         : new String[]{"kubectl"};
                 execKubectl(logFile, serviceDir, kubectlBase, namespace, serviceDir.resolve("k8s").toString());
             }
             append(logFile, "── Despliegue COMPLETADO — " + LocalDateTime.now());
-            sink.tryEmitNext(io.mateu.uidl.data.Message.success(
-                    "Despliegue de «" + project.name() + "» COMPLETADO"));
             sink.tryEmitComplete();
         } catch (Exception e) {
             try {
@@ -133,24 +173,23 @@ public class DeployProjectUseCase {
             } catch (RuntimeException ignored) {
                 // the log itself failed; the outer log below still records it
             }
-            sink.tryEmitNext(io.mateu.uidl.data.Message.builder()
-                    .variant(io.mateu.uidl.data.NotificationVariant.error)
-                    .text("Despliegue FALLIDO: " + e.getMessage() + " — detalle en " + logFile)
-                    .duration(10000)
-                    .build());
-            sink.tryEmitComplete();
+            // The step shows the failure in the dialog; erroring the flux ABORTS the
+            // LongTask closing segment: no «done», and the URL never opens.
+            sink.tryEmitNext(progress.step(
+                    "FALLIDO: " + e.getMessage() + " — detalle en " + logFile,
+                    "Despliegue fallido"));
+            sink.tryEmitError(new IllegalStateException(
+                    "Despliegue de «" + project.name() + "» fallido: " + e.getMessage()));
             log.error("despliegue de {} fallido", project.name(), e);
         }
     }
 
-    /** A progress line: to the log AND to the user's screen (a toast per milestone). */
-    private void milestone(reactor.core.publisher.Sinks.Many<Object> sink, Path logFile, String text) {
+    /** A progress line: to the log AND to the dialog (text + bar fraction). */
+    private void milestone(reactor.core.publisher.Sinks.Many<Object> sink,
+                           io.mateu.uidl.data.ProgressReporter progress, Path logFile,
+                           int step, int totalSteps, String text) {
         append(logFile, text);
-        sink.tryEmitNext(io.mateu.uidl.data.Message.builder()
-                .variant(io.mateu.uidl.data.NotificationVariant.success)
-                .text(text)
-                .duration(4000)
-                .build());
+        sink.tryEmitNext(progress.step(text, step / (double) totalSteps));
     }
 
     private void execKubectl(Path logFile, Path workDir, String[] kubectlBase,
