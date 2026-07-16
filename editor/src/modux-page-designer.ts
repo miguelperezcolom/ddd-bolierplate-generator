@@ -379,6 +379,45 @@ export class ModuxPageDesigner extends LitElement {
       border-radius: 2px;
       background: #e2e8f0;
     }
+    .notice-stub {
+      border: 1px solid #7dd3fc;
+      background: #f0f9ff;
+      color: #075985;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .stub-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 11px;
+      color: #334155;
+    }
+    .stub-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: none;
+    }
+    .stub-step {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid #cbd5e1;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+    .stub-step.on {
+      background: #0284c7;
+      border-color: #0284c7;
+      color: #ffffff;
+    }
     .tabbar {
       display: flex;
       gap: 2px;
@@ -687,10 +726,29 @@ export class ModuxPageDesigner extends LitElement {
     masterDetailLayout: 'Master-detail', foldoutLayout: 'Foldout', carouselLayout: 'Carrusel',
     appLayout: 'App layout', form: 'Formulario', listing: 'Listado', button: 'Botón',
     field: 'Campo', text: 'Texto', metricCard: 'Métrica', menuBar: 'Menú',
+    section: 'Sección', zones: 'Zonas', toolbar: 'Toolbar', pageHeader: 'Cabecera',
+    hero: 'Hero', scoreboard: 'Scoreboard', wizard: 'Wizard', app: 'Shell',
+    crud: 'CRUD', filterBar: 'Filtros', fab: 'FAB', appContext: 'Contexto',
+    kpi: 'KPI', stat: 'Estadística', notice: 'Aviso', banner: 'Banner',
+    calloutCard: 'Callout', bulletedList: 'Lista', statusList: 'Estados',
+    checklist: 'Checklist', fileList: 'Ficheros', separator: 'Separador',
+    entityHeader: 'Entidad', emptyState: 'Vacío', skeleton: 'Esqueleto',
+    progressBar: 'Progreso', progressSteps: 'Pasos', taskProgress: 'Tareas',
+    meter: 'Medidor', timeline: 'Timeline', calendar: 'Calendario',
+    kanban: 'Kanban', gantt: 'Gantt', trendChart: 'Tendencia',
+    heatmap: 'Mapa de calor', funnel: 'Embudo', orgChart: 'Organigrama',
+    featureGrid: 'Features', testimonials: 'Testimonios', faq: 'FAQ',
+    commentThread: 'Comentarios', comparisonCard: 'Comparativa',
   };
 
   static readonly LEAF_KINDS = new Set([
     'form', 'listing', 'button', 'field', 'text', 'metricCard', 'menuBar',
+    'crud', 'filterBar', 'fab', 'appContext', 'kpi', 'stat', 'notice', 'banner',
+    'calloutCard', 'bulletedList', 'statusList', 'checklist', 'fileList',
+    'separator', 'entityHeader', 'emptyState', 'skeleton', 'progressBar',
+    'progressSteps', 'taskProgress', 'meter', 'timeline', 'calendar', 'kanban',
+    'gantt', 'trendChart', 'heatmap', 'funnel', 'orgChart', 'featureGrid',
+    'testimonials', 'faq', 'commentThread', 'comparisonCard',
   ]);
 
   /** A node of the content tree, by id. */
@@ -796,6 +854,21 @@ export class ModuxPageDesigner extends LitElement {
     const slot = this.slotFor(target, pos);
     if (slot.beforeComponentId === source) return; // already there
     this.emitEvent('component-moved', { componentId: source, ...slot });
+  }
+
+  /** A progress-like bar, the shared stub for progressBar/meter/taskProgress. */
+  private barStub(pct: number, color = '#0284c7') {
+    return html`<div style="height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:${color}"></div></div>`;
+  }
+
+  /** ① — ② — ③ with the given step active: wizard headers and progressSteps. */
+  private stepsStub(active: number) {
+    return html`<div class="stub-row" style="justify-content:center;gap:0;margin-bottom:6px">
+      ${[0, 1, 2].map((i) => html`
+        <span class="stub-step ${i <= active ? 'on' : ''}">${i + 1}</span>
+        ${i < 2 ? html`<span style="width:26px;height:1.5px;background:${i < active ? '#0284c7' : '#e2e8f0'}"></span>` : nothing}`)}
+    </div>`;
   }
 
   /** One node of the composed page: a labeled, droppable, clickable mockup. */
@@ -976,6 +1049,192 @@ export class ModuxPageDesigner extends LitElement {
         break;
       case 'menuBar':
         body = html`<div class="menubar-stub"><span>Inicio</span><span>Reservas</span><span>⋯</span></div>`;
+        break;
+      // ---- Mateu design-contract containers ----
+      case 'section':
+        body = html`<div class="acc-bar"><span>${node.title ?? 'Sección'}</span></div>
+          <div class="col-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'zones':
+        body = html`<div class="row-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'toolbar':
+        body = html`<div class="row-lay" style="align-items:center">
+          ${children.length ? kids(children) : html`<span class="btn" style="display:inline-block;flex:none">Acción</span>${empty}`}
+        </div>`;
+        break;
+      case 'pageHeader':
+        body = html`<div class="row-lay" style="align-items:center">
+          <div style="flex:2;font-size:15px;font-weight:800;color:#0f172a">${node.title ?? 'Título de la página'}</div>
+          ${children.length ? kids(children) : nothing}
+        </div>`;
+        break;
+      case 'hero':
+        body = html`<div style="background:#0f172a;color:#f8fafc;border-radius:10px;padding:22px 18px;text-align:center">
+            <div style="font-size:17px;font-weight:800">${node.title ?? 'Un titular que vende'}</div>
+            <div style="font-size:11px;color:#cbd5e1;margin-top:4px">${node.text ?? 'El subtítulo que lo explica'}</div>
+          </div>
+          ${children.length ? html`<div class="col-lay" style="margin-top:6px">${kids(children)}</div>` : nothing}`;
+        break;
+      case 'scoreboard':
+        body = html`<div class="grid3-lay">${children.length ? kids(children) : html`
+          <div class="card-box metric"><div class="num">12</div><div class="cap">KPI</div></div>
+          <div class="card-box metric"><div class="num">3,4</div><div class="cap">KPI</div></div>
+          <div class="card-box metric"><div class="num">56%</div><div class="cap">KPI</div></div>`}</div>`;
+        break;
+      case 'wizard':
+        body = html`${this.stepsStub(0)}
+          <div class="col-lay">${children.length ? kids(children) : empty}</div>`;
+        break;
+      case 'app':
+        body = html`<div class="appbar">⛭ ${node.title ?? 'app'}</div>
+          <div class="col-lay" style="padding-top:6px">${children.length ? kids(children) : empty}</div>`;
+        break;
+      // ---- Mateu design-contract leaves ----
+      case 'crud':
+        body = html`<div class="row-lay" style="align-items:center;margin-bottom:6px">
+            <div class="control" style="flex:1">Buscar…</div>
+            <span class="btn" style="display:inline-block;flex:none">Nuevo</span>
+          </div>
+          <table>
+            <tr><th>col 1</th><th>col 2</th><th>col 3</th></tr>
+            ${[1, 2].map(() => html`<tr><td>···</td><td>···</td><td>···</td></tr>`)}
+          </table>`;
+        break;
+      case 'filterBar':
+        body = html`<div class="row-lay" style="align-items:center">
+          ${['Estado ▾', 'Fecha ▾', 'Tipo ▾'].map((t) => html`<span class="control" style="flex:none;font-size:11px">${t}</span>`)}
+          <div class="control" style="flex:1">Buscar…</div>
+        </div>`;
+        break;
+      case 'fab':
+        body = html`<div style="display:flex;justify-content:flex-end"><span
+          style="width:34px;height:34px;border-radius:50%;background:#0284c7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">+</span></div>`;
+        break;
+      case 'appContext':
+        body = html`<span class="control" style="display:inline-flex;min-width:130px">${node.label ?? 'Contexto'}&nbsp;<span>▾</span></span>`;
+        break;
+      case 'kpi':
+      case 'stat':
+        body = html`<div class="card-box metric"><div class="num">1.234</div><div class="cap">${node.title ?? (node.kind === 'kpi' ? 'KPI' : 'Estadística')}</div></div>`;
+        break;
+      case 'notice':
+        body = html`<div class="notice-stub">ℹ️ ${node.text ?? 'Un aviso para el usuario'}</div>`;
+        break;
+      case 'banner':
+        body = html`<div class="notice-stub" style="background:#fef3c7;border-color:#f59e0b;color:#92400e">📣 ${node.text ?? node.title ?? 'Banner destacado'}</div>`;
+        break;
+      case 'calloutCard':
+        body = html`<div class="card-box"><div class="card-title">💡 ${node.title ?? 'Callout'}</div>
+          <div class="text-stub">${node.text ?? 'Algo que merece atención especial.'}</div></div>`;
+        break;
+      case 'bulletedList':
+        body = html`<div class="text-stub">${['Primer punto', 'Segundo punto', 'Tercer punto'].map((t) => html`<div>• ${t}</div>`)}</div>`;
+        break;
+      case 'statusList':
+        body = html`<div class="col-lay" style="gap:3px">${([['#16a34a', 'Operativo'], ['#f59e0b', 'Degradado'], ['#dc2626', 'Caído']] as const).map(
+          ([c, t]) => html`<div class="stub-row"><span class="stub-dot" style="background:${c}"></span>${t}</div>`)}</div>`;
+        break;
+      case 'checklist':
+        body = html`<div class="col-lay" style="gap:3px">${([['☑', 'Hecho'], ['☑', 'También hecho'], ['☐', 'Pendiente']] as const).map(
+          ([m, t]) => html`<div class="stub-row"><span>${m}</span>${t}</div>`)}</div>`;
+        break;
+      case 'fileList':
+        body = html`<div class="col-lay" style="gap:3px">${['contrato.pdf · 1,2 MB', 'foto.png · 340 KB'].map(
+          (t) => html`<div class="stub-row">📄 ${t}</div>`)}</div>`;
+        break;
+      case 'separator':
+        body = html`<div style="border-top:1.5px solid #e2e8f0;margin:6px 0"></div>`;
+        break;
+      case 'entityHeader':
+        body = html`<div style="display:flex;gap:10px;align-items:center">
+          <div style="width:34px;height:34px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-weight:800;color:#0284c7">A</div>
+          <div><div style="font-weight:800;color:#0f172a;font-size:13px">${node.title ?? 'Entidad'}</div>
+            <div style="font-size:10.5px;color:#94a3b8">${node.text ?? 'metadatos · estado'}</div></div>
+        </div>`;
+        break;
+      case 'emptyState':
+        body = html`<div class="empty" style="padding:14px">🗇<br />${node.text ?? 'Nada por aquí todavía'}</div>`;
+        break;
+      case 'skeleton':
+        body = html`<div class="col-lay" style="gap:5px">${[80, 60, 72].map(
+          (w) => html`<div style="height:9px;border-radius:5px;background:#e2e8f0;width:${w}%"></div>`)}</div>`;
+        break;
+      case 'progressBar':
+        body = this.barStub(40);
+        break;
+      case 'meter':
+        body = this.barStub(72, '#16a34a');
+        break;
+      case 'taskProgress':
+        body = html`<div class="stub-row" style="margin-bottom:3px">${node.title ?? 'Tareas'} · 3/5</div>${this.barStub(60)}`;
+        break;
+      case 'progressSteps':
+        body = this.stepsStub(1);
+        break;
+      case 'timeline':
+        body = html`<div class="col-lay" style="gap:0">${['Creado', 'Aprobado', 'Enviado'].map(
+          (t, i) => html`<div class="stub-row" style="align-items:stretch;gap:8px">
+            <div style="display:flex;flex-direction:column;align-items:center"><span class="stub-dot" style="background:#0284c7"></span>${i < 2 ? html`<span style="flex:1;width:1.5px;background:#e2e8f0;min-height:10px"></span>` : nothing}</div>
+            <span style="padding-bottom:8px">${t}</span></div>`)}</div>`;
+        break;
+      case 'calendar':
+        body = html`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:9px;color:#64748b;text-align:center">
+          ${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => html`<span style="font-weight:700">${d}</span>`)}
+          ${Array.from({ length: 14 }, (_, i) => html`<span style="padding:2px;border-radius:4px;${i === 9 ? 'background:#0284c7;color:#fff' : 'background:#f8fafc'}">${i + 1}</span>`)}
+        </div>`;
+        break;
+      case 'kanban':
+        body = html`<div class="grid3-lay">${['Por hacer', 'En curso', 'Hecho'].map(
+          (t, i) => html`<div class="board-col"><div class="stub-row" style="font-weight:700">${t}</div>
+            ${Array.from({ length: 2 - (i % 2) }, () => html`<div class="card-box" style="padding:6px;font-size:10px;color:#94a3b8">tarjeta</div>`)}</div>`)}</div>`;
+        break;
+      case 'gantt':
+        body = html`<div class="col-lay" style="gap:4px">${([[0, 45, 'Análisis'], [30, 40, 'Diseño'], [55, 45, 'Build']] as const).map(
+          ([off, w, t]) => html`<div class="stub-row"><span style="flex:0 0 52px">${t}</span>
+            <div style="flex:1;height:9px;border-radius:5px;background:#f1f5f9"><div style="margin-left:${off}%;width:${w}%;height:100%;border-radius:5px;background:#0284c7"></div></div></div>`)}</div>`;
+        break;
+      case 'trendChart':
+        body = html`<svg viewBox="0 0 100 28" style="width:100%;height:38px" preserveAspectRatio="none">
+          <polyline points="0,24 18,18 36,20 54,10 72,13 100,3" fill="none" stroke="#0284c7" stroke-width="2" />
+        </svg>`;
+        break;
+      case 'heatmap':
+        body = html`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
+          ${[3, 6, 2, 8, 5, 1, 7, 4, 9, 2, 6, 3, 8, 5].map((v) => html`<span style="height:12px;border-radius:3px;background:rgba(2,132,199,${v / 10})"></span>`)}
+        </div>`;
+        break;
+      case 'funnel':
+        body = html`<div class="col-lay" style="gap:3px;align-items:center">${[100, 70, 45, 25].map(
+          (w) => html`<div style="width:${w}%;height:11px;border-radius:5px;background:#0284c7;opacity:${w / 100}"></div>`)}</div>`;
+        break;
+      case 'orgChart':
+        body = html`<div class="col-lay" style="gap:4px;align-items:center">
+          <span class="control" style="flex:none;font-size:10px">Dirección</span>
+          <div class="row-lay" style="width:80%">${['Área A', 'Área B'].map((t) => html`<span class="control" style="font-size:10px;justify-content:center">${t}</span>`)}</div>
+        </div>`;
+        break;
+      case 'featureGrid':
+        body = html`<div class="grid3-lay">${['⚡ Rápido', '🔒 Seguro', '🧩 Modular'].map(
+          (t) => html`<div class="card-box" style="text-align:center;font-size:11px;color:#334155">${t}</div>`)}</div>`;
+        break;
+      case 'testimonials':
+        body = html`<div class="card-box"><div class="text-stub">«${node.text ?? 'Nos cambió la forma de trabajar.'}»</div>
+          <div style="font-size:10.5px;color:#94a3b8;margin-top:4px">— Cliente contento</div></div>`;
+        break;
+      case 'faq':
+        body = html`<div class="col-lay" style="gap:3px">${['¿Cómo empiezo?', '¿Cuánto cuesta?'].map(
+          (q) => html`<div class="acc-bar"><span>${q}</span><span>▸</span></div>`)}</div>`;
+        break;
+      case 'commentThread':
+        body = html`<div class="col-lay" style="gap:4px">${([['Ana', 'Esto está casi listo'], ['Luis', 'Le doy un repaso y cierro']] as const).map(
+          ([a, t]) => html`<div class="card-box" style="padding:6px 8px"><span style="font-size:10px;font-weight:700;color:#0284c7">${a}</span>
+            <span class="text-stub"> ${t}</span></div>`)}</div>`;
+        break;
+      case 'comparisonCard':
+        body = html`<div class="grid-lay">${(['Básico', 'Pro'] as const).map(
+          (p, i) => html`<div class="card-box" style="text-align:center"><div class="card-title">${p}</div>
+            <div class="text-stub">✓ Una cosa<br />${i ? '✓' : '✕'} Otra cosa</div></div>`)}</div>`;
         break;
       default:
         body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;
