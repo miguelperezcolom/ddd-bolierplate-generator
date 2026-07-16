@@ -35,6 +35,7 @@ public class DeployProjectUseCase {
 
     private final GenerateCodeUseCase generateCodeUseCase;
     private final ModelStore repository;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.project.registry.ImageRegistryResolver imageRegistryResolver;
 
     /**
      * Launches the deployment and returns a {@link io.mateu.uidl.data.LongTask} flux:
@@ -297,20 +298,12 @@ public class DeployProjectUseCase {
      * broken push minutes into the pipeline.
      */
     private String registryFor(ServiceEntity service, ProjectEntity project) {
-        if (service.dockerImageRegistry() != null && !service.dockerImageRegistry().isBlank()) {
-            return trimSlash(service.dockerImageRegistry());
-        }
-        if (project.dockerRegistry() != null && !project.dockerRegistry().isBlank()) {
-            return trimSlash(project.dockerRegistry());
-        }
-        var fallback = System.getProperty("modux.docker.registry", System.getenv("MODUX_DOCKER_REGISTRY"));
-        if (fallback != null && !fallback.isBlank()) {
-            return trimSlash(fallback);
-        }
-        throw new IllegalStateException(
-                "Sin registry de imágenes para «" + service.name() + "»: configura el registry en la ficha"
-                        + " del proyecto (dockerRegistry, p. ej. docker.io/<usuario>), en el servicio, o"
-                        + " arranca modux con -Dmodux.docker.registry=docker.io/<usuario>");
+        return imageRegistryResolver.resolve(service, project)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Sin registry de imágenes para «" + service.name() + "»: configura el registry en la"
+                                + " ficha del proyecto (dockerRegistry, p. ej. docker.io/<usuario>) o en el"
+                                + " servicio, arranca modux con -Dmodux.docker.registry=…, o levanta un"
+                                + " registry local (docker run -d -p 5000:5000 registry:2) para el bucle local"));
     }
 
     private String imageNameFor(ServiceEntity service) {
@@ -329,10 +322,6 @@ public class DeployProjectUseCase {
 
     private static String slug(String name) {
         return name.toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
-    }
-
-    private static String trimSlash(String s) {
-        return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
     }
 
     private static String expandTilde(String path) {

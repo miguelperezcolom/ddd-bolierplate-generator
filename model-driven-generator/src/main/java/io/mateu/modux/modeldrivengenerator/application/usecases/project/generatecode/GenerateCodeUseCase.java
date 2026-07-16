@@ -70,6 +70,7 @@ import static io.mateu.core.infra.JsonSerializer.*;
 public class GenerateCodeUseCase {
 
     final ModelStore repository;
+    final io.mateu.modux.modeldrivengenerator.application.usecases.project.registry.ImageRegistryResolver imageRegistryResolver;
     final FlowStoreMaterializer flowStoreMaterializer;
     final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
 
@@ -182,12 +183,14 @@ public class GenerateCodeUseCase {
         var services = !declared.isEmpty()
                 ? declared
                 : java.util.stream.Stream.ofNullable(defaultServiceFor(project)).toList();
-        // The project's default registry lands ON the service, so the generated
-        // manifests reference the same image the deploy pipeline pushes.
+        // The RESOLVED registry lands ON the service (project default, instance property
+        // or the detected local registry), so the generated manifests reference the same
+        // image the deploy pipeline pushes.
         return services.stream()
-                .map(sv -> (sv.dockerImageRegistry() == null || sv.dockerImageRegistry().isBlank())
-                        && project.dockerRegistry() != null && !project.dockerRegistry().isBlank()
-                        ? sv.toBuilder().dockerImageRegistry(project.dockerRegistry()).build()
+                .map(sv -> sv.dockerImageRegistry() == null || sv.dockerImageRegistry().isBlank()
+                        ? imageRegistryResolver.resolve(sv, project)
+                                .map(registry -> sv.toBuilder().dockerImageRegistry(registry).build())
+                                .orElse(sv)
                         : sv)
                 .toList();
     }

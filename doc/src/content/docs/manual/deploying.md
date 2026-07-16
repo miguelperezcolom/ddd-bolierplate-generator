@@ -40,6 +40,12 @@ the pipeline starts:
 2. `dockerRegistry` on the **project** (its ficha) — e.g. `docker.io/<user>`.
 3. The `-Dmodux.docker.registry=docker.io/<user>` system property (or the
    `MODUX_DOCKER_REGISTRY` environment variable) on the Modux instance.
+4. A **local registry** answering at `localhost:5000` (`docker run -d -p 5000:5000
+   registry:2`) — the zero-config default for the local loop: push and pull never
+   leave the machine, no credentials, no pull secret. k3s needs it allowed as an
+   insecure registry in `/etc/rancher/k3s/registries.yaml`. Useless for a REMOTE
+   cluster (it cannot see your localhost): declare a real registry when you target
+   one.
 
 The image name is the service's `dockerImageName`, defaulting to the service name
 slug; everything is tagged `latest`.
