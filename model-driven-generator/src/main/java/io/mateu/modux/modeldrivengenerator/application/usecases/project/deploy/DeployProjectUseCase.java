@@ -74,6 +74,16 @@ public class DeployProjectUseCase {
         return task.run(progress -> deployFlux(project, services, environment, outputPath, logFile, progress));
     }
 
+    /** The project's public URL, when its services declare one — where Probar and a finished deploy open. */
+    public java.util.Optional<String> declaredUrl(String projectId) {
+        return repository.findById(projectId, ProjectEntity.class)
+                .map(generateCodeUseCase::effectiveServices)
+                .map(this::firstDeclaredUrl)
+                .filter(java.util.Objects::nonNull)
+                .map(java.util.Optional::of)
+                .orElse(java.util.Optional.empty());
+    }
+
     /** The first URL the services declare — where the finished deploy opens. */
     private String firstDeclaredUrl(List<ServiceEntity> services) {
         return services.stream()

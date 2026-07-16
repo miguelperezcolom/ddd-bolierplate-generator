@@ -39,9 +39,30 @@ public class ModelDrivenGeneratorHome
         if (projectStore.currentRepositoryId().isEmpty() || projectStore.currentProjectId().isEmpty()) {
             return java.util.List.of();
         }
-        return java.util.List.of(
-                new io.mateu.uidl.data.AppHeaderAction("generateCurrentProject", "Generar", "vaadin:cogs"),
-                new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar", "vaadin:rocket"));
+        var actions = new java.util.ArrayList<io.mateu.uidl.data.AppHeaderAction>();
+        actions.add(new io.mateu.uidl.data.AppHeaderAction("generateCurrentProject", "Generar", "vaadin:cogs"));
+        actions.add(new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar", "vaadin:rocket"));
+        // Probar only exists when the project declares a URL to open.
+        projectStore.currentProjectId()
+                .flatMap(projectId -> SpringBeans.get(
+                        io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
+                        .declaredUrl(projectId))
+                .ifPresent(url -> actions.add(
+                        new io.mateu.uidl.data.AppHeaderAction("openCurrentProjectUrl", "Probar", "vaadin:play")));
+        return actions;
+    }
+
+    /** The header's Probar: opens the project's declared URL in a new tab (a UI command). */
+    public Object openCurrentProjectUrl(io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        var url = projectStore.currentProjectId()
+                .flatMap(projectId -> SpringBeans.get(
+                        io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
+                        .declaredUrl(projectId))
+                .orElseThrow(() -> new IllegalStateException(
+                        "El proyecto no declara ninguna URL: añade una en la vista Distribución y conéctala al servicio"));
+        return io.mateu.uidl.data.UICommand.navigateTo(url);
     }
 
     /** The header's Deploy: generated services → images → the environment's cluster. */
