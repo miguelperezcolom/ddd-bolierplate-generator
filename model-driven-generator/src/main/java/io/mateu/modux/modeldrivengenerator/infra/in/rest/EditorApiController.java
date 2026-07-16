@@ -340,7 +340,8 @@ public class EditorApiController {
                                      String useCaseId, String mappingId, String modelId,
                                      String queryServiceId, String queryOperationId,
                                      String fieldId, String stereotype, Integer colspan,
-                                     List<UiComponentNodeDto> children, String customCodeId) {}
+                                     List<UiComponentNodeDto> children, String customCodeId,
+                                     String detailPageId) {}
     /** A viewmodel field as the page designer sees it: model field + its PageFieldConfig. */
     public record UiFieldDto(String fieldId, String name, String type, String stereotype,
                              Integer colspan, String label, String help) {}
@@ -519,7 +520,8 @@ public class EditorApiController {
                 (node.children() == null ? List.<UiComponentNodeEntity>of() : node.children()).stream()
                         .map(EditorApiController::toComponentNode)
                         .toList(),
-                node.customCodeId());
+                node.customCodeId(),
+                node.detailPageId());
     }
 
     static UiMenuEntryDto toMenuEntry(UiMenuItemEntity item) {
@@ -569,7 +571,7 @@ public class EditorApiController {
                                 String beforeComponentId, String title, String text,
                                 String cronExpression, String beforeItemId, String etlFlowId,
                                 String serviceId, String elementId, String bar,
-                                String journeyId) {}
+                                String journeyId, String detailPageId) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 

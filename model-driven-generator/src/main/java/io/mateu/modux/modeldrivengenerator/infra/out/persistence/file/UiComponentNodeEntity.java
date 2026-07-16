@@ -8,6 +8,7 @@ import java.util.Set;
  * Configuration is typed (not a map) so CatalogReflection walks the {@code *Id} fields
  * and referential integrity comes for free.
  */
+@lombok.Builder(toBuilder = true)
 public record UiComponentNodeEntity(
         /** Stable identity — the editor edits, moves and removes nodes by id. */
         String id,
@@ -42,8 +43,21 @@ public record UiComponentNodeEntity(
          * Extra kind-specific parameters (theme, slim, gridLayout…) — the Mateu component
          * catalog's knobs, populated e.g. by the Figma importer from the design contract.
          */
-        java.util.Map<String, String> params
+        java.util.Map<String, String> params,
+        /** The page a crud/listing row opens when clicked (its ficha). */
+        String detailPageId
 ) {
+
+    /** Backward-compatible constructor (pre-detailPageId callers and stores). */
+    public UiComponentNodeEntity(String id, String kind, String title, String text, String label,
+                                 String useCaseId, String mappingId, String modelId,
+                                 String queryServiceId, String queryOperationId, String fieldId,
+                                 String stereotype, Integer colspan,
+                                 List<UiComponentNodeEntity> children, String customCodeId,
+                                 java.util.Map<String, String> params) {
+        this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
+                queryOperationId, fieldId, stereotype, colspan, children, customCodeId, params, null);
+    }
 
     /** Backward-compatible constructor (pre-params callers and stores). */
     public UiComponentNodeEntity(String id, String kind, String title, String text, String label,
@@ -52,7 +66,7 @@ public record UiComponentNodeEntity(
                                  String stereotype, Integer colspan,
                                  List<UiComponentNodeEntity> children, String customCodeId) {
         this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
-                queryOperationId, fieldId, stereotype, colspan, children, customCodeId, null);
+                queryOperationId, fieldId, stereotype, colspan, children, customCodeId, null, null);
     }
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */
@@ -62,7 +76,7 @@ public record UiComponentNodeEntity(
                                  String stereotype, Integer colspan,
                                  List<UiComponentNodeEntity> children) {
         this(id, kind, title, text, label, useCaseId, mappingId, modelId, queryServiceId,
-                queryOperationId, fieldId, stereotype, colspan, children, null, null);
+                queryOperationId, fieldId, stereotype, colspan, children, null, null, null);
     }
 
     /** Kinds that lay out other nodes — only these carry children. */

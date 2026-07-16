@@ -625,11 +625,10 @@ public class UiEditorCommands {
             List<UiComponentNodeEntity> nodes, String componentId, String customCodeId) {
         if (nodes == null) return null;
         return nodes.stream()
-                .map(n -> new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
-                        n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
-                        n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
-                        withComponentCustomCode(n.children(), componentId, customCodeId),
-                        n.id().equals(componentId) ? customCodeId : n.customCodeId()))
+                .map(n -> n.toBuilder()
+                        .children(withComponentCustomCode(n.children(), componentId, customCodeId))
+                        .customCodeId(n.id().equals(componentId) ? customCodeId : n.customCodeId())
+                        .build())
                 .toList();
     }
 
@@ -643,11 +642,10 @@ public class UiEditorCommands {
             var children = withoutComponentCustomCode(n.children(), customCodeId);
             var hit = customCodeId.equals(n.customCodeId());
             if (hit || children != null) changed = true;
-            copy.add(new UiComponentNodeEntity(n.id(), n.kind(), n.title(), n.text(), n.label(),
-                    n.useCaseId(), n.mappingId(), n.modelId(), n.queryServiceId(),
-                    n.queryOperationId(), n.fieldId(), n.stereotype(), n.colspan(),
-                    children != null ? children : n.children(),
-                    hit ? null : n.customCodeId()));
+            copy.add(n.toBuilder()
+                    .children(children != null ? children : n.children())
+                    .customCodeId(hit ? null : n.customCodeId())
+                    .build());
         }
         return changed ? copy : null;
     }
@@ -822,10 +820,10 @@ public class UiEditorCommands {
             var hit = modelId.equals(it.modelId());
             if (hit || nested != null) {
                 touched = true;
-                out.add(new UiComponentNodeEntity(it.id(), it.kind(), it.title(), it.text(), it.label(),
-                        it.useCaseId(), it.mappingId(), hit ? null : it.modelId(), it.queryServiceId(),
-                        it.queryOperationId(), it.fieldId(), it.stereotype(), it.colspan(),
-                        nested != null ? nested : children));
+                out.add(it.toBuilder()
+                        .modelId(hit ? null : it.modelId())
+                        .children(nested != null ? nested : children)
+                        .build());
             } else {
                 out.add(it);
             }
@@ -1522,13 +1520,22 @@ public class UiEditorCommands {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Unknown query service: " + command.queryServiceId()));
         }
+        if (command.detailPageId() != null) {
+            repository.findById(command.detailPageId(), PageEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Unknown detail page: " + command.detailPageId()));
+        }
         var updated = withComponentReplaced(page.content(), command.componentId(),
-                node -> new UiComponentNodeEntity(node.id(), node.kind(),
-                        command.title(), command.text(), command.label(),
-                        command.useCaseId(), command.mappingId(), command.modelId(),
-                        command.queryServiceId(), command.queryOperationId(),
-                        command.fieldId(), command.stereotype(), command.colspan(),
-                        node.children()));
+                node -> node.toBuilder()
+                        .title(command.title()).text(command.text()).label(command.label())
+                        .useCaseId(command.useCaseId()).mappingId(command.mappingId())
+                        .modelId(command.modelId())
+                        .queryServiceId(command.queryServiceId())
+                        .queryOperationId(command.queryOperationId())
+                        .fieldId(command.fieldId()).stereotype(command.stereotype())
+                        .colspan(command.colspan())
+                        .detailPageId(command.detailPageId())
+                        .build());
         if (updated == null) {
             throw new IllegalArgumentException("Unknown component: " + command.componentId());
         }
@@ -1646,10 +1653,7 @@ public class UiEditorCommands {
     /** Record copy with only children replaced — every other field preserved verbatim. */
     static UiComponentNodeEntity withNodeChildren(UiComponentNodeEntity node,
                                                           List<UiComponentNodeEntity> children) {
-        return new UiComponentNodeEntity(node.id(), node.kind(), node.title(), node.text(),
-                node.label(), node.useCaseId(), node.mappingId(), node.modelId(),
-                node.queryServiceId(), node.queryOperationId(),
-                node.fieldId(), node.stereotype(), node.colspan(), children);
+        return node.toBuilder().children(children).build();
     }
 
     public void renameUiPage(EditorCommand command) {

@@ -180,6 +180,12 @@ Data-bound components wire to the model when you connect them in the designer:
   (matched by name — anything the form does not edit travels as `null`), calls the
   generated use case, and toasts the result. The use case is injected leniently, so the
   app still boots when it lives in another service.
+- A **ficha** (detail page) assigned to a crud/listing — in the component's dialog —
+  makes its rows navigable: the grid switches to selectable table mode and selecting a
+  row navigates to the ficha's route plus the row's key (a field named `id`, or the
+  first one). The ficha gets a `@Route` and, when it is a composed page, an
+  `onHydrated()` that reloads the record through the same query operation and pre-fills
+  its form fields by name.
 
 Left unconnected, they generate an `EmptyState` that says exactly what to assign.
 

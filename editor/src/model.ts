@@ -584,6 +584,8 @@ export interface UiComponentNodeRef {
   children?: UiComponentNodeRef[];
   /** The hand-written code this component delegates to (the component is CUSTOM). */
   customCodeId?: string;
+  /** The page a crud/listing row opens when clicked (its ficha). */
+  detailPageId?: string;
 }
 
 export interface UiPageRef {

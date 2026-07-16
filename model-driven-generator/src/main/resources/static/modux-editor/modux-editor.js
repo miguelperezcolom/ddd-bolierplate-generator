@@ -368,7 +368,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
   }, S = (p, T, V, z) => {
     const B = l(p, T);
     B.forEach((Q, ue) => {
-      const he = t[Q.id] ?? k(z, ue, B.length), oe = l(Q.id, Q.kind), Ie = o.has(Q.id) && oe.length > 0, Oe = Q.policy ? Ia : xa[Q.kind], Be = Q.kind === "external-system";
+      const he = t[Q.id] ?? k(z, ue, B.length), oe = l(Q.id, Q.kind), xe = o.has(Q.id) && oe.length > 0, Oe = Q.policy ? Ia : xa[Q.kind], Be = Q.kind === "external-system";
       r.push({
         id: Q.id,
         label: Q.name,
@@ -383,7 +383,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         dashed: Be || void 0,
         ownerId: p,
         collapsible: oe.length > 0,
-        collapsed: oe.length > 0 && !Ie,
+        collapsed: oe.length > 0 && !xe,
         tooltip: `${Q.policy ? "Policy" : wa[Q.kind]} ${Q.name} — parte de ${V}`
       }), m.push({
         id: `contains:${p}->${Q.id}`,
@@ -392,7 +392,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         kind: "contains",
         color: "#94a3b8",
         tooltip: `${V} contiene ${Q.name}`
-      }), Ie && S(Q.id, Q.kind, Q.name, he);
+      }), xe && S(Q.id, Q.kind, Q.name, he);
     });
   }, M = [
     ...e.boundedContexts.map((p) => ({ ref: p, external: !1, api: !1, proxy: !1 })),
@@ -425,17 +425,17 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
   M.forEach((p, T) => {
     const V = t[p.ref.id] ?? nt(T, M.length);
     if ("idp" in p && p.idp) {
-      const oe = p.ref, Ie = !!oe.publishedByExternalSystemId;
+      const oe = p.ref, xe = !!oe.publishedByExternalSystemId;
       r.push({
         id: oe.id,
         label: oe.name,
         kind: "identity-provider",
         symbol: "key",
-        fill: Ie ? "#ffffff" : "#fefce8",
+        fill: xe ? "#ffffff" : "#fefce8",
         stroke: "#ca8a04",
-        dashed: Ie,
+        dashed: xe,
         badge: oe.type ?? "IDP",
-        tooltip: `${oe.name} — emite las identidades que el sistema confía${Ie ? " (federado)" : ""}; arrastra un contexto, app o flujo ETL hasta él`,
+        tooltip: `${oe.name} — emite las identidades que el sistema confía${xe ? " (federado)" : ""}; arrastra un contexto, app o flujo ETL hasta él`,
         x: V.x,
         y: V.y,
         w: Ke,
@@ -482,7 +482,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
       return;
     }
     if (p.proxy) {
-      const oe = p.ref, Ie = l(oe.id, "proxy-api"), Oe = o.has(oe.id) && Ie.length > 0;
+      const oe = p.ref, xe = l(oe.id, "proxy-api"), Oe = o.has(oe.id) && xe.length > 0;
       r.push({
         id: oe.id,
         label: oe.name,
@@ -492,8 +492,8 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         stroke: "#0e7490",
         badge: "PROXY API",
         tooltip: `${oe.name} — proxy/cache de una API, consumible como ella`,
-        collapsible: Ie.length > 0,
-        collapsed: Ie.length > 0 && !Oe,
+        collapsible: xe.length > 0,
+        collapsed: xe.length > 0 && !Oe,
         x: V.x,
         y: V.y,
         w: Ke,
@@ -502,7 +502,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
       return;
     }
     if (p.api) {
-      const oe = p.ref, Ie = l(oe.id, "api"), Oe = o.has(oe.id) && Ie.length > 0;
+      const oe = p.ref, xe = l(oe.id, "api"), Oe = o.has(oe.id) && xe.length > 0;
       r.push({
         id: oe.id,
         label: oe.name,
@@ -512,8 +512,8 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         stroke: "#4f46e5",
         badge: "API",
         tooltip: `${oe.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
-        collapsible: Ie.length > 0,
-        collapsed: Ie.length > 0 && !Oe,
+        collapsible: xe.length > 0,
+        collapsed: xe.length > 0 && !Oe,
         x: V.x,
         y: V.y,
         w: Ke,
@@ -522,7 +522,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
       return;
     }
     if (p.external) {
-      const oe = p.ref, Ie = l(oe.id, "external-system"), Oe = o.has(oe.id) && Ie.length > 0, Be = n[oe.id];
+      const oe = p.ref, xe = l(oe.id, "external-system"), Oe = o.has(oe.id) && xe.length > 0, Be = n[oe.id];
       r.push({
         id: oe.id,
         label: oe.name,
@@ -533,8 +533,8 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         dashed: !0,
         badge: oe.referencedRepositoryId ? "PROYECTO" : "EXTERNAL",
         tooltip: oe.referencedRepositoryId ? `${oe.name} — otro proyecto modux (repositorio ${oe.referencedRepositoryId}), referenciado del catálogo` : `${oe.name} (sistema externo)`,
-        collapsible: Ie.length > 0,
-        collapsed: Ie.length > 0 && !Oe,
+        collapsible: xe.length > 0,
+        collapsed: xe.length > 0 && !Oe,
         resizable: !0,
         x: V.x,
         y: V.y,
@@ -765,8 +765,8 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
     arrow: !0,
     tooltip: p.type ? `${p.type} (${p.sourceId} upstream → ${p.targetId} downstream)${p.reasons ? ` — ${p.reasons}` : ""}` : p.inferredType ? `≈ ${p.inferredType} INFERIDO de las dependencias — doble click para declararlo (o corregirlo)${p.reasons ? ` — ${p.reasons}` : ""}` : `Relación derivada — doble click para elegir el patrón${p.reasons ? ` — ${p.reasons}` : ""}`
   })), Y = e.flows.map((p) => {
-    var ue, he, oe, Ie, Oe, Be;
-    const T = va(e, p), V = d ? e.boundedContexts.find((Fe) => Fe.id === p.sourceId) : void 0, z = ((ue = V == null ? void 0 : V.domainEvents) == null ? void 0 : ue.find((Fe) => Fe.name === p.triggerEvent)) ?? ((he = V == null ? void 0 : V.applicationEvents) == null ? void 0 : he.find((Fe) => Fe.name === p.triggerEvent)), B = d && p.readModelName ? (Ie = (oe = e.boundedContexts.find((Fe) => Fe.id === p.targetId)) == null ? void 0 : oe.readModels) == null ? void 0 : Ie.find((Fe) => Fe.name === p.readModelName) : void 0, Q = d && p.targetUseCaseId ? (Be = (Oe = e.boundedContexts.find((Fe) => Fe.id === p.targetId)) == null ? void 0 : Oe.useCases) == null ? void 0 : Be.find((Fe) => Fe.id === p.targetUseCaseId) : void 0;
+    var ue, he, oe, xe, Oe, Be;
+    const T = va(e, p), V = d ? e.boundedContexts.find((Fe) => Fe.id === p.sourceId) : void 0, z = ((ue = V == null ? void 0 : V.domainEvents) == null ? void 0 : ue.find((Fe) => Fe.name === p.triggerEvent)) ?? ((he = V == null ? void 0 : V.applicationEvents) == null ? void 0 : he.find((Fe) => Fe.name === p.triggerEvent)), B = d && p.readModelName ? (xe = (oe = e.boundedContexts.find((Fe) => Fe.id === p.targetId)) == null ? void 0 : oe.readModels) == null ? void 0 : xe.find((Fe) => Fe.name === p.readModelName) : void 0, Q = d && p.targetUseCaseId ? (Be = (Oe = e.boundedContexts.find((Fe) => Fe.id === p.targetId)) == null ? void 0 : Oe.useCases) == null ? void 0 : Be.find((Fe) => Fe.id === p.targetUseCaseId) : void 0;
     return {
       id: `flow:${p.id}`,
       sourceId: (z == null ? void 0 : z.id) ?? p.sourceId,
@@ -1044,7 +1044,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
     for (const T of p.applicationEvents ?? []) Ae.set(T.id, p.id);
     for (const T of p.queryServices ?? []) Ae.set(T.id, p.id);
   }
-  const ve = (p) => I.has(p) ? p : Ae.get(p) ?? p, Ee = /* @__PURE__ */ new Map();
+  const Ie = (p) => I.has(p) ? p : Ae.get(p) ?? p, Ee = /* @__PURE__ */ new Map();
   for (const p of e.boundedContexts) {
     for (const T of p.domainEvents ?? []) Ee.set(T.name, T.id);
     for (const T of p.applicationEvents ?? []) Ee.set(T.name, T.id);
@@ -1052,7 +1052,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
   const be = [
     ...new Map(
       (e.workflows ?? []).flatMap(
-        (p) => (p.steps ?? []).filter((T) => T.targetUseCaseId).map((T) => ({ sourceId: p.id, targetId: ve(T.targetUseCaseId) }))
+        (p) => (p.steps ?? []).filter((T) => T.targetUseCaseId).map((T) => ({ sourceId: p.id, targetId: Ie(T.targetUseCaseId) }))
       ).filter((p) => I.has(p.sourceId) && I.has(p.targetId)).map((p) => [
         `wfcall:${p.sourceId}->${p.targetId}`,
         {
@@ -1070,7 +1070,7 @@ function lo(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
   ], J = [
     ...new Map(
       (e.workflows ?? []).filter((p) => p.triggerEvent && Ee.has(p.triggerEvent)).map((p) => ({
-        sourceId: ve(Ee.get(p.triggerEvent)),
+        sourceId: Ie(Ee.get(p.triggerEvent)),
         targetId: p.id,
         label: p.triggerEvent
       })).filter((p) => I.has(p.sourceId) && I.has(p.targetId)).map((p) => [
@@ -4517,7 +4517,7 @@ const Ct = {
     <path d="M2.5 3.5 H9.5 V6 A3.5 3.5 0 0 1 2.5 6 Z"></path>
     <path d="M6 9.5 V11.5"></path>`
 };
-let xe = class extends Ge {
+let we = class extends Ge {
   constructor() {
     super(...arguments), this.scene = { nodes: [], edges: [] }, this.selectedId = null, this.selectedIds = [], this.connectable = !0, this.edgePoints = {}, this._t = Ft, this._dragPos = null, this._menuSlots = null, this._dragGroup = null, this._pendingLink = null, this._hoverNodeId = null, this._editingId = null, this._spaceDown = !1, this._wpDrag = null, this._selectedWaypoint = null, this._resize = null, this._rubber = null, this._fitted = !1, this._onWindowSpace = (e) => {
       if (e.key !== " ") return;
@@ -5409,7 +5409,7 @@ let xe = class extends Ge {
     `;
   }
 };
-xe.styles = xt`
+we.styles = xt`
     /* Journey legs wear static dashes; the RUNNER carries the motion. */
     path.journey-flow {
       stroke-dasharray: 9 7;
@@ -5470,61 +5470,61 @@ xe.styles = xt`
   `;
 ke([
   le({ attribute: !1 })
-], xe.prototype, "scene", 2);
+], we.prototype, "scene", 2);
 ke([
   le({ attribute: !1 })
-], xe.prototype, "selectedId", 2);
+], we.prototype, "selectedId", 2);
 ke([
   le({ attribute: !1 })
-], xe.prototype, "selectedIds", 2);
+], we.prototype, "selectedIds", 2);
 ke([
   le({ type: Boolean })
-], xe.prototype, "connectable", 2);
+], we.prototype, "connectable", 2);
 ke([
   le({ attribute: !1 })
-], xe.prototype, "edgePoints", 2);
+], we.prototype, "edgePoints", 2);
 ke([
   q()
-], xe.prototype, "_t", 2);
+], we.prototype, "_t", 2);
 ke([
   q()
-], xe.prototype, "_dragPos", 2);
+], we.prototype, "_dragPos", 2);
 ke([
   q()
-], xe.prototype, "_menuSlots", 2);
+], we.prototype, "_menuSlots", 2);
 ke([
   q()
-], xe.prototype, "_dragGroup", 2);
+], we.prototype, "_dragGroup", 2);
 ke([
   q()
-], xe.prototype, "_pendingLink", 2);
+], we.prototype, "_pendingLink", 2);
 ke([
   q()
-], xe.prototype, "_hoverNodeId", 2);
+], we.prototype, "_hoverNodeId", 2);
 ke([
   q()
-], xe.prototype, "_editingId", 2);
+], we.prototype, "_editingId", 2);
 ke([
   q()
-], xe.prototype, "_spaceDown", 2);
+], we.prototype, "_spaceDown", 2);
 ke([
   q()
-], xe.prototype, "_wpDrag", 2);
+], we.prototype, "_wpDrag", 2);
 ke([
   q()
-], xe.prototype, "_selectedWaypoint", 2);
+], we.prototype, "_selectedWaypoint", 2);
 ke([
   q()
-], xe.prototype, "_resize", 2);
+], we.prototype, "_resize", 2);
 ke([
   q()
-], xe.prototype, "_rubber", 2);
+], we.prototype, "_rubber", 2);
 ke([
   le({ attribute: !1 })
-], xe.prototype, "fitInsets", 2);
-xe = ke([
+], we.prototype, "fitInsets", 2);
+we = ke([
   wt("modux-canvas")
-], xe);
+], we);
 function Fn(e) {
   const t = e.legs ?? [], i = /* @__PURE__ */ new Map();
   for (let s = 0; s <= t.length; s++) {
@@ -8201,7 +8201,7 @@ Ue([
 Me = Ue([
   wt("modux-tilt")
 ], Me);
-var fc = Object.defineProperty, hc = Object.getOwnPropertyDescriptor, we = (e, t, i, n) => {
+var fc = Object.defineProperty, hc = Object.getOwnPropertyDescriptor, ve = (e, t, i, n) => {
   for (var o = n > 1 ? void 0 : n ? hc(t, i) : t, s = e.length - 1, a; s >= 0; s--)
     (a = e[s]) && (o = (n ? a(t, i, o) : a(o)) || o);
   return n && o && fc(t, i, o), o;
@@ -8231,7 +8231,7 @@ const Qn = [
 ];
 let pe = class extends Ge {
   constructor() {
-    super(...arguments), this.page = null, this.framed = !1, this.models = [], this.mappings = [], this.useCases = [], this.queryOps = [], this.selectedCmpId = null, this._editing = null, this._dragId = null, this._overId = null, this._rename = null, this._route = null, this._btn = null, this._cmp = null, this._dragCmpId = null, this._dragWizKey = null, this._overCmpId = null, this._overCmpPos = "into", this._foreignOver = !1, this._activeTabs = {};
+    super(...arguments), this.page = null, this.framed = !1, this.models = [], this.mappings = [], this.useCases = [], this.queryOps = [], this.pages = [], this.selectedCmpId = null, this._editing = null, this._dragId = null, this._overId = null, this._rename = null, this._route = null, this._btn = null, this._cmp = null, this._dragCmpId = null, this._dragWizKey = null, this._overCmpId = null, this._overCmpPos = "into", this._foreignOver = !1, this._activeTabs = {};
   }
   emitEvent(e, t) {
     this.dispatchEvent(new CustomEvent(e, { detail: t, bubbles: !0, composed: !0 }));
@@ -8849,7 +8849,7 @@ let pe = class extends Ge {
                       <span class="chipx" title="Quitar el modelo" @click=${() => t({ modelId: void 0 })}>✕</span></span
                     >` : $`<span class="vmhint">arrastra un modelo del Catálogo hasta el formulario</span>`}
             </span>` : re}
-      ${i === "listing" ? $`<label>Consulta</label>
+      ${i === "listing" || i === "crud" ? $`<label>Consulta</label>
             <span style="grid-column: 2 / -1">
               ${e.queryOperationId ? $`<span class="chip"
                       >${((d = this.queryOps.find((c) => c.id === e.queryOperationId)) == null ? void 0 : d.name) ?? e.queryOperationId}
@@ -8860,7 +8860,19 @@ let pe = class extends Ge {
                         >✕</span
                       ></span
                     >` : $`<span class="vmhint">arrastra una operación de consulta del Catálogo hasta el listado</span>`}
-            </span>` : re}
+            </span>
+            <label>Ficha</label>
+            <select
+              style="grid-column: 2 / -1"
+              title="La página que abre el click en una fila"
+              @change=${(c) => t({ detailPageId: c.target.value || void 0 })}
+            >
+              <option value="">— sin ficha —</option>
+              ${this.pages.filter((c) => {
+      var u;
+      return c.id !== ((u = this.page) == null ? void 0 : u.id);
+    }).map((c) => $`<option value=${c.id} ?selected=${c.id === e.detailPageId}>${c.name}</option>`)}
+            </select>` : re}
       ${i === "field" ? $`<label>Estereotipo</label>
             <select @change=${(c) => t({ stereotype: c.target.value || void 0 })}>
               ${Qn.map((c) => $`<option value=${c} ?selected=${c === (e.stereotype ?? "regular")}>${c}</option>`)}
@@ -8892,7 +8904,8 @@ let pe = class extends Ge {
         queryOperationId: c.queryOperationId ?? null,
         fieldId: c.fieldId ?? null,
         stereotype: c.stereotype ?? null,
-        colspan: c.colspan ?? null
+        colspan: c.colspan ?? null,
+        detailPageId: c.detailPageId ?? null
       });
     }}
         >
@@ -9804,67 +9817,70 @@ pe.LEAF_KINDS = /* @__PURE__ */ new Set([
   "commentThread",
   "comparisonCard"
 ]);
-we([
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "page", 2);
-we([
+ve([
   le({ type: Boolean, reflect: !0 })
 ], pe.prototype, "framed", 2);
-we([
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "models", 2);
-we([
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "mappings", 2);
-we([
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "useCases", 2);
-we([
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "queryOps", 2);
-we([
+ve([
+  le({ attribute: !1 })
+], pe.prototype, "pages", 2);
+ve([
   le({ attribute: !1 })
 ], pe.prototype, "selectedCmpId", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_editing", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_dragId", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_overId", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_rename", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_route", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_btn", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_cmp", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_dragCmpId", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_dragWizKey", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_overCmpId", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_overCmpPos", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_foreignOver", 2);
-we([
+ve([
   q()
 ], pe.prototype, "_activeTabs", 2);
-pe = we([
+pe = ve([
   wt("modux-page-designer")
 ], pe);
 var gc = Object.defineProperty, yc = Object.getOwnPropertyDescriptor, qe = (e, t, i, n) => {
@@ -13070,45 +13086,45 @@ function ft(e, t, i, n, o, s, a) {
       }
       return;
     }
-    const ve = Ce(i);
-    if (ve != null && ve.itemId && ((v = Ce(n)) != null && v.itemId || P(n))) {
-      const J = Ce(n), ee = e.menuEntryIn(ve.appId, ve.itemId);
+    const Ie = Ce(i);
+    if (Ie != null && Ie.itemId && ((v = Ce(n)) != null && v.itemId || P(n))) {
+      const J = Ce(n), ee = e.menuEntryIn(Ie.appId, Ie.itemId);
       if (!ee) return;
       if (J != null && J.itemId) {
         const _e = e.menuEntryIn(J.appId, J.itemId);
         if (!_e) return;
         const Ne = (kt) => (kt ?? []).some((Zt) => Zt.id === J.itemId || Ne(Zt.children));
-        if (ve.appId === J.appId && (J.itemId === ve.itemId || Ne(ee.entry.children)))
+        if (Ie.appId === J.appId && (J.itemId === Ie.itemId || Ne(ee.entry.children)))
           return;
         const We = e.nodeClientRect(n), De = We && s !== void 0 ? (s - We.top) / Math.max(1, We.height) : 0.5, it = De < 0.3 ? "before" : De > 0.7 ? "after" : "nest";
         if (it === "nest")
           e.command({
             kind: "move-menu-item",
-            appId: ve.appId,
+            appId: Ie.appId,
             toAppId: J.appId,
-            itemId: ve.itemId,
+            itemId: Ie.itemId,
             parentId: J.itemId
           });
         else {
           const kt = it === "before" ? J.itemId : _e.beforeId ?? void 0;
-          if (ve.appId === J.appId && _e.parentId === ee.parentId && kt === ve.itemId) return;
+          if (Ie.appId === J.appId && _e.parentId === ee.parentId && kt === Ie.itemId) return;
           e.command({
             kind: "move-menu-item",
-            appId: ve.appId,
+            appId: Ie.appId,
             toAppId: J.appId,
-            itemId: ve.itemId,
+            itemId: Ie.itemId,
             parentId: _e.parentId ?? void 0,
             beforeItemId: kt
           });
         }
         return;
       }
-      if (ve.appId === n && !ee.parentId) return;
+      if (Ie.appId === n && !ee.parentId) return;
       e.command({
         kind: "move-menu-item",
-        appId: ve.appId,
+        appId: Ie.appId,
         toAppId: n,
-        itemId: ve.itemId
+        itemId: Ie.itemId
       });
       return;
     }
@@ -13190,9 +13206,9 @@ function ft(e, t, i, n, o, s, a) {
       if (!K) {
         const Z = w.find((be) => be.id === x.modelId), fe = w.find((be) => be.id === P.modelId);
         if (!Z || !fe) return;
-        const Ae = (be) => be.replace(/[^a-zA-Z0-9]/g, ""), ve = new Set((e.model.modelMappings ?? []).map((be) => be.id));
+        const Ae = (be) => be.replace(/[^a-zA-Z0-9]/g, ""), Ie = new Set((e.model.modelMappings ?? []).map((be) => be.id));
         let Ee = `mapping-${ce(Z.name)}-${ce(fe.name)}`;
-        for (let be = 2; ve.has(Ee); be++) Ee = `mapping-${ce(Z.name)}-${ce(fe.name)}-${be}`;
+        for (let be = 2; Ie.has(Ee); be++) Ee = `mapping-${ce(Z.name)}-${ce(fe.name)}-${be}`;
         e.command(
           { kind: "add-model-mapping", id: Ee, name: `${Ae(Z.name)}2${Ae(fe.name)}`, sourceId: Z.id, targetId: fe.id },
           !1
@@ -16178,6 +16194,7 @@ let te = class extends Ge {
       @page-wizard-step-moved=${(t) => this.moveWizardStep(t.detail.pageId, t.detail.stepKey, t.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
+      .pages=${(this.model.pages ?? []).map((t) => ({ id: t.id, name: t.name }))}
       .useCases=${this.model.boundedContexts.flatMap(
       (t) => (t.useCases ?? []).map((i) => ({ id: i.id, name: i.name }))
     )}
@@ -19604,7 +19621,7 @@ export {
   ka as ARCHIMATE_NOTATION,
   qc as CONTAINER_HEADER,
   Bc as CONTAINER_INSET,
-  xe as ModuxCanvas,
+  we as ModuxCanvas,
   te as ModuxEditor,
   ye as ModuxEditorConnected,
   Ta as aggregatesScene,

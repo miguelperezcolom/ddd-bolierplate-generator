@@ -2779,6 +2779,7 @@ export class ModuxEditor extends LitElement {
         this.moveWizardStep(e.detail.pageId, e.detail.stepKey, e.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
+      .pages=${(this.model.pages ?? []).map((pg) => ({ id: pg.id, name: pg.name }))}
       .useCases=${this.model.boundedContexts.flatMap((mod) =>
         (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
       )}

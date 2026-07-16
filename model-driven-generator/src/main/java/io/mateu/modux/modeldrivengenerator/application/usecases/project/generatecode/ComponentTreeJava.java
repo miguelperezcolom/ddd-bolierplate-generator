@@ -2,6 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.generat
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
@@ -41,23 +42,35 @@ public final class ComponentTreeJava {
             Function<String, String> typeName,
             Function<String, UseCaseEntity> useCaseById,
             /** useCaseId → java package of the context that owns it. */
-            Function<String, String> contextPackageByUseCaseId) {}
+            Function<String, String> contextPackageByUseCaseId,
+            Function<String, PageEntity> pageById) {}
 
     public record Tree(String expression, SortedSet<String> imports,
                        List<String> classFields, List<String> nestedClasses,
                        /** supportedActions() + handleAction() bodies, or null when nothing fires actions. */
-                       String actionHandler) {}
+                       String actionHandler,
+                       /** onHydrated() body loading the routed record, or null when the page is no detail target. */
+                       String hydration) {}
 
     public static Tree of(List<UiComponentNodeEntity> content) {
-        return of(content, null);
+        return of(content, null, null);
     }
 
     public static Tree of(List<UiComponentNodeEntity> content, Wiring wiring) {
+        return of(content, wiring, null);
+    }
+
+    /**
+     * @param detailSource when this page is the ficha some crud/listing node points at,
+     *     that node — its query operation loads the routed record into the page's fields.
+     */
+    public static Tree of(List<UiComponentNodeEntity> content, Wiring wiring, UiComponentNodeEntity detailSource) {
         var b = new ComponentTreeJava(wiring);
         var expr = content.size() == 1 ? b.expr(content.get(0)) : b.vertical(content);
+        var hydration = detailSource == null ? null : b.hydration(detailSource);
         var classFields = new ArrayList<>(b.services.values());
         classFields.addAll(b.bindings.values());
-        return new Tree(expr, b.imports, classFields, b.nested, b.actionHandler());
+        return new Tree(expr, b.imports, classFields, b.nested, b.actionHandler(), hydration);
     }
 
     private final SortedSet<String> imports = new TreeSet<>();
@@ -274,22 +287,62 @@ public final class ComponentTreeJava {
                 listOf(List.of(formField(field, n.label()))) + ").build()";
     }
 
-    /** A listing/crud node with a query operation: a nested ListingBackend reading from it. */
-    private String listing(UiComponentNodeEntity n, boolean crud) {
+    /** Everything a query-wired node resolves to; null when the node is not (fully) wired. */
+    private record QueryWire(QueryServiceEntity qs, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity op,
+                             ModelEntity outModel, String qsType, String rowType, String providerField) {}
+
+    /** Resolves a node's query wiring, registers imports and the injected provider. */
+    private QueryWire queryWire(UiComponentNodeEntity n) {
         var qs = wiring == null || n.queryServiceId() == null ? null : wiring.queryServiceById().apply(n.queryServiceId());
-        if (qs == null || qs.operations() == null || qs.operations().isEmpty()) return unwired(n);
+        if (qs == null || qs.operations() == null || qs.operations().isEmpty()) return null;
         var op = qs.operations().stream()
                 .filter(o -> o.id() != null && o.id().equals(n.queryOperationId()))
                 .findFirst().orElse(qs.operations().get(0));
         var outModel = op.outputModelId() == null ? null : wiring.modelById().apply(op.outputModelId());
         var contextPackage = wiring.contextPackageByContextId().apply(qs.boundedContextId());
-        if (outModel == null || outModel.fields() == null || contextPackage == null) return unwired(n);
+        if (outModel == null || outModel.fields() == null || contextPackage == null) return null;
 
         var qsType = wiring.typeName().apply(qs.name());
         var rowType = wiring.typeName().apply(outModel.name());
         imports.add(contextPackage + ".application.query." + qsType);
         imports.add(contextPackage + ".application.query.dto." + rowType);
         imports.add("org.springframework.beans.factory.ObjectProvider");
+        // Field injection ON PURPOSE: the App class extends its home page, and an inherited
+        // constructor requirement would break that plain `class Home extends X` generation.
+        imports.add("org.springframework.beans.factory.annotation.Autowired");
+        var providerField = uncap(qsType) + "Provider";
+        services.putIfAbsent(providerField, "@Autowired ObjectProvider<" + qsType + "> " + providerField + ";");
+        return new QueryWire(qs, op, outModel, qsType, rowType, providerField);
+    }
+
+    /** The row field that identifies a record: one named «id», or the first basic field. */
+    private static ModelFieldEntity rowKeyField(ModelEntity outModel) {
+        return outModel.fields().stream()
+                .filter(f -> f.basicType() && "id".equalsIgnoreCase(f.name()))
+                .findFirst()
+                .orElseGet(() -> outModel.fields().stream().filter(ModelFieldEntity::basicType).findFirst().orElse(null));
+    }
+
+    /** The fetch statement(s) leaving the operation's rows in {@code all}. */
+    private static String fetchAll(QueryWire w) {
+        var cardinality = w.op().cardinality() == null ? "Single" : w.op().cardinality().name();
+        var opCall = "queryService." + uncap(w.op().name()) + "(null)";
+        return switch (cardinality) {
+            case "List" -> "            var all = " + opCall + ";";
+            case "Page" -> "            var all = " + opCall + ".getContent();";
+            default -> "            var one = " + opCall + ";\n" +
+                    "            var all = one == null ? List.<" + w.rowType() + ">of() : List.of(one);";
+        };
+    }
+
+    /** A listing/crud node with a query operation: a nested ListingBackend reading from it. */
+    private String listing(UiComponentNodeEntity n, boolean crud) {
+        var wire = queryWire(n);
+        if (wire == null) return unwired(n);
+        var qsType = wire.qsType();
+        var rowType = wire.rowType();
+        var outModel = wire.outModel();
+        var providerField = wire.providerField();
         for (var cls : List.of("NoFilters", "ListingData", "Pageable", "GridColumn", "FieldDataType")) use(cls);
         use("Listing", "fluent");
         use("Trigger", "fluent");
@@ -297,21 +350,8 @@ public final class ComponentTreeJava {
         imports.add("io.mateu.uidl.interfaces.ListingBackend");
         imports.add("io.mateu.uidl.fluent.TriggersSupplier");
 
-        // Field injection ON PURPOSE: the App class extends its home page, and an inherited
-        // constructor requirement would break that plain `class Home extends X` generation.
-        imports.add("org.springframework.beans.factory.annotation.Autowired");
-        var providerField = uncap(qsType) + "Provider";
-        services.putIfAbsent(providerField, "@Autowired ObjectProvider<" + qsType + "> " + providerField + ";");
-
         var className = uniqueNestedName(rowType + (crud ? "Crud" : "Listing"));
-        var cardinality = op.cardinality() == null ? "Single" : op.cardinality().name();
-        var opCall = "queryService." + uncap(op.name()) + "(null)";
-        var fetch = switch (cardinality) {
-            case "List" -> "            var all = " + opCall + ";";
-            case "Page" -> "            var all = " + opCall + ".getContent();";
-            default -> "            var one = " + opCall + ";\n" +
-                    "            var all = one == null ? List.<" + rowType + ">of() : List.of(one);";
-        };
+        var fetch = fetchAll(wire);
         var columns = new ArrayList<String>();
         for (var f : outModel.fields()) {
             if (!f.basicType()) continue;
@@ -320,6 +360,46 @@ public final class ComponentTreeJava {
         }
         if (columns.isEmpty()) return unwired(n);
         var title = or(n.title(), or(n.label(), null));
+
+        // A detail page turns rows into links: selection navigates to the ficha's route + key
+        var detailPage = wiring.pageById() == null || n.detailPageId() == null
+                ? null : wiring.pageById().apply(n.detailPageId());
+        var keyField = detailPage == null ? null : rowKeyField(outModel);
+        var listingExtras = "";
+        var detailHandler = "";
+        if (detailPage != null && keyField != null) {
+            use("UICommand");
+            use("GridLayout", "fluent");
+            var route = or(detailPage.route(), "/" + detailPage.id());
+            listingExtras = ".gridLayout(GridLayout.table).rowsSelectionEnabled(true).onRowSelectionChangedActionId(\"open-detail\")";
+            detailHandler = """
+
+                        @Override
+                        public List<String> supportedActions() {
+                            var actions = new java.util.ArrayList<>(ListingBackend.super.supportedActions());
+                            actions.add("open-detail");
+                            return actions;
+                        }
+
+                        @Override
+                        public boolean supportsAction(String actionId) {
+                            return "open-detail".equals(actionId) || ListingBackend.super.supportsAction(actionId);
+                        }
+
+                        @Override
+                        public Object handleAction(String actionId, HttpRequest httpRequest) {
+                            if ("open-detail".equals(actionId)) {
+                                var selected = httpRequest.getSelectedRows(%s.class);
+                                if (selected == null || selected.isEmpty()) {
+                                    return null;
+                                }
+                                var key = String.valueOf(selected.get(0).%s());
+                                return UICommand.navigateTo("%s/" + java.net.URLEncoder.encode(key, java.nio.charset.StandardCharsets.UTF_8));
+                            }
+                            return ListingBackend.super.handleAction(actionId, httpRequest);
+                        }
+                """.formatted(rowType, keyField.name(), route);
+        }
 
         nested.add("""
                     /** %s reads from %s.%s — generated from the designed %s node. */
@@ -347,10 +427,10 @@ public final class ComponentTreeJava {
                             var items = filtered.stream().skip((long) pageable.page() * pageable.size()).limit(pageable.size()).toList();
                             return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), filtered.size(), items), "Sin datos.");
                         }
-
+                %s
                         @Override
                         public Component component(HttpRequest httpRequest) {
-                            return Listing.builder()%s.searchable(%s).columns(%s).build();
+                            return Listing.builder()%s.searchable(%s)%s.columns(%s).build();
                         }
 
                         @Override
@@ -358,14 +438,16 @@ public final class ComponentTreeJava {
                             return List.of(new OnLoadTrigger("search"));
                         }
                     }""".formatted(
-                className, qsType, uncap(op.name()), crud ? "crud" : "listing",
+                className, qsType, uncap(wire.op().name()), crud ? "crud" : "listing",
                 className, rowType,
                 qsType,
                 className, qsType,
                 rowType,
                 qsType,
                 fetch,
+                detailHandler,
                 title == null ? "" : ".title(" + q(title) + ")", crud,
+                listingExtras,
                 listOf(columns).replace("\n                ", "\n                        ")));
 
         return "new " + className + "(" + providerField + ")";
@@ -447,6 +529,48 @@ public final class ComponentTreeJava {
                     }""".formatted(
                 String.join(", ", actionWirings.keySet().stream().map(ComponentTreeJava::q).toList()),
                 String.join("\n", cases));
+    }
+
+    /**
+     * When this page is the ficha a crud/listing node navigates to: onHydrated() takes the
+     * routed key, loads the rows through that node's query operation, and copies the matching
+     * record into the page's binding fields — the form opens pre-filled.
+     */
+    private String hydration(UiComponentNodeEntity detailSource) {
+        var wire = queryWire(detailSource);
+        if (wire == null || bindings.isEmpty()) return null;
+        var keyField = rowKeyField(wire.outModel());
+        if (keyField == null) return null;
+        var assigns = wire.outModel().fields().stream()
+                .filter(f -> f.basicType() && bindings.containsKey(f.name()))
+                .map(f -> "                    " + f.name() + " = row." + f.name() + "();")
+                .toList();
+        if (assigns.isEmpty()) return null;
+        imports.add("io.mateu.uidl.interfaces.PostHydrationHandler");
+        return """
+                    @Override
+                    public void onHydrated(HttpRequest httpRequest) {
+                        var key = httpRequest.lastPathItem();
+                        if (key == null || key.isBlank()) {
+                            return;
+                        }
+                        key = java.net.URLDecoder.decode(key, java.nio.charset.StandardCharsets.UTF_8);
+                        var queryService = %s.getIfAvailable();
+                        if (queryService == null) {
+                            return;
+                        }
+                %s
+                        for (var row : all) {
+                            if (key.equals(String.valueOf(row.%s()))) {
+                %s
+                                return;
+                            }
+                        }
+                    }""".formatted(
+                wire.providerField(),
+                fetchAll(wire),
+                keyField.name(),
+                String.join("\n", assigns));
     }
 
     /** The designer left this node unconnected: say exactly what is missing. */

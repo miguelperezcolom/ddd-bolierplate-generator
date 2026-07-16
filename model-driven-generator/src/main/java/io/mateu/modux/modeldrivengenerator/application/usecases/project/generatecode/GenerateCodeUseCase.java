@@ -40,6 +40,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiShellEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
@@ -1921,14 +1922,27 @@ public class GenerateCodeUseCase {
                             .filter(ctx -> ctx.useCaseIds() != null && ctx.useCaseIds().contains(useCaseId))
                             .findFirst()
                             .map(ctx -> project.packageName() + "." + boundedContextSlug(ctx.name()))
-                            .orElse(null));
-            var tree = ComponentTreeJava.of(page.content(), wiring);
+                            .orElse(null),
+                    id -> repository.findById(id, PageEntity.class).orElse(null));
+            // Is this page the ficha some crud/listing navigates to? Its query op loads the record.
+            var detailSource = repository.findAllOfType(PageEntity.class).stream()
+                    .filter(p -> inProject(p.projectId(), project))
+                    .flatMap(p -> flattenContent(p.content()))
+                    .filter(node -> page.id().equals(node.detailPageId()))
+                    .filter(node -> node.queryServiceId() != null)
+                    .findFirst().orElse(null);
+            var tree = ComponentTreeJava.of(page.content(), wiring, detailSource);
             model.put("componentTree", tree.expression());
             model.put("treeImports", tree.imports());
             model.put("treeFields", tree.classFields());
             model.put("treeNested", tree.nestedClasses());
             if (tree.actionHandler() != null) {
                 model.put("actionHandler", tree.actionHandler());
+            }
+            if (tree.hydration() != null) {
+                model.put("hydration", tree.hydration());
+                model.put("pageRoute",
+                        (page.route() != null && !page.route().isBlank() ? page.route() : "/" + page.id()) + "/.*");
             }
         }
 
@@ -2822,6 +2836,13 @@ public class GenerateCodeUseCase {
     private List<String> splitCsv(String value) {
         if (value == null || value.isBlank()) return List.of();
         return Arrays.asList(value.split(","));
+    }
+
+    /** Every node of a content tree, depth-first. */
+    private static java.util.stream.Stream<UiComponentNodeEntity> flattenContent(List<UiComponentNodeEntity> nodes) {
+        if (nodes == null) return java.util.stream.Stream.empty();
+        return nodes.stream().flatMap(n -> java.util.stream.Stream.concat(
+                java.util.stream.Stream.of(n), flattenContent(n.children())));
     }
 
     private String capitalize(String value) {

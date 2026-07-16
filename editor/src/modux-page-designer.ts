@@ -31,6 +31,7 @@ export class ModuxPageDesigner extends LitElement {
   @property({ attribute: false }) mappings: { id: string; name: string }[] = [];
   @property({ attribute: false }) useCases: { id: string; name: string }[] = [];
   @property({ attribute: false }) queryOps: { id: string; name: string; queryServiceId: string }[] = [];
+  @property({ attribute: false }) pages: { id: string; name: string }[] = [];
   /** The selected content node (owned by the shell, like the canvas selection). */
   @property({ attribute: false }) selectedCmpId: string | null = null;
 
@@ -1400,7 +1401,7 @@ export class ModuxPageDesigner extends LitElement {
                 : html`<span class="vmhint">arrastra un modelo del Catálogo hasta el formulario</span>`}
             </span>`
         : nothing}
-      ${kind === 'listing'
+      ${kind === 'listing' || kind === 'crud'
         ? html`<label>Consulta</label>
             <span style="grid-column: 2 / -1">
               ${draft.queryOperationId
@@ -1414,7 +1415,18 @@ export class ModuxPageDesigner extends LitElement {
                       ></span
                     >`
                 : html`<span class="vmhint">arrastra una operación de consulta del Catálogo hasta el listado</span>`}
-            </span>`
+            </span>
+            <label>Ficha</label>
+            <select
+              style="grid-column: 2 / -1"
+              title="La página que abre el click en una fila"
+              @change=${(e: Event) => set({ detailPageId: (e.target as HTMLSelectElement).value || undefined })}
+            >
+              <option value="">— sin ficha —</option>
+              ${this.pages
+                .filter((pg) => pg.id !== this.page?.id)
+                .map((pg) => html`<option value=${pg.id} ?selected=${pg.id === draft.detailPageId}>${pg.name}</option>`)}
+            </select>`
         : nothing}
       ${kind === 'field'
         ? html`<label>Estereotipo</label>
@@ -1454,6 +1466,7 @@ export class ModuxPageDesigner extends LitElement {
               fieldId: d.fieldId ?? null,
               stereotype: d.stereotype ?? null,
               colspan: d.colspan ?? null,
+              detailPageId: d.detailPageId ?? null,
             });
           }}
         >

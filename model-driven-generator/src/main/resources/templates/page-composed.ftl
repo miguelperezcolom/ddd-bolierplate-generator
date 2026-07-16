@@ -5,6 +5,9 @@ package ${project.packageName}.${moduleSlugVal}.infra.in.ui.pages.${pageSlug};
 <#if ui??>
 import io.mateu.uidl.annotations.UI;
 </#if>
+<#if pageRoute??>
+import io.mateu.uidl.annotations.Route;
+</#if>
 import io.mateu.uidl.annotations.Title;
 <#if page.favicon?has_content>
 import io.mateu.uidl.annotations.FavIcon;
@@ -37,13 +40,16 @@ import org.springframework.stereotype.Service;
 @UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)
 </#if>
 @Title("${page.title!page.name}")
+<#if pageRoute??>
+@Route("${pageRoute}")
+</#if>
 <#if page.favicon?has_content>
 @FavIcon("${page.favicon}")
 </#if>
 <#if page.style?has_content>
 @Style(StyleConstants.${page.style})
 </#if>
-public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} implements ComponentTreeSupplier<#if actionHandler??>, ActionHandler</#if> {
+public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} implements ComponentTreeSupplier<#if actionHandler??>, ActionHandler</#if><#if hydration??>, PostHydrationHandler</#if> {
 <#if treeFields?has_content>
 
 <#list treeFields as f>
@@ -58,6 +64,10 @@ public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r')
 <#if actionHandler??>
 
 ${actionHandler}
+</#if>
+<#if hydration??>
+
+${hydration}
 </#if>
 <#if treeNested?has_content>
 <#list treeNested as nestedClass>
