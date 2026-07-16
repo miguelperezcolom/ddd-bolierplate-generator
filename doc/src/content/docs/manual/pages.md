@@ -155,7 +155,16 @@ For each field in the assigned model you can override its default presentation.
 
 ## What gets generated
 
-Depending on the page type, Modux generates:
+A page with a **designed component tree** (composed in the page designer) wins over its
+type: it generates a Mateu `ComponentTreeSupplier` whose `component()` returns the tree
+built with the UIDL builders — every layout and Display component of the palette maps to
+its Mateu counterpart (`HeroSection`, `Scoreboard`, `Kanban`, `Gantt`, `Timeline`,
+`Calendar`, `TabLayout`…), with the same sample content the designer mocks up, so the
+deployed page looks like the design. Data-bound components (**form, listing, CRUD,
+field**) still generate an `EmptyState` placeholder — wiring them to models and query
+services is on the roadmap.
+
+Otherwise, the page type decides:
 
 - **CRUD** — list view, create form, edit form, delete action; optionally wired to a custom query service or gateway for the listing
 - **FORM** — standalone form component bound to the specified model

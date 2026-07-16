@@ -1901,8 +1901,16 @@ public class GenerateCodeUseCase {
                     .forEach(component -> generateComponent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, component));
         }
 
+        // A designed component tree wins over the page type: the page IS its design.
+        var composed = page.content() != null && !page.content().isEmpty();
+        if (composed) {
+            var tree = ComponentTreeJava.of(page.content());
+            model.put("componentTree", tree.expression());
+            model.put("treeImports", tree.imports());
+        }
+
         var pageType = page.type() != null ? page.type().toUpperCase() : "CRUD";
-        var template = switch (pageType) {
+        var template = composed ? "page-composed.ftl" : switch (pageType) {
             case "FORM" -> "page-form.ftl";
             case "DASHBOARD" -> "page-dashboard.ftl";
             case "WIZARD" -> "page-wizard.ftl";
@@ -1910,7 +1918,6 @@ public class GenerateCodeUseCase {
             case "PAGE" -> page.modelId() != null && !page.modelId().isBlank()
                     ? "page-form.ftl"
                     : (page.componentIds() != null && !page.componentIds().isEmpty())
-                            || (page.content() != null && !page.content().isEmpty())
                         ? "page-dashboard.ftl"
                         : "page-form.ftl";
             default -> "page-crud.ftl";
