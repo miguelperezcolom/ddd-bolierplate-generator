@@ -368,6 +368,7 @@ export class ModuxFigma extends LitElement {
                 .mappings=${this.mappings}
                 .useCases=${this.useCases}
                 .queryOps=${this.queryOps}
+                .pages=${this.pages.map((p) => ({ id: p.id, name: p.name }))}
                 @component-config-changed=${(e: CustomEvent) => {
                   e.stopPropagation();
                   this.emit('page-component-config-changed', { pageId: page.id, ...e.detail });

@@ -2504,23 +2504,7 @@ export class ModuxEditor extends LitElement {
         ops.push({ kind: 'remove-page-component', pageId, componentId: `${id}-tab-1` });
         ops.push({ kind: 'remove-page-component', pageId, componentId: `${id}-tab-2` });
       }
-      ops.push({
-        kind: 'set-page-component',
-        pageId,
-        componentId: id,
-        title: n.title ?? null,
-        text: n.text ?? null,
-        label: n.label ?? null,
-        useCaseId: n.useCaseId ?? null,
-        mappingId: n.mappingId ?? null,
-        modelId: n.modelId ?? null,
-        queryServiceId: n.queryServiceId ?? null,
-        queryOperationId: n.queryOperationId ?? null,
-        fieldId: n.fieldId ?? null,
-        stereotype: n.stereotype ?? null,
-        colspan: n.colspan ?? null,
-        detailPageId: n.detailPageId ?? null,
-      });
+      ops.push({ kind: 'set-page-component', pageId, componentId: id, ...this.cmpPatch(n) });
       for (const c of n.children ?? []) emitNode(c, id);
       return id;
     };
@@ -2550,14 +2534,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private newComponentId(kind: string): string {
-    const used = new Set<string>();
-    const walk = (items?: { id: string; children?: [] }[]) => {
-      for (const it of items ?? []) {
-        used.add(it.id);
-        walk((it as { children?: [] }).children);
-      }
-    };
-    (this.model.pages ?? []).forEach((x) => walk(x.content as never));
+    const used = this.allComponentIds();
     const base = `cmp-${slug(kind)}`;
     let id = base;
     for (let n = 2; used.has(id) || used.has(`${id}-tab-1`); n++) id = `${base}-${n}`;
@@ -2780,7 +2757,6 @@ export class ModuxEditor extends LitElement {
         this.moveWizardStep(e.detail.pageId, e.detail.stepKey, e.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
-      .pages=${(this.model.pages ?? []).map((pg) => ({ id: pg.id, name: pg.name }))}
       .useCases=${this.model.boundedContexts.flatMap((mod) =>
         (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
       )}
@@ -3839,7 +3815,7 @@ export class ModuxEditor extends LitElement {
     const uc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
     if (uc) {
       if (cmp?.kind === 'button') {
-        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, useCaseId: id, label: cmp.label ?? uc.name });
+        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), useCaseId: id, label: cmp.label ?? uc.name });
         this.emit('modux-notice', { message: `El botón lanza ${uc.name}` });
       } else {
         this.command({ kind: 'add-page-button', pageId, useCaseId: id });

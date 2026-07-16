@@ -10065,6 +10065,7 @@ let Pe = class extends Ge {
                 .mappings=${this.mappings}
                 .useCases=${this.useCases}
                 .queryOps=${this.queryOps}
+                .pages=${this.pages.map((a) => ({ id: a.id, name: a.name }))}
                 @component-config-changed=${(a) => {
         a.stopPropagation(), this.emit("page-component-config-changed", { pageId: e.id, ...a.detail });
       }}
@@ -16090,23 +16091,7 @@ let te = class extends Ge {
       return a.add(y), y;
     }, c = [], p = (f, h) => {
       const y = d(f);
-      c.push({ kind: "add-page-component", pageId: e, componentId: y, componentKind: f.kind, parentComponentId: h }), f.kind === "tabLayout" && (c.push({ kind: "remove-page-component", pageId: e, componentId: `${y}-tab-1` }), c.push({ kind: "remove-page-component", pageId: e, componentId: `${y}-tab-2` })), c.push({
-        kind: "set-page-component",
-        pageId: e,
-        componentId: y,
-        title: f.title ?? null,
-        text: f.text ?? null,
-        label: f.label ?? null,
-        useCaseId: f.useCaseId ?? null,
-        mappingId: f.mappingId ?? null,
-        modelId: f.modelId ?? null,
-        queryServiceId: f.queryServiceId ?? null,
-        queryOperationId: f.queryOperationId ?? null,
-        fieldId: f.fieldId ?? null,
-        stereotype: f.stereotype ?? null,
-        colspan: f.colspan ?? null,
-        detailPageId: f.detailPageId ?? null
-      });
+      c.push({ kind: "add-page-component", pageId: e, componentId: y, componentKind: f.kind, parentComponentId: h }), f.kind === "tabLayout" && (c.push({ kind: "remove-page-component", pageId: e, componentId: `${y}-tab-1` }), c.push({ kind: "remove-page-component", pageId: e, componentId: `${y}-tab-2` })), c.push({ kind: "set-page-component", pageId: e, componentId: y, ...this.cmpPatch(f) });
       for (const b of f.children ?? []) p(b, y);
       return y;
     }, g = p(t, i);
@@ -16126,15 +16111,10 @@ let te = class extends Ge {
     return (this.model.pages ?? []).forEach((i) => t(i.content)), e;
   }
   newComponentId(e) {
-    const t = /* @__PURE__ */ new Set(), i = (s) => {
-      for (const a of s ?? [])
-        t.add(a.id), i(a.children);
-    };
-    (this.model.pages ?? []).forEach((s) => i(s.content));
-    const n = `cmp-${ce(e)}`;
-    let o = n;
-    for (let s = 2; t.has(o) || t.has(`${o}-tab-1`); s++) o = `${n}-${s}`;
-    return o;
+    const t = this.allComponentIds(), i = `cmp-${ce(e)}`;
+    let n = i;
+    for (let o = 2; t.has(n) || t.has(`${n}-tab-1`); o++) n = `${i}-${o}`;
+    return n;
   }
   /** Re-slots a wizard step unless it already sits exactly there. */
   moveWizardStep(e, t, i) {
@@ -16202,7 +16182,6 @@ let te = class extends Ge {
       @page-wizard-step-moved=${(t) => this.moveWizardStep(t.detail.pageId, t.detail.stepKey, t.detail.beforeStepKey ?? null)}
       .models=${this.model.models ?? []}
       .mappings=${this.model.modelMappings ?? []}
-      .pages=${(this.model.pages ?? []).map((t) => ({ id: t.id, name: t.name }))}
       .useCases=${this.model.boundedContexts.flatMap(
       (t) => (t.useCases ?? []).map((i) => ({ id: i.id, name: i.name }))
     )}
@@ -16975,7 +16954,7 @@ let te = class extends Ge {
     }
     const d = s ? ((h = this.componentIn(a, s[2])) == null ? void 0 : h.node) ?? null : null, c = this.model.boundedContexts.flatMap((y) => y.useCases ?? []).find((y) => y.id === e);
     if (c) {
-      (d == null ? void 0 : d.kind) === "button" ? (this.command({ kind: "set-page-component", pageId: a, componentId: d.id, useCaseId: e, label: d.label ?? c.name }), this.emit("modux-notice", { message: `El botón lanza ${c.name}` })) : (this.command({ kind: "add-page-button", pageId: a, useCaseId: e }), this.emit("modux-notice", { message: `Botón de ${c.name} añadido a la página` }));
+      (d == null ? void 0 : d.kind) === "button" ? (this.command({ kind: "set-page-component", pageId: a, componentId: d.id, ...this.cmpPatch(d), useCaseId: e, label: d.label ?? c.name }), this.emit("modux-notice", { message: `El botón lanza ${c.name}` })) : (this.command({ kind: "add-page-button", pageId: a, useCaseId: e }), this.emit("modux-notice", { message: `Botón de ${c.name} añadido a la página` }));
       return;
     }
     const p = (this.model.models ?? []).find((y) => y.id === e);
