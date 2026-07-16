@@ -41,15 +41,31 @@ public class ModelDrivenGeneratorHome
         }
         var actions = new java.util.ArrayList<io.mateu.uidl.data.AppHeaderAction>();
         actions.add(new io.mateu.uidl.data.AppHeaderAction("generateCurrentProject", "Generar", "vaadin:cogs"));
-        actions.add(new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar", "vaadin:rocket"));
+        // One header button for the whole delivery pipeline: a dropdown keeps the
+        // header usable as actions accumulate (deploy, terraform, try it…).
+        var deploy = new java.util.ArrayList<io.mateu.uidl.data.AppHeaderAction>();
+        deploy.add(new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar en Kubernetes", "vaadin:rocket"));
+        deploy.add(new io.mateu.uidl.data.AppHeaderAction("applyTerraformCurrentProject", "Aplicar Terraform", "vaadin:cloud-upload-o"));
         // Probar only exists when the project declares a URL to open.
         projectStore.currentProjectId()
                 .flatMap(projectId -> SpringBeans.get(
                         io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
                         .declaredUrl(projectId))
-                .ifPresent(url -> actions.add(
+                .ifPresent(url -> deploy.add(
                         new io.mateu.uidl.data.AppHeaderAction("openCurrentProjectUrl", "Probar", "vaadin:play")));
+        actions.add(io.mateu.uidl.data.AppHeaderAction.menu("Desplegar", "vaadin:rocket", deploy));
         return actions;
+    }
+
+    /** The header's Aplicar Terraform: init + apply of the generated terraform/ folder. */
+    public Object applyTerraformCurrentProject(io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        var projectId = projectStore.currentProjectId().orElseThrow(
+                () -> new IllegalStateException("No hay proyecto seleccionado"));
+        return SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.ApplyTerraformUseCase.class)
+                .handle(projectId);
     }
 
     /** The header's Probar: opens the project's declared URL in a new tab (a UI command). */

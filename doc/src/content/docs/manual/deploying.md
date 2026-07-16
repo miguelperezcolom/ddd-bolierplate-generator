@@ -3,9 +3,10 @@ title: Deploying
 description: One click from the model to a running Kubernetes deployment — images, manifests, DNS
 ---
 
-Next to the **Generar** button on the header sits **🚀 Desplegar**: it takes the CURRENT
-project from model to cluster in one action. Both buttons appear only when the whole
-app context (repository · project · model) is resolved.
+Next to the **Generar** button on the header sits the **🚀 Desplegar** menu — the whole
+delivery pipeline under one button: **Desplegar en Kubernetes**, **Aplicar Terraform**
+and **Probar** (the latter only when the project declares a URL). The header actions
+appear only when the whole app context (repository · project · model) is resolved.
 
 ## What the pipeline does
 
@@ -81,9 +82,21 @@ is no longer a skeleton:
   `cloudflare_record` per URL host, pointing at `var.ingress_ip` — your DNS follows
   the model.
 
-Modux does not run `terraform apply` yet; the files are generated for you to review
-and apply. The cluster itself is expected to exist already (e.g. Cloudfleet-managed):
-Modux deploys ONTO it, it does not provision it.
+**Aplicar Terraform** (in the Desplegar menu) runs `terraform init` + `terraform apply
+-auto-approve` on the generated `terraform/` folder, streaming progress to the same
+dialog the deploy uses; the full output lands in `<outputPath>/.modux/terraform.log`.
+Prerequisites and conventions:
+
+- **terraform** (or its drop-in **OpenTofu**, `tofu`) installed on the machine running
+  Modux — missing binary fails with a clear message.
+- **Variables** travel the terraform way: keep a `terraform.tfvars` next to the
+  generated `main.tf` (git-ignore it: it holds tokens), or export `TF_VAR_*` in Modux's
+  environment. Everything runs with `-input=false`, so a missing variable fails loudly
+  instead of hanging on an invisible prompt.
+
+The cluster itself is expected to exist already (e.g. Cloudfleet-managed): Modux
+deploys ONTO it and reconciles the infrastructure AROUND it (DNS records, volumes…),
+it does not provision the cluster.
 
 ## Troubleshooting
 
