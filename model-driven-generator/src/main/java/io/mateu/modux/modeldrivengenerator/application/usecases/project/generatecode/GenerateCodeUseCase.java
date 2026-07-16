@@ -1864,13 +1864,6 @@ public class GenerateCodeUseCase {
         model.put("pageSlug", pageSlug);
         model.put("pageClassName", pageClassName(page));
 
-        // An App's HOME page is not a menu entry: it carries its own @Route and the
-        // app shell's homeRoute() lands there on entry.
-        var isAppHome = repository.findAllOfType(UiAdapterEntity.class).stream()
-                .anyMatch(a -> page.id().equals(a.homePageId()));
-        if (isAppHome) {
-            model.put("pageRoute", "/" + pageSlug);
-        }
 
         // The ui→page assignment says the page IS the interface: the page class itself
         // carries @UI (path and mateu parameters from the declared UI) — no Home wrapper.

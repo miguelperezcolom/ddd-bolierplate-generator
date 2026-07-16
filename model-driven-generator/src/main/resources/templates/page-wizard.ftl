@@ -5,9 +5,6 @@ package ${project.packageName}.${moduleSlugVal}.infra.in.ui.pages.${pageSlug};
 <#if ui??>
 import io.mateu.uidl.annotations.UI;
 </#if>
-<#if pageRoute??>
-import io.mateu.uidl.annotations.Route;
-</#if>
 import io.mateu.uidl.annotations.Title;
 <#if page.favicon?has_content>
 import io.mateu.uidl.annotations.FavIcon;
@@ -32,9 +29,6 @@ import org.springframework.stereotype.Service;
 <#if ui??>
 <#assign uiPath = (ui.path?has_content)?then(ui.path, '')>
 @UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)
-</#if>
-<#if pageRoute??>
-@Route("${pageRoute}")
 </#if>
 @Title("${page.title!page.name}")
 <#if page.favicon?has_content>

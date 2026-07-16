@@ -14774,7 +14774,9 @@ let te = class extends Ge {
    * Areas group by overlapping — pushing them apart would defeat them.
    */
   declumpView(e) {
-    const t = this.viewLayout(e), n = this.sceneFor(e).nodes.filter((a) => !a.parentId && a.kind !== "area"), i = pa(n), o = [...i.keys()].map((a) => ({
+    const t = this.viewLayout(e), n = this.sceneFor(e).nodes.filter(
+      (a) => !a.parentId && !a.ownerId && a.kind !== "area"
+    ), i = pa(n), o = [...i.keys()].map((a) => ({
       kind: "move-node",
       view: e,
       id: a,
@@ -16862,7 +16864,7 @@ let te = class extends Ge {
         id: u,
         points: d.edges[u]
       }))
-    ]), this.writeViewLayout(e, { nodes: a, edges: {}, sizes: d.sizes }), await this.updateComplete, (c = this.renderRoot.querySelector("modux-canvas")) == null || c.fit();
+    ]), this.writeViewLayout(e, { ...d, nodes: a, edges: {} }), await this.updateComplete, (c = this.renderRoot.querySelector("modux-canvas")) == null || c.fit();
   }
   /**
    * Toolbar controls keep keyboard focus after use, so the next space bar

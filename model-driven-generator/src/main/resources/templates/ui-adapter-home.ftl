@@ -3,6 +3,9 @@ package ${project.packageName}.infra.in.ui;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
+<#if homePage??>
+import ${project.packageName}.${homePage.moduleSlug}.infra.in.ui.pages.${homePage.pageSlug}.${homePage.className};
+</#if>
 <#if menuPages?? && menuPages?has_content>
 <#list menuPages as pg>
 import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.${pg.className};
@@ -36,7 +39,7 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
 @UI("${adapter.path!''}")
 @Title("${adapter.title!service.name}")
 </#if>
-public class Home<#if homePage??> implements io.mateu.uidl.interfaces.HomeRouteSupplier</#if> {
+public class Home<#if homePage??> extends ${homePage.className}</#if> {
 
 <#if menuPages?? && menuPages?has_content>
 <#list menuPages as pg>
@@ -65,15 +68,5 @@ public class Home<#if homePage??> implements io.mateu.uidl.interfaces.HomeRouteS
 </#if>
 <#if !(menuPages?? && menuPages?has_content) && !(adapter.menuItems?has_content)>
     // TODO: add menu items
-</#if>
-<#if homePage??>
-    /**
-     * Opening the app's root lands on its declared HOME page — reachable through its
-     * own @Route, deliberately absent from the menu (a home is not a menu option).
-     */
-    @Override
-    public String homeRoute() {
-        return "/${homePage.pageSlug}";
-    }
 </#if>
 }

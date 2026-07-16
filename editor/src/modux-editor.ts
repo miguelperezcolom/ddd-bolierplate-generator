@@ -1164,7 +1164,12 @@ export class ModuxEditor extends LitElement {
    */
   private declumpView(view: ViewId): void {
     const current = this.viewLayout(view);
-    const top = this.sceneFor(view).nodes.filter((n) => !n.parentId && n.kind !== 'area');
+    // Children (ownerId) ride with their owner: pushing them here made a fresh
+    // child overlap its own expanded container and fly thousands of pixels away
+    // (half the overlap per iteration, eighty iterations, then persisted).
+    const top = this.sceneFor(view).nodes.filter(
+      (n) => !n.parentId && !n.ownerId && n.kind !== 'area',
+    );
     const moves = declump(top);
     const ops: EditOp[] = [...moves.keys()].map((id) => ({
       kind: 'move-node',
@@ -4251,8 +4256,9 @@ export class ModuxEditor extends LitElement {
         points: current.edges[edgeId],
       })),
     ]);
-    // Keep container sizes; children re-grid inside them from the default.
-    this.writeViewLayout(view, { nodes: positions, edges: {}, sizes: current.sizes });
+    // Keep container sizes AND the expansion state: auto-layout redistributes,
+    // it never folds. Only hand-made edge bends reset.
+    this.writeViewLayout(view, { ...current, nodes: positions, edges: {} });
     await this.updateComplete;
     this.renderRoot.querySelector('modux-canvas')?.fit();
   }
