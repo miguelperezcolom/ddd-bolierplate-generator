@@ -162,8 +162,11 @@ export function uiScene(
         kind: 'app-home',
         color: '#16a34a',
         label: 'home',
-        arrow: true,
-        tooltip: app.homeAppId ? 'la app con la que abre' : 'la página con la que abre la app',
+        markerStart: 'ball',
+        markerEnd: 'arrow',
+        tooltip: app.homeAppId
+          ? 'la app con la que abre (assignment)'
+          : 'la página con la que abre la app (assignment)',
       });
     }
     if (appType === 'MASTER_DETAIL' && app.headerPageId) {
@@ -285,7 +288,9 @@ export function uiScene(
           targetId: entry.pageId,
           kind: 'menu-page',
           color: '#64748b',
-          arrow: true,
+          markerStart: 'ball',
+          markerEnd: 'arrow',
+          tooltip: 'la página que abre la opción (assignment)',
         });
       }
     }
