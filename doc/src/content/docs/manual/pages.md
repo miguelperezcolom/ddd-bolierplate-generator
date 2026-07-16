@@ -179,7 +179,9 @@ Data-bound components wire to the model when you connect them in the designer:
   `ActionHandler`: the click builds the use case's command from the page's form fields
   (matched by name — anything the form does not edit travels as `null`), calls the
   generated use case, and toasts the result. The use case is injected leniently, so the
-  app still boots when it lives in another service.
+  app still boots when it lives in another service. After the use case runs, the page
+  dispatches a `modux-data-changed` client event and **every wired listing on screen
+  re-runs its search** — save a record and the grids refresh themselves.
 - A **ficha** (detail page) assigned to a crud/listing — in the component's dialog —
   makes its rows navigable: the grid switches to selectable table mode and selecting a
   row navigates to the ficha's route plus the row's key (a field named `id`, or the

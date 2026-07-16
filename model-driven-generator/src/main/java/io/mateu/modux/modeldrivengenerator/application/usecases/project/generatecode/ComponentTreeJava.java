@@ -311,7 +311,7 @@ public final class ComponentTreeJava {
         // constructor requirement would break that plain `class Home extends X` generation.
         imports.add("org.springframework.beans.factory.annotation.Autowired");
         var providerField = uncap(qsType) + "Provider";
-        services.putIfAbsent(providerField, "@Autowired ObjectProvider<" + qsType + "> " + providerField + ";");
+        services.putIfAbsent(providerField, "@Autowired transient ObjectProvider<" + qsType + "> " + providerField + ";");
         return new QueryWire(qs, op, outModel, qsType, rowType, providerField);
     }
 
@@ -347,6 +347,8 @@ public final class ComponentTreeJava {
         use("Listing", "fluent");
         use("Trigger", "fluent");
         use("OnLoadTrigger", "fluent");
+        use("OnCustomEventTrigger", "fluent");
+        imports.add("io.mateu.uidl.annotations.SubscriptionSource");
         imports.add("io.mateu.uidl.interfaces.ListingBackend");
         imports.add("io.mateu.uidl.fluent.TriggersSupplier");
 
@@ -435,7 +437,11 @@ public final class ComponentTreeJava {
 
                         @Override
                         public List<Trigger> triggers(HttpRequest httpRequest) {
-                            return List.of(new OnLoadTrigger("search"));
+                            // load on open, and reload whenever a page action reports changed data
+                            return List.of(new OnLoadTrigger("search"),
+                                    OnCustomEventTrigger.builder().actionId("search")
+                                            .eventName("modux-data-changed")
+                                            .source(SubscriptionSource.DOCUMENT).build());
                         }
                     }""".formatted(
                 className, qsType, uncap(wire.op().name()), crud ? "crud" : "listing",
@@ -477,7 +483,7 @@ public final class ComponentTreeJava {
         // Field injection so `class Home extends ComposedPage` keeps its no-arg constructor;
         // required=false so the app still boots when the use case lives in another service.
         var field = uncap(ucClass);
-        services.putIfAbsent(field, "@Autowired(required = false) " + ucClass + " " + field + ";");
+        services.putIfAbsent(field, "@Autowired(required = false) transient " + ucClass + " " + field + ";");
 
         var actionId = "run-" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]+", "-");
         actionWirings.putIfAbsent(actionId, useCase);
@@ -505,13 +511,15 @@ public final class ComponentTreeJava {
                             .map(f -> bindings.containsKey(f.name()) ? f.name() : "null").toList());
                 }
             }
+            use("UICommand");
             cases.add("""
                                 case "%s" -> {
                                     if (%s == null) {
                                         yield Message.warning("No hay implementación de %s en este servicio");
                                     }
                                     %s.handle(new %s(%s));
-                                    yield Message.success("%s ejecutado");
+                                    // the toast, plus the event every wired listing refreshes on
+                                    yield List.of(Message.success("%s ejecutado"), UICommand.dispatchEvent("modux-data-changed"));
                                 }""".formatted(entry.getKey(), field, ucClass, field, cmdClass, args, cap(useCase.name())));
         }
         return """
