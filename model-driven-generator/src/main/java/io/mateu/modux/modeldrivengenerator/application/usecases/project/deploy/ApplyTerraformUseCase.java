@@ -96,6 +96,7 @@ public class ApplyTerraformUseCase {
                 // not this one
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrumpido buscando el binario de terraform", e);
             }
         }
         throw new IllegalStateException(
@@ -116,7 +117,7 @@ public class ApplyTerraformUseCase {
                     .directory(workDir.toFile())
                     .redirectErrorStream(true)
                     .start();
-            process.getInputStream().transferTo(new java.io.OutputStream() {
+            var lines = new java.io.OutputStream() {
                 private final StringBuilder line = new StringBuilder();
                 @Override public void write(int b) {
                     if (b == '\n') {
@@ -126,8 +127,18 @@ public class ApplyTerraformUseCase {
                         line.append((char) b);
                     }
                 }
-            });
-            if (!process.waitFor(30, java.util.concurrent.TimeUnit.MINUTES) || process.exitValue() != 0) {
+                @Override public void close() {
+                    // terraform's last line (often the error summary) may not end in '\n'
+                    if (!line.isEmpty()) write('\n');
+                }
+            };
+            process.getInputStream().transferTo(lines);
+            lines.close();
+            if (!process.waitFor(30, java.util.concurrent.TimeUnit.MINUTES)) {
+                process.destroyForcibly();
+                throw new IllegalStateException("Falló (timeout): " + String.join(" ", command));
+            }
+            if (process.exitValue() != 0) {
                 throw new IllegalStateException("Falló: " + String.join(" ", command));
             }
         } catch (IOException | InterruptedException e) {

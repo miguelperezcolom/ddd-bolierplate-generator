@@ -1931,6 +1931,10 @@ public class GenerateCodeUseCase {
             // Is this page the ficha some crud/listing navigates to? Its query op loads the record.
             var detailSource = repository.findAllOfType(PageEntity.class).stream()
                     .filter(p -> inProject(p.projectId(), project))
+                    // sorted so the picked source doesn't flip between generations when
+                    // several listings point at the same ficha
+                    .sorted(java.util.Comparator.comparing(PageEntity::name,
+                            java.util.Comparator.nullsLast(String::compareTo)))
                     .flatMap(p -> flattenContent(p.content()))
                     .filter(node -> page.id().equals(node.detailPageId()))
                     .filter(node -> node.queryServiceId() != null)
@@ -1945,6 +1949,10 @@ public class GenerateCodeUseCase {
             }
             if (tree.hydration() != null) {
                 model.put("hydration", tree.hydration());
+            }
+            // The wildcard route must exist whenever some listing navigates here, even if
+            // hydration could not be derived — a row click may not pre-fill, but it must land.
+            if (tree.hydration() != null || detailSource != null) {
                 model.put("pageRoute",
                         (page.route() != null && !page.route().isBlank() ? page.route() : "/" + page.id()) + "/.*");
             }
@@ -2852,6 +2860,10 @@ public class GenerateCodeUseCase {
     private java.util.Optional<Map<String, Object>> idpFor(ProjectEntity project) {
         return repository.findAllOfType(UiAdapterEntity.class).stream()
                 .filter(a -> inProject(a.projectId(), project))
+                // the store iterates unordered: sort so two adapters with different IdPs
+                // don't make the chosen one flip between generations
+                .sorted(java.util.Comparator.comparing(UiAdapterEntity::name,
+                        java.util.Comparator.nullsLast(String::compareTo)))
                 .map(UiAdapterEntity::identityProviderId)
                 .filter(id -> id != null && !id.isBlank())
                 .flatMap(id -> repository.findById(id, IdentityProviderEntity.class).stream())

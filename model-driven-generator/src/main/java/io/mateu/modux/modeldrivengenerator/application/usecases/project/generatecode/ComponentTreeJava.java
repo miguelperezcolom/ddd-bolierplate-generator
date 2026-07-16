@@ -368,9 +368,14 @@ public final class ComponentTreeJava {
         if (columns.isEmpty()) return unwired(n);
         var title = or(n.title(), or(n.label(), null));
 
-        // A detail page turns rows into links: selection navigates to the ficha's route + key
+        // A detail page turns rows into links: selection navigates to the ficha's route + key.
+        // Only composed fichas qualify — a plain page never gets the wildcard @Route, so
+        // navigating to route/key from here would land on a URL no generated class resolves.
         var detailPage = wiring.pageById() == null || n.detailPageId() == null
                 ? null : wiring.pageById().apply(n.detailPageId());
+        if (detailPage != null && (detailPage.content() == null || detailPage.content().isEmpty())) {
+            detailPage = null;
+        }
         var keyField = detailPage == null ? null : rowKeyField(outModel);
         var listingExtras = "";
         var detailHandler = "";
@@ -490,9 +495,20 @@ public final class ComponentTreeJava {
         var field = uncap(ucClass);
         services.putIfAbsent(field, "@Autowired(required = false) transient " + ucClass + " " + field + ";");
 
-        var actionId = "run-" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        // Same slug but another wiring (a homonym use case, or the same one with a different
+        // mapping) must NOT share the actionId — the second button would fire the first wiring.
+        var base = "run-" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        var actionId = base;
+        for (var n = 2; conflicts(actionId, useCase, mappingId); n++) actionId = base + "-" + n;
         actionWirings.putIfAbsent(actionId, new ActionWiring(useCase, mappingId));
         return actionId;
+    }
+
+    private boolean conflicts(String actionId, UseCaseEntity useCase, String mappingId) {
+        var existing = actionWirings.get(actionId);
+        return existing != null
+                && !(existing.useCase().id().equals(useCase.id())
+                        && java.util.Objects.equals(existing.mappingId(), mappingId));
     }
 
     /**
@@ -798,6 +814,7 @@ public final class ComponentTreeJava {
     }
 
     private static String q(String s) {
-        return '"' + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + '"';
+        return '"' + s.replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t") + '"';
     }
 }

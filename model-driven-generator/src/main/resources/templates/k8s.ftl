@@ -31,11 +31,13 @@ spec:
 <#assign profiles = []>
 <#if !(service.database?? && service.database?has_content)><#assign profiles = profiles + ["local"]></#if>
 <#if idp??><#assign profiles = profiles + ["secure"]></#if>
-<#if (profiles?size > 0) || idp??>
+<#if (profiles?size > 0)>
           # local: no database declared, the app runs self-contained (in-memory H2).
           # secure: the model declares an IdP — OIDC login, credentials from the
           # modux-idp-credentials secret (kubectl create secret generic modux-idp-credentials
-          # --from-literal=client-id=… --from-literal=client-secret=…).
+          # --from-literal=client-id=… --from-literal=client-secret=…). The secret is
+          # required: the secure profile cannot boot without it, and a missing secret
+          # fails legibly (CreateContainerConfigError) instead of crash-looping Spring.
           env:
 <#if (profiles?size > 0)>
             - name: SPRING_PROFILES_ACTIVE
@@ -47,13 +49,11 @@ spec:
                 secretKeyRef:
                   name: modux-idp-credentials
                   key: client-id
-                  optional: true
             - name: IDP_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: modux-idp-credentials
                   key: client-secret
-                  optional: true
 </#if>
 </#if>
           ports:

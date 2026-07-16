@@ -84,7 +84,8 @@ Generation then wires the whole chain:
 - **without the `secure` profile the app boots OPEN** — local runs and CI never depend
   on the IdP being reachable;
 - the Kubernetes manifests activate `secure` and read the client credentials from the
-  **`modux-idp-credentials`** secret:
+  **`modux-idp-credentials`** secret — required: without it the pod stops at
+  `CreateContainerConfigError` instead of crash-looping on an unresolvable placeholder:
 
 ```bash
 kubectl create secret generic modux-idp-credentials \

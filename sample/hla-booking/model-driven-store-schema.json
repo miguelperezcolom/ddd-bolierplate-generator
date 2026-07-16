@@ -1054,6 +1054,15 @@
             "$ref" : "#/$defs/DiagramEdgeEntity"
           }
         },
+        "expanded" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
+        "flat" : {
+          "type" : "boolean"
+        },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
@@ -2244,6 +2253,10 @@
       "type" : "string",
       "enum" : [ "ELK", "Loki", "Splunk", "Datadog", "CloudWatch", "Custom" ]
     },
+    "Map(String,String)" : {
+      "type" : "object",
+      "additionalProperties" : false
+    },
     "McpGatewayEntity" : {
       "type" : "object",
       "properties" : {
@@ -3160,6 +3173,9 @@
           "$ref" : "#/$defs/DbMigrationTool"
         },
         "defaultLocale" : {
+          "type" : "string"
+        },
+        "dockerRegistry" : {
           "type" : "string"
         },
         "emailProvider" : {
@@ -4273,7 +4289,7 @@
     },
     "TerraformProvider" : {
       "type" : "string",
-      "enum" : [ "AWS", "Azure", "GCP", "DigitalOcean", "Custom" ]
+      "enum" : [ "AWS", "Azure", "GCP", "DigitalOcean", "Hetzner", "Custom" ]
     },
     "TracingProvider" : {
       "type" : "string",
@@ -4432,6 +4448,11 @@
           "description" : "Reference to an existing 'customCode' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "detailPageId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'detailPage' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "fieldId" : {
           "type" : "string",
           "description" : "Reference to an existing 'field' id (referential integrity is checked by the linter).",
@@ -4457,6 +4478,9 @@
           "type" : "string",
           "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "params" : {
+          "$ref" : "#/$defs/Map(String,String)"
         },
         "queryOperationId" : {
           "type" : "string",
