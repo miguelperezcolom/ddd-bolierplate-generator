@@ -15,6 +15,7 @@ You write a YAML specification describing your domain (aggregates, entities, val
 - Infrastructure layer: JPA entities, Spring Data repositories, DB implementations
 - UI layer: auto-generated CRUD pages (Vaadin / Mateu UIDL)
 - Database migrations: DDL files, foreign key scripts
+- DevOps artifacts: Dockerfile, Docker Compose, Kubernetes manifests, Terraform skeleton, CI workflow (GitHub Actions), JaCoCo coverage
 
 The generated code follows **Hexagonal Architecture** (ports & adapters) with clear separation between domain, application, and infrastructure.
 
@@ -180,9 +181,7 @@ The generated code is designed to be extended:
 
 - Maven plugin for CI/CD integration
 - Multi-framework support: Micronaut, Jakarta CDI
-- Infrastructure-as-code templates: Terraform, Kubernetes, Docker Compose
-- CI/CD pipeline templates (GitHub Actions)
-- Code quality templates: Jacoco, Spotbugs, Checkstyle, SonarQube
+- Code quality templates: Spotbugs, Checkstyle, SonarQube
 - Project template repositories (one-click bootstrap)
 - YAML schema with IDE autocomplete support
 
