@@ -17,6 +17,9 @@ import io.mateu.uidl.annotations.Style;
 import ${imp};
 </#list>
 import io.mateu.uidl.fluent.Component;
+<#if actionHandler??>
+import io.mateu.uidl.interfaces.ActionHandler;
+</#if>
 import io.mateu.uidl.interfaces.ComponentTreeSupplier;
 import io.mateu.uidl.interfaces.HttpRequest;
 import org.springframework.context.annotation.Scope;
@@ -40,7 +43,7 @@ import org.springframework.stereotype.Service;
 <#if page.style?has_content>
 @Style(StyleConstants.${page.style})
 </#if>
-public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} implements ComponentTreeSupplier {
+public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} implements ComponentTreeSupplier<#if actionHandler??>, ActionHandler</#if> {
 <#if treeFields?has_content>
 
 <#list treeFields as f>
@@ -52,6 +55,10 @@ public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r')
     public Component component(HttpRequest httpRequest) {
         return ${componentTree};
     }
+<#if actionHandler??>
+
+${actionHandler}
+</#if>
 <#if treeNested?has_content>
 <#list treeNested as nestedClass>
 

@@ -174,6 +174,12 @@ Data-bound components wire to the model when you connect them in the designer:
   `OnLoadTrigger` so data loads on open. The query service is injected as an
   `ObjectProvider`: the app boots (and the listing says what is missing) while your
   implementation is still absent from the custom module.
+- A **use case** assigned to a **button** (or FAB) gives it an action; assigned to a
+  **form**, it adds a *Guardar* button. Either way the page becomes a Mateu
+  `ActionHandler`: the click builds the use case's command from the page's form fields
+  (matched by name — anything the form does not edit travels as `null`), calls the
+  generated use case, and toasts the result. The use case is injected leniently, so the
+  app still boots when it lives in another service.
 
 Left unconnected, they generate an `EmptyState` that says exactly what to assign.
 

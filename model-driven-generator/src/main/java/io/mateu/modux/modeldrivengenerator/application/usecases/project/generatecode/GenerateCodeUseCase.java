@@ -1915,12 +1915,21 @@ public class GenerateCodeUseCase {
                             .filter(m -> m.fields() != null && m.fields().stream()
                                     .anyMatch(f -> fieldId.equals(f.id())))
                             .findFirst().orElse(null),
-                    this::toTypeName);
+                    this::toTypeName,
+                    id -> repository.findById(id, UseCaseEntity.class).orElse(null),
+                    useCaseId -> repository.findAllOfType(BoundedContextEntity.class).stream()
+                            .filter(ctx -> ctx.useCaseIds() != null && ctx.useCaseIds().contains(useCaseId))
+                            .findFirst()
+                            .map(ctx -> project.packageName() + "." + boundedContextSlug(ctx.name()))
+                            .orElse(null));
             var tree = ComponentTreeJava.of(page.content(), wiring);
             model.put("componentTree", tree.expression());
             model.put("treeImports", tree.imports());
             model.put("treeFields", tree.classFields());
             model.put("treeNested", tree.nestedClasses());
+            if (tree.actionHandler() != null) {
+                model.put("actionHandler", tree.actionHandler());
+            }
         }
 
         var pageType = page.type() != null ? page.type().toUpperCase() : "CRUD";
