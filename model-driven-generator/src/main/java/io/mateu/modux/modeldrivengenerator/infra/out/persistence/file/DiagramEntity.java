@@ -19,8 +19,15 @@ public record DiagramEntity(
         List<DiagramNodeEntity> nodes,
         List<DiagramEdgeEntity> edges,
         /** Containers folded by hand at this view/level (they render compact). */
-        List<String> collapsed
-,
+        List<String> collapsed,
+        /** Elements the sheet keeps expanded (the single-canvas world's toggle). */
+        List<String> expanded,
+        /**
+         * Marks positions as ABSOLUTE (post-Archi flat sheets). Without persisting it,
+         * the offsets→absolute migration re-ran on every reload, re-adding the owner's
+         * position each time — children drifted thousands of pixels away.
+         */
+        Boolean flat,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId
 ) implements Identifiable {
@@ -28,10 +35,11 @@ public record DiagramEntity(
     /** Backward-compatible constructor (pre-collapsed callers and stores). */
     public DiagramEntity(String id, String detail,
                          List<DiagramNodeEntity> nodes, List<DiagramEdgeEntity> edges) {
-        this(id, detail, nodes, edges, List.of(), null);
+        this(id, detail, nodes, edges, List.of(), List.of(), null, null);
     }
 
     public DiagramEntity {
+        if (expanded == null) expanded = List.of();
         nodes = nodes != null ? nodes : List.of();
         edges = edges != null ? edges : List.of();
         collapsed = collapsed != null ? collapsed : List.of();

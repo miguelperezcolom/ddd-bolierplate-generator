@@ -3093,6 +3093,11 @@ public class EditorApiController {
                 var folded = view.putArray("collapsed");
                 diagram.collapsed().forEach(folded::add);
             }
+            if (!diagram.expanded().isEmpty()) {
+                var open = view.putArray("expanded");
+                diagram.expanded().forEach(open::add);
+            }
+            if (Boolean.TRUE.equals(diagram.flat())) view.put("flat", true);
             var nodes = view.putObject("nodes");
             var sizes = view.putObject("sizes");
             for (var node : diagram.nodes()) {
@@ -3129,7 +3134,8 @@ public class EditorApiController {
         root.properties().forEach(entry -> {
             var diagram = toDiagram(entry.getKey(), entry.getValue());
             if (diagram.nodes().isEmpty() && diagram.edges().isEmpty()
-                    && diagram.detail() == null && diagram.collapsed().isEmpty()) return;
+                    && diagram.detail() == null && diagram.collapsed().isEmpty()
+                    && diagram.expanded().isEmpty()) return;
             repository.save(diagram);
             kept.add(diagram.id());
         });
@@ -3175,7 +3181,15 @@ public class EditorApiController {
                 if (c.isTextual()) collapsed.add(c.asText());
             });
         }
-        return new DiagramEntity(id, detail, nodes, edges, collapsed, null);
+        var expanded = new ArrayList<String>();
+        if (v2 && view.get("expanded") != null && view.get("expanded").isArray()) {
+            view.get("expanded").forEach(c -> {
+                if (c.isTextual()) expanded.add(c.asText());
+            });
+        }
+        var flat = v2 && view.get("flat") != null && view.get("flat").asBoolean(false)
+                ? Boolean.TRUE : null;
+        return new DiagramEntity(id, detail, nodes, edges, collapsed, expanded, flat, null);
     }
 
     /** Emissions declared by an emitter's operations (CSV of event names in emits). */
