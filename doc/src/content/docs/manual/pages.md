@@ -160,9 +160,22 @@ type: it generates a Mateu `ComponentTreeSupplier` whose `component()` returns t
 built with the UIDL builders — every layout and Display component of the palette maps to
 its Mateu counterpart (`HeroSection`, `Scoreboard`, `Kanban`, `Gantt`, `Timeline`,
 `Calendar`, `TabLayout`…), with the same sample content the designer mocks up, so the
-deployed page looks like the design. Data-bound components (**form, listing, CRUD,
-field**) still generate an `EmptyState` placeholder — wiring them to models and query
-services is on the roadmap.
+deployed page looks like the design.
+
+Data-bound components wire to the model when you connect them in the designer:
+
+- A **form** with an assigned viewmodel becomes a Mateu `Form` whose `FormField`s bind
+  to generated page fields — all the model's basic fields, or just the `field` children
+  you dropped inside the form (their labels override the defaults). A loose **field**
+  bound to a viewmodel field renders as a one-field, headerless form.
+- A **listing/CRUD** with an assigned query service operation becomes a nested
+  `ListingBackend` bean that calls the generated query service, with columns derived
+  from the operation's output model, server-side text filtering and pagination, and an
+  `OnLoadTrigger` so data loads on open. The query service is injected as an
+  `ObjectProvider`: the app boots (and the listing says what is missing) while your
+  implementation is still absent from the custom module.
+
+Left unconnected, they generate an `EmptyState` that says exactly what to assign.
 
 Otherwise, the page type decides:
 

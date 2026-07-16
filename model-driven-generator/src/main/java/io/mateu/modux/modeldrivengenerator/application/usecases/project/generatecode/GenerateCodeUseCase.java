@@ -1904,9 +1904,23 @@ public class GenerateCodeUseCase {
         // A designed component tree wins over the page type: the page IS its design.
         var composed = page.content() != null && !page.content().isEmpty();
         if (composed) {
-            var tree = ComponentTreeJava.of(page.content());
+            var wiring = new ComponentTreeJava.Wiring(
+                    id -> repository.findById(id, ModelEntity.class).orElse(null),
+                    id -> repository.findById(id, QueryServiceEntity.class).orElse(null),
+                    contextId -> repository.findById(contextId, BoundedContextEntity.class)
+                            .map(ctx -> project.packageName() + "." + boundedContextSlug(ctx.name()))
+                            .orElse(null),
+                    fieldId -> repository.findAllOfType(ModelEntity.class).stream()
+                            .filter(m -> inProject(m.projectId(), project))
+                            .filter(m -> m.fields() != null && m.fields().stream()
+                                    .anyMatch(f -> fieldId.equals(f.id())))
+                            .findFirst().orElse(null),
+                    this::toTypeName);
+            var tree = ComponentTreeJava.of(page.content(), wiring);
             model.put("componentTree", tree.expression());
             model.put("treeImports", tree.imports());
+            model.put("treeFields", tree.classFields());
+            model.put("treeNested", tree.nestedClasses());
         }
 
         var pageType = page.type() != null ? page.type().toUpperCase() : "CRUD";

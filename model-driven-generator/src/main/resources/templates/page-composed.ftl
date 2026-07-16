@@ -41,9 +41,21 @@ import org.springframework.stereotype.Service;
 @Style(StyleConstants.${page.style})
 </#if>
 public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r') + "Page")} implements ComponentTreeSupplier {
+<#if treeFields?has_content>
+
+<#list treeFields as f>
+    ${f}
+</#list>
+</#if>
 
     @Override
     public Component component(HttpRequest httpRequest) {
         return ${componentTree};
     }
+<#if treeNested?has_content>
+<#list treeNested as nestedClass>
+
+${nestedClass}
+</#list>
+</#if>
 }

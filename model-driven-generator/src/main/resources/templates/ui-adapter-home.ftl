@@ -3,6 +3,8 @@ package ${project.packageName}.infra.in.ui;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
 <#if homePage??>
 import ${project.packageName}.${homePage.moduleSlug}.infra.in.ui.pages.${homePage.pageSlug}.${homePage.className};
 </#if>
@@ -31,6 +33,8 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
  * Home page generated from UIAdapter: ${adapter.name}
  * Path: ${adapter.path!''}
  */
+@Service
+@Scope("prototype")
 <#if ui??>
 <#assign uiPath = (ui.path?has_content)?then(ui.path, (adapter.path)!'')>
 @UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)

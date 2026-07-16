@@ -1,32 +1,70 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode;
 
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 /**
  * Turns a page's designed component tree into the Java expression a generated
  * {@code ComponentTreeSupplier} page returns: every designer kind maps to its Mateu
  * UIDL builder, with the same sample content the designer mocks up, so the deployed
- * page looks like the design. Data-bound kinds (form, listing, crud, field) still
- * come out as an EmptyState placeholder — wiring them to models and queries is the
- * next step.
+ * page looks like the design.
+ *
+ * <p>Data-bound kinds wire to the model when the designer connected them: a
+ * <b>form</b> with a viewmodel becomes a Mateu {@code Form} whose {@code FormField}s
+ * bind to generated page fields; a <b>listing/crud</b> with a query operation becomes
+ * a nested {@code ListingBackend} that reads from the generated query service —
+ * injected as an {@code ObjectProvider} so the app boots (and the listing says so)
+ * while the implementation is still missing from the custom module. Unwired ones
+ * keep the honest EmptyState placeholder.
  */
 public final class ComponentTreeJava {
 
-    public record Tree(String expression, SortedSet<String> imports) {}
+    /** Resolvers into the model, provided by the generator (naming included). */
+    public record Wiring(
+            Function<String, ModelEntity> modelById,
+            Function<String, QueryServiceEntity> queryServiceById,
+            /** boundedContextId → java package of that context (e.g. {@code minimal.contexto}). */
+            Function<String, String> contextPackageByContextId,
+            /** a viewmodel field id → the model that owns it. */
+            Function<String, ModelEntity> modelByFieldId,
+            /** element name → generated Java type name (the generator's own convention). */
+            Function<String, String> typeName) {}
+
+    public record Tree(String expression, SortedSet<String> imports,
+                       List<String> classFields, List<String> nestedClasses) {}
 
     public static Tree of(List<UiComponentNodeEntity> content) {
-        var b = new ComponentTreeJava();
+        return of(content, null);
+    }
+
+    public static Tree of(List<UiComponentNodeEntity> content, Wiring wiring) {
+        var b = new ComponentTreeJava(wiring);
         var expr = content.size() == 1 ? b.expr(content.get(0)) : b.vertical(content);
-        return new Tree(expr, b.imports);
+        var classFields = new ArrayList<>(b.services.values());
+        classFields.addAll(b.bindings.values());
+        return new Tree(expr, b.imports, classFields, b.nested);
     }
 
     private final SortedSet<String> imports = new TreeSet<>();
+    /** Injected query services, keyed by field name (final fields, constructor-injected). */
+    private final Map<String, String> services = new LinkedHashMap<>();
+    /** Form binding fields, keyed by field name. */
+    private final Map<String, String> bindings = new LinkedHashMap<>();
+    private final List<String> nested = new ArrayList<>();
+    private final Wiring wiring;
 
-    private ComponentTreeJava() {}
+    private ComponentTreeJava(Wiring wiring) {
+        this.wiring = wiring;
+    }
 
     private String expr(UiComponentNodeEntity n) {
         var kids = n.children() == null ? List.<UiComponentNodeEntity>of() : n.children();
@@ -168,12 +206,218 @@ public final class ComponentTreeJava {
             case "menuBar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
                     listOf(List.of(button("Inicio"), button("Opciones"))) + ").build()";
             case "appContext" -> button(or(n.label(), "Contexto ▾"));
-            // ---- data-bound leaves: honest placeholders until they wire to the model ----
-            case "form", "listing", "crud", "field" -> use("EmptyState") + ".builder().icon(\"🧩\").title(" +
-                    q(or(n.label(), or(n.title(), n.kind()))) +
-                    ").description(" + q("Componente «" + n.kind() + "» pendiente de cablear a datos") + ").build()";
+            // ---- data-bound leaves: wired when the designer connected them ----
+            case "form" -> form(n);
+            case "field" -> standaloneField(n);
+            case "listing" -> listing(n, false);
+            case "crud" -> listing(n, true);
             default -> use("Text") + ".builder().text(" + q("[" + n.kind() + "]") + ").build()";
         };
+    }
+
+    // ---- data-bound components ----
+
+    /** A form node with a viewmodel: Mateu Form + FormFields bound to generated page fields. */
+    private String form(UiComponentNodeEntity n) {
+        var model = wiring == null || n.modelId() == null ? null : wiring.modelById().apply(n.modelId());
+        if (model == null || model.fields() == null || model.fields().isEmpty()) return unwired(n);
+        // children narrow the form to a subset of the viewmodel's fields
+        var kids = n.children() == null ? List.<UiComponentNodeEntity>of() : n.children();
+        var selected = new ArrayList<ModelFieldEntity>();
+        var labelOverride = new LinkedHashMap<String, String>();
+        for (var c : kids) {
+            if (!"field".equals(c.kind()) || c.fieldId() == null) continue;
+            model.fields().stream().filter(f -> c.fieldId().equals(f.id())).findFirst().ifPresent(f -> {
+                selected.add(f);
+                if (c.label() != null && !c.label().isBlank()) labelOverride.put(f.id(), c.label());
+            });
+        }
+        var fields = selected.isEmpty() ? model.fields().stream().filter(ModelFieldEntity::basicType).toList() : selected;
+        if (fields.isEmpty()) return unwired(n);
+        var formFields = new ArrayList<String>();
+        for (var f : fields) {
+            bindingField(f);
+            formFields.add(formField(f, labelOverride.get(f.id())));
+        }
+        return use("Form", "fluent") + ".builder().title(" + q(or(n.title(), or(n.label(), model.name()))) +
+                ").content(" + listOf(formFields) + ").build()";
+    }
+
+    /** A loose field node: bound to its viewmodel through a one-field, headerless form. */
+    private String standaloneField(UiComponentNodeEntity n) {
+        var model = wiring == null || n.fieldId() == null ? null : wiring.modelByFieldId().apply(n.fieldId());
+        var field = model == null ? null
+                : model.fields().stream().filter(f -> n.fieldId().equals(f.id())).findFirst().orElse(null);
+        if (field == null) return unwired(n);
+        bindingField(field);
+        return use("Form", "fluent") + ".builder().noHeader(true).content(" +
+                listOf(List.of(formField(field, n.label()))) + ").build()";
+    }
+
+    /** A listing/crud node with a query operation: a nested ListingBackend reading from it. */
+    private String listing(UiComponentNodeEntity n, boolean crud) {
+        var qs = wiring == null || n.queryServiceId() == null ? null : wiring.queryServiceById().apply(n.queryServiceId());
+        if (qs == null || qs.operations() == null || qs.operations().isEmpty()) return unwired(n);
+        var op = qs.operations().stream()
+                .filter(o -> o.id() != null && o.id().equals(n.queryOperationId()))
+                .findFirst().orElse(qs.operations().get(0));
+        var outModel = op.outputModelId() == null ? null : wiring.modelById().apply(op.outputModelId());
+        var contextPackage = wiring.contextPackageByContextId().apply(qs.boundedContextId());
+        if (outModel == null || outModel.fields() == null || contextPackage == null) return unwired(n);
+
+        var qsType = wiring.typeName().apply(qs.name());
+        var rowType = wiring.typeName().apply(outModel.name());
+        imports.add(contextPackage + ".application.query." + qsType);
+        imports.add(contextPackage + ".application.query.dto." + rowType);
+        imports.add("org.springframework.beans.factory.ObjectProvider");
+        for (var cls : List.of("NoFilters", "ListingData", "Pageable", "GridColumn", "FieldDataType")) use(cls);
+        use("Listing", "fluent");
+        use("Trigger", "fluent");
+        use("OnLoadTrigger", "fluent");
+        imports.add("io.mateu.uidl.interfaces.ListingBackend");
+        imports.add("io.mateu.uidl.fluent.TriggersSupplier");
+
+        // Field injection ON PURPOSE: the App class extends its home page, and an inherited
+        // constructor requirement would break that plain `class Home extends X` generation.
+        imports.add("org.springframework.beans.factory.annotation.Autowired");
+        var providerField = uncap(qsType) + "Provider";
+        services.putIfAbsent(providerField, "@Autowired ObjectProvider<" + qsType + "> " + providerField + ";");
+
+        var className = uniqueNestedName(rowType + (crud ? "Crud" : "Listing"));
+        var cardinality = op.cardinality() == null ? "Single" : op.cardinality().name();
+        var opCall = "queryService." + uncap(op.name()) + "(null)";
+        var fetch = switch (cardinality) {
+            case "List" -> "            var all = " + opCall + ";";
+            case "Page" -> "            var all = " + opCall + ".getContent();";
+            default -> "            var one = " + opCall + ";\n" +
+                    "            var all = one == null ? List.<" + rowType + ">of() : List.of(one);";
+        };
+        var columns = new ArrayList<String>();
+        for (var f : outModel.fields()) {
+            if (!f.basicType()) continue;
+            columns.add("GridColumn.builder().id(" + q(f.name()) + ").label(" + q(cap(f.name())) +
+                    ").dataType(FieldDataType." + dataType(f) + ").build()");
+        }
+        if (columns.isEmpty()) return unwired(n);
+        var title = or(n.title(), or(n.label(), null));
+
+        nested.add("""
+                    /** %s reads from %s.%s — generated from the designed %s node. */
+                    @Service
+                    @Scope("prototype")
+                    public static class %s implements ListingBackend<NoFilters, %s>, ComponentTreeSupplier, TriggersSupplier {
+
+                        private final ObjectProvider<%s> queryServiceProvider;
+
+                        public %s(ObjectProvider<%s> queryServiceProvider) {
+                            this.queryServiceProvider = queryServiceProvider;
+                        }
+
+                        @Override
+                        public ListingData<%s> search(String searchText, NoFilters filters, Pageable pageable, HttpRequest httpRequest) {
+                            var queryService = queryServiceProvider == null ? null : queryServiceProvider.getIfAvailable();
+                            if (queryService == null) {
+                                return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), 0, List.of()),
+                                        "Implementa %s en el módulo custom para alimentar este listado.");
+                            }
+                %s
+                            var filtered = searchText == null || searchText.isBlank()
+                                    ? all
+                                    : all.stream().filter(row -> String.valueOf(row).toLowerCase().contains(searchText.toLowerCase())).toList();
+                            var items = filtered.stream().skip((long) pageable.page() * pageable.size()).limit(pageable.size()).toList();
+                            return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), filtered.size(), items), "Sin datos.");
+                        }
+
+                        @Override
+                        public Component component(HttpRequest httpRequest) {
+                            return Listing.builder()%s.searchable(%s).columns(%s).build();
+                        }
+
+                        @Override
+                        public List<Trigger> triggers(HttpRequest httpRequest) {
+                            return List.of(new OnLoadTrigger("search"));
+                        }
+                    }""".formatted(
+                className, qsType, uncap(op.name()), crud ? "crud" : "listing",
+                className, rowType,
+                qsType,
+                className, qsType,
+                rowType,
+                qsType,
+                fetch,
+                title == null ? "" : ".title(" + q(title) + ")", crud,
+                listOf(columns).replace("\n                ", "\n                        ")));
+
+        return "new " + className + "(" + providerField + ")";
+    }
+
+    /** The designer left this node unconnected: say exactly what is missing. */
+    private String unwired(UiComponentNodeEntity n) {
+        var what = switch (n.kind()) {
+            case "form" -> "asigna un model al formulario en el diseñador";
+            case "field" -> "asigna un campo del viewmodel en el diseñador";
+            default -> "asigna un query service y su operación en el diseñador";
+        };
+        return use("EmptyState") + ".builder().icon(\"🧩\").title(" +
+                q(or(n.label(), or(n.title(), n.kind()))) +
+                ").description(" + q("Componente «" + n.kind() + "» sin datos: " + what) + ").build()";
+    }
+
+    private void bindingField(ModelFieldEntity f) {
+        bindings.putIfAbsent(f.name(), javaType(f) + " " + f.name() + ";");
+    }
+
+    private String formField(ModelFieldEntity f, String labelOverride) {
+        use("FieldDataType");
+        return use("FormField") + ".builder().id(" + q(f.name()) + ").label(" +
+                q(labelOverride != null && !labelOverride.isBlank() ? labelOverride : cap(f.name())) +
+                ").dataType(FieldDataType." + dataType(f) + ").build()";
+    }
+
+    private String dataType(ModelFieldEntity f) {
+        return f.type() == null ? "string" : f.type().name();
+    }
+
+    private String javaType(ModelFieldEntity f) {
+        var type = f.type() == null ? "string" : f.type().name();
+        return switch (type) {
+            case "integer" -> "Integer";
+            case "number", "money" -> imp("java.math.BigDecimal");
+            case "bool" -> "Boolean";
+            case "date" -> imp("java.time.LocalDate");
+            case "time" -> imp("java.time.LocalTime");
+            case "dateTime" -> imp("java.time.LocalDateTime");
+            default -> "String";
+        };
+    }
+
+    private String imp(String fqn) {
+        imports.add(fqn);
+        return fqn.substring(fqn.lastIndexOf('.') + 1);
+    }
+
+    private String uniqueNestedName(String base) {
+        var name = base;
+        var i = 2;
+        while (nestedNameTaken(name)) name = base + i++;
+        return name;
+    }
+
+    private boolean nestedNameTaken(String name) {
+        return nested.stream().anyMatch(c -> c.contains("class " + name + " "));
+    }
+
+    private String use(String cls, String pkg) {
+        imports.add("io.mateu.uidl." + pkg + "." + cls);
+        return cls;
+    }
+
+    private static String uncap(String s) {
+        return s.isEmpty() ? s : Character.toLowerCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private static String cap(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     // ---- shared fragments ----
