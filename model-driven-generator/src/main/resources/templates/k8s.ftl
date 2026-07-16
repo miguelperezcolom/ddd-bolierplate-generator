@@ -28,12 +28,33 @@ spec:
       containers:
         - name: ${slug}
           image: ${image}:latest
-<#if !(service.database?? && service.database?has_content)>
-          # No database declared on the service: the app runs self-contained on the
-          # local profile (in-memory H2). Declare one to switch to real infrastructure.
+<#assign profiles = []>
+<#if !(service.database?? && service.database?has_content)><#assign profiles = profiles + ["local"]></#if>
+<#if idp??><#assign profiles = profiles + ["secure"]></#if>
+<#if (profiles?size > 0) || idp??>
+          # local: no database declared, the app runs self-contained (in-memory H2).
+          # secure: the model declares an IdP — OIDC login, credentials from the
+          # modux-idp-credentials secret (kubectl create secret generic modux-idp-credentials
+          # --from-literal=client-id=… --from-literal=client-secret=…).
           env:
+<#if (profiles?size > 0)>
             - name: SPRING_PROFILES_ACTIVE
-              value: local
+              value: ${profiles?join(",")}
+</#if>
+<#if idp??>
+            - name: IDP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: modux-idp-credentials
+                  key: client-id
+                  optional: true
+            - name: IDP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: modux-idp-credentials
+                  key: client-secret
+                  optional: true
+</#if>
 </#if>
           ports:
             - containerPort: ${port}

@@ -71,6 +71,29 @@ A project with contexts but no declared service deploys through the same
 [synthesized default service](/manual/generating-code/) generation uses: one service,
 named after the project, deploying every context of the project.
 
+## Identity: the model's IdP becomes OIDC login
+
+Declare an **IdP** element (Estratégico palette) with its **issuer** URI — e.g. a
+[Cloud-IAM](https://cloud-iam.com) managed Keycloak realm,
+`https://<cluster>.cloud-iam.com/auth/realms/<realm>` — and connect it to the **App**.
+Generation then wires the whole chain:
+
+- the app gains `spring-boot-starter-oauth2-client` and a **`secure` Spring profile**:
+  OIDC login against the issuer, and Keycloak realm roles (`realm_access.roles`) mapped
+  to the generated `ROLE_*` authorities;
+- **without the `secure` profile the app boots OPEN** — local runs and CI never depend
+  on the IdP being reachable;
+- the Kubernetes manifests activate `secure` and read the client credentials from the
+  **`modux-idp-credentials`** secret:
+
+```bash
+kubectl create secret generic modux-idp-credentials \
+  --from-literal=client-id=<client> --from-literal=client-secret=<secret>
+```
+
+Create the client in your realm (confidential, redirect URI
+`https://<your-url>/login/oauth2/code/*`) and the login page is Keycloak's.
+
 ## Terraform: the infrastructure around the cluster
 
 With `terraformProvider: Hetzner` on the project, the generated `terraform/main.tf`

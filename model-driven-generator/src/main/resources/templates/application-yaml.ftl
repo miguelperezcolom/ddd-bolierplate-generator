@@ -90,3 +90,26 @@ spring:
             kafka:
                 binder:
                     auto-create-topics: false
+<#if idp??>
+
+---
+# «secure»: OIDC login against ${idp.name} (${idp.type}) — the model's identity provider.
+# The client credentials arrive through the environment: in Kubernetes, from the
+# modux-idp-credentials secret; locally, export IDP_CLIENT_ID / IDP_CLIENT_SECRET.
+# Without this profile the app boots OPEN (see SecurityConfig).
+spring:
+    config:
+        activate:
+            on-profile: secure
+    security:
+        oauth2:
+            client:
+                registration:
+                    ${idp.slug}:
+                        client-id: ${r"${IDP_CLIENT_ID}"}
+                        client-secret: ${r"${IDP_CLIENT_SECRET}"}
+                        scope: openid, profile, email, roles
+                provider:
+                    ${idp.slug}:
+                        issuer-uri: ${idp.issuer}
+</#if>

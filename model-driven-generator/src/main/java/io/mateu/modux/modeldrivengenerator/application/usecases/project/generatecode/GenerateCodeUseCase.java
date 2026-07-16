@@ -35,6 +35,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEn
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IdentityProviderEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity;
@@ -265,6 +266,7 @@ public class GenerateCodeUseCase {
             createFile(serviceDir, serviceModel, "dockerfile.ftl", "Dockerfile");
             // Kubernetes manifests (Deployment + Service + optional HPA + Ingress per declared URL)
             serviceModel.put("ingressUrls", ingressUrls(service));
+            idpFor(project).ifPresent(idp -> serviceModel.put("idp", idp));
             createFile(serviceDir, serviceModel, "k8s.ftl", "k8s/" + serviceName + ".yaml");
         }
 
@@ -560,6 +562,7 @@ public class GenerateCodeUseCase {
                 });
         appModel.put("menuModules", menuBoundedContexts);
 
+        idpFor(project).ifPresent(idp -> appModel.put("idp", idp));
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
@@ -2000,7 +2003,8 @@ public class GenerateCodeUseCase {
                 .filter(r -> inProject(r.projectId(), project))
                 .filter(r -> seenNames.add(r.name() == null ? r.id() : r.name().trim().toUpperCase()))
                 .toList();
-        if (roles.isEmpty()) return;
+        // Roles OR an IdP each need the SecurityConfig (constants, and the OIDC chain).
+        if (roles.isEmpty() && idpFor(project).isEmpty()) return;
 
         var serviceName = serviceName(service);
         var appDir = serviceDir + "/" + serviceName + "-app";
@@ -2012,6 +2016,7 @@ public class GenerateCodeUseCase {
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
         model.put("roles", roles.stream().map(r -> fromJson(toJson(r))).toList());
+        idpFor(project).ifPresent(idp -> model.put("idp", idp));
 
         createFile(appDir, model, "role-security.ftl",
                 "src/main/java/" + packageDir + "/infra/in/security/SecurityConfig.java");
@@ -2837,6 +2842,29 @@ public class GenerateCodeUseCase {
     private List<String> splitCsv(String value) {
         if (value == null || value.isBlank()) return List.of();
         return Arrays.asList(value.split(","));
+    }
+
+    /**
+     * The IdP the project's app authenticates against: the first UI adapter declaring
+     * one WITH an issuer (an issuer-less IdP cannot configure OIDC — the SecurityConfig
+     * stays permissive until the ficha declares it).
+     */
+    private java.util.Optional<Map<String, Object>> idpFor(ProjectEntity project) {
+        return repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> inProject(a.projectId(), project))
+                .map(UiAdapterEntity::identityProviderId)
+                .filter(id -> id != null && !id.isBlank())
+                .flatMap(id -> repository.findById(id, IdentityProviderEntity.class).stream())
+                .filter(idp -> idp.issuer() != null && !idp.issuer().isBlank())
+                .findFirst()
+                .map(idp -> {
+                    var map = new HashMap<String, Object>();
+                    map.put("name", idp.name());
+                    map.put("slug", idp.name().toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+                    map.put("issuer", idp.issuer().trim());
+                    map.put("type", idp.type() == null ? "CORPORATE" : idp.type());
+                    return map;
+                });
     }
 
     /** Every node of a content tree, depth-first. */

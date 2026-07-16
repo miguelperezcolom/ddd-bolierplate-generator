@@ -24,7 +24,7 @@ import io.mateu.uidl.fluent.AppVariant;
 @App(AppVariant.MENU_ON_TOP)
 public class ModelDrivenGeneratorHome
         implements io.mateu.uidl.interfaces.HomeRouteSupplier, io.mateu.uidl.interfaces.MenuSupplier,
-        io.mateu.uidl.interfaces.AppActionsSupplier {
+        io.mateu.uidl.interfaces.AppActionsSupplier, io.mateu.uidl.interfaces.WidgetSupplier {
 
     /**
      * Generate, next to the repo-project-model selectors — only when the whole
@@ -46,15 +46,33 @@ public class ModelDrivenGeneratorHome
         var deploy = new java.util.ArrayList<io.mateu.uidl.data.AppHeaderAction>();
         deploy.add(new io.mateu.uidl.data.AppHeaderAction("deployCurrentProject", "Desplegar en Kubernetes", "vaadin:rocket"));
         deploy.add(new io.mateu.uidl.data.AppHeaderAction("applyTerraformCurrentProject", "Aplicar Terraform", "vaadin:cloud-upload-o"));
-        // Probar only exists when the project declares a URL to open.
-        projectStore.currentProjectId()
+        actions.add(io.mateu.uidl.data.AppHeaderAction.menu("Desplegar", "vaadin:rocket", deploy));
+        return actions;
+    }
+
+    /**
+     * Probar, as a header WIDGET: a plain link to the project's declared URL — the URL
+     * is known at render time, so opening it needs no server round-trip. Only present
+     * when the current project declares one.
+     */
+    @Override
+    public java.util.List<io.mateu.uidl.fluent.Component> widgets(
+            io.mateu.uidl.interfaces.HttpRequest httpRequest) {
+        var projectStore = SpringBeans.get(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
+        return projectStore.currentProjectId()
                 .flatMap(projectId -> SpringBeans.get(
                         io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
                         .declaredUrl(projectId))
-                .ifPresent(url -> deploy.add(
-                        new io.mateu.uidl.data.AppHeaderAction("openCurrentProjectUrl", "Probar", "vaadin:play")));
-        actions.add(io.mateu.uidl.data.AppHeaderAction.menu("Desplegar", "vaadin:rocket", deploy));
-        return actions;
+                .map(url -> java.util.List.<io.mateu.uidl.fluent.Component>of(
+                        io.mateu.uidl.data.Anchor.builder()
+                                .text("Probar ↗")
+                                .url(url)
+                                .target("_blank")
+                                .style("margin-left: 0.5rem; white-space: nowrap; font-weight: 600; "
+                                        + "text-decoration: none; color: var(--lumo-primary-text-color);")
+                                .build()))
+                .orElse(java.util.List.of());
     }
 
     /** The header's Aplicar Terraform: init + apply of the generated terraform/ folder. */
@@ -66,19 +84,6 @@ public class ModelDrivenGeneratorHome
         return SpringBeans.get(
                 io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.ApplyTerraformUseCase.class)
                 .handle(projectId);
-    }
-
-    /** The header's Probar: opens the project's declared URL in a new tab (a UI command). */
-    public Object openCurrentProjectUrl(io.mateu.uidl.interfaces.HttpRequest httpRequest) {
-        var projectStore = SpringBeans.get(
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.RepositoryStoreOpener.class);
-        var url = projectStore.currentProjectId()
-                .flatMap(projectId -> SpringBeans.get(
-                        io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
-                        .declaredUrl(projectId))
-                .orElseThrow(() -> new IllegalStateException(
-                        "El proyecto no declara ninguna URL: añade una en la vista Distribución y conéctala al servicio"));
-        return io.mateu.uidl.data.UICommand.navigateTo(url);
     }
 
     /** The header's Deploy: generated services → images → the environment's cluster. */
