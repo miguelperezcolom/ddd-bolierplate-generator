@@ -2519,6 +2519,7 @@ export class ModuxEditor extends LitElement {
         fieldId: n.fieldId ?? null,
         stereotype: n.stereotype ?? null,
         colspan: n.colspan ?? null,
+        detailPageId: n.detailPageId ?? null,
       });
       for (const c of n.children ?? []) emitNode(c, id);
       return id;
@@ -3849,7 +3850,7 @@ export class ModuxEditor extends LitElement {
     const model = (this.model.models ?? []).find((x) => x.id === id);
     if (model) {
       if (cmp?.kind === 'form') {
-        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, modelId: id });
+        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), modelId: id });
         this.emit('modux-notice', { message: `El formulario edita ${model.name}` });
       } else {
         this.command({ kind: 'set-page-model', pageId, modelId: id });
@@ -3858,20 +3859,25 @@ export class ModuxEditor extends LitElement {
       return;
     }
     const mappingDrop = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
-    if (mappingDrop && cmp?.kind === 'button') {
-      this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, mappingId: id });
-      this.emit('modux-notice', { message: `El botón mapea con ${mappingDrop.name}` });
+    if (mappingDrop && (cmp?.kind === 'button' || cmp?.kind === 'form')) {
+      this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), mappingId: id });
+      this.emit('modux-notice', {
+        message: cmp.kind === 'form'
+          ? `El formulario mapea con ${mappingDrop.name} al guardar`
+          : `El botón mapea con ${mappingDrop.name}`,
+      });
       return;
     }
     const queryOp = this.model.boundedContexts
       .flatMap((mo) => (mo.queryServices ?? []).flatMap((qs) => (qs.operations ?? []).map((op) => ({ op, qs }))))
       .find(({ op }) => op.id === id);
     if (queryOp) {
-      if (cmp?.kind === 'listing') {
+      if (cmp?.kind === 'listing' || cmp?.kind === 'crud') {
         this.command({
           kind: 'set-page-component',
           pageId,
           componentId: cmp.id,
+          ...this.cmpPatch(cmp),
           queryOperationId: queryOp.op.id,
           queryServiceId: queryOp.qs.id,
         });
@@ -3885,6 +3891,26 @@ export class ModuxEditor extends LitElement {
     this.emit('modux-notice', {
       message: 'En Diseño se sueltan casos de uso (botones), modelos (viewmodel) y consultas (listados)',
     });
+  }
+
+  /** Full config of a content node: set-page-component REPLACES every field, so drops must resend them all. */
+  private cmpPatch(cmp: { title?: string; text?: string; label?: string; useCaseId?: string; mappingId?: string;
+    modelId?: string; queryServiceId?: string; queryOperationId?: string; fieldId?: string; stereotype?: string;
+    colspan?: number; detailPageId?: string }) {
+    return {
+      title: cmp.title ?? null,
+      text: cmp.text ?? null,
+      label: cmp.label ?? null,
+      useCaseId: cmp.useCaseId ?? null,
+      mappingId: cmp.mappingId ?? null,
+      modelId: cmp.modelId ?? null,
+      queryServiceId: cmp.queryServiceId ?? null,
+      queryOperationId: cmp.queryOperationId ?? null,
+      fieldId: cmp.fieldId ?? null,
+      stereotype: cmp.stereotype ?? null,
+      colspan: cmp.colspan ?? null,
+      detailPageId: cmp.detailPageId ?? null,
+    };
   }
 
   private placeExistingFromPalette(

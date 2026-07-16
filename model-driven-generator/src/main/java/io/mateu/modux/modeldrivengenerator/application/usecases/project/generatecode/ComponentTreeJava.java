@@ -2,6 +2,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.generat
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
@@ -43,7 +44,8 @@ public final class ComponentTreeJava {
             Function<String, UseCaseEntity> useCaseById,
             /** useCaseId → java package of the context that owns it. */
             Function<String, String> contextPackageByUseCaseId,
-            Function<String, PageEntity> pageById) {}
+            Function<String, PageEntity> pageById,
+            Function<String, ModelMappingEntity> mappingById) {}
 
     public record Tree(String expression, SortedSet<String> imports,
                        List<String> classFields, List<String> nestedClasses,
@@ -79,8 +81,11 @@ public final class ComponentTreeJava {
     /** Form binding fields, keyed by field name. */
     private final Map<String, String> bindings = new LinkedHashMap<>();
     private final List<String> nested = new ArrayList<>();
+    /** An action-wired use case plus the mapping the node declared for its command. */
+    private record ActionWiring(UseCaseEntity useCase, String mappingId) {}
+
     /** Action-wired use cases, keyed by actionId; cases materialize in actionHandler(). */
-    private final Map<String, UseCaseEntity> actionWirings = new LinkedHashMap<>();
+    private final Map<String, ActionWiring> actionWirings = new LinkedHashMap<>();
     private final Wiring wiring;
 
     private ComponentTreeJava(Wiring wiring) {
@@ -220,8 +225,8 @@ public final class ComponentTreeJava {
             case "kpi", "metricCard" -> metricCard(or(n.title(), "kpi".equals(n.kind()) ? "KPI" : "Métrica"));
             case "stat" -> use("Stat") + ".builder().label(" + q(or(n.title(), "Estadística")) + ").value(\"1.234\").build()";
             // ---- interaction leaves ----
-            case "button" -> actionButton(or(n.label(), "Botón"), n.useCaseId(), null);
-            case "fab" -> actionButton("+", n.useCaseId(), "border-radius:50%;width:48px;height:48px;font-size:20px");
+            case "button" -> actionButton(or(n.label(), "Botón"), n.useCaseId(), n.mappingId(), null);
+            case "fab" -> actionButton("+", n.useCaseId(), n.mappingId(), "border-radius:50%;width:48px;height:48px;font-size:20px");
             case "filterBar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
                     listOf(List.of(button("Estado ▾"), button("Fecha ▾"), button("Tipo ▾"))) + ").build()";
             case "menuBar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
@@ -261,7 +266,7 @@ public final class ComponentTreeJava {
             formFields.add(formField(f, labelOverride.get(f.id())));
         }
         // A use case on the form becomes its save button (bindings first: the command reads them)
-        var actionId = wireAction(n.useCaseId());
+        var actionId = wireAction(n.useCaseId(), n.mappingId());
         return use("Form", "fluent") + ".builder().title(" + q(or(n.title(), or(n.label(), model.name()))) +
                 ").content(" + listOf(formFields) + ")" +
                 (actionId == null ? "" : ".buttons(" + listOf(List.of(
@@ -269,8 +274,8 @@ public final class ComponentTreeJava {
                 ".build()";
     }
 
-    private String actionButton(String label, String useCaseId, String style) {
-        var actionId = wireAction(useCaseId);
+    private String actionButton(String label, String useCaseId, String mappingId, String style) {
+        var actionId = wireAction(useCaseId, mappingId);
         return use("Button") + ".builder().label(" + q(label) + ")" +
                 (actionId == null ? "" : ".actionId(" + q(actionId) + ")") +
                 (style == null ? "" : ".style(" + q(style) + ")") + ".build()";
@@ -464,7 +469,7 @@ public final class ComponentTreeJava {
      * actionId, and adds the handleAction case that builds the command from the page's
      * binding fields (by name; anything the form does not edit travels as null).
      */
-    private String wireAction(String useCaseId) {
+    private String wireAction(String useCaseId, String mappingId) {
         if (wiring == null || wiring.useCaseById() == null || useCaseId == null || useCaseId.isBlank()) return null;
         var useCase = wiring.useCaseById().apply(useCaseId);
         var contextPackage = useCase == null ? null : wiring.contextPackageByUseCaseId().apply(useCaseId);
@@ -486,7 +491,7 @@ public final class ComponentTreeJava {
         services.putIfAbsent(field, "@Autowired(required = false) transient " + ucClass + " " + field + ";");
 
         var actionId = "run-" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]+", "-");
-        actionWirings.putIfAbsent(actionId, useCase);
+        actionWirings.putIfAbsent(actionId, new ActionWiring(useCase, mappingId));
         return actionId;
     }
 
@@ -499,7 +504,9 @@ public final class ComponentTreeJava {
         if (actionWirings.isEmpty()) return null;
         var cases = new ArrayList<String>();
         for (var entry : actionWirings.entrySet()) {
-            var useCase = entry.getValue();
+            var useCase = entry.getValue().useCase();
+            var mapping = entry.getValue().mappingId() == null || wiring.mappingById() == null
+                    ? null : wiring.mappingById().apply(entry.getValue().mappingId());
             var ucClass = cap(useCase.name()) + "UseCase";
             var cmdClass = cap(useCase.name()) + "Command";
             var field = uncap(ucClass);
@@ -508,7 +515,7 @@ public final class ComponentTreeJava {
                 var inputModel = wiring.modelById().apply(useCase.inputModelId());
                 if (inputModel != null && inputModel.fields() != null) {
                     args = String.join(", ", inputModel.fields().stream()
-                            .map(f -> bindings.containsKey(f.name()) ? f.name() : "null").toList());
+                            .map(f -> argFor(f, mapping)).toList());
                 }
             }
             use("UICommand");
@@ -579,6 +586,30 @@ public final class ComponentTreeJava {
                 fetchAll(wire),
                 keyField.name(),
                 String.join("\n", assigns));
+    }
+
+    /**
+     * The expression feeding one command field: the mapping's rule decides which page
+     * binding travels there (name match is only the fallback when no mapping applies).
+     * A declared rule that cannot resolve yields an explicit null — never a name guess.
+     */
+    private String argFor(ModelFieldEntity target, ModelMappingEntity mapping) {
+        if (mapping != null && mapping.rules() != null) {
+            var rule = mapping.rules().stream()
+                    .filter(r -> target.id().equals(r.targetFieldId()))
+                    .findFirst().orElse(null);
+            if (rule != null) {
+                var sourceModel = mapping.sourceModelId() == null || mapping.sourceModelId().isBlank()
+                        ? null : wiring.modelById().apply(mapping.sourceModelId());
+                var source = sourceModel == null || sourceModel.fields() == null || rule.sourceFieldId() == null
+                        ? null
+                        : sourceModel.fields().stream()
+                                .filter(f -> rule.sourceFieldId().equals(f.id()))
+                                .findFirst().orElse(null);
+                return source != null && bindings.containsKey(source.name()) ? source.name() : "null";
+            }
+        }
+        return bindings.containsKey(target.name()) ? target.name() : "null";
     }
 
     /** The designer left this node unconnected: say exactly what is missing. */

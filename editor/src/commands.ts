@@ -1270,6 +1270,7 @@ export type ModuxCommand =
       fieldId?: string | null;
       stereotype?: string | null;
       colspan?: number | null;
+      detailPageId?: string | null;
     }
   | {
       kind: 'move-page-component';

@@ -1923,7 +1923,8 @@ public class GenerateCodeUseCase {
                             .findFirst()
                             .map(ctx -> project.packageName() + "." + boundedContextSlug(ctx.name()))
                             .orElse(null),
-                    id -> repository.findById(id, PageEntity.class).orElse(null));
+                    id -> repository.findById(id, PageEntity.class).orElse(null),
+                    id -> repository.findById(id, ModelMappingEntity.class).orElse(null));
             // Is this page the ficha some crud/listing navigates to? Its query op loads the record.
             var detailSource = repository.findAllOfType(PageEntity.class).stream()
                     .filter(p -> inProject(p.projectId(), project))

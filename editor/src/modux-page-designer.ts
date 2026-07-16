@@ -1399,6 +1399,15 @@ export class ModuxPageDesigner extends LitElement {
                       <span class="chipx" title="Quitar el modelo" @click=${() => set({ modelId: undefined })}>✕</span></span
                     >`
                 : html`<span class="vmhint">arrastra un modelo del Catálogo hasta el formulario</span>`}
+            </span>
+            <label>Mapping</label>
+            <span style="grid-column: 2 / -1">
+              ${draft.mappingId
+                ? html`<span class="chip"
+                      >${this.mappings.find((mm) => mm.id === draft.mappingId)?.name ?? draft.mappingId}
+                      <span class="chipx" title="Quitar el mapping" @click=${() => set({ mappingId: undefined })}>✕</span></span
+                    >`
+                : html`<span class="vmhint">el viewmodel viaja tal cual al guardar — suelta un mapeado del Catálogo sobre el formulario</span>`}
             </span>`
         : nothing}
       ${kind === 'listing' || kind === 'crud'

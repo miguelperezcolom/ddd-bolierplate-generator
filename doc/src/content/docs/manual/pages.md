@@ -177,8 +177,11 @@ Data-bound components wire to the model when you connect them in the designer:
 - A **use case** assigned to a **button** (or FAB) gives it an action; assigned to a
   **form**, it adds a *Guardar* button. Either way the page becomes a Mateu
   `ActionHandler`: the click builds the use case's command from the page's form fields
-  (matched by name — anything the form does not edit travels as `null`), calls the
-  generated use case, and toasts the result. The use case is injected leniently, so the
+  and calls the generated use case, toasting the result. With a **mapping** on the node
+  (drop one from the catalog onto the button or the form), its rules decide which form
+  field feeds each command field — the viewmodel and the use case's input model no
+  longer need matching names. Without one, fields match by name; anything unresolved
+  travels as `null`. The use case is injected leniently, so the
   app still boots when it lives in another service. After the use case runs, the page
   dispatches a `modux-data-changed` client event and **every wired listing on screen
   re-runs its search** — save a record and the grids refresh themselves.
