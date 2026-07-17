@@ -420,6 +420,39 @@ public class GenerateCodeUseCase {
                     .forEach(useCase -> generateUseCase(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, useCase));
         }
 
+        // MCP server: one tool per exposedAsMcp use case of the context (JSON-RPC at /mcp)
+        var mcpUseCases = new java.util.ArrayList<Map<String, Object>>();
+        if (boundedContext.useCaseIds() != null) {
+            boundedContext.useCaseIds().stream()
+                    .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                    .filter(UseCaseEntity::exposedAsMcp)
+                    .filter(uc -> inScope(uc.id()))
+                    .forEach(uc -> {
+                        var item = new HashMap<String, Object>();
+                        item.put("usecase", enrichUseCaseMap(uc));
+                        item.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                        item.put("className", capitalize(uc.name()));
+                        item.put("fieldName", uncapitalize(capitalize(uc.name())) + "UseCase");
+                        if (uc.inputModelId() != null && !uc.inputModelId().isBlank()) {
+                            repository.findById(uc.inputModelId(), ModelEntity.class)
+                                    .ifPresent(im -> item.put("inputModel", fromJson(toJson(im))));
+                        }
+                        if (uc.outputModelId() != null && !uc.outputModelId().isBlank()) {
+                            repository.findById(uc.outputModelId(), ModelEntity.class)
+                                    .ifPresent(om -> item.put("outputModel", fromJson(toJson(om))));
+                        }
+                        mcpUseCases.add(item);
+                    });
+        }
+        if (!mcpUseCases.isEmpty()) {
+            Map<String, Object> mcpModel = buildBaseModel(project, service, boundedContext);
+            mcpModel.put("mcpUseCases", mcpUseCases);
+            mcpModel.put("serviceSlug", serviceName(service));
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/mcp");
+            createFile(boundedContextDir, mcpModel, "mcp-server.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/mcp/McpServer.java");
+        }
+
         // Sagas
         if (boundedContext.sagaIds() != null) {
             boundedContext.sagaIds().stream()

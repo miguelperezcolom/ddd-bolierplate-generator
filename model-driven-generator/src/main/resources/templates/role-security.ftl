@@ -91,14 +91,44 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Generated scaffold: permit all requests so the Mateu UI works out of the box.
             // CSRF is disabled because the Mateu sync API is called via JSON (no CSRF token).
-            // Tighten this (authentication + role rules using the ROLE_* constants above)
-            // when wiring real authentication.
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            .authorizeHttpRequests(auth -> auth
+                // Service-to-service borders (consumed by sibling gateways and external
+                // ACLs): machine identity, not an interactive session. Tighten with real
+                // credentials when the deployment needs it.
+                .requestMatchers("/v1/**").permitAll()
+                .anyRequest().authenticated())
+            // Browser: form login. Agents and APIs (MCP included): HTTP Basic, and a plain
+            // 401 instead of the login redirect.
+            .formLogin(login -> login.defaultSuccessUrl("/", true))
+            .httpBasic(basic -> { })
+            .exceptionHandling(exceptions -> exceptions.defaultAuthenticationEntryPointFor(
+                new org.springframework.security.web.authentication.HttpStatusEntryPoint(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED),
+                request -> request.getRequestURI().startsWith("/mcp")))
+            .logout(logout -> logout.logoutSuccessUrl("/login"));
         return http.build();
     }
+
+<#if roles?has_content>
+    /**
+     * Scaffold users, one per model role (username = password = the role's name in lower
+     * case). Replace with a real identity provider before shipping.
+     */
+    @Bean
+    public org.springframework.security.core.userdetails.UserDetailsService users() {
+        return new org.springframework.security.provisioning.InMemoryUserDetailsManager(
+<#list roles as role>
+            org.springframework.security.core.userdetails.User
+                .withUsername("${role.name?lower_case?replace("[^a-z0-9]","",'r')}")
+                .password("{noop}${role.name?lower_case?replace("[^a-z0-9]","",'r')}")
+                .roles("${role.name?upper_case?replace("[^A-Z0-9]","_",'r')}")
+                .build()<#sep>,</#sep>
+</#list>
+        );
+    }
+</#if>
 </#if>
 
 }
