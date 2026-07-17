@@ -927,6 +927,32 @@ public class GenerateCodeUseCase {
         // executes the use case (view model only; menu wiring happens with the module menu).
         if (useCase.exposedAsUi()) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug);
+
+            // Array fields backed by a model become inline-editable grids: resolve each
+            // referenced model to a generated row class (one per model, next to the page).
+            var gridClasses = new HashMap<String, String>();
+            if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
+                repository.findById(useCase.inputModelId(), ModelEntity.class).ifPresent(im -> {
+                    for (var f : im.fields() != null ? im.fields() : List.<ModelFieldEntity>of()) {
+                        if (!f.basicType() && f.modelId() != null && !f.modelId().isBlank()
+                                && f.type() != null && "array".equals(f.type().name())) {
+                            repository.findById(f.modelId(), ModelEntity.class).ifPresent(gm -> {
+                                var className = toTypeName(gm.name()) + "Fila";
+                                gridClasses.put(f.modelId(), className);
+                                Map<String, Object> filaModel = buildBaseModel(project, service, boundedContext);
+                                filaModel.put("usecase", enrichUseCaseMap(useCase));
+                                filaModel.put("gridModel", fromJson(toJson(gm)));
+                                filaModel.put("gridClassName", className);
+                                createFile(boundedContextDir, filaModel, "usecase-page-fila.ftl",
+                                        "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/"
+                                                + ucSlug + "/" + className + ".java");
+                            });
+                        }
+                    }
+                });
+            }
+            model.put("gridClasses", gridClasses);
+
             createFile(boundedContextDir, model, "usecase-page.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
                             + "/" + capitalize(useCase.name()) + "Page.java");

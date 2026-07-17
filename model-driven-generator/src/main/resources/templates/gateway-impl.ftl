@@ -63,7 +63,7 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 <#if op.parameters?has_content><#list op.parameters as p><#if p.location=="query"><#assign __qs = __qs + ((__qs=="")?then("?","&")) + p.name + "={" + p.name + "}"></#if></#list></#if>
 <#assign __url = 'baseUrl + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + __qs + '"'>
     @Override
-    public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>) {
+    public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#elseif (f.type!"") == "array">String ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>) {
         var requestHeaders = authHeaders();
 <#if op.parameters?has_content>
 <#list op.parameters as p>
@@ -85,7 +85,7 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
         var requestBody = new java.util.HashMap<String, Object>();
 <#if op.inputModel?? && op.inputModel.fields?has_content>
 <#list op.inputModel.fields as f>
-        requestBody.put("${f.name}", ${f.name}<#if !f.basicType>Id</#if>);
+        requestBody.put("${f.name}", ${f.name}<#if !f.basicType && (f.type!"") != "array">Id</#if>);
 </#list>
 </#if>
         var requestEntity = new org.springframework.http.HttpEntity<Object>(requestBody, requestHeaders);

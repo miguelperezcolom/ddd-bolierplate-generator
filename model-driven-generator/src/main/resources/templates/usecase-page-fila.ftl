@@ -1,7 +1,10 @@
-package ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')};
+<#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
+package ${project.packageName}.${module.slug}.infra.in.ui.pages.${ucSlug};
+
+import io.mateu.uidl.annotations.Label;
+import lombok.Data;
 <#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false>
-<#if inputModel?? && inputModel.fields?has_content>
-<#list inputModel.fields as field>
+<#list gridModel.fields![] as field>
 <#if field.basicType?? && field.basicType>
 <#if field.type == "date"><#assign hasDate = true></#if>
 <#if field.type == "time"><#assign hasTime = true></#if>
@@ -9,8 +12,8 @@ package ${project.packageName}.${module.slug}.application.usecases.${usecase.nam
 <#if field.type == "number" || field.type == "money"><#assign hasBigDecimal = true></#if>
 </#if>
 </#list>
-</#if>
 <#if hasDate>
+
 import java.time.LocalDate;
 </#if>
 <#if hasTime>
@@ -23,33 +26,30 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 </#if>
 
-public record ${usecase.name?cap_first}Command(
-<#if inputModel?? && inputModel.fields?has_content>
-<#list inputModel.fields as field>
+/** Editable row of the "${gridModel.name}" inline collection (see ${usecase.name?cap_first}Page). */
+@Data
+public class ${gridClassName} {
+
+<#list gridModel.fields![] as field>
+<#assign lbl = (field.label?? && field.label?has_content)?then('@Label("' + field.label + '") ', '')>
 <#if field.basicType?? && field.basicType>
     <#if field.type == "integer">
-    Integer ${field.name}<#sep>,</#sep>
+    ${lbl}Integer ${field.name};
     <#elseif field.type == "number" || field.type == "money">
-    BigDecimal ${field.name}<#sep>,</#sep>
+    ${lbl}BigDecimal ${field.name};
     <#elseif field.type == "bool">
-    Boolean ${field.name}<#sep>,</#sep>
+    ${lbl}Boolean ${field.name};
     <#elseif field.type == "date">
-    LocalDate ${field.name}<#sep>,</#sep>
+    ${lbl}LocalDate ${field.name};
     <#elseif field.type == "time">
-    LocalTime ${field.name}<#sep>,</#sep>
+    ${lbl}LocalTime ${field.name};
     <#elseif field.type == "dateTime">
-    LocalDateTime ${field.name}<#sep>,</#sep>
+    ${lbl}LocalDateTime ${field.name};
     <#else>
-    String ${field.name}<#sep>,</#sep>
+    ${lbl}String ${field.name} = "";
     </#if>
-<#elseif field.type?? && field.type == "array">
-    /** JSON array of ${field.modelId!'?'} items. */
-    String ${field.name}<#sep>,</#sep>
 <#else>
-    String ${field.name}Id<#sep>,</#sep>
+    ${lbl}String ${field.name} = "";
 </#if>
 </#list>
-<#else>
-    String id
-</#if>
-) {}
+}

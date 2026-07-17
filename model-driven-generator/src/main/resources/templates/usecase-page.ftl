@@ -1,7 +1,15 @@
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign ucClass = usecase.name?cap_first>
+<#function isGrid field><#return !(field.basicType?? && field.basicType) && (field.type!"") == "array" && field.modelId?? && gridClasses?? && gridClasses[field.modelId]??></#function>
+<#assign hasGrids = false>
+<#if inputModel?? && inputModel.fields?has_content>
+<#list inputModel.fields as field><#if isGrid(field)><#assign hasGrids = true></#if></#list>
+</#if>
 package ${project.packageName}.${module.slug}.infra.in.ui.pages.${ucSlug};
 
+<#if hasGrids>
+import com.fasterxml.jackson.databind.ObjectMapper;
+</#if>
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}Command;
 <#if outputModel??>
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}Result;
@@ -9,6 +17,9 @@ import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${uc
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}UseCase;
 import io.mateu.uidl.StyleConstants;
 import io.mateu.uidl.annotations.Button;
+<#if hasGrids>
+import io.mateu.uidl.annotations.InlineEditing;
+</#if>
 import io.mateu.uidl.annotations.Label;
 import io.mateu.uidl.annotations.Notice;
 import io.mateu.uidl.annotations.Stereotype;
@@ -18,6 +29,9 @@ import io.mateu.uidl.data.ButtonStyle;
 import io.mateu.uidl.data.FieldStereotype;
 import io.mateu.uidl.data.Message;
 import io.mateu.uidl.data.State;
+<#if hasGrids>
+import lombok.SneakyThrows;
+</#if>
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -43,6 +57,9 @@ import java.time.LocalDateTime;
 </#if>
 <#if hasBigDecimal>
 import java.math.BigDecimal;
+</#if>
+<#if hasGrids>
+import java.util.ArrayList;
 </#if>
 import java.util.List;
 
@@ -79,6 +96,10 @@ public class ${ucClass}Page {
     <#else>
     ${lbl}String ${field.name};
     </#if>
+<#elseif isGrid(field)>
+    ${lbl}@InlineEditing
+    @Stereotype(FieldStereotype.grid)
+    List<${gridClasses[field.modelId]}> ${field.name} = new ArrayList<>();
 <#else>
     ${lbl}String ${field.name}Id;
 </#if>
@@ -91,17 +112,24 @@ public class ${ucClass}Page {
     String resultado = "";
 
     private final ${ucClass}UseCase useCase;
+<#if hasGrids>
+    private final ObjectMapper objectMapper;
+</#if>
 
     @Button(buttonStyle = ButtonStyle.primary)
+<#if hasGrids>
+    @SneakyThrows
+</#if>
     public Object ${usecase.name?uncap_first}() {
+<#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
 <#if outputModel??>
-        ${ucClass}Result result = useCase.handle(new ${ucClass}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if>));
-        resultado = <#list outputModel.fields![] as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if>;
+        ${ucClass}Result result = useCase.handle(new ${ucClass}Command(${args}));
+        resultado = <#list outputModel.fields![] as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array">Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if>;
 <#else>
-        useCase.handle(new ${ucClass}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if>));
+        useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";
 </#if>
-        return List.of(new Message("${usecase.name?cap_first}: hecho"), new State(this));
+        return List.of(new Message("${usecase.title!usecase.name?cap_first}: hecho"), new State(this));
     }
 
 }

@@ -43,6 +43,9 @@ public record ${usecase.name?cap_first}Result(
     <#else>
     String ${field.name}<#sep>,</#sep>
     </#if>
+<#elseif field.type?? && field.type == "array">
+    /** JSON array of ${field.modelId!'?'} items. */
+    String ${field.name}<#sep>,</#sep>
 <#else>
     String ${field.name}Id<#sep>,</#sep>
 </#if>

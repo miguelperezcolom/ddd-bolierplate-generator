@@ -17,7 +17,7 @@ public interface ${gateway.name?cap_first}Gateway {
 
 <#if gateway.operations?has_content>
 <#list gateway.operations as op>
-    <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>);
+    <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#elseif (f.type!"") == "array">String ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>);
 
 </#list>
 <#else>
