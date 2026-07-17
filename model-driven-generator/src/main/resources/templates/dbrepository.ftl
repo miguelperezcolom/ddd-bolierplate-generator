@@ -10,6 +10,7 @@ import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r
     </#if>
 </#list>
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Optional;
 public class ${aggregate.name}DBRepository implements ${aggregate.name}Repository {
 
     final ${aggregate.name}EntityRepository repository;
+    final ApplicationEventPublisher domainEvents;
 
     @Override
     public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
@@ -71,7 +73,11 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public ${aggregate.name}Id save(${aggregate.name} domain) {
-        return new ${aggregate.name}Id(repository.save(toEntity(domain)).getId());
+        var id = new ${aggregate.name}Id(repository.save(toEntity(domain)).getId());
+        // Domain events raised inside the aggregate (AggregateRoot.send) surface as Spring
+        // application events on save — in-process policies subscribe with @EventListener.
+        domain.popEvents().forEach(domainEvents::publishEvent);
+        return id;
     }
 
     @Override

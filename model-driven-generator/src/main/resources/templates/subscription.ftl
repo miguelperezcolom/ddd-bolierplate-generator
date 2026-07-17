@@ -30,6 +30,9 @@ import ${project.packageName}.${module.slug}.application.usecases.${action.useCa
 <#if hasCallUseCase>
 import com.fasterxml.jackson.databind.ObjectMapper;
 </#if>
+<#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
+import ${project.packageName}.${module.slug}.infra.out.inbox.Inbox;
+</#if>
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
@@ -56,24 +59,21 @@ public class ${subscription.name?cap_first}Subscription {
 <#if hasCallUseCase>
     final ObjectMapper mapper;
 </#if>
+<#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
+    final Inbox inbox;
+</#if>
 
     @Bean
     public Consumer<Message<String>> ${subscription.name?uncap_first}() {
         return message -> {
 <#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
-            // Idempotent consumer (inbox pattern): Kafka delivery is at-least-once, so the
-            // same message may be redelivered (retries, rebalances, DLQ replays). Deduplicate
-            // on a STABLE, producer-assigned id BEFORE applying any side effect.
-<#if subscription.idempotencyKeyField?? && subscription.idempotencyKeyField?has_content>
-            String idempotencyKey = String.valueOf(message.getHeaders().get("${subscription.idempotencyKeyField}"));
-<#else>
-            // No idempotencyKeyField configured: fall back to the Kafka record key, then the
-            // message id. Map this to your event id for a real at-most-once-effect guarantee.
-            Object idempotencyKeyHeader = message.getHeaders().get("kafka_messageKey");
-            String idempotencyKey = String.valueOf(idempotencyKeyHeader != null ? idempotencyKeyHeader : message.getHeaders().getId());
-</#if>
-            // TODO: inject your inbox store and skip messages already processed, e.g.:
-            // if (inboxStore.alreadyProcessed("${subscription.name}", idempotencyKey)) return;
+            // Idempotent consumer (inbox pattern): at-least-once delivery redelivers the SAME
+            // payload (retries, rebalances, DLQ replays) — dedup on the message hash, before
+            // any side effect.
+            var messageHash = Inbox.hashOf(message.getPayload());
+            if (inbox.alreadyProcessed("${subscription.name}", messageHash)) {
+                return;
+            }
 </#if>
 <#if hasCallUseCase>
             try {
@@ -130,9 +130,7 @@ public class ${subscription.name?cap_first}Subscription {
             // TODO: no CallUseCase actions configured
 </#if>
 <#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
-            // Record the message as processed AFTER the side effects succeed, ideally in the
-            // same transaction, so a crash before commit lets the message be safely reprocessed:
-            // inboxStore.markProcessed("${subscription.name}", idempotencyKey);
+            inbox.markProcessed("${subscription.name}", messageHash);
 </#if>
         };
     }

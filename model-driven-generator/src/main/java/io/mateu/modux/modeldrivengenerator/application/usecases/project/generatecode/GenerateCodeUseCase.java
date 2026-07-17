@@ -396,12 +396,23 @@ public class GenerateCodeUseCase {
                     .forEach(event -> generateDomainEvent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, event));
         }
 
-        // Subscriptions
-        if (boundedContext.subscriptionIds() != null) {
-            boundedContext.subscriptionIds().stream()
+        // Subscriptions (idempotent ones lean on the generated inbox)
+        if (boundedContext.subscriptionIds() != null && !boundedContext.subscriptionIds().isEmpty()) {
+            var subscriptions = boundedContext.subscriptionIds().stream()
                     .map(id -> repository.findById(id, SubscriptionEntity.class).orElseThrow())
                     .filter(subscription -> inScope(subscription.id()))
-                    .forEach(subscription -> generateSubscription(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, subscription));
+                    .toList();
+            subscriptions.forEach(subscription -> generateSubscription(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, subscription));
+            if (subscriptions.stream().anyMatch(SubscriptionEntity::idempotencyEnabled)) {
+                Map<String, Object> inboxModel = buildBaseModel(project, service, boundedContext);
+                createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/inbox");
+                createFile(boundedContextDir, inboxModel, "inbox-entity.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/infra/out/inbox/InboxEntity.java");
+                createFile(boundedContextDir, inboxModel, "inbox-repository.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/infra/out/inbox/InboxEntityRepository.java");
+                createFile(boundedContextDir, inboxModel, "inbox.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/infra/out/inbox/Inbox.java");
+            }
         }
 
         // Scheduled triggers
@@ -1719,6 +1730,24 @@ public class GenerateCodeUseCase {
                     .filter(rm -> boundedContext.id().equals(rm.boundedContextId()))
                     .filter(rm -> inScope(rm.id()))
                     .forEach(rm -> tables.add(readModelTable(rm)));
+        }
+
+        // Inbox table for idempotent subscriptions (see inbox.ftl)
+        var needsInbox = deployedUnits(service).stream()
+                .flatMap(bc -> (bc.subscriptionIds() != null ? bc.subscriptionIds() : List.<String>of()).stream())
+                .map(id -> repository.findById(id, SubscriptionEntity.class).orElse(null))
+                .anyMatch(sub -> sub != null && sub.idempotencyEnabled());
+        if (needsInbox) {
+            var inboxColumns = new ArrayList<Map<String, Object>>();
+            inboxColumns.add(column("id", "bigint", true));
+            inboxColumns.add(column("subscription_name", "varchar(255)", false));
+            inboxColumns.add(column("message_hash", "varchar(64)", false));
+            inboxColumns.add(column("processed_at", "timestamp", false));
+            var inboxTable = new HashMap<String, Object>();
+            inboxTable.put("name", "modux_inbox");
+            inboxTable.put("columns", inboxColumns);
+            inboxTable.put("sequence", "modux_inbox_sequence");
+            tables.add(inboxTable);
         }
         if (tables.isEmpty()) return;
 
