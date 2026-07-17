@@ -88,23 +88,29 @@ The first app pays for the metamodel's gaps; the second one inherits them solved
 
 The whole case was built by an AI agent, and the same spec was **also implemented directly**
 by the same agent in the same repository (a modular monolith with a handwritten UI). That
-gives something unusual: the token bill of both paths, read straight from the session logs
-(output tokens per API call, the modux segment split at the message that started it).
+gives something unusual: the token bill of both paths, read straight from the session logs.
+Method: output tokens per API call, each message attributed by the files and topics it touched
+— so the tokens spent **improving the generator itself** (a one-time framework investment)
+are separated from the tokens spent **building the app** (model, hooks, verification), which
+is the fair per-app figure.
 
 | Path | Agent output tokens (measured) | Delivered artifact | Output tokens per delivered line |
 |---|---|---|---|
-| Direct: the agent writes the system (monolith + one UI, MCP, simulator, tests) | ~234k | ~7,400 lines | **~31** |
-| Modux, *first* app: model + hooks — **plus evolving the generator itself** (15 features), full docker verification and docs | ~421k | ~26,400 lines (6 microservices, tests, migrations, infra) | **~16** |
-| Modux, *next* app of this size: model + hooks only | ~53k emitted (~100k with iteration, estimated) | ~26,400 lines | **~4** |
+| Direct: the agent writes the system (monolith + one UI, MCP, simulator, tests) | ~192k | ~7,400 lines | **~26** |
+| Modux, app work only: authoring + enriching the model, implementing the hooks, verifying the flows against the deployed system | ~275k | ~26,400 lines (6 microservices, tests, migrations, infra) | **~10** |
+| Modux, *next* app of this size: model + hooks, no metamodel gaps to discover | ~53k emitted (~100k with iteration, estimated) | ~26,400 lines | **~4** |
 
-Read it carefully, because the honest version is the strong one:
+Excluded from the app row, and measured separately: **~180k** tokens went into evolving the
+generator (the 15 features listed above, plus its docs) — paid once, inherited by every model
+after this one.
 
-- **Even while paying for the generator's missing features**, the modux path delivered each
-  line for *half* the tokens of the direct path — and delivered a distributed system, not a
-  monolith.
-- **The marginal app is ~8× cheaper per line** than direct agent work: the agent authors
-  ~4,400 lines of intent (model + hooks) and deterministic, tested templates emit the other
-  ~21,400 at zero token cost, with no review-and-fix loops over boilerplate.
+Read it carefully:
+
+- **App for app, each delivered line cost 2.5× fewer tokens** than direct agent work — and
+  bought a distributed system (Kafka, Postgres, k8s) instead of a monolith.
+- **The marginal app is ~6–7× cheaper per line**: the agent authors ~4,400 lines of intent
+  (model + hooks) and deterministic, tested templates emit the other ~21,400 at zero token
+  cost, with no review-and-fix loops over boilerplate.
 - **Evolution is where the gap keeps widening.** Adding a field, an event or a use case is a
   few YAML lines; regeneration rewrites thousands of lines across services — migrations
   included — for zero tokens. And every future agent session reasons over the 2,777-line
