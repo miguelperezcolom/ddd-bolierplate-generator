@@ -76,6 +76,7 @@ export default defineConfig({
 						{ label: 'Generated Code Structure', slug: 'reference/generated-code' },
 						{ label: 'Architecture Patterns', slug: 'reference/patterns' },
 						{ label: 'Examples Catalog', slug: 'reference/examples' },
+						{ label: 'Case Study: a CRS, End to End', slug: 'reference/case-study-booking' },
 						{ label: 'Maven Plugin', slug: 'reference/maven-plugin' },
 					],
 				},
