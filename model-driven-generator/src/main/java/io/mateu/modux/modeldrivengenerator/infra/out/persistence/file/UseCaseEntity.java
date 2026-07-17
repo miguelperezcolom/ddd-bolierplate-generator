@@ -43,11 +43,40 @@ public record UseCaseEntity(
          * not express a business case — it exists to react to events (the lilac sticky in
          * an EventStorming). Policies stay out of business catalogs and UI derivations.
          */
-        boolean policy
+        boolean policy,
+        /** Optional human title for UIs and catalogs; falls back to the name. */
+        String title,
+        /**
+         * When set, the use case surfaces as a per-row action on that aggregate's generated
+         * CRUD listing (its command takes the row id). E.g. RelanzarCompra on CompraHotel.
+         */
+        String rowActionForAggregateId
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-title/rowAction callers). */
+    public UseCaseEntity(String id, String name, boolean exposedAsRest, boolean exposedAsGrpc,
+                         boolean exposedAsMcp, boolean exposedAsAsync, boolean exposedAsUi,
+                         String inputModelId, String outputModelId, List<UseCaseStepEntity> steps,
+                         List<String> allowedRoles, List<String> allowedScopes, String apiVersion,
+                         String mcpDescription, String restHttpMethod, String restPath,
+                         Integer asyncRetryCount, String asyncDeadLetterQueue, String asyncOrderingKey,
+                         String asyncTopicName, String asyncConsumerGroup, boolean cacheable,
+                         Integer cacheTtlSeconds, Long timeoutMs, String transactionBoundary,
+                         boolean idempotencyEnabled, String idempotencyKeyField,
+                         boolean rateLimitEnabled, Integer rateLimitRequestsPerSecond,
+                         String grpcServiceName, String grpcMethodName, List<String> decisionIds,
+                         boolean policy, String projectId) {
+        this(id, name, exposedAsRest, exposedAsGrpc, exposedAsMcp, exposedAsAsync, exposedAsUi,
+                inputModelId, outputModelId, steps, allowedRoles, allowedScopes, apiVersion,
+                mcpDescription, restHttpMethod, restPath, asyncRetryCount, asyncDeadLetterQueue,
+                asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
+                timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
+                rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
+                decisionIds, policy, null, null, projectId);
+    }
 
     /** Backward-compatible constructor (pre-policy callers). */
     public UseCaseEntity(String id, String name, boolean exposedAsRest, boolean exposedAsGrpc,
@@ -67,7 +96,7 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                decisionIds, false, null);
+                decisionIds, false, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -88,6 +117,6 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                List.of(), false, null);
+                List.of(), false, null, null, null);
     }
 }

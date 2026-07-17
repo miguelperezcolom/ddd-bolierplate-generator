@@ -9,6 +9,7 @@ import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${uc
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}UseCase;
 import io.mateu.uidl.StyleConstants;
 import io.mateu.uidl.annotations.Button;
+import io.mateu.uidl.annotations.Label;
 import io.mateu.uidl.annotations.Notice;
 import io.mateu.uidl.annotations.Stereotype;
 import io.mateu.uidl.annotations.Style;
@@ -52,33 +53,34 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
-@Title("${usecase.name?cap_first}")
+@Title("${usecase.title!usecase.name?cap_first}")
 @Style(StyleConstants.CONTAINER)
 public class ${ucClass}Page {
 
 <#if inputModel?? && inputModel.fields?has_content>
 <#list inputModel.fields as field>
+<#assign lbl = (field.label?? && field.label?has_content)?then('@Label("' + field.label + '")\n    ', '')>
 <#if field.basicType?? && field.basicType>
     <#if field.type == "integer">
-    Integer ${field.name};
+    ${lbl}Integer ${field.name};
     <#elseif field.type == "number" || field.type == "money">
-    BigDecimal ${field.name};
+    ${lbl}BigDecimal ${field.name};
     <#elseif field.type == "bool">
-    Boolean ${field.name};
+    ${lbl}Boolean ${field.name};
     <#elseif field.type == "date">
-    LocalDate ${field.name};
+    ${lbl}LocalDate ${field.name};
     <#elseif field.type == "time">
-    LocalTime ${field.name};
+    ${lbl}LocalTime ${field.name};
     <#elseif field.type == "dateTime">
-    LocalDateTime ${field.name};
+    ${lbl}LocalDateTime ${field.name};
     <#elseif field.type == "array" || field.type == "json">
-    @Stereotype(FieldStereotype.textarea)
+    ${lbl}@Stereotype(FieldStereotype.textarea)
     String ${field.name};
     <#else>
-    String ${field.name};
+    ${lbl}String ${field.name};
     </#if>
 <#else>
-    String ${field.name}Id;
+    ${lbl}String ${field.name}Id;
 </#if>
 </#list>
 <#else>
@@ -94,7 +96,7 @@ public class ${ucClass}Page {
     public Object ${usecase.name?uncap_first}() {
 <#if outputModel??>
         ${ucClass}Result result = useCase.handle(new ${ucClass}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if>));
-        resultado = String.valueOf(result);
+        resultado = <#list outputModel.fields![] as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if>));
         resultado = "${usecase.name} ejecutado";

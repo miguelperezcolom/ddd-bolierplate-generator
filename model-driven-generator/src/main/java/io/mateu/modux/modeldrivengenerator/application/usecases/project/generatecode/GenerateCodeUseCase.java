@@ -368,6 +368,7 @@ public class GenerateCodeUseCase {
                     m.put("className", capitalize(uc.name()) + "Page");
                     m.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
                     m.put("fieldName", uncapitalize(capitalize(uc.name())));
+                    m.put("title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name());
                     return m;
                 })
                 .toList();
@@ -2820,6 +2821,9 @@ public class GenerateCodeUseCase {
                             fieldMap.put("visible", true);
                             fieldMap.put("mandatory", false);
                             fieldMap.put("readonly", false);
+                            fieldMap.put("label", f.label());
+                            fieldMap.put("priority", f.priority());
+                            fieldMap.put("identifier", Boolean.TRUE.equals(f.identifier()));
                             if (f.basicType()) {
                                 fieldMap.put("type", "Wrapper");
                                 fieldMap.put("primitiveType", mapFieldDataType(f.type()));

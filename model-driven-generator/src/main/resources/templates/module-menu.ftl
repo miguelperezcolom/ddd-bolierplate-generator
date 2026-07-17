@@ -1,5 +1,6 @@
 package ${project.packageName}.${module.slug}.infra.in.ui.menu;
 
+import io.mateu.uidl.annotations.Label;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 <#list uiUseCases![] as uc>
@@ -14,10 +15,12 @@ public class ${moduleMenuClassName} {
 
 <#list uiUseCases![] as uc>
     @Menu
+    @Label("${uc.title}")
     ${uc.className} ${uc.fieldName};
 </#list>
 <#list module.aggregates as aggregate>
     @Menu
+    @Label("${aggregate.title!(aggregate.name + 's')}")
     ${aggregate.name}CrudOrchestrator ${aggregate.name?lower_case}s;
 </#list>
 

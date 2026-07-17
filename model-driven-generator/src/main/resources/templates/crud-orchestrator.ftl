@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Scope("prototype")
-@Title("${aggregate.name}s")
+@Title("${aggregate.title!(aggregate.name + 's')}")
 public class ${aggregate.name}CrudOrchestrator extends Crud<
 ${aggregate.name}ViewModel,
 ${aggregate.name}ViewModel,

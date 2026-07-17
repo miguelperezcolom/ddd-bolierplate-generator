@@ -26,7 +26,9 @@ public record AggregateEntity(
         /** When true, every change to the aggregate is recorded with who/what/when (audit trail). */
         boolean audited,
         /** Architecture decisions (ADRs) this aggregate traces back to. */
-        List<String> decisionIds
+        List<String> decisionIds,
+        /** Optional human title for UIs and catalogs; falls back to the name. */
+        String title
         ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId
@@ -41,7 +43,22 @@ public record AggregateEntity(
                            List<InvariantEntity> invariants, List<String> valueObjectIds) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, null, false, List.of(), null);
+                operations, invariants, valueObjectIds, null, false, List.of(), null, null);
+    }
+
+    /** Backward-compatible constructor (pre-title callers). */
+    public AggregateEntity(String id, String name, String modelId,
+                           AggregatePersistenceType persistenceType, AggregateIdType idType,
+                           String tableName, String tableSchema,
+                           boolean optimisticLockingEnabled, boolean eventSourcingEnabled,
+                           Integer snapshotFrequency, List<OperationEntity> operations,
+                           List<InvariantEntity> invariants, List<String> valueObjectIds,
+                           LifecycleEntity lifecycle, boolean audited, List<String> decisionIds,
+                           String projectId) {
+        this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
+                optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
+                operations, invariants, valueObjectIds, lifecycle, audited, decisionIds,
+                null, projectId);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -54,7 +71,7 @@ public record AggregateEntity(
                            LifecycleEntity lifecycle, boolean audited) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, lifecycle, audited, List.of(), null);
+                operations, invariants, valueObjectIds, lifecycle, audited, List.of(), null, null);
     }
 
     @Override
