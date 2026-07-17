@@ -5,6 +5,8 @@ description: How to edit the Modux YAML spec file in IntelliJ or VSCode with ful
 
 In addition to the Modux UI, you can edit the spec file directly as YAML. This is useful for bulk edits, version-controlled diffs, copy-pasting between projects, or working offline.
 
+**Authoring with an AI agent?** Point it at the [compact authoring reference](/modux-ai-compact.md) — one page with the metamodel's mental map, the idioms that carry the architecture, and the pitfalls that otherwise cost a failed generation each. It exists because we measured what a first-time agent spends discovering them (see the [case study](/reference/case-study-booking/)).
+
 The spec file and its JSON Schema live side-by-side in `.dev/data/`:
 
 ```
