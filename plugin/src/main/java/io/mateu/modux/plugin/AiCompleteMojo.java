@@ -2,13 +2,10 @@ package io.mateu.modux.plugin;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.ai.ClaudeApiClient;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @Mojo(name = "ai-complete")
 public class AiCompleteMojo extends AbstractMojo {
@@ -47,12 +44,7 @@ public class AiCompleteMojo extends AbstractMojo {
         getLog().info("Modux AI complete: project '" + projectId + "' using model " + model);
         System.setProperty("modux.model-file", specFile);
 
-        try (var ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(CommonFileRepository.class, ClaudeApiClient.class, AiCompleteCodeUseCase.class,
-                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelJsonSchemaGenerator.class,
-                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.MonolithicYamlStorageFormat.class,
-                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.GranularYamlStorageFormat.class);
-            ctx.refresh();
+        try (var ctx = ModuxContext.create()) {
             ctx.getBean(AiCompleteCodeUseCase.class)
                .handle(new AiCompleteCodeCommand(projectId, outputPath, packageName, apiKey, model));
         } catch (Exception e) {

@@ -2,13 +2,11 @@ package io.mateu.modux.plugin;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class GenerateMojo extends AbstractMojo {
@@ -34,9 +32,7 @@ public class GenerateMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         getLog().info("Modux: generating code for project '" + projectId + "' from " + specFile);
         System.setProperty("modux.model-file", specFile);
-        try (var ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(CommonFileRepository.class, GenerateCodeUseCase.class);
-            ctx.refresh();
+        try (var ctx = ModuxContext.create()) {
             ctx.getBean(GenerateCodeUseCase.class)
                .handle(new GenerateCodeCommand(projectId, outputPath, packageName, sourceOnly));
         } catch (Exception e) {

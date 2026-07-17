@@ -9,6 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ${project.packageName}.${module.slug}.application.out.${aggregate.name}Repository;
 import ${project.packageName}.${module.slug}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
 import ${project.packageName}.${module.slug}.domain.aggregates.${aggregate.name?lower_case}.vo.${aggregate.name}Id;
+<#if aggregate.invariants?has_content>
+import ${project.packageName}.${module.slug}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name}Invariants;
+</#if>
 import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -19,6 +22,11 @@ class Update${aggregate.name}UseCaseTest {
     @Mock
     ${aggregate.name}Repository repository;
 
+<#if aggregate.invariants?has_content>
+    @Mock
+    ${aggregate.name}Invariants invariants;
+
+</#if>
     @InjectMocks
     Update${aggregate.name}UseCase useCase;
 
@@ -26,7 +34,7 @@ class Update${aggregate.name}UseCaseTest {
     void should_update_and_persist() {
         var existing = new ${aggregate.name}();
         when(repository.findById(any(${aggregate.name}Id.class))).thenReturn(Optional.of(existing));
-        var command = new Update${aggregate.name}Command(null<#list safeFields as field>, null</#list>);
+        var command = new Update${aggregate.name}Command("1"<#list safeFields as field>, null</#list>);
         useCase.handle(command);
         verify(repository).save(existing);
     }

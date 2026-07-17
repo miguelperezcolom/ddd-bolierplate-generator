@@ -2,12 +2,10 @@ package io.mateu.modux.plugin;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importasyncapi.ImportAsyncApiCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importasyncapi.ImportAsyncApiUseCase;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.CommonFileRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 @Mojo(name = "import-asyncapi")
 public class ImportAsyncApiMojo extends AbstractMojo {
@@ -27,9 +25,7 @@ public class ImportAsyncApiMojo extends AbstractMojo {
         getLog().info("Modux import-asyncapi: " + filePath);
         System.setProperty("modux.model-file", specFile);
 
-        try (var ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(CommonFileRepository.class, ImportAsyncApiUseCase.class);
-            ctx.refresh();
+        try (var ctx = ModuxContext.create()) {
             ctx.getBean(ImportAsyncApiUseCase.class)
                .handle(new ImportAsyncApiCommand(boundedContextId, filePath));
         } catch (Exception e) {

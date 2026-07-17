@@ -28,6 +28,9 @@ import ${project.packageName}.${module.slug}.application.usecases.${step.useCase
 </#if>
 </#list>
 </#if>
+<#if usecase.needsStreamBridge>
+import org.springframework.cloud.stream.function.StreamBridge;
+</#if>
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,6 +64,16 @@ class ${usecase.name?cap_first}UseCaseTest {
 </#if>
 </#if>
 </#list>
+</#if>
+<#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
+    @Mock
+    ${usecase.name?cap_first}Steps steps;
+
+</#if>
+<#if usecase.needsStreamBridge>
+    @Mock
+    StreamBridge streamBridge;
+
 </#if>
     @InjectMocks
     ${usecase.name?cap_first}UseCase useCase;
