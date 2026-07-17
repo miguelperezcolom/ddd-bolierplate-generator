@@ -83,3 +83,30 @@ generator feature, shipped with tests, that every future model gets for free:
   Docker images, dual-listener Kafka, per-environment gateway base URLs.
 
 The first app pays for the metamodel's gaps; the second one inherits them solved.
+
+## Token economics: measured, not estimated
+
+The whole case was built by an AI agent, and the same spec was **also implemented directly**
+by the same agent in the same repository (a modular monolith with a handwritten UI). That
+gives something unusual: the token bill of both paths, read straight from the session logs
+(output tokens per API call, the modux segment split at the message that started it).
+
+| Path | Agent output tokens (measured) | Delivered artifact | Output tokens per delivered line |
+|---|---|---|---|
+| Direct: the agent writes the system (monolith + one UI, MCP, simulator, tests) | ~234k | ~7,400 lines | **~31** |
+| Modux, *first* app: model + hooks — **plus evolving the generator itself** (15 features), full docker verification and docs | ~421k | ~26,400 lines (6 microservices, tests, migrations, infra) | **~16** |
+| Modux, *next* app of this size: model + hooks only | ~53k emitted (~100k with iteration, estimated) | ~26,400 lines | **~4** |
+
+Read it carefully, because the honest version is the strong one:
+
+- **Even while paying for the generator's missing features**, the modux path delivered each
+  line for *half* the tokens of the direct path — and delivered a distributed system, not a
+  monolith.
+- **The marginal app is ~8× cheaper per line** than direct agent work: the agent authors
+  ~4,400 lines of intent (model + hooks) and deterministic, tested templates emit the other
+  ~21,400 at zero token cost, with no review-and-fix loops over boilerplate.
+- **Evolution is where the gap keeps widening.** Adding a field, an event or a use case is a
+  few YAML lines; regeneration rewrites thousands of lines across services — migrations
+  included — for zero tokens. And every future agent session reasons over the 2,777-line
+  model instead of re-reading a 26,000-line codebase: the model is the cheapest possible
+  context, the system described as intent rather than plumbing.

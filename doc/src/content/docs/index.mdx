@@ -48,3 +48,19 @@ See [Enterprise Information Systems](/getting-started/enterprise-systems/) for *
     Generated projects include Spring Boot 4, Kafka, PostgreSQL, Flyway/Liquibase, and observability support.
   </Card>
 </CardGrid>
+
+## Built for the AI era
+
+When an AI agent builds software, **every line it writes — and later re-reads — costs tokens**.
+With Modux the agent authors the *model* and the business hooks; the rest of the system is
+emitted by deterministic, tested templates at zero token cost, with no review-and-fix loops
+over boilerplate.
+
+Not an estimate — [measured on a real case study](/reference/case-study-booking/), where the
+same agent implemented the same spec both ways: writing the system directly cost **~31 output
+tokens per delivered line**; the Modux path cost **~16 even while building 15 generator
+features it was missing** — for a six-microservice system instead of a monolith — and the next
+app pays only the model and hooks: **~4 tokens per line, roughly 8× cheaper**. The gap keeps
+widening with every evolution: a few YAML lines regenerate thousands across services for free,
+and future sessions reason over a 2,777-line model instead of re-reading a 26,000-line
+codebase.
