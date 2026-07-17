@@ -99,7 +99,11 @@ public class ${usecase.name?cap_first}UseCase {
 <#if usecase.transactionBoundary?? && usecase.transactionBoundary?has_content>
     @Transactional
 </#if>
-    public void handle(${usecase.name?cap_first}Command command) {
+<#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>
+    public <#if outputModel??>${usecase.name?cap_first}Result<#else>void</#if> handle(${usecase.name?cap_first}Command command) {
+<#if outputModel??>
+        ${usecase.name?cap_first}Result result = null;
+</#if>
 <#if usecase.steps?has_content>
 <#list usecase.steps as step>
 <#if step.type == "ReadAggregate" && step.aggregate??>
@@ -134,13 +138,20 @@ public class ${usecase.name?cap_first}UseCase {
         // TODO: apply model mapping (not resolved)
 </#if>
 <#elseif step.type == "Custom">
-        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
+<#if outputModel?? && customSteps?has_content && step.id == customSteps?last.id>
+        result = steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command);
+<#else>
+        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command);
+</#if>
 <#else>
         // TODO: implement step "${step.name}" (${step.type})
 </#if>
 </#list>
 <#else>
         // TODO: implement use case logic
+</#if>
+<#if outputModel??>
+        return result;
 </#if>
     }
 

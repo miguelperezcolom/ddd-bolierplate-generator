@@ -1,6 +1,9 @@
 package ${project.packageName}.${module.slug}.infra.in.rest;
 
 import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}Command;
+<#if outputModel??>
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}Result;
+</#if>
 import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}UseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +20,15 @@ public class ${usecase.name?cap_first}Controller {
     final ${usecase.name?cap_first}UseCase useCase;
 
     @${((usecase.restHttpMethod)!'POST')?lower_case?cap_first}Mapping
+<#if outputModel??>
+    public ResponseEntity<${usecase.name?cap_first}Result> handle(@RequestBody ${usecase.name?cap_first}Command command) {
+        return ResponseEntity.ok(useCase.handle(command));
+    }
+<#else>
     public ResponseEntity<Void> handle(@RequestBody ${usecase.name?cap_first}Command command) {
         useCase.handle(command);
         return ResponseEntity.ok().build();
     }
+</#if>
 
 }

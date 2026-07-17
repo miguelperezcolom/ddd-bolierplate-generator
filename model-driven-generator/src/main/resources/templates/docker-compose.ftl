@@ -39,11 +39,16 @@ services:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
       - zookeeper
+    # Dual listener: services inside the compose network reach the broker at kafka:9092;
+    # apps running on the host (local profile) use localhost:29092 — the advertised
+    # address of each listener must be resolvable by ITS clients or they hang after the
+    # first metadata response.
     ports:
-      - "9092:9092"
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT

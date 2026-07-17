@@ -433,6 +433,19 @@ public class GenerateCodeUseCase {
                 .filter(ie -> inScope(ie.id()))
                 .forEach(ie -> generateIntegrationEvent(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, ie));
 
+        // Integration events derived from domain events flagged publishAsIntegrationEvent:
+        // the domain event already carries the full wire config (topic, format, DLQ), so it
+        // IS the integration event — no separate integrationEvents entry needed in the model.
+        if (boundedContext.domainEventIds() != null) {
+            boundedContext.domainEventIds().stream()
+                    .map(id -> repository.findById(id, DomainEventEntity.class).orElseThrow())
+                    .filter(DomainEventEntity::publishAsIntegrationEvent)
+                    .filter(ev -> ev.topicName() != null && !ev.topicName().isBlank())
+                    .filter(ev -> inScope(ev.id()))
+                    .forEach(ev -> generateIntegrationEventFromDomainEvent(project, service, boundedContext,
+                            boundedContextDir, boundedContextPackageDir, ev));
+        }
+
         // Query services (boundedContext-level, by boundedContextId)
         repository.findAllOfType(QueryServiceEntity.class).stream()
                 .filter(qs -> boundedContext.id().equals(qs.boundedContextId()))
@@ -561,6 +574,40 @@ public class GenerateCodeUseCase {
                     menuBoundedContexts.add(entry);
                 });
         appModel.put("menuModules", menuBoundedContexts);
+
+        // Messaging bindings: every async consumer the service's contexts declare (async use
+        // cases and subscriptions) must be listed in spring.cloud.function.definition and bound
+        // to its topic — otherwise the consumer beans exist but never receive a message.
+        var consumers = new java.util.ArrayList<Map<String, Object>>();
+        for (var bc : deployedUnits(service)) {
+            if (bc.useCaseIds() != null) {
+                bc.useCaseIds().stream()
+                        .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                        .filter(UseCaseEntity::exposedAsAsync)
+                        .forEach(uc -> {
+                            Map<String, Object> c = new HashMap<>();
+                            c.put("function", uncapitalize(capitalize(uc.name())));
+                            c.put("topic", serviceName + "." + uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                            c.put("group", serviceName);
+                            consumers.add(c);
+                        });
+            }
+            if (bc.subscriptionIds() != null) {
+                bc.subscriptionIds().stream()
+                        .map(id -> repository.findById(id, SubscriptionEntity.class).orElseThrow())
+                        .forEach(sub -> {
+                            Map<String, Object> c = new HashMap<>();
+                            c.put("function", uncapitalize(capitalize(sub.name())));
+                            c.put("topic", sub.topicName() != null && !sub.topicName().isBlank()
+                                    ? sub.topicName()
+                                    : serviceName + "." + sub.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                            c.put("group", sub.consumerGroup() != null && !sub.consumerGroup().isBlank()
+                                    ? sub.consumerGroup() : serviceName);
+                            consumers.add(c);
+                        });
+            }
+        }
+        appModel.put("consumers", consumers);
 
         idpFor(project).ifPresent(idp -> appModel.put("idp", idp));
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
@@ -820,10 +867,19 @@ public class GenerateCodeUseCase {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             model.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
         }
+        if (useCase.outputModelId() != null && !useCase.outputModelId().isBlank()) {
+            var outputModel = repository.findById(useCase.outputModelId(), ModelEntity.class).orElse(null);
+            model.put("outputModel", outputModel != null ? fromJson(toJson(outputModel)) : null);
+        }
 
         createFile(boundedContextDir, model, "usecase-command.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "Command.java");
+        if (model.get("outputModel") != null) {
+            createFile(boundedContextDir, model, "usecase-result.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
+                            + "/" + capitalize(useCase.name()) + "Result.java");
+        }
         createFile(boundedContextDir, model, "usecase.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + capitalize(useCase.name()) + "UseCase.java");
@@ -862,6 +918,9 @@ public class GenerateCodeUseCase {
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             testModel.put("inputModel", inputModel != null ? fromJson(toJson(inputModel)) : null);
+        }
+        if (model.get("outputModel") != null) {
+            testModel.put("outputModel", model.get("outputModel"));
         }
         createFile(boundedContextDir, testModel, "usecase-test.ftl",
                 "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
@@ -1145,6 +1204,42 @@ public class GenerateCodeUseCase {
         }
         createFile(boundedContextDir, model, "integration-event-publisher.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + "Publisher.java");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/integration");
+        createFile(boundedContextDir, model, "integration-event-kafka-publisher.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/integration/" + className + "KafkaPublisher.java");
+    }
+
+    /**
+     * A domain event flagged {@code publishAsIntegrationEvent} already carries its full wire
+     * config (topic, serialization, DLQ), so it doubles as the integration event: this emits the
+     * same artifacts as an explicit IntegrationEventEntity — payload record, publisher port and
+     * Kafka implementation — from the domain event itself.
+     */
+    private void generateIntegrationEventFromDomainEvent(ProjectEntity project, ServiceEntity service,
+                                                         BoundedContextEntity boundedContext, String boundedContextDir,
+                                                         String boundedContextPackageDir, DomainEventEntity event) {
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
+        var className = toTypeName(event.name());
+        model.put("className", className);
+        Map<String, Object> ieMap = new HashMap<>();
+        ieMap.put("topicName", event.topicName());
+        model.put("integrationEvent", ieMap);
+        var payloadModelId = event.integrationModelId() != null && !event.integrationModelId().isBlank()
+                ? event.integrationModelId() : event.modelId();
+        if (payloadModelId != null && !payloadModelId.isBlank()) {
+            var payloadModel = repository.findById(payloadModelId, ModelEntity.class).orElse(null);
+            model.put("payloadModel", payloadModel != null ? fromJson(toJson(payloadModel)) : null);
+        }
+        model.put("schemaVersion", schemaVersionOf(event.schemaVersion()));
+
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/out/integration");
+        createFile(boundedContextDir, model, "integration-event.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + ".java");
+        createFile(boundedContextDir, model, "integration-event-publisher.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/application/out/integration/" + className + "Publisher.java");
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/out/integration");
+        createFile(boundedContextDir, model, "integration-event-kafka-publisher.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/out/integration/" + className + "KafkaPublisher.java");
     }
 
     // ─── QueryServices ────────────────────────────────────────────────────────
@@ -2803,10 +2898,32 @@ public class GenerateCodeUseCase {
                 .writerWithDefaultPrettyPrinter().writeValueAsString(new java.util.TreeMap<>(currentManifest)));
     }
 
+    /**
+     * The generated zone is fully owned by the generator, so files the model no longer produces
+     * are deleted on regeneration — otherwise stale adapters (an async consumer whose use case
+     * went REST, say) linger and keep compiling against the new code. Safety valve: a file whose
+     * content no longer matches what we generated (hand-edited despite the contract) is left in
+     * place with a warning instead of being destroyed.
+     */
     private void reportOrphanedGeneratedFiles() {
-        previousManifest.keySet().stream()
-                .filter(rel -> !currentManifest.containsKey(rel))
-                .forEach(rel -> log.info("Previously generated file is no longer produced by the model: {}", rel));
+        previousManifest.entrySet().stream()
+                .filter(e -> !currentManifest.containsKey(e.getKey()))
+                .forEach(e -> {
+                    var file = generationRoot.resolve(e.getKey());
+                    if (!Files.exists(file)) {
+                        return;
+                    }
+                    if (!e.getValue().equals(hashFile(file.toFile()))) {
+                        log.warn("Orphaned generated file was edited by hand, NOT deleting it: {}", e.getKey());
+                        return;
+                    }
+                    try {
+                        Files.delete(file);
+                        log.info("Deleted generated file no longer produced by the model: {}", e.getKey());
+                    } catch (java.io.IOException ex) {
+                        log.warn("Could not delete orphaned generated file {}: {}", e.getKey(), ex.getMessage());
+                    }
+                });
     }
 
     /**

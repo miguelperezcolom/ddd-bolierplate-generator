@@ -35,14 +35,29 @@ spring:
                 format_sql: true
 
     cloud:
+<#if consumers?has_content>
+        function:
+            definition: <#list consumers as c>${c.function}<#sep>;</#sep></#list>
+</#if>
         stream:
+<#if consumers?has_content>
+            bindings:
+<#list consumers as c>
+                ${c.function}-in-0:
+                    destination: ${c.topic}
+                    group: ${c.group}
+</#list>
+</#if>
             kafka:
                 binder:
-                    brokers: localhost:9092
+                    # One source of truth for the broker address: the docker profile overrides
+                    # spring.kafka.bootstrap-servers via env and the binder follows it.
+                    brokers: ${r"${spring.kafka.bootstrap-servers}"}
                     auto-create-topics: true
 
     kafka:
-        bootstrap-servers: localhost:9092
+        # Host-run default: the compose kafka publishes its host listener on 29092.
+        bootstrap-servers: localhost:29092
         consumer:
             group-id: ${service.name?lower_case?replace(" ","-")}-group
             auto-offset-reset: earliest

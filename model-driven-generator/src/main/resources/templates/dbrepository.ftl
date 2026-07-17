@@ -26,6 +26,11 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
         return repository.findById(id.value()).map(this::toDomain);
     }
 
+    @Override
+    public List<${aggregate.name}> findAll() {
+        return repository.findAll().stream().map(this::toDomain).toList();
+    }
+
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
         return new ${aggregate.name}(
                 new ${aggregate.name}Id(entity.getId()),

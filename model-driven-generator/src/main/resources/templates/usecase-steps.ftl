@@ -1,13 +1,13 @@
 package ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')};
+<#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>
 
 /** Custom steps of the ${usecase.name} use case — a hook implemented in the developer-owned custom module. */
 public interface ${usecase.name?cap_first}Steps {
-<#list usecase.steps as step>
-<#if step.type == "Custom">
+<#list customSteps as step>
+<#assign returnsResult = outputModel?? && step.id == customSteps?last.id>
 <#if step.intent?? && step.intent?has_content>
     /** ${step.intent} */
 </#if>
-    void ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
-</#if>
+    <#if returnsResult>${usecase.name?cap_first}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.name?cap_first}Command command);
 </#list>
 }

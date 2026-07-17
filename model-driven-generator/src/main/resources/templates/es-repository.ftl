@@ -47,6 +47,11 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
     }
 
     @Override
+    public List<${aggregate.name}> findAll() {
+        return repository.findAll().stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public ${aggregate.name}Id save(${aggregate.name} domain) {
         var snapshot = repository.save(toEntity(domain));
         var id = new ${aggregate.name}Id(snapshot.getId());
