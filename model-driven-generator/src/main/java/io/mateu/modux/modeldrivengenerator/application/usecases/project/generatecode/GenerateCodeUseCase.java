@@ -1218,7 +1218,8 @@ public class GenerateCodeUseCase {
 
     private String gatewayJavaType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity f,
                                    Map<String, ModelEntity> all) {
-        if (!f.basicType() && f.modelId() != null) {
+        if (!f.basicType() && f.modelId() != null
+                && (f.type() == null || !"array".equals(f.type().name()))) {
             var ref = all.get(f.modelId());
             return ref != null ? toTypeName(ref.name()) : "String";
         }
@@ -1230,7 +1231,9 @@ public class GenerateCodeUseCase {
             case date -> "java.time.LocalDate";
             case time -> "java.time.LocalTime";
             case dateTime -> "java.time.LocalDateTime";
-            case array -> "java.util.List<Object>";
+            // Arrays travel as JSON text end to end (commands, entities, REST): the dto must
+            // match or deserialization breaks on the gateway's response.
+            case array -> "String";
             default -> "String";
         };
     }
