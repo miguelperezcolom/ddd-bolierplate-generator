@@ -2842,6 +2842,21 @@ public class GenerateCodeUseCase {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(aggregate)));
 
+        // Use cases that surface as row actions on this aggregate's CRUD listing (their
+        // command is the row id). E.g. RelanzarCompra on CompraHotel: the waiting queue.
+        map.put("rowActionUseCases", repository.findAllOfType(UseCaseEntity.class).stream()
+                .filter(uc -> aggregate.id().equals(uc.rowActionForAggregateId()))
+                .filter(uc -> uc.inputModelId() == null || uc.inputModelId().isBlank())
+                .map(uc -> {
+                    var action = new HashMap<String, Object>();
+                    action.put("className", capitalize(uc.name()));
+                    action.put("fieldName", uncapitalize(capitalize(uc.name())));
+                    action.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                    action.put("title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name());
+                    return (Object) action;
+                })
+                .toList());
+
         if (!map.containsKey("operations") || map.get("operations") == null) {
             map.put("operations", List.of());
         } else {

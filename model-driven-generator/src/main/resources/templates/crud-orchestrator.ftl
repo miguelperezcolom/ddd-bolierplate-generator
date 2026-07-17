@@ -1,6 +1,14 @@
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.in.ui.pages.${aggregate.name?lower_case};
 
+<#list aggregate.rowActionUseCases![] as action>
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${action.slug}.${action.className}Command;
+import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${action.slug}.${action.className}UseCase;
+</#list>
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
+<#if aggregate.rowActionUseCases?has_content>
+import io.mateu.uidl.annotations.Label;
+import io.mateu.uidl.annotations.ListToolbarButton;
+</#if>
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
@@ -25,6 +33,22 @@ String
 > {
 
 final ${aggregate.name}CrudAdapter adapter;
+<#list aggregate.rowActionUseCases![] as action>
+final ${action.className}UseCase ${action.fieldName}UseCase;
+</#list>
+<#list aggregate.rowActionUseCases![] as action>
+
+/** Row action from the model (rowActionForAggregateId): runs ${action.className} on each selected row. */
+@ListToolbarButton
+@Label("${action.title}")
+public io.mateu.uidl.data.Message ${action.fieldName}(java.util.List<${aggregate.name}Row> selection,
+        HttpRequest httpRequest) {
+    for (var row : selection) {
+        ${action.fieldName}UseCase.handle(new ${action.className}Command(row.id()));
+    }
+    return new io.mateu.uidl.data.Message("${action.title}: " + selection.size());
+}
+</#list>
 
 @Override
 public CrudAdapter<${aggregate.name}ViewModel,
