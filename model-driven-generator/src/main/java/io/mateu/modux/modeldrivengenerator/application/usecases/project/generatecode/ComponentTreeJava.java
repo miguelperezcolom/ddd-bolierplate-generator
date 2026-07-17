@@ -224,6 +224,47 @@ public final class ComponentTreeJava {
                     ").leftLabel(\"Básico\").leftValue(\"✓\").rightLabel(\"Pro\").rightValue(\"✓✓\").build()";
             case "kpi", "metricCard" -> metricCard(or(n.title(), "kpi".equals(n.kind()) ? "KPI" : "Métrica"));
             case "stat" -> use("Stat") + ".builder().label(" + q(or(n.title(), "Estadística")) + ").value(\"1.234\").build()";
+            // ---- Mateu enterprise/booking wave ----
+            case "planningBoard" -> use("PlanningBoard") + ".builder().from(" + useLocalDate() + ".now()).to(LocalDate.now().plusDays(13)).resources(" + listOf(List.of(
+                    use("PlanningResource") + ".builder().id(\"r1\").label(\"Recurso A\").build()",
+                    "PlanningResource.builder().id(\"r2\").label(\"Recurso B\").build()")) +
+                    ").blocks(" + listOf(List.of(
+                    use("PlanningBlock") + ".builder().id(\"b1\").resourceId(\"r1\").start(LocalDate.now().plusDays(1)).end(LocalDate.now().plusDays(4)).label(\"Bloque\").build()")) + ").build()";
+            case "offerCard" -> use("OfferCard") + ".builder().title(" + q(or(n.title(), "Una oferta irresistible")) +
+                    ").subtitle(" + q(or(n.text(), "Lo que la hace especial")) +
+                    ").features(List.of(\"Ventaja uno\", \"Ventaja dos\")).priceLabel(\"59 €\").actionLabel(\"Añadir\").build()" + hidden(useList());
+            case "addOnPicker" -> use("AddOnPicker") + ".builder().totalLabel(\"Total\").currency(\"€\").items(" + listOf(List.of(
+                    use("AddOn") + ".builder().id(\"a1\").icon(\"🧖\").title(\"Spa\").price(25.0).build()",
+                    "AddOn.builder().id(\"a2\").icon(\"🍳\").title(\"Desayuno\").price(12.0).build()")) + ").build()";
+            case "paymentPicker" -> use("PaymentPicker") + ".builder().methods(" + listOf(List.of(
+                    use("PaymentMethod") + ".builder().id(\"card\").label(\"Tarjeta\").build()",
+                    "PaymentMethod.builder().id(\"transfer\").label(\"Transferencia\").build()")) +
+                    ").confirmLabel(\"Confirmar y pagar\").build()";
+            case "pricingTable" -> use("PricingTable") + ".builder().plans(" + listOf(List.of(
+                    use("PricingPlan") + ".builder().id(\"basic\").name(\"Básico\").price(\"9 €\").period(\"mes\").features(List.of(\"Una cosa\")).ctaLabel(\"Elegir\").build()",
+                    "PricingPlan.builder().id(\"pro\").name(\"Pro\").price(\"29 €\").period(\"mes\").featured(true).features(List.of(\"Una cosa\", \"Otra cosa\")).ctaLabel(\"Elegir\").build()")) + ").build()";
+            case "processMonitor" -> use("ProcessMonitor") + ".builder().items(" + listOf(List.of(
+                    use("ProcessItem") + ".builder().id(\"p1\").name(\"Nóminas\").ok(12).warnings(0).errors(0).status(\"ok\").build()",
+                    "ProcessItem.builder().id(\"p2\").name(\"Facturación\").ok(9).warnings(2).errors(0).status(\"warn\").build()")) + ").build()";
+            case "resourceGrid" -> use("ResourceGrid") + ".builder().columns(3).items(" + listOf(List.of(
+                    use("ResourceItem") + ".builder().id(\"s1\").title(\"Estándar\").statusLabel(\"disponible\").build()",
+                    "ResourceItem.builder().id(\"s2\").title(\"Superior\").statusLabel(\"disponible\").recommended(true).build()",
+                    "ResourceItem.builder().id(\"s3\").title(\"Suite\").statusLabel(\"disponible\").build()")) + ").build()";
+            case "taskQueue" -> use("TaskQueue") + ".builder().groups(" + listOf(List.of(
+                    use("QueueGroup") + ".builder().label(" + q(or(n.title(), "Pendientes")) + ").items(" + listOf(List.of(
+                    use("QueueItem") + ".builder().id(\"t1\").title(\"Revisar contrato\").build()",
+                    "QueueItem.builder().id(\"t2\").title(\"Llamar al cliente\").build()")) + ").build()")) + ").build()";
+            case "ledger" -> use("Ledger") + ".builder().currency(\"€\").totalLabel(\"Total\").total(265.0).lines(" + listOf(List.of(
+                    use("LedgerLine") + ".builder().concept(\"Habitación\").amount(240.0).build()",
+                    "LedgerLine.builder().concept(\"Spa\").amount(25.0).build()")) + ").build()";
+            case "chat" -> n.params() != null && n.params().get("sseUrl") != null
+                    ? use("Chat") + ".builder().sseUrl(" + q(n.params().get("sseUrl")) + ")" +
+                        (n.params().get("uploadUrl") != null ? ".uploadUrl(" + q(n.params().get("uploadUrl")) + ")" : "") + ".build()"
+                    : use("EmptyState") + ".builder().icon(\"💬\").title(\"Chat\").description(" +
+                        q("El chat necesita su URL SSE: añade el parámetro sseUrl al nodo") + ").build()";
+            case "markdown" -> use("Markdown") + ".builder().markdown(" + q(or(n.text(), "# Título\\n\\nTexto con **negritas**.")) + ").build()";
+            case "breadcrumbs" -> use("Breadcrumbs") + ".builder().currentItemText(" + q(or(n.title(), "Aquí")) +
+                    ").breadcrumbs(" + listOf(List.of("new " + use("Breadcrumb") + "(\"Inicio\", \"/\")")) + ").build()";
             // ---- interaction leaves ----
             case "button" -> actionButton(or(n.label(), "Botón"), n.useCaseId(), n.mappingId(), null);
             case "fab" -> actionButton("+", n.useCaseId(), n.mappingId(), "border-radius:50%;width:48px;height:48px;font-size:20px");

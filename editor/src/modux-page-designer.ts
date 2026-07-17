@@ -740,6 +740,10 @@ export class ModuxPageDesigner extends LitElement {
     heatmap: 'Mapa de calor', funnel: 'Embudo', orgChart: 'Organigrama',
     featureGrid: 'Features', testimonials: 'Testimonios', faq: 'FAQ',
     commentThread: 'Comentarios', comparisonCard: 'Comparativa',
+    planningBoard: 'Planning', offerCard: 'Oferta', addOnPicker: 'Extras',
+    paymentPicker: 'Pago', pricingTable: 'Precios', processMonitor: 'Procesos',
+    resourceGrid: 'Recursos', taskQueue: 'Cola', ledger: 'Desglose',
+    chat: 'Chat', markdown: 'Markdown', breadcrumbs: 'Migas',
   };
 
   static readonly LEAF_KINDS = new Set([
@@ -750,6 +754,9 @@ export class ModuxPageDesigner extends LitElement {
     'progressSteps', 'taskProgress', 'meter', 'timeline', 'calendar', 'kanban',
     'gantt', 'trendChart', 'heatmap', 'funnel', 'orgChart', 'featureGrid',
     'testimonials', 'faq', 'commentThread', 'comparisonCard',
+    'planningBoard', 'offerCard', 'addOnPicker', 'paymentPicker', 'pricingTable',
+    'processMonitor', 'resourceGrid', 'taskQueue', 'ledger', 'chat', 'markdown',
+    'breadcrumbs',
   ]);
 
   /** A node of the content tree, by id. */
@@ -1236,6 +1243,68 @@ export class ModuxPageDesigner extends LitElement {
         body = html`<div class="grid-lay">${(['Básico', 'Pro'] as const).map(
           (p, i) => html`<div class="card-box" style="text-align:center"><div class="card-title">${p}</div>
             <div class="text-stub">✓ Una cosa<br />${i ? '✓' : '✕'} Otra cosa</div></div>`)}</div>`;
+        break;
+      // ---- Mateu enterprise/booking wave ----
+      case 'planningBoard':
+        body = html`<div class="col-lay" style="gap:4px">${([['Recurso A', 10, 35], ['Recurso B', 40, 30], ['Recurso C', 20, 50]] as const).map(
+          ([t, off, w]) => html`<div class="stub-row"><span style="flex:0 0 64px">${t}</span>
+            <div style="flex:1;height:14px;border-radius:4px;background:#f1f5f9"><div style="margin-left:${off}%;width:${w}%;height:100%;border-radius:4px;background:#0284c7;opacity:.85"></div></div></div>`)}
+          <div class="stub-row" style="justify-content:space-between;color:#94a3b8;font-size:9px"><span>lun</span><span>mié</span><span>vie</span><span>dom</span></div>`;
+        break;
+      case 'offerCard':
+        body = html`<div class="card-box" style="display:flex;gap:10px;align-items:center">
+          <div style="width:44px;height:44px;border-radius:8px;background:#e0f2fe"></div>
+          <div style="flex:1"><div class="card-title">${node.title ?? 'Una oferta irresistible'}</div>
+            <div class="text-stub">✓ Ventaja uno · ✓ Ventaja dos</div></div>
+          <span class="btn" style="flex:none">59 € · Añadir</span>
+        </div>`;
+        break;
+      case 'addOnPicker':
+        body = html`<div class="col-lay" style="gap:3px">${([['🧖', 'Spa', '25 €'], ['🍳', 'Desayuno', '12 €']] as const).map(
+          ([i, t, p]) => html`<div class="stub-row" style="justify-content:space-between"><span>${i} ${t}</span><span class="btn" style="font-size:10px;padding:2px 8px">${p} +</span></div>`)}
+          <div class="stub-row" style="justify-content:flex-end;font-weight:700">Total: 37 €</div>`;
+        break;
+      case 'paymentPicker':
+        body = html`<div class="col-lay" style="gap:4px">
+          <div class="row-lay">${['💳 Tarjeta', '🏦 Transferencia'].map((t, i) => html`<span class="control" style="justify-content:center;font-size:11px;${i === 0 ? 'border-color:#0284c7' : ''}">${t}</span>`)}</div>
+          <span class="btn" style="text-align:center">Confirmar y pagar</span></div>`;
+        break;
+      case 'pricingTable':
+        body = html`<div class="grid-lay">${([['Básico', '9 €/mes', ''], ['Pro', '29 €/mes', 'border-color:#0284c7']] as const).map(
+          ([p, pr, st]) => html`<div class="card-box" style="text-align:center;${st}"><div class="card-title">${p}</div>
+            <div style="font-size:16px;font-weight:800;color:#0f172a">${pr}</div>
+            <div class="text-stub">✓ Una cosa<br />✓ Otra cosa</div>
+            <span class="btn" style="display:inline-block;margin-top:4px;font-size:10px">Elegir</span></div>`)}</div>`;
+        break;
+      case 'processMonitor':
+        body = html`<div class="col-lay" style="gap:3px">${([['Nóminas', '#16a34a', 'OK'], ['Facturación', '#f59e0b', '2 avisos']] as const).map(
+          ([t, c, s]) => html`<div class="stub-row" style="justify-content:space-between"><span><span class="stub-dot" style="background:${c};display:inline-block;margin-right:6px"></span>${t}</span><span style="color:#94a3b8">${s}</span></div>`)}</div>`;
+        break;
+      case 'resourceGrid':
+        body = html`<div class="grid3-lay">${(['Estándar', 'Superior ★', 'Suite'] as const).map(
+          (t, i) => html`<div class="card-box" style="text-align:center;font-size:11px;${i === 1 ? 'border-color:#0284c7' : ''}">${t}<br /><span style="color:#94a3b8;font-size:10px">${i === 1 ? 'recomendada' : 'disponible'}</span></div>`)}</div>`;
+        break;
+      case 'taskQueue':
+        body = html`<div class="acc-bar"><span>Pendientes (2)</span></div>
+          <div class="col-lay" style="gap:3px">${['Revisar contrato', 'Llamar al cliente'].map(
+            (t) => html`<div class="stub-row">☐ ${t}</div>`)}</div>`;
+        break;
+      case 'ledger':
+        body = html`<div class="col-lay" style="gap:2px">${([['Habitación', '240 €'], ['Spa', '25 €'], ['Desayuno', 'incluido']] as const).map(
+          ([c, a]) => html`<div class="stub-row" style="justify-content:space-between"><span>${c}</span><span>${a}</span></div>`)}
+          <div class="stub-row" style="justify-content:space-between;font-weight:800;border-top:1.5px solid #e2e8f0;padding-top:3px"><span>Total</span><span>265 €</span></div>`;
+        break;
+      case 'chat':
+        body = html`<div class="col-lay" style="gap:4px">
+          <div class="card-box" style="padding:6px 8px;max-width:75%">Hola, ¿en qué puedo ayudarte?</div>
+          <div class="card-box" style="padding:6px 8px;max-width:75%;align-self:flex-end;background:#e0f2fe">Quería una reserva…</div>
+          <div class="control">Escribe un mensaje…</div></div>`;
+        break;
+      case 'markdown':
+        body = html`<div class="text-stub"><b># Título</b><br />Texto con <b>**negritas**</b> y <span style="color:#0284c7">[enlaces]</span>…</div>`;
+        break;
+      case 'breadcrumbs':
+        body = html`<div class="stub-row" style="color:#94a3b8">Inicio <span>›</span> Sección <span>›</span> <span style="color:#0f172a;font-weight:600">${node.title ?? 'Aquí'}</span></div>`;
         break;
       default:
         body = html`<div class="col-lay">${children.length ? kids(children) : empty}</div>`;

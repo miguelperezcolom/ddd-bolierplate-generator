@@ -104,6 +104,9 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'cmp:field', label: 'Componente · Campo', symbol: 'gear', color: '#0284c7', group: 'Componentes' },
   { type: 'cmp:menuBar', label: 'Componente · Menú', symbol: 'process', color: '#0284c7', group: 'Componentes' },
   { type: 'cmp:appContext', label: 'Componente · Selector de contexto', symbol: 'process', color: '#0284c7', group: 'Componentes' },
+  { type: 'cmp:addOnPicker', label: 'Componente · Extras (add-ons)', symbol: 'usecase', color: '#0284c7', group: 'Componentes' },
+  { type: 'cmp:paymentPicker', label: 'Componente · Pago', symbol: 'usecase', color: '#0284c7', group: 'Componentes' },
+  { type: 'cmp:chat', label: 'Componente · Chat', symbol: 'person', color: '#0284c7', group: 'Componentes' },
   // The Mateu display vocabulary (design/figma/contract.json), read-only content.
   { type: 'cmp:text', label: 'Display · Texto', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
   { type: 'cmp:metricCard', label: 'Display · Métrica', symbol: 'event', color: '#0284c7', group: 'Display' },
@@ -137,6 +140,15 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'cmp:faq', label: 'Display · FAQ', symbol: 'note', color: '#0284c7', group: 'Display' },
   { type: 'cmp:commentThread', label: 'Display · Comentarios', symbol: 'person', color: '#0284c7', group: 'Display' },
   { type: 'cmp:comparisonCard', label: 'Display · Comparativa', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:planningBoard', label: 'Display · Planning (recursos × días)', symbol: 'process', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:offerCard', label: 'Display · Oferta', symbol: 'note', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:pricingTable', label: 'Display · Tabla de precios', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:processMonitor', label: 'Display · Monitor de procesos', symbol: 'gear', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:resourceGrid', label: 'Display · Grid de recursos', symbol: 'component', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:taskQueue', label: 'Display · Cola de tareas', symbol: 'process', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:ledger', label: 'Display · Desglose (ledger)', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:markdown', label: 'Display · Markdown', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
+  { type: 'cmp:breadcrumbs', label: 'Display · Migas de pan', symbol: 'flow', color: '#0284c7', group: 'Display' },
   ];
 
   /** Every element of the model, grouped for the palette's «Catálogo» tab. */

@@ -96,7 +96,11 @@ public record UiComponentNodeEntity(
             "emptyState", "skeleton", "timeline", "kanban", "gantt", "calendar", "stat",
             "trendChart", "heatmap", "funnel", "orgChart", "featureGrid", "testimonials", "faq",
             "commentThread", "fileList", "checklist", "comparisonCard", "crud", "filterBar",
-            "fab", "appContext");
+            "fab", "appContext",
+            // Mateu's enterprise/booking wave (dispatched components, 2026-07)
+            "planningBoard", "offerCard", "addOnPicker", "paymentPicker", "pricingTable",
+            "processMonitor", "resourceGrid", "taskQueue", "ledger", "chat", "markdown",
+            "breadcrumbs");
 
     /** Every valid node kind. */
     public static final Set<String> KINDS;
