@@ -59,7 +59,8 @@ over boilerplate.
 Not an estimate — [measured on a real case study](/reference/case-study-booking/), where the
 same agent implemented the same spec both ways, with framework work accounted separately:
 writing the system directly cost **~26 output tokens per delivered line**; the Modux path cost
-**~10** — for a six-microservice system instead of a monolith — and the next app pays only the
-model and hooks: **~4 tokens per line, roughly 6–7× cheaper**. The gap keeps widening with
-every evolution: a few YAML lines regenerate thousands across services for free, and future
-sessions reason over a 2,777-line model instead of re-reading a 26,000-line codebase.
+**~10** — for a six-microservice system instead of a monolith. For the *same* distributed
+system, the direct path extrapolates to **~680k tokens vs ~100k through the model: about 7×**.
+And the gap keeps widening with every evolution: a few YAML lines regenerate thousands across
+services for free, and future sessions reason over a 2,777-line model instead of re-reading a
+26,000-line codebase.

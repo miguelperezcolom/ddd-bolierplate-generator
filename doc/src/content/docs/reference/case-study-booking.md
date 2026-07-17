@@ -94,11 +94,15 @@ Method: output tokens per API call, each message attributed by the files and top
 are separated from the tokens spent **building the app** (model, hooks, verification), which
 is the fair per-app figure.
 
-| Path | Agent output tokens (measured) | Delivered artifact | Output tokens per delivered line |
+| Path | Agent output tokens | Delivered artifact | Output tokens per delivered line |
 |---|---|---|---|
-| Direct: the agent writes the system (monolith + one UI, MCP, simulator, tests) | ~192k | ~7,400 lines | **~26** |
-| Modux, app work only: authoring + enriching the model, implementing the hooks, verifying the flows against the deployed system | ~275k | ~26,400 lines (6 microservices, tests, migrations, infra) | **~10** |
-| Modux, *next* app of this size: model + hooks, no metamodel gaps to discover | ~53k emitted (~100k with iteration, estimated) | ~26,400 lines | **~4** |
+| Direct: the agent writes the system (monolith + one UI, MCP, simulator, tests) — *measured* | ~192k | ~7,400 lines | **~26** |
+| Modux, app work only: authoring + enriching the model, implementing the hooks, verifying the flows against the deployed system — *measured* | ~275k | ~26,400 lines (6 microservices, tests, migrations, infra) | **~10** |
+| Direct, **same artifact**: the six-microservice system written by the agent, at its measured rate — *extrapolated* (~26 tokens/line × 26,400 lines; likely optimistic, distributed systems iterate worse than monoliths) | **~680k** | ~26,400 lines | ~26 |
+| Modux, *next* app of this size: model + hooks, no metamodel gaps to discover — *estimated* | ~53k emitted (~100k with iteration) | ~26,400 lines | **~4** |
+
+The apples-to-apples headline lives in rows three and four: **the same distributed system,
+~680k tokens written directly vs ~100k through the model — about 7×.**
 
 Excluded from the app row, and measured separately: **~180k** tokens went into evolving the
 generator (the 15 features listed above, plus its docs) — paid once, inherited by every model
