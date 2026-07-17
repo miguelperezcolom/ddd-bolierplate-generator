@@ -2263,7 +2263,45 @@ public class GenerateCodeUseCase {
     private void generateDockerCompose(ProjectEntity project) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
+
+        // Gateway base URLs inside the compose network: the model's baseUrl points at
+        // localhost (the local-run default), so a "http://localhost:<port>" that matches a
+        // sibling service's port is rewritten to that service's compose hostname and
+        // injected as the gateway's base-url property.
+        var services = effectiveServices(project);
+        var gatewayEnvs = new HashMap<String, List<Map<String, String>>>();
+        for (var svc : services) {
+            var list = new java.util.ArrayList<Map<String, String>>();
+            for (var gwId : svc.gatewayIds() != null ? svc.gatewayIds() : List.<String>of()) {
+                var gw = repository.findById(gwId, GatewayEntity.class).orElse(null);
+                if (gw == null) {
+                    continue;
+                }
+                var url = gw.baseUrl() != null ? gw.baseUrl().trim() : "";
+                var matcher = java.util.regex.Pattern.compile("^https?://localhost:(\\d+)$").matcher(url);
+                if (matcher.matches()) {
+                    var port = Integer.parseInt(matcher.group(1));
+                    var target = services.stream()
+                            .filter(s -> s.port() != null && s.port() == port)
+                            .findFirst();
+                    if (target.isPresent()) {
+                        url = "http://" + serviceName(target.get()) + ":" + port;
+                    }
+                }
+                list.add(Map.of(
+                        "envName", "MODUX_GATEWAY_" + gw.name().toUpperCase().replaceAll("[^A-Z0-9]", "") + "_BASEURL",
+                        "url", url));
+            }
+            if (!list.isEmpty()) {
+                gatewayEnvs.put(svc.name(), list);
+            }
+        }
+        model.put("gatewayEnvs", gatewayEnvs);
+
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
+        createDir(project.outputPath(), "postgres-init");
+        createFile(project.outputPath(), model, "postgres-init.ftl",
+                "postgres-init/create-databases.sql");
     }
 
     private void generateCiWorkflow(ProjectEntity project) {

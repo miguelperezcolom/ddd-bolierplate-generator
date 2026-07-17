@@ -24,7 +24,10 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 
     final RestTemplate restTemplate;
 
-    private static final String BASE_URL = "${gateway.baseUrl!''}";
+    // The model's baseUrl is the local-run default; each environment overrides it via
+    // property (docker-compose injects MODUX_GATEWAY_${gateway.name?upper_case?replace("[^A-Z0-9]","",'r')}_BASEURL).
+    @org.springframework.beans.factory.annotation.Value("${r"${"}modux.gateway.${gateway.name?lower_case?replace("[^a-z0-9]","",'r')}.base-url:${gateway.baseUrl!''}}")
+    private String baseUrl;
 <#if ((gateway.authType)!'') == "ApiKey">
 
     // TODO: configure the API key (e.g. inject it from configuration)
@@ -58,7 +61,7 @@ public class ${gateway.name?cap_first}GatewayImpl implements ${gateway.name?cap_
 <#assign __m = (op.httpMethod!'GET')?upper_case>
 <#assign __qs = "">
 <#if op.parameters?has_content><#list op.parameters as p><#if p.location=="query"><#assign __qs = __qs + ((__qs=="")?then("?","&")) + p.name + "={" + p.name + "}"></#if></#list></#if>
-<#assign __url = 'BASE_URL + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + __qs + '"'>
+<#assign __url = 'baseUrl + "' + (op.path!('/' + op.name?lower_case?replace("[^a-z0-9]","-",'r'))) + __qs + '"'>
     @Override
     public <#if op.outputClass??>${dtoPackage}.${op.outputClass}<#else>void</#if> ${op.name?uncap_first}(<#assign __f=true><#if op.parameters?has_content><#list op.parameters as p><#if !__f>, </#if><@jtype p.type/> ${p.argName}<#assign __f=false></#list></#if><#if op.inputModel?? && op.inputModel.fields?has_content><#list op.inputModel.fields as f><#if !__f>, </#if><#if f.basicType><@jtype f.type/> ${f.name}<#else>String ${f.name}Id</#if><#assign __f=false></#list></#if>) {
         var requestHeaders = authHeaders();

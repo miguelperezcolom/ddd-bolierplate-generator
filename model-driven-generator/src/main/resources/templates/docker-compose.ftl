@@ -13,6 +13,9 @@ services:
       SPRING_DATASOURCE_USERNAME: user_app
       SPRING_DATASOURCE_PASSWORD: user_password
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+<#list (gatewayEnvs[svc.name]![]) as ge>
+      ${ge.envName}: ${ge.url}
+</#list>
     depends_on:
       - postgres
       - kafka
@@ -23,11 +26,12 @@ services:
     environment:
       POSTGRES_USER: user_app
       POSTGRES_PASSWORD: user_password
-      POSTGRES_MULTIPLE_DATABASES: ${project.services?map(s -> s.name?lower_case?replace("[^a-z0-9]","_",'r'))?join(",")}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # One database per service, created on first boot by the generated init script.
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
