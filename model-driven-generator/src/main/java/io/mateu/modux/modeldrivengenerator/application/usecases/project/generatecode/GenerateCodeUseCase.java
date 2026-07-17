@@ -358,9 +358,23 @@ public class GenerateCodeUseCase {
                 .filter(aggregate -> inScope(aggregate.id()))
                 .forEach(aggregate -> generateAggregate(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, aggregate));
 
-        // Per-boundedContext menu: groups this boundedContext's CRUDs under a single entry in the app Home
-        if (boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty()) {
+        // Per-boundedContext menu: groups this boundedContext's operation pages (exposedAsUi
+        // use cases) and CRUDs under a single entry in the app Home
+        var uiUseCases = (boundedContext.useCaseIds() != null ? boundedContext.useCaseIds() : List.<String>of()).stream()
+                .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                .filter(UseCaseEntity::exposedAsUi)
+                .map(uc -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("className", capitalize(uc.name()) + "Page");
+                    m.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                    m.put("fieldName", uncapitalize(capitalize(uc.name())));
+                    return m;
+                })
+                .toList();
+        if ((boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty())
+                || !uiUseCases.isEmpty()) {
             boundedContextModel.put("moduleMenuClassName", toTypeName(boundedContext.name()) + "Menu");
+            boundedContextModel.put("uiUseCases", uiUseCases);
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu");
             createFile(boundedContextDir, boundedContextModel, "module-menu.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu/"
@@ -562,10 +576,14 @@ public class GenerateCodeUseCase {
                 });
 
         // One Home menu entry per deployed module (each pointing to that module's menu class).
-        // Only modules that package aggregates produce a menu.
+        // A module produces a menu if it packages aggregates (CRUDs) or exposedAsUi use
+        // cases (operation pages).
         var menuBoundedContexts = new java.util.ArrayList<Map<String, Object>>();
         deployedUnits(service).stream()
-                .filter(m -> m.aggregateIds() != null && !m.aggregateIds().isEmpty())
+                .filter(m -> (m.aggregateIds() != null && !m.aggregateIds().isEmpty())
+                        || (m.useCaseIds() != null && m.useCaseIds().stream()
+                                .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
+                                .anyMatch(UseCaseEntity::exposedAsUi)))
                 .forEach(m -> {
                     var entry = new HashMap<String, Object>();
                     entry.put("className", toTypeName(m.name()) + "Menu");
@@ -902,6 +920,15 @@ public class GenerateCodeUseCase {
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
                             + capitalize(useCase.name()) + "Controller.java");
+        }
+
+        // exposedAsUi: a Mateu page whose fields are the command and whose primary action
+        // executes the use case (view model only; menu wiring happens with the module menu).
+        if (useCase.exposedAsUi()) {
+            createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug);
+            createFile(boundedContextDir, model, "usecase-page.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
+                            + "/" + capitalize(useCase.name()) + "Page.java");
         }
 
         if (useCase.exposedAsAsync()) {
