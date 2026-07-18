@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 </#if>
 
 /** Output of the ${usecase.name} use case (from the model's outputModelId). */
-public record ${usecase.name?cap_first}Result(
+public record ${usecase.className}Result(
 <#if outputModel?? && outputModel.fields?has_content>
 <#list outputModel.fields as field>
 <#if field.basicType?? && field.basicType>

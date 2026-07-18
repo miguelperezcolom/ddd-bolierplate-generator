@@ -48,7 +48,7 @@ class GenerationE2ETest {
 
     static {
         System.setProperty("modux.model-file",
-                new File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
+                new File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     private static final Set<String> WORKFLOW_STEP_TYPES =
@@ -134,7 +134,7 @@ class GenerationE2ETest {
     @Test
     void generates_packages_validates_and_boots_the_project() throws Exception {
         // 1. build a fixture store = hotel + flows + a FORM page, and load it
-        var hotelStore = Files.readString(Path.of("..", "sample", "hla-booking", "model-driven-store.yaml"));
+        var hotelStore = Files.readString(Path.of("src", "test", "resources", "examples", "hotel-checkin-store.yaml"));
         // give the Reserva aggregate an invariant so the invariants hook (port + custom default impl) is exercised
         hotelStore = hotelStore.replace(
                 "- id: \"reserva\"\n  name: \"Reserva\"\n  modelId: \"reserva\"\n",
@@ -160,7 +160,7 @@ class GenerationE2ETest {
         repository.loadFrom(fixture.toAbsolutePath().toString());
 
         // 1b. import a third-party OpenAPI spec as a typed gateway on the hotel service
-        importOpenApiUseCase.handle(new ImportOpenApiCommand("hotel",
+        importOpenApiUseCase.handle(new ImportOpenApiCommand("hotel-svc",
                 Path.of("src", "test", "resources", "e2e", "petstore-openapi.yaml").toAbsolutePath().toString()));
 
         // 2. generate the project

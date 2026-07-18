@@ -76,7 +76,7 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
     @Override
     public void save(HttpRequest httpRequest) {
         update${aggregate.name}UseCase.handle(new Update${aggregate.name}Command(
-                id,
+                id<#if safeFields?has_content>,</#if>
 <#list safeFields as field>
                 ${field.name}<#if field.type == "Entity">Id</#if><#sep>,</#sep>
 </#list>

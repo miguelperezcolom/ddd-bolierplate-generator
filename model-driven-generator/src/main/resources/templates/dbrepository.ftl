@@ -35,7 +35,7 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
         return new ${aggregate.name}(
-                new ${aggregate.name}Id(entity.getId()),
+                new ${aggregate.name}Id(entity.getId())<#if safeFields?has_content>,</#if>
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>
@@ -54,7 +54,7 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     private ${aggregate.name}Entity toEntity(${aggregate.name} domain) {
         return new ${aggregate.name}Entity(
-                domain.getId() != null ? domain.getId().value() : null,
+                domain.getId() != null ? domain.getId().value() : null<#if safeFields?has_content>,</#if>
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>

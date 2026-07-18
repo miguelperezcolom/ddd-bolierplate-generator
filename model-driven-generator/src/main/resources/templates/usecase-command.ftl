@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 </#if>
 
-public record ${usecase.name?cap_first}Command(
+public record ${usecase.className}Command(
 <#if inputModel?? && inputModel.fields?has_content>
 <#list inputModel.fields as field>
 <#if field.basicType?? && field.basicType>
@@ -50,6 +50,6 @@ public record ${usecase.name?cap_first}Command(
 </#if>
 </#list>
 <#else>
-    String id
+    Long id
 </#if>
 ) {}

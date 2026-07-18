@@ -1,10 +1,10 @@
 package ${project.packageName}.${module.slug}.infra.in.rest;
 
-import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}Command;
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.className}Command;
 <#if outputModel??>
-import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}Result;
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.className}Result;
 </#if>
-import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}UseCase;
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.className}UseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,17 +15,17 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/${apiVer}${basePath}")
 @RequiredArgsConstructor
-public class ${usecase.name?cap_first}Controller {
+public class ${usecase.className}Controller {
 
-    final ${usecase.name?cap_first}UseCase useCase;
+    final ${usecase.className}UseCase useCase;
 
     @${((usecase.restHttpMethod)!'POST')?lower_case?cap_first}Mapping
 <#if outputModel??>
-    public ResponseEntity<${usecase.name?cap_first}Result> handle(@RequestBody ${usecase.name?cap_first}Command command) {
+    public ResponseEntity<${usecase.className}Result> handle(@RequestBody ${usecase.className}Command command) {
         return ResponseEntity.ok(useCase.handle(command));
     }
 <#else>
-    public ResponseEntity<Void> handle(@RequestBody ${usecase.name?cap_first}Command command) {
+    public ResponseEntity<Void> handle(@RequestBody ${usecase.className}Command command) {
         useCase.handle(command);
         return ResponseEntity.ok().build();
     }

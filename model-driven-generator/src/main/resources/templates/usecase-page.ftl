@@ -1,5 +1,5 @@
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
-<#assign ucClass = usecase.name?cap_first>
+<#assign ucClass = usecase.className>
 <#function isGrid field><#return !(field.basicType?? && field.basicType) && (field.type!"") == "array" && field.modelId?? && gridClasses?? && gridClasses[field.modelId]??></#function>
 <#assign hasGrids = false>
 <#if inputModel?? && inputModel.fields?has_content>
@@ -70,7 +70,7 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
-@Title("${usecase.title!usecase.name?cap_first}")
+@Title("${usecase.title!usecase.className}")
 @Style(StyleConstants.CONTAINER)
 public class ${ucClass}Page {
 
@@ -105,7 +105,7 @@ public class ${ucClass}Page {
 </#if>
 </#list>
 <#else>
-    String id;
+    Long id;
 </#if>
 
     @Notice(theme = "success", fullWidth = true)
@@ -120,7 +120,7 @@ public class ${ucClass}Page {
 <#if hasGrids>
     @SneakyThrows
 </#if>
-    public Object ${usecase.name?uncap_first}() {
+    public Object ${usecase.className?uncap_first}() {
 <#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
 <#if outputModel??>
         ${ucClass}Result result = useCase.handle(new ${ucClass}Command(${args}));
@@ -129,7 +129,7 @@ public class ${ucClass}Page {
         useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";
 </#if>
-        return List.of(new Message("${usecase.title!usecase.name?cap_first}: hecho"), new State(this));
+        return List.of(new Message("${usecase.title!usecase.className}: hecho"), new State(this));
     }
 
 }

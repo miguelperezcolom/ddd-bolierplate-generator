@@ -42,7 +42,7 @@ class GenerationInfraE2ETest {
 
     static {
         System.setProperty("modux.model-file",
-                new File("../sample/hla-booking/model-driven-store.yaml").getAbsolutePath());
+                new File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
     @Autowired

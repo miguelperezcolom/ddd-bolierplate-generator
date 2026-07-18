@@ -1,7 +1,7 @@
 package ${project.packageName}.${module.slug}.infra.in.async;
 
-import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}Command;
-import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.name?cap_first}UseCase;
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.className}Command;
+import ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')}.${usecase.className}UseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -12,13 +12,13 @@ import java.util.function.Consumer;
 
 @Configuration
 @RequiredArgsConstructor
-public class ${usecase.name?cap_first}Consumer {
+public class ${usecase.className}Consumer {
 
-    final ${usecase.name?cap_first}UseCase useCase;
+    final ${usecase.className}UseCase useCase;
     final ObjectMapper objectMapper;
 
     @Bean
-    public Consumer<Message<String>> ${usecase.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}() {
+    public Consumer<Message<String>> ${usecase.className?uncap_first?replace("[^a-zA-Z0-9]","",'r')}() {
         return message -> {
             var command = deserialize(message.getPayload());
             useCase.handle(command);
@@ -26,8 +26,8 @@ public class ${usecase.name?cap_first}Consumer {
     }
 
     @SneakyThrows
-    private ${usecase.name?cap_first}Command deserialize(String payload) {
-        return objectMapper.readValue(payload, ${usecase.name?cap_first}Command.class);
+    private ${usecase.className}Command deserialize(String payload) {
+        return objectMapper.readValue(payload, ${usecase.className}Command.class);
     }
 
 }

@@ -74,8 +74,9 @@ logging:
 
 ---
 # Local profile: H2 in-memory database. Kafka/stream stays auto-configured (so beans like
-# StreamBridge are available); without a reachable broker the consumers just retry in the
-# background and do not block startup — enough to run and smoke-test the app locally.
+# StreamBridge are available), but with no broker reachable the consumers must not start and
+# the broker-metadata calls must fail fast — otherwise startup blocks on endless admin retries
+# before ever reaching «Started».
 spring:
     config:
         activate:
@@ -101,10 +102,21 @@ spring:
         console:
             enabled: true
     cloud:
+        function:
+            # No broker in local: no consumer functions are created, so no binding ever blocks
+            # startup on broker-metadata retries. StreamBridge still produces on demand.
+            definition: ""
         stream:
             kafka:
                 binder:
                     auto-create-topics: false
+                    configuration:
+                        # Fail fast when no broker is reachable: the default retries (effectively
+                        # infinite) froze startup for minutes on the admin metadata calls.
+                        default.api.timeout.ms: 5000
+                        request.timeout.ms: 3000
+                        retries: 1
+                        retry.backoff.ms: 500
 <#if idp??>
 
 ---

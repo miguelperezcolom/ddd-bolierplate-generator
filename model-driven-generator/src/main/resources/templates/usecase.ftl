@@ -19,7 +19,7 @@ import ${project.packageName}.${module.slug}.domain.aggregates.${aggName?lower_c
 <#if usecase.steps?has_content>
 <#list usecase.steps as step>
 <#if step.type == "CallGateway" && step.gateway??>
-import ${project.packageName}.${module.slug}.application.out.${step.gateway.name?cap_first}Gateway;
+import ${project.packageName}.${module.slug}.application.out.${step.gateway.className}Gateway;
 </#if>
 </#list>
 </#if>
@@ -27,8 +27,8 @@ import ${project.packageName}.${module.slug}.application.out.${step.gateway.name
 <#if usecase.steps?has_content>
 <#list usecase.steps as step>
 <#if step.type == "CallUseCase" && step.useCase??>
-import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.name?cap_first}UseCase;
-import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.name?cap_first}Command;
+import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.className}UseCase;
+import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.className}Command;
 </#if>
 </#list>
 </#if>
@@ -36,7 +36,7 @@ import ${project.packageName}.${module.slug}.application.usecases.${step.useCase
 <#if usecase.steps?has_content>
 <#list usecase.steps as step>
 <#if step.type == "PublishDomainEvent" && step.domainEvent??>
-import ${project.packageName}.${module.slug}.domain.events.${step.domainEvent.name?cap_first}Event;
+import ${project.packageName}.${module.slug}.domain.events.${step.domainEvent.className}Event;
 </#if>
 </#list>
 </#if>
@@ -57,7 +57,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
-public class ${usecase.name?cap_first}UseCase {
+public class ${usecase.className}UseCase {
 
 <#-- Repository fields -->
 <#assign addedFields = []>
@@ -70,15 +70,15 @@ public class ${usecase.name?cap_first}UseCase {
     </#if>
 </#if>
 <#if step.type == "CallGateway" && step.gateway??>
-    <#if !addedFields?seq_contains(step.gateway.name?cap_first + "Gateway")>
-        <#assign addedFields = addedFields + [step.gateway.name?cap_first + "Gateway"]>
-    final ${step.gateway.name?cap_first}Gateway ${step.gateway.name?uncap_first}Gateway;
+    <#if !addedFields?seq_contains(step.gateway.className + "Gateway")>
+        <#assign addedFields = addedFields + [step.gateway.className + "Gateway"]>
+    final ${step.gateway.className}Gateway ${step.gateway.className?uncap_first}Gateway;
     </#if>
 </#if>
 <#if step.type == "CallUseCase" && step.useCase??>
-    <#if !addedFields?seq_contains(step.useCase.name?cap_first + "UseCase")>
-        <#assign addedFields = addedFields + [step.useCase.name?cap_first + "UseCase"]>
-    final ${step.useCase.name?cap_first}UseCase ${step.useCase.name?uncap_first}UseCase;
+    <#if !addedFields?seq_contains(step.useCase.className + "UseCase")>
+        <#assign addedFields = addedFields + [step.useCase.className + "UseCase"]>
+    final ${step.useCase.className}UseCase ${step.useCase.className?uncap_first}UseCase;
     </#if>
 </#if>
 </#list>
@@ -87,7 +87,7 @@ public class ${usecase.name?cap_first}UseCase {
     final StreamBridge streamBridge;
 </#if>
 <#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
-    final ${usecase.name?cap_first}Steps steps;
+    final ${usecase.className}Steps steps;
 </#if>
 
 <#if usecase.allowedRoles?has_content>
@@ -100,9 +100,9 @@ public class ${usecase.name?cap_first}UseCase {
     @Transactional
 </#if>
 <#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>
-    public <#if outputModel??>${usecase.name?cap_first}Result<#else>void</#if> handle(${usecase.name?cap_first}Command command) {
+    public <#if outputModel??>${usecase.className}Result<#else>void</#if> handle(${usecase.className}Command command) {
 <#if outputModel??>
-        ${usecase.name?cap_first}Result result = null;
+        ${usecase.className}Result result = null;
 </#if>
 <#if usecase.steps?has_content>
 <#list usecase.steps as step>
@@ -123,14 +123,14 @@ public class ${usecase.name?cap_first}UseCase {
         ${step.aggregate.name?uncap_first}Repository.save(${step.aggregate.name?uncap_first});
 <#elseif step.type == "CallGateway" && step.gateway??>
 <#if step.gatewayOperation??>
-        ${step.gateway.name?uncap_first}Gateway.${step.gatewayOperation.name?uncap_first}(<#if step.argFields??><#list step.argFields as a><#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if><#sep>, </#sep></#list></#if>);
+        ${step.gateway.className?uncap_first}Gateway.${step.gatewayOperation.name?uncap_first}(<#if step.argFields??><#list step.argFields as a><#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if><#sep>, </#sep></#list></#if>);
 <#else>
-        // TODO: call gateway ${step.gateway.name?uncap_first}Gateway (operation not resolved)
+        // TODO: call gateway ${step.gateway.className?uncap_first}Gateway (operation not resolved)
 </#if>
 <#elseif step.type == "PublishDomainEvent" && step.domainEvent??>
-        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.name?cap_first}Event(null /* TODO: aggregateId */<#if step.argFields??><#list step.argFields as a>, <#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
+        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.className}Event(null /* TODO: aggregateId */<#if step.argFields??><#list step.argFields as a>, <#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
 <#elseif step.type == "CallUseCase" && step.useCase??>
-        ${step.useCase.name?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.name?cap_first}Command */);
+        ${step.useCase.className?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.className}Command */);
 <#elseif step.type == "ApplyModelMapping">
 <#if step.modelMapping??>
         // TODO: apply model mapping "${step.modelMapping.name}"

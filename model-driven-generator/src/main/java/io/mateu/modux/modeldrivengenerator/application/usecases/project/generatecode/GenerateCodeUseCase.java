@@ -365,9 +365,9 @@ public class GenerateCodeUseCase {
                 .filter(UseCaseEntity::exposedAsUi)
                 .map(uc -> {
                     Map<String, Object> m = new HashMap<>();
-                    m.put("className", capitalize(uc.name()) + "Page");
+                    m.put("className", toTypeName(uc.name()) + "Page");
                     m.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
-                    m.put("fieldName", uncapitalize(capitalize(uc.name())));
+                    m.put("fieldName", uncapitalize(toTypeName(uc.name())));
                     m.put("title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name());
                     return m;
                 })
@@ -442,8 +442,8 @@ public class GenerateCodeUseCase {
                         var item = new HashMap<String, Object>();
                         item.put("usecase", enrichUseCaseMap(uc));
                         item.put("slug", uc.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
-                        item.put("className", capitalize(uc.name()));
-                        item.put("fieldName", uncapitalize(capitalize(uc.name())) + "UseCase");
+                        item.put("className", toTypeName(uc.name()));
+                        item.put("fieldName", uncapitalize(toTypeName(uc.name())) + "UseCase");
                         if (uc.inputModelId() != null && !uc.inputModelId().isBlank()) {
                             repository.findById(uc.inputModelId(), ModelEntity.class)
                                     .ifPresent(im -> item.put("inputModel", fromJson(toJson(im))));
@@ -922,6 +922,8 @@ public class GenerateCodeUseCase {
     private void generateUseCase(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                  String boundedContextDir, String boundedContextPackageDir, UseCaseEntity useCase) {
         var ucSlug = useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        // File/class names go through the safe type name: display names may contain spaces.
+        var ucClass = toTypeName(useCase.name());
         createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug);
 
         Map<String, Object> model = buildBaseModel(project, service, boundedContext);
@@ -937,15 +939,15 @@ public class GenerateCodeUseCase {
 
         createFile(boundedContextDir, model, "usecase-command.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
-                        + "/" + capitalize(useCase.name()) + "Command.java");
+                        + "/" + ucClass + "Command.java");
         if (model.get("outputModel") != null) {
             createFile(boundedContextDir, model, "usecase-result.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
-                            + "/" + capitalize(useCase.name()) + "Result.java");
+                            + "/" + ucClass + "Result.java");
         }
         createFile(boundedContextDir, model, "usecase.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
-                        + "/" + capitalize(useCase.name()) + "UseCase.java");
+                        + "/" + ucClass + "UseCase.java");
 
         // custom-steps hook: port in the generated boundedContext, default implementation in the custom boundedContext
         var hasCustomStep = useCase.steps() != null
@@ -953,18 +955,18 @@ public class GenerateCodeUseCase {
         if (hasCustomStep) {
             createFile(boundedContextDir, model, "usecase-steps.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
-                            + "/" + capitalize(useCase.name()) + "Steps.java");
+                            + "/" + ucClass + "Steps.java");
             var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
             createCustomFile(customDir, model, "usecase-steps-default.ftl",
                     "src/main/java/" + project.packageName().replace(".", "/")
-                            + "/custom/Default" + capitalize(useCase.name()) + "Steps.java");
+                            + "/custom/Default" + ucClass + "Steps.java");
         }
 
         if (useCase.exposedAsRest()) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
-                            + capitalize(useCase.name()) + "Controller.java");
+                            + ucClass + "Controller.java");
         }
 
         // exposedAsUi: a Mateu page whose fields are the command and whose primary action
@@ -999,14 +1001,14 @@ public class GenerateCodeUseCase {
 
             createFile(boundedContextDir, model, "usecase-page.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
-                            + "/" + capitalize(useCase.name()) + "Page.java");
+                            + "/" + ucClass + "Page.java");
         }
 
         if (useCase.exposedAsAsync()) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/async");
             createFile(boundedContextDir, model, "usecase-async-consumer.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/async/"
-                            + capitalize(useCase.name()) + "Consumer.java");
+                            + ucClass + "Consumer.java");
         }
 
         // Unit test for custom use case
@@ -1022,12 +1024,14 @@ public class GenerateCodeUseCase {
         }
         createFile(boundedContextDir, testModel, "usecase-test.ftl",
                 "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
-                        + "/" + capitalize(useCase.name()) + "UseCaseTest.java");
+                        + "/" + ucClass + "UseCaseTest.java");
     }
 
     private Map<String, Object> enrichUseCaseMap(UseCaseEntity useCase) {
         var map = new HashMap<String, Object>();
         map.putAll(fromJson(toJson(useCase)));
+        // A safe Java type name for the templates: display names may contain spaces.
+        map.put("className", toTypeName(useCase.name()));
 
         Set<String> commandFieldNames = java.util.Collections.emptySet();
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
@@ -2584,7 +2588,7 @@ public class GenerateCodeUseCase {
                 if (gatewayId != null) {
                     var gw = repository.findById(gatewayId, GatewayEntity.class).orElse(null);
                     if (gw != null) {
-                        stepMap.put("gateway", fromJson(toJson(gw)));
+                        stepMap.put("gateway", named(fromJson(toJson(gw)), gw.name()));
                         if (gatewayOperationId != null && gw.operations() != null) {
                             gw.operations().stream()
                                     .filter(op -> op.id().equals(gatewayOperationId))
@@ -2597,13 +2601,13 @@ public class GenerateCodeUseCase {
             case "PublishDomainEvent" -> {
                 if (domainEventId != null) {
                     var event = repository.findById(domainEventId, DomainEventEntity.class).orElse(null);
-                    if (event != null) stepMap.put("domainEvent", fromJson(toJson(event)));
+                    if (event != null) stepMap.put("domainEvent", named(fromJson(toJson(event)), event.name()));
                 }
             }
             case "CallUseCase" -> {
                 if (useCaseId != null) {
                     var calledUC = repository.findById(useCaseId, UseCaseEntity.class).orElse(null);
-                    if (calledUC != null) stepMap.put("useCase", fromJson(toJson(calledUC)));
+                    if (calledUC != null) stepMap.put("useCase", named(fromJson(toJson(calledUC)), calledUC.name()));
                 }
             }
             case "ApplyModelMapping" -> {
@@ -2614,6 +2618,12 @@ public class GenerateCodeUseCase {
             }
         }
         return stepMap;
+    }
+
+    /** A named element's map with its safe Java type name precomputed (names may contain spaces). */
+    private Map<String, Object> named(Map<String, Object> map, String name) {
+        map.put("className", toTypeName(name));
+        return map;
     }
 
     // ─── Domain events / Subscriptions / Scheduled triggers ──────────────────

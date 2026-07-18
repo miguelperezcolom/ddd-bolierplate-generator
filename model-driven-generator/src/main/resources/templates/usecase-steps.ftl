@@ -2,12 +2,12 @@ package ${project.packageName}.${module.slug}.application.usecases.${usecase.nam
 <#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>
 
 /** Custom steps of the ${usecase.name} use case — a hook implemented in the developer-owned custom module. */
-public interface ${usecase.name?cap_first}Steps {
+public interface ${usecase.className}Steps {
 <#list customSteps as step>
 <#assign returnsResult = outputModel?? && step.id == customSteps?last.id>
 <#if step.intent?? && step.intent?has_content>
     /** ${step.intent} */
 </#if>
-    <#if returnsResult>${usecase.name?cap_first}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.name?cap_first}Command command);
+    <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command);
 </#list>
 }

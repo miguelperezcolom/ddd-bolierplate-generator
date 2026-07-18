@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /** A consumed message (inbox pattern): the dedup record behind at-least-once delivery. */
-@Entity
+@Entity(name = "${module.slug}InboxEntity")
 @Table(name = "modux_inbox")
 @AllArgsConstructor
 @NoArgsConstructor

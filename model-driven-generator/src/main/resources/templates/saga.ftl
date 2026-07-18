@@ -18,14 +18,14 @@ import ${project.packageName}.${module.slug}.domain.aggregates.${aggName?lower_c
 <#if saga.steps?has_content>
 <#list saga.steps as step>
 <#if step.type == "PublishDomainEvent" && step.domainEvent??>
-import ${project.packageName}.${module.slug}.domain.events.${step.domainEvent.name?cap_first}Event;
+import ${project.packageName}.${module.slug}.domain.events.${step.domainEvent.className}Event;
 </#if>
 <#if step.type == "CallUseCase" && step.useCase??>
-import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.name?cap_first}UseCase;
-import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.name?cap_first}Command;
+import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.className}UseCase;
+import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.className}Command;
 </#if>
 <#if step.type == "CallGateway" && step.gateway??>
-import ${project.packageName}.${module.slug}.application.out.${step.gateway.name?cap_first}Gateway;
+import ${project.packageName}.${module.slug}.application.out.${step.gateway.className}Gateway;
 </#if>
 </#list>
 </#if>
@@ -49,15 +49,15 @@ public class ${saga.name?cap_first}Saga {
     </#if>
 </#if>
 <#if step.type == "CallGateway" && step.gateway??>
-    <#if !addedSagaFields?seq_contains(step.gateway.name?cap_first + "Gateway")>
-        <#assign addedSagaFields = addedSagaFields + [step.gateway.name?cap_first + "Gateway"]>
-    final ${step.gateway.name?cap_first}Gateway ${step.gateway.name?uncap_first}Gateway;
+    <#if !addedSagaFields?seq_contains(step.gateway.className + "Gateway")>
+        <#assign addedSagaFields = addedSagaFields + [step.gateway.className + "Gateway"]>
+    final ${step.gateway.className}Gateway ${step.gateway.className?uncap_first}Gateway;
     </#if>
 </#if>
 <#if step.type == "CallUseCase" && step.useCase??>
-    <#if !addedSagaFields?seq_contains(step.useCase.name?cap_first + "UseCase")>
-        <#assign addedSagaFields = addedSagaFields + [step.useCase.name?cap_first + "UseCase"]>
-    final ${step.useCase.name?cap_first}UseCase ${step.useCase.name?uncap_first}UseCase;
+    <#if !addedSagaFields?seq_contains(step.useCase.className + "UseCase")>
+        <#assign addedSagaFields = addedSagaFields + [step.useCase.className + "UseCase"]>
+    final ${step.useCase.className}UseCase ${step.useCase.className?uncap_first}UseCase;
     </#if>
 </#if>
 </#list>
@@ -79,7 +79,7 @@ public class ${saga.name?cap_first}Saga {
 <#if step.type == "Custom">
         steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}();
 <#else>
-        // step ${step?index + 1}: ${step.name} (${step.type})<#if step.gateway??> — ${step.gateway.name?uncap_first}Gateway.${(step.gatewayOperation.name)!'?'}(…)</#if><#if step.aggregate??> — ${step.aggregate.name} ${(step.operation.name)!'operation'}(…)</#if><#if step.useCase??> — ${step.useCase.name?uncap_first}UseCase.handle(…)</#if><#if step.domainEvent??> — publish ${step.domainEvent.name}Event</#if>
+        // step ${step?index + 1}: ${step.name} (${step.type})<#if step.gateway??> — ${step.gateway.className?uncap_first}Gateway.${(step.gatewayOperation.name)!'?'}(…)</#if><#if step.aggregate??> — ${step.aggregate.name} ${(step.operation.name)!'operation'}(…)</#if><#if step.useCase??> — ${step.useCase.className?uncap_first}UseCase.handle(…)</#if><#if step.domainEvent??> — publish ${step.domainEvent.name}Event</#if>
 </#if>
 </#list>
 <#else>

@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 </#if>
 
-/** Editable row of the "${gridModel.name}" inline collection (see ${usecase.name?cap_first}Page). */
+/** Editable row of the "${gridModel.name}" inline collection (see ${usecase.className}Page). */
 @Data
 public class ${gridClassName} {
 

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * rebalances and DLQ replays redeliver the SAME payload, so the dedup key is the hash of the
  * message itself — identical redeliveries are skipped, distinct events always pass.
  */
-@Service
+@Service("${module.slug}Inbox")
 @RequiredArgsConstructor
 public class Inbox {
 

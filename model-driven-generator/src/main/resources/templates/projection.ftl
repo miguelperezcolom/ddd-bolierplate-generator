@@ -41,7 +41,9 @@ public class ${className} {
 <#if enrichedHandlers?has_content>
 <#list enrichedHandlers as handler>
     @Bean
-    public Consumer<Message<String>> ${handler.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}() {
+    <#-- Qualified with the projection: two projections may handle the same event, and the
+         function bean name must be unique in the shared application context. -->
+    public Consumer<Message<String>> ${className?uncap_first}${handler.name?cap_first?replace("[^a-zA-Z0-9]","",'r')}() {
         return message -> {
             try {
                 @SuppressWarnings("unchecked")
@@ -114,7 +116,9 @@ public class ${className} {
 </#list>
 <#else>
     @Bean
-    public Consumer<Message<String>> ${projection.name?uncap_first}() {
+    <#-- Named after the class + suffix: the bare projection name would collide with the
+         @Configuration class's own default bean name. -->
+    public Consumer<Message<String>> ${className?uncap_first}Consumer() {
         return message -> {
             // TODO: no handlers configured for this projection
         };

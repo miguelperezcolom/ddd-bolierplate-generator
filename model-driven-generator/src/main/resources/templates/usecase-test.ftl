@@ -17,13 +17,13 @@ import ${project.packageName}.${module.slug}.application.out.${step.aggregate.na
 <#if step.type == "CallGateway" && step.gateway??>
 <#if !importedDeps?seq_contains(step.gateway.name + "Gw")>
 <#assign importedDeps = importedDeps + [step.gateway.name + "Gw"]>
-import ${project.packageName}.${module.slug}.application.out.${step.gateway.name?cap_first}Gateway;
+import ${project.packageName}.${module.slug}.application.out.${step.gateway.className}Gateway;
 </#if>
 </#if>
 <#if step.type == "CallUseCase" && step.useCase??>
 <#if !importedDeps?seq_contains(step.useCase.name + "UC")>
 <#assign importedDeps = importedDeps + [step.useCase.name + "UC"]>
-import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.name?cap_first}UseCase;
+import ${project.packageName}.${module.slug}.application.usecases.${step.useCase.name?lower_case?replace("[^a-z0-9]","",'r')}.${step.useCase.className}UseCase;
 </#if>
 </#if>
 </#list>
@@ -34,7 +34,7 @@ import org.springframework.cloud.stream.function.StreamBridge;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 @ExtendWith(MockitoExtension.class)
-class ${usecase.name?cap_first}UseCaseTest {
+class ${usecase.className}UseCaseTest {
 
 <#assign declaredMocks = []>
 <#if usecase.steps?has_content>
@@ -51,7 +51,7 @@ class ${usecase.name?cap_first}UseCaseTest {
 <#if !declaredMocks?seq_contains(step.gateway.name + "Gateway")>
 <#assign declaredMocks = declaredMocks + [step.gateway.name + "Gateway"]>
     @Mock
-    ${step.gateway.name?cap_first}Gateway ${step.gateway.name?lower_case}Gateway;
+    ${step.gateway.className}Gateway ${step.gateway.name?lower_case}Gateway;
 
 </#if>
 </#if>
@@ -59,7 +59,7 @@ class ${usecase.name?cap_first}UseCaseTest {
 <#if !declaredMocks?seq_contains(step.useCase.name + "UseCase")>
 <#assign declaredMocks = declaredMocks + [step.useCase.name + "UseCase"]>
     @Mock
-    ${step.useCase.name?cap_first}UseCase ${step.useCase.name?uncap_first}UseCase;
+    ${step.useCase.className}UseCase ${step.useCase.className?uncap_first}UseCase;
 
 </#if>
 </#if>
@@ -67,7 +67,7 @@ class ${usecase.name?cap_first}UseCaseTest {
 </#if>
 <#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
     @Mock
-    ${usecase.name?cap_first}Steps steps;
+    ${usecase.className}Steps steps;
 
 </#if>
 <#if usecase.needsStreamBridge>
@@ -76,11 +76,11 @@ class ${usecase.name?cap_first}UseCaseTest {
 
 </#if>
     @InjectMocks
-    ${usecase.name?cap_first}UseCase useCase;
+    ${usecase.className}UseCase useCase;
 
     @Test
     void should_execute_successfully() {
-        var command = new ${usecase.name?cap_first}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field>null<#sep>, </#sep></#list><#else>null</#if>);
+        var command = new ${usecase.className}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field>null<#sep>, </#sep></#list><#else>null</#if>);
         assertDoesNotThrow(() -> useCase.handle(command));
     }
 }
