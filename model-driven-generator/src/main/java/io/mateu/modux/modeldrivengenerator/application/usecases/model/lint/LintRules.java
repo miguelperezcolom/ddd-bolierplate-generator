@@ -2,13 +2,18 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapCoherenceService;
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.coherence.FlowContextMapFinding;
+import io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionBackingResolver;
+import io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionCatalog;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchetype;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.interaction.vo.InteractionParticipantType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.interaction.vo.InteractionTriggerKind;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
 
@@ -55,9 +60,6 @@ public final class LintRules {
                 new CrossServiceConsumption(),
                 new ModuleNotInService(),
                 new ModuleInManyServices(),
-                new JourneyLegEndpoints(),
-                new JourneyDag(),
-                new JourneyLegWithoutDependency(),
                 new BoundedContextReadPath(),
                 new BoundedContextWritePath(),
                 new UseCasePipeline(),
@@ -75,7 +77,9 @@ public final class LintRules {
                 new McpGatewayEmpty(),
                 new AgentDelegationCycle(),
                 new RagOrphan(),
-                new ApiOperationUnwired());
+                new ApiOperationUnwired(),
+                new InteractionDanglingParticipant(),
+                new InteractionMessageWithoutBacking());
     }
 
     /** A published operation nobody implements is a broken promise. */
@@ -91,6 +95,96 @@ public final class LintRules {
                                     "Operación publicada sin implementador: apúntala a un bounded"
                                             + " context, un caso de uso o una policy.")))
                     .toList();
+        }
+    }
+
+    /**
+     * An interaction pointing at something that no longer exists is a broken story. One finding
+     * per (interaction, dangling ref) — the trigger ref (an event NAME when the trigger kind is
+     * EVENT) and every message endpoint — so a deleted element referenced by ten messages does
+     * not spam ten identical warnings. Backing of the affected messages is not checked
+     * separately (see {@link InteractionMessageWithoutBacking}): the dangling warning wins.
+     */
+    static class InteractionDanglingParticipant implements LintRule {
+        public String id() { return "interaction-dangling-participant"; }
+        public String description() { return "Interaction refs (trigger, message endpoints) should resolve to catalog elements"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var catalog = catalogOf(m);
+            var findings = new ArrayList<LintFinding>();
+            for (var interaction : m.interactions()) {
+                var triggerRef = interaction.triggerRef();
+                if (triggerRef != null && !triggerRef.isBlank() && !triggerResolves(catalog, interaction)) {
+                    findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
+                            interaction.id(), interaction.name(),
+                            "El disparador '" + triggerRef + "' no resuelve a ningún elemento"
+                                    + (interaction.triggerKind() == InteractionTriggerKind.EVENT
+                                            ? " (no existe ningún evento con ese nombre)." : ".")));
+                }
+                // ref → where it shows up ("mensaje 2 (origen)", …), in first-appearance order
+                var occurrences = new java.util.LinkedHashMap<String, List<String>>();
+                for (int i = 0; i < interaction.messages().size(); i++) {
+                    var message = interaction.messages().get(i);
+                    if (message.fromRef() != null) {
+                        occurrences.computeIfAbsent(message.fromRef(), k -> new ArrayList<>())
+                                .add("mensaje " + (i + 1) + " (origen)");
+                    }
+                    if (message.toRef() != null) {
+                        occurrences.computeIfAbsent(message.toRef(), k -> new ArrayList<>())
+                                .add("mensaje " + (i + 1) + " (destino)");
+                    }
+                }
+                occurrences.forEach((ref, where) -> {
+                    if (catalog.typeOf(ref) != InteractionParticipantType.UNKNOWN) return;
+                    findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
+                            interaction.id(), interaction.name(),
+                            "La referencia '" + ref + "' (" + String.join(", ", where)
+                                    + ") no resuelve a ningún elemento del modelo."));
+                });
+            }
+            return findings;
+        }
+
+        /** The trigger is an element id — or an event NAME when the kind is EVENT. */
+        private static boolean triggerResolves(InteractionCatalog catalog, InteractionEntity interaction) {
+            var triggerRef = interaction.triggerRef();
+            if (interaction.triggerKind() == InteractionTriggerKind.EVENT) {
+                return catalog.domainEvents().stream().anyMatch(e -> InteractionCatalog.sameEventName(e.name(), triggerRef))
+                        || catalog.applicationEvents().stream().anyMatch(e -> InteractionCatalog.sameEventName(e.name(), triggerRef));
+            }
+            return catalog.typeOf(triggerRef) != InteractionParticipantType.UNKNOWN;
+        }
+    }
+
+    /**
+     * A message without a mechanism that performs it is intent only — the materialization
+     * gestures close that gap. Backing comes straight from the {@link InteractionBackingResolver}
+     * (the same computation the editor's projection shows), never re-derived here. Messages
+     * touching a DANGLING endpoint are skipped: {@link InteractionDanglingParticipant} already
+     * names that problem precisely, and backing cannot be meaningfully evaluated against an
+     * element that does not exist — so no double warnings.
+     */
+    static class InteractionMessageWithoutBacking implements LintRule {
+        public String id() { return "interaction-message-without-backing"; }
+        public String description() { return "Every interaction message should ride on a declared mechanism"; }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var catalog = catalogOf(m);
+            var findings = new ArrayList<LintFinding>();
+            for (var interaction : m.interactions()) {
+                for (int i = 0; i < interaction.messages().size(); i++) {
+                    var message = interaction.messages().get(i);
+                    if (catalog.typeOf(message.fromRef()) == InteractionParticipantType.UNKNOWN
+                            || catalog.typeOf(message.toRef()) == InteractionParticipantType.UNKNOWN) {
+                        continue; // dangling wins — see interaction-dangling-participant
+                    }
+                    if (InteractionBackingResolver.isBacked(catalog, message)) continue;
+                    findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
+                            interaction.id(), interaction.name(),
+                            "Mensaje " + (i + 1) + " (" + message.fromRef() + " → " + message.toRef()
+                                    + (message.kind() != null ? ", " + message.kind().name() : "")
+                                    + ") sin mecanismo que lo realice — materialízalo o ajusta la secuencia."));
+                }
+            }
+            return findings;
         }
     }
 
@@ -1047,6 +1141,15 @@ public final class LintRules {
 
     // --- shared helpers ------------------------------------------------------------
 
+    /** The catalog the interaction rules resolve refs and backing against, built from the snapshot. */
+    private static InteractionCatalog catalogOf(ModelSnapshot m) {
+        return new InteractionCatalog(m.roles(), m.uiAdapters(), m.pages(), m.useCases(),
+                m.aggregates(), m.domainServices(), m.queryServices(), m.readModels(),
+                m.projects().stream().flatMap(p -> p.externalSystems().stream()).toList(),
+                m.apis(), m.aiAgents(), m.processes(), m.workflows(), m.flows(),
+                m.subscriptions(), m.domainEvents(), m.applicationEvents());
+    }
+
     private static boolean isPii(ModelFieldEntity f) {
         return f.piiClassification() != null && f.piiClassification() != PiiClassification.NONE;
     }
@@ -1056,135 +1159,6 @@ public final class LintRules {
         var aggregate = m.aggregates().stream().filter(a -> a.id().equals(aggregateId)).findFirst().orElse(null);
         if (aggregate == null || aggregate.modelId() == null) return null;
         return m.models().stream().filter(mo -> mo.id().equals(aggregate.modelId())).findFirst().orElse(null);
-    }
-
-    /** A journey hops over EXISTING elements; a leg pointing nowhere is a broken story. */
-    static class JourneyLegEndpoints implements LintRule {
-        public String id() { return "journey-leg-endpoints"; }
-        public String description() { return "Every journey leg must join two existing elements"; }
-        public List<LintFinding> apply(ModelSnapshot m) {
-            var known = knownElementIds(m);
-            var findings = new ArrayList<LintFinding>();
-            for (var journey : m.journeys()) {
-                for (var leg : journey.legs()) {
-                    for (var endpoint : List.of(leg.sourceId(), leg.targetId())) {
-                        if (endpoint == null || !known.contains(endpoint)) {
-                            findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
-                                    journey.id(), journey.name(),
-                                    "El tramo " + leg.id() + " apunta a '" + endpoint
-                                            + "', que no existe en el modelo."));
-                        }
-                    }
-                }
-            }
-            return findings;
-        }
-    }
-
-    /** Legs order themselves through afterLegIds: unknown references or cycles break the reading. */
-    static class JourneyDag implements LintRule {
-        public String id() { return "journey-dag"; }
-        public String description() { return "Journey legs must form a DAG over afterLegIds"; }
-        public List<LintFinding> apply(ModelSnapshot m) {
-            var findings = new ArrayList<LintFinding>();
-            for (var journey : m.journeys()) {
-                var legIds = journey.legs().stream()
-                        .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyLegEntity::id)
-                        .collect(java.util.stream.Collectors.toSet());
-                for (var leg : journey.legs()) {
-                    for (var after : leg.afterLegIds()) {
-                        if (!legIds.contains(after)) {
-                            findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
-                                    journey.id(), journey.name(),
-                                    "El tramo " + leg.id() + " continúa a '" + after
-                                            + "', que no es un tramo del trayecto."));
-                        }
-                    }
-                }
-                // cycle sniffing: repeated deepening beyond the leg count means a loop
-                var depths = new java.util.HashMap<String, Integer>();
-                boolean progress = true;
-                for (int round = 0; progress && round <= journey.legs().size(); round++) {
-                    progress = false;
-                    for (var leg : journey.legs()) {
-                        int depth = leg.afterLegIds().stream()
-                                .mapToInt(a -> depths.getOrDefault(a, 0)).max().orElse(0) + 1;
-                        if (depth != depths.getOrDefault(leg.id(), 0)) {
-                            depths.put(leg.id(), depth);
-                            progress = true;
-                        }
-                    }
-                }
-                if (progress || depths.values().stream().anyMatch(d -> d > journey.legs().size())) {
-                    findings.add(new LintFinding(id(), LintSeverity.ERROR, "Journey",
-                            journey.id(), journey.name(),
-                            "Los tramos forman un ciclo — un trayecto se lee de principio a fin."));
-                }
-            }
-            return findings;
-        }
-    }
-
-    /** A journey rides on declared dependencies; a leg with no edge underneath floats. */
-    static class JourneyLegWithoutDependency implements LintRule {
-        public String id() { return "journey-leg-without-dependency"; }
-        public String description() { return "Journey legs should ride on a declared dependency or relation"; }
-        public List<LintFinding> apply(ModelSnapshot m) {
-            var edges = declaredEdges(m);
-            var findings = new ArrayList<LintFinding>();
-            for (var journey : m.journeys()) {
-                for (var leg : journey.legs()) {
-                    if (leg.sourceId() == null || leg.targetId() == null) continue;
-                    if (!edges.contains(leg.sourceId() + "->" + leg.targetId())
-                            && !edges.contains(leg.targetId() + "->" + leg.sourceId())) {
-                        findings.add(new LintFinding(id(), LintSeverity.INFO, "Journey",
-                                journey.id(), journey.name(),
-                                "El tramo " + leg.id() + " (" + leg.sourceId() + " → " + leg.targetId()
-                                        + ") no tiene debajo ninguna dependencia declarada."));
-                    }
-                }
-            }
-            return findings;
-        }
-    }
-
-    /** Every id a journey can hop over: catalog elements plus the project-scoped strategic cast. */
-    private static Set<String> knownElementIds(ModelSnapshot m) {
-        var ids = new HashSet<String>();
-        m.boundedContexts().forEach(x -> ids.add(x.id()));
-        m.services().forEach(x -> ids.add(x.id()));
-        m.aggregates().forEach(x -> ids.add(x.id()));
-        m.useCases().forEach(x -> ids.add(x.id()));
-        m.queryServices().forEach(x -> ids.add(x.id()));
-        m.apis().forEach(x -> ids.add(x.id()));
-        m.workflows().forEach(x -> ids.add(x.id()));
-        m.aiAgents().forEach(x -> ids.add(x.id()));
-        for (var p : m.projects()) {
-            p.externalSystems().forEach(x -> ids.add(x.id()));
-        }
-        return ids;
-    }
-
-    /** The declared strategic edges a journey can ride on, as "source->target". */
-    private static Set<String> declaredEdges(ModelSnapshot m) {
-        var edges = new HashSet<String>();
-        for (var p : m.projects()) {
-            for (var r : p.contextMap()) {
-                edges.add(r.sourceBoundedContextId() + "->" + r.targetBoundedContextId());
-            }
-            for (var x : p.externalSystems()) {
-                x.dependsOnExternalSystemIds().forEach(t -> edges.add(x.id() + "->" + t));
-                x.cqrsExternalSystemIds().forEach(t -> edges.add(x.id() + "->" + t));
-                x.dependsOnApiIds().forEach(t -> edges.add(x.id() + "->" + t));
-                if (x.parentExternalSystemId() != null) edges.add(x.id() + "->" + x.parentExternalSystemId());
-            }
-        }
-        for (var api : m.apis()) {
-            if (api.publishedByExternalSystemId() != null) {
-                edges.add(api.publishedByExternalSystemId() + "->" + api.id());
-            }
-        }
-        return edges;
     }
 
 }

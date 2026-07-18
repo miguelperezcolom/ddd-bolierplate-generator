@@ -2,8 +2,7 @@ import { LitElement, html, css, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
-import type { DiagramLayout, EditorLayout, Point, Scene, SceneEdge, SceneNode, ViewLayout } from './scene.js';
-import { journeyLegNumbers, journeyRuns } from './journeys.js';
+import type { DiagramLayout, EditorLayout, Point, Scene, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { contextMapScene, distributionScene, ownershipIndex } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
@@ -26,6 +25,17 @@ import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
+import './modux-sequence.js';
+import type { InteractionRef } from './model.js';
+import {
+  derivationCandidates,
+  deriveParticipants,
+  interactionToMermaid,
+  lookupFor,
+  materializeCommands,
+  participantCatalog,
+  saveInteractionCommand,
+} from './interaction-utils.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
 const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string }> = {
@@ -41,7 +51,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-export type ViewId = 'context-map' | 'distribution' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations';
+export type ViewId = 'context-map' | 'distribution' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations' | 'interactions';
 
 
 /**
@@ -394,6 +404,27 @@ export class ModuxEditor extends LitElement {
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
 
+  // ── Secuencias (interactions) ──────────────────────────────────────────
+  /** Authored interaction open in the Secuencias view (null = none chosen). */
+  @state() private _interactionId: string | null = null;
+  /** Working copy: gestures land here instantly, the model round-trip resyncs it. */
+  @state() private _editingInteraction: InteractionRef | null = null;
+  /** Derived mode shows the ephemeral server-computed interaction, read-only. */
+  @state() private _interactionMode: 'authored' | 'derived' = 'authored';
+  /** Set by the host (modux-editor-connected) answering interaction-derive-requested. */
+  @property({ attribute: false }) derivedInteraction: InteractionRef | null = null;
+  /** A derive request is in flight; if it never gets answered the view warns. */
+  @state() private _derivePending = false;
+  private _deriveTimer: number | undefined;
+  /** Mini prompt for names (nueva secuencia, fijar derivada). */
+  @state() private _interactionPrompt: {
+    title: string;
+    value: string;
+    apply: (name: string) => void;
+  } | null = null;
+  /** Confirmation for deleting the active authored interaction. */
+  @state() private _interactionDelete: { id: string; name: string } | null = null;
+
 
   /** The magic connector's question, at the drop point. */
   @state() private _connectPicker: {
@@ -402,8 +433,6 @@ export class ModuxEditor extends LitElement {
     options: { id: string; label: string; hint: string; apply(): void }[];
   } | null = null;
   @state() private _activeViewId = '';
-  @state() private _activeJourneyId = '';
-  @state() private _newJourneyName = '';
   @state() private _newRagSourceType = 'WEB';
   @state() private _newRagSourceUri = '';
   @state() private _addMemberKey = '';
@@ -581,10 +610,6 @@ export class ModuxEditor extends LitElement {
       background: #f8fafc;
       flex-wrap: wrap;
     }
-    .tabs {
-      display: flex;
-      gap: 4px;
-    }
     .tab {
       border: none;
       background: transparent;
@@ -758,9 +783,22 @@ export class ModuxEditor extends LitElement {
     modux-canvas,
     modux-tilt,
     modux-figma,
-    modux-explorer {
+    modux-explorer,
+    modux-sequence {
       flex: 1;
       min-height: 0;
+    }
+    .seq-status {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px;
+      color: #94a3b8;
+      font-size: 13px;
+      background: #ffffff;
     }
     .canvas-wrap {
       position: relative;
@@ -870,7 +908,7 @@ export class ModuxEditor extends LitElement {
         break;
       case 'y':
       case 'Y':
-        if (this._view !== 'design') {
+        if (this._view !== 'design' && this._view !== 'interactions') {
           e.preventDefault();
           this._yugo = !this._yugo;
           if (this._yugo) this._tilt = false;
@@ -908,20 +946,11 @@ export class ModuxEditor extends LitElement {
         this._tilt = !this._tilt;
         break;
       case 'e':
-      case 'E':
-        e.preventDefault();
-        this._view = 'eventstorming';
-        break;
-      case 'd':
-      case 'D':
-        if (this._view === 'eventstorming') {
-          e.preventDefault();
-          this._view = 'context-map';
-        }
-        break;
+      case 'E': scope('view:eventstorming'); break;
       case 'a':
       case 'A': scope('view:aggregates'); break;
       case '1': scope('view:context-map'); break;
+      case '2': scope('view:interactions'); break;
       case '4': scope('view:distribution'); break;
       case '5': scope('view:flows'); break;
       case '6': scope('view:processes'); break;
@@ -996,6 +1025,31 @@ export class ModuxEditor extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has('model')) this._pendingNames.clear();
     if (changed.has('model')) this.pruneStaleEdgePoints();
+    // The interaction working copy resyncs with the projection on every round-trip.
+    if (changed.has('model') && this._interactionMode === 'authored' && this._interactionId) {
+      const found = (this.model.interactions ?? []).find((i) => i.id === this._interactionId);
+      if (found) {
+        const clone: InteractionRef = JSON.parse(JSON.stringify(found));
+        // Participants are NOT persisted (the server derives them from the
+        // messages): keep the loose ones added locally, waiting for a message.
+        const derivedNow = deriveParticipants(clone);
+        const loose = (this._editingInteraction?.participants ?? []).filter(
+          (p) =>
+            !derivedNow.some((sp) => sp.ref === p.ref) &&
+            !clone.messages.some((m) => m.fromRef === p.ref || m.toRef === p.ref),
+        );
+        if (loose.length) clone.participants = [...derivedNow, ...loose];
+        this._editingInteraction = clone;
+      } else {
+        this._editingInteraction = null;
+        this._interactionId = null; // borrada fuera (o por undo)
+      }
+    }
+    // The host answered a derive request (a null answer fails silently → the view warns).
+    if (changed.has('derivedInteraction') && this._derivePending && this.derivedInteraction) {
+      this._derivePending = false;
+      window.clearTimeout(this._deriveTimer);
+    }
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
         && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0) {
@@ -1197,53 +1251,6 @@ export class ModuxEditor extends LitElement {
    * detour bends, recomputed with every scene (no persistence, so they follow
    * every level change and drag). Hand-placed bends always win.
    */
-  /**
-   * The active journey takes the stage: its legs paint as their own numbered
-   * layer (1, 2, 3a, 3b… — letters where it bifurcates) and everything the
-   * story does not touch fades back. Legs whose endpoints are hidden at this
-   * level simply wait for their level.
-   */
-  private withJourneyOverlay(scene: Scene): Scene {
-    const journey = (this.model.journeys ?? []).find((j) => j.id === this._activeJourneyId);
-    if (!journey || (this._view !== 'context-map' && this._view !== 'integrations')) return scene;
-    const nodeIds = new Set(scene.nodes.map((n) => n.id));
-    const numbers = journeyLegNumbers(journey);
-    const touched = new Set<string>();
-    const overlay: SceneEdge[] = [];
-    for (const leg of journey.legs ?? []) {
-      if (!nodeIds.has(leg.sourceId) || !nodeIds.has(leg.targetId)) continue;
-      touched.add(leg.sourceId);
-      touched.add(leg.targetId);
-      overlay.push({
-        id: `journeyleg:${journey.id}:${leg.id}`,
-        sourceId: leg.sourceId,
-        targetId: leg.targetId,
-        kind: 'journey',
-        color: '#d97706',
-        arrow: true,
-        label: `${numbers.get(leg.id) ?? ''}${leg.label ? ` · ${leg.label}` : ''}`,
-        tooltip: `Tramo ${numbers.get(leg.id)} de «${journey.name}» — Supr lo quita`,
-      });
-    }
-    // ancestors of touched nodes stay lit so the chips read in context
-    const lit = new Set(touched);
-    const byId = new Map(scene.nodes.map((n) => [n.id, n]));
-    for (const id of touched) {
-      for (let cur = byId.get(id)?.parentId; cur; cur = byId.get(cur)?.parentId) lit.add(cur);
-    }
-    const drawn = new Set(overlay.map((e) => e.id));
-    const runs = journeyRuns(journey)
-      .map((run) => run.map((legId) => `journeyleg:${journey.id}:${legId}`).filter((id) => drawn.has(id)))
-      .filter((run) => run.length > 0)
-      // hidden legs may truncate several routes into the same visible prefix
-      .filter((run, i, all) => all.findIndex((r) => r.join('|') === run.join('|')) === i);
-    return {
-      nodes: scene.nodes.map((n) => (lit.has(n.id) ? n : { ...n, dim: true })),
-      edges: [...scene.edges.map((e) => ({ ...e, dim: true })), ...overlay],
-      journeyRuns: runs,
-    };
-  }
-
   private routedEdgePoints(scene: {
     nodes: SceneNode[];
     edges: { id: string; sourceId: string; targetId: string }[];
@@ -1752,6 +1759,161 @@ export class ModuxEditor extends LitElement {
     return inverseOf(this.gestureHost(), c);
   }
 
+  // ── Secuencias (interactions) ────────────────────────────────────────────
+
+  /** The interaction on the surface: the authored working copy, or the derived one. */
+  private currentInteraction(): InteractionRef | null {
+    return this._interactionMode === 'derived' ? this.derivedInteraction : this._editingInteraction;
+  }
+
+  private enterAuthored(id: string | null): void {
+    window.clearTimeout(this._deriveTimer);
+    this._derivePending = false;
+    this._interactionMode = 'authored';
+    this._interactionId = id;
+    const found = id ? (this.model.interactions ?? []).find((i) => i.id === id) : null;
+    this._editingInteraction = found ? JSON.parse(JSON.stringify(found)) : null;
+  }
+
+  /** Derived mode: ask the host (it fetches /interactions/derive); silence ⇒ the view warns. */
+  private enterDerived(kind: string, ref: string): void {
+    window.clearTimeout(this._deriveTimer);
+    this._interactionMode = 'derived';
+    this.derivedInteraction = null; // a stale answer must not pose as this request's
+    this._derivePending = true;
+    this._deriveTimer = window.setTimeout(() => (this._derivePending = false), 4000);
+    this.emit('interaction-derive-requested', { kind, ref });
+  }
+
+  private uniqueInteractionId(name: string): string {
+    const base = `int-${slug(name) || 'secuencia'}`;
+    let id = base;
+    let n = 2;
+    while ((this.model.interactions ?? []).some((i) => i.id === id)) id = `${base}-${n++}`;
+    return id;
+  }
+
+  private onInteractionPick(e: Event): void {
+    const select = e.target as HTMLSelectElement;
+    const value = select.value;
+    select.value = '';
+    if (value === '__new__') {
+      this._interactionPrompt = {
+        title: 'Nombre de la nueva secuencia',
+        value: '',
+        apply: (name) => {
+          const id = this.uniqueInteractionId(name);
+          const interaction: InteractionRef = { id, name, participants: [], messages: [] };
+          this._interactionMode = 'authored';
+          this._interactionId = id;
+          this._editingInteraction = interaction;
+          this.command(saveInteractionCommand(interaction));
+        },
+      };
+      return;
+    }
+    this.enterAuthored(value || null);
+  }
+
+  private onDerivePick(e: Event): void {
+    const select = e.target as HTMLSelectElement;
+    const value = select.value;
+    select.value = '';
+    if (!value) return;
+    const [kind, ref] = value.split('|');
+    this.enterDerived(kind, ref);
+  }
+
+  /** 📌 in derived mode: persist the ephemeral interaction and switch to authored. */
+  private pinDerivedInteraction(): void {
+    const derived = this.derivedInteraction;
+    if (!derived) return;
+    this._interactionPrompt = {
+      title: 'Fijar como secuencia authoreda — nombre',
+      value: derived.name ?? '',
+      apply: (name) => {
+        const id = this.uniqueInteractionId(name);
+        const pinned: InteractionRef = { ...derived, id, name, ephemeral: false };
+        this._interactionMode = 'authored';
+        this._interactionId = id;
+        this._editingInteraction = pinned;
+        this.command(saveInteractionCommand(pinned));
+        this.emit('modux-notice', { message: `Secuencia «${name}» fijada en el modelo` });
+      },
+    };
+  }
+
+  private async copyInteractionMermaid(): Promise<void> {
+    const current = this.currentInteraction();
+    if (!current) return;
+    try {
+      await navigator.clipboard.writeText(interactionToMermaid(current));
+      this.emit('modux-notice', { message: 'Mermaid copiado al portapapeles' });
+    } catch {
+      this.emit('modux-notice', {
+        message: 'No se pudo copiar al portapapeles',
+        kind: 'error',
+      });
+    }
+  }
+
+  private onParticipantPick(e: Event): void {
+    const select = e.target as HTMLSelectElement;
+    const ref = select.value;
+    select.value = '';
+    const current = this._editingInteraction;
+    if (!ref || !current) return;
+    const candidate = participantCatalog(this.model).find((c) => c.ref === ref);
+    if (!candidate) return;
+    const participants = deriveParticipants(current);
+    if (participants.some((p) => p.ref === ref)) {
+      this.emit('modux-notice', { message: `«${candidate.name}» ya es participante` });
+      return;
+    }
+    const next: InteractionRef = {
+      ...current,
+      participants: [...participants, { ref, name: candidate.name, type: candidate.type }],
+    };
+    this._editingInteraction = next;
+    // Participants are client-side until their first message (the server derives
+    // them): the save keeps the server in sync but nothing new persists, so no undo.
+    this.command(saveInteractionCommand(next), false);
+  }
+
+  private onInteractionChanged(e: CustomEvent<InteractionRef>): void {
+    const next = e.detail;
+    this._editingInteraction = next; // instant feedback; the round-trip resyncs
+    this.command(saveInteractionCommand(next));
+  }
+
+  /** ✨ on an unbacked message: the EXISTING commands that build its mechanism (one undo). */
+  private onInteractionMaterialize(e: CustomEvent<{ messageId: string }>): void {
+    const current = this._editingInteraction;
+    const message = current?.messages.find((m) => m.id === e.detail.messageId);
+    if (!current || !message) return;
+    const lookup = lookupFor(this.model, current);
+    const { commands, hint } = materializeCommands(
+      this.model,
+      message,
+      lookup.typeOf,
+      lookup.nameOf,
+    );
+    if (!commands.length) {
+      this.emit('modux-notice', { message: hint ?? 'Este mensaje no se puede materializar' });
+      return;
+    }
+    const inverses = commands.flatMap((c) => this.inverseOf(c) ?? []);
+    for (const cmd of commands) this.command(cmd, false);
+    if (inverses.length) this.pushUndoEntry(inverses);
+    // Immediate feedback — the server recomputes backing on the round-trip anyway.
+    const next: InteractionRef = {
+      ...current,
+      messages: current.messages.map((m) => (m.id === message.id ? { ...m, backed: true } : m)),
+    };
+    this._editingInteraction = next;
+    this.command(saveInteractionCommand(next));
+  }
+
   /** Effects seen during the last gesture — the ArchiMate fallback reads them. */
   private _gestureEffects = 0;
 
@@ -1773,7 +1935,6 @@ export class ModuxEditor extends LitElement {
       this._gestureEffects === before &&
       pickers() === pickersBefore &&
       connectKind === undefined &&
-      !this._activeJourneyId &&
       sourceId !== targetId &&
       ['context-map', 'aggregates', 'integrations'].includes(this._view)
     ) {
@@ -1797,7 +1958,6 @@ export class ModuxEditor extends LitElement {
   private gestureHost(): GestureHost & UndoHost {
     return {
       model: this.model,
-      activeJourneyId: this._activeJourneyId || undefined,
       command: (c, pushUndo) => {
         this._gestureEffects++;
         this.command(c, pushUndo);
@@ -1985,46 +2145,6 @@ export class ModuxEditor extends LitElement {
       ...(this.model.rags ?? []).map((r) => ({ id: r.id, name: r.name, kind: 'rag' })),
       ...(this.model.apis ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'api' })),
     ].filter((c) => !members.has(c.id));
-  }
-
-  /** The active journey, legs numbered, for the surfaces that draw it themselves. */
-  private activeJourneyForSurface():
-    | {
-        name: string;
-        legs: { id: string; sourceId: string; targetId: string; num: string; label?: string }[];
-        runs: string[][];
-      }
-    | null {
-    const journey = (this.model.journeys ?? []).find((j) => j.id === this._activeJourneyId);
-    if (!journey) return null;
-    const numbers = journeyLegNumbers(journey);
-    return {
-      name: journey.name,
-      legs: (journey.legs ?? []).map((l) => ({
-        id: l.id,
-        sourceId: l.sourceId,
-        targetId: l.targetId,
-        num: numbers.get(l.id) ?? '',
-        label: l.label,
-      })),
-      runs: journeyRuns(journey),
-    };
-  }
-
-  private createJourneyFromToolbar(): void {
-    const name = this._newJourneyName.trim();
-    if (!name) return;
-    if ((this.model.journeys ?? []).some((j) => j.name === name)) {
-      this.emit('modux-notice', { message: `Ya hay un trayecto «${name}»` });
-      return;
-    }
-    const id = crypto.randomUUID();
-    this.command({ kind: 'add-journey', id, name });
-    this._activeJourneyId = id;
-    this._newJourneyName = '';
-    this.emit('modux-notice', {
-      message: `Trayecto «${name}» activo — traza líneas entre elementos para contar sus tramos`,
-    });
   }
 
   private addMemberFromToolbar(): void {
@@ -4096,7 +4216,7 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
               : view === 'ui'
                 ? uiScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
-                : view === 'design'
+                : view === 'design' || view === 'interactions'
                   ? { nodes: [], edges: [] }
               : view === 'integrations'
                 ? integrationsScene(model, vl.nodes)
@@ -4107,7 +4227,7 @@ export class ModuxEditor extends LitElement {
                 : view === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
                 : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
-    if (view !== 'design') {
+    if (view !== 'design' && view !== 'interactions') {
       this.withAreas(scene, view);
       this.withNotes(scene, view);
     }
@@ -4280,8 +4400,198 @@ export class ModuxEditor extends LitElement {
     (this.renderRoot.querySelector('modux-canvas') as HTMLElement | null)?.focus();
   }
 
+  /** Toolbar of the «Secuencias» view: sequence picker, derive, pin, mermaid, participants. */
+  private renderInteractionToolbar() {
+    const interactions = this.model.interactions ?? [];
+    const derived = this._interactionMode === 'derived';
+    const candidates = derivationCandidates(this.model);
+    const deriveGroups: [string, typeof candidates][] = [
+      ['Casos de uso', candidates.filter((c) => c.kind === 'USE_CASE')],
+      ['Operaciones API', candidates.filter((c) => c.kind === 'API_OPERATION')],
+      ['Eventos', candidates.filter((c) => c.kind === 'EVENT')],
+    ];
+    const catalog = participantCatalog(this.model);
+    const catalogGroups = [...new Set(catalog.map((c) => c.group))];
+    const canEdit = !derived && !!this._editingInteraction;
+    return html`
+      <select
+        title="Secuencia authoreda del modelo — «＋ Nueva…» crea una vacía"
+        @change=${(e: Event) => this.onInteractionPick(e)}
+      >
+        <option value="" ?selected=${!derived && !this._interactionId}>Secuencia: —</option>
+        ${interactions.map(
+          (i) =>
+            html`<option value=${i.id} ?selected=${!derived && this._interactionId === i.id}>
+              ${i.name}
+            </option>`,
+        )}
+        <option value="__new__">＋ Nueva…</option>
+      </select>
+      <select
+        title="Derivar una secuencia efímera de un punto de entrada (solo lectura hasta fijarla)"
+        @change=${(e: Event) => this.onDerivePick(e)}
+      >
+        <option value="" ?selected=${derived}>Derivar de: …</option>
+        ${deriveGroups
+          .filter(([, list]) => list.length)
+          .map(
+            ([label, list]) => html`
+              <optgroup label=${label}>
+                ${list.map((c) => html`<option value="${c.kind}|${c.ref}">${c.label}</option>`)}
+              </optgroup>
+            `,
+          )}
+      </select>
+      ${derived && this.derivedInteraction
+        ? html`<button
+            class="tab"
+            title="Guardar la secuencia derivada como authoreda en el modelo"
+            @click=${() => this.pinDerivedInteraction()}
+          >
+            📌 Fijar como secuencia
+          </button>`
+        : ''}
+      ${this.currentInteraction()
+        ? html`<button
+            class="tab"
+            title="Copiar el sequenceDiagram mermaid de lo visible"
+            @click=${() => void this.copyInteractionMermaid()}
+          >
+            ⧉ Mermaid
+          </button>`
+        : ''}
+      ${!derived && this._interactionId
+        ? html`<button
+            class="tab"
+            title="Borrar la secuencia activa del modelo"
+            @click=${() =>
+              (this._interactionDelete = {
+                id: this._interactionId!,
+                name: this._editingInteraction?.name ?? this._interactionId!,
+              })}
+          >
+            🗑
+          </button>`
+        : ''}
+      <select
+        title="Añadir un participante del catálogo a la secuencia (sin mensajes aún)"
+        ?disabled=${!canEdit}
+        @change=${(e: Event) => this.onParticipantPick(e)}
+      >
+        <option value="">＋ Participante…</option>
+        ${catalogGroups.map(
+          (g) => html`
+            <optgroup label=${g}>
+              ${catalog
+                .filter((c) => c.group === g)
+                .map((c) => html`<option value=${c.ref}>${c.label}</option>`)}
+            </optgroup>
+          `,
+        )}
+      </select>
+    `;
+  }
+
+  /** The «Secuencias» surface: one interaction as lifelines — no canvas Scene. */
+  private renderInteractionsView() {
+    if (this._interactionMode === 'derived') {
+      if (this._derivePending) {
+        return html`<div class="seq-status">Derivando la secuencia…</div>`;
+      }
+      if (!this.derivedInteraction) {
+        return html`<div class="seq-status">
+          La derivación no está disponible en este servidor (o ese punto de entrada no deriva nada
+          todavía) — crea la secuencia a mano con «＋ Nueva…».
+        </div>`;
+      }
+      return html`<modux-sequence
+        .interaction=${this.derivedInteraction}
+        .model=${this.model}
+      ></modux-sequence>`;
+    }
+    if (!this._editingInteraction) {
+      return html`<div class="seq-status">
+        Elige una secuencia del modelo, crea una con «＋ Nueva…» o deriva una de un caso de uso,
+        una operación API o un evento.
+      </div>`;
+    }
+    return html`<modux-sequence
+      .interaction=${this._editingInteraction}
+      .model=${this.model}
+      editable
+      @interaction-changed=${this.onInteractionChanged}
+      @interaction-materialize=${this.onInteractionMaterialize}
+      @undo-requested=${this.undo}
+      @redo-requested=${this.redo}
+    ></modux-sequence>`;
+  }
+
+  /** Name prompt of the Secuencias view (nueva secuencia / fijar derivada). */
+  private renderInteractionPrompt() {
+    const p = this._interactionPrompt;
+    if (!p) return '';
+    const commit = () => {
+      const name = p.value.trim();
+      this._interactionPrompt = null;
+      if (name) p.apply(name);
+    };
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._interactionPrompt = null)}></div>
+      <div
+        class="relation-picker"
+        style="left: 50%; top: 120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">${p.title}</div>
+        <input
+          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: 12px system-ui;"
+          placeholder="p. ej. Check-in online"
+          .value=${p.value}
+          @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') this._interactionPrompt = null;
+          }}
+        />
+        <button class="picker-item" @click=${commit}>Guardar</button>
+      </div>
+    `;
+  }
+
+  /** Confirmation before deleting the active authored interaction. */
+  private renderInteractionDelete() {
+    const d = this._interactionDelete;
+    if (!d) return '';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._interactionDelete = null)}></div>
+      <div
+        class="relation-picker"
+        style="left: 50%; top: 120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">¿Eliminar la secuencia «${d.name}» del modelo?</div>
+        <button
+          class="picker-item danger"
+          @click=${() => {
+            this._interactionDelete = null;
+            this._interactionId = null;
+            this._editingInteraction = null;
+            this.command({ kind: 'remove-interaction', id: d.id });
+          }}
+        >
+          <span class="abbr">🗑</span>
+          <span class="name">Eliminar «${d.name}»</span>
+        </button>
+        <button class="picker-item" @click=${() => (this._interactionDelete = null)}>
+          <span class="abbr">↩</span>
+          <span class="name">Cancelar</span>
+        </button>
+      </div>
+    `;
+  }
+
   render() {
-    const scene = this.withJourneyOverlay(this.sceneFor(this._view));
+    const scene = this.sceneFor(this._view);
     return html`
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
@@ -4299,54 +4609,40 @@ export class ModuxEditor extends LitElement {
         >
           ☰
         </button>
-        <div class="tabs">
-          <button
-            class="tab"
-            ?data-active=${this._view !== 'eventstorming'}
-            title="El diagrama del modelo — el desplegable elige qué pinta"
-            @click=${() => {
-              if (this._view === 'eventstorming') this._view = 'context-map';
-            }}
-          >
-            Diagrama
-          </button>
-          <button
-            class="tab"
-            ?data-active=${this._view === 'eventstorming'}
-            @click=${() => (this._view = 'eventstorming')}
-          >
-            EventStorming
-          </button>
-          <select
-            ?hidden=${this._view === 'eventstorming'}
-            title="Qué pinta el diagrama: el mapa (expande cada elemento a discreción), o una vista especializada"
-            @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
-          >
-            <option value="view:context-map" ?selected=${this._view === 'context-map'}>
-              Mapa del sistema
+        <select
+          title="Qué pinta el lienzo: el mapa (expande cada elemento a discreción), o una vista especializada"
+          @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
+        >
+          <option value="view:context-map" ?selected=${this._view === 'context-map'}>
+            Mapa del sistema
+          </option>
+          <optgroup label="Vistas especializadas">
+            <option value="view:distribution" ?selected=${this._view === 'distribution'}>
+              Distribución (módulos y servicios)
             </option>
-            <optgroup label="Vistas especializadas">
-              <option value="view:distribution" ?selected=${this._view === 'distribution'}>
-                Distribución (módulos y servicios)
-              </option>
-              <option value="view:aggregates" ?selected=${this._view === 'aggregates'}>
-                Agregados y referencias
-              </option>
-              <option value="view:flows" ?selected=${this._view === 'flows'}>Flows</option>
-              <option value="view:workflows" ?selected=${this._view === 'workflows'}>
-                Workflows
-              </option>
-              <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
-              <option value="view:integrations" ?selected=${this._view === 'integrations'}>
-                Integraciones
-              </option>
-              <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
-              <option value="view:design" ?selected=${this._view === 'design'}>
-                Diseño (páginas)
-              </option>
-            </optgroup>
-          </select>
-        </div>
+            <option value="view:aggregates" ?selected=${this._view === 'aggregates'}>
+              Agregados y referencias
+            </option>
+            <option value="view:flows" ?selected=${this._view === 'flows'}>Flows</option>
+            <option value="view:workflows" ?selected=${this._view === 'workflows'}>
+              Workflows
+            </option>
+            <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
+            <option value="view:integrations" ?selected=${this._view === 'integrations'}>
+              Integraciones
+            </option>
+            <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
+            <option value="view:eventstorming" ?selected=${this._view === 'eventstorming'}>
+              EventStorming
+            </option>
+            <option value="view:interactions" ?selected=${this._view === 'interactions'}>
+              Secuencias
+            </option>
+            <option value="view:design" ?selected=${this._view === 'design'}>
+              Diseño (páginas)
+            </option>
+          </optgroup>
+        </select>
         <select
           title="Limitar el lienzo a una vista del modelo — cada vista guarda su propia lámina (posiciones y expansión)"
           @change=${(e: Event) => this.activateVista((e.target as HTMLSelectElement).value)}
@@ -4361,26 +4657,6 @@ export class ModuxEditor extends LitElement {
                 </option>`,
             )}
         </select>
-        <select
-          title="Pintar un trayecto sobre el mapa (las líneas nuevas añaden tramos)"
-          @change=${(e: Event) => (this._activeJourneyId = (e.target as HTMLSelectElement).value)}
-        >
-          <option value="" ?selected=${this._activeJourneyId === ''}>Trayecto: ninguno</option>
-          ${(this.model.journeys ?? []).map(
-            (j) =>
-              html`<option value=${j.id} ?selected=${j.id === this._activeJourneyId}>
-                Trayecto: ${j.name}
-              </option>`,
-          )}
-        </select>
-        <input
-          class="new-name"
-          placeholder="Nuevo trayecto…"
-          title="Crea un trayecto y actívalo: cada línea que traces será un tramo"
-          .value=${this._newJourneyName}
-          @input=${(e: Event) => (this._newJourneyName = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createJourneyFromToolbar()}
-        />
         ${this._activeViewId
           ? html`
               <input
@@ -4410,6 +4686,7 @@ export class ModuxEditor extends LitElement {
               </button>
             `
           : ''}
+        ${this._view === 'interactions' ? this.renderInteractionToolbar() : ''}
         <div class="spacer"></div>
         ${this.viewSelection().length ||
         (!this._activeViewId && (this._view === 'context-map' || this._view === 'distribution'))
@@ -4817,7 +5094,7 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design'}
+          ?disabled=${this._view === 'design' || this._view === 'interactions'}
           ?data-active=${this._yugo}
           title=${this._yugo
             ? 'Volver al lienzo editable (Y)'
@@ -4841,13 +5118,14 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._view === 'design'
+      ${this._view === 'interactions'
+        ? this.renderInteractionsView()
+        : this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
         : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
             .scene=${this.sceneFor(this._view, { expandAll: true })}
-            .journey=${this.activeJourneyForSurface()}
             .sceneKey=${`${this._view}:${this._activeViewId || 'base'}`}
             ?shifted=${this._paletteOpen}
             @dragover=${(e: DragEvent) => e.preventDefault()}
@@ -4954,7 +5232,12 @@ export class ModuxEditor extends LitElement {
       `}
       </div>
       <div class="hint">
-        ${this._view === 'context-map'
+        ${this._view === 'interactions'
+          ? html`Arrastra entre líneas de vida para crear un mensaje · arrastra un mensaje
+            verticalmente para reordenarlo · doble click edita etiqueta, guarda y tipo · Supr
+            borra el mensaje o el participante seleccionado · ✨ materializa un mensaje sin
+            respaldo · una secuencia derivada es de solo lectura hasta fijarla con 📌`
+          : this._view === 'context-map'
           ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema (y un sistema externo dentro/fuera de otro) · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
@@ -4973,6 +5256,7 @@ export class ModuxEditor extends LitElement {
         · pulsa <b>?</b> para los atajos
       </div>
       ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
+      ${this.renderInteractionPrompt()} ${this.renderInteractionDelete()}
       ${this.renderHelpPopover()}
     `;
   }
@@ -4986,9 +5270,10 @@ export class ModuxEditor extends LitElement {
       ['0', 'Ajustar el diagrama a la ventana'],
       ['+ / −', 'Zoom (también con la rueda)'],
       ['1 · 4', 'Mapa del sistema · Distribución'],
+      ['2', 'Secuencias (interacciones)'],
       ['5 · 6 · 7 · 8 · 9', 'Flows · Procesos · Workflows · UI · Diseño'],
       ['A', 'Vista de agregados'],
-      ['E / D', 'EventStorming / volver al diagrama'],
+      ['E', 'Vista EventStorming'],
       ['V', 'Vista 3D (placas apiladas, tipo Firefox Tilt)'],
       ['T', 'Árbol del catálogo (con una vista activa)'],
       ['Supr', 'Borrar la selección'],

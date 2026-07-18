@@ -102,7 +102,8 @@ public class McpStdioServer {
                 + "transformations, steps, pages and components. "
                 + "Also first-class: 'etlFlows' (integrations: source \u2192 transform \u2192 write), "
                 + "'uiAdapters' + 'pages' + 'buttonGroups' (the UI), 'aiAgents' + 'rags' + 'mcpGateways' "
-                + "(the AI surface), 'modules' + 'services' (distribution), 'journeys' (trayectos: named DAGs of hops riding on declared dependencies — the reading layer). "
+                + "(the AI surface), 'modules' + 'services' (distribution), 'interactions' (secuencias: "
+                + "ordered message chains between catalog participants — intent + verification, no runtime). "
                 + "Tool loop: list_element_types to orient, get_element_schema before a new type, "
                 + "upsert_element (returns the dangling references you introduce), lint_model after each "
                 + "batch — its findings are the next-step to-do list — and generate_code when clean.");

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { ModuxModel } from '../model.js';
+import type { InteractionRef, ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
 import type { ModuxEditor } from '../modux-editor.js';
 import '../modux-editor.js';
@@ -842,6 +842,27 @@ export class ModuxEditorConnected extends LitElement {
     }, 600);
   }
 
+  /** The last derived interaction (answer to interaction-derive-requested). */
+  @state() private _derivedInteraction: InteractionRef | null = null;
+
+  /**
+   * The Secuencias view asks for an ephemeral derived interaction. Old servers
+   * (no /interactions/derive endpoint) fail SILENTLY: the view shows its own
+   * discreet notice once the request times out.
+   */
+  private async onDeriveInteraction(e: CustomEvent): Promise<void> {
+    const { kind, ref } = e.detail as { kind: string; ref: string };
+    try {
+      const res = await fetch(
+        `${this.base}/interactions/derive?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`,
+      );
+      if (!res.ok) return;
+      this._derivedInteraction = (await res.json()) as InteractionRef;
+    } catch {
+      /* sin endpoint o sin red: silencio — la vista avisa sola */
+    }
+  }
+
   render() {
     if (this._error) {
       return html`<div class="status error">modux editor: ${this._error}</div>`;
@@ -1030,6 +1051,7 @@ export class ModuxEditorConnected extends LitElement {
         .model=${this._model}
         .layout=${this._layout}
         .repositories=${this._repositories}
+        .derivedInteraction=${this._derivedInteraction}
         .diff=${this._diff && !this._workspace?.system
           ? Object.fromEntries(
               this._diff.changes
@@ -1038,6 +1060,7 @@ export class ModuxEditorConnected extends LitElement {
             )
           : null}
         @modux-command=${this.onCommand}
+        @interaction-derive-requested=${this.onDeriveInteraction}
         @modux-import-api=${this.onImportApi}
         @layout-changed=${this.onLayoutChanged}
         @modux-notice=${(e: CustomEvent) =>

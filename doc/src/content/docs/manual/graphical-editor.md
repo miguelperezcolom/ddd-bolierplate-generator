@@ -17,7 +17,7 @@ carries the subtitle) and the canvas takes the space.
 
 ## Views
 
-| Tab | Shows | Extra semantics |
+| View | Shows | Extra semantics |
 |---|---|---|
 | **Mapa del sistema** | The whole landscape on ONE canvas, Archi style: every element is a **free box** (contexts, external systems, APIs, proxies, workflows, IdPs, actors, agents…) folded to a chip by default; the **chevron expands each one** and its children arrive as free boxes ringed around it, tied by a **composition edge** (grey line, filled diamond on the owner's side) — in cascade down to API operations. Strategic relations (solid, DDD abbreviations) and flows (dashed) ride on top | Flow colour = live coherence: green OK, amber missing relation, orange reversed. **Relations never hide**: an edge whose endpoint folded away re-anchors at the nearest visible ancestor (deduped, tooltip says so); edges internal to a folded box fold with it |
 | **Distribución** | Its own specialized view (no longer a «level»): services, the modules they deploy and the infrastructure they lean on. A context with only its main module draws no module box (the deploy edge lands on the context itself); with a second module, expanding the context brings its modules AND its unassigned elements as free boxes — drag an element's handle to a module to package it, a service's handle to a module (or its context) to deploy it | Same Archi grammar: composition diamonds, per-element expansion, roll-up |
@@ -29,6 +29,7 @@ carries the subtitle) and the canvas takes the space.
 | **Page designer** *(inside the UI view)* | Double-click a page: a live **mockup inferred the Mateu way** — fields come from the viewmodel Model, their look from each field's config, the page shows its four zones — **header**, **toolbar** (top buttons), **content** and the **bottom bar** (closing actions, its own «+ botón») — plus a listing stub on CRUD pages. Nothing is drawn by hand: click a field to edit its **declaration** (stereotype, width, label) and the preview re-infers itself; drag fields to reorder (persisted as the fieldConfigs order); «Ficha» opens the page's full form | The designer is WYSIWYG over the MVVM: what you edit is the spec, never pixels. **UI-first composition**: the palette offers Mateu's full layout vocabulary (vertical, horizontal, form, split, tabs, accordion, card, grid, board, dashboard, master-detail, foldout, carousel, app) plus components (form, listing, button, field, text, metric, menu bar) — drop a layout on a frame, drop components inside (a tabLayout comes seeded with two tabs; **click a header to show and select that tab**, double click to configure it, **drag headers to reorder them**, and drops on the body land in the tab being shown — the palette also offers **Pestaña** to add tabs by dropping them on the tabLayout), **click selects** a node (Supr deletes it, subtree included — one undo restores it whole), **double click edits its declaration**, and **dragging the node moves it**: the top half of a component slots it before, the bottom half after (a blue bar opens the gap), a layout's body drops it inside — palette drops honor the same slots, a node never lands in its own subtree, and **dragging works across frames** (the node moves to the other page). **Ctrl+C / Ctrl+V** copies the selected subtree and pastes it under the current selection, on any frame. Catalog drops wire declarations: a **use case on a button** is its action (on the frame, a new toolbar button), a **model on a form or the frame** is the viewmodel (pages also offer a violet **viewmodel handle** on the UI view — draw it to a model; the designer shows the chip with a ✕ to unset, no dropdown), a **query operation on a listing or the frame** is what it lists. Empty content = the page stays fully inferred |
 | **Integraciones** | Every **ETL flow** as a container with its pipeline unfolded — sources (pull/consumer) → transforms → writes (API/db/event) — plus the external systems (with their legacy tables), APIs and events it touches | Drop *Flujo ETL* from the palette (in the open it floats; its owner context is set in its ficha); wire a **table or API to the flow** for a source step, an **event to the flow** for a consumer, and **from the flow** outwards for writes |
 | **EventStorming** | The whole causal narrative, derived from the model in classic sticky-note notation: actor → **command** (blue) → **aggregate** (yellow) → **event** (orange) → **policy** (lilac: subscription, flow, process, workflow or projection) → **read model** (green), external systems in pink, AI agents with their tools. Each command folds its pipeline steps (chevron); the CODE delegation thread re-anchors at the folded command | A read-only *lens* — you edit from the other views or the forms. Events referenced by name but not declared in the catalog render dashed («EVENTO (sin declarar)»): a built-in gap detector. Auto-layout orders the narrative |
+| **Secuencias** | UML sequence diagrams over the catalog: participants as lifelines (actors, pages, API operations, use cases, aggregates, query services, read models, external systems…), numbered messages top to bottom — solid with filled head for **COMMAND**, italic for **QUERY**, open orange head for **EVENT** (async), slate for **EXTERNAL**. Not a canvas scene: its own surface, like the page designer | Two sources: **«Derivar de:»** computes an *ephemeral* read-only sequence from an entry point (a use case, an API operation or an event — steps walked in order, event consumers forked, cycles cut; 📌 *Fijar como secuencia* persists it), or an **authored** sequence you edit by hand: drop participants, drag lifeline → lifeline to draw a message (kind inferred), drag to reorder, double click edits label/guard/kind, Supr deletes. A message with no mechanism behind it shows **⚠ amber dashed**; its **✨ materialize** button creates the backing piece (a `CallUseCase` step, a query call, an emission + TRIGGERS flow, the API operation wiring…). The linter watches both ways: `interaction-message-without-backing` and `interaction-dangling-participant`. **⧉ Mermaid** copies the `sequenceDiagram` for the design doc. Also CRUD-able from *Modelo de dominio › Secuencias* and authorable over MCP (`interactions:` in the YAML) |
 
 Boxes carry an ArchiMate-inspired glyph for their kind: component (contexts, external
 systems), diamond (aggregates), class (entities), arrow (flows), chevron (processes),
@@ -119,7 +120,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   corner-resize gesture even collapsed (the content sets the minimum), and at the
   operations level its APIs unfold as the parent's boxes do. Supr deletes a
   subsystem with the usual guards — a parent that still has subsystems refuses
-  deletion — and journeys and dependencies can start or end at a subsystem like at
+  deletion — and dependencies can start or end at a subsystem like at
   any other system.
 - **AI agents consume through MCP**: create an **AI agent** from the palette (robot
   glyph, outside every context) and drag it onto a use case — the consumption is
@@ -189,7 +190,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   to declare it indexes it, and use the **＋ Fuente** toolbar (with the RAG selected)
   to add external content sources — a repo, a web site, an FTP server — drawn as
   small satellites.
-- **Workflow editing**: create workflows from their tab (trigger aggregate + event);
+- **Workflow editing**: create workflows from their view (trigger aggregate + event);
   with the workflow or a step selected the toolbar adds steps (name, target use
   case, the event the workflow *emits* to start it and the one it *awaits*); drag a
   handle from one step onto another to add a dependency — Supr on the dependency
@@ -265,45 +266,13 @@ The editor follows **mateu's dark mode**: the same `theme="dark"` flag (persiste
 `mateu-theme`), switched live from the top bar — hue-preserving, so a CORE context
 stays amber in the dark.
 
-## Journeys (trayectos)
-
-A **journey** is a named path through the landscape — "the availability request enters
-through the metasearcher, crosses distribution and ends at Rumbo" — a DAG of hops
-(**legs**) over existing elements, riding on the declared dependencies (the
-`journey-leg-without-dependency` lint flags legs with no edge underneath). Create one
-from the toolbar («Nuevo trayecto…»), and while it is active every line you draw adds
-a leg: a leg leaving the target of an earlier one continues it, two legs leaving the
-same element **bifurcate**. The active journey paints as its own numbered layer
-(1, 2, 3a, 3b…) while everything else fades back; **Supr** on a leg removes it
-(its continuations reattach). Journeys are catalog elements (`journeys:` in the YAML,
-[authorable over MCP](/manual/mcp-authoring/#journeys-over-mcp)) — a reading layer,
-never a second topology.
-
-The active journey **animates**: legs draw with static dashes and arrowheads, and a
-**traveller** — an amber circle — carries the motion, touring every root-to-leaf
-route of the DAG sequentially: one route, a short pause, the next, then round again.
-The tour runs on all three surfaces: the 2D canvas animates it with SMIL (the runs
-chain themselves, no script), the Yugo keeps its own clock and rides the bezier
-curves (the organism never stops moving, so the runner follows the live geometry),
-and the 3D tilt drives it with `requestAnimationFrame` so the traveller's **elevation
-interpolates between storeys** as a leg climbs from a context's base plate to a
-child's floor.
-
-Continuation is **physical as well as declared**: a leg whose source is another leg's
-target counts as its successor even when `afterLegIds` does not say so — a converging
-entry drawn later still gets toured to the end. The painting gesture also keeps the
-declaration honest: when a new leg lands on an element that other legs already depart
-from, the server auto-wires the convergence into their `afterLegIds`, so the stored
-DAG matches what you painted.
-
 ## Keyboard shortcuts
 
 Press **?** anywhere on the canvas for the cheatsheet. The highlights: **P** palette ·
-**F** fullscreen · **0** fit · **+/−** zoom · **1** the system map · **4** the
-distribution view ·
+**F** fullscreen · **0** fit · **+/−** zoom · **1** the system map · **2** sequences ·
+**4** the distribution view ·
 **5/6/7/8/9** the specialized views (flows · processes · workflows · UI · design) ·
-**A** the aggregates view · **E/D** EventStorming / back to the
-diagram · **V** the 3D tilt view · **Y** the Yugo surface · **T** the view's catalog
+**A** the aggregates view · **E** EventStorming · **V** the 3D tilt view · **Y** the Yugo surface · **T** the view's catalog
 tree · plus the editing keys (Supr, F2, Ctrl+Z / Ctrl+Y, space+drag, shift for
 multi-selection) — the same on every surface. Shortcuts never fire while typing in
 a field.
@@ -364,4 +333,4 @@ the same channel — see [the live store](/manual/mcp-authoring/#the-live-store)
 The editor is a standalone Lit web component (`editor/` in the repo) embedded through
 a Mateu `Element` with the `import` attribute; it talks to `/modux/editor` (model
 projection in, commands and layout out). The canvas engine is semantics-free — each
-tab is a pure *model → scene* adapter, so new diagram kinds are small additions.
+view is a pure *model → scene* adapter, so new diagram kinds are small additions.

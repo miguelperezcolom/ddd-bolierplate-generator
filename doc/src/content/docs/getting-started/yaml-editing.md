@@ -235,14 +235,14 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--modux.check   # exits non-zero
 
 ### Views: curated slices of a large model
 
-A **view** is a named, cross-cutting slice of the catalog — "the check-in journey", "the reservations
+A **view** is a named, cross-cutting slice of the catalog — "check-in", "the reservations
 context". It only *references* elements by id (it never copies them), so there is a single source of
 truth. Add one to the `views:` list:
 
 ```yaml
 views:
-  - id: view-checkin-journey
-    name: Check-in journey
+  - id: view-checkin
+    name: Check-in
     kind: CURATED
     memberIds:
       - uc-crearEstancia
@@ -265,7 +265,7 @@ validates them too. Expand a view to its **dependency closure** — what it actu
 follow every reference (a use case pulls in its aggregate, gateway, event and input model):
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin
 ```
 
 You can also **generate just a slice** — only the view's closure is emitted, inside the normal project
@@ -273,7 +273,7 @@ skeleton (so it still builds; out-of-scope modules are simply empty):
 
 ```bash
 mvn spring-boot:run \
-  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.view=view-checkin-journey"
+  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.view=view-checkin"
 ```
 
 This is the payoff of catalog-and-views: with a huge model you regenerate one bounded context at a time

@@ -564,6 +564,16 @@ public class EditorModelProjection {
             role.uiAdapterIds().forEach(id -> actorAppUses.add(new ActorAppUseDto(role.id(), id)));
         }
 
+        // Authored sequence scenarios: participants resolved and backing recomputed on read,
+        // so the editor always paints the current reality of the mechanisms underneath.
+        var interactionCatalog = io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionCatalog
+                .from(repository);
+        var interactions = scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity.class)
+                .stream()
+                .map(i -> io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto
+                        .authored(i, interactionCatalog))
+                .toList();
+
         // The strategic map is a projection of the concrete dependency graph:
         // upstream (provider) → downstream (consumer). contextMap entries only
         // annotate the DDD pattern of a derived pair; orphaned annotations
@@ -719,11 +729,6 @@ public class EditorModelProjection {
                 scoped(ModuleEntity.class).stream()
                         .map(x -> new ModuleDto(x.id(), x.name(), x.boundedContextId(), x.elementIds(), x.main()))
                         .toList(),
-                scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity.class).stream()
-                        .map(j -> new EditorApiController.JourneyDto(j.id(), j.name(), j.description(),
-                                j.legs().stream().map(l -> new EditorApiController.JourneyLegDto(
-                                        l.id(), l.sourceId(), l.targetId(), l.afterLegIds(), l.label())).toList()))
-                        .toList(),
                 services.stream()
                         .map(s -> new ServiceDto(s.id(), s.name(), s.moduleIds(),
                                 s.database(), s.outboxEnabled(), s.urlIds()))
@@ -776,7 +781,8 @@ public class EditorModelProjection {
                         .toList(),
                 scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity.class).stream()
                         .map(u -> new EditorApiController.UrlDto(u.id(), u.name(), u.url()))
-                        .toList());
+                        .toList(),
+                interactions);
     }
 
     /** The pool narrowed to the SELECTED project (unstamped legacy elements stay visible). */

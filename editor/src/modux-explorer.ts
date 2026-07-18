@@ -305,15 +305,6 @@ export class ModuxExplorer extends LitElement {
    */
   @property({ attribute: false }) scene: Scene | null = null;
 
-  /** The active journey, precomputed by the host: legs with their step number and the DAG's runs. */
-  @property({ attribute: false }) journey:
-    | {
-        name: string;
-        legs: { id: string; sourceId: string; targetId: string; num: string; label?: string }[];
-        runs: string[][];
-      }
-    | null = null;
-
   @property({ attribute: false }) model: ModuxModel = {
     boundedContexts: [],
     externalSystems: [],
@@ -1045,10 +1036,8 @@ export class ModuxExplorer extends LitElement {
       ctx.stroke();
     }
 
-    const journeyTouched = this.journeyTouchedIds(nodes);
     const fontPx = (px: number) => `${px}px system-ui, sans-serif`;
     for (const n of nodes) {
-      if (journeyTouched) ctx.globalAlpha = journeyTouched.has(n.refId) ? 1 : 0.22;
       const r = this.radiusOf(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
@@ -1134,7 +1123,6 @@ export class ModuxExplorer extends LitElement {
     }
     ctx.globalAlpha = 1;
     this.drawNotes(ctx, nodes);
-    if (this.journey) this.drawJourney(ctx, nodes);
     if (this._threads) {
       for (const n of nodes) this.drawThreads(ctx, n, nodes);
     } else if (this.hover) {
@@ -1196,23 +1184,6 @@ export class ModuxExplorer extends LitElement {
       ctx.setLineDash([6, 5]);
     }
     ctx.restore();
-  }
-
-  /**
-   * Ids the active journey touches, mapped to what is VISIBLE: a folded
-   * endpoint is represented by its nearest visible ancestor (containment via
-   * the scene's parent chain). Null when no journey is on stage.
-   */
-  private journeyTouchedIds(nodes: XNode[]): Set<string> | null {
-    if (!this.journey) return null;
-    const touched = new Set<string>();
-    for (const leg of this.journey.legs) {
-      const a = this.visibleRepresentative(leg.sourceId, nodes);
-      const b = this.visibleRepresentative(leg.targetId, nodes);
-      if (a) touched.add(a.refId);
-      if (b) touched.add(b.refId);
-    }
-    return touched;
   }
 
   /**
@@ -1303,188 +1274,6 @@ export class ModuxExplorer extends LitElement {
       if (hit) return hit;
     }
     return null;
-  }
-
-  /** Quadratic-curve geometry of one leg over the VISIBLE representatives, or null. */
-  private legGeometry(
-    leg: { sourceId: string; targetId: string },
-    nodes: XNode[],
-  ): { a: XNode; b: XNode; cx: number; cy: number } | null {
-    const a = this.visibleRepresentative(leg.sourceId, nodes);
-    const b = this.visibleRepresentative(leg.targetId, nodes);
-    if (!a || !b || a === b) return null;
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const bend = 0.14;
-    return { a, b, cx: mx - (b.y - a.y) * bend, cy: my + (b.x - a.x) * bend };
-  }
-
-  /** The active journey as a bold amber layer: directed curves, numbered badges. */
-  private drawJourney(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
-    if (!this.journey) return;
-    ctx.save();
-    for (const leg of this.journey.legs) {
-      const a = this.visibleRepresentative(leg.sourceId, nodes);
-      const b = this.visibleRepresentative(leg.targetId, nodes);
-      if (!a || !b || a === b) continue;
-      const mx = (a.x + b.x) / 2;
-      const my = (a.y + b.y) / 2;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const bend = 0.14;
-      const cx = mx - dy * bend;
-      const cy = my + dx * bend;
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 2.4 / this.cam.k;
-      ctx.setLineDash([9 / this.cam.k, 7 / this.cam.k]);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.quadraticCurveTo(cx, cy, b.x, b.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // arrow head at the target border
-      const tx = b.x - cx;
-      const ty = b.y - cy;
-      const tl = Math.hypot(tx, ty) || 1;
-      const ux = tx / tl;
-      const uy = ty / tl;
-      const rB = this.radiusOf(b) + 4;
-      const hx = b.x - ux * rB;
-      const hy = b.y - uy * rB;
-      const ah = 9 / this.cam.k;
-      ctx.fillStyle = '#d97706';
-      ctx.beginPath();
-      ctx.moveTo(hx, hy);
-      ctx.lineTo(hx - ux * ah - uy * ah * 0.55, hy - uy * ah + ux * ah * 0.55);
-      ctx.lineTo(hx - ux * ah + uy * ah * 0.55, hy - uy * ah - ux * ah * 0.55);
-      ctx.closePath();
-      ctx.fill();
-      // the step number rides the curve's midpoint
-      const bx = mx - dy * bend * 0.5;
-      const by = my + dx * bend * 0.5;
-      const badge = 11 / this.cam.k;
-      ctx.beginPath();
-      ctx.arc(bx, by, badge, 0, Math.PI * 2);
-      ctx.fillStyle = '#d97706';
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${12 / this.cam.k}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(leg.num, bx, by);
-    }
-    this.drawJourneyRunner(ctx, nodes);
-    ctx.restore();
-  }
-
-  /** The traveller's own state: deriving position from the global clock made it
-   *  BOUNCE — the organism's physics moves the nodes, the leg lengths breathe,
-   *  and a time→distance mapping recomputed per frame jitters at boundaries.
-   *  Advancing (run, leg, progress) by dt keeps the ride smooth. */
-  private runnerState: { run: number; leg: number; t: number; pause: number } | null = null;
-  private runnerLastClock = 0;
-  /** Ephemeral ripples marking a run's departure and arrival, anchored where they fired. */
-  private runnerFx: { x: number; y: number; at: number; kind: 'start' | 'end' }[] = [];
-
-  /**
-   * A traveller tours the journey: it enters at a run's origin, follows its legs
-   * — curve by curve — and when it arrives the NEXT run takes the stage, looping
-   * through every route the DAG offers.
-   */
-  private drawJourneyRunner(ctx: CanvasRenderingContext2D, nodes: XNode[]): void {
-    if (!this.journey?.runs?.length) {
-      this.runnerState = null;
-      this.runnerFx = [];
-      return;
-    }
-    const byId = new Map(this.journey.legs.map((l) => [l.id, l]));
-    // geometry per run, skipping legs hidden at this depth
-    const runs = this.journey.runs
-      .map((run) =>
-        run
-          .map((legId) => byId.get(legId))
-          .filter((l): l is NonNullable<typeof l> => !!l)
-          .map((l) => this.legGeometry(l, nodes))
-          .filter((g): g is NonNullable<typeof g> => !!g),
-      )
-      .filter((run) => run.length > 0);
-    if (!runs.length) {
-      this.runnerState = null;
-      this.runnerFx = [];
-      return;
-    }
-    const SPEED = 170; // world units per second
-    const GAP = 0.5;   // pause between runs
-    const dt = Math.max(0, Math.min(0.1, this.t - this.runnerLastClock));
-    this.runnerLastClock = this.t;
-    let st = this.runnerState;
-    if (!st || st.run >= runs.length) {
-      st = this.runnerState = { run: 0, leg: 0, t: 0, pause: 0 };
-      this.runnerFx.push({ x: runs[0][0].a.x, y: runs[0][0].a.y, at: this.t, kind: 'start' });
-    }
-    this.drawRunnerFx(ctx); // departure/arrival ripples outlive the traveller's rests
-    if (st.pause > 0) {
-      st.pause -= dt;
-      // the rest is over: the next run announces itself at its origin
-      if (st.pause <= 0 && runs[st.run]?.[0]) {
-        this.runnerFx.push({ x: runs[st.run][0].a.x, y: runs[st.run][0].a.y, at: this.t, kind: 'start' });
-      }
-      return; // resting between runs, off stage
-    }
-    if (st.leg >= runs[st.run].length) st.leg = runs[st.run].length - 1;
-    let g = runs[st.run][st.leg];
-    const lengthOf = (geom: typeof g) => Math.max(24, Math.hypot(geom.b.x - geom.a.x, geom.b.y - geom.a.y));
-    st.t += (dt * SPEED) / lengthOf(g);
-    while (st.t >= 1) {
-      st.t -= 1;
-      st.leg++;
-      if (st.leg >= runs[st.run].length) {
-        const done = runs[st.run];
-        this.runnerFx.push({ x: done[done.length - 1].b.x, y: done[done.length - 1].b.y, at: this.t, kind: 'end' });
-        st.run = (st.run + 1) % runs.length;
-        st.leg = 0;
-        st.t = 0;
-        st.pause = GAP;
-        return;
-      }
-      g = runs[st.run][st.leg];
-      st.t = st.t * 1; // remaining fraction rides into the next leg at its own pace
-    }
-    const lt = st.t;
-    const omt = 1 - lt;
-    const x = omt * omt * g.a.x + 2 * omt * lt * g.cx + lt * lt * g.b.x;
-    const y = omt * omt * g.a.y + 2 * omt * lt * g.cy + lt * lt * g.b.y;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, 7 / this.cam.k, 0, Math.PI * 2);
-    ctx.fillStyle = '#d97706';
-    ctx.fill();
-    ctx.lineWidth = 2 / this.cam.k;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  /**
-   * Route punctuation: a ripple expanding from the origin says «the traveller departs»,
-   * a ring closing onto the destination says «it arrived». Without them the loop reads
-   * as one endless wander instead of distinct routes.
-   */
-  private drawRunnerFx(ctx: CanvasRenderingContext2D): void {
-    const DUR = 0.6;
-    this.runnerFx = this.runnerFx.filter((f) => this.t - f.at < DUR);
-    for (const f of this.runnerFx) {
-      const age = (this.t - f.at) / DUR;
-      const r = f.kind === 'start' ? 7 + age * 20 : 27 - age * 20;
-      const alpha = f.kind === 'start' ? 0.9 * (1 - age) : 0.15 + age * 0.75;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, r / this.cam.k, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(217, 119, 6, ${alpha})`;
-      ctx.lineWidth = 2.5 / this.cam.k;
-      ctx.stroke();
-      ctx.restore();
-    }
   }
 
   /** Ghost preview: a hovered, folded node whispers its children around it. */

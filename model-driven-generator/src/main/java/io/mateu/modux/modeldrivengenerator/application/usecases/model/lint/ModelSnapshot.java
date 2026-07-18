@@ -3,7 +3,12 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.model.lint;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RagEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
@@ -12,7 +17,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
@@ -57,10 +61,14 @@ public record ModelSnapshot(
         List<ApiEntity> apis,
         List<McpGatewayEntity> mcpGateways,
         List<ModuleEntity> modules,
-        List<JourneyEntity> journeys
+        List<RoleEntity> roles,
+        List<UiAdapterEntity> uiAdapters,
+        List<DomainServiceEntity> domainServices,
+        List<ApplicationEventEntity> applicationEvents,
+        List<InteractionEntity> interactions
 ) {
 
-    /** Backward-compatible constructor (pre-journeys callers). */
+    /** Backward-compatible constructor (pre-interactions callers). */
     public ModelSnapshot(List<ProjectEntity> projects, List<ServiceEntity> services,
                          List<BoundedContextEntity> boundedContexts, List<AggregateEntity> aggregates,
                          List<ModelEntity> models, List<UseCaseEntity> useCases,
@@ -78,7 +86,7 @@ public record ModelSnapshot(
         this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
-                rags, apis, mcpGateways, modules, null);
+                rags, apis, mcpGateways, modules, null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-modules callers). */
@@ -220,7 +228,11 @@ public record ModelSnapshot(
         apis = nvl(apis);
         mcpGateways = nvl(mcpGateways);
         modules = nvl(modules);
-        journeys = nvl(journeys);
+        roles = nvl(roles);
+        uiAdapters = nvl(uiAdapters);
+        domainServices = nvl(domainServices);
+        applicationEvents = nvl(applicationEvents);
+        interactions = nvl(interactions);
     }
 
     public static ModelSnapshot from(ModelStore repository) {
@@ -250,7 +262,11 @@ public record ModelSnapshot(
                 repository.findAllOfType(ApiEntity.class),
                 repository.findAllOfType(McpGatewayEntity.class),
                 repository.findAllOfType(ModuleEntity.class),
-                repository.findAllOfType(JourneyEntity.class));
+                repository.findAllOfType(RoleEntity.class),
+                repository.findAllOfType(UiAdapterEntity.class),
+                repository.findAllOfType(DomainServiceEntity.class),
+                repository.findAllOfType(ApplicationEventEntity.class),
+                repository.findAllOfType(InteractionEntity.class));
     }
 
     /** Snapshot with only the given slices — for tests. Everything else is empty. */

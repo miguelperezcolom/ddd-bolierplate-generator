@@ -4,9 +4,9 @@ import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.Aggregate
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.domainevent.DomainEventCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.enumdefinition.EnumDefinitionCrudOrchestrator;
+import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.interaction.ModelInteractionsPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.invariant.InvariantCrudOrchestrator;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model.ModelCrudOrchestrator;
-import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model.ModelJourneyPage;
 import io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudOrchestrator;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
@@ -37,6 +37,6 @@ public class DomainModelMenu {
     ModelCrudOrchestrator models;
 
     @Menu
-    ModelJourneyPage modelJourneys;
+    ModelInteractionsPage interactions;
 
 }

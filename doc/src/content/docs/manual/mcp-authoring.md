@@ -99,21 +99,6 @@ At any point in the loop, `render_context_map` gives the agent something to *sho
 rather than tell: the current context map as one self-contained SVG, always drawn
 from the live model.
 
-## Journeys over MCP
-
-[Journeys](/manual/graphical-editor/#journeys-trayectos) are ordinary catalog
-elements, so the generic tools cover them: `get_element_schema` for type
-`journeys`, then `upsert_element`. A journey is `id`, `name`, `description` and a
-list of `legs`; each leg is a hop `sourceId` → `targetId` over existing elements
-(bounded contexts, services, aggregates, use cases, query services, APIs,
-workflows, AI agents, external systems) plus `afterLegIds` naming the legs it
-continues — together the legs form a **DAG**, so one journey can bifurcate and
-converge. Three lint rules keep them honest: `journey-leg-endpoints` (ERROR — both
-endpoints must reference existing elements), `journey-dag` (ERROR — every
-`afterLegIds` entry must be a leg of the same journey and the legs must form no
-cycle) and `journey-leg-without-dependency` (INFO — a leg should ride on a declared
-dependency edge underneath, not invent a second topology).
-
 ## The live store
 
 The store is shared, not owned: every modux process — the web UI's backend and the

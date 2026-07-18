@@ -185,7 +185,7 @@ Most enterprise aggregates *are* state machines (Booking: `pending → confirmed
 
 ## Business processes
 
-A `process` declares a long-running business journey by intent — the rung above `flows`: ordered steps that are `AUTOMATED` (run a use case, with optional compensation) or `HUMAN` (a task lands on a role's worklist, optionally deadline-bounded with escalation), an end-to-end SLA, and a completion event. It desugars into a saga + trigger subscription + a task worklist read model + scheduled deadline watches. See `docs/design/process-intent-layer.md`.
+A `process` declares a long-running business procedure by intent — the rung above `flows`: ordered steps that are `AUTOMATED` (run a use case, with optional compensation) or `HUMAN` (a task lands on a role's worklist, optionally deadline-bounded with escalation), an end-to-end SLA, and a completion event. It desugars into a saga + trigger subscription + a task worklist read model + scheduled deadline watches. See `docs/design/process-intent-layer.md`.
 
 ---
 
@@ -269,9 +269,9 @@ The store lives in its own git repo: `main` is the **system** (the as-is), each 
 
 ---
 
-## Model journeys
+## Model mappings
 
-Models are the axis of the system: one model can be an aggregate's state, an entity, a use-case command, a screen, a listing row, an API request/response or an event payload — and the system's essence is passing, enriching and **mapping** models between those stations. The *Model journeys* view shows, per model, every role it plays and the mapping edges that connect it to the next model.
+Models are the axis of the system: one model can be an aggregate's state, an entity, a use-case command, a screen, a listing row, an API request/response or an event payload — and the system's essence is passing, enriching and **mapping** models between those stations. The *Mapeados* view shows, per model, every role it plays and the mapping edges that connect it to the next model.
 
 ---
 

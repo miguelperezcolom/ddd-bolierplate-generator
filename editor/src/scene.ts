@@ -6,7 +6,7 @@
 export interface SceneNode {
   /** Plain (non-container) nodes that still accept the corner-resize gesture. */
   resizable?: boolean;
-  /** Faded to the background while an overlay (e.g. a journey) has the stage. */
+  /** Faded to the background while an overlay has the stage. */
   dim?: boolean;
   /** Differentiated drag points: each starts a TYPED connect gesture (its kind). */
   extraHandles?: { kind: string; title: string; color: string }[];
@@ -163,15 +163,13 @@ export interface SceneEdge {
   /** Explicit dash pattern (e.g. '2 3' dotted) — overrides the dashed flag. */
   dashArray?: string;
   tooltip?: string;
-  /** Faded to the background while an overlay (e.g. a journey) has the stage. */
+  /** Faded to the background while an overlay has the stage. */
   dim?: boolean;
 }
 
 export interface Scene {
   nodes: SceneNode[];
   edges: SceneEdge[];
-  /** Ordered edge-id sequences of the active journey — the runner travels them one by one. */
-  journeyRuns?: string[][];
 }
 
 export interface Point {

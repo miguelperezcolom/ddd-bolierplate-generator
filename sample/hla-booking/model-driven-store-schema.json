@@ -138,6 +138,9 @@
         "tableSchema" : {
           "type" : "string"
         },
+        "title" : {
+          "type" : "string"
+        },
         "valueObjectIds" : {
           "description" : "References to existing 'valueObject' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -2038,6 +2041,75 @@
       "type" : "string",
       "enum" : [ "JSON", "AVRO", "PROTOBUF" ]
     },
+    "InteractionEntity" : {
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "messages" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InteractionMessageEntity"
+          }
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "triggerKind" : {
+          "$ref" : "#/$defs/InteractionTriggerKind"
+        },
+        "triggerRef" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "InteractionMessageEntity" : {
+      "type" : "object",
+      "properties" : {
+        "fromRef" : {
+          "type" : "string"
+        },
+        "guard" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "kind" : {
+          "$ref" : "#/$defs/InteractionMessageKind"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "toRef" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
+    "InteractionMessageKind" : {
+      "type" : "string",
+      "enum" : [ "COMMAND", "QUERY", "EVENT", "EXTERNAL" ]
+    },
+    "InteractionTriggerKind" : {
+      "type" : "string",
+      "enum" : [ "ACTOR", "API_OPERATION", "EVENT", "USE_CASE" ]
+    },
     "InvariantConditionEntity" : {
       "type" : "object",
       "properties" : {
@@ -2085,67 +2157,6 @@
         }
       },
       "required" : [ "id" ],
-      "additionalProperties" : false
-    },
-    "JourneyEntity" : {
-      "type" : "object",
-      "properties" : {
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "string",
-          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "legs" : {
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/JourneyLegEntity"
-          }
-        },
-        "name" : {
-          "type" : "string"
-        },
-        "projectId" : {
-          "type" : "string",
-          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        }
-      },
-      "required" : [ "id" ],
-      "additionalProperties" : false
-    },
-    "JourneyLegEntity" : {
-      "type" : "object",
-      "properties" : {
-        "afterLegIds" : {
-          "description" : "References to existing 'afterLeg' ids (referential integrity is checked by the linter).",
-          "type" : "array",
-          "items" : {
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-          }
-        },
-        "id" : {
-          "type" : "string",
-          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "label" : {
-          "type" : "string"
-        },
-        "sourceId" : {
-          "type" : "string",
-          "description" : "Reference to an existing 'source' id (referential integrity is checked by the linter).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "targetId" : {
-          "type" : "string",
-          "description" : "Reference to an existing 'target' id (referential integrity is checked by the linter).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        }
-      },
       "additionalProperties" : false
     },
     "KpiEntity" : {
@@ -2402,6 +2413,12 @@
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "identifier" : {
+          "type" : "boolean"
+        },
+        "label" : {
+          "type" : "string"
+        },
         "modelId" : {
           "type" : "string",
           "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
@@ -2412,6 +2429,9 @@
         },
         "piiClassification" : {
           "$ref" : "#/$defs/PiiClassification"
+        },
+        "priority" : {
+          "type" : "integer"
         },
         "type" : {
           "$ref" : "#/$defs/FieldDataType"
@@ -4835,6 +4855,11 @@
         "restPath" : {
           "type" : "string"
         },
+        "rowActionForAggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'rowActionForAggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "steps" : {
           "type" : "array",
           "items" : {
@@ -4843,6 +4868,9 @@
         },
         "timeoutMs" : {
           "type" : "integer"
+        },
+        "title" : {
+          "type" : "string"
         },
         "transactionBoundary" : {
           "type" : "string"
@@ -5338,18 +5366,18 @@
         "$ref" : "#/$defs/IntegrationEventEntity"
       }
     },
+    "interactions" : {
+      "description" : "Sequence scenarios: ordered message chains between catalog participants (actor/page/use case/aggregate/…). Intent + documentation + verification; no runtime component is generated.",
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/InteractionEntity"
+      }
+    },
     "invariants" : {
       "description" : "Reusable invariant definitions referenced by aggregates.",
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/InvariantEntity"
-      }
-    },
-    "journeys" : {
-      "description" : "Trayectos: named paths through the landscape — DAGs of hops (legs) over existing elements, riding on declared dependencies. A reading layer, never a second topology.",
-      "type" : "array",
-      "items" : {
-        "$ref" : "#/$defs/JourneyEntity"
       }
     },
     "mcpGateways" : {

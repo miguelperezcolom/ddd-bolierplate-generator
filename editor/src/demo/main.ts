@@ -1,7 +1,9 @@
 import '../index.js';
 import type { ModuxEditor } from '../modux-editor.js';
 import type { ModuxCommand } from '../commands.js';
+import type { InteractionRef } from '../model.js';
 import type { EditorLayout } from '../scene.js';
+import { computeBacked, lookupFor } from '../interaction-utils.js';
 import { demoModel } from './demo-model.js';
 
 const LAYOUT_KEY = 'modux-editor-demo-layout';
@@ -128,6 +130,73 @@ function applyCommand(command: ModuxCommand): void {
       if (el) el.name = command.name;
       break;
     }
+    case 'save-interaction': {
+      const list = (model.interactions ??= []);
+      const at = list.findIndex((i) => i.id === command.id);
+      const prev = at >= 0 ? list[at] : null;
+      const next: InteractionRef = {
+        id: command.id,
+        name: command.name ?? prev?.name ?? command.id,
+        description: command.description ?? prev?.description,
+        triggerKind: (command.triggerKind ?? prev?.triggerKind ?? null) as InteractionRef['triggerKind'],
+        triggerRef: command.triggerRef ?? prev?.triggerRef ?? null,
+        // participants derive from the messages (server-side): keep the local copy
+        participants: prev?.participants,
+        // flat messages win; client-only fields (depth) ride along from the old copy
+        messages: (command.messages ?? prev?.messages ?? []).map((m) => ({
+          ...prev?.messages.find((x) => x.id === m.id),
+          ...m,
+        })),
+      };
+      if (at >= 0) list[at] = next;
+      else list.push(next);
+      break;
+    }
+    case 'remove-interaction': {
+      model.interactions = (model.interactions ?? []).filter((i) => i.id !== command.id);
+      break;
+    }
+    // The wiring the «materialize» button emits (so the demo recomputes backing).
+    case 'add-actor-use': {
+      if (!(model.actorUses ?? []).some((c) => c.actorId === command.sourceId && c.targetId === command.targetId))
+        (model.actorUses ??= []).push({ actorId: command.sourceId, targetId: command.targetId });
+      break;
+    }
+    case 'add-use-case-call': {
+      if (!(model.useCaseCalls ?? []).some((c) => c.sourceId === command.sourceId && c.targetId === command.targetId))
+        (model.useCaseCalls ??= []).push({ sourceId: command.sourceId, targetId: command.targetId });
+      break;
+    }
+    case 'add-aggregate-call': {
+      if (!(model.aggregateCalls ?? []).some((c) => c.sourceId === command.sourceId && c.targetId === command.targetId))
+        (model.aggregateCalls ??= []).push({ sourceId: command.sourceId, targetId: command.targetId });
+      break;
+    }
+    case 'add-query-call': {
+      if (!(model.queryCalls ?? []).some((c) => c.sourceId === command.sourceId && c.targetId === command.targetId))
+        (model.queryCalls ??= []).push({ sourceId: command.sourceId, targetId: command.targetId });
+      break;
+    }
+    case 'add-external-uc-call': {
+      if (!(model.externalUseCaseCalls ?? []).some((c) => c.sourceId === command.sourceId && c.targetId === command.targetId))
+        (model.externalUseCaseCalls ??= []).push({ sourceId: command.sourceId, targetId: command.targetId });
+      break;
+    }
+    case 'add-emission': {
+      if (!(model.useCaseEmissions ?? []).some((e) => e.sourceId === command.sourceId && e.domainEventId === command.targetId))
+        (model.useCaseEmissions ??= []).push({ sourceId: command.sourceId, domainEventId: command.targetId });
+      break;
+    }
+    case 'set-api-operation-target': {
+      const op = (model.apis ?? []).flatMap((a) => a.operations).find((o) => o.id === command.id);
+      if (op) op.targetUseCaseId = command.targetUseCaseId;
+      break;
+    }
+  }
+  // Mirror the server: message backing is recomputed after every mutation.
+  for (const i of model.interactions ?? []) {
+    const { typeOf } = lookupFor(model, i);
+    i.messages = i.messages.map((m) => ({ ...m, backed: computeBacked(model, m, typeOf) }));
   }
   // New object identity so Lit re-renders.
   editor.model = { ...model };

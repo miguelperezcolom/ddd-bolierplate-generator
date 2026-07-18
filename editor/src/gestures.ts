@@ -14,8 +14,6 @@ import { slug } from './ids.js';
  */
 export interface GestureHost {
   readonly model: ModuxModel;
-  /** The journey being painted, when one is active in the toolbar. */
-  readonly activeJourneyId?: string;
   command(c: ModuxCommand, pushUndo?: boolean): void;
   emit(name: string, detail?: unknown): void;
   sceneFor(view: ViewId): Scene;
@@ -291,8 +289,8 @@ export function applyConnectionGesture(
   connectKind?: string,
 ): void {
     // Notes annotate: a thread from (or to) a note ties it to the other end —
-    // element or relation (edge targets arrive as `edge:<edgeId>`). This wins over
-    // every other meaning, journeys included: a note is never a hop.
+    // element or relation (edge targets arrive as `edge:<edgeId>`). This wins
+    // over every other meaning.
     const noteIds = new Set((host.model.notes ?? []).map((n) => n.id));
     if (noteIds.has(sourceId) || noteIds.has(targetId)) {
       const noteId = noteIds.has(sourceId) ? sourceId : targetId;
@@ -303,23 +301,6 @@ export function applyConnectionGesture(
         : other.replace(/^(tgt:|flow:)/, '');
       host.command({ kind: 'note-attach', id: noteId, targetId: ref });
       return;
-    }
-    // An ACTIVE journey captures the connection gesture: each line is one more
-    // hop of the story. Chaining is automatic (a hop leaving the target of an
-    // earlier hop continues it; two hops leaving the same element bifurcate).
-    if (host.activeJourneyId && (view === 'context-map' || view === 'integrations')) {
-      const journey = (host.model.journeys ?? []).find((j) => j.id === host.activeJourneyId);
-      if (journey && sourceId !== targetId) {
-        const legs = journey.legs ?? [];
-        const after = legs.filter((l) => l.targetId === sourceId).map((l) => l.id);
-        let n = legs.length + 1;
-        while (legs.some((l) => l.id === `leg-${n}`)) n++;
-        host.command({
-          kind: 'journey-add-leg', journeyId: journey.id, itemId: `leg-${n}`,
-          sourceId, targetId, dependsOnStepIds: after,
-        });
-        return;
-      }
     }
     // Distribution level: a line means packaging (elemento → módulo) or deployment
     // (servicio → módulo). Anything else falls through to the usual meanings.
@@ -1762,7 +1743,7 @@ export function applyConnectionGesture(
     // Two bounded contexts: the derived relation carries the mechanics, but the
     // TYPE is an annotation — the traced line asks for it (or retypes a declared one).
     const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
-    if (!host.activeJourneyId && isCtx(sourceId) && isCtx(targetId) && sourceId !== targetId) {
+    if (isCtx(sourceId) && isCtx(targetId) && sourceId !== targetId) {
       const declared = host.model.relations.find(
         (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
       );
@@ -1777,7 +1758,7 @@ export function applyConnectionGesture(
     }
     // Nothing modux meant anything for this pair: ArchiMate is the last word —
     // any two elements admit its eleven relationship types (documentation intent).
-    if (!host.activeJourneyId && sourceId !== targetId && connectKind === undefined) {
+    if (sourceId !== targetId && connectKind === undefined) {
       host.openConnectPicker({
         x: x ?? 0,
         y: y ?? 0,
@@ -2264,14 +2245,6 @@ export function performDeleteGesture(
     if (view === 'context-map' && elementType === 'node' && kind === 'ui-app') {
       host.clearSelection();
       host.command({ kind: 'delete-ui-app', id });
-      return;
-    }
-    if (elementType === 'edge' && kind === 'journey') {
-      const match = /^journeyleg:([^:]+):(.+)$/.exec(id);
-      if (match) {
-        host.clearSelection();
-        host.command({ kind: 'journey-remove-leg', journeyId: match[1], itemId: match[2] });
-      }
       return;
     }
     if (view === 'distribution' && elementType === 'edge' && kind === 'deploys') {

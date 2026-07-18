@@ -11,7 +11,7 @@ import java.util.List;
  * A long-running business process (order-to-cash, the full check-in, …): an ordered mix of
  * automated and human steps, with deadlines and escalation, triggered by a domain event. It is the
  * next rung of the intent ladder above {@code Flow}: where a flow declares one event→reaction edge,
- * a process declares the whole journey and desugars into the technical pieces (saga, subscriptions,
+ * a process declares the whole path and desugars into the technical pieces (saga, subscriptions,
  * scheduled deadline triggers, a task worklist read model). See docs/design/process-intent-layer.md.
  */
 @Getter

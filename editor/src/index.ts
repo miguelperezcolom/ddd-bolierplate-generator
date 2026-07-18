@@ -7,4 +7,5 @@ export * from './views/flows.js';
 export * from './views/processes.js';
 export { ModuxCanvas } from './modux-canvas.js';
 export { ModuxEditor } from './modux-editor.js';
+export { ModuxSequence } from './modux-sequence.js';
 export { ModuxEditorConnected } from './host/modux-editor-connected.js';

@@ -52,8 +52,8 @@ A view is an element in the catalog (in the `views:` list). It can be **curated*
 
 ```yaml
 views:
-  - id: view-checkin-journey
-    name: Check-in journey
+  - id: view-checkin
+    name: Check-in
     kind: CURATED
     memberIds: [uc-crearEstancia, reserva]
 
@@ -68,7 +68,7 @@ view actually touches — its **dependency closure**, following every reference 
 pulls in its aggregate, gateway, event and input model):
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin-journey
+mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin
 ```
 
 A **computed** view is the powerful one for a large model: seed it with a bounded context to get the
@@ -107,7 +107,7 @@ disabled (read-only) so a slice can't clobber the rest of the model on disk.
 
 Views sit **on top of** the project → bounded context → module → aggregate hierarchy; they don't replace
 it. The hierarchy says where an element lives and who owns it; a view is a curated cross-cut (a saga
-spanning three contexts, a journey crossing bounded contexts).
+spanning three contexts).
 
 ## Creating curated views from the canvas
 

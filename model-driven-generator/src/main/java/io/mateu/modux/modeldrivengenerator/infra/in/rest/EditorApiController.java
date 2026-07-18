@@ -13,8 +13,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessSte
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AclEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.JourneyLegEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
@@ -130,6 +128,7 @@ public class EditorApiController {
     private final WorkflowEditorCommands workflowCommands;
     private final AgentEditorCommands agentCommands;
     private final UiEditorCommands uiCommands;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.interaction.derive.DeriveInteractionUseCase deriveInteractionUseCase;
 
     // ---- projection -------------------------------------------------------
 
@@ -147,8 +146,6 @@ public class EditorApiController {
     /** A code boundedContext: distribution unit inside a bounded context; services deploy them. */
     public record ModuleDto(String id, String name, String boundedContextId, List<String> elementIds, boolean main) {}
 
-    public record JourneyDto(String id, String name, String description, List<JourneyLegDto> legs) {}
-    public record JourneyLegDto(String id, String sourceId, String targetId, List<String> afterLegIds, String label) {}
     public record ServiceDto(String id, String name, List<String> moduleIds,
                              String database, boolean outboxEnabled, List<String> urlIds) {}
     public record DomainServiceDto(String id, String name) {}
@@ -419,7 +416,6 @@ public class EditorApiController {
             List<ModelRefDto> models,
             List<NamedRefDto> sagas,
             List<ModuleDto> modules,
-            List<JourneyDto> journeys,
             List<ServiceDto> services,
             List<TransformationDto> transformations,
             List<CustomCodeDto> customCodes,
@@ -430,7 +426,8 @@ public class EditorApiController {
             List<AreaDto> areas,
             List<ArchimateRelationDto> archimateRelations,
             List<UiDto> uis,
-            List<UrlDto> urls) {}
+            List<UrlDto> urls,
+            List<io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto> interactions) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
@@ -540,6 +537,18 @@ public class EditorApiController {
         return projection.build();
     }
 
+    /**
+     * Derives an EPHEMERAL interaction from the model: the message chain starting at a use
+     * case, an API operation or an event (ref = element id; the event NAME for EVENT).
+     * Read-only — nothing is persisted.
+     */
+    @GetMapping("/interactions/derive")
+    public io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto deriveInteraction(
+            @org.springframework.web.bind.annotation.RequestParam String kind,
+            @org.springframework.web.bind.annotation.RequestParam String ref) {
+        return deriveInteractionUseCase.derive(kind, ref);
+    }
+
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
                                 String id, String name, String subdomainType, String boundedContextId,
                                 String aggregateId,
@@ -571,7 +580,9 @@ public class EditorApiController {
                                 String beforeComponentId, String title, String text,
                                 String cronExpression, String beforeItemId, String etlFlowId,
                                 String serviceId, String elementId, String bar,
-                                String journeyId, String detailPageId) {}
+                                String detailPageId, String description, String triggerKind,
+                                String triggerRef,
+                                List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionMessageEntity> messages) {}
 
     public record ImportApiRq(String apiId, String fileName, String content) {}
 
@@ -649,15 +660,14 @@ public class EditorApiController {
             case "add-service-module" -> addServiceModule(command);
             case "remove-service-module" -> removeServiceModule(command);
             case "add-external-system" -> addExternalSystem(command);
-            case "add-journey" -> addJourney(command);
-            case "remove-journey" -> repository.deleteAllById(List.of(command.id()), JourneyEntity.class);
-            case "journey-add-leg" -> journeyAddLeg(command);
-            case "journey-remove-leg" -> journeyRemoveLeg(command);
             case "set-external-system-parent" -> setExternalSystemParent(command);
             case "add-project-reference" -> addProjectReference(command);
             case "remove-external-system" -> removeExternalSystem(command);
             case "add-actor" -> addActor(command);
             case "remove-actor" -> removeActor(command);
+            case "save-interaction" -> saveInteraction(command);
+            case "remove-interaction" -> repository.deleteAllById(List.of(command.id()),
+                    io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity.class);
             case "add-note" -> addNote(command);
             case "remove-note" -> removeNote(command);
             case "add-area" -> addArea(command);
@@ -1192,8 +1202,6 @@ public class EditorApiController {
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
-            case "journey" -> repository.findById(command.id(), JourneyEntity.class)
-                    .ifPresent(j -> repository.save(j.toBuilder().name(command.name()).build()));
             case "external-system" -> {
                 var project = projects.owningProject();
                 repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
@@ -2758,56 +2766,6 @@ public class EditorApiController {
         repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
     }
 
-    private void addJourney(EditorCommand command) {
-        if (repository.findById(command.id(), JourneyEntity.class).isPresent()) return;
-        repository.save(JourneyEntity.builder().id(command.id()).name(command.name()).build());
-    }
-
-    private void journeyAddLeg(EditorCommand command) {
-        var journey = repository.findById(command.journeyId(), JourneyEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Trayecto desconocido: " + command.journeyId()));
-        var legId = command.itemId() != null ? command.itemId()
-                : "leg-" + (journey.legs().size() + 1);
-        if (journey.legs().stream().anyMatch(l -> l.id().equals(legId))) return;
-        var legs = new ArrayList<>(journey.legs());
-        legs.add(JourneyLegEntity.builder()
-                .id(legId)
-                .sourceId(command.sourceId())
-                .targetId(command.targetId())
-                .afterLegIds(command.dependsOnStepIds() != null ? command.dependsOnStepIds() : List.of())
-                .label(command.label())
-                .build());
-        // Convergence: legs that DEPART from the new leg's target now also run
-        // after it — otherwise a second entry drawn later strands its run.
-        var rewired = legs.stream()
-                .map(l -> !l.id().equals(legId)
-                        && l.sourceId().equals(command.targetId())
-                        && !l.afterLegIds().contains(legId)
-                        ? l.toBuilder().afterLegIds(java.util.stream.Stream.concat(
-                                        l.afterLegIds().stream(), java.util.stream.Stream.of(legId))
-                                .toList()).build()
-                        : l)
-                .toList();
-        repository.save(journey.toBuilder().legs(rewired).build());
-    }
-
-    private void journeyRemoveLeg(EditorCommand command) {
-        var journey = repository.findById(command.journeyId(), JourneyEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException("Trayecto desconocido: " + command.journeyId()));
-        // the removed leg's continuations reattach to its predecessors, so the story keeps reading
-        var removed = journey.legs().stream().filter(l -> l.id().equals(command.itemId())).findFirst().orElse(null);
-        if (removed == null) return;
-        var legs = journey.legs().stream()
-                .filter(l -> !l.id().equals(command.itemId()))
-                .map(l -> !l.afterLegIds().contains(command.itemId()) ? l
-                        : l.toBuilder().afterLegIds(java.util.stream.Stream.concat(
-                                        l.afterLegIds().stream().filter(a -> !a.equals(command.itemId())),
-                                        removed.afterLegIds().stream())
-                                .distinct().toList()).build())
-                .toList();
-        repository.save(journey.toBuilder().legs(legs).build());
-    }
-
     private void addExternalSystem(EditorCommand command) {
         var project = projects.owningProject();
         if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
@@ -2960,6 +2918,36 @@ public class EditorApiController {
     private void addActor(EditorCommand command) {
         if (repository.findById(command.id(), RoleEntity.class).isPresent()) return;
         repository.save(new RoleEntity(command.id(), command.name(), List.of()));
+    }
+
+    /**
+     * Creates or REPLACES an interaction: the payload is the whole interaction (the
+     * graphical surface edits the messages; the CRUD page edits the header fields and
+     * leaves the messages untouched).
+     */
+    private void saveInteraction(EditorCommand command) {
+        if (command.id() == null || command.id().isBlank()) {
+            throw new IllegalArgumentException("La interacción necesita un id");
+        }
+        var triggerKind = command.triggerKind() == null || command.triggerKind().isBlank()
+                ? null
+                : io.mateu.modux.modeldrivengenerator.domain.aggregates.interaction.vo.InteractionTriggerKind
+                        .valueOf(command.triggerKind());
+        var current = repository.findById(command.id(),
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity.class);
+        repository.save(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity.builder()
+                .id(command.id())
+                .name(command.name())
+                .description(command.description())
+                .triggerKind(triggerKind)
+                .triggerRef(command.triggerRef())
+                // a header-only save (no messages in the payload) keeps the stored ones
+                .messages(command.messages() != null ? command.messages()
+                        : current.map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity::messages)
+                                .orElse(List.of()))
+                .projectId(current.map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity::projectId)
+                        .orElse(null))
+                .build());
     }
 
     private void addNote(EditorCommand command) {

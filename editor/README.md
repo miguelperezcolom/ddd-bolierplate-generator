@@ -12,7 +12,7 @@ totalmente editable. Se embebe en la UI Mateu de modux o funciona standalone.
 2. **Adaptadores de vista** (`src/views/*.ts`) — funciones puras `modelo → escena`:
    `context-map.ts` (espejo del ContextMapSvgRenderer server-side, coherencia de flows
    recalculada en vivo) y `aggregates.ts`. Pendientes: flows, procesos.
-3. **`<modux-editor>`** (`src/modux-editor.ts`) — shell con pestañas y toolbar.
+3. **`<modux-editor>`** (`src/modux-editor.ts`) — shell con toolbar y selector de vistas.
    Contrato con el host: propiedades `model` (proyección `ModuxModel`) y `layout`
    (`EditorLayout`, geometría FUERA del YAML); eventos `modux-command`, `layout-changed`,
    `modux-select`, `modux-activate`.

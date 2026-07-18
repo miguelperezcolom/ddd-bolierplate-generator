@@ -53,12 +53,12 @@ public record AllData(
         List<CustomCodeEntity> customCodes,
         List<ButtonGroupEntity> buttonGroups,
         List<WorkflowGatewayEntity> workflowGateways,
-        List<JourneyEntity> journeys,
         List<NoteEntity> notes,
         List<AreaEntity> areas,
         List<ArchimateRelationEntity> archimateRelations,
         List<UiEntity> uis,
-        List<UrlEntity> urls
+        List<UrlEntity> urls,
+        List<InteractionEntity> interactions
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -121,11 +121,11 @@ public record AllData(
         customCodes = customCodes != null ? customCodes : List.of();
         buttonGroups = buttonGroups != null ? buttonGroups : List.of();
         workflowGateways = workflowGateways != null ? workflowGateways : List.of();
-        journeys = journeys != null ? journeys : List.of();
         notes = notes != null ? notes : List.of();
         areas = areas != null ? areas : List.of();
         archimateRelations = archimateRelations != null ? archimateRelations : List.of();
         uis = uis != null ? uis : List.of();
         urls = urls != null ? urls : List.of();
+        interactions = interactions != null ? interactions : List.of();
     }
 }

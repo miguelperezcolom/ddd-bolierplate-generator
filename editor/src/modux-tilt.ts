@@ -117,60 +117,6 @@ export class ModuxTilt extends LitElement {
       transform-origin: 0 50%;
       pointer-events: none;
     }
-    /* The journey's dashes slide toward the target; the tip wears the arrow. */
-    .edge3.journey3 {
-      background-size: 16px 100% !important;
-      animation: journey-flow3 0.8s linear infinite;
-      overflow: visible;
-    }
-    .edge3.journey3::after {
-      content: '';
-      position: absolute;
-      right: -2px;
-      top: 50%;
-      transform: translateY(-50%);
-      border-left: 9px solid #d97706;
-      border-top: 5px solid transparent;
-      border-bottom: 5px solid transparent;
-    }
-    @keyframes journey-flow3 {
-      to { background-position-x: 16px; }
-    }
-    .journey-runner3 {
-      position: absolute;
-      width: 15px;
-      height: 15px;
-      margin: -7.5px 0 0 -7.5px;
-      border-radius: 50%;
-      background: #d97706;
-      border: 2px solid #ffffff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
-      pointer-events: none;
-    }
-    .journey-fx3 {
-      position: absolute;
-      width: 34px;
-      height: 34px;
-      margin: -17px 0 0 -17px;
-      border-radius: 50%;
-      border: 2.5px solid #d97706;
-      pointer-events: none;
-    }
-    .journey-badge3 {
-      position: absolute;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 5px;
-      box-sizing: border-box;
-      border-radius: 11px;
-      background: #d97706;
-      color: #ffffff;
-      font: 700 12px ui-sans-serif, system-ui, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
     .n3 {
       position: absolute;
       box-sizing: border-box;
@@ -386,7 +332,6 @@ export class ModuxTilt extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    this.syncJourneyRunnerClock();
     if (changed.has('_renaming') && this._renaming) {
       (this.renderRoot.querySelector('.rename3') as HTMLInputElement | null)?.select();
     }
@@ -634,110 +579,6 @@ export class ModuxTilt extends LitElement {
     this._pan = { x: 0, y: 0 };
   };
 
-  private _runnerRaf: number | undefined;
-  private _runnerT0 = 0;
-
-  /** Starts/stops the runner's clock according to whether a journey is on stage. */
-  private syncJourneyRunnerClock(): void {
-    const wants = (this.scene.journeyRuns ?? []).length > 0;
-    if (wants && this._runnerRaf === undefined) {
-      this._runnerT0 = performance.now();
-      const tick = () => {
-        this.moveJourneyRunner((performance.now() - this._runnerT0) / 1000);
-        this._runnerRaf = requestAnimationFrame(tick);
-      };
-      this._runnerRaf = requestAnimationFrame(tick);
-    } else if (!wants && this._runnerRaf !== undefined) {
-      cancelAnimationFrame(this._runnerRaf);
-      this._runnerRaf = undefined;
-    }
-  }
-
-  /**
-   * The traveller in 3D: same tour as the other surfaces — one run after
-   * another, straight 3D segments between plates — driven by rAF because the
-   * z coordinate must interpolate between storeys, which CSS motion cannot.
-   */
-  private moveJourneyRunner(t: number): void {
-    const el = this.renderRoot.querySelector('.journey-runner3') as HTMLElement | null;
-    if (!el) return;
-    const fxStart = this.renderRoot.querySelector('[data-fx="start"]') as HTMLElement | null;
-    const fxEnd = this.renderRoot.querySelector('[data-fx="end"]') as HTMLElement | null;
-    const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
-    const edgeById = new Map(this.scene.edges.map((e) => [e.id, e]));
-    const depth = this.depths();
-    const STOREY = 30;
-    const zOf = (id: string) => (depth.get(id) ?? 0) * STOREY + 8;
-    const runs = (this.scene.journeyRuns ?? [])
-      .map((run) =>
-        run
-          .map((id) => edgeById.get(id))
-          .filter((e): e is NonNullable<typeof e> => !!e)
-          .map((e) => ({ s: byId.get(e.sourceId), tgt: byId.get(e.targetId) }))
-          .filter((g): g is { s: SceneNode; tgt: SceneNode } => !!g.s && !!g.tgt),
-      )
-      .filter((run) => run.length > 0);
-    if (!runs.length) {
-      el.style.display = 'none';
-      if (fxStart) fxStart.style.display = 'none';
-      if (fxEnd) fxEnd.style.display = 'none';
-      return;
-    }
-    const SPEED = 170;
-    const GAP = 0.5;
-    const lengths = runs.map((run) =>
-      run.map((g) => Math.hypot(g.tgt.x - g.s.x, g.tgt.y - g.s.y)));
-    const durations = lengths.map((ls) => Math.max(1.2, ls.reduce((a, b) => a + b, 0) / SPEED));
-    const total = durations.reduce((a, b) => a + b + GAP, 0);
-    let time = t % total;
-    let k = 0;
-    while (time > durations[k] + GAP) {
-      time -= durations[k] + GAP;
-      k++;
-    }
-    const run = runs[k];
-    // Route punctuation, same grammar as the other surfaces: a ripple expands at the
-    // origin as the run begins; a ring closes onto the destination while it rests.
-    const placeFx = (fx: HTMLElement | null, node: SceneNode, scale: number, opacity: number) => {
-      if (!fx) return;
-      fx.style.display = 'block';
-      fx.style.left = `${node.x}px`;
-      fx.style.top = `${node.y}px`;
-      fx.style.transform = `translateZ(${zOf(node.id)}px) scale(${scale})`;
-      fx.style.opacity = `${opacity}`;
-    };
-    const FX = 0.6;
-    if (time < FX && run[0]) {
-      const age = time / FX;
-      placeFx(fxStart, run[0].s, 0.35 + age * 1.15, 0.9 * (1 - age));
-    } else if (fxStart) fxStart.style.display = 'none';
-    const over = time - durations[k];
-    if (over > 0 && over < 0.45 && run[run.length - 1]) {
-      const age = over / 0.45;
-      placeFx(fxEnd, run[run.length - 1].tgt, 1.5 - age * 1.15, 0.15 + age * 0.75);
-    } else if (fxEnd) fxEnd.style.display = 'none';
-    if (time > durations[k]) {
-      el.style.display = 'none';
-      return;
-    }
-    const runLength = lengths[k].reduce((a, b) => a + b, 0) || 1;
-    let distance = (time / durations[k]) * runLength;
-    let i = 0;
-    while (i < run.length - 1 && distance > lengths[k][i]) {
-      distance -= lengths[k][i];
-      i++;
-    }
-    const g = run[i];
-    const lt = Math.min(1, distance / (lengths[k][i] || 1));
-    const x = g.s.x + (g.tgt.x - g.s.x) * lt;
-    const y = g.s.y + (g.tgt.y - g.s.y) * lt;
-    const z = zOf(g.s.id) + (zOf(g.tgt.id) - zOf(g.s.id)) * lt;
-    el.style.display = 'block';
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.transform = `translateZ(${z}px)`;
-  }
-
   /**
    * The virtual endpoint for a note thread that targets a RELATION: a node-shaped point
    * at the host edge's midpoint, lifted to the average of its endpoints' storeys.
@@ -853,34 +694,16 @@ export class ModuxTilt extends LitElement {
             const stroke = e.dashed
               ? `repeating-linear-gradient(90deg, ${color} 0 6px, transparent 6px 10px)`
               : color;
-            const journey = e.kind === 'journey';
             return html`<div
-              class="edge3 ${journey ? 'journey3' : ''}"
+              class="edge3"
               style="
-                left: ${lx(s)}px; top: ${ly(s)}px; width: ${len}px; height: ${journey ? 3 : 1.7}px;
+                left: ${lx(s)}px; top: ${ly(s)}px; width: ${len}px; height: 1.7px;
                 transform: translateZ(${z1}px) rotateZ(${bearing}deg) rotateY(${-climb}deg);
-                background: ${journey
-                  ? 'repeating-linear-gradient(90deg, #d97706 0 9px, transparent 9px 16px)'
-                  : stroke};
+                background: ${stroke};
                 opacity: ${e.dim ? 0.12 : 0.9};
               "
-            ></div>
-            ${journey && e.label
-              ? html`<div
-                  class="journey-badge3"
-                  style="
-                    left: ${(lx(s) + lx(t)) / 2}px; top: ${(ly(s) + ly(t)) / 2}px;
-                    transform: translate(-50%, -50%) translateZ(${(z1 + z2) / 2 + 6}px);
-                  "
-                  title=${e.tooltip ?? ''}
-                >${e.label}</div>`
-              : ''}`;
+            ></div>`;
           })}
-          ${(this.scene.journeyRuns ?? []).length
-            ? html`<div class="journey-runner3" style="display: none"></div>
-                <div class="journey-fx3" data-fx="start" style="display: none"></div>
-                <div class="journey-fx3" data-fx="end" style="display: none"></div>`
-            : ''}
           ${nodes.map((n) => {
             if (n.kind === 'area') {
               // Not a component: no plate, no label, no shadow, no pointer — just the frame.

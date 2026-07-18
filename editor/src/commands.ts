@@ -115,19 +115,6 @@ export type ModuxCommand =
       id: string;
       parentId: string | null;
     }
-  | { kind: 'add-journey'; id: string; name: string }
-  | { kind: 'remove-journey'; id: string }
-  | {
-      /** One more hop of the journey; afterLegIds (as dependsOnStepIds) chain it into the DAG. */
-      kind: 'journey-add-leg';
-      journeyId: string;
-      itemId: string;
-      sourceId: string;
-      targetId: string;
-      dependsOnStepIds?: string[];
-      label?: string;
-    }
-  | { kind: 'journey-remove-leg'; journeyId: string; itemId: string }
   | {
       kind: 'remove-external-system';
       id: string;
@@ -1292,6 +1279,27 @@ export type ModuxCommand =
   | { kind: 'set-page-field-order'; pageId: string; fieldIds: string[] }
   | { kind: 'add-actor-app'; actorId: string; appId: string }
   | { kind: 'remove-actor-app'; actorId: string; appId: string }
+  | {
+      /** A sequence scenario — created or replaced. FLAT envelope (server contract):
+       *  `messages` omitted = the server keeps the stored ones (header-only save);
+       *  surface saves always carry the full list. Client-only fields (backed,
+       *  depth, participants, ephemeral) never travel. */
+      kind: 'save-interaction';
+      id: string;
+      name?: string;
+      description?: string;
+      triggerKind?: string | null;
+      triggerRef?: string | null;
+      messages?: {
+        id: string;
+        fromRef: string;
+        toRef: string;
+        kind: import('./model.js').InteractionMessageKind;
+        label?: string;
+        guard?: string;
+      }[];
+    }
+  | { kind: 'remove-interaction'; id: string }
   | {
       /** The step `id` starts only after `dependsOnStepId` completes. */
       kind: 'add-workflow-dependency';
