@@ -36,6 +36,8 @@ export interface UseCaseRef {
 export interface DomainEventRef {
   id: string;
   name: string;
+  /** Born as a machine-made stub (a CRUD lifecycle event). */
+  derived?: boolean;
 }
 
 export interface ApplicationEventRef {

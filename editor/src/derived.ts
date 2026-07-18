@@ -7,12 +7,13 @@ import type { Scene } from './scene.js';
  * them with a ✦ and the editor's toggle can hide them from the diagram.
  */
 
-/** Ids of the elements the projection flags as derived (use cases and query services). */
+/** Ids of the elements the projection flags as derived (use cases, query services, events). */
 export function derivedElementIds(model: ModuxModel): Set<string> {
   const ids = new Set<string>();
   for (const bc of model.boundedContexts ?? []) {
     for (const uc of bc.useCases ?? []) if (uc.derived) ids.add(uc.id);
     for (const qs of bc.queryServices ?? []) if (qs.derived) ids.add(qs.id);
+    for (const ev of bc.domainEvents ?? []) if (ev.derived) ids.add(ev.id);
   }
   return ids;
 }

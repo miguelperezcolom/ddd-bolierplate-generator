@@ -20,6 +20,15 @@ class DerivedElementIdsTest {
     }
 
     @Test
+    void marksTheLifecycleDomainEventsInBothGenders() {
+        assertTrue(ids.isDerivedDomainEvent("ev-reservaCreada"));
+        assertTrue(ids.isDerivedDomainEvent("ev-reservaCreado"));
+        assertTrue(ids.isDerivedDomainEvent("ev-compra-hotelModificado"));
+        assertTrue(ids.isDerivedDomainEvent("ev-compra-hotelEliminada"));
+        assertFalse(ids.isDerivedDomainEvent("ev-estanciaCreada"));
+    }
+
+    @Test
     void marksThePageCrudTrio() {
         assertTrue(ids.isDerivedUseCase("uc-reserva-create"));
         assertTrue(ids.isDerivedUseCase("uc-compra-hotel-update"));

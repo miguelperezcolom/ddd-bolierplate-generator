@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.page.save;
 
 import io.mateu.modux.modeldrivengenerator.application.out.repositories.PageRepository;
+import io.mateu.modux.modeldrivengenerator.application.usecases.page.derive.DerivePageUseCasesUseCase;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.PageButton;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.PageFieldConfig;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.page.PageRule;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 public class SavePageUseCase {
 
     final PageRepository repository;
+    final DerivePageUseCasesUseCase derivePageUseCases;
 
     public void handle(SavePageCommand command) {
         var page = repository.findById(new PageId(command.id())).orElseThrow();
@@ -73,5 +75,11 @@ public class SavePageUseCase {
                 command.listingQueryServiceId(),
                 command.favicon(), command.title(), command.style());
         repository.save(page);
+        // A CRUD page over an aggregate implies the whole scaffolding: derive it now
+        // (use cases, listing query, lifecycle domain events — idempotent).
+        if (command.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.page.vo.PageType.CRUD
+                && command.aggregateId() != null) {
+            derivePageUseCases.handle(command.id());
+        }
     }
 }

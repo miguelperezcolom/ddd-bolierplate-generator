@@ -7509,6 +7509,7 @@ function Wc(e) {
   for (const i of e.boundedContexts ?? []) {
     for (const n of i.useCases ?? []) n.derived && t.add(n.id);
     for (const n of i.queryServices ?? []) n.derived && t.add(n.id);
+    for (const n of i.domainEvents ?? []) n.derived && t.add(n.id);
   }
   return t;
 }

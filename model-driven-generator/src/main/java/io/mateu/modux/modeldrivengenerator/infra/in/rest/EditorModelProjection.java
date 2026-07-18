@@ -175,7 +175,8 @@ public class EditorModelProjection {
                         (m.domainEventIds() == null ? List.<String>of() : m.domainEventIds()).stream()
                                 .map(domainEventsById::get)
                                 .filter(Objects::nonNull)
-                                .map(ev -> new DomainEventDto(ev.id(), ev.name()))
+                                .map(ev -> new DomainEventDto(ev.id(), ev.name(),
+                                        derivedIds.isDerivedDomainEvent(ev.id())))
                                 .toList(),
                         (m.readModelIds() == null ? List.<String>of() : m.readModelIds()).stream()
                                 .map(readModelsById::get)

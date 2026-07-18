@@ -13,6 +13,10 @@ const model: ModuxModel = {
         { id: 'uc-realizar-checkin', name: 'RealizarCheckin' },
       ],
       queryServices: [{ id: 'qs-pagina-reservas', name: 'PaginaReservasQueries', derived: true }],
+      domainEvents: [
+        { id: 'ev-reservaCreada', name: 'ReservaCreada', derived: true },
+        { id: 'ev-estanciaCreada', name: 'EstanciaCreada' },
+      ],
     },
   ],
 } as ModuxModel;
@@ -31,7 +35,9 @@ const scene: Scene = {
 
 describe('derivedElementIds', () => {
   it('collects the ids the projection flags as derived', () => {
-    expect(derivedElementIds(model)).toEqual(new Set(['uc-crearReserva', 'qs-pagina-reservas']));
+    expect(derivedElementIds(model)).toEqual(
+      new Set(['uc-crearReserva', 'qs-pagina-reservas', 'ev-reservaCreada']),
+    );
   });
 });
 

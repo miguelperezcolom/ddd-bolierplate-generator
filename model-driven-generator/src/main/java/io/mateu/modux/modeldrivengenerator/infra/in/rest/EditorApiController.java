@@ -150,7 +150,9 @@ public class EditorApiController {
                              String database, boolean outboxEnabled, List<String> urlIds) {}
     public record DomainServiceDto(String id, String name) {}
     public record ApplicationEventDto(String id, String name) {}
-    public record DomainEventDto(String id, String name) {}
+    public record DomainEventDto(String id, String name,
+                                 /** Born as a machine-made stub (a CRUD lifecycle event). */
+                                 boolean derived) {}
     public record ReadModelDto(String id, String name, String aggregateId) {}
     /** Who emits a domain event: an aggregate, through its operations' `emits`. */
     public record EmissionDto(String sourceId, String domainEventId) {}
@@ -1942,7 +1944,20 @@ public class EditorApiController {
             if (!useCaseIds.contains(uc.id())) useCaseIds.add(uc.id());
             if (!allowed.contains(uc.id())) allowed.add(uc.id());
         }
-        repository.save(boundedContext.toBuilder().useCaseIds(useCaseIds).build());
+        // The CRUD also implies the aggregate's lifecycle domain events — derive them too.
+        var eventIds = new ArrayList<>(boundedContext.domainEventIds() == null
+                ? List.<String>of() : boundedContext.domainEventIds());
+        for (var ev : io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudLifecycleEvents.forAggregate(aggregate)) {
+            if (repository.findById(ev.id(), DomainEventEntity.class).isEmpty()) {
+                repository.save(ev);
+            }
+            if (!eventIds.contains(ev.id())) eventIds.add(ev.id());
+        }
+        repository.save(boundedContext.toBuilder()
+                .useCaseIds(useCaseIds)
+                .domainEventIds(eventIds)
+                .build());
         repository.save(role.withAllowedUseCaseIds(allowed));
     }
 
@@ -2234,23 +2249,31 @@ public class EditorApiController {
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
     static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
         var cap = capitalize(aggregate.name());
+        var events = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudLifecycleEvents.lifecycleOf(aggregate.id(), aggregate.name());
         return List.of(
                 stubUseCase("uc-crear" + capitalize(aggregate.id()), "Crear" + cap, List.of(
                         new UseCaseStepEntity("step-save", "save" + cap,
                                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
-                                aggregate.id(), null, null, null, null, null, null, null, null, null, null))),
+                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
+                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                                .CrudLifecycleEvents.publishStep(events.get(0)))),
                 stubUseCase("uc-actualizar" + capitalize(aggregate.id()), "Actualizar" + cap, List.of(
                         new UseCaseStepEntity("step-read", "read" + cap,
                                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.ReadAggregate,
                                 aggregate.id(), null, null, null, null, null, null, null, null, null, null),
                         new UseCaseStepEntity("step-save", "save" + cap,
                                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
-                                aggregate.id(), null, null, null, null, null, null, null, null, null, null))),
+                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
+                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                                .CrudLifecycleEvents.publishStep(events.get(1)))),
                 stubUseCase("uc-eliminar" + capitalize(aggregate.id()), "Eliminar" + cap, List.of(
                         new UseCaseStepEntity("step-delete", "delete" + cap,
                                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom,
                                 aggregate.id(), null, null, null, null, null, null, null, null,
-                                "Elimina el agregado " + cap, null))));
+                                "Elimina el agregado " + cap, null),
+                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                                .CrudLifecycleEvents.publishStep(events.get(2)))));
     }
 
     /** UI-exposed stub (the CRUD default). */
