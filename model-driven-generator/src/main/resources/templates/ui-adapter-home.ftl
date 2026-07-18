@@ -13,6 +13,11 @@ import ${project.packageName}.${homePage.moduleSlug}.infra.in.ui.pages.${homePag
 import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.${pg.className};
 </#list>
 </#if>
+<#if menuUseCases?? && menuUseCases?has_content>
+<#list menuUseCases as pg>
+import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.${pg.className};
+</#list>
+</#if>
 <#if adapter.menuItems?has_content>
 <#list adapter.menuItems as item>
 <#if item.route?has_content>
@@ -47,6 +52,13 @@ public class Home<#if homePage??> extends ${homePage.className}</#if> {
 
 <#if menuPages?? && menuPages?has_content>
 <#list menuPages as pg>
+    @Menu
+    ${pg.className} ${pg.field};
+
+</#list>
+</#if>
+<#if menuUseCases?? && menuUseCases?has_content>
+<#list menuUseCases as pg>
     @Menu
     ${pg.className} ${pg.field};
 

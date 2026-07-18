@@ -2383,6 +2383,32 @@ public class GenerateCodeUseCase {
             }
         }
 
+        // Menu entries pointing at USE CASES resolve to their exposed UI pages
+        // (aggregate-slug entries keep their own path; pageId entries use menuPages).
+        model.put("menuUseCases", flattenMenu(adapter.menuItems()).stream()
+                .filter(it -> it.useCaseId() != null && !it.useCaseId().isBlank())
+                .map(it -> Map.entry(it, repository.findById(it.useCaseId(), UseCaseEntity.class).orElse(null)))
+                .filter(e -> e.getValue() != null && e.getValue().exposedAsUi())
+                .map(e -> {
+                    var item = e.getKey();
+                    var uc = e.getValue();
+                    var moduleSlug = deployedUnits(service).stream()
+                            .filter(unit -> unit.useCaseIds() != null && unit.useCaseIds().contains(uc.id()))
+                            .findFirst()
+                            .map(unit -> boundedContextSlug(unit.name()))
+                            .orElse(null);
+                    if (moduleSlug == null) return null;
+                    var ucSlug = uc.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+                    return Map.of(
+                            "label", item.label() != null ? item.label() : uc.name(),
+                            "className", toTypeName(uc.name()) + "Page",
+                            "field", fieldNameFromLabel(item.label(), ucSlug + "Page"),
+                            "moduleSlug", moduleSlug,
+                            "pageSlug", ucSlug);
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList());
+
         // Overwrite Home.java with UIAdapter-driven version
         createFile(appDir, model, "ui-adapter-home.ftl",
                 "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
