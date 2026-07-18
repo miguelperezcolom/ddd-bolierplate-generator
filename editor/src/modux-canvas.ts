@@ -212,8 +212,8 @@ export class ModuxCanvas extends LitElement {
       bottom: 10px;
       width: 160px;
       height: 110px;
-      background: rgba(255, 255, 255, 0.85);
-      border: 1px solid #cbd5e1;
+      background: var(--modux-surface, rgba(255, 255, 255, 0.85));
+      border: 1px solid var(--modux-border, #cbd5e1);
       border-radius: 6px;
       cursor: pointer;
       overflow: hidden;
@@ -1190,7 +1190,7 @@ export class ModuxCanvas extends LitElement {
     pts: Point[],
     priorSegments: [Point, Point][],
   ): TemplateResult | typeof svg.prototype {
-    const color = edge.color ?? '#64748b';
+    const color = this.edgeColor(edge);
     const selected = this.selectedId === edge.id;
     // A line belongs to a rubber-band selection when both its endpoints do, so
     // boxing a region highlights the sub-graph, not just its nodes.
@@ -1245,8 +1245,12 @@ export class ModuxCanvas extends LitElement {
                 this._selectedWaypoint?.edgeId === edge.id && this._selectedWaypoint.index === i;
               return svg`
                 <circle data-waypoint cx=${p.x} cy=${p.y} r=${wpSelected ? 6 : 5}
-                        fill=${wpSelected ? '#2563eb' : '#ffffff'}
-                        stroke="#2563eb" stroke-width="1.6" pointer-events="all"
+                        style=${'fill: ' +
+                          (wpSelected
+                            ? 'var(--modux-primary, #2563eb)'
+                            : 'var(--modux-node-fill, #ffffff)') +
+                          '; stroke: var(--modux-primary, #2563eb)'}
+                        stroke-width="1.6" pointer-events="all"
                         style="cursor: move"
                         @pointerdown=${(e: PointerEvent) => {
                           if (e.button !== 0) return;
@@ -1269,6 +1273,17 @@ export class ModuxCanvas extends LitElement {
 
   private markerId(color: string): string {
     return color.replace(/[^a-zA-Z0-9]/g, '');
+  }
+
+  /**
+   * The edge's concrete color: its authored color, or the theme's --modux-edge
+   * resolved through getComputedStyle — a var() can't feed markerId() or the
+   * url(#…) marker references.
+   */
+  private edgeColor(edge: SceneEdge): string {
+    return (
+      edge.color ?? (getComputedStyle(this).getPropertyValue('--modux-edge').trim() || '#64748b')
+    );
   }
 
   private renderNode(node: SceneNode): TemplateResult | typeof svg.prototype {
@@ -1312,19 +1327,26 @@ export class ModuxCanvas extends LitElement {
               </rect>`
           : ''}
         <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${isChild ? 6 : 10}
-              fill=${node.fill ?? '#ffffff'}
-              stroke=${hovered ? '#2563eb' : selected ? '#2563eb' : node.stroke ?? '#94a3b8'}
+              style=${'fill: ' +
+                (node.fill ??
+                  (node.kind === 'note'
+                    ? 'var(--modux-note-fill, #fef9c3)'
+                    : 'var(--modux-node-fill, #ffffff)')) +
+                '; stroke: ' +
+                (hovered || selected
+                  ? 'var(--modux-primary, #2563eb)'
+                  : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'))}
               stroke-width=${selected || hovered ? 2.5 : 1.4}
               stroke-dasharray=${node.dashed ? '6 4' : ''}>
           ${tooltip ? svg`<title>${tooltip}</title>` : ''}
         </rect>
         ${node.derived
-          ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" fill="#a855f7"
+          ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" style="fill: var(--modux-derive, #a855f7)"
                   pointer-events="none">✦</text>`
           : ''}
         ${node.badge
           ? svg`<text x=${-hw} y=${-hh - 7} font-size="10" font-family="ui-sans-serif, system-ui"
-                  fill="#64748b" letter-spacing="0.08em">${node.badge}</text>`
+                  style="fill: var(--modux-text-dim, #64748b)" letter-spacing="0.08em">${node.badge}</text>`
           : ''}
         ${node.collapsible
           ? svg`<g transform="translate(${hw - 13}, ${-hh + 13})"
@@ -1336,7 +1358,7 @@ export class ModuxCanvas extends LitElement {
                   @click=${(e: MouseEvent) => e.stopPropagation()}>
                   <rect data-collapse-toggle x="-10" y="-11" width="20" height="20" rx="4"
                         fill="transparent"></rect>
-                  <text text-anchor="middle" y="4" font-size="12" fill="#475569"
+                  <text text-anchor="middle" y="4" font-size="12" style="fill: var(--modux-text-dim, #475569)"
                         pointer-events="none">${node.collapsed ? '▸' : '▾'}</text>
                   <title>${node.collapsed
                     ? 'Expandir: muestra los hijos del nodo'
@@ -1345,14 +1367,16 @@ export class ModuxCanvas extends LitElement {
           : ''}
         ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer)
           ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
-                  stroke=${node.stroke ?? '#64748b'} stroke-width="1.1" stroke-linejoin="round"
+                  style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
+                  stroke-width="1.1" stroke-linejoin="round"
                   stroke-linecap="round" opacity="0.85" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
           : ''}
         ${isChild && !isContainer && node.symbol && SYMBOLS[node.symbol]
           ? svg`<g transform="translate(${-hw + 8}, -6)" fill="none"
-                  stroke=${node.stroke ?? '#64748b'} stroke-width="1.2" stroke-linejoin="round"
+                  style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
+                  stroke-width="1.2" stroke-linejoin="round"
                   stroke-linecap="round" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
@@ -1361,7 +1385,7 @@ export class ModuxCanvas extends LitElement {
           ? svg`
               <foreignObject x=${-hw + 6} y=${isContainer ? -hh + 6 : -14} width=${node.w - 12} height="28">
                 <input
-                  style="width: 100%; box-sizing: border-box; font: 600 13px ui-sans-serif, system-ui; text-align: ${isContainer ? 'left' : 'center'}; border: 1px solid #2563eb; border-radius: 4px; padding: 3px;"
+                  style="width: 100%; box-sizing: border-box; font: 600 13px ui-sans-serif, system-ui; text-align: ${isContainer ? 'left' : 'center'}; border: 1px solid var(--modux-primary, #2563eb); border-radius: 4px; padding: 3px; background: var(--modux-input-bg, #ffffff); color: var(--modux-text, #334155);"
                   .value=${node.label}
                   @pointerdown=${(e: PointerEvent) => e.stopPropagation()}
                   @keydown=${(e: KeyboardEvent) => {
@@ -1375,17 +1399,17 @@ export class ModuxCanvas extends LitElement {
               </foreignObject>`
           : isChild && !isContainer
             ? svg`<text x=${-hw + 24} y="4" text-anchor="start" font-size="12" font-weight="600"
-                font-family="ui-sans-serif, system-ui" fill="#1e293b" pointer-events="none">${childLabel}</text>`
+                font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)" pointer-events="none">${childLabel}</text>`
             : isContainer
               ? svg`<text x=${-hw + 12} y=${-hh + 21} text-anchor="start" font-size="13"
-                  font-weight="700" font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`
+                  font-weight="700" font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`
               : node.kind === 'area'
                 ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
                 : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
-                  font-family="ui-sans-serif, system-ui" fill="#1e293b">${node.label}</text>`}
+                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
-                stroke="#e2e8f0" stroke-width="1" pointer-events="none"></line>`
+                style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`
           : ''}
         ${selected &&
         this.connectable &&
@@ -1448,7 +1472,8 @@ export class ModuxCanvas extends LitElement {
               [0, -hh],
             ].map(
               ([cx, cy]) => svg`
-                <circle data-handle cx=${cx} cy=${cy} r="6" fill="#2563eb" stroke="#ffffff"
+                <circle data-handle cx=${cx} cy=${cy} r="6"
+                        style="fill: var(--modux-primary, #2563eb); stroke: var(--modux-surface, #ffffff)"
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
                   <title>${!isChild
@@ -1499,11 +1524,12 @@ export class ModuxCanvas extends LitElement {
           ? node.extraHandles.map(
               (h, i) => svg`
                 <g transform="translate(${-hw + 24 + i * 20}, ${-hh})">
-                  <circle data-handle r="7" fill=${h.color} stroke="#ffffff" stroke-width="1.5"
+                  <circle data-handle r="7" style=${'fill: ' + h.color + '; stroke: var(--modux-surface, #ffffff)'}
+                          stroke-width="1.5"
                           @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node, h.kind)}>
                     <title>${h.title}</title>
                   </circle>
-                  <circle r="2.4" fill="#ffffff" pointer-events="none"></circle>
+                  <circle r="2.4" style="fill: var(--modux-surface, #ffffff)" pointer-events="none"></circle>
                 </g>`,
             )
           : ''}
@@ -1511,7 +1537,8 @@ export class ModuxCanvas extends LitElement {
           ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
               ([sx, sy]) => svg`
                 <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width="13" height="13" rx="2.5"
-                      fill="#2563eb" stroke="#ffffff" stroke-width="1.5"
+                      style="fill: var(--modux-primary, #2563eb); stroke: var(--modux-surface, #ffffff)"
+                      stroke-width="1.5"
                       style="cursor: ${sx * sy > 0 ? 'nwse' : 'nesw'}-resize"
                       @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
                   <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
@@ -1529,7 +1556,7 @@ export class ModuxCanvas extends LitElement {
     const a = this.borderPoint(source, this._pendingLink.x, this._pendingLink.y);
     return svg`
       <line x1=${a.x} y1=${a.y} x2=${this._pendingLink.x} y2=${this._pendingLink.y}
-            stroke="#2563eb" stroke-width="2" stroke-dasharray="4 4" pointer-events="none"></line>
+            style="stroke: var(--modux-primary, #2563eb)" stroke-width="2" stroke-dasharray="4 4" pointer-events="none"></line>
     `;
   }
 
@@ -1591,7 +1618,8 @@ export class ModuxCanvas extends LitElement {
     return svg`
       <rect x=${Math.min(a.x, b.x)} y=${Math.min(a.y, b.y)}
             width=${Math.abs(b.x - a.x)} height=${Math.abs(b.y - a.y)}
-            fill="rgba(37, 99, 235, 0.06)" stroke="#2563eb" stroke-width="1"
+            style="fill: var(--modux-primary-soft, rgba(37, 99, 235, 0.06)); stroke: var(--modux-primary, #2563eb)"
+            stroke-width="1"
             stroke-dasharray="4 3" pointer-events="none"></rect>
     `;
   }
@@ -1663,21 +1691,23 @@ export class ModuxCanvas extends LitElement {
               y=${(p.y - n.h / 2 - bounds.minY) * scale}
               width=${Math.max(2, n.w * scale)}
               height=${Math.max(2, n.h * scale)}
-              rx="1" fill=${n.fill ?? '#e2e8f0'} stroke="#94a3b8" stroke-width="0.4"></rect>`;
+              rx="1" style=${'fill: ' + (n.fill ?? 'var(--modux-border, #e2e8f0)') + '; stroke: var(--modux-node-stroke, #94a3b8)'}
+              stroke-width="0.4"></rect>`;
           })}
           <rect
             x=${(vx - bounds.minX) * scale}
             y=${(vy - bounds.minY) * scale}
             width=${vw * scale}
             height=${vh * scale}
-            fill="rgba(37, 99, 235, 0.08)" stroke="#2563eb" stroke-width="1"></rect>
+            style="fill: var(--modux-primary-soft, rgba(37, 99, 235, 0.08)); stroke: var(--modux-primary, #2563eb)"
+            stroke-width="1"></rect>
         </svg>
       </div>
     `;
   }
 
   render() {
-    const colors = [...new Set(this.scene.edges.map((e) => e.color ?? '#64748b'))];
+    const colors = [...new Set(this.scene.edges.map((e) => this.edgeColor(e)))];
     // Edges render in order; each one bridges over the segments drawn before it.
     const priorSegments: [Point, Point][] = [];
     const edgeHits: (TemplateResult | typeof svg.prototype)[] = [];
@@ -1704,7 +1734,7 @@ export class ModuxCanvas extends LitElement {
       >
         <defs>
           <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="1" fill="#e2e8f0"></circle>
+            <circle cx="1" cy="1" r="1" style="fill: var(--modux-dots, #e2e8f0)"></circle>
           </pattern>
           ${colors.map(
             (c) => svg`
@@ -1760,11 +1790,11 @@ export class ModuxCanvas extends LitElement {
             ? svg`
                 ${this._guides.v.map(
                   (x) => svg`<line x1=${x} y1="-100000" x2=${x} y2="100000"
-                        stroke="#ec4899" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                        style="stroke: var(--modux-guide, #ec4899)" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
                 )}
                 ${this._guides.h.map(
                   (y) => svg`<line x1="-100000" y1=${y} x2="100000" y2=${y}
-                        stroke="#ec4899" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                        style="stroke: var(--modux-guide, #ec4899)" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
                 )}
               `
             : ''}
@@ -1772,7 +1802,7 @@ export class ModuxCanvas extends LitElement {
           ${this.renderRubber()}
         </g>
         ${this.scene.nodes.length === 0
-          ? svg`<text x="50%" y="45%" text-anchor="middle" font-size="15" fill="#94a3b8"
+          ? svg`<text x="50%" y="45%" text-anchor="middle" font-size="15" style="fill: var(--modux-text-faint, #94a3b8)"
                     font-family="ui-sans-serif, system-ui" pointer-events="none">
                   Lienzo vacío — arrastra elementos de la paleta o crea algo nuevo para empezar
                 </text>`

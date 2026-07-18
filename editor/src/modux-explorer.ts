@@ -160,7 +160,7 @@ export class ModuxExplorer extends LitElement {
       height: 100%;
       overflow: hidden;
       background:
-        radial-gradient(ellipse at center, #ffffff 0%, #f1f5f9 100%);
+        radial-gradient(ellipse at center, var(--modux-surface, #ffffff) 0%, var(--modux-surface-2, #f1f5f9) 100%);
     }
     canvas {
       display: block;
@@ -175,9 +175,9 @@ export class ModuxExplorer extends LitElement {
       font: 12px system-ui, sans-serif;
       padding: 3px 8px;
       border-radius: 6px;
-      border: 1.5px solid #2563eb;
-      background: #ffffff;
-      color: #0f172a;
+      border: 1.5px solid var(--modux-primary, #2563eb);
+      background: var(--modux-surface, #ffffff);
+      color: var(--modux-text, #0f172a);
       outline: none;
       box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
     }
@@ -186,7 +186,7 @@ export class ModuxExplorer extends LitElement {
       right: 12px;
       bottom: 10px;
       font: 11px/1.5 system-ui, sans-serif;
-      color: #94a3b8;
+      color: var(--modux-text-faint, #94a3b8);
       pointer-events: none;
       text-align: right;
     }
@@ -198,27 +198,27 @@ export class ModuxExplorer extends LitElement {
       align-items: center;
       gap: 8px;
       font: 11px system-ui, sans-serif;
-      color: #64748b;
-      background: rgba(255, 255, 255, 0.92);
-      border: 1px solid #e2e8f0;
+      color: var(--modux-text-dim, #64748b);
+      background: var(--modux-surface, rgba(255, 255, 255, 0.92));
+      border: 1px solid var(--modux-border, #e2e8f0);
       border-radius: 8px;
       padding: 6px 10px;
     }
     .controls input[type='range'] {
       width: 90px;
-      accent-color: #6366f1;
+      accent-color: var(--modux-primary, #6366f1);
     }
     .controls button {
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border: 1px solid var(--modux-border-strong, #cbd5e1);
+      background: var(--modux-surface, #ffffff);
       border-radius: 6px;
       padding: 2px 8px;
       font: 11px system-ui, sans-serif;
-      color: #475569;
+      color: var(--modux-text-dim, #475569);
       cursor: pointer;
     }
     .controls button:hover {
-      background: #f1f5f9;
+      background: var(--modux-surface-2, #f1f5f9);
     }
     :host([shifted]) .search {
       left: 268px;
@@ -235,23 +235,23 @@ export class ModuxExplorer extends LitElement {
       width: 100%;
       box-sizing: border-box;
       padding: 7px 10px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--modux-border-strong, #cbd5e1);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.95);
+      background: var(--modux-input-bg, rgba(255, 255, 255, 0.95));
       font: inherit;
-      color: #0f172a;
+      color: var(--modux-text, #0f172a);
       outline: none;
     }
     .search input:focus {
-      border-color: #0284c7;
+      border-color: var(--modux-primary, #0284c7);
       box-shadow: 0 0 0 2px #0284c722;
     }
     .sugs {
       margin: 4px 0 0;
       padding: 4px;
       list-style: none;
-      background: rgba(255, 255, 255, 0.98);
-      border: 1px solid #cbd5e1;
+      background: var(--modux-surface, rgba(255, 255, 255, 0.98));
+      border: 1px solid var(--modux-border-strong, #cbd5e1);
       border-radius: 8px;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
       max-height: 320px;
@@ -269,7 +269,7 @@ export class ModuxExplorer extends LitElement {
     }
     .sugs li.active,
     .sugs li:hover {
-      background: #f1f5f9;
+      background: var(--modux-surface-2, #f1f5f9);
     }
     .sugs .dot {
       flex: none;
@@ -279,18 +279,18 @@ export class ModuxExplorer extends LitElement {
       align-self: center;
     }
     .sugs .name {
-      color: #0f172a;
+      color: var(--modux-text, #0f172a);
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .sugs .path {
-      color: #94a3b8;
+      color: var(--modux-text-faint, #94a3b8);
       font-size: 10.5px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .sugs .empty {
-      color: #94a3b8;
+      color: var(--modux-text-faint, #94a3b8);
       cursor: default;
     }
   `;
@@ -688,7 +688,7 @@ export class ModuxExplorer extends LitElement {
       refId,
       kind,
       label,
-      color: KIND_COLOR[kind] ?? '#64748b',
+      color: KIND_COLOR[kind] ?? this.pal('--modux-text-dim', '#64748b'),
       depth,
       parent,
       expanded: prev?.expanded ?? false,
@@ -1014,6 +1014,15 @@ export class ModuxExplorer extends LitElement {
     return (RADIUS[Math.min(n.depth, RADIUS.length - 1)] ?? 7) * n.scale;
   }
 
+  /**
+   * Theme palette lookup: the palette rides in on CSS custom properties (they
+   * inherit through shadow boundaries), but canvas 2D needs concrete colors.
+   */
+  private pal(name: string, fallback: string): string {
+    const v = getComputedStyle(this).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
   private draw(nodes: XNode[]): void {
     const ctx = this.ctx;
     if (!ctx || !this.canvas) return;
@@ -1041,7 +1050,11 @@ export class ModuxExplorer extends LitElement {
       const r = this.radiusOf(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = n.kind === 'note' ? '#fef9c3' : n.expanded ? n.color + '22' : '#ffffff';
+      ctx.fillStyle = n.kind === 'note'
+        ? this.pal('--modux-note-fill', '#fef9c3')
+        : n.expanded
+          ? n.color + '22'
+          : this.pal('--modux-node-fill', '#232527');
       ctx.fill();
       ctx.lineWidth = (n === this.hover ? 2.6 : 1.8) / this.cam.k;
       ctx.strokeStyle = n.color;
@@ -1067,7 +1080,7 @@ export class ModuxExplorer extends LitElement {
       if (showLabel) {
         const label = n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label;
         ctx.font = n === this.hover ? `600 ${fontPx(12)}` : fontPx(n.depth <= 1 ? 12 : 10.5);
-        ctx.fillStyle = n === this.hover ? '#0f172a' : '#475569';
+        ctx.fillStyle = n === this.hover ? this.pal('--modux-text', '#0f172a') : this.pal('--modux-text-dim', '#475569');
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillText(label, n.x, n.y + r + 4);
@@ -1077,7 +1090,7 @@ export class ModuxExplorer extends LitElement {
     // Selection rings: dashed, in the canvas' accent — Supr and F2 act on them.
     if (this.selected.size) {
       ctx.save();
-      ctx.strokeStyle = '#2563eb';
+      ctx.strokeStyle = this.pal('--modux-primary', '#2563eb');
       ctx.lineWidth = 2 / this.cam.k;
       ctx.setLineDash([5 / this.cam.k, 4 / this.cam.k]);
       for (const n of nodes) {
@@ -1091,8 +1104,8 @@ export class ModuxExplorer extends LitElement {
     if (this.rubber) {
       const r = this.rubber;
       ctx.save();
-      ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
-      ctx.strokeStyle = '#2563eb';
+      ctx.fillStyle = this.pal('--modux-primary-soft', 'rgba(37, 99, 235, 0.08)');
+      ctx.strokeStyle = this.pal('--modux-primary', '#2563eb');
       ctx.lineWidth = 1.2 / this.cam.k;
       ctx.setLineDash([4 / this.cam.k, 3 / this.cam.k]);
       ctx.fillRect(Math.min(r.ax, r.bx), Math.min(r.ay, r.by), Math.abs(r.bx - r.ax), Math.abs(r.by - r.ay));
@@ -1135,7 +1148,7 @@ export class ModuxExplorer extends LitElement {
     if (this.linking) {
       const s = this.linking.source;
       ctx.save();
-      ctx.strokeStyle = '#475569';
+      ctx.strokeStyle = this.pal('--modux-text-dim', '#475569');
       ctx.lineWidth = 1.6 / this.cam.k;
       ctx.setLineDash([5 / this.cam.k, 4 / this.cam.k]);
       ctx.beginPath();
@@ -1223,7 +1236,7 @@ export class ModuxExplorer extends LitElement {
       const maxY = Math.max(...pts.map((p) => p.y + p.r));
       this.areaHulls.set(area.id, { x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
       ctx.fillStyle = 'rgba(148, 163, 184, 0.09)';
-      ctx.strokeStyle = '#94a3b8';
+      ctx.strokeStyle = this.pal('--modux-node-stroke', '#94a3b8');
       ctx.beginPath();
       ctx.roundRect(minX, minY, maxX - minX, maxY - minY, 18 / k);
       ctx.fill();
@@ -1298,14 +1311,14 @@ export class ModuxExplorer extends LitElement {
       const gy = n.y + Math.sin(a) * (ring + wob);
       ctx.beginPath();
       ctx.arc(gx, gy, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = this.pal('--modux-node-fill', '#232527');
       ctx.fill();
       ctx.strokeStyle = c.color;
       ctx.stroke();
     });
     if (kids.length > shown.length) {
       ctx.setLineDash([]);
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = this.pal('--modux-text-dim', '#64748b');
       ctx.font = `${11 / this.cam.k}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -1586,14 +1599,14 @@ export class ModuxExplorer extends LitElement {
     bx = Math.max(8, Math.min(bx, w - bw - 8));
     const by = Math.max(8, Math.min(sy - 10, h - bh - 8));
     ctx.translate(bx, by);
-    ctx.fillStyle = 'rgba(255,255,255,0.96)';
-    ctx.strokeStyle = '#cbd5e1';
+    ctx.fillStyle = this.pal('--modux-surface', 'rgba(255,255,255,0.96)');
+    ctx.strokeStyle = this.pal('--modux-border-strong', '#cbd5e1');
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(0, 0, bw, bh, 8);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = this.pal('--modux-text', '#0f172a');
     ctx.font = '600 13px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -1601,7 +1614,7 @@ export class ModuxExplorer extends LitElement {
     ctx.fillStyle = n.color;
     ctx.font = '11px system-ui, sans-serif';
     ctx.fillText(sub, 12, 25);
-    ctx.fillStyle = '#475569';
+    ctx.fillStyle = this.pal('--modux-text-dim', '#475569');
     lines.forEach((l, i) => ctx.fillText(l, 12, 41 + i * 15));
     let ny = 41 + lines.length * 15 + (names.length ? 8 : 0);
     names.forEach((x) => {
@@ -1609,16 +1622,16 @@ export class ModuxExplorer extends LitElement {
       ctx.beginPath();
       ctx.arc(15, ny + 5.5, 2.6, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#334155';
+      ctx.fillStyle = this.pal('--modux-text', '#334155');
       ctx.fillText(x.label, 24, ny);
       ny += 15;
     });
     if (more > 0) {
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = this.pal('--modux-text-faint', '#94a3b8');
       ctx.fillText(`… y ${more} más`, 24, ny);
     }
     if (hint) {
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = this.pal('--modux-text-faint', '#94a3b8');
       ctx.fillText(hint, 12, bh - 16);
     }
     ctx.restore();

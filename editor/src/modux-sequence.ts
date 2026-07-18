@@ -117,7 +117,7 @@ export class ModuxSequence extends LitElement {
       display: block;
       position: relative;
       overflow: auto;
-      background: #ffffff;
+      background: var(--modux-canvas-bg, #ffffff);
       outline: none;
       user-select: none;
     }
@@ -133,7 +133,7 @@ export class ModuxSequence extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #94a3b8;
+      color: var(--modux-text-faint, #94a3b8);
       font: 13px ui-sans-serif, system-ui, sans-serif;
       text-align: center;
       padding: 24px;
@@ -145,8 +145,8 @@ export class ModuxSequence extends LitElement {
       display: flex;
       gap: 6px;
       align-items: center;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
+      background: var(--modux-surface, #ffffff);
+      border: 1px solid var(--modux-border, #cbd5e1);
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
       padding: 8px;
@@ -156,10 +156,10 @@ export class ModuxSequence extends LitElement {
     .msg-editor select {
       font: 12px ui-sans-serif, system-ui, sans-serif;
       padding: 4px 6px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--modux-border-strong, #cbd5e1);
       border-radius: 6px;
-      background: #ffffff;
-      color: #1e293b;
+      background: var(--modux-input-bg, #ffffff);
+      color: var(--modux-text, #1e293b);
     }
     .msg-editor input.label {
       width: 200px;
@@ -169,8 +169,8 @@ export class ModuxSequence extends LitElement {
     }
     .msg-editor button {
       border: none;
-      background: #1e293b;
-      color: #ffffff;
+      background: var(--modux-primary, #1e293b);
+      color: var(--modux-primary-text, #ffffff);
       border-radius: 6px;
       padding: 4px 10px;
       font-size: 12px;
@@ -178,7 +178,7 @@ export class ModuxSequence extends LitElement {
     }
     .msg-editor button.cancel {
       background: transparent;
-      color: #64748b;
+      color: var(--modux-text-dim, #64748b);
     }
     text {
       font-family: ui-sans-serif, system-ui, sans-serif;
@@ -432,9 +432,9 @@ export class ModuxSequence extends LitElement {
       case 'EVENT':
         return { color: '#f59e0b', marker: 'seq-open-event', dashed: false };
       case 'EXTERNAL':
-        return { color: '#64748b', marker: 'seq-filled-ext', dashed: false };
+        return { color: 'var(--modux-edge, #64748b)', marker: 'seq-filled-ext', dashed: false };
       default:
-        return { color: '#334155', marker: 'seq-filled-sync', dashed: false };
+        return { color: 'var(--modux-text, #334155)', marker: 'seq-filled-sync', dashed: false };
     }
   }
 
@@ -457,10 +457,10 @@ export class ModuxSequence extends LitElement {
         <rect
           x=${x - CHIP_W / 2} y=${PAD_Y} width=${CHIP_W} height=${CHIP_H} rx="10"
           fill=${colors.fill}
-          stroke=${selected ? '#2563eb' : colors.stroke}
+          style=${'stroke: ' + (selected ? 'var(--modux-primary, #2563eb)' : colors.stroke)}
           stroke-width=${selected ? 2.2 : 1.4}
         ></rect>
-        <text x=${x} y=${PAD_Y + 19} text-anchor="middle" font-size="12" font-weight="600" fill="#1e293b">${name}</text>
+        <text x=${x} y=${PAD_Y + 19} text-anchor="middle" font-size="12" font-weight="600" style="fill: var(--modux-text, #1e293b)">${name}</text>
         <text x=${x} y=${PAD_Y + 35} text-anchor="middle" font-size="8.5" letter-spacing="0.08em" fill=${colors.stroke}>${TYPE_BADGES[p.type] ?? p.type}</text>
       </g>
     `;
@@ -487,7 +487,7 @@ export class ModuxSequence extends LitElement {
       ? svg`<path
           d="M ${x1} ${y} H ${x1 + 44} V ${y + 16} H ${x1 + 2}"
           fill="none"
-          stroke=${style.color}
+          style=${'stroke: ' + style.color}
           stroke-width="1.6"
           stroke-dasharray=${style.dashed ? '5 4' : 'none'}
           marker-end="url(#${style.marker})"
@@ -495,7 +495,7 @@ export class ModuxSequence extends LitElement {
       : svg`<line
           x1=${rightward ? x1 + 2 : x1 - 2} y1=${y}
           x2=${rightward ? x2 - 2 : x2 + 2} y2=${y}
-          stroke=${style.color}
+          style=${'stroke: ' + style.color}
           stroke-width="1.6"
           stroke-dasharray=${style.dashed ? '5 4' : 'none'}
           marker-end="url(#${style.marker})"
@@ -505,7 +505,7 @@ export class ModuxSequence extends LitElement {
         ? svg`<line
             x1=${rightward ? x2 - 2 : x2 + 2} y1=${y + 16}
             x2=${rightward ? x1 + 2 : x1 - 2} y2=${y + 16}
-            stroke="#94a3b8"
+            style="stroke: var(--modux-edge, #94a3b8)"
             stroke-width="1"
             stroke-dasharray="4 4"
             marker-end="url(#seq-ret)"
@@ -524,7 +524,7 @@ export class ModuxSequence extends LitElement {
           ? svg`<line
               x1=${Math.min(x1, x2)} y1=${y}
               x2=${self ? x1 + 46 : Math.max(x1, x2)} y2=${y}
-              stroke="#2563eb" stroke-width="7" opacity="0.22"
+              style="stroke: var(--modux-primary, #2563eb)" stroke-width="7" opacity="0.22"
             ></line>`
           : ''}
         <!-- fat invisible hit area: the thin arrow stays easy to grab -->
@@ -534,12 +534,12 @@ export class ModuxSequence extends LitElement {
         ></line>
         ${line}
         ${ret}
-        <text x=${numX} y=${y - 6} text-anchor=${rightward ? 'start' : 'end'} font-size="10" fill="#64748b">${num}</text>
+        <text x=${numX} y=${y - 6} text-anchor=${rightward ? 'start' : 'end'} font-size="10" style="fill: var(--modux-text-dim, #64748b)">${num}</text>
         <text
           x=${labelX} y=${y - 8} text-anchor=${self ? 'start' : 'middle'}
           font-size="11.5"
           font-style=${m.kind === 'QUERY' ? 'italic' : 'normal'}
-          fill=${unbacked ? '#b45309' : '#1e293b'}
+          style=${'fill: ' + (unbacked ? '#b45309' : 'var(--modux-text, #1e293b)')}
         >${unbacked ? svg`<tspan fill="#b45309">⚠ </tspan>` : ''}${shownLabel}</text>
         ${unbacked && this.editable
           ? svg`<text
@@ -578,10 +578,10 @@ export class ModuxSequence extends LitElement {
         >
           <defs>
             <marker id="seq-filled-sync" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#334155"></path>
+              <path d="M0,0 L10,5 L0,10 z" style="fill: var(--modux-text, #334155)"></path>
             </marker>
             <marker id="seq-filled-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"></path>
+              <path d="M0,0 L10,5 L0,10 z" style="fill: var(--modux-edge, #64748b)"></path>
             </marker>
             <marker id="seq-open-event" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10" fill="none" stroke="#f59e0b" stroke-width="1.8"></path>
@@ -593,7 +593,7 @@ export class ModuxSequence extends LitElement {
               <path d="M0,0 L10,5 L0,10" fill="none" stroke="#f59e0b" stroke-width="1.8"></path>
             </marker>
             <marker id="seq-ret" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10" fill="none" stroke="#94a3b8" stroke-width="1.4"></path>
+              <path d="M0,0 L10,5 L0,10" fill="none" style="stroke: var(--modux-edge, #94a3b8)" stroke-width="1.4"></path>
             </marker>
           </defs>
           <!-- lifelines (hit rects below the messages) -->
@@ -602,7 +602,7 @@ export class ModuxSequence extends LitElement {
             return svg`
               <line
                 x1=${x} y1=${PAD_Y + CHIP_H} x2=${x} y2=${lifelineBottom}
-                stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="6 5"
+                style="stroke: var(--modux-border, #cbd5e1)" stroke-width="1.2" stroke-dasharray="6 5"
               ></line>
               ${this.editable
                 ? svg`<rect
@@ -623,14 +623,14 @@ export class ModuxSequence extends LitElement {
                 y1=${this._connect.y}
                 x2=${this._connect.x}
                 y2=${this._connect.y}
-                stroke="#2563eb" stroke-width="1.4" stroke-dasharray="5 4"
+                style="stroke: var(--modux-primary, #2563eb)" stroke-width="1.4" stroke-dasharray="5 4"
                 marker-end="url(#seq-filled-sync)"
               ></line>`
             : ''}
           ${this._reorder?.moved
             ? svg`<line
                 x1=${PAD_X / 2} y1=${this._reorder.y} x2=${w - PAD_X / 2} y2=${this._reorder.y}
-                stroke="#2563eb" stroke-width="1.4" stroke-dasharray="7 5"
+                style="stroke: var(--modux-primary, #2563eb)" stroke-width="1.4" stroke-dasharray="7 5"
               ></line>`
             : ''}
         </svg>

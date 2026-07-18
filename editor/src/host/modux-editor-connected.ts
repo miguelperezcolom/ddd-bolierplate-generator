@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { InteractionRef, ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
 import type { ModuxEditor } from '../modux-editor.js';
+import { MODUX_THEME } from '../theme.js';
 import '../modux-editor.js';
 
 /**
@@ -80,7 +81,9 @@ export class ModuxEditorConnected extends LitElement {
     }
   };
 
-  static styles = css`
+  static styles = [
+    MODUX_THEME,
+    css`
     :host {
       display: flex;
       flex-direction: column;
@@ -99,23 +102,24 @@ export class ModuxEditorConnected extends LitElement {
       gap: 8px;
       padding: 6px 12px;
       font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: #334155;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
+      color: var(--modux-text);
+      background: var(--modux-surface-2);
+      border: 1px solid var(--modux-border);
       border-bottom: none;
       border-radius: 10px 10px 0 0;
     }
     .workspace label {
       font-size: 12px;
-      color: #64748b;
+      color: var(--modux-text-dim);
     }
     .workspace select,
     .workspace input {
       font-size: 13px;
       padding: 4px 6px;
       border-radius: 6px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border: 1px solid var(--modux-border-strong);
+      background: var(--modux-input-bg);
+      color: var(--modux-text);
     }
     .workspace button {
       border: none;
@@ -124,10 +128,10 @@ export class ModuxEditorConnected extends LitElement {
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
-      color: #334155;
+      color: var(--modux-text);
     }
     .workspace button:hover {
-      background: #e2e8f0;
+      background: var(--modux-border);
     }
     .workspace .badge {
       font-size: 11px;
@@ -135,12 +139,12 @@ export class ModuxEditorConnected extends LitElement {
       letter-spacing: 0.05em;
       padding: 2px 8px;
       border-radius: 999px;
-      background: #dbeafe;
-      color: #1d4ed8;
+      background: var(--modux-primary-soft);
+      color: var(--modux-primary);
     }
     .workspace .badge.solution {
-      background: #fef3c7;
-      color: #b45309;
+      background: var(--modux-note-fill);
+      color: var(--modux-text);
     }
     .workspace .diff-badge {
       border: none;
@@ -152,13 +156,13 @@ export class ModuxEditorConnected extends LitElement {
     }
     .workspace .diff-badge:hover,
     .workspace .diff-badge[data-open] {
-      background: #fde68a;
+      background: var(--modux-surface-2);
     }
     .diff-panel {
       font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: #334155;
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
+      color: var(--modux-text);
+      background: var(--modux-surface-2);
+      border: 1px solid var(--modux-border);
       border-bottom: none;
       padding: 8px 14px 10px;
       max-height: 260px;
@@ -176,19 +180,19 @@ export class ModuxEditorConnected extends LitElement {
       background: transparent;
       cursor: pointer;
       font-size: 13px;
-      color: #64748b;
+      color: var(--modux-text-dim);
       padding: 2px 6px;
       border-radius: 6px;
     }
     .diff-head button:hover {
-      background: #fde68a;
+      background: var(--modux-border);
     }
     .diff-group {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #92400e;
+      color: var(--modux-text-dim);
       margin: 8px 0 2px;
     }
     .diff-row {
@@ -208,25 +212,25 @@ export class ModuxEditorConnected extends LitElement {
       color: #d97706;
     }
     .diff-mark.removed {
-      color: #dc2626;
+      color: var(--modux-danger);
     }
     .diff-type {
       flex: 0 0 150px;
       font-size: 11px;
       font-weight: 600;
-      color: #64748b;
+      color: var(--modux-text-dim);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
     .diff-name {
       font-weight: 500;
-      color: #1e293b;
+      color: var(--modux-text);
     }
     .merge-panel {
       font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: #334155;
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
+      color: var(--modux-text);
+      background: var(--modux-surface-2);
+      border: 1px solid var(--modux-border);
       border-bottom: none;
       padding: 10px 14px;
       display: flex;
@@ -252,8 +256,9 @@ export class ModuxEditorConnected extends LitElement {
       margin-top: 4px;
     }
     .merge-actions button {
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border: 1px solid var(--modux-border-strong);
+      background: var(--modux-surface);
+      color: var(--modux-text);
       padding: 5px 12px;
       border-radius: 8px;
       cursor: pointer;
@@ -265,11 +270,11 @@ export class ModuxEditorConnected extends LitElement {
     .status {
       font-family: ui-sans-serif, system-ui, sans-serif;
       font-size: 13px;
-      color: #64748b;
+      color: var(--modux-text-dim);
       padding: 24px;
     }
     .status.error {
-      color: #b91c1c;
+      color: var(--modux-danger);
     }
     :host {
       position: relative;
@@ -293,14 +298,8 @@ export class ModuxEditorConnected extends LitElement {
       background: #1e3a8a;
       color: #eff6ff;
     }
-    /* ── Dark mode: the workspace chrome inverts hue-preservingly, like the
-       editor below it; the toast is dark-on-dark already and stays as is. */
-    :host([dark]) .workspace,
-    :host([dark]) .diff-panel,
-    :host([dark]) .status {
-      filter: invert(1) hue-rotate(180deg);
-    }
-  `;
+  `,
+  ];
 
   connectedCallback(): void {
     super.connectedCallback();

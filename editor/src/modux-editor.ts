@@ -4,6 +4,7 @@ import type { ModuxModel, ContextMapRelationType } from './model.js';
 import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { DiagramLayout, EditorLayout, Point, Scene, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
+import { MODUX_THEME } from './theme.js';
 import { contextMapScene, distributionScene, ownershipIndex } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
@@ -448,7 +449,9 @@ export class ModuxEditor extends LitElement {
     memberIds: string[];
   } | null = null;
 
-  static styles = css`
+  static styles = [
+    MODUX_THEME,
+    css`
     .canvas-wrap {
       position: relative;
     }
@@ -459,8 +462,8 @@ export class ModuxEditor extends LitElement {
       bottom: 8px;
       width: 244px;
       z-index: 15;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: var(--modux-surface);
+      border: 1px solid var(--modux-border);
       border-radius: 10px;
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
       display: flex;
@@ -480,8 +483,8 @@ export class ModuxEditor extends LitElement {
       flex-direction: column;
       gap: 4px;
       padding: 8px 4px;
-      background: #f8fafc;
-      border-left: 1px solid #e2e8f0;
+      background: var(--modux-surface-2);
+      border-left: 1px solid var(--modux-border);
     }
     .palette-vtab {
       writing-mode: vertical-rl;
@@ -491,14 +494,14 @@ export class ModuxEditor extends LitElement {
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.04em;
-      color: #64748b;
+      color: var(--modux-text-dim);
       padding: 10px 4px;
       border-radius: 6px;
       cursor: pointer;
     }
     .palette-vtab[data-active] {
-      background: #1e293b;
-      color: #ffffff;
+      background: var(--modux-primary);
+      color: var(--modux-primary-text);
     }
     .tab.hamburger {
       font-size: 16px;
@@ -513,13 +516,13 @@ export class ModuxEditor extends LitElement {
       gap: 12px;
       align-items: baseline;
       font-size: 12px;
-      color: #1e293b;
+      color: var(--modux-text);
       padding: 3px 8px;
     }
     .help-keys {
       flex: 0 0 150px;
       font-weight: 700;
-      color: #2563eb;
+      color: var(--modux-primary);
       font-family: ui-monospace, monospace;
       font-size: 11px;
     }
@@ -529,33 +532,35 @@ export class ModuxEditor extends LitElement {
       font: inherit;
       font-size: 12px;
       padding: 4px 8px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--modux-border-strong);
       border-radius: 6px;
       margin-bottom: 6px;
+      background: var(--modux-input-bg);
+      color: var(--modux-text);
     }
     .palette-h {
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #64748b;
+      color: var(--modux-text-dim);
       margin: 10px 2px 4px;
     }
     .palette-g {
       font-size: 11px;
       font-weight: 600;
-      color: #475569;
+      color: var(--modux-text-dim);
       margin: 8px 2px 2px;
     }
     .palette-item {
       font-size: 12px;
-      color: #1e293b;
+      color: var(--modux-text);
       padding: 4px 8px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--modux-border);
       border-radius: 6px;
       margin: 2px 0;
       cursor: grab;
-      background: #f8fafc;
+      background: var(--modux-surface-2);
       user-select: none;
       display: flex;
       align-items: center;
@@ -578,8 +583,8 @@ export class ModuxEditor extends LitElement {
       white-space: nowrap;
     }
     .palette-item:hover {
-      background: #eef2ff;
-      border-color: #c7d2fe;
+      background: var(--modux-primary-soft);
+      border-color: var(--modux-primary);
     }
     .palette-child {
       border-style: dashed;
@@ -591,14 +596,14 @@ export class ModuxEditor extends LitElement {
       width: 100%;
       height: 100%;
       font-family: ui-sans-serif, system-ui, sans-serif;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: var(--modux-surface);
+      border: 1px solid var(--modux-border);
       border-radius: 10px;
       overflow: hidden;
     }
     .brand {
       font: 600 12px ui-sans-serif, system-ui, sans-serif;
-      color: #94a3b8;
+      color: var(--modux-text-faint);
       letter-spacing: 0.02em;
       white-space: nowrap;
       padding: 0 6px 0 2px;
@@ -610,8 +615,8 @@ export class ModuxEditor extends LitElement {
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
-      border-bottom: 1px solid #e2e8f0;
-      background: #f8fafc;
+      border-bottom: 1px solid var(--modux-border);
+      background: var(--modux-surface-2);
       flex-wrap: wrap;
     }
     .tab {
@@ -621,14 +626,14 @@ export class ModuxEditor extends LitElement {
       border-radius: 8px;
       font-size: 13px;
       cursor: pointer;
-      color: #334155;
+      color: var(--modux-text);
     }
     .tab[data-active] {
-      background: #1e293b;
-      color: #ffffff;
+      background: var(--modux-primary);
+      color: var(--modux-primary-text);
     }
     .tab:disabled {
-      color: #94a3b8;
+      color: var(--modux-text-faint);
       cursor: not-allowed;
     }
     .spacer {
@@ -636,15 +641,16 @@ export class ModuxEditor extends LitElement {
     }
     label {
       font-size: 12px;
-      color: #64748b;
+      color: var(--modux-text-dim);
     }
     select,
     .new-name {
       font-size: 13px;
       padding: 4px 6px;
       border-radius: 6px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border: 1px solid var(--modux-border-strong);
+      background: var(--modux-input-bg);
+      color: var(--modux-text);
     }
     .new-name {
       width: 130px;
@@ -662,8 +668,8 @@ export class ModuxEditor extends LitElement {
       z-index: 21;
       min-width: 210px;
       transform: translate(-50%, 12px);
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
+      background: var(--modux-surface);
+      border: 1px solid var(--modux-border);
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
       padding: 6px;
@@ -674,7 +680,7 @@ export class ModuxEditor extends LitElement {
     .picker-title {
       font-size: 11px;
       font-weight: 600;
-      color: #64748b;
+      color: var(--modux-text-dim);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       padding: 4px 8px 6px;
@@ -690,29 +696,35 @@ export class ModuxEditor extends LitElement {
       cursor: pointer;
       text-align: left;
       font-size: 13px;
-      color: #1e293b;
+      color: var(--modux-text);
     }
     .picker-item:hover {
-      background: #f1f5f9;
+      background: var(--modux-surface-2);
     }
     .picker-item.current {
-      background: #eff6ff;
+      background: var(--modux-primary-soft);
     }
     .picker-item .abbr {
       flex: 0 0 34px;
       font-weight: 700;
       font-size: 11px;
-      color: #2563eb;
+      color: var(--modux-primary);
       text-align: center;
     }
     .picker-item.current .abbr::after {
       content: ' ✓';
     }
     .picker-item.danger .abbr {
-      color: #dc2626;
+      color: var(--modux-danger);
     }
     .picker-item.danger:hover {
-      background: #fef2f2;
+      background: var(--modux-surface-2);
+    }
+    .relation-picker input,
+    .relation-picker select {
+      background: var(--modux-input-bg);
+      border-color: var(--modux-border-strong);
+      color: var(--modux-text);
     }
     .tab:disabled {
       opacity: 0.4;
@@ -720,69 +732,17 @@ export class ModuxEditor extends LitElement {
     .sep {
       width: 1px;
       align-self: stretch;
-      background: #e2e8f0;
+      background: var(--modux-border);
       margin: 2px 4px;
     }
     [hidden] {
       display: none !important;
     }
-    /* ── Dark mode: the editor inverts hue-preservingly; the 3D surface is
-       dark by design, so the SAME filter applied twice restores it. The
-       popovers are position:fixed (outside the filtered subtrees) and get
-       their dark clothes by hand. */
-    :host([dark]) {
-      background: #0f172a;
-      border-color: #334155;
-    }
-    :host([dark]) .toolbar,
-    :host([dark]) .canvas-wrap,
-    :host([dark]) .hint {
-      filter: invert(1) hue-rotate(180deg);
-    }
-    :host([dark]) modux-tilt {
-      filter: invert(1) hue-rotate(180deg);
-    }
-    :host([dark]) .relation-picker {
-      background: #1e293b;
-      border-color: #334155;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-    }
-    :host([dark]) .picker-item {
-      color: #e2e8f0;
-    }
-    :host([dark]) .picker-item:hover {
-      background: #334155;
-    }
-    :host([dark]) .picker-item.current {
-      background: #1e3a5f;
-    }
-    :host([dark]) .picker-title {
-      color: #94a3b8;
-    }
-    :host([dark]) .picker-item .abbr,
-    :host([dark]) .help-keys {
-      color: #60a5fa;
-    }
-    :host([dark]) .picker-item.danger .abbr {
-      color: #f87171;
-    }
-    :host([dark]) .picker-item.danger:hover {
-      background: #451a1a;
-    }
-    :host([dark]) .help-row {
-      color: #e2e8f0;
-    }
-    :host([dark]) .relation-picker input,
-    :host([dark]) .relation-picker select {
-      background: #0f172a;
-      border-color: #334155;
-      color: #e2e8f0;
-    }
     .hint {
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--modux-text-faint);
       padding: 4px 12px;
-      border-top: 1px solid #f1f5f9;
+      border-top: 1px solid var(--modux-border);
     }
     modux-canvas,
     modux-tilt,
@@ -800,9 +760,9 @@ export class ModuxEditor extends LitElement {
       justify-content: center;
       text-align: center;
       padding: 32px;
-      color: #94a3b8;
+      color: var(--modux-text-faint);
       font-size: 13px;
-      background: #ffffff;
+      background: var(--modux-surface);
     }
     .canvas-wrap {
       position: relative;
@@ -817,8 +777,8 @@ export class ModuxEditor extends LitElement {
       bottom: 8px;
       width: 264px;
       overflow: auto;
-      background: rgba(255, 255, 255, 0.97);
-      border: 1px solid #cbd5e1;
+      background: var(--modux-surface);
+      border: 1px solid var(--modux-border-strong);
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
       padding: 8px 12px 12px;
@@ -829,7 +789,7 @@ export class ModuxEditor extends LitElement {
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #64748b;
+      color: var(--modux-text-dim);
       margin: 10px 0 4px;
     }
     .view-tree label {
@@ -838,23 +798,24 @@ export class ModuxEditor extends LitElement {
       align-items: center;
       padding: 2px 0;
       font-size: 13px;
-      color: #1e293b;
+      color: var(--modux-text);
       cursor: pointer;
     }
     .view-tree label.child {
       margin-left: 18px;
-      color: #475569;
+      color: var(--modux-text-dim);
     }
     .view-tree label.implicit {
-      color: #94a3b8;
+      color: var(--modux-text-faint);
     }
     .view-tree .tree-title {
       font-size: 12px;
       font-weight: 700;
-      color: #1e293b;
+      color: var(--modux-text);
       padding: 2px 0 4px;
     }
-  `;
+  `,
+  ];
 
   private emit(name: string, detail?: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
@@ -4554,7 +4515,7 @@ export class ModuxEditor extends LitElement {
       >
         <div class="picker-title">${p.title}</div>
         <input
-          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: 12px system-ui;"
+          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid var(--modux-border-strong, #cbd5e1); border-radius: 6px; font: 12px system-ui;"
           placeholder="p. ej. Check-in online"
           .value=${p.value}
           @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
@@ -5546,7 +5507,7 @@ export class ModuxEditor extends LitElement {
       >
         <div class="picker-title">Condición de la rama (vacío la quita)</div>
         <input
-          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: 12px system-ui;"
+          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid var(--modux-border-strong, #cbd5e1); border-radius: 6px; font: 12px system-ui;"
           placeholder="p. ej. importe > 1000"
           .value=${p.value}
           @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
