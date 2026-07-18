@@ -1717,6 +1717,12 @@ export class ModuxCanvas extends LitElement {
           ${this.renderPendingLink()}
           ${this.renderRubber()}
         </g>
+        ${this.scene.nodes.length === 0
+          ? svg`<text x="50%" y="45%" text-anchor="middle" font-size="15" fill="#94a3b8"
+                    font-family="ui-sans-serif, system-ui" pointer-events="none">
+                  Lienzo vacío — arrastra elementos de la paleta o crea algo nuevo para empezar
+                </text>`
+          : ''}
       </svg>
       ${this.renderMinimap()}
     `;

@@ -5061,6 +5061,22 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
+          title="Alejar (tecla −)"
+          ?disabled=${this._yugo}
+          @click=${() => this.renderRoot.querySelector('modux-canvas')?.zoomBy(1 / 1.25)}
+        >
+          −
+        </button>
+        <button
+          class="tab"
+          title="Acercar (tecla +)"
+          ?disabled=${this._yugo}
+          @click=${() => this.renderRoot.querySelector('modux-canvas')?.zoomBy(1.25)}
+        >
+          +
+        </button>
+        <button
+          class="tab"
           title="Recolocar los nodos automáticamente (deshacible)"
           ?disabled=${this._yugo}
           @click=${() => void this.runAutoLayout()}
@@ -5136,6 +5152,14 @@ export class ModuxEditor extends LitElement {
           @click=${() => void this.toggleFullscreen()}
         >
           ⛶
+        </button>
+        <button
+          class="tab"
+          ?data-active=${this._helpOpen}
+          title="Atajos de teclado y gestos (?)"
+          @click=${() => (this._helpOpen = !this._helpOpen)}
+        >
+          ?
         </button>
       </div>
       <div class="canvas-wrap">
