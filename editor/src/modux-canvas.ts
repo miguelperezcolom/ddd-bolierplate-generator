@@ -5,6 +5,7 @@ import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zo
 import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
 import { CONTAINER_HEADER, CONTAINER_INSET, containerMinSize } from './scene.js';
 import { orthogonalRoute } from './edge-routing.js';
+import { snapDragged, snapValue } from './snap.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
 function segIntersect(
@@ -167,6 +168,8 @@ export class ModuxCanvas extends LitElement {
   } | null = null;
   /** Live positions of every node in a multi-selection drag. */
   @state() private _dragGroup: Map<string, { x: number; y: number }> | null = null;
+  /** Active alignment guides while dragging (drawing-program smart guides). */
+  @state() private _guides: { v: number[]; h: number[] } | null = null;
   @state() private _pendingLink: { sourceId: string; x: number; y: number } | null = null;
   @state() private _hoverNodeId: string | null = null;
   @state() private _editingId: string | null = null;
@@ -719,6 +722,18 @@ export class ModuxCanvas extends LitElement {
           const c = this.clampToParent(n, o.x + dx, o.y + dy);
           positions.set(n.id, { x: c.x, y: c.y });
         }
+        if (!ev.altKey) {
+          // Snap the grabbed node to the grid and shift the whole group by the same
+          // correction (guides are a single-node affair; Alt frees the pointer).
+          const me = positions.get(node.id)!;
+          const correction = { x: snapValue(me.x) - me.x, y: snapValue(me.y) - me.y };
+          if (correction.x !== 0 || correction.y !== 0) {
+            for (const p of positions.values()) {
+              p.x += correction.x;
+              p.y += correction.y;
+            }
+          }
+        }
         this._dragGroup = positions;
       } else if (menuRow) {
         this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
@@ -752,14 +767,36 @@ export class ModuxCanvas extends LitElement {
       } else if (freeDrag(ev)) {
         this._dragPos = { id: node.id, x: origin.x + dx, y: origin.y + dy };
         this._hoverNodeId = dropHome(ev);
+        this._guides = null;
       } else {
-        this._dragPos = this.clampToParent(node, origin.x + dx, origin.y + dy);
+        const raw = this.clampToParent(node, origin.x + dx, origin.y + dy);
+        if (ev.altKey) {
+          this._dragPos = { id: node.id, x: raw.x, y: raw.y };
+          this._guides = null;
+        } else {
+          // Snap to alignment guides with the other nodes (edges/centers), falling
+          // back to the grid — the drawing-program behavior. Descendants follow the
+          // drag anyway, so they can't be alignment targets.
+          const others = this.scene.nodes.filter((n) => {
+            if (n.id === node.id) return false;
+            for (let a = n.parentId; a; a = this.scene.nodes.find((x) => x.id === a)?.parentId) {
+              if (a === node.id) return false;
+            }
+            return true;
+          });
+          const snapped = snapDragged({ ...raw, w: node.w, h: node.h }, others, {
+            threshold: 5 / this._t.k,
+          });
+          this._dragPos = { id: node.id, x: snapped.x, y: snapped.y };
+          this._guides = snapped.guides.v.length || snapped.guides.h.length ? snapped.guides : null;
+        }
         this._hoverNodeId = null;
       }
     };
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      this._guides = null;
       if (moved && this._dragGroup) {
         this.emit('nodes-moved', {
           moves: [...this._dragGroup.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y })),
@@ -862,21 +899,26 @@ export class ModuxCanvas extends LitElement {
           id: node.id,
           x: start.x,
           y: start.y,
-          w: Math.max(symMin.w, 2 * Math.abs(p.x - start.x)),
-          h: Math.max(symMin.h, 2 * Math.abs(p.y - start.y)),
+          w: ev.altKey
+            ? Math.max(symMin.w, 2 * Math.abs(p.x - start.x))
+            : Math.max(symMin.w, snapValue(2 * Math.abs(p.x - start.x))),
+          h: ev.altKey
+            ? Math.max(symMin.h, 2 * Math.abs(p.y - start.y))
+            : Math.max(symMin.h, snapValue(2 * Math.abs(p.y - start.y))),
         };
         return;
       }
       // Anchor = the opposite corner; the dragged edges stop at the floor size
-      // and at the outermost child (plus its margin).
+      // and at the outermost child (plus its margin). Snapped to the grid unless Alt.
+      const pg = ev.altKey ? p : { x: snapValue(p.x), y: snapValue(p.y) };
       const ax = start.x - (sx * start.w) / 2;
       const ay = start.y - (sy * start.h) / 2;
       const px = sx > 0
-        ? Math.max(p.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
-        : Math.min(p.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
+        ? Math.max(pg.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
+        : Math.min(pg.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
       const py = sy > 0
-        ? Math.max(p.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
-        : Math.min(p.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
+        ? Math.max(pg.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
+        : Math.min(pg.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
       this._resize = {
         id: node.id,
         x: (ax + px) / 2,
@@ -1713,6 +1755,18 @@ export class ModuxCanvas extends LitElement {
                       : ''}`,
                 )}
               </g>`
+            : ''}
+          ${this._guides
+            ? svg`
+                ${this._guides.v.map(
+                  (x) => svg`<line x1=${x} y1="-100000" x2=${x} y2="100000"
+                        stroke="#ec4899" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                )}
+                ${this._guides.h.map(
+                  (y) => svg`<line x1="-100000" y1=${y} x2="100000" y2=${y}
+                        stroke="#ec4899" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                )}
+              `
             : ''}
           ${this.renderPendingLink()}
           ${this.renderRubber()}

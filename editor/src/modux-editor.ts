@@ -5326,6 +5326,7 @@ export class ModuxEditor extends LitElement {
       ['Ctrl+Z / Ctrl+Y', 'Deshacer / rehacer'],
       ['Espacio+arrastrar', 'Mover el lienzo'],
       ['Shift+click / arrastrar', 'Multi-selección / banda elástica'],
+      ['Alt+arrastrar', 'Arrastre libre (desactiva el snap a rejilla y las guías)'],
       ['?', 'Esta ayuda'],
     ];
     return html`
