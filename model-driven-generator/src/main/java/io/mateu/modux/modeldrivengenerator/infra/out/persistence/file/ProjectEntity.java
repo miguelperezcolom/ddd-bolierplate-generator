@@ -55,7 +55,13 @@ public record ProjectEntity(
         String defaultLocale
 ,
         /** Default image registry/user for the project's services (e.g. docker.io/<user>). */
-        String dockerRegistry) implements Identifiable {
+        String dockerRegistry,
+        /**
+         * Data-access strategy for the generated code: JPA (legacy), JDBC (reads via
+         * JdbcTemplate) or STORED_PROCEDURE (aggregate retrieval via a generated stored
+         * procedure, falling back to JDBC — the default when unset). Overridable per aggregate.
+         */
+        String dataAccess) implements Identifiable {
 
     /** Backward-compatible constructor (pre-locales callers and stores). */
     public ProjectEntity(String id, String name, String outputPath, String packageName,
@@ -75,7 +81,7 @@ public record ProjectEntity(
                 messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
                 cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
                 environments, serviceIds, contextMap, tenancyStrategy, externalSystems, objective,
-                null, null, null);
+                null, null, null, null);
     }
 
     public ProjectEntity {
@@ -102,7 +108,7 @@ public record ProjectEntity(
                 terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
                 messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
                 cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
-                environments, serviceIds, contextMap, null, List.of(), null);
+                environments, serviceIds, contextMap, null, List.of(), null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-objective callers). */
@@ -122,7 +128,8 @@ public record ProjectEntity(
                 terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
                 messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
                 cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
-                environments, serviceIds, contextMap, tenancyStrategy, externalSystems, null);
+                environments, serviceIds, contextMap, tenancyStrategy, externalSystems, null,
+                null, null, null, null);
     }
 
 }

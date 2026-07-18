@@ -1,5 +1,12 @@
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
+<#function selectColumns fields>
+  <#assign cols = "">
+  <#list fields as f>
+    <#assign cols = cols + ', ' + f.columnName>
+  </#list>
+  <#return cols>
+</#function>
 
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.out.${aggregate.name}Repository;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.domain.aggregates.${aggregate.name?lower_case}.${aggregate.name};
@@ -12,17 +19,44 @@ import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+<#if dataAccess != "JPA">
+import org.springframework.jdbc.core.JdbcTemplate;
+</#if>
+<#if dataAccess == "STORED_PROCEDURE">
+import com.fasterxml.jackson.databind.ObjectMapper;
+</#if>
 
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * The repository port's adapter. Writes stay JPA (dirty checking, optimistic locking);
+ * reads follow the ${dataAccess} strategy:
+<#if dataAccess == "JPA">
+ * plain JPA repositories.
+<#elseif dataAccess == "JDBC">
+ * plain JDBC (JdbcTemplate) — no Hibernate session on the read path.
+<#else>
+ * the generated stored procedure ${aggregate.name?lower_case}_get(bigint) when available
+ * (Postgres), falling back to a plain JDBC select when it is not (e.g. local H2).
+</#if>
+ */
 @Service
 @RequiredArgsConstructor
 public class ${aggregate.name}DBRepository implements ${aggregate.name}Repository {
 
     final ${aggregate.name}EntityRepository repository;
     final ApplicationEventPublisher domainEvents;
+<#if dataAccess != "JPA">
+    final JdbcTemplate jdbc;
+</#if>
+<#if dataAccess == "STORED_PROCEDURE">
+    final ObjectMapper mapper;
+    /** Set once the proc proves missing/unreadable — avoids paying an exception per read. */
+    final java.util.concurrent.atomic.AtomicBoolean procMissing = new java.util.concurrent.atomic.AtomicBoolean(false);
+</#if>
 
+<#if dataAccess == "JPA">
     @Override
     public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
         return repository.findById(id.value()).map(this::toDomain);
@@ -32,6 +66,63 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
     public List<${aggregate.name}> findAll() {
         return repository.findAll().stream().map(this::toDomain).toList();
     }
+<#else>
+    @Override
+    public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
+        return findEntityById(id.value()).map(this::toDomain);
+    }
+
+    @Override
+    public List<${aggregate.name}> findAll() {
+        return jdbc.query("SELECT id${selectColumns(safeFields)} FROM ${aggregate.tableName} ORDER BY id",
+                        (rs, n) -> toEntity(rs))
+                .stream().map(this::toDomain).toList();
+    }
+
+    private Optional<${aggregate.name}Entity> findEntityById(Long id) {
+<#if dataAccess == "STORED_PROCEDURE">
+        if (!procMissing.get()) {
+            try {
+                var json = jdbc.queryForObject("SELECT ${aggregate.name?lower_case}_get(?)::text",
+                        String.class, id);
+                if (json == null) return Optional.empty();
+                return Optional.of(mapper.readValue(json, ${aggregate.name}Entity.class));
+            } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+                return Optional.empty(); // no aggregate with that id
+            } catch (Exception e) {
+                // The proc is not there (or unreadable): plain JDBC from now on.
+                procMissing.set(true);
+            }
+        }
+</#if>
+        var rows = jdbc.query("SELECT id${selectColumns(safeFields)} FROM ${aggregate.tableName} WHERE id = ?",
+                (rs, n) -> toEntity(rs), id);
+        return rows.stream().findFirst();
+    }
+
+    private ${aggregate.name}Entity toEntity(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new ${aggregate.name}Entity(
+                rs.getLong("id")<#if safeFields?has_content>,</#if>
+<#list safeFields as field>
+    <#if field.type == "Wrapper" && field.primitiveType == "integer">
+                rs.getObject("${field.columnName}", Integer.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && (field.primitiveType == "decimal" || field.primitiveType == "number" || field.primitiveType == "money")>
+                rs.getBigDecimal("${field.columnName}")<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "bool">
+                rs.getObject("${field.columnName}", Boolean.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "date">
+                rs.getObject("${field.columnName}", java.time.LocalDate.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "time">
+                rs.getObject("${field.columnName}", java.time.LocalTime.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "datetime">
+                rs.getObject("${field.columnName}", java.time.LocalDateTime.class)<#sep>,</#sep>
+    <#else>
+                rs.getString("${field.columnName}")<#sep>,</#sep>
+    </#if>
+</#list>
+        );
+    }
+</#if>
 
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
         return new ${aggregate.name}(

@@ -31,7 +31,12 @@ public record AggregateEntity(
         String title
         ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /**
+         * Data-access override for this aggregate: JPA, JDBC or STORED_PROCEDURE;
+         * null inherits the project's {@code dataAccess} strategy.
+         */
+        String dataAccess
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-lifecycle/audited callers and stores). */
@@ -43,7 +48,7 @@ public record AggregateEntity(
                            List<InvariantEntity> invariants, List<String> valueObjectIds) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, null, false, List.of(), null, null);
+                operations, invariants, valueObjectIds, null, false, List.of(), null, null, null);
     }
 
     /** Backward-compatible constructor (pre-title callers). */
@@ -58,7 +63,7 @@ public record AggregateEntity(
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
                 operations, invariants, valueObjectIds, lifecycle, audited, decisionIds,
-                null, projectId);
+                null, projectId, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -71,7 +76,8 @@ public record AggregateEntity(
                            LifecycleEntity lifecycle, boolean audited) {
         this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
                 optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency,
-                operations, invariants, valueObjectIds, lifecycle, audited, List.of(), null, null);
+                operations, invariants, valueObjectIds, lifecycle, audited, List.of(), null, null,
+                null);
     }
 
     @Override

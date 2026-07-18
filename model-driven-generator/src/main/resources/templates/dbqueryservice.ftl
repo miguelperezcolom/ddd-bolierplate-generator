@@ -2,6 +2,13 @@ package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign visibleFields = safeFields?filter(f -> f.searchable || f.visible)>
 <#assign firstStringField = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))?first!"">
+<#function selectColumns fields>
+  <#assign cols = "">
+  <#list fields as f>
+    <#assign cols = cols + ', ' + f.columnName>
+  </#list>
+  <#return cols>
+</#function>
 
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.Page;
@@ -11,6 +18,7 @@ import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+<#if dataAccess == "JPA">
 
 import java.util.Optional;
 
@@ -95,3 +103,101 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
     }
 
 }
+<#else>
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * Read side over plain JDBC: filtering and pagination happen in SQL — the table is
+ * never loaded into memory. The write side stays JPA (see ${aggregate.name}DBRepository).
+ */
+@Service
+@RequiredArgsConstructor
+public class ${aggregate.name}DBQueryService implements ${aggregate.name}QueryService {
+
+    final JdbcTemplate jdbc;
+
+    @Override
+    public String getLabel(String id) {
+        var rows = jdbc.query(
+                "SELECT CAST(${firstStringField?is_hash?then(firstStringField.columnName, (safeFields?has_content)?then(safeFields?first.columnName, "id"))} AS varchar) FROM ${aggregate.tableName} WHERE id = ?",
+                (rs, n) -> rs.getString(1), Long.valueOf(id));
+        return rows.stream().findFirst().orElse("Unknown");
+    }
+
+    @Override
+    public Optional<${aggregate.name}Dto> getById(String id) {
+        var rows = jdbc.query(
+                "SELECT id${selectColumns(safeFields)} FROM ${aggregate.tableName} WHERE id = ?",
+                (rs, n) -> toDto(rs), Long.valueOf(id));
+        return rows.stream().findFirst();
+    }
+
+    private ${aggregate.name}Dto toDto(ResultSet rs) throws SQLException {
+        return new ${aggregate.name}Dto(
+                String.valueOf(rs.getLong("id"))<#if safeFields?has_content>,</#if>
+<#list safeFields as field>
+    <#if field.type == "Wrapper" && field.primitiveType == "integer">
+                rs.getObject("${field.columnName}", Integer.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && (field.primitiveType == "decimal" || field.primitiveType == "number" || field.primitiveType == "money")>
+                rs.getBigDecimal("${field.columnName}")<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "bool">
+                rs.getObject("${field.columnName}", Boolean.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "date">
+                rs.getObject("${field.columnName}", java.time.LocalDate.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "time">
+                rs.getObject("${field.columnName}", java.time.LocalTime.class)<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "datetime">
+                rs.getObject("${field.columnName}", java.time.LocalDateTime.class)<#sep>,</#sep>
+    <#else>
+                rs.getString("${field.columnName}")<#sep>,</#sep>
+    </#if>
+</#list>
+        );
+    }
+
+    private ${aggregate.name}Row toRow(ResultSet rs) throws SQLException {
+        return new ${aggregate.name}Row(
+                String.valueOf(rs.getLong("id"))<#if visibleFields?has_content>,</#if>
+<#list visibleFields as field>
+    <#if field.type == "Wrapper" && (field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json")>
+                rs.getString("${field.columnName}")<#sep>,</#sep>
+    <#else>
+                Objects.toString(rs.getObject("${field.columnName}"), null)<#sep>,</#sep>
+    </#if>
+</#list>
+        );
+    }
+
+    @Override
+    public ListingData<${aggregate.name}Row> findAll(String searchText, Object filters, Pageable pageable) {
+        var where = new StringBuilder();
+        var params = new ArrayList<Object>();
+        if (searchText != null && !searchText.isBlank()) {
+            where.append(" WHERE lower(CAST(${firstStringField?is_hash?then(firstStringField.columnName, "id")} AS varchar)) LIKE ?");
+            params.add("%" + searchText.toLowerCase() + "%");
+        }
+        var total = jdbc.queryForObject("SELECT COUNT(*) FROM ${aggregate.tableName}" + where,
+                Integer.class, params.toArray());
+        params.add(pageable.size());
+        params.add((long) pageable.page() * pageable.size());
+        var rows = jdbc.query(
+                "SELECT id${selectColumns(visibleFields)} FROM ${aggregate.tableName}" + where + " ORDER BY id LIMIT ? OFFSET ?",
+                (rs, n) -> toRow(rs), params.toArray());
+        return new ListingData<>(new Page<>(
+                searchText,
+                pageable.size(),
+                pageable.page(),
+                total != null ? total : 0,
+                rows
+        ));
+    }
+
+}
+</#if>

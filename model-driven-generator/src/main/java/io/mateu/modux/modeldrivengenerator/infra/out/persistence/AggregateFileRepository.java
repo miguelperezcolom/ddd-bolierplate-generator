@@ -119,7 +119,10 @@ public class AggregateFileRepository implements AggregateRepository {
                 entity.getValueObjectIds(),
                 existing != null ? existing.lifecycle() : null,
                 existing != null && existing.audited(),
-                existing != null ? existing.decisionIds() : List.of(), null));
+                // dataAccess is not modeled in the domain Aggregate yet — carry it over so a UI
+                // save never wipes the authored override (same doctrine as decisionIds above).
+                existing != null ? existing.decisionIds() : List.of(), null, null,
+                existing != null ? existing.dataAccess() : null));
         return entity;
     }
 

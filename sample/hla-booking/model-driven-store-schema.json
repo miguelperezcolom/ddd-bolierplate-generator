@@ -76,6 +76,9 @@
         "audited" : {
           "type" : "boolean"
         },
+        "dataAccess" : {
+          "type" : "string"
+        },
         "decisionIds" : {
           "description" : "References to existing 'decision' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -3185,6 +3188,9 @@
           "items" : {
             "$ref" : "#/$defs/ContextMapRelationEntity"
           }
+        },
+        "dataAccess" : {
+          "type" : "string"
         },
         "database" : {
           "type" : "string"

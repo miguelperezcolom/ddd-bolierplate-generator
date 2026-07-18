@@ -19,10 +19,12 @@ spring:
 <#if useFlyway>
     # Schema is owned by Flyway migrations (src/main/resources/db/migration). Hibernate only
     # validates that the entities match the migrated schema — it never mutates it.
+    # db/migration-pg holds Postgres-only artifacts (stored procedures); the local profile
+    # does not load that location (H2 would not parse them — the JDBC fallback covers it).
     flyway:
         enabled: true
         baseline-on-migrate: true
-        locations: classpath:db/migration
+        locations: classpath:db/migration,classpath:db/migration-pg
 
 </#if>
     jpa:

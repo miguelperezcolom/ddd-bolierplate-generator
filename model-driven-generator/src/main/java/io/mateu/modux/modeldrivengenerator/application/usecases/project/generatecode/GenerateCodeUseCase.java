@@ -1254,7 +1254,21 @@ public class GenerateCodeUseCase {
         if (readModel.modelId() != null && !readModel.modelId().isBlank()) {
             var modelEntity = repository.findById(readModel.modelId(), ModelEntity.class).orElse(null);
             model.put("model", modelEntity != null ? fromJson(toJson(modelEntity)) : null);
+            // JDBC read side: precomputed column names and primitive accessors per field.
+            if (modelEntity != null && modelEntity.fields() != null) {
+                model.put("jdbcFields", modelEntity.fields().stream()
+                        .map(f -> {
+                            var jf = new HashMap<String, Object>();
+                            jf.put("name", f.name());
+                            jf.put("basicType", f.basicType());
+                            jf.put("columnName", snakeCase("col_" + f.name() + (f.basicType() ? "" : "_id")));
+                            jf.put("primitiveType", f.basicType() ? mapFieldDataType(f.type()) : null);
+                            return (Object) jf;
+                        })
+                        .toList());
+            }
         }
+        model.put("dataAccess", dataAccessOf(project, null));
 
         createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query/readmodel");
         createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/application/query");
@@ -1761,6 +1775,26 @@ public class GenerateCodeUseCase {
         var appDir = serviceDir + "/" + serviceName(service) + "-app";
         var migrationDir = appDir + "/src/main/resources/db/migration";
         var snapshotPath = Path.of(project.outputPath(), ".modux", "schema-" + serviceName(service) + ".json");
+
+        // Stored procedures for aggregate retrieval, in a Postgres-only location the local
+        // profile does not load (see application-yaml.ftl). A repeatable migration: Flyway
+        // reapplies it on checksum change and CREATE OR REPLACE keeps it idempotent.
+        var procs = deployedUnits(service).stream()
+                .flatMap(bc -> (bc.aggregateIds() != null ? bc.aggregateIds() : List.<String>of()).stream())
+                .map(id -> repository.findById(id, AggregateEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .filter(agg -> inScope(agg.id()))
+                .filter(agg -> "STORED_PROCEDURE".equals(dataAccessOf(project, agg)))
+                .map(this::aggregateToMap)
+                .toList();
+        if (!procs.isEmpty()) {
+            Map<String, Object> procModel = new HashMap<>();
+            procModel.put("project", projectToMap(project));
+            procModel.put("service", serviceToMap(service));
+            procModel.put("procs", procs);
+            createFile(appDir, procModel, "get-procs.ftl",
+                    "src/main/resources/db/migration-pg/R__get_procs.sql");
+        }
         var previous = readSchemaSnapshot(snapshotPath);
 
         if (previous == null) {
@@ -2769,7 +2803,25 @@ public class GenerateCodeUseCase {
         model.put("service", serviceToMap(service));
         model.put("module", boundedContextToMap(boundedContext));
         model.put("aggregate", aggregateToMap(aggregate));
+        model.put("dataAccess", dataAccessOf(project, aggregate));
         return model;
+    }
+
+    /**
+     * The effective data-access strategy for an aggregate: its own override wins, then
+     * the project's, then STORED_PROCEDURE (stored proc with JDBC fallback) as the default.
+     */
+    private String dataAccessOf(ProjectEntity project, AggregateEntity aggregate) {
+        var raw = aggregate != null && aggregate.dataAccess() != null && !aggregate.dataAccess().isBlank()
+                ? aggregate.dataAccess()
+                : project.dataAccess();
+        if (raw == null || raw.isBlank()) return "STORED_PROCEDURE";
+        var v = raw.trim().toUpperCase().replace('-', '_').replace(' ', '_');
+        return switch (v) {
+            case "JPA" -> "JPA";
+            case "JDBC" -> "JDBC";
+            default -> "STORED_PROCEDURE"; // STORED_PROCEDURE / STORED_PROC / PROC / unknown → proc
+        };
     }
 
     // ─── Model mappers ────────────────────────────────────────────────────────
@@ -2932,6 +2984,7 @@ public class GenerateCodeUseCase {
                         .map(f -> {
                             var fieldMap = new HashMap<String, Object>();
                             fieldMap.put("name", f.name());
+                            fieldMap.put("columnName", snakeCase("col_" + f.name()));
                             fieldMap.put("basicType", f.basicType());
                             fieldMap.put("searchable", true);
                             fieldMap.put("visible", true);
