@@ -44,7 +44,7 @@ final ${action.className}UseCase ${action.fieldName}UseCase;
 public io.mateu.uidl.data.Message ${action.fieldName}(java.util.List<${aggregate.name}Row> selection,
         HttpRequest httpRequest) {
     for (var row : selection) {
-        ${action.fieldName}UseCase.handle(new ${action.className}Command(row.id()));
+        ${action.fieldName}UseCase.handle(new ${action.className}Command(Long.valueOf(row.id())));
     }
     return new io.mateu.uidl.data.Message("${action.title}: " + selection.size());
 }

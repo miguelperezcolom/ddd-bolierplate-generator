@@ -94,9 +94,9 @@ public class McpServer {
 <#list mcpUseCases as item>
             case "${serviceSlug}_${item.slug}" -> {
 <#if item.outputModel??>
-                yield ${item.fieldName}.handle(new ${item.className}Command(<#if item.inputModel?? && item.inputModel.fields?has_content><#list item.inputModel.fields as f>${mcpArg(f)}<#sep>, </#sep></#list><#else>text(args.get("id"))</#if>));
+                yield ${item.fieldName}.handle(new ${item.className}Command(<#if item.inputModel?? && item.inputModel.fields?has_content><#list item.inputModel.fields as f>${mcpArg(f)}<#sep>, </#sep></#list><#else>toLong(args.get("id"))</#if>));
 <#else>
-                ${item.fieldName}.handle(new ${item.className}Command(<#if item.inputModel?? && item.inputModel.fields?has_content><#list item.inputModel.fields as f>${mcpArg(f)}<#sep>, </#sep></#list><#else>text(args.get("id"))</#if>));
+                ${item.fieldName}.handle(new ${item.className}Command(<#if item.inputModel?? && item.inputModel.fields?has_content><#list item.inputModel.fields as f>${mcpArg(f)}<#sep>, </#sep></#list><#else>toLong(args.get("id"))</#if>));
                 yield Map.of("ok", true);
 </#if>
             }
@@ -118,6 +118,11 @@ public class McpServer {
 
     private static String text(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private static Long toLong(Object value) {
+        return value == null ? null : value instanceof Number n ? n.longValue()
+                : Long.valueOf(String.valueOf(value));
     }
 
     private static Integer toInteger(Object value) {
