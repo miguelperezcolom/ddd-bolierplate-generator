@@ -48,13 +48,10 @@ public class ModelDrivenGeneratorHome
         deploy.add(new io.mateu.uidl.data.AppHeaderAction("applyTerraformCurrentProject", "Aplicar Terraform", "vaadin:cloud-upload-o"));
         actions.add(io.mateu.uidl.data.AppHeaderAction.menu("Desplegar", "vaadin:rocket", deploy));
         // Probar closes the natural sequence (Generar → Desplegar → Probar), so it
-        // rides AFTER the deploy menu — and only when the project declares a URL.
-        projectStore.currentProjectId()
-                .flatMap(projectId -> SpringBeans.get(
-                        io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy.DeployProjectUseCase.class)
-                        .declaredUrl(projectId))
-                .ifPresent(url -> actions.add(
-                        new io.mateu.uidl.data.AppHeaderAction("openCurrentProjectUrl", "Probar", "vaadin:play")));
+        // rides AFTER the deploy menu. Always visible: without a declared URL the
+        // button used to vanish silently (and read as "lost"); now the click raises
+        // the message that explains how to declare one (vista Distribución).
+        actions.add(new io.mateu.uidl.data.AppHeaderAction("openCurrentProjectUrl", "Probar", "vaadin:play"));
         return actions;
     }
 
