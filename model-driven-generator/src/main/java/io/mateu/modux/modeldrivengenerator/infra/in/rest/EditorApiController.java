@@ -187,7 +187,9 @@ public class EditorApiController {
     public record FlowDto(String id, String name, String sourceId, String targetId, String archetype,
                           String triggerAggregateId, String triggerEvent, String targetUseCaseId,
                           String readModelName) {}
-    public record UseCaseDto(String id, String name, boolean policy, List<String> stepIds, String inputModelId,
+    public record UseCaseDto(String id, String name, boolean policy,
+                             /** Born as a machine-made stub (actor/page derivation), not declared by hand. */
+                             boolean derived, List<String> stepIds, String inputModelId,
                              List<UseCaseStepDto> steps) {}
     /** An operation of a use case — the pipeline step, with its custom-code delegation. */
     public record UseCaseStepDto(String id, String name, String type, String customCodeId) {}
@@ -273,7 +275,9 @@ public class EditorApiController {
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
     public record UseCaseCallDto(String sourceId, String targetId) {}
-    public record QueryServiceDto(String id, String name, List<QueryOperationDto> operations) {}
+    public record QueryServiceDto(String id, String name,
+                                  /** Born as a machine-made stub (a listing's derived query service). */
+                                  boolean derived, List<QueryOperationDto> operations) {}
     public record QueryOperationDto(String id, String name) {}
     /** Use case A consumes query service B (a CallQueryService step in A). */
     public record QueryCallDto(String sourceId, String targetId) {}

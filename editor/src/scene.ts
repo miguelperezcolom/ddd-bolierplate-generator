@@ -42,6 +42,8 @@ export interface SceneNode {
   container?: boolean;
   /** On a solution (to-be): how this element differs from the system (diff ring). */
   diffKind?: 'ADDED' | 'MODIFIED';
+  /** Born as a machine-made stub (actor/page derivation), not declared by hand. */
+  derived?: boolean;
   /** The node can fold/unfold its children (containers). */
   collapsible?: boolean;
   /** Folded by hand: rendered compact, children hidden. */

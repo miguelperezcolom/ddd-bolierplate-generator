@@ -128,6 +128,11 @@ public class EditorModelProjection {
                 .collect(Collectors.groupingBy(QueryServiceEntity::boundedContextId));
         var scheduledTriggersById = scoped(ScheduledTriggerEntity.class).stream()
                 .collect(Collectors.toMap(ScheduledTriggerEntity::id, t -> t, (a, b) -> a));
+        // Machine-made stubs (actor/page derivations) get marked so the editor can tell
+        // them apart from hand-declared elements — and hide them on demand.
+        var derivedIds = DerivedElementIds.from(
+                scoped(AggregateEntity.class).stream().map(AggregateEntity::id).toList(),
+                scoped(PageEntity.class).stream().map(PageEntity::id).toList());
         // The editor works on the current project: its services' boundedContexts, plus any
         // boundedContext not wired to a service yet (legacy orphans stay visible).
         var currentProject = projects.currentProject().orElse(null);
@@ -157,6 +162,7 @@ public class EditorModelProjection {
                                 .map(useCasesById::get)
                                 .filter(Objects::nonNull)
                                 .map(uc -> new UseCaseDto(uc.id(), uc.name(), uc.policy(),
+                                        derivedIds.isDerivedUseCase(uc.id()),
                                         (uc.steps() == null ? List.<UseCaseStepEntity>of() : uc.steps()).stream()
                                                 .map(UseCaseStepEntity::id).toList(),
                                         uc.inputModelId(),
@@ -188,6 +194,7 @@ public class EditorModelProjection {
                                 .toList(),
                         queryServicesByBoundedContext.getOrDefault(m.id(), List.of()).stream()
                                 .map(qs -> new QueryServiceDto(qs.id(), qs.name(),
+                                        derivedIds.isDerivedQueryService(qs.id()),
                                         (qs.operations() == null ? List.<QueryOperationEntity>of() : qs.operations()).stream()
                                                 .map(op -> new QueryOperationDto(op.id(), op.name()))
                                                 .toList()))

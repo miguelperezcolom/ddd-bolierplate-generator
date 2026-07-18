@@ -15,6 +15,8 @@ import { mappingsScene } from './views/mappings.js';
 import { integrationsScene } from './views/integrations.js';
 import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
+import { semanticLayout } from './semantic-layout.js';
+import { derivedElementIds, hideDerived, markDerived } from './derived.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
 import './modux-figma.js';
@@ -351,6 +353,8 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteOpen = true;
   /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
   @state() private _yugo = true;
+  /** Whether machine-made stubs (derived elements, ✦) show in the diagram. */
+  @state() private _showDerived = true;
   /** The ~/.modux repository catalog, handed down by the host (project references). */
   @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
 
@@ -4238,7 +4242,10 @@ export class ModuxEditor extends LitElement {
         if (kind) node.diffKind = kind;
       }
     }
-    return scene;
+    // Machine-made stubs (actor/page derivations) get the ✦ mark; the
+    // «Inferidos» toggle can hide them from the diagram altogether.
+    const marked = markDerived(scene, derivedElementIds(model));
+    return this._showDerived ? marked : hideDerived(marked);
   }
 
   /**
@@ -4344,7 +4351,12 @@ export class ModuxEditor extends LitElement {
     return { left: 0 };
   }
 
-  /** ELK layout for the current view, applied as ONE undoable composite move. */
+  /**
+   * Relayout for the current view, applied as ONE undoable composite move.
+   * Map-like views use the semantic lane layout (canonical, deterministic:
+   * actors/consumers left, domain center, consumed right); pipeline views keep
+   * ELK's layered flow (also deterministic, left→right along the pipeline).
+   */
   private async runAutoLayout(): Promise<void> {
     const view = this._view;
     const scene = this.sceneFor(view);
@@ -4358,11 +4370,9 @@ export class ModuxEditor extends LitElement {
       nodes: topNodes,
       edges: scene.edges.filter((e) => topIds.has(e.sourceId) && topIds.has(e.targetId)),
     };
-    const algorithm =
-      view === 'flows' || view === 'processes' || view === 'workflows' || view === 'eventstorming'
-        ? 'layered'
-        : 'force';
-    const positions = await autoLayout(layoutScene, algorithm);
+    const isPipeline =
+      view === 'flows' || view === 'processes' || view === 'workflows' || view === 'eventstorming';
+    const positions = isPipeline ? await autoLayout(layoutScene) : semanticLayout(layoutScene);
     const current = this.viewLayout(view);
     this.pushUndoEntry([
       ...topNodes.map((n) => ({
@@ -5041,7 +5051,7 @@ export class ModuxEditor extends LitElement {
 
         <button
           class="tab"
-          title="Ajustar el diagrama a la ventana"
+          title="Ajustar la vista a la selección (o a todo el diagrama, si no hay selección)"
           @click=${() => {
             this.renderRoot.querySelector('modux-canvas')?.fit();
             this.renderRoot.querySelector('modux-explorer')?.fit();
@@ -5105,6 +5115,17 @@ export class ModuxEditor extends LitElement {
           }}
         >
           ∿ Yugo
+        </button>
+        <button
+          class="tab"
+          ?disabled=${this._view === 'design' || this._view === 'interactions'}
+          ?data-active=${!this._showDerived}
+          title=${this._showDerived
+            ? 'Ocultar los elementos inferidos (stubs generados por el sistema, marcados ✦)'
+            : 'Mostrar los elementos inferidos (stubs generados por el sistema, marcados ✦)'}
+          @click=${() => (this._showDerived = !this._showDerived)}
+        >
+          ✦ Inferidos: ${this._showDerived ? 'visibles' : 'ocultos'}
         </button>
         <button
           class="tab"
@@ -5267,7 +5288,7 @@ export class ModuxEditor extends LitElement {
     const rows: [string, string][] = [
       ['P', 'Mostrar/ocultar la paleta'],
       ['F', 'Pantalla completa (Esc sale)'],
-      ['0', 'Ajustar el diagrama a la ventana'],
+      ['0', 'Ajustar la vista a la selección (o a todo el diagrama)'],
       ['+ / −', 'Zoom (también con la rueda)'],
       ['1 · 4', 'Mapa del sistema · Distribución'],
       ['2', 'Secuencias (interacciones)'],

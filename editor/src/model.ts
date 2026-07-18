@@ -23,6 +23,8 @@ export interface UseCaseRef {
   name: string;
   /** A policy: use-case-shaped reaction logic, not a business use case. */
   policy?: boolean;
+  /** Born as a machine-made stub (actor/page derivation), not declared by hand. */
+  derived?: boolean;
   /** Ids of the use case's steps (typed step editing stays in its form). */
   stepIds?: string[];
   /** The pipeline steps, enough to draw them (full editing stays in the form). */
@@ -68,6 +70,8 @@ export interface UseCaseCallRef {
 export interface QueryServiceRef {
   id: string;
   name: string;
+  /** Born as a machine-made stub (a listing's derived query service). */
+  derived?: boolean;
   operations?: { id: string; name: string }[];
 }
 

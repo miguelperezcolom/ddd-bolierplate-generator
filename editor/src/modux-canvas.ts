@@ -4,6 +4,7 @@ import { select } from 'd3-selection';
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
 import { CONTAINER_HEADER, CONTAINER_INSET, containerMinSize } from './scene.js';
+import { orthogonalRoute } from './edge-routing.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
 function segIntersect(
@@ -436,23 +437,61 @@ export class ModuxCanvas extends LitElement {
     bottom?: number;
   } = {};
 
-  /** Center and scale the viewport so the whole scene is visible (and unobscured). */
+  /**
+   * Center and scale the viewport so the scene is visible (and unobscured).
+   * With a selection, only the selected nodes and the lines that join them are
+   * framed; a selected edge frames its polyline and the nodes it connects.
+   */
   fit(padding = 60): void {
-    const nodes = this.scene.nodes;
     const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
-    if (!nodes.length || !svgEl || !this._zoomBehavior) return;
+    if (!this.scene.nodes.length || !svgEl || !this._zoomBehavior) return;
     const rect = this.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
+    const selectedNodeIds = new Set(
+      this.selectedIds.filter((id) => this.scene.nodes.some((n) => n.id === id)),
+    );
+    if (this.scene.nodes.some((n) => n.id === this.selectedId)) {
+      selectedNodeIds.add(this.selectedId as string);
+    }
+    const selectedEdge = this.scene.edges.find((e) => e.id === this.selectedId) ?? null;
+    const selectionActive = selectedNodeIds.size > 0 || selectedEdge !== null;
+    const nodes = selectionActive
+      ? this.scene.nodes.filter(
+          (n) =>
+            selectedNodeIds.has(n.id) ||
+            (selectedEdge !== null &&
+              (n.id === selectedEdge.sourceId || n.id === selectedEdge.targetId)),
+        )
+      : this.scene.nodes;
+    if (!nodes.length) return;
     const left = this.fitInsets.left ?? 0;
     const right = this.fitInsets.right ?? 0;
     const top = this.fitInsets.top ?? 0;
     const bottom = this.fitInsets.bottom ?? 0;
     const availW = Math.max(80, rect.width - left - right);
     const availH = Math.max(80, rect.height - top - bottom);
-    const minX = Math.min(...nodes.map((n) => n.x - n.w / 2)) - padding;
-    const maxX = Math.max(...nodes.map((n) => n.x + n.w / 2)) + padding;
-    const minY = Math.min(...nodes.map((n) => n.y - n.h / 2)) - padding;
-    const maxY = Math.max(...nodes.map((n) => n.y + n.h / 2)) + padding;
+    let minX = Math.min(...nodes.map((n) => n.x - n.w / 2)) - padding;
+    let maxX = Math.max(...nodes.map((n) => n.x + n.w / 2)) + padding;
+    let minY = Math.min(...nodes.map((n) => n.y - n.h / 2)) - padding;
+    let maxY = Math.max(...nodes.map((n) => n.y + n.h / 2)) + padding;
+    if (selectionActive) {
+      // The lines that join the selection may wander outside the nodes' boxes
+      // (manual bends, sibling spread): grow the frame to hold their geometry.
+      for (const edge of this.scene.edges) {
+        const joins =
+          edge.id === selectedEdge?.id ||
+          (selectedNodeIds.has(edge.sourceId) && selectedNodeIds.has(edge.targetId));
+        if (!joins) continue;
+        const pts = this.edgePolyline(edge);
+        if (!pts) continue;
+        for (const p of pts) {
+          minX = Math.min(minX, p.x - padding);
+          maxX = Math.max(maxX, p.x + padding);
+          minY = Math.min(minY, p.y - padding);
+          maxY = Math.max(maxY, p.y + padding);
+        }
+      }
+    }
     const k = Math.max(0.15, Math.min(availW / (maxX - minX), availH / (maxY - minY), 1.25));
     const t = zoomIdentity
       .translate(
@@ -961,20 +1000,19 @@ export class ModuxCanvas extends LitElement {
         : this.edgePoints[edge.id] ?? [];
     const sp = this.nodePos(source);
     const tp = this.nodePos(target);
-    const firstTowards = waypoints[0] ?? tp;
-    const lastTowards = waypoints[waypoints.length - 1] ?? sp;
-    let a = this.borderPoint(source, firstTowards.x, firstTowards.y);
-    let b = this.borderPoint(target, lastTowards.x, lastTowards.y);
     if (!waypoints.length) {
-      const offset = this.edgeOffset(edge);
-      if (offset !== 0) {
-        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        const nx = (-(b.y - a.y) / len) * offset;
-        const ny = ((b.x - a.x) / len) * offset;
-        a = { x: a.x + nx, y: a.y + ny };
-        b = { x: b.x + nx, y: b.y + ny };
-      }
+      // No manual bends: route orthogonally — horizontal/vertical segments, a
+      // straight diagonal only when the boxes leave no clean path.
+      return orthogonalRoute(
+        { x: sp.x, y: sp.y, w: source.w, h: source.h },
+        { x: tp.x, y: tp.y, w: target.w, h: target.h },
+        this.edgeOffset(edge),
+      );
     }
+    const firstTowards = waypoints[0];
+    const lastTowards = waypoints[waypoints.length - 1];
+    const a = this.borderPoint(source, firstTowards.x, firstTowards.y);
+    const b = this.borderPoint(target, lastTowards.x, lastTowards.y);
     return [a, ...waypoints, b];
   }
 
@@ -1204,6 +1242,10 @@ export class ModuxCanvas extends LitElement {
     const hh = rh / 2;
     const childLabel =
       isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
+    // Derived nodes (machine-made stubs) carry the ✦ mark and say so in their tooltip.
+    const tooltip = node.derived
+      ? `${node.tooltip ? `${node.tooltip} — ` : ''}Inferido: stub generado por el sistema (no declarado a mano)`
+      : node.tooltip;
     return svg`
       <g data-node-id=${node.id}
          opacity=${node.dim ? 0.25 : 1}
@@ -1232,8 +1274,12 @@ export class ModuxCanvas extends LitElement {
               stroke=${hovered ? '#2563eb' : selected ? '#2563eb' : node.stroke ?? '#94a3b8'}
               stroke-width=${selected || hovered ? 2.5 : 1.4}
               stroke-dasharray=${node.dashed ? '6 4' : ''}>
-          ${node.tooltip ? svg`<title>${node.tooltip}</title>` : ''}
+          ${tooltip ? svg`<title>${tooltip}</title>` : ''}
         </rect>
+        ${node.derived
+          ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" fill="#a855f7"
+                  pointer-events="none">✦</text>`
+          : ''}
         ${node.badge
           ? svg`<text x=${-hw} y=${-hh - 7} font-size="10" font-family="ui-sans-serif, system-ui"
                   fill="#64748b" letter-spacing="0.08em">${node.badge}</text>`
