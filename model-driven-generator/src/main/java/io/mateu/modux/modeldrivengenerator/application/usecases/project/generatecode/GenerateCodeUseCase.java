@@ -145,6 +145,7 @@ public class GenerateCodeUseCase {
             generateCiWorkflow(project);
             generateTerraform(project);
             generateUpSh(project);
+            generateE2e(project);
         }
 
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
@@ -2478,6 +2479,99 @@ public class GenerateCodeUseCase {
                 .distinct()
                 .toList());
         createFile(project.outputPath(), model, "terraform-main.ftl", "terraform/main.tf");
+    }
+
+    /**
+     * The e2e module: a Playwright suite that drives the generated apps AS A USER —
+     * form login with the scaffold credentials (the in-memory users are roleId/roleId),
+     * opens every exposed use-case page from its menu entry, fills its form with
+     * type-appropriate sample values and submits it, and opens every CRUD listing.
+     * Everything (credentials, menus, pages, fields, types) comes from the model.
+     */
+    private void generateE2e(ProjectEntity project) {
+        var services = effectiveServices(project);
+        var serviceIds = services.stream().map(ServiceEntity::id).collect(java.util.stream.Collectors.toSet());
+        var roles = repository.findAllOfType(RoleEntity.class);
+        var apps = repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> a.serviceId() != null && serviceIds.contains(a.serviceId()))
+                .map(a -> {
+                    var service = services.stream().filter(s -> s.id().equals(a.serviceId())).findFirst().orElseThrow();
+                    var role = roles.stream()
+                            .filter(r -> r.uiAdapterIds() != null && r.uiAdapterIds().contains(a.id()))
+                            .findFirst()
+                            .orElse(roles.stream().findFirst().orElse(null));
+                    var useCasePages = new java.util.ArrayList<Map<String, Object>>();
+                    var crudLabels = new java.util.ArrayList<String>();
+                    for (var item : flattenMenu(a.menuItems())) {
+                        if (item.useCaseId() != null && !item.useCaseId().isBlank()) {
+                            repository.findById(item.useCaseId(), UseCaseEntity.class)
+                                    .filter(uc -> uc.exposedAsUi())
+                                    .ifPresent(uc -> {
+                                        var fields = new java.util.ArrayList<Map<String, Object>>();
+                                        if (uc.inputModelId() != null && !uc.inputModelId().isBlank()) {
+                                            var inputModel = repository.findById(uc.inputModelId(), ModelEntity.class).orElse(null);
+                                            if (inputModel != null && inputModel.fields() != null) {
+                                                inputModel.fields().stream().filter(ModelFieldEntity::basicType)
+                                                        .forEach(f -> fields.add(Map.of(
+                                                                "name", f.name(),
+                                                                "label", f.label() != null && !f.label().isBlank() ? f.label() : f.name(),
+                                                                "sample", e2eSampleValue(mapFieldDataType(f.type())))));
+                                            }
+                                        }
+                                        useCasePages.add(Map.of(
+                                                "menuLabel", item.label() != null ? item.label() : uc.name(),
+                                                "title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name(),
+                                                "buttonLabel", humanizeUcName(uc.name()),
+                                                "methodName", toTypeName(uc.name()).substring(0, 1).toLowerCase()
+                                                        + toTypeName(uc.name()).substring(1),
+                                                "fields", fields));
+                                    });
+                        } else if (item.aggregateId() != null && !item.aggregateId().isBlank() && item.label() != null) {
+                            crudLabels.add(item.label());
+                        }
+                    }
+                    return (Object) Map.of(
+                            "name", serviceName(service),
+                            "title", a.title() != null && !a.title().isBlank() ? a.title() : a.name(),
+                            "path", a.path() != null && !a.path().isBlank() ? a.path() : "/",
+                            "port", service.port() != null ? service.port() : 8080,
+                            "username", role != null ? role.id() : "operador",
+                            "password", role != null ? role.id() : "operador",
+                            "useCasePages", useCasePages,
+                            "crudLabels", crudLabels);
+                })
+                .toList();
+        if (apps.isEmpty()) return;
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("apps", apps);
+        var e2eDir = project.outputPath() + "/e2e";
+        createDir(e2eDir, "src/test/java/e2e");
+        createFile(e2eDir, model, "e2e-suite-pom.ftl", "pom.xml");
+        createFile(e2eDir, model, "e2e-suite-base.ftl", "src/test/java/e2e/BaseE2eTest.java");
+        createFile(e2eDir, model, "e2e-suite-apps.ftl", "src/test/java/e2e/AppsE2eTest.java");
+    }
+
+    /** A deterministic sample value for an e2e form field, by its resolved primitive type. */
+    private String e2eSampleValue(String primitiveType) {
+        return switch (primitiveType == null ? "string" : primitiveType) {
+            case "integer" -> "42";
+            case "decimal" -> "12.5";
+            case "bool" -> "true";
+            case "date" -> java.time.LocalDate.now().toString();
+            case "time" -> "10:30";
+            case "datetime" -> "2026-01-01T10:30";
+            case "email" -> "e2e@example.com";
+            case "url" -> "https://example.com";
+            default -> "texto-e2e";
+        };
+    }
+
+    /** The button caption Mateu shows for a use case: its name humanized (camelCase → spaces). */
+    private String humanizeUcName(String name) {
+        if (name == null || name.isBlank()) return name;
+        var spaced = name.replaceAll("([a-záéíóúñ0-9])([A-ZÁÉÍÓÚÑ])", "$1 $2");
+        return spaced.substring(0, 1).toUpperCase() + spaced.substring(1);
     }
 
     /**
