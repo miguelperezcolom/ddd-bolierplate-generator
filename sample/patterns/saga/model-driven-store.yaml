@@ -1,0 +1,220 @@
+---
+# ============================================================================
+# PATRÓN: SAGA ORQUESTADA CON COMPENSACIÓN — checkout de pedidos
+# ============================================================================
+# Qué demuestra: una saga orquestada (CheckoutSaga) que se dispara con el
+# evento PedidoCreado y ejecuta tres pasos encadenados:
+#   1. reservar-inventario → operación sobre el agregado Inventario
+#   2. cobrar              → llamada al gateway de pagos (ApiKey)
+#   3. confirmar-pedido    → caso de uso que confirma el Pedido
+# Si un paso falla, la saga compensa EN ORDEN INVERSO: reembolsar deshace
+# cobrar y cancelar-inventario deshace reservar-inventario. El paso final no
+# tiene compensación propia: si falla, se deshacen los pasos anteriores.
+#
+# Qué mirar:
+# - `sagas[0]`: persistenceEnabled (sobrevive reinicios), maxRetries/
+#   retryBackoffMs (reintentos por paso) y deadLetterQueue (re-drive).
+# - Cada paso declara `compensatingStepId`; los compensatorios no corren en el camino feliz.
+#
+# Cómo validar y generar:
+#   modux --modux.model-file=sample/patterns/saga/model-driven-store.yaml --modux.check
+#   modux --modux.model-file=sample/patterns/saga/model-driven-store.yaml --modux.lint
+#   modux --modux.model-file=sample/patterns/saga/model-driven-store.yaml --modux.generate=checkout --modux.output=/tmp/out-saga
+# ============================================================================
+
+# --- Proyecto: raíz de la generación ------------------------------------------
+projects:
+- id: "checkout"
+  name: "Checkout de pedidos"
+  outputPath: "sample/out-saga"
+  packageName: "com.ejemplos.saga"
+  dbMigrationTool: Flyway
+  serviceIds: ["tienda"]
+
+# --- Servicio desplegable: módulos + gateways ---------------------------------
+services:
+- id: "tienda"
+  name: "Tienda"
+  moduleIds: ["mod-pedidos-main"]
+  gatewayIds: ["gw-pagos"]
+
+# --- Bounded context ------------------------------------------------------------
+# Pedidos: dueño de los agregados, del evento que dispara la saga y de la saga
+# (el orquestador vive en el BC que inicia el proceso). Un solo BC mantiene el
+# ejemplo mínimo: con varios BC la coordinación iría por gateways y eventos.
+boundedContexts:
+- id: "mod-pedidos"
+  name: "Pedidos"
+  aggregateIds: ["pedido", "inventario"]
+  useCaseIds: ["uc-crearPedido", "uc-confirmarPedido"]
+  domainEventIds: ["ev-pedidoCreado"]
+  sagaIds: ["saga-checkout"]
+
+# --- Agregados ------------------------------------------------------------------
+aggregates:
+- id: "pedido"
+  name: "Pedido"
+  modelId: "model-pedido"
+  persistenceType: "JPA"
+  idType: "LONG"
+  operations:
+  # CUSTOM: confirmar es un hook del módulo custom (two-zone codegen), invocado
+  # desde la lógica del paso confirmar-pedido de la saga (uc-confirmarPedido).
+  - id: "op-confirmar"
+    name: "confirmar"
+    type: "CUSTOM"
+- id: "inventario"
+  name: "Inventario"
+  modelId: "model-inventario"
+  persistenceType: "JPA"
+  idType: "LONG"
+  operations:
+  # reservar y su compensación cancelarReserva: par acción/acción inversa.
+  # CUSTOM: la lógica queda en el hook del módulo custom (two-zone codegen).
+  - id: "op-reservar"
+    name: "reservar"
+    type: "CUSTOM"
+  - id: "op-cancelar-reserva"
+    name: "cancelarReserva"
+    type: "CUSTOM"
+
+# --- Modelos (DTOs de agregados, evento y gateway) ------------------------------
+models:
+- id: "model-pedido"
+  name: "Pedido"
+  fields:
+  - {name: "referencia", basicType: true, type: "string"}
+  - {name: "cliente", basicType: true, type: "string"}
+  - {name: "total", basicType: true, type: "money"}
+  - {name: "estado", basicType: false, enumId: "estado-pedido"}
+- id: "model-inventario"
+  name: "Inventario"
+  fields:
+  - {name: "sku", basicType: true, type: "string"}
+  - {name: "unidadesDisponibles", basicType: true, type: "integer"}
+# Payload del evento que dispara la saga; también es la entrada de CrearPedido.
+- id: "model-pedido-creado"
+  name: "PedidoCreadoPayload"
+  fields:
+  - {name: "pedidoRef", basicType: true, type: "string"}
+  - {name: "sku", basicType: true, type: "string"}
+  - {name: "unidades", basicType: true, type: "integer"}
+  - {name: "total", basicType: true, type: "money"}
+- id: "model-solicitud-cobro"
+  name: "SolicitudCobro"
+  fields:
+  - {name: "pedidoRef", basicType: true, type: "string"}
+  - {name: "importe", basicType: true, type: "money"}
+- id: "model-resultado-cobro"
+  name: "ResultadoCobro"
+  fields:
+  - {name: "transaccion", basicType: true, type: "string"}
+  - {name: "estado", basicType: true, type: "string"}
+enums:
+- id: "estado-pedido"
+  values:
+  - {id: "ep-pendiente", name: "PENDIENTE"}
+  - {id: "ep-confirmado", name: "CONFIRMADO"}
+  - {id: "ep-cancelado", name: "CANCELADO"}
+
+# --- Casos de uso -----------------------------------------------------------------
+useCases:
+# Entrada REST: persiste el pedido y publica PedidoCreado, el triggeringEvent
+# de la saga — ahí empieza la orquestación.
+- id: "uc-crearPedido"
+  name: "CrearPedido"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-pedido-creado"
+  steps:
+  - {id: "step-cp-save", name: "savePedido", type: "SaveAggregate", aggregateId: "pedido"}
+  - {id: "step-cp-publish", name: "publishPedidoCreado", type: "PublishDomainEvent", domainEventId: "ev-pedidoCreado"}
+# Paso final de la saga (CallUseCase): hook custom que confirma el agregado
+# (el intent viaja al módulo custom; `mvn modux:ai-complete` lo implementa).
+- id: "uc-confirmarPedido"
+  name: "ConfirmarPedido"
+  steps:
+  - id: "step-conf-custom"
+    name: "confirmarPedido"
+    type: "Custom"
+    intent: "Lee el Pedido por id, invoca su operación confirmar (estado CONFIRMADO) y lo persiste"
+
+# --- Evento de dominio que dispara la saga ----------------------------------------
+domainEvents:
+- id: "ev-pedidoCreado"
+  name: "PedidoCreado"
+  modelId: "model-pedido-creado"
+
+# --- Gateway de pagos (sistema externo, auth por API key) -------------------------
+gateways:
+- id: "gw-pagos"
+  name: "PasarelaPagos"
+  serviceId: "tienda"
+  baseUrl: "https://pagos.example.com"
+  authType: "ApiKey"
+  authApiKeyHeaderName: "X-Api-Key"
+  operations:
+  - id: "op-cobrar"
+    name: "cobrar"
+    httpMethod: "POST"
+    path: "/cobros"
+    inputModelId: "model-solicitud-cobro"
+    outputModelId: "model-resultado-cobro"
+  # Compensación de cobrar: devuelve el importe de la transacción.
+  - id: "op-reembolsar"
+    name: "reembolsar"
+    httpMethod: "POST"
+    path: "/reembolsos"
+    inputModelId: "model-solicitud-cobro"
+    outputModelId: "model-resultado-cobro"
+
+# --- La saga orquestada -------------------------------------------------------------
+# persistenceEnabled: el estado de cada instancia se guarda en BD, así los
+# reintentos y la compensación sobreviven a un reinicio del servicio.
+# maxRetries + retryBackoffMs: reintentos por paso antes de compensar.
+# deadLetterQueue: si la saga se agota, la instancia va a la DLQ para re-drive.
+sagas:
+- id: "saga-checkout"
+  name: "CheckoutSaga"
+  triggeringEventIds: ["ev-pedidoCreado"]
+  persistenceEnabled: true
+  maxRetries: 3
+  retryBackoffMs: 2000
+  deadLetterQueue: "checkout.pedidos.saga-checkout.dlq"
+  steps:
+  # Camino feliz, encadenado en orden:
+  - id: "reservar-inventario"
+    name: "reservarInventario"
+    type: "CallAggregateOperation"
+    aggregateId: "inventario"
+    operationId: "op-reservar"
+    compensatingStepId: "cancelar-inventario"
+  - id: "cobrar"
+    name: "cobrar"
+    type: "CallGateway"
+    gatewayId: "gw-pagos"
+    gatewayOperationId: "op-cobrar"
+    compensatingStepId: "reembolsar"
+  - id: "confirmar-pedido"
+    name: "confirmarPedido"
+    type: "CallUseCase"
+    useCaseId: "uc-confirmarPedido"
+  # Compensaciones: NO corren en el camino feliz; se ejecutan en orden inverso
+  # (p. ej. si confirmar-pedido falla: primero reembolsar, luego cancelar-inventario).
+  - id: "cancelar-inventario"
+    name: "cancelarInventario"
+    type: "CallAggregateOperation"
+    aggregateId: "inventario"
+    operationId: "op-cancelar-reserva"
+  - id: "reembolsar"
+    name: "reembolsar"
+    type: "CallGateway"
+    gatewayId: "gw-pagos"
+    gatewayOperationId: "op-reembolsar"
+
+# --- Módulo principal del bounded context -------------------------------------------
+modules:
+- id: "mod-pedidos-main"
+  name: "Pedidos"
+  boundedContextId: "mod-pedidos"
+  main: true

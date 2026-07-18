@@ -1,0 +1,220 @@
+---
+# ============================================================================
+# PATRÓN DIDÁCTICO: ACL (Anti-Corruption Layer) sobre un PMS legacy
+# ============================================================================
+# Un ACL es una capa de TRADUCCIÓN entre tu modelo y un sistema externo
+# cuyo modelo no debe contaminar el tuyo. El PMS legacy (Oracle) guarda
+# reservas con columnas crípticas (codRes, fecEnt "ddMMyyyy"…); el núcleo
+# `reservas` habla de localizador, nombreHuesped y fechaEntrada.
+#
+# La capa traduce en las dos direcciones (direction: BOTH):
+#   - ESCRITURA (dominio → legacy): los casos de uso graban en el núcleo y
+#     propagan al legacy por el gateway REST `gw-pms` (Basic auth);
+#     `mm-reserva-a-legacy` declara la traducción de campos.
+#   - LECTURA (legacy → dominio): el flujo ETL hace POLLING de la tabla
+#     RESERVAS, aplica `mm-legacy-a-view` y materializa el read model
+#     `reservas-legacy-view` (su proyección toma la tabla como fuente).
+#
+# Qué mirar: externalSystems (tabla y useCases del legacy) · la entrada
+# `acls:` del bounded context · gateways · etlFlows · modelMappings
+# (traducciones declarativas; la implementación fina es código custom).
+#
+# Generar el proyecto:
+#   modux --modux.model-file=sample/patterns/acl/model-driven-store.yaml \
+#         --modux.generate=reservas-acl
+# ============================================================================
+
+# ── Proyecto: un servicio nuevo conviviendo con el legacy ───────────────────
+projects:
+- id: "reservas-acl"
+  name: "Reservas con ACL"
+  outputPath: "sample/out-acl"
+  packageName: "com.ejemplos.acl"
+  dbMigrationTool: Flyway
+  tenancyStrategy: "NONE"
+  objective: "Demostrar el patrón ACL: el núcleo de reservas se protege del modelo del PMS legacy traduciendo escrituras (gateway REST) y lecturas (polling ETL de la tabla)."
+  serviceIds:
+  - "svc-reservas"
+  # El sistema externo: `tables` es el esquema sondeable, `useCases` lo que ofrece.
+  externalSystems:
+  - id: "pms-legacy"
+    name: "PMS legacy (Oracle)"
+    description: "PMS heredado, autoritativo durante la convivencia. Su tabla RESERVAS usa columnas crípticas: el ACL las traduce en ambos sentidos."
+    protocol: "DATABASE"
+    direction: "BOTH"
+    tables:
+    - {id: "tbl-reservas-legacy", name: "RESERVAS", description: "Tabla legacy de reservas; se sondea periódicamente (no hay CDC ni eventos)."}
+    useCases:
+    - {id: "extuc-upsert-reserva", name: "upsertReserva", description: "Alta o modificación de una reserva en el legacy."}
+    - {id: "extuc-cancelar-reserva", name: "cancelarReserva", description: "Cancelación de una reserva en el legacy."}
+
+services:
+- id: "svc-reservas"
+  name: "Reservas"
+  moduleIds:
+  - "mod-reservas-main"
+  gatewayIds:
+  - "gw-pms"
+
+# ── Bounded context: el núcleo protegido por el ACL ─────────────────────────
+boundedContexts:
+- id: "reservas"
+  name: "Reservas"
+  subdomainType: "CORE"
+  description: "Modelo de reservas del sistema nuevo. Nunca ve una fila legacy: todo lo que entra o sale pasa por el ACL."
+  aggregateIds:
+  - "reserva"
+  useCaseIds:
+  - "uc-crear-reserva"
+  - "uc-cancelar-reserva"
+  readModelIds:
+  - "rm-reservas-legacy-view"
+  projectionIds:
+  - "proj-reservas-legacy-view"
+  # La entrada ACL declara la frontera: BOTH = escrituras (gw-pms) y lecturas (ETL).
+  acls:
+  - id: "acl-pms"
+    name: "AclPms"
+    externalSystem: "pms-legacy"
+    direction: "BOTH"
+    gatewayId: "gw-pms"
+    translatedUseCaseIds:
+    - "uc-crear-reserva"
+    - "uc-cancelar-reserva"
+    description: "Frontera anti-corrupción: mm-reserva-a-legacy traduce las escrituras y mm-legacy-a-view las lecturas."
+
+# ── El agregado del núcleo (no sabe que existe un legacy) ───────────────────
+aggregates:
+- id: "reserva"
+  name: "Reserva"
+  modelId: "model-reserva"
+  persistenceType: "JPA"
+  idType: "LONG"
+
+# ── Modelos: los dos lados de la frontera y la vista materializada ──────────
+models:
+# Lado del núcleo: nombres de negocio claros
+- id: "model-reserva"
+  name: "Reserva"
+  fields:
+  - {id: "f-reserva-localizador", name: "localizador", basicType: true, type: "string"}
+  - {id: "f-reserva-nombre-huesped", name: "nombreHuesped", basicType: true, type: "string"}
+  - {id: "f-reserva-fecha-entrada", name: "fechaEntrada", basicType: true, type: "date"}
+  - {id: "f-reserva-fecha-salida", name: "fechaSalida", basicType: true, type: "date"}
+  - {id: "f-reserva-importe-total", name: "importeTotal", basicType: true, type: "number"}
+# Lado legacy: la fila tal y como la espera el PMS (fechas como "ddMMyyyy")
+- id: "model-reserva-legacy"
+  name: "ReservaLegacy"
+  fields:
+  - {id: "f-legacy-cod-res", name: "codRes", basicType: true, type: "string"}
+  - {id: "f-legacy-nom-hues", name: "nomHues", basicType: true, type: "string"}
+  - {id: "f-legacy-fec-ent", name: "fecEnt", basicType: true, type: "string"}
+  - {id: "f-legacy-fec-sal", name: "fecSal", basicType: true, type: "string"}
+  - {id: "f-legacy-imp-tot", name: "impTot", basicType: true, type: "number"}
+# La vista materializada: la fila legacy ya traducida al lenguaje del núcleo
+- id: "model-reserva-legacy-view"
+  name: "ReservaLegacyView"
+  fields:
+  - {id: "f-view-localizador", name: "localizador", basicType: true, type: "string"}
+  - {id: "f-view-nombre-huesped", name: "nombreHuesped", basicType: true, type: "string"}
+  - {id: "f-view-fecha-entrada", name: "fechaEntrada", basicType: true, type: "date"}
+  - {id: "f-view-fecha-salida", name: "fechaSalida", basicType: true, type: "date"}
+  - {id: "f-view-importe-total", name: "importeTotal", basicType: true, type: "number"}
+  - {id: "f-view-ultima-sync", name: "ultimaSincronizacion", basicType: true, type: "dateTime"}
+
+# ── Casos de uso: graban en el núcleo y propagan al legacy por el gateway ───
+useCases:
+- id: "uc-crear-reserva"
+  name: "CrearReserva"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-reserva"
+  steps:
+  - {id: "step-guardar-reserva", name: "GuardarReserva", type: "SaveAggregate", aggregateId: "reserva"}
+  # Los huecos de traducción (mm-reserva-a-legacy) quedan como TODO: el hook custom del ACL.
+  - {id: "step-propagar-alta", name: "PropagarAltaAlPms", type: "CallGateway", gatewayId: "gw-pms", gatewayOperationId: "op-upsert-reserva-legacy"}
+- id: "uc-cancelar-reserva"
+  name: "CancelarReserva"
+  exposedAsRest: true
+  apiVersion: "v1"
+  steps:
+  - {id: "step-cargar-reserva", name: "CargarReserva", type: "ReadAggregate", aggregateId: "reserva"}
+  - {id: "step-guardar-cancelacion", name: "GuardarCancelacion", type: "SaveAggregate", aggregateId: "reserva"}
+  - {id: "step-propagar-cancelacion", name: "PropagarCancelacionAlPms", type: "CallGateway", gatewayId: "gw-pms", gatewayOperationId: "op-cancelar-reserva-legacy"}
+
+# ── Gateway: la escritura hacia el legacy, con autenticación Basic ──────────
+# El PMS exige la fila completa incluso para cancelar (mismo input model).
+gateways:
+- id: "gw-pms"
+  name: "PmsLegacy"
+  baseUrl: "https://pms-legacy.example.com/api"
+  authType: "Basic"
+  operations:
+  - {id: "op-upsert-reserva-legacy", name: "upsertReservaLegacy", httpMethod: "POST", path: "/reservas", inputModelId: "model-reserva-legacy"}
+  - {id: "op-cancelar-reserva-legacy", name: "cancelarReservaLegacy", httpMethod: "POST", path: "/reservas/cancelacion", inputModelId: "model-reserva-legacy"}
+
+# ── Lectura: la vista materializada que alimenta el sondeo ──────────────────
+readModels:
+- id: "rm-reservas-legacy-view"
+  name: "ReservasLegacyView"
+  boundedContextId: "reservas"
+  description: "Vista materializada de las reservas del PMS, ya traducida al lenguaje del núcleo."
+  modelId: "model-reserva-legacy-view"
+  storageType: "Document"
+  consistency: "Eventual"
+
+projections:
+- id: "proj-reservas-legacy-view"
+  name: "ReservasLegacyView"
+  readModelId: "rm-reservas-legacy-view"
+  # La fuente no es un evento: es la tabla externa que el ETL sondea.
+  sourceExternalTableId: "tbl-reservas-legacy"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+
+# ── Flujo ETL: polling de la tabla legacy → traducción → la vista ───────────
+# SOURCE_PULL lee filas modificadas de RESERVAS; TRANSFORM aplica
+# mm-legacy-a-view; el resultado materializa rm-reservas-legacy-view.
+etlFlows:
+- id: "etl-poll-reservas-legacy"
+  name: "SincronizacionReservasLegacy"
+  description: "Polling incremental de RESERVAS: mantiene la vista traducida al día sin tocar el núcleo."
+  ownerBoundedContextId: "reservas"
+  steps:
+  - {id: "step-sondear-reservas", name: "SondearReservasLegacy", type: "SOURCE_PULL", externalTableId: "tbl-reservas-legacy", intent: "Lee de RESERVAS las filas modificadas desde el último barrido (marca de agua persistida por el flujo)"}
+  - {id: "step-traducir-fila", name: "TraducirFilaAVista", type: "TRANSFORM", modelMappingId: "mm-legacy-a-view", intent: "Aplica mm-legacy-a-view; ultimaSincronizacion se rellena con la marca temporal del barrido"}
+
+# ── Las traducciones declarativas (el corazón del ACL) ───────────────────────
+# hasCustomPart: lo que no es renombrar campos (fecha ddMMyyyy) va al custom.
+modelMappings:
+# Escritura: dominio → fila legacy (la aplica el paso CallGateway, vía ACL)
+- id: "mm-reserva-a-legacy"
+  name: "ReservaALegacy"
+  sourceModelId: "model-reserva"
+  targetModelId: "model-reserva-legacy"
+  hasCustomPart: true
+  rules:
+  - {id: "rule-localizador-codres", sourceFieldId: "f-reserva-localizador", targetFieldId: "f-legacy-cod-res"}
+  - {id: "rule-huesped-nomhues", sourceFieldId: "f-reserva-nombre-huesped", targetFieldId: "f-legacy-nom-hues"}
+  - {id: "rule-entrada-fecent", sourceFieldId: "f-reserva-fecha-entrada", targetFieldId: "f-legacy-fec-ent"}
+  - {id: "rule-salida-fecsal", sourceFieldId: "f-reserva-fecha-salida", targetFieldId: "f-legacy-fec-sal"}
+  - {id: "rule-importe-imptot", sourceFieldId: "f-reserva-importe-total", targetFieldId: "f-legacy-imp-tot"}
+# Lectura: fila legacy → vista del núcleo (la aplica el TRANSFORM del ETL)
+- id: "mm-legacy-a-view"
+  name: "LegacyAVista"
+  sourceModelId: "model-reserva-legacy"
+  targetModelId: "model-reserva-legacy-view"
+  hasCustomPart: true
+  rules:
+  - {id: "rule-codres-localizador", sourceFieldId: "f-legacy-cod-res", targetFieldId: "f-view-localizador"}
+  - {id: "rule-nomhues-huesped", sourceFieldId: "f-legacy-nom-hues", targetFieldId: "f-view-nombre-huesped"}
+  - {id: "rule-fecent-entrada", sourceFieldId: "f-legacy-fec-ent", targetFieldId: "f-view-fecha-entrada"}
+  - {id: "rule-fecsal-salida", sourceFieldId: "f-legacy-fec-sal", targetFieldId: "f-view-fecha-salida"}
+  - {id: "rule-imptot-importe", sourceFieldId: "f-legacy-imp-tot", targetFieldId: "f-view-importe-total"}
+
+# ── Topología de despliegue: un módulo main para el bounded context ─────────
+modules:
+- id: "mod-reservas-main"
+  name: "Reservas"
+  boundedContextId: "reservas"
+  main: true

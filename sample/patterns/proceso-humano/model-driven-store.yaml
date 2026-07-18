@@ -1,0 +1,220 @@
+---
+# ============================================================================
+# PATRÓN: PROCESO DE NEGOCIO CON TAREA HUMANA (worklist) — apertura de cuenta
+# ============================================================================
+# Qué demuestra: un `process` de la capa de intención (docs/design/process-intent-layer.md)
+# que mezcla pasos AUTOMATED con un paso HUMAN. Cuando el agregado CuentaSolicitud
+# emite CuentaSolicitada arranca ProcesoAperturaCuenta:
+#   1. ValidarIdentidad → AUTOMATED (uc-validar-identidad); si el proceso falla
+#      después, este paso se deshace con uc-marcar-rechazo (compensationUseCaseId).
+#   2. RevisionGestor   → HUMAN: crea una TAREA en la worklist del rol `gestor`,
+#      con plazo deadline PT4H (ISO-8601) y escalado al rol `director` si vence.
+#   3. ActivarCuenta    → AUTOMATED (uc-activar-cuenta); al terminar el proceso se
+#      publica el evento CuentaAbierta (onCompletionEventName).
+#
+# De esta declaración el ProcessExpander infiere: la suscripción que arranca la
+# saga, la saga (el paso humano es un paso de espera `await:RevisionGestor`), la
+# WORKLIST — read model `ProcesoAperturaCuentaTasks` en el BC owner (tarea, rol,
+# estado, vencimiento) —, un trigger que vigila el plazo y escala, y el evento de
+# fin de proceso (la v1 genera las piezas estructurales; ver §5 del RFC).
+#
+# Qué mirar:
+# - `processes[0]`: triggerEvent, ownerBoundedContextId y el SLA extremo a extremo.
+# - El paso HUMAN: roleId (a qué worklist llega), deadline y escalationRoleId.
+# - La página FORM `pg-revision-apertura`: el formulario de la tarea; al generar
+#   emite `forms/RevisionApertura.form.json` (formulario para pasos USER_TASK).
+#
+# Cómo validar y generar:
+#   modux --modux.model-file=sample/patterns/proceso-humano/model-driven-store.yaml --modux.check
+#   modux --modux.model-file=sample/patterns/proceso-humano/model-driven-store.yaml --modux.lint
+#   modux --modux.model-file=sample/patterns/proceso-humano/model-driven-store.yaml \
+#         --modux.generate=apertura-cuentas --modux.output=/tmp/out-proceso-humano
+# ============================================================================
+
+# --- Proyecto: raíz de la generación -----------------------------------------
+projects:
+- id: "apertura-cuentas"
+  name: "Apertura de cuentas"
+  outputPath: "sample/out-proceso-humano"
+  packageName: "com.ejemplos.procesohumano"
+  dbMigrationTool: Flyway
+  tenancyStrategy: "NONE"   # single-tenant, declarado de forma explícita
+  serviceIds:
+  - "banca"
+
+# --- Servicio desplegable: un único servicio con el módulo de operaciones ----
+services:
+- id: "banca"
+  name: "Banca"
+  moduleIds:
+  - "mod-operaciones-main"
+
+# --- Bounded context ----------------------------------------------------------
+# Operaciones (back-office): dueña del agregado, del evento disparador y del
+# proceso (ownerBoundedContextId) — en su módulo se materializa la worklist.
+boundedContexts:
+- id: "operaciones"
+  name: "Operaciones"
+  subdomainType: "CORE"
+  aggregateIds:
+  - "cuenta-solicitud"
+  useCaseIds:
+  - "uc-solicitar-apertura"
+  - "uc-validar-identidad"
+  - "uc-marcar-rechazo"
+  - "uc-activar-cuenta"
+  domainEventIds:
+  - "ev-cuentaSolicitada"
+
+# --- Agregado -----------------------------------------------------------------
+# La solicitud de apertura: lo que el gestor revisa. Su estado atraviesa el
+# proceso (SOLICITADA → EN_REVISION → ACTIVA / RECHAZADA).
+aggregates:
+- id: "cuenta-solicitud"
+  name: "CuentaSolicitud"
+  modelId: "model-cuenta-solicitud"
+  persistenceType: "JPA"
+  idType: "LONG"
+
+# --- Modelos ------------------------------------------------------------------
+models:
+- id: "model-cuenta-solicitud"
+  name: "CuentaSolicitud"
+  fields:
+  - {id: "f-cs-referencia", name: "referencia", basicType: true, type: "string"}
+  - {id: "f-cs-titular", name: "titular", basicType: true, type: "string"}
+  - {id: "f-cs-documento", name: "documentoIdentidad", basicType: true, type: "string"}
+  - {id: "f-cs-tipo", name: "tipoCuenta", basicType: false, enumId: "tipo-cuenta"}
+  - {id: "f-cs-estado", name: "estado", basicType: false, enumId: "estado-solicitud"}
+# Payload del evento disparador; también es la entrada de SolicitarApertura.
+- id: "model-cuenta-solicitada"
+  name: "CuentaSolicitadaPayload"
+  fields:
+  - {id: "f-cso-referencia", name: "referencia", basicType: true, type: "string"}
+  - {id: "f-cso-titular", name: "titular", basicType: true, type: "string"}
+  - {id: "f-cso-documento", name: "documentoIdentidad", basicType: true, type: "string"}
+  - {id: "f-cso-tipo", name: "tipoCuenta", basicType: true, type: "string"}
+# El formulario de la tarea humana: lo que el gestor cumplimenta al revisar.
+- id: "model-revision-apertura"
+  name: "RevisionApertura"
+  fields:
+  - {id: "f-ra-referencia", name: "referencia", basicType: true, type: "string"}
+  - {id: "f-ra-decision", name: "decision", basicType: true, type: "string"}   # APROBAR / RECHAZAR
+  - {id: "f-ra-motivo", name: "motivoRechazo", basicType: true, type: "string"}
+  - {id: "f-ra-notas", name: "notasGestor", basicType: true, type: "string"}
+
+enums:
+- id: "tipo-cuenta"
+  values:
+  - {id: "tc-ahorro", name: "AHORRO"}
+  - {id: "tc-corriente", name: "CORRIENTE"}
+  - {id: "tc-nomina", name: "NOMINA"}
+- id: "estado-solicitud"
+  values:
+  - {id: "es-solicitada", name: "SOLICITADA"}
+  - {id: "es-en-revision", name: "EN_REVISION"}
+  - {id: "es-activa", name: "ACTIVA"}
+  - {id: "es-rechazada", name: "RECHAZADA"}
+
+# --- Casos de uso -------------------------------------------------------------
+useCases:
+# Punto de entrada REST: persiste y publica CuentaSolicitada (el triggerEvent).
+- id: "uc-solicitar-apertura"
+  name: "SolicitarApertura"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-cuenta-solicitada"
+  steps:
+  - {id: "step-sa-save", name: "saveCuentaSolicitud", type: "SaveAggregate", aggregateId: "cuenta-solicitud"}
+  - {id: "step-sa-publish", name: "publishCuentaSolicitada", type: "PublishDomainEvent", domainEventId: "ev-cuentaSolicitada"}
+# Paso 1 del proceso. El paso Custom es un hook two-zone: el intent viaja como
+# javadoc al scaffold del módulo -custom y `mvn modux:ai-complete` lo implementa.
+- id: "uc-validar-identidad"
+  name: "ValidarIdentidad"
+  inputModelId: "model-cuenta-solicitada"
+  steps:
+  - id: "step-vi-custom"
+    name: "verificarDocumento"
+    type: "Custom"
+    intent: "Verifica el documento de identidad contra el censo y listas de fraude; marca la solicitud EN_REVISION o la rechaza si no supera el filtro"
+# Compensación del paso 1: cómo deshacer la validación si el proceso aborta.
+- id: "uc-marcar-rechazo"
+  name: "MarcarRechazo"
+  inputModelId: "model-cuenta-solicitada"
+  steps:
+  - id: "step-mr-custom"
+    name: "marcarRechazada"
+    type: "Custom"
+    intent: "Marca la solicitud como RECHAZADA con el motivo y notifica al titular"
+# Paso 3 del proceso: el alta efectiva tras el visto bueno humano.
+- id: "uc-activar-cuenta"
+  name: "ActivarCuenta"
+  inputModelId: "model-cuenta-solicitada"
+  steps:
+  - id: "step-ac-custom"
+    name: "activarCuenta"
+    type: "Custom"
+    intent: "Genera el IBAN, da de alta la cuenta en el core bancario y marca la solicitud ACTIVA"
+
+# --- Evento de dominio que dispara el proceso ---------------------------------
+domainEvents:
+- id: "ev-cuentaSolicitada"
+  name: "CuentaSolicitada"
+  modelId: "model-cuenta-solicitada"
+
+# --- Roles --------------------------------------------------------------------
+# La tarea humana aterriza en la worklist del `gestor`; si vence el plazo de
+# 4 horas, el vigilante de deadlines la escala a la worklist del `director`.
+roles:
+- id: "gestor"
+  name: "Gestor de cuentas"
+- id: "director"
+  name: "Director de sucursal"
+
+# --- Página FORM: el formulario de la tarea humana ----------------------------
+pages:
+- id: "pg-revision-apertura"
+  name: "RevisionApertura"
+  route: "/revision-apertura"
+  type: "FORM"
+  aggregateId: "cuenta-solicitud"      # la página viaja con el módulo del agregado
+  modelId: "model-revision-apertura"
+  title: "Revisión de apertura"
+
+# --- El proceso con tarea humana ----------------------------------------------
+processes:
+- id: "proceso-apertura-cuenta"
+  name: "ProcesoAperturaCuenta"
+  description: "Apertura de cuenta con revisión documental humana entre dos pasos automáticos."
+  triggerAggregateId: "cuenta-solicitud"
+  triggerEvent: "CuentaSolicitada"
+  ownerBoundedContextId: "operaciones"
+  sla: "P1D"   # SLA extremo a extremo del proceso (timeout de la saga derivada)
+  steps:
+  - id: "step-validar-identidad"
+    name: "ValidarIdentidad"
+    type: "AUTOMATED"
+    useCaseId: "uc-validar-identidad"
+    compensationUseCaseId: "uc-marcar-rechazo"   # cómo deshacerlo si el proceso falla después
+    description: "Filtro automático previo: solo las solicitudes válidas consumen tiempo del gestor."
+  - id: "step-revision-gestor"
+    name: "RevisionGestor"
+    type: "HUMAN"
+    roleId: "gestor"                 # la tarea aparece en la worklist de este rol
+    deadline: "PT4H"                 # plazo del paso (ISO-8601): 4 horas
+    escalationRoleId: "director"     # vencido el plazo, la tarea escala a este rol
+    formPageId: "pg-revision-apertura"   # formulario de la tarea (first-class en workflows; aquí documenta el enlace)
+    description: "El gestor revisa la documentación y decide APROBAR / RECHAZAR con el formulario."
+  - id: "step-activar-cuenta"
+    name: "ActivarCuenta"
+    type: "AUTOMATED"
+    useCaseId: "uc-activar-cuenta"
+    description: "Solo se alcanza tras el visto bueno humano."
+  onCompletionEventName: "CuentaAbierta"   # evento publicado al completar el último paso
+
+# --- Módulo: cada bounded context nace con su módulo principal ----------------
+modules:
+- id: "mod-operaciones-main"
+  name: "Operaciones"
+  boundedContextId: "operaciones"
+  main: true

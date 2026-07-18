@@ -1,0 +1,197 @@
+# ============================================================================
+# PATRÓN: EVENT SOURCING — una cuenta bancaria como event store
+# ============================================================================
+# Qué demuestra: el agregado `cuenta` (persistenceType EVENT_SOURCED) no guarda
+# su estado en una tabla: lo reconstruye releyendo del event store su historial
+# (CuentaAbierta, IngresoRealizado, DineroRetirado). El log de eventos ES la
+# única fuente de verdad del write side.
+#
+# Qué mirar en lo generado:
+#   - infra/out/persistence: CuentaEventEntity + CuentaEventStore +
+#     CuentaEventAppender (append al log ordenado por secuencia) y la tabla
+#     cuenta_event en la migración Flyway V1__baseline.sql.
+#   - snapshotFrequency 50: cada 50 eventos se guarda un snapshot del estado y
+#     el replay arranca del último snapshot, no del principio del historial.
+#   - MovimientoCuenta (schemaVersion 2) genera el hook two-zone
+#     MovimientoCuentaEventUpcaster (+ Default... en el módulo *-custom): ahí
+#     se migran los payloads v1 del log al esquema v2 al leerlos.
+#   - `retirar` declara una precondition de saldo: la regla se evalúa sobre el
+#     estado reconstruido ANTES de añadir DineroRetirado al log.
+#   - La proyección SaldoActualView materializa el saldo: el write side
+#     responde "qué pasó" (eventos); el read side, "cuánto hay".
+#
+# Generar:  modux --modux.model-file=sample/patterns/event-sourcing/model-driven-store.yaml \
+#                --modux.generate=event-sourcing
+# ============================================================================
+
+# --- Topología: un proyecto, un servicio, un bounded context -----------------
+projects:
+- id: "event-sourcing"
+  name: "Banca Event Sourcing"
+  outputPath: "sample/out-event-sourcing"
+  packageName: "com.ejemplos.eventsourcing"
+  dbMigrationTool: Flyway   # crea la tabla del event store
+  tenancyStrategy: "NONE"   # ejemplo single-tenant, declarado explícitamente
+  serviceIds: ["svc-cuentas"]
+
+services:
+- id: "svc-cuentas"
+  name: "cuentas"
+  moduleIds: ["mod-cuentas-main"]
+
+boundedContexts:
+- id: "bc-cuentas"
+  name: "Cuentas"
+  subdomainType: "CORE"   # el corazón del banco: movimientos y saldos
+  aggregateIds: ["cuenta"]
+  useCaseIds: ["uc-retirar"]
+  domainEventIds: ["ev-cuentaAbierta", "ev-ingresoRealizado", "ev-dineroRetirado", "ev-movimientoCuenta"]
+  projectionIds: ["proj-saldoActual"]
+  readModelIds: ["rm-saldoActual"]
+
+# --- El agregado event-sourced ------------------------------------------------
+# EVENT_SOURCED: no hay fila "cuenta" que actualizar; cada operación añade un
+# evento al log y el estado se deriva de él (replay desde el último snapshot).
+aggregates:
+- id: "cuenta"
+  name: "Cuenta"
+  modelId: "model-cuenta"
+  persistenceType: "EVENT_SOURCED"
+  eventSourcingEnabled: true
+  snapshotFrequency: 50   # un snapshot cada 50 eventos acorta el replay
+  idType: "LONG"
+  operations:
+  - id: "op-abrir"
+    name: "abrir"
+    type: "CUSTOM"
+    emits: "CuentaAbierta"        # primer evento del stream de la cuenta
+  - id: "op-ingresar"
+    name: "ingresar"
+    type: "CUSTOM"
+    emits: "IngresoRealizado"
+  - id: "op-retirar"
+    name: "retirar"
+    type: "CUSTOM"
+    emits: "DineroRetirado"
+    preconditions: "saldo >= importe de la retirada"   # ojo: sin comas ("," separa)
+  invariants:
+  - id: "inv-saldo-no-negativo"
+    name: "El saldo nunca puede quedar en negativo"
+    conditions:
+    - id: "inv-saldo-no-negativo-c1"
+      expression: "saldo >= 0"
+      custom: false
+      errorMessage: "La operación dejaría el saldo en negativo"
+
+# --- Modelos: estado reconstruido, payloads de evento y vista -----------------
+models:
+- id: "model-cuenta"          # el estado que se deriva del replay
+  name: "Cuenta"
+  fields:
+  - {name: "titular", basicType: true, type: "string"}
+  - {name: "saldo", basicType: true, type: "money"}
+  - {name: "divisa", basicType: true, type: "string"}
+- id: "model-apertura"        # payload de CuentaAbierta
+  name: "AperturaCuenta"
+  fields:
+  - {name: "cuentaId", basicType: true, type: "string"}
+  - {name: "titular", basicType: true, type: "string"}
+  - {name: "divisa", basicType: true, type: "string"}
+- id: "model-movimiento"      # payload de IngresoRealizado / DineroRetirado
+  name: "Movimiento"
+  fields:
+  - {name: "cuentaId", basicType: true, type: "string"}
+  - {name: "importe", basicType: true, type: "money"}
+  - {name: "concepto", basicType: true, type: "string"}
+# Payload v2 de MovimientoCuenta: la v1 no tenía divisa ni concepto; el
+# upcaster los rellena al leer eventos antiguos del log
+- id: "model-movimiento-cuenta"
+  name: "MovimientoCuenta"
+  fields:
+  - {name: "cuentaId", basicType: true, type: "string"}
+  - {name: "tipo", basicType: true, type: "string"}
+  - {name: "importe", basicType: true, type: "money"}
+  - {name: "divisa", basicType: true, type: "string"}
+  - {name: "concepto", basicType: true, type: "string"}
+# Entrada REST de uc-retirar: sobre qué cuenta y cuánto
+- id: "model-retirada-input"
+  name: "RetiradaInput"
+  fields:
+  - {name: "cuentaId", basicType: true, type: "string"}
+  - {name: "importe", basicType: true, type: "money"}
+  - {name: "concepto", basicType: true, type: "string"}
+# Lo que la proyección materializa para consultar saldos
+- id: "model-saldo-view"
+  name: "SaldoActual"
+  fields:
+  - {name: "cuentaId", basicType: true, type: "string"}
+  - {name: "titular", basicType: true, type: "string"}
+  - {name: "saldo", basicType: true, type: "money"}
+  - {name: "divisa", basicType: true, type: "string"}
+  - {name: "actualizadaEn", basicType: true, type: "dateTime"}
+
+# --- Eventos de dominio: los hechos que pueblan el event store ----------------
+domainEvents:
+- id: "ev-cuentaAbierta"
+  name: "CuentaAbierta"
+  modelId: "model-apertura"
+  schemaVersion: "1"
+- id: "ev-ingresoRealizado"
+  name: "IngresoRealizado"
+  modelId: "model-movimiento"
+  schemaVersion: "1"
+- id: "ev-dineroRetirado"
+  name: "DineroRetirado"
+  modelId: "model-movimiento"
+  schemaVersion: "1"
+# schemaVersion "2" (> 1) → el generador crea el upcaster two-zone que migra
+# los payloads v1 del log al esquema vigente al rehidratar el agregado
+- id: "ev-movimientoCuenta"
+  name: "MovimientoCuenta"
+  modelId: "model-movimiento-cuenta"
+  schemaVersion: "2"
+
+# --- Write side: REST para retirar dinero -------------------------------------
+# El paso Custom es un hook two-zone: su intent documenta la mecánica ES (replay
+# desde el último snapshot + precondition de saldo) y viaja al scaffold como
+# javadoc; `mvn modux:ai-complete` propone la implementación a partir de él.
+useCases:
+- id: "uc-retirar"
+  name: "RetirarDinero"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-retirada-input"
+  steps:
+  - id: "step-ret-retirar"
+    name: "retirarDeLaCuenta"
+    type: "Custom"
+    intent: "Rehidrata la cuenta releyendo su stream del event store (replay desde el último snapshot), valida que el saldo cubre el importe y registra la retirada como un evento DineroRetirado en el log"
+  - {id: "step-ret-publish", name: "publishDineroRetirado", type: "PublishDomainEvent", domainEventId: "ev-dineroRetirado"}
+
+# --- Read side: proyección del saldo actual -----------------------------------
+readModels:
+- id: "rm-saldoActual"
+  name: "SaldoActualView"
+  boundedContextId: "bc-cuentas"
+  description: "Saldo materializado de cada cuenta, para consultas puntuales"
+  modelId: "model-saldo-view"
+  storageType: "Relational"
+  consistency: "Eventual"
+
+projections:
+- id: "proj-saldoActual"
+  name: "SaldoActual"
+  readModelId: "rm-saldoActual"
+  handlers:
+  - {id: "h-saldo-apertura", name: "onCuentaAbierta", domainEventId: "ev-cuentaAbierta", type: "Create"}
+  - {id: "h-saldo-ingreso", name: "onIngresoRealizado", domainEventId: "ev-ingresoRealizado", type: "Update"}
+  - {id: "h-saldo-retirada", name: "onDineroRetirado", domainEventId: "ev-dineroRetirado", type: "Update"}
+  rebuildStrategy: "REPLAY"   # reconstruir la vista = re reproducir los eventos
+  errorHandlingStrategy: "RETRY"
+
+# --- Módulo main del bounded context ------------------------------------------
+modules:
+- id: "mod-cuentas-main"
+  name: "Cuentas"
+  boundedContextId: "bc-cuentas"
+  main: true

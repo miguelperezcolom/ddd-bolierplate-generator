@@ -1,0 +1,219 @@
+# ============================================================================
+# PATRÓN DIDÁCTICO: CQRS (Command Query Responsibility Segregation)
+# ============================================================================
+# Dos servicios independientes sobre un mini-dominio de ventas:
+#   - svc-write (BC `ventas-write`): agregado `pedido` con los comandos `crear`
+#     (emite PedidoCreado) y `confirmar` (emite PedidoConfirmado), expuestos
+#     como casos de uso REST. La escritura NUNCA se consulta.
+#   - svc-read (BC `ventas-read`): la proyección `PedidosViewProjection`
+#     materializa el read model `pedidos-view` (localizador, estado, total) a
+#     partir de esos eventos; `qs-pedidos` sirve consultas Single/List/Page.
+# El bus es la única vía write → read (consistencia eventual); los eventos
+# llevan el estado completo: el read side no llama de vuelta al write side.
+# Generar:  modux --modux.model-file=sample/patterns/cqrs/model-driven-store.yaml \
+#           --modux.generate=cqrs --modux.output=/tmp/pattern-gen-cqrs
+# Validar:  mismos argumentos con --modux.check y con --modux.lint
+# ============================================================================
+---
+# Un único proyecto con los dos servicios desplegables
+projects:
+- id: "cqrs"
+  name: "CQRS Ventas"
+  outputPath: "sample/out-cqrs"
+  packageName: "com.ejemplos.cqrs"
+  dbMigrationTool: "Flyway"
+  tenancyStrategy: "NONE"
+  serviceIds: ["svc-write", "svc-read"]
+# Los servicios write y read se despliegan (y escalan) por separado
+services:
+- id: "svc-write"
+  name: "VentasWrite"
+  moduleIds: ["mod-ventas-write"]
+- id: "svc-read"
+  name: "VentasRead"
+  moduleIds: ["mod-ventas-read"]
+boundedContexts:
+# Command side: recibe comandos, aplica reglas y emite eventos; nunca consultas
+- id: "ventas-write"
+  name: "VentasWrite"
+  subdomainType: "CORE"
+  # CQRS explícito: la lectura vive en otro bounded context (y otro servicio)
+  readSideBoundedContextId: "ventas-read"
+  readSideVia: "eventos de integración por el bus; la escritura nunca se consulta"
+  aggregateIds: ["pedido"]
+  useCaseIds: ["uc-crearPedido", "uc-confirmarPedido"]
+  domainEventIds: ["ev-pedidoCreado", "ev-pedidoConfirmado"]
+# Query side: materializa la vista desde los eventos del write side y sirve
+# consultas; no tiene agregados. Consistencia eventual.
+- id: "ventas-read"
+  name: "VentasRead"
+  subdomainType: "SUPPORTING"
+  projectionIds: ["proj-pedidos-view"]
+  readModelIds: ["pedidos-view"]
+  queryServiceIds: ["qs-pedidos"]
+# Agregado del write side: máquina de estados mínima del pedido
+aggregates:
+- id: "pedido"
+  name: "Pedido"
+  modelId: "model-pedido"
+  operations:
+  - id: "op-crear"
+    name: "crear"
+    type: "CUSTOM"
+    emits: "PedidoCreado"
+    intent: "Crea el pedido en estado CREADO con su localizador y total"
+  - id: "op-confirmar"
+    name: "confirmar"
+    type: "CUSTOM"
+    emits: "PedidoConfirmado"
+    intent: "Confirma un pedido creado: pasa a estado CONFIRMADO"
+  invariants:
+  - id: "inv-total-positivo"
+    name: "TotalPositivo"
+    conditions:
+    - id: "inv-total-positivo-c1"
+      expression: "total > 0"
+      custom: false
+      errorMessage: "El total del pedido debe ser positivo"
+# Modelos: el agregado, la vista materializada y el filtro de consulta
+models:
+- id: "model-pedido"
+  name: "Pedido"
+  fields:
+  - name: "localizador"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    basicType: true
+    type: "string"
+  - name: "total"
+    basicType: true
+    type: "number"
+- id: "model-pedidos-view"
+  name: "PedidosView"
+  fields:
+  - name: "localizador"
+    basicType: true
+    type: "string"
+  - name: "estado"
+    basicType: true
+    type: "string"
+  - name: "total"
+    basicType: true
+    type: "number"
+- id: "model-filtro-pedidos"
+  name: "FiltroPedidos"
+  fields:
+  - name: "estado"
+    basicType: true
+    type: "string"
+# Los comandos del CQRS: dos casos de uso REST sobre el write side
+useCases:
+- id: "uc-crearPedido"
+  name: "CrearPedido"
+  exposedAsRest: true
+  inputModelId: "model-pedido"
+  steps:
+  - id: "step-crear-save"
+    name: "savePedido"
+    type: "SaveAggregate"
+    aggregateId: "pedido"
+  - id: "step-crear-publish"
+    name: "publishPedidoCreado"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-pedidoCreado"
+- id: "uc-confirmarPedido"
+  name: "ConfirmarPedido"
+  exposedAsRest: true
+  inputModelId: "model-pedido"
+  steps:
+  - id: "step-confirmar-save"
+    name: "savePedido"
+    type: "SaveAggregate"
+    aggregateId: "pedido"
+  - id: "step-confirmar-publish"
+    name: "publishPedidoConfirmado"
+    type: "PublishDomainEvent"
+    domainEventId: "ev-pedidoConfirmado"
+# Eventos de dominio: la única salida de información del write side
+domainEvents:
+- id: "ev-pedidoCreado"
+  name: "PedidoCreado"
+  modelId: "model-pedido"
+- id: "ev-pedidoConfirmado"
+  name: "PedidoConfirmado"
+  modelId: "model-pedido"
+  # También viaja al bus para que el read side (otro servicio) haga Upsert
+  publishAsIntegrationEvent: true
+  topicName: "ventas.pedidos.pedido-confirmado"
+  serializationFormat: "JSON"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "ventas.pedidos.pedido-confirmado.dlq"
+  replayable: true
+# Contrato de integración: lo que el read side consume del bus
+integrationEvents:
+- id: "ie-pedidoCreado"
+  name: "PedidoCreado"
+  boundedContextId: "ventas-write"
+  sourceDomainEventId: "ev-pedidoCreado"
+  payloadModelId: "model-pedido"
+  topicName: "ventas.pedidos.pedido-creado"
+  serializationFormat: "JSON"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "ventas.pedidos.pedido-creado.dlq"
+  replayable: true
+# Vista materializada, optimizada para consulta (consistencia eventual)
+readModels:
+- id: "pedidos-view"
+  name: "PedidosView"
+  boundedContextId: "ventas-read"
+  modelId: "model-pedidos-view"
+  storageType: "Document"
+  consistency: "Eventual"
+# Create con PedidoCreado, Upsert con PedidoConfirmado
+projections:
+- id: "proj-pedidos-view"
+  name: "PedidosViewProjection"
+  readModelId: "pedidos-view"
+  handlers:
+  - id: "h-pedidos-creado"
+    name: "onPedidoCreado"
+    domainEventId: "ev-pedidoCreado"
+    type: "Create"
+  - id: "h-pedidos-confirmado"
+    name: "onPedidoConfirmado"
+    domainEventId: "ev-pedidoConfirmado"
+    type: "Upsert"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+# Las tres cardinalidades de consulta sobre la vista
+queryServices:
+- id: "qs-pedidos"
+  name: "PedidosQueries"
+  boundedContextId: "ventas-read"
+  operations:
+  - id: "qop-getPedido"
+    name: "getPedido"
+    inputModelId: "model-filtro-pedidos"
+    outputModelId: "model-pedidos-view"
+    cardinality: "Single"
+  - id: "qop-listarPedidos"
+    name: "listarPedidos"
+    inputModelId: "model-filtro-pedidos"
+    outputModelId: "model-pedidos-view"
+    cardinality: "List"
+  - id: "qop-paginarPedidos"
+    name: "paginarPedidos"
+    inputModelId: "model-filtro-pedidos"
+    outputModelId: "model-pedidos-view"
+    cardinality: "Page"
+# Cada bounded context nace con su módulo principal
+modules:
+- id: "mod-ventas-write"
+  name: "VentasWrite"
+  boundedContextId: "ventas-write"
+  main: true
+- id: "mod-ventas-read"
+  name: "VentasRead"
+  boundedContextId: "ventas-read"
+  main: true

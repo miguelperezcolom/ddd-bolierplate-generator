@@ -1,0 +1,220 @@
+# yaml-language-server: $schema=./model-driven-store-schema.json
+---
+# ============================================================================
+# PATRÓN DIDÁCTICO: BFF (Backend for Frontend)
+# ============================================================================
+# Un BFF es una fachada POR TIPO DE CLIENTE: aquí, el SPA de las agencias de
+# viajes no habla directamente con el núcleo de reservas, sino con un servicio
+# propio (svc-bff) que solo EXPONE y ADAPTA casos de uso del núcleo.
+#
+# Idea clave: el dominio NO vive en el borde. El bounded context `distribucion`
+# no tiene agregados ni lógica: declara una entrada `bffs:` con el contrato de
+# la fachada (clientType, basePath, authRequired) y `exposedUseCaseIds` apunta
+# a los casos de uso del núcleo `reservas`. La fachada traduce HTTP → comando,
+# reenvía credenciales y devuelve la respuesta; cualquier composición o
+# adaptación concreta es código custom del desarrollador en el módulo del BFF.
+# Si mañana llega una app móvil, se crea OTRO BFF con su contrato, sin tocar el núcleo.
+#
+# Qué mirar:
+#   - boundedContexts[distribucion].bffs → la fachada declarada (sin dominio).
+#   - boundedContexts[reservas] → el núcleo: agregado `reserva`, casos de uso
+#     REST y el evento `ReservaCreada` (lo emite la operación `reservar`).
+#   - projects[0].contextMap → reservas publica contrato abierto al BFF.
+# Generar el proyecto:
+#   modux --modux.model-file=sample/patterns/bff/model-driven-store.yaml \
+#         --modux.generate=reservas-bff
+# ============================================================================
+
+# ── Proyecto: dos servicios (la fachada y el núcleo) ────────────────────────
+projects:
+- id: "reservas-bff"
+  name: "Reservas con BFF"
+  outputPath: "sample/out-bff"
+  packageName: "com.ejemplos.bff"
+  dbMigrationTool: Flyway
+  tenancyStrategy: "NONE"
+  objective: "Demostrar el patrón BFF: una fachada stateless para el SPA de agencias delegando en el núcleo de reservas."
+  serviceIds:
+  - "svc-bff"
+  - "svc-reservas"
+  # Mapa de contextos: el núcleo sirve a la fachada con un contrato abierto
+  contextMap:
+  - id: "rel-reservas-distribucion"
+    name: "reservas expone su API al BFF"
+    sourceBoundedContextId: "reservas"
+    targetBoundedContextId: "distribucion"
+    type: "OPEN_HOST_SERVICE"
+    description: "El BFF consume los casos de uso del núcleo; reservas publica un contrato estable y no conoce a sus clientes."
+
+services:
+- id: "svc-bff"
+  name: "BFF Agencias"
+  moduleIds:
+  - "mod-bff-main"
+- id: "svc-reservas"
+  name: "Reservas"
+  moduleIds:
+  - "mod-reservas-main"
+
+# ── Bounded contexts ────────────────────────────────────────────────────────
+boundedContexts:
+# La fachada: SIN agregados, SIN eventos, SIN lógica de dominio.
+# Todo el contrato del BFF se declara en la entrada `bffs:`; `exposedUseCaseIds`
+# delega en los casos de uso del núcleo (el BFF no los reimplementa, los expone).
+- id: "distribucion"
+  name: "Distribucion"
+  subdomainType: "SUPPORTING"
+  description: "Fachada para el SPA de agencias. Stateless: traduce HTTP → comando y reenvía al núcleo; no persiste nada."
+  bffs:
+  - id: "bff-agencias"
+    name: "AgenciasSPA"
+    clientType: "SPA"
+    basePath: "/api/agencias"
+    authRequired: true
+    exposedUseCaseIds:
+    - "uc-buscar-disponibilidad"
+    - "uc-reservar"
+    description: "Contrato del BFF para el SPA de agencias: solo los dos casos de uso que su pantalla necesita, bajo su propio basePath y con autenticación. Sin dedupe ni lógica: eso es del núcleo."
+
+# El núcleo: system of record de la reserva. No sabe que existe un BFF.
+- id: "reservas"
+  name: "Reservas"
+  subdomainType: "CORE"
+  description: "Núcleo del dominio: disponibilidad y grabación de reservas."
+  aggregateIds:
+  - "reserva"
+  useCaseIds:
+  - "uc-buscar-disponibilidad"
+  - "uc-reservar"
+  domainEventIds:
+  - "ev-reserva-creada"
+
+# ── Núcleo: el agregado y su operación (que emite el evento) ────────────────
+aggregates:
+- id: "reserva"
+  name: "Reserva"
+  modelId: "model-reserva"
+  operations:
+  - id: "op-reservar"
+    name: "Reservar"
+    type: "CUSTOM"
+    # CSV de eventos emitidos: la operación registra ReservaCreada
+    emits: "ReservaCreada"
+    intent: "Confirma la reserva asignándole localizador y registra el evento ReservaCreada"
+  invariants:
+  - id: "inv-fechas-coherentes"
+    name: "Llegada anterior a salida"
+    conditions:
+    - id: "inv-fechas-c1"
+      expression: "llegada anterior a salida"
+      custom: true
+      errorMessage: "La fecha de llegada debe ser anterior a la de salida"
+
+models:
+- id: "model-reserva"
+  name: "Reserva"
+  fields:
+  - id: "f-reserva-localizador"
+    name: "localizador"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-huesped"
+    name: "huesped"
+    basicType: true
+    type: "string"
+  - id: "f-reserva-llegada"
+    name: "llegada"
+    basicType: true
+    type: "date"
+  - id: "f-reserva-salida"
+    name: "salida"
+    basicType: true
+    type: "date"
+# Lo que el SPA envía al buscar (el BFF lo reenvía tal cual al núcleo)
+- id: "model-consulta-disponibilidad"
+  name: "ConsultaDisponibilidad"
+  fields:
+  - id: "f-consulta-llegada"
+    name: "llegada"
+    basicType: true
+    type: "date"
+  - id: "f-consulta-salida"
+    name: "salida"
+    basicType: true
+    type: "date"
+# Lo que el SPA muestra: huecos libres para esas fechas
+- id: "model-disponibilidad"
+  name: "Disponibilidad"
+  fields:
+  - id: "f-dispo-llegada"
+    name: "llegada"
+    basicType: true
+    type: "date"
+  - id: "f-dispo-salida"
+    name: "salida"
+    basicType: true
+    type: "date"
+  - id: "f-dispo-libres"
+    name: "habitacionesLibres"
+    basicType: true
+    type: "number"
+# Lo que el SPA envía al reservar (el localizador lo asigna el núcleo)
+- id: "model-reservar-input"
+  name: "ReservarInput"
+  fields:
+  - id: "f-input-huesped"
+    name: "huesped"
+    basicType: true
+    type: "string"
+  - id: "f-input-llegada"
+    name: "llegada"
+    basicType: true
+    type: "date"
+  - id: "f-input-salida"
+    name: "salida"
+    basicType: true
+    type: "date"
+
+# ── Núcleo: el evento (interno; el BFF no lo necesita) ──────────────────────
+domainEvents:
+- id: "ev-reserva-creada"
+  name: "ReservaCreada"
+  modelId: "model-reserva"
+
+# ── Núcleo: los casos de uso que el BFF expone ──────────────────────────────
+# Se exponen como REST en el núcleo; el BFF los declara suyos vía
+# exposedUseCaseIds y los sirve bajo /api/agencias sin reimplementarlos.
+useCases:
+- id: "uc-buscar-disponibilidad"
+  name: "BuscarDisponibilidad"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-consulta-disponibilidad"
+  outputModelId: "model-disponibilidad"
+  steps:
+  - id: "step-buscar-libres"
+    name: "BuscarLibres"
+    type: "Custom"
+    intent: "Cuenta las habitaciones sin reserva que se solape con las fechas pedidas y devuelve la disponibilidad"
+- id: "uc-reservar"
+  name: "Reservar"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-reservar-input"
+  outputModelId: "model-reserva"
+  steps:
+  - id: "step-registrar-reserva"
+    name: "RegistrarReserva"
+    type: "Custom"
+    intent: "Crea el agregado Reserva, invoca su operación Reservar (que emite ReservaCreada) y lo persiste"
+
+# ── Topología de despliegue: un módulo main por bounded context ─────────────
+modules:
+- id: "mod-bff-main"
+  name: "BFF"
+  boundedContextId: "distribucion"
+  main: true
+- id: "mod-reservas-main"
+  name: "Reservas"
+  boundedContextId: "reservas"
+  main: true

@@ -1,0 +1,220 @@
+# ============================================================================
+# PATRÓN DIDÁCTICO: EVENT-DRIVEN — coreografía con flows (capa de intención)
+# ============================================================================
+# Un hecho —«se ha creado una reserva»— dispara reacciones DESACOPLADAS (pub/sub,
+# sin orquestador): el agregado `reserva` emite `ReservaCreada` vía `emits` de la
+# operación `crear` (sale por outbox al bus, con DLQ) y sobre el evento cuelgan:
+# - flow TRIGGERS     → suscripción Kafka + model mapping → `uc-preparar-llegada` (BC produccion)
+# - flow MATERIALIZES → read model + proyección Upsert + suscripción (BC reporting);
+#   `materializedFields` = contrato del payload (se tipa desde el agregado)
+# - flow NOTIFIES     → evento de integración saliente; la `notification` fija el canal
+#   EMAIL y el rol `recepcion` (subject/body = plantillas sobre el payload)
+# - VÍA MANUAL (contraste): `sub-auditoria-reservas`, MISMO topic con consumerGroup
+#   PROPIO (cada grupo recibe su copia) → `uc-registrar-auditoria` (inbox idempotente)
+#
+# Validar y generar:
+#   modux --modux.model-file=sample/patterns/event-driven/model-driven-store.yaml --modux.check
+#   modux --modux.model-file=sample/patterns/event-driven/model-driven-store.yaml --modux.lint
+#   modux --modux.model-file=sample/patterns/event-driven/model-driven-store.yaml \
+#         --modux.generate=event-driven --modux.output=/tmp/pattern-gen-event-driven
+# ============================================================================
+---
+# ---- Proyecto: tres desplegables independientes (esa es la gracia del EDA) ----
+projects:
+- id: "event-driven"
+  name: "EventDriven"
+  outputPath: "sample/out-event-driven"
+  packageName: "com.ejemplos.eventdriven"
+  dbMigrationTool: "Flyway"
+  tenancyStrategy: "NONE"
+  serviceIds: ["svc-reservas", "svc-produccion", "svc-reporting"]
+  # El NOTIFIES avisa a un sistema EXTERNO: hay que ponerlo en el mapa
+  externalSystems:
+  - id: "ext-servidor-correo"
+    name: "ServidorCorreo"
+    description: "Relay SMTP corporativo: entrega el aviso EMAIL al rol recepcion."
+  # Todo flow que cruza contextos declara su relación estratégica (origen → destino)
+  contextMap:
+  - {id: "rel-reservas-produccion", name: "reservas publica, produccion reacciona", sourceBoundedContextId: "mod-reservas", targetBoundedContextId: "mod-produccion", type: "PUBLISHED_LANGUAGE"}
+  - {id: "rel-reservas-reporting", name: "reservas publica, reporting materializa", sourceBoundedContextId: "mod-reservas", targetBoundedContextId: "mod-reporting", type: "PUBLISHED_LANGUAGE"}
+# ---- Servicios: cada consumidor despliega (y escala, y falla) por su lado ----
+services:
+- id: "svc-reservas"
+  name: "Reservas"
+  moduleIds: ["mod-reservas-main"]
+- id: "svc-produccion"
+  name: "Produccion"
+  moduleIds: ["mod-produccion-main"]
+- id: "svc-reporting"
+  name: "Reporting"
+  moduleIds: ["mod-reporting-main", "mod-auditoria-main"]   # auditoría va con reporting
+boundedContexts:
+# ---- El productor: dueño del agregado y emisor del evento ----
+- id: "mod-reservas"
+  name: "Reservas"
+  subdomainType: "CORE"
+  description: "Write side: recibe el comando, aplica las reglas y emite ReservaCreada."
+  readSideBoundedContextId: "mod-reporting"   # la lectura se materializa por eventos
+  aggregateIds: ["reserva"]
+  useCaseIds: ["uc-crear-reserva"]
+  domainEventIds: ["ev-reserva-creada"]
+# ---- Consumidor 1 (flow TRIGGERS): operativa de planta ----
+- id: "mod-produccion"
+  name: "Produccion"
+  subdomainType: "SUPPORTING"
+  useCaseIds: ["uc-preparar-llegada"]
+# ---- Consumidor 2 (flow MATERIALIZES): el lado de lectura ----
+- id: "mod-reporting"
+  name: "Reporting"
+  subdomainType: "SUPPORTING"
+# ---- Consumidor 3 (vía MANUAL): auditoría, con consumerGroup propio ----
+- id: "mod-auditoria"
+  name: "Auditoria"
+  subdomainType: "GENERIC"
+  useCaseIds: ["uc-registrar-auditoria"]
+  subscriptionIds: ["sub-auditoria-reservas"]
+
+# ---- El agregado: la operación `crear` declara la emisión del evento ----
+aggregates:
+- id: "reserva"
+  name: "Reserva"
+  modelId: "model-reserva"
+  operations:
+  - id: "op-crear"
+    name: "crear"
+    type: "CUSTOM"
+    emits: "ReservaCreada"   # ← el evento NACE aquí: lo emite la operación
+    intent: "Crea la reserva en estado CONFIRMADA con su localizador y emite ReservaCreada"
+  invariants:
+  - {id: "inv-localizador", name: "LocalizadorObligatorio", conditions: []}
+
+# ---- Modelos: el estado del agregado y el contrato del evento en el bus ----
+models:
+- id: "model-reserva"
+  name: "Reserva"
+  fields:
+  - {id: "f-reserva-localizador", name: "localizador", basicType: true, type: "string"}
+  - {id: "f-reserva-titular", name: "titular", basicType: true, type: "string"}
+  - {id: "f-reserva-fecha-llegada", name: "fechaLlegada", basicType: true, type: "date"}
+- id: "model-reserva-creada"
+  name: "ReservaCreadaIntegracion"   # contrato del bus; también input de los casos de uso
+  fields:
+  - {id: "f-rc-localizador", name: "localizador", basicType: true, type: "string"}
+  - {id: "f-rc-titular", name: "titular", basicType: true, type: "string"}
+  - {id: "f-rc-fecha-llegada", name: "fechaLlegada", basicType: true, type: "string"}   # en el bus viaja como string ISO
+
+# ---- Casos de uso: el comando de entrada y las reacciones (hooks custom) ----
+useCases:
+- id: "uc-crear-reserva"
+  name: "CrearReserva"
+  exposedAsRest: true
+  inputModelId: "model-reserva-creada"
+  steps:
+  - id: "step-guardar-reserva"
+    name: "saveReserva"
+    type: "SaveAggregate"
+    aggregateId: "reserva"
+  - id: "step-publicar-reserva-creada"
+    name: "publishReservaCreada"
+    type: "PublishDomainEvent"   # el caso de uso orquesta: guarda y publica por outbox
+    domainEventId: "ev-reserva-creada"
+- id: "uc-preparar-llegada"
+  name: "PrepararLlegada"
+  inputModelId: "model-reserva-creada"   # mismos nombres que el payload → mapping identidad
+  steps:
+  - id: "step-preparar-llegada"
+    name: "prepararLlegada"
+    type: "Custom"
+    intent: "Crea la orden de preparación: habitación y amenities listos antes de la fecha de llegada"
+- id: "uc-registrar-auditoria"
+  name: "RegistrarAuditoria"
+  inputModelId: "model-reserva-creada"
+  steps:
+  - id: "step-registrar-auditoria"
+    name: "registrarEvento"
+    type: "Custom"
+    intent: "Persiste el evento recibido en el log de auditoría (qué pasó y cuándo)"
+
+# ---- El evento: sale al bus como evento de integración (outbox + DLQ) ----
+domainEvents:
+- id: "ev-reserva-creada"
+  name: "ReservaCreada"
+  modelId: "model-reserva-creada"
+  publishAsIntegrationEvent: true
+  topicName: "event-driven.reservas.reserva-creada"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "event-driven.reservas.reserva-creada.dlq"
+
+# ---- Rol receptor del aviso EMAIL (y actor que crea reservas) ----
+roles:
+- id: "recepcion"
+  name: "Recepcion"
+  allowedUseCaseIds: ["uc-crear-reserva"]
+
+# ---- VÍA MANUAL: suscripción explícita sobre el mismo topic, grupo propio ----
+subscriptions:
+- id: "sub-auditoria-reservas"
+  name: "AuditoriaReservas"
+  eventName: "ReservaCreada"
+  inputModelId: "model-reserva-creada"
+  topicName: "event-driven.reservas.reserva-creada"
+  consumerGroup: "auditoria"   # grupo distinto = copia propia del evento
+  idempotencyEnabled: true     # inbox: la reentrega no duplica efectos
+  actions:
+  - {id: "act-registrar-auditoria", name: "registrarAuditoria", type: "CallUseCase", useCaseId: "uc-registrar-auditoria"}
+
+# ---- La notificación del flow NOTIFIES: canal, destinatarios y plantilla ----
+notifications:
+- id: "notif-aviso-recepcion"
+  name: "AvisoRecepcionReservaCreada"
+  ownerBoundedContextId: "mod-reservas"
+  eventId: "ev-reserva-creada"
+  channels: ["EMAIL"]
+  recipientRoleIds: ["recepcion"]
+  subject: "Nueva reserva {localizador}"
+  body: "Reserva {localizador} a nombre de {titular}, llegada el {fechaLlegada}. Preparad recepción."
+
+# ---- CAPA DE INTENCIÓN: tres flows sobre el MISMO evento (comparten payload y topic) ----
+flows:
+- id: "flow-reservas-del-dia"
+  name: "ReservasDelDia"
+  archetype: "MATERIALIZES"   # → read model + proyección (Upsert) + suscripción
+  triggerAggregateId: "reserva"
+  triggerEvent: "ReservaCreada"
+  targetBoundedContextId: "mod-reporting"
+  readModelName: "ReservasDelDia"
+  materializedFields: ["localizador", "titular", "fechaLlegada"]
+- id: "flow-preparar-llegada"
+  name: "PrepararLlegada"
+  archetype: "TRIGGERS"       # → suscripción + model mapping → caso de uso
+  triggerAggregateId: "reserva"
+  triggerEvent: "ReservaCreada"
+  targetBoundedContextId: "mod-produccion"
+  targetUseCaseId: "uc-preparar-llegada"
+  materializedFields: ["localizador", "titular", "fechaLlegada"]
+- id: "flow-aviso-recepcion"
+  name: "AvisoRecepcion"
+  archetype: "NOTIFIES"       # → evento de integración saliente + notification EMAIL
+  triggerAggregateId: "reserva"
+  triggerEvent: "ReservaCreada"
+  targetBoundedContextId: "ext-servidor-correo"
+  materializedFields: ["localizador", "titular", "fechaLlegada"]
+
+# Cada bounded context nace con su módulo principal (main: true).
+modules:
+- id: "mod-reservas-main"
+  name: "Reservas"
+  boundedContextId: "mod-reservas"
+  main: true
+- id: "mod-produccion-main"
+  name: "Produccion"
+  boundedContextId: "mod-produccion"
+  main: true
+- id: "mod-reporting-main"
+  name: "Reporting"
+  boundedContextId: "mod-reporting"
+  main: true
+- id: "mod-auditoria-main"
+  name: "Auditoria"
+  boundedContextId: "mod-auditoria"
+  main: true
