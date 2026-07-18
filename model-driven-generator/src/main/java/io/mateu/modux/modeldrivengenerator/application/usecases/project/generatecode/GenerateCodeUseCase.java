@@ -2545,6 +2545,12 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("apps", apps);
+        model.put("shells", repository.findAllOfType(UiShellEntity.class).stream()
+                .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(serviceIds::contains))
+                .map(sh -> Map.of(
+                        "slug", sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                        "title", sh.title() != null && !sh.title().isBlank() ? sh.title() : sh.name()))
+                .toList());
         var e2eDir = project.outputPath() + "/e2e";
         createDir(e2eDir, "src/test/java/e2e");
         createFile(e2eDir, model, "e2e-suite-pom.ftl", "pom.xml");
@@ -2596,7 +2602,8 @@ public class GenerateCodeUseCase {
                 .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(projectServiceIds::contains))
                 .map(sh -> Map.of(
                         "slug", sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
-                        "name", sh.name()))
+                        "name", sh.name(),
+                        "title", sh.title() != null && !sh.title().isBlank() ? sh.title() : sh.name()))
                 .toList());
         createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
         createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");

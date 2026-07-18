@@ -9,9 +9,7 @@ import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
 import io.mateu.uidl.data.RemoteMenu;
 import io.mateu.uidl.StyleConstants;
-<#if shell.designSystem?? && shell.designSystem?has_content>
 import io.mateu.uidl.annotations.KeycloakSecured;
-</#if>
 
 @UI("")
 @Title("${shell.title!shell.name}")
@@ -19,9 +17,7 @@ import io.mateu.uidl.annotations.KeycloakSecured;
 @FavIcon("/images/favicon.png")
 @Logo("/images/logo.png")
 @Style(StyleConstants.CONTAINER)
-<#if shell.designSystem?? && shell.designSystem?has_content>
-@KeycloakSecured(url = "${r"${KEYCLOAK_URL:http://localhost:8080/auth}"}", realm = "${r"${KEYCLOAK_REALM:master}"}", clientId = "${r"${KEYCLOAK_CLIENT_ID:shell}"}")
-</#if>
+@KeycloakSecured(url = "http://localhost:8080", realm = "master", clientId = "shell")
 public class ${shellClassName}Home {
 
 <#if resolvedServices?has_content>

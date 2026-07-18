@@ -30,6 +30,17 @@ docker run -d --name $PRE-keycloak -p 8080:8080 \
 
 echo "==> esperando a postgres"
 until docker exec $PRE-postgres pg_isready -U user_app > /dev/null 2>&1; do sleep 1; done
+<#if shells?has_content>
+
+echo "==> keycloak: cliente 'shell' para el login OIDC de la shell"
+until curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration > /dev/null 2>&1; do sleep 2; done
+docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8080 --realm master --user admin --password admin > /dev/null 2>&1 || true
+docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r master \
+  -s clientId=shell -s publicClient=true -s standardFlowEnabled=true \
+  -s rootUrl=http://localhost:8100 \
+  -s 'redirectUris=["http://localhost:8100/*","http://localhost:8088/*"]' > /dev/null 2>&1 || true
+</#if>
 
 <#list services as s>
 docker exec $PRE-postgres psql -U user_app -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '${s.db}'" | grep -q 1 \

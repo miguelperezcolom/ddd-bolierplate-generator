@@ -55,4 +55,24 @@ public class AppsE2eTest extends BaseE2eTest {
     }
 </#list>
 </#list>
+<#list shells![] as sh>
+
+    // The shell's OIDC flow: unauthenticated visitors land on keycloak (provisioned by
+    // up.sh with the 'shell' client; admin/admin is the dev default) and come back to
+    // the secured home with its remote menus.
+    @Test
+    void shell${sh.slug?cap_first}LoginOidc() {
+        var page = newPage();
+        page.navigate("http://localhost:8100/");
+        page.waitForTimeout(5000);
+        if (page.url().contains(":8080/")) {
+            page.locator("input[name='username'], #username").first().fill("admin");
+            page.locator("input[name='password'], #password").first().fill("admin");
+            page.locator("button[type='submit'], input[type='submit'], #kc-login").first().click();
+            page.waitForTimeout(5000);
+        }
+        waitVisible(page, "text=${sh.title}");
+        page.close();
+    }
+</#list>
 }
