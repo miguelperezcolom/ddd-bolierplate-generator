@@ -14,6 +14,7 @@ piezas y genera la aplicación para ver cómo aterriza el patrón en código.
 | `saga/` | Saga orquestada | `CheckoutSaga` con compensación en orden inverso (`compensatingStepId`), persistencia, reintentos y DLQ. |
 | `event-sourcing/` | Event Sourcing | Agregado `EVENT_SOURCED` con snapshots cada N, eventos con `schemaVersion` (upcaster) y precondiciones de negocio. |
 | `proceso-humano/` | Proceso con tarea humana | Proceso con paso `HUMAN` (rol, plazo ISO-8601, escalado a otro rol, página de formulario) y worklist derivada. |
+| `integraciones/` | Integraciones | Los cinco estilos de integración en un mapa: gateways REST con auth distinta (ApiKey, Basic) y resiliencia declarada, ETL desde tabla legacy, evento de integración saliente con DLQ, suscripción entrante idempotente, y MCP (servidor externo + agente interno). |
 
 ## Cómo explorarlos
 

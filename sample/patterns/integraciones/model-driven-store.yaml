@@ -1,0 +1,260 @@
+---
+# ============================================================================
+# PATRÓN DIDÁCTICO: INTEGRACIONES — un núcleo modux hablando con el exterior
+# ============================================================================
+# Escaparate de las CINCO vías de integración sobre el BC `pedidos` (tienda):
+#   1. Gateway REST saliente: `gw-pagos` cobra en la pasarela (auth ApiKey) y
+#      declara resiliencia (retry, circuit breaker, timeout — hoy declaración;
+#      el generador emite la llamada REST + auth, el cableado es custom).
+#   2. Otro gateway, otra auth: `gw-logistica` (Basic) crea y consulta envíos.
+#   3. Polling de un ERP legacy: `etlFlows` sondea PEDIDOS_ERP, traduce con
+#      `mm-erp-a-view` y materializa el read model `pedidos-erp-view`.
+#   4. Eventos: sale PedidoCobrado (topic + DLQ), entra PagoConfirmado.
+#   5. MCP: la pasarela expone un `mcpServers` y el agente declara sus tools.
+# Qué mirar: la vista «Integraciones» del editor (gateways/ETL en el borde OUT, eventos en el async, MCP en intención). Generar:
+#   modux --modux.model-file=sample/patterns/integraciones/model-driven-store.yaml \
+#         --modux.generate=integraciones
+# ============================================================================
+# ── Proyecto y los tres sistemas externos del mapa ──────────────────────────
+projects:
+- id: "integraciones"
+  name: "Pedidos Integrados"
+  outputPath: "sample/out-integraciones"
+  packageName: "com.ejemplos.integraciones"
+  dbMigrationTool: Flyway
+  tenancyStrategy: "NONE"
+  serviceIds:
+  - "svc-pedidos"
+  externalSystems:
+  - id: "pasarela-pagos"
+    name: "Pasarela de pagos"
+    protocol: "REST"
+    direction: "OUTBOUND"
+    mcpServers:
+    - {id: "mcp-pasarela", name: "MCP Pasarela", uri: "https://mcp.pasarela-pagos.example.com", description: "Herramientas MCP de la pasarela (consulta de cobros, devoluciones)."}
+  - id: "logistica-express"
+    name: "Logística Express"
+    protocol: "REST"
+    direction: "BOTH"
+  - id: "erp-legacy"
+    name: "ERP legacy"
+    protocol: "DATABASE"
+    direction: "INBOUND"
+    tables:
+    - {id: "tbl-pedidos-erp", name: "PEDIDOS_ERP", description: "Tabla del ERP con los pedidos consolidados; se sondea (sin CDC ni eventos)."}
+services:
+- id: "svc-pedidos"
+  name: "Pedidos"
+  moduleIds:
+  - "mod-pedidos-main"
+  gatewayIds:
+  - "gw-pagos"
+  - "gw-logistica"
+
+# ── Bounded context núcleo: todo el tráfico exterior pasa por aquí ──────────
+boundedContexts:
+- id: "pedidos"
+  name: "Pedidos"
+  subdomainType: "CORE"
+  description: "Núcleo de pedidos online: integra pagos y logística (gateways), el ERP (polling ETL), eventos con el exterior y un agente MCP."
+  aggregateIds:
+  - "pedido"
+  useCaseIds:
+  - "uc-cobrar-pedido"
+  - "uc-marcar-pedido-cobrado"
+  - "uc-consultar-estado-envio"
+  domainEventIds:
+  - "ev-pedido-cobrado"
+  readModelIds:
+  - "rm-pedidos-erp-view"
+  projectionIds:
+  - "proj-pedidos-erp-view"
+  subscriptionIds:
+  - "sub-pago-confirmado"
+aggregates:
+- id: "pedido"
+  name: "Pedido"
+  modelId: "model-pedido"
+  persistenceType: "JPA"
+  idType: "LONG"
+
+# ── Modelos: agregado+payload, comandos, DTOs externos y la vista ────────────
+models:
+- id: "model-pedido"
+  name: "Pedido"
+  fields:
+  - {id: "f-pedido-numero", name: "numeroPedido", basicType: true, type: "string"}
+  - {id: "f-pedido-cliente", name: "cliente", basicType: true, type: "string"}
+  - {id: "f-pedido-importe", name: "importeTotal", basicType: true, type: "number"}
+  - {id: "f-pedido-direccion", name: "direccionEntrega", basicType: true, type: "string"}
+- id: "model-cobrar-pedido"
+  name: "CobrarPedido"
+  fields:
+  - {id: "f-cobrar-numero", name: "numeroPedido", basicType: true, type: "string"}
+  - {id: "f-cobrar-importe", name: "importe", basicType: true, type: "number"}
+  - {id: "f-cobrar-moneda", name: "moneda", basicType: true, type: "string"}
+  - {id: "f-cobrar-token", name: "tokenTarjeta", basicType: true, type: "string"}
+- id: "model-pago-confirmado"
+  name: "PagoConfirmado"
+  fields:
+  - {id: "f-pago-numero", name: "numeroPedido", basicType: true, type: "string"}
+  - {id: "f-pago-importe", name: "importe", basicType: true, type: "number"}
+  - {id: "f-pago-referencia", name: "referenciaPago", basicType: true, type: "string"}
+- id: "model-estado-envio"
+  name: "EstadoEnvio"
+  fields:
+  - {id: "f-estado-seguimiento", name: "codigoSeguimiento", basicType: true, type: "string"}
+  - {id: "f-estado-estado", name: "estado", basicType: true, type: "string"}
+- id: "model-pedido-erp"
+  name: "PedidoErp"
+  fields:
+  - {id: "f-erp-cod", name: "codPed", basicType: true, type: "string"}
+  - {id: "f-erp-nom", name: "nomCli", basicType: true, type: "string"}
+  - {id: "f-erp-imp", name: "impTot", basicType: true, type: "number"}
+  - {id: "f-erp-est", name: "estPed", basicType: true, type: "string"}
+- id: "model-pedido-erp-view"
+  name: "PedidoErpView"
+  fields:
+  - {id: "f-view-numero", name: "numeroPedido", basicType: true, type: "string"}
+  - {id: "f-view-cliente", name: "cliente", basicType: true, type: "string"}
+  - {id: "f-view-importe", name: "importeTotal", basicType: true, type: "number"}
+  - {id: "f-view-estado", name: "estadoErp", basicType: true, type: "string"}
+
+# ── 4a · El evento que sale: PedidoCobrado, con topic y DLQ ──────────────────
+domainEvents:
+- id: "ev-pedido-cobrado"
+  name: "PedidoCobrado"
+  modelId: "model-pedido"
+  publishAsIntegrationEvent: true
+  topicName: "pedidos.pedido-cobrado.v1"
+integrationEvents:
+- id: "ie-pedido-cobrado"
+  name: "PedidoCobrado"
+  boundedContextId: "pedidos"
+  sourceDomainEventId: "ev-pedido-cobrado"
+  payloadModelId: "model-pedido"
+  topicName: "pedidos.pedido-cobrado.v1"
+  deadLetterQueueEnabled: true
+  deadLetterQueueName: "pedidos.pedido-cobrado.dlq"
+  maxDeliveryAttempts: 5
+
+# ── Casos de uso: cobrar (1), reaccionar al evento (4b) y consultar envío (2)
+useCases:
+- id: "uc-cobrar-pedido"
+  name: "CobrarPedido"
+  exposedAsRest: true
+  apiVersion: "v1"
+  inputModelId: "model-cobrar-pedido"
+  steps:
+  - {id: "step-guardar-pedido", name: "GuardarPedido", type: "SaveAggregate", aggregateId: "pedido"}
+  - {id: "step-cobrar", name: "CobrarEnPasarela", type: "CallGateway", gatewayId: "gw-pagos", gatewayOperationId: "op-cobrar"}
+  - {id: "step-publicar-cobrado", name: "PublicarPedidoCobrado", type: "PublishDomainEvent", domainEventId: "ev-pedido-cobrado"}
+- id: "uc-marcar-pedido-cobrado"
+  name: "MarcarPedidoCobrado"
+  inputModelId: "model-pago-confirmado"
+  steps:
+  - {id: "step-marcar-cobrado", name: "MarcarCobrado", type: "Custom", intent: "Carga el pedido por numeroPedido, verifica que el importe coincide y lo pasa a estado COBRADO con la referenciaPago"}
+- id: "uc-consultar-estado-envio"
+  name: "ConsultarEstadoEnvio"
+  exposedAsRest: true
+  apiVersion: "v1"
+  outputModelId: "model-estado-envio"
+  steps:
+  - {id: "step-consultar-envio", name: "ConsultarEnvio", type: "Custom", intent: "Invoca gw-logistica.consultarEnvio con el codigoSeguimiento y devuelve el EstadoEnvio (la operación lleva path param: la llamada es código custom)"}
+
+# ── 1+2 · Gateways salientes: cada uno con su auth y su contrato ─────────────
+# La resiliencia de gw-pagos es declaración: se emite la llamada REST con auth; el cableado es custom.
+gateways:
+- id: "gw-pagos"
+  name: "PasarelaPagos"
+  baseUrl: "https://api.pasarela-pagos.example.com/v1"
+  authType: "ApiKey"
+  authApiKeyHeaderName: "X-Api-Key"
+  globalTimeoutMs: 3000
+  operations:
+  - id: "op-cobrar"
+    name: "cobrar"
+    httpMethod: "POST"
+    path: "/cobros"
+    inputModelId: "model-cobrar-pedido"
+    retryMaxAttempts: 3
+    retryWaitDurationMs: 500
+    circuitBreakerEnabled: true
+    circuitBreakerFailureRateThreshold: 50
+    circuitBreakerSlidingWindowSize: 10
+- id: "gw-logistica"
+  name: "LogisticaExpress"
+  baseUrl: "https://api.logistica-express.example.com"
+  authType: "Basic"
+  operations:
+  - {id: "op-crear-envio", name: "crearEnvio", httpMethod: "POST", path: "/envios", inputModelId: "model-pedido"}
+  - id: "op-consultar-envio"
+    name: "consultarEnvio"
+    httpMethod: "GET"
+    path: "/envios/{codigoSeguimiento}"
+    parameters:
+    - {name: "codigoSeguimiento", location: "path", type: "string", required: true}
+    outputModelId: "model-estado-envio"
+
+# ── 4b · El evento que entra: consumo idempotente (inbox) ────────────────────
+subscriptions:
+- id: "sub-pago-confirmado"
+  name: "PagoConfirmado"
+  eventName: "PagoConfirmado"
+  sourceService: "pasarela-pagos"
+  inputModelId: "model-pago-confirmado"
+  topicName: "pasarela.pago-confirmado.v1"
+  consumerGroup: "pedidos"
+  idempotencyEnabled: true
+  actions:
+  - {id: "act-marcar-cobrado", name: "marcarPedidoCobrado", type: "CallUseCase", useCaseId: "uc-marcar-pedido-cobrado"}
+
+# ── 3 · Lectura del ERP: polling ETL → traducción → vista materializada ──────
+readModels:
+- id: "rm-pedidos-erp-view"
+  name: "PedidosErpView"
+  boundedContextId: "pedidos"
+  modelId: "model-pedido-erp-view"
+  storageType: "Document"
+projections:
+- id: "proj-pedidos-erp-view"
+  name: "PedidosErpView"
+  readModelId: "rm-pedidos-erp-view"
+  sourceExternalTableId: "tbl-pedidos-erp"
+  rebuildStrategy: "REPLAY"
+  errorHandlingStrategy: "RETRY"
+etlFlows:
+- id: "etl-poll-pedidos-erp"
+  name: "SincronizacionPedidosErp"
+  ownerBoundedContextId: "pedidos"
+  steps:
+  - {id: "step-sondear-erp", name: "SondearPedidosErp", type: "SOURCE_PULL", externalTableId: "tbl-pedidos-erp", intent: "Lee de PEDIDOS_ERP las filas modificadas desde el último barrido (marca de agua persistida)"}
+  - {id: "step-traducir-pedido", name: "TraducirPedidoAVista", type: "TRANSFORM", modelMappingId: "mm-erp-a-view", intent: "Aplica mm-erp-a-view y rellena la vista con la fila traducida"}
+modelMappings:
+- id: "mm-erp-a-view"
+  name: "ErpAVista"
+  sourceModelId: "model-pedido-erp"
+  targetModelId: "model-pedido-erp-view"
+  hasCustomPart: true
+  rules:
+  - {id: "rule-cod-numero", sourceFieldId: "f-erp-cod", targetFieldId: "f-view-numero"}
+  - {id: "rule-nom-cliente", sourceFieldId: "f-erp-nom", targetFieldId: "f-view-cliente"}
+  - {id: "rule-imp-importe", sourceFieldId: "f-erp-imp", targetFieldId: "f-view-importe"}
+  - {id: "rule-est-estado", sourceFieldId: "f-erp-est", targetFieldId: "f-view-estado"}
+
+# ── 5 · El agente interno y sus herramientas declaradas ──────────────────────
+# allowedMcpServerIds: servidores MCP EXTERNOS que puede invocar (la pasarela);
+# allowedUseCaseIds: casos de uso del núcleo que puede ejecutar directamente.
+aiAgents:
+- id: "agente-operaciones"
+  name: "AgenteOperaciones"
+  description: "Asistente de operaciones: consulta cobros y devoluciones por el MCP de la pasarela y puede cobrar pedidos del núcleo."
+  allowedMcpServerIds:
+  - "mcp-pasarela"
+  allowedUseCaseIds:
+  - "uc-cobrar-pedido"
+modules:
+- id: "mod-pedidos-main"
+  name: "Pedidos"
+  boundedContextId: "pedidos"
+  main: true

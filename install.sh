@@ -54,7 +54,7 @@ if [ -d "$PATTERNS_SRC" ]; then
   cp -R "$PATTERNS_SRC/." "$EXAMPLES_DIR/"
   rm -f "$EXAMPLES_DIR/README.md"
   [ -f "$REPOS_FILE" ] || echo "repositories:" > "$REPOS_FILE"
-  for p in bff acl cqrs event-driven saga event-sourcing proceso-humano; do
+  for p in bff acl cqrs event-driven saga event-sourcing proceso-humano integraciones; do
     if ! grep -q "id: \"patron-$p\"" "$REPOS_FILE" 2>/dev/null; then
       cat >> "$REPOS_FILE" <<EOF
 - id: "patron-$p"
