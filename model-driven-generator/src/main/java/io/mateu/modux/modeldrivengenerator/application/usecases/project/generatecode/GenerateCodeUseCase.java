@@ -144,6 +144,7 @@ public class GenerateCodeUseCase {
             generateDockerCompose(project);
             generateCiWorkflow(project);
             generateTerraform(project);
+            generateUpSh(project);
         }
 
         // UI Shells — standalone Spring Boot apps (no JPA/Kafka, OAuth2 only)
@@ -2477,6 +2478,34 @@ public class GenerateCodeUseCase {
                 .distinct()
                 .toList());
         createFile(project.outputPath(), model, "terraform-main.ftl", "terraform/main.tf");
+    }
+
+    /**
+     * up.sh / down.sh: the generated system's local run loop — infra (postgres with the
+     * per-service databases, kafka with the listeners the generated defaults expect,
+     * keycloak when a uiShell exists) plus every service and shell, all on the model's
+     * declared ports with zero overrides. Idempotent by construction.
+     */
+    private void generateUpSh(ProjectEntity project) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        var services = effectiveServices(project);
+        model.put("services", services.stream()
+                .map(sv -> Map.of(
+                        "name", serviceName(sv),
+                        "port", sv.port() != null ? sv.port() : 8080,
+                        "db", sv.name().toLowerCase().replace(" ", "_")))
+                .toList());
+        var projectServiceIds = services.stream().map(ServiceEntity::id)
+                .collect(java.util.stream.Collectors.toSet());
+        model.put("shells", repository.findAllOfType(UiShellEntity.class).stream()
+                .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(projectServiceIds::contains))
+                .map(sh -> Map.of(
+                        "slug", sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                        "name", sh.name()))
+                .toList());
+        createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
+        createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");
     }
 
     // ─── UI Shells ────────────────────────────────────────────────────────────
