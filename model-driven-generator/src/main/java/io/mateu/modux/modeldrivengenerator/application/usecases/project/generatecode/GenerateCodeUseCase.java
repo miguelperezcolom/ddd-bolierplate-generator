@@ -2523,6 +2523,12 @@ public class GenerateCodeUseCase {
                                                 "menuLabel", item.label() != null ? item.label() : uc.name(),
                                                 "title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name(),
                                                 "buttonLabel", humanizeUcName(uc.name()),
+                                                // Same fallback as usecase-page.ftl's success Message
+                                                // (${usecase.title!usecase.className}: hecho) — the e2e waits for
+                                                // exactly that text, so a backend failure turns the test RED.
+                                                "successMessage",
+                                                    (uc.title() != null && !uc.title().isBlank() ? uc.title() : toTypeName(uc.name()))
+                                                        + ": hecho",
                                                 "methodName", toTypeName(uc.name()).substring(0, 1).toLowerCase()
                                                         + toTypeName(uc.name()).substring(1),
                                                 "fields", fields));
