@@ -39,6 +39,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
+        <!-- API-only: the generated pages annotate required fields; Mateu renders the
+             indicator from them. No provider needed. -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
 <#if idp??>
         <dependency>
             <groupId>org.springframework.boot</groupId>

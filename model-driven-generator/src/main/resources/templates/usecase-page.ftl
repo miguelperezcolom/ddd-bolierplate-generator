@@ -22,6 +22,16 @@ import io.mateu.uidl.annotations.InlineEditing;
 </#if>
 import io.mateu.uidl.annotations.Label;
 import io.mateu.uidl.annotations.Notice;
+<#assign hayReq = false>
+<#if inputModel?? && inputModel.fields?has_content>
+<#list inputModel.fields as field>
+<#if field.validations?? && field.validations?has_content><#assign hayReq = true></#if>
+</#list>
+</#if>
+<#if hayReq>
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+</#if>
 import io.mateu.uidl.annotations.Stereotype;
 import io.mateu.uidl.annotations.Style;
 import io.mateu.uidl.annotations.Title;
@@ -77,31 +87,40 @@ public class ${ucClass}Page {
 <#if inputModel?? && inputModel.fields?has_content>
 <#list inputModel.fields as field>
 <#assign lbl = (field.label?? && field.label?has_content)?then('@Label("' + field.label + '")\n    ', '')>
+<#-- required indicator: the model's validations become jakarta annotations Mateu reads
+     (NotNull/NotEmpty → FormFieldDto.required → the vaadin required marker) -->
+<#assign req = ''>
+<#if field.validations?? && field.validations?has_content>
+<#list field.validations as v>
+<#if v.type == "NotNull"><#assign req = req + '    @NotNull\n'></#if>
+<#if v.type == "NotEmpty" || v.type == "NotBlank"><#assign req = req + '    @NotEmpty\n'></#if>
+</#list>
+</#if>
 <#if field.basicType?? && field.basicType>
     <#if field.type == "integer">
-    ${lbl}Integer ${field.name};
+${req}    ${lbl}Integer ${field.name};
     <#elseif field.type == "number" || field.type == "money">
-    ${lbl}BigDecimal ${field.name};
+${req}    ${lbl}BigDecimal ${field.name};
     <#elseif field.type == "bool">
-    ${lbl}Boolean ${field.name};
+${req}    ${lbl}Boolean ${field.name};
     <#elseif field.type == "date">
-    ${lbl}LocalDate ${field.name};
+${req}    ${lbl}LocalDate ${field.name};
     <#elseif field.type == "time">
-    ${lbl}LocalTime ${field.name};
+${req}    ${lbl}LocalTime ${field.name};
     <#elseif field.type == "dateTime">
-    ${lbl}LocalDateTime ${field.name};
+${req}    ${lbl}LocalDateTime ${field.name};
     <#elseif field.type == "array" || field.type == "json">
-    ${lbl}@Stereotype(FieldStereotype.textarea)
+${req}    ${lbl}@Stereotype(FieldStereotype.textarea)
     String ${field.name};
     <#else>
-    ${lbl}String ${field.name};
+${req}    ${lbl}String ${field.name};
     </#if>
 <#elseif isGrid(field)>
-    ${lbl}@InlineEditing
+${req}    ${lbl}@InlineEditing
     @Stereotype(FieldStereotype.grid)
     List<${gridClasses[field.modelId]}> ${field.name} = new ArrayList<>();
 <#else>
-    ${lbl}String ${field.name}Id;
+${req}    ${lbl}String ${field.name}Id;
 </#if>
 </#list>
 <#else>
