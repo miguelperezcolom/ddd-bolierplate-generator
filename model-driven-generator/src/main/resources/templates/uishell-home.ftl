@@ -44,6 +44,11 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
     // @Menu
     // RemoteMenu myService = new RemoteMenu("/_my-service").withLabel("My Service");
 </#if>
+<#if project.objective?? && project.objective?has_content>
+
+    /** Default home: what this system is about (the model's project objective). */
+    Text welcome = new Text("${project.objective?j_string}");
+</#if>
 <#if idp??>
 
     /** The user widget: who is logged in (from the keycloak JWT) and a way out. */

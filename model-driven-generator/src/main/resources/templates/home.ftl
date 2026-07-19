@@ -52,6 +52,15 @@ public class Home<#if idp??> implements WidgetSupplier</#if> {
     ${pg.className} ${pg.field};
 </#list>
 </#if>
+<#assign welcomeLines = []>
+<#list service.modules![] as m>
+<#if m.description?? && m.description?has_content><#assign welcomeLines = welcomeLines + [m.description]></#if>
+</#list>
+<#if welcomeLines?has_content>
+
+    /** Default home: what this part of the system is about (its bounded contexts). */
+    Text welcome = new Text("${welcomeLines?join("\n\n")?j_string}");
+</#if>
 <#if idp??>
 
     /** The user widget: who is logged in (from the keycloak JWT) and a way out. */
