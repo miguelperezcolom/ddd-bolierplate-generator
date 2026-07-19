@@ -4,11 +4,9 @@ import io.mateu.uidl.annotations.FavIcon;
 import io.mateu.uidl.annotations.Logo;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.PageTitle;
-import io.mateu.uidl.annotations.Style;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
 import io.mateu.uidl.data.RemoteMenu;
-import io.mateu.uidl.StyleConstants;
 <#if idp??>
 import io.mateu.uidl.annotations.KeycloakSecured;
 import io.mateu.uidl.data.Anchor;
@@ -30,7 +28,6 @@ import static io.mateu.core.infra.JsonSerializer.fromJson;
 @PageTitle("${shell.title!shell.name}")
 @FavIcon("/images/logo.svg")
 @Logo("/images/logo.svg")
-@Style(StyleConstants.CONTAINER)
 <#if idp??>
 @KeycloakSecured(url = "${idp.url}", realm = "${idp.realm}", clientId = "shell")
 </#if>
