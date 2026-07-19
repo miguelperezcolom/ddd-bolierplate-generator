@@ -3,6 +3,9 @@ package ${project.packageName}.infra.in.ui;
 import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
+<#if idp??>
+import io.mateu.uidl.annotations.KeycloakSecured;
+</#if>
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 <#if homePage??>
@@ -40,6 +43,13 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
  */
 @Service
 @Scope("prototype")
+<#if idp??>
+<#-- keycloak.js login for this app: one public client per app (provisioned by up.sh),
+     named after the app path (or the service when the app lives at root) -->
+<#assign pathSlug = (adapter.path!'')?replace("^/","",'r')?replace("[^a-z0-9-]","",'r')>
+<#assign appClientId = pathSlug?has_content?then(pathSlug, service.name?lower_case?replace("[^a-z0-9]","-",'r'))>
+@KeycloakSecured(url = "${idp.url}", realm = "${idp.realm}", clientId = "${appClientId}")
+</#if>
 <#if ui??>
 <#assign uiPath = (ui.path?has_content)?then(ui.path, (adapter.path)!'')>
 @UI(<#if ui.indexHtmlPath?has_content || ui.frontendComponentPath?has_content>value = "${uiPath}"<#if ui.indexHtmlPath?has_content>, indexHtmlPath = "${ui.indexHtmlPath}"</#if><#if ui.frontendComponentPath?has_content>, frontendComponentPath = "${ui.frontendComponentPath}"</#if><#else>"${uiPath}"</#if>)

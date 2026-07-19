@@ -5,6 +5,19 @@ server:
 spring:
     application:
         name: ${service.name?lower_case?replace(" ","-")}
+<#if idp??>
+
+    # The JWT resource server (machine paths: /mateu/**, /mcp): tokens from the model's
+    # identity provider (${idp.name}) validate — the same keycloak the shell and every
+    # app log into, so remote menus and cross-service calls authenticate. jwk-set-uri
+    # (not issuer discovery) keeps startup independent of the IdP being reachable.
+    security:
+        oauth2:
+            resourceserver:
+                jwt:
+                    issuer-uri: ${idp.issuer}
+                    jwk-set-uri: ${idp.issuer}/protocol/openid-connect/certs
+</#if>
 
     datasource:
         url: jdbc:postgresql://127.0.0.1:5432/${service.name?lower_case?replace(" ","_")}
@@ -119,26 +132,3 @@ spring:
                         request.timeout.ms: 3000
                         retries: 1
                         retry.backoff.ms: 500
-<#if idp??>
-
----
-# «secure»: OIDC login against ${idp.name} (${idp.type}) — the model's identity provider.
-# The client credentials arrive through the environment: in Kubernetes, from the
-# modux-idp-credentials secret; locally, export IDP_CLIENT_ID / IDP_CLIENT_SECRET.
-# Without this profile the app boots OPEN (see SecurityConfig).
-spring:
-    config:
-        activate:
-            on-profile: secure
-    security:
-        oauth2:
-            client:
-                registration:
-                    ${idp.slug}:
-                        client-id: ${r"${IDP_CLIENT_ID}"}
-                        client-secret: ${r"${IDP_CLIENT_SECRET}"}
-                        scope: openid, profile, email, roles
-                provider:
-                    ${idp.slug}:
-                        issuer-uri: ${idp.issuer}
-</#if>

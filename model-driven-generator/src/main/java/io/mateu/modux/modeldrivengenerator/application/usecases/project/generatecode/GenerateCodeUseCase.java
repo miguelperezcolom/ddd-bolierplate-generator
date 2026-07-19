@@ -2344,6 +2344,7 @@ public class GenerateCodeUseCase {
         model.put("project", projectToMap(project));
         model.put("service", serviceToMap(service));
         model.put("adapter", fromJson(toJson(adapter)));
+        idpFor(project).ifPresent(idp -> model.put("idp", idp));
 
         // The declared UI this app REALIZES lends @UI its parameters (path wins over
         // the adapter's own; indexHtmlPath/frontendComponentPath only live on the UI).
@@ -2545,6 +2546,7 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
         model.put("apps", apps);
+        idpFor(project).ifPresent(idp -> model.put("idp", idp));
         model.put("shells", repository.findAllOfType(UiShellEntity.class).stream()
                 .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(serviceIds::contains))
                 .map(sh -> Map.of(
@@ -2605,6 +2607,36 @@ public class GenerateCodeUseCase {
                         "name", sh.name(),
                         "title", sh.title() != null && !sh.title().isBlank() ? sh.title() : sh.name()))
                 .toList());
+        // One public keycloak client per app (and per adapter-less service), matching the
+        // @KeycloakSecured clientIds the generated Homes carry. Only when an IdP is chosen.
+        var idp = idpFor(project);
+        model.put("idp", idp.orElse(null));
+        var appClients = new java.util.ArrayList<Map<String, Object>>();
+        if (idp.isPresent()) {
+            var servicesWithAdapter = new java.util.HashSet<String>();
+            repository.findAllOfType(UiAdapterEntity.class).stream()
+                    .filter(a -> a.serviceId() != null && projectServiceIds.contains(a.serviceId()))
+                    .sorted(java.util.Comparator.comparing(UiAdapterEntity::name,
+                            java.util.Comparator.nullsLast(String::compareTo)))
+                    .forEach(a -> {
+                        servicesWithAdapter.add(a.serviceId());
+                        var svc = services.stream()
+                                .filter(s -> s.id().equals(a.serviceId())).findFirst().orElse(null);
+                        var pathSlug = a.path() == null ? ""
+                                : a.path().replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+                        var clientId = !pathSlug.isBlank() ? pathSlug
+                                : (svc != null ? svc.name() : a.name())
+                                        .toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+                        appClients.add(Map.of("clientId", clientId,
+                                "port", svc != null && svc.port() != null ? svc.port() : 8080));
+                    });
+            services.stream()
+                    .filter(s -> !servicesWithAdapter.contains(s.id()))
+                    .forEach(s -> appClients.add(Map.of(
+                            "clientId", s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                            "port", s.port() != null ? s.port() : 8080)));
+        }
+        model.put("appClients", appClients);
         createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
         createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");
     }
@@ -2637,6 +2669,7 @@ public class GenerateCodeUseCase {
         model.put("shellPackage", shellPackage);
         model.put("shellClassName", shellClassName);
         model.put("resolvedServices", resolvedServices);
+        idpFor(project).ifPresent(idp -> model.put("idp", idp));
 
         createFile(shellDir, model, "uishell-pom.ftl", "pom.xml");
         createFile(shellDir, model, "uishell-application.ftl",
@@ -3384,7 +3417,18 @@ public class GenerateCodeUseCase {
                     var map = new HashMap<String, Object>();
                     map.put("name", idp.name());
                     map.put("slug", idp.name().toLowerCase().replaceAll("[^a-z0-9]+", "-"));
-                    map.put("issuer", idp.issuer().trim());
+                    var issuer = idp.issuer().trim();
+                    map.put("issuer", issuer);
+                    // A keycloak-style issuer (https://host/realms/<realm>) splits into the
+                    // pieces @KeycloakSecured and the local keycloak provisioning need.
+                    var realmsIdx = issuer.indexOf("/realms/");
+                    if (realmsIdx > 0) {
+                        map.put("url", issuer.substring(0, realmsIdx));
+                        map.put("realm", issuer.substring(realmsIdx + "/realms/".length()).replaceAll("/.*$", ""));
+                    } else {
+                        map.put("url", issuer);
+                        map.put("realm", "master");
+                    }
                     map.put("type", idp.type() == null ? "CORPORATE" : idp.type());
                     return map;
                 });

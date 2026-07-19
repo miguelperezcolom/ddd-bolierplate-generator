@@ -1,6 +1,9 @@
+<#-- The local keycloak container (and its client provisioning) only makes sense when
+     the model's IdP IS a local keycloak; an external IdP is assumed to exist already. -->
+<#assign localIdp = idp?? && idp.url?contains("localhost")>
 #!/bin/sh
 # ${project.name} — up.sh (GENERADO por modux; se regenera con el modelo)
-# Levanta el sistema completo en local: infra (postgres + kafka<#if shells?has_content> + keycloak</#if>),
+# Levanta el sistema completo en local: infra (postgres + kafka<#if localIdp> + keycloak</#if>),
 # una base de datos por servicio, los servicios en sus puertos declarados<#if shells?has_content> y la shell</#if>.
 # Idempotente: los contenedores se recrean y las bases solo se crean si faltan.
 # Todo arranca con los defaults del código generado — sin overrides.
@@ -8,8 +11,8 @@ set -e
 
 PRE="${project.name?lower_case?replace("[^a-z0-9]","-",'r')}"
 
-echo "==> infra: postgres + kafka<#if shells?has_content> + keycloak</#if>"
-docker rm -f $PRE-postgres $PRE-kafka <#if shells?has_content>$PRE-keycloak </#if>>/dev/null 2>&1 || true
+echo "==> infra: postgres + kafka<#if localIdp> + keycloak</#if>"
+docker rm -f $PRE-postgres $PRE-kafka <#if localIdp>$PRE-keycloak </#if>>/dev/null 2>&1 || true
 docker run -d --name $PRE-postgres \
   -e POSTGRES_USER=user_app -e POSTGRES_PASSWORD=user_password \
   -p 5432:5432 postgres:16-alpine > /dev/null
@@ -22,7 +25,7 @@ docker run -d --name $PRE-kafka -p 29092:9092 \
   -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
   -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
   apache/kafka:3.8.0 > /dev/null
-<#if shells?has_content>
+<#if localIdp>
 docker run -d --name $PRE-keycloak -p 8080:8080 \
   -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin \
   quay.io/keycloak/keycloak:26.0 start-dev > /dev/null
@@ -30,16 +33,24 @@ docker run -d --name $PRE-keycloak -p 8080:8080 \
 
 echo "==> esperando a postgres"
 until docker exec $PRE-postgres pg_isready -U user_app > /dev/null 2>&1; do sleep 1; done
-<#if shells?has_content>
+<#if localIdp>
 
-echo "==> keycloak: cliente 'shell' para el login OIDC de la shell"
-until curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration > /dev/null 2>&1; do sleep 2; done
+echo "==> keycloak: clientes públicos para el login (shell y apps)"
+until curl -sf ${idp.issuer}/.well-known/openid-configuration > /dev/null 2>&1; do sleep 2; done
 docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-  --server http://localhost:8080 --realm master --user admin --password admin > /dev/null 2>&1 || true
-docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r master \
+  --server ${idp.url} --realm master --user admin --password admin > /dev/null 2>&1 || true
+<#if shells?has_content>
+docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r ${idp.realm} \
   -s clientId=shell -s publicClient=true -s standardFlowEnabled=true \
   -s rootUrl=http://localhost:8100 \
   -s 'redirectUris=["http://localhost:8100/*","http://localhost:8088/*"]' > /dev/null 2>&1 || true
+</#if>
+<#list appClients as a>
+docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r ${idp.realm} \
+  -s clientId=${a.clientId} -s publicClient=true -s standardFlowEnabled=true \
+  -s rootUrl=http://localhost:${a.port?c} \
+  -s 'redirectUris=["http://localhost:${a.port?c}/*","http://localhost:8088/_${a.clientId}/*"]' > /dev/null 2>&1 || true
+</#list>
 </#if>
 
 <#list services as s>
@@ -91,8 +102,8 @@ Sistema arriba:
 <#list shells as sh>
   ${sh.slug} (shell) → http://localhost:8100
 </#list>
-<#if shells?has_content>
-  keycloak → http://localhost:8080 (admin/admin)
+<#if localIdp>
+  keycloak → ${idp.url} (admin/admin)
   Nota: los menús remotos de la shell se resuelven a través del api gateway o del ingress —
   cada app también se abre directa en su puerto.
 </#if>

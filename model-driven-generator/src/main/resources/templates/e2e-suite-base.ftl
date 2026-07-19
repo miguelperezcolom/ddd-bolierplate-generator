@@ -75,15 +75,35 @@ public abstract class BaseE2eTest {
     }
 
     /**
-     * Navigates to the app, logs in through the form when it shows, and lands BACK
-     * on the app path: Spring's login success redirect goes to "/", where the Mateu
-     * SPA cannot sync (its mateu endpoint lives under the app path) and shows
-     * "Not found" instead of the home.
+     * Navigates to the app and logs in, landing BACK on the app path.
+<#if idp??>
+     * The model authenticates against ${idp.name}: the Mateu frontend (keycloak.js)
+     * redirects to the IdP — this waits for that redirect, logs in with the dev
+     * keycloak's admin/admin and comes back to the app.
+<#else>
+     * Spring's form login when it shows; the login success redirect goes to "/", where
+     * the Mateu SPA cannot sync (its mateu endpoint lives under the app path), so we
+     * navigate back to the app afterwards.
+</#if>
      */
     protected void loginAndOpen(Page page, String appUrl, String username, String password) {
         page.navigate(appUrl);
+<#if idp??>
+        for (int i = 0; i < 15 && !page.url().contains("/realms/"); i++) {
+            page.waitForTimeout(1000);
+        }
+        if (page.url().contains("/realms/")) {
+            page.locator("input[name='username'], #username").first().fill("admin");
+            page.locator("input[name='password'], #password").first().fill("admin");
+            page.locator("button[type='submit'], input[type='submit'], #kc-login").first().click();
+            for (int i = 0; i < 15 && !page.url().startsWith(appUrl); i++) {
+                page.waitForTimeout(1000);
+            }
+        }
+<#else>
         loginIfNeeded(page, username, password);
         page.navigate(appUrl);
+</#if>
         page.waitForLoadState();
     }
 }
