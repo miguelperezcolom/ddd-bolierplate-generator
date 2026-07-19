@@ -121,6 +121,36 @@ public class ${ucClass}Page {
     @SneakyThrows
 </#if>
     public Object ${usecase.className?uncap_first}() {
+<#if inputModel?? && inputModel.fields?has_content>
+<#assign hayValidaciones = false>
+<#list inputModel.fields as field>
+<#if field.basicType?? && field.basicType && field.validations?? && field.validations?has_content>
+<#assign hayValidaciones = true>
+</#if>
+</#list>
+<#if hayValidaciones>
+        // Model-declared validations (NotNull / NotBlank / NotEmpty) — fail legibly before
+        // touching the use case.
+        var faltan = new java.util.ArrayList<String>();
+<#list inputModel.fields as field>
+<#if field.basicType?? && field.basicType && field.validations?? && field.validations?has_content>
+<#list field.validations as v>
+<#assign lbl = ((field.label?? && field.label?has_content)?then(field.label, field.name))?j_string>
+<#if v.type == "NotNull">
+        if (${field.name} == null) faltan.add("${lbl}");
+<#elseif v.type == "NotBlank" || v.type == "NotEmpty">
+<#if !(field.type?? && (field.type == "integer" || field.type == "number" || field.type == "money" || field.type == "bool" || field.type == "date" || field.type == "time" || field.type == "dateTime"))>
+        if (${field.name} == null || ${field.name}.isBlank()) faltan.add("${lbl}");
+</#if>
+</#if>
+</#list>
+</#if>
+</#list>
+        if (!faltan.isEmpty()) {
+            throw new IllegalArgumentException("Faltan datos obligatorios: " + String.join(", ", faltan));
+        }
+</#if>
+</#if>
 <#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
 <#if outputModel??>
         ${ucClass}Result result = useCase.handle(new ${ucClass}Command(${args}));
