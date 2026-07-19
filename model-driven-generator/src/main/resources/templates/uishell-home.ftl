@@ -16,8 +16,8 @@ import io.mateu.uidl.annotations.KeycloakSecured;
 @UI("")
 @Title("${shell.title!shell.name}")
 @PageTitle("${shell.title!shell.name}")
-@FavIcon("/images/favicon.png")
-@Logo("/images/logo.png")
+@FavIcon("/images/logo.svg")
+@Logo("/images/logo.svg")
 @Style(StyleConstants.CONTAINER)
 <#if idp??>
 @KeycloakSecured(url = "${idp.url}", realm = "${idp.realm}", clientId = "shell")

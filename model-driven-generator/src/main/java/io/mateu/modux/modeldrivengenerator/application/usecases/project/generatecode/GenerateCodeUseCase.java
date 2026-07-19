@@ -2512,11 +2512,14 @@ public class GenerateCodeUseCase {
                                         if (uc.inputModelId() != null && !uc.inputModelId().isBlank()) {
                                             var inputModel = repository.findById(uc.inputModelId(), ModelEntity.class).orElse(null);
                                             if (inputModel != null && inputModel.fields() != null) {
+                                                var fieldIndex = new java.util.concurrent.atomic.AtomicInteger();
                                                 inputModel.fields().stream().filter(ModelFieldEntity::basicType)
                                                         .forEach(f -> fields.add(Map.of(
                                                                 "name", f.name(),
                                                                 "label", f.label() != null && !f.label().isBlank() ? f.label() : f.name(),
-                                                                "sample", e2eSampleValue(mapFieldDataType(f.type())))));
+                                                                "type", mapFieldDataType(f.type()),
+                                                                "sample", e2eSampleValue(mapFieldDataType(f.type()),
+                                                                        fieldIndex.getAndIncrement()))));
                                             }
                                         }
                                         useCasePages.add(Map.of(
@@ -2566,13 +2569,16 @@ public class GenerateCodeUseCase {
         createFile(e2eDir, model, "e2e-suite-apps.ftl", "src/test/java/e2e/AppsE2eTest.java");
     }
 
-    /** A deterministic sample value for an e2e form field, by its resolved primitive type. */
-    private String e2eSampleValue(String primitiveType) {
+    /** A deterministic sample value for an e2e form field, by its resolved primitive type.
+     * The index spreads same-type fields (two dates in a form must not collide: a checkout
+     * needs to come after the check-in). */
+    private String e2eSampleValue(String primitiveType, int fieldIndex) {
         return switch (primitiveType == null ? "string" : primitiveType) {
-            case "integer" -> "42";
+            case "integer" -> String.valueOf(1 + fieldIndex);
             case "decimal" -> "12.5";
             case "bool" -> "true";
-            case "date" -> java.time.LocalDate.now().toString();
+            // the vaadin date inputs parse the US-locale short format
+            case "date" -> "8/" + (10 + fieldIndex) + "/2026";
             case "time" -> "10:30";
             case "datetime" -> "2026-01-01T10:30";
             case "email" -> "e2e@example.com";
@@ -2661,6 +2667,10 @@ public class GenerateCodeUseCase {
         createDir(shellDir, "src/main/java/" + packageDir + "/infra/config");
         createDir(shellDir, "src/main/resources/static/images");
         createDir(shellDir, "src/test/java");
+
+        // The shell's @Logo/@FavIcon point here: the mateu logo when the model names none.
+        copyClasspathResource("/static-assets/logo.svg",
+                shellDir + "/src/main/resources/static/images/logo.svg");
 
         // resolve serviceIds → ServiceEntity maps
         var resolvedServices = (shell.serviceIds() != null ? shell.serviceIds() : List.<String>of()).stream()
@@ -3258,6 +3268,17 @@ public class GenerateCodeUseCase {
         warnIfTampered(file);
         renderFile(file, model, template);
         recordGenerated(file);
+    }
+
+    /** Copies a generator classpath resource verbatim into the generated tree (static assets). */
+    @SneakyThrows
+    private void copyClasspathResource(String resource, String destPath) {
+        try (var in = this.getClass().getResourceAsStream(resource)) {
+            if (in == null) throw new IllegalStateException("Missing generator resource " + resource);
+            var dest = new File(destPath);
+            if (dest.getParentFile() != null) dest.getParentFile().mkdirs();
+            java.nio.file.Files.write(dest.toPath(), in.readAllBytes());
+        }
     }
 
     @SneakyThrows

@@ -28,8 +28,13 @@ public class AppsE2eTest extends BaseE2eTest {
         openMenuEntry(page, "${uc.menuLabel}");
 <#if uc.fields?has_content>
 <#list uc.fields as f>
-<#if f.sample == "texto-e2e" || f.sample == "e2e@example.com" || f.sample == "https://example.com">
-        page.getByLabel("${f.label}", new com.microsoft.playwright.Page.GetByLabelOptions().setExact(true)).first().fill("${f.sample}");
+<#if f.type != "bool">
+        page.getByLabel("${f.label}", new com.microsoft.playwright.Page.GetByLabelOptions().setExact(true)).first().fill("${f.sample?j_string}");
+<#if f.type == "date" || f.type == "datetime" || f.type == "time">
+        // Enter commits the typed date AND closes the picker overlay (Escape would
+        // revert the value, and an open overlay covers the submit button)
+        page.keyboard().press("Enter");
+</#if>
 </#if>
 </#list>
 </#if>
