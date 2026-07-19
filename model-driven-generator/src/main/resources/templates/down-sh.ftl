@@ -1,3 +1,4 @@
+<#assign localIdp = idp?? && idp.url?contains("localhost")>
 #!/bin/sh
 # ${project.name} — down.sh (GENERADO por modux; se regenera con el modelo)
 set -e
@@ -10,6 +11,9 @@ pkill -f "${s.name}-app-0.0.1-SNAPSHOT.jar" 2>/dev/null || true
 <#list shells as sh>
 pkill -f "${sh.slug}-0.0.1-SNAPSHOT.jar" 2>/dev/null || true
 </#list>
-docker rm -f $PRE-postgres $PRE-kafka <#if shells?has_content>$PRE-keycloak </#if>>/dev/null 2>&1 || true
+<#if shells?has_content>
+pkill -f "api-gateway-1.0.0.jar" 2>/dev/null || true
+</#if>
+docker rm -f $PRE-postgres $PRE-kafka <#if localIdp>$PRE-keycloak </#if>>/dev/null 2>&1 || true
 
 echo "Sistema parado (los logs quedan en .up-*.log)."

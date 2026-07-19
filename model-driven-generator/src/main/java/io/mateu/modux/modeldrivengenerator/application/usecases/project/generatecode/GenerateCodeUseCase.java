@@ -153,6 +153,15 @@ public class GenerateCodeUseCase {
                 .filter(shell -> inProject(shell.projectId(), project))
                 .forEach(shell -> generateUiShell(project, shell));
 
+        // The API gateway the shell's remote menus (and external channels) enter through —
+        // only meaningful when a uiShell exists.
+        if (!command.sourceOnly()) {
+            repository.findAllOfType(UiShellEntity.class).stream()
+                    .filter(shell -> inProject(shell.projectId(), project))
+                    .findAny()
+                    .ifPresent(shell -> generateApiGateway(project));
+        }
+
         // The manifest tracks the full project; a partial (view-scoped) run must not overwrite it or
         // it would report every non-slice file as orphaned.
         if (generationScope == null) {
@@ -2651,6 +2660,46 @@ public class GenerateCodeUseCase {
         model.put("appClients", appClients);
         createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
         createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");
+    }
+
+    /**
+     * The API gateway (Spring Cloud Gateway, webmvc): one front door for the shell and the
+     * external channels. Routes come from the model — every service gets its /api border;
+     * every app (uiAdapter) gets its micro-frontend routes (/_app → /app) and its natural
+     * path (/app); everything else falls through to the shell.
+     */
+    private void generateApiGateway(ProjectEntity project) {
+        var services = effectiveServices(project);
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("gatewayPort", 8088);
+        model.put("shellPort", 8100);
+        model.put("services", services.stream()
+                .map(sv -> Map.of(
+                        "name", serviceName(sv),
+                        "slug", serviceName(sv).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                        "port", sv.port() != null ? sv.port() : 8080))
+                .toList());
+        var portsByServiceId = services.stream().collect(java.util.stream.Collectors.toMap(
+                ServiceEntity::id, sv -> sv.port() != null ? sv.port() : 8080));
+        model.put("apps", repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> a.serviceId() != null && portsByServiceId.containsKey(a.serviceId()))
+                .filter(a -> a.path() != null && !a.path().isBlank())
+                .sorted(java.util.Comparator.comparing(UiAdapterEntity::name,
+                        java.util.Comparator.nullsLast(String::compareTo)))
+                .map(a -> {
+                    var slug = a.path().replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+                    return Map.of(
+                            "slug", slug,
+                            "port", portsByServiceId.get(a.serviceId()));
+                })
+                .toList());
+        var gatewayDir = project.outputPath() + "/gateway";
+        var packageDir = (project.packageName() + ".gateway").replace(".", "/");
+        createFile(gatewayDir, model, "gateway-pom.ftl", "pom.xml");
+        createFile(gatewayDir, model, "gateway-application.ftl",
+                "src/main/java/" + packageDir + "/ApiGatewayApplication.java");
+        createFile(gatewayDir, model, "gateway-yaml.ftl", "src/main/resources/application.yaml");
     }
 
     // ─── UI Shells ────────────────────────────────────────────────────────────

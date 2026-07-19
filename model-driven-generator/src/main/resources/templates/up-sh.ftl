@@ -74,6 +74,14 @@ fi
 java -jar ${sh.slug}/target/${sh.slug}-0.0.1-SNAPSHOT.jar > .up-${sh.slug}.log 2>&1 &
 
 </#list>
+<#if shells?has_content>
+echo "==> api gateway (:8088)"
+if [ ! -f gateway/target/${r"${PRE}"}-api-gateway-1.0.0.jar ]; then
+  (cd gateway && mvn -q -DskipTests package > /dev/null)
+fi
+java -jar gateway/target/${r"${PRE}"}-api-gateway-1.0.0.jar > .up-gateway.log 2>&1 &
+
+</#if>
 
 echo "==> esperando a que arranquen los servicios"
 wait_started() {
@@ -92,6 +100,9 @@ wait_started ${s.name}
 <#list shells as sh>
 wait_started ${sh.slug}
 </#list>
+<#if shells?has_content>
+wait_started gateway
+</#if>
 
 cat <<EOF
 
@@ -102,6 +113,9 @@ Sistema arriba:
 <#list shells as sh>
   ${sh.slug} (shell) → http://localhost:8100
 </#list>
+<#if shells?has_content>
+  api gateway → http://localhost:8088 (la shell y los menús remotos se usan desde aquí)
+</#if>
 <#if localIdp>
   keycloak → ${idp.url} (admin/admin)
   Nota: los menús remotos de la shell se resuelven a través del api gateway o del ingress —
