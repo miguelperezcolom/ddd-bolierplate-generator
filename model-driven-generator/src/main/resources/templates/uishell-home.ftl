@@ -36,7 +36,7 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
 <#if resolvedServices?has_content>
 <#list resolvedServices as svc>
     @Menu
-    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("/_${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}").withLabel("${svc.name}");
+    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("/_${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}").withLabel("${svc.name}").withPath("${svc.appPath}");
 
 </#list>
 <#else>

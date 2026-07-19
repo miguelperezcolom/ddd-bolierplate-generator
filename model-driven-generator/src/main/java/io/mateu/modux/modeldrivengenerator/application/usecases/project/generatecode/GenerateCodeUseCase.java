@@ -2532,7 +2532,11 @@ public class GenerateCodeUseCase {
                                             }
                                         }
                                         useCasePages.add(Map.of(
-                                                "menuLabel", item.label() != null ? item.label() : uc.name(),
+                                                // Same label the rendered menu shows: the Home's menu field
+                                                // name comes from fieldNameFromLabel(item.label) and Mateu
+                                                // humanizes it (parentheses and symbols do not survive).
+                                                "menuLabel", humanizeUcName(fieldNameFromLabel(
+                                                        item.label() != null ? item.label() : uc.name(), "")),
                                                 "title", uc.title() != null && !uc.title().isBlank() ? uc.title() : uc.name(),
                                                 "buttonLabel", humanizeUcName(uc.name()),
                                                 // Same fallback as usecase-page.ftl's success Message
@@ -2721,11 +2725,22 @@ public class GenerateCodeUseCase {
         copyClasspathResource("/static-assets/logo.svg",
                 shellDir + "/src/main/resources/static/images/logo.svg");
 
-        // resolve serviceIds → ServiceEntity maps
+        // resolve serviceIds → ServiceEntity maps (name + the app path its remote menu answers to)
         var resolvedServices = (shell.serviceIds() != null ? shell.serviceIds() : List.<String>of()).stream()
                 .map(id -> repository.findById(id, ServiceEntity.class).orElse(null))
                 .filter(s -> s != null)
-                .map(s -> fromJson(toJson(s)))
+                .map(s -> {
+                    var map = new HashMap<String, Object>();
+                    map.putAll(fromJson(toJson(s)));
+                    var appPath = repository.findAllOfType(UiAdapterEntity.class).stream()
+                            .filter(a -> s.id().equals(a.serviceId()))
+                            .map(UiAdapterEntity::path)
+                            .filter(p -> p != null && !p.isBlank())
+                            .findFirst()
+                            .orElse("/" + s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"));
+                    map.put("appPath", appPath);
+                    return (Map<String, Object>) map;
+                })
                 .toList();
 
         Map<String, Object> model = new HashMap<>();

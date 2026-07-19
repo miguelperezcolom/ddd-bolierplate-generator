@@ -18,7 +18,9 @@ spring:
                       filters: [ "StripPrefix=2" ]
 </#list>
 <#list apps as a>
-                    # ${a.slug}: micro-frontend (rutas /_app de la shell y rutas naturales /app)
+                    # ${a.slug}: micro-frontend (rutas /_app de la shell) y caminos de máquina
+                    # en ruta natural (los sync del micro-frontend van a /<app>/mateu y /<app>/assets);
+                    # la UI en /<app> la sirve la shell, que monta la app dentro (misma sesión)
                     - id: mateu-${a.slug}
                       uri: http://localhost:${a.port?c}
                       predicates: [ "Path=/_${a.slug}/mateu/**" ]
@@ -29,7 +31,7 @@ spring:
                       filters: [ "RewritePath=/_${a.slug}(?<segment>/?.*), /${a.slug}${r"${segment}"}" ]
                     - id: app-${a.slug}
                       uri: http://localhost:${a.port?c}
-                      predicates: [ "Path=/${a.slug}/**" ]
+                      predicates: [ "Path=/${a.slug}/mateu/**, /${a.slug}/assets/**" ]
 </#list>
                     # la shell (todo lo demás)
                     - id: shell
