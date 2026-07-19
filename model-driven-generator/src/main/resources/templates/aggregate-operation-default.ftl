@@ -18,10 +18,13 @@ public class Default${operation.name?cap_first}${aggregate.name}Operation implem
     @Override
     public void execute(${aggregate.name}OperationContext context) {
 <#if operation.intent?? && operation.intent?has_content>
-        // TODO: implement "${operation.name}" — intended behaviour: ${operation.intent}
+        // Intended behaviour: ${operation.intent}
         // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+        throw new UnsupportedOperationException(
+            "Pendiente de implementar la operación «${operation.name}» de ${aggregate.name}: ${operation.intent?j_string}");
 <#else>
-        // TODO: implement the "${operation.name}" operation of ${aggregate.name} using the context.
+        throw new UnsupportedOperationException(
+            "Pendiente de implementar la operación «${operation.name}» de ${aggregate.name}");
 </#if>
     }
 }

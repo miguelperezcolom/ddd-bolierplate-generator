@@ -24,13 +24,13 @@ public class Default${usecase.className}Steps implements ${usecase.className}Ste
     @Override
     public <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command) {
 <#if step.intent?? && step.intent?has_content>
-        // TODO: implement "${step.name}" — intended behaviour: ${step.intent}
+        // Intended behaviour: ${step.intent}
         // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+        throw new UnsupportedOperationException(
+            "Pendiente de implementar «${step.name}» (${usecase.name}): ${step.intent?j_string}");
 <#else>
-        // TODO: implement the "${step.name}" step of the ${usecase.name} use case.
-</#if>
-<#if returnsResult>
-        return null;
+        throw new UnsupportedOperationException(
+            "Pendiente de implementar «${step.name}» (${usecase.name})");
 </#if>
     }
 </#list>
