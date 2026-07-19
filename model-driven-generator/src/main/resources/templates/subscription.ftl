@@ -68,9 +68,10 @@ public class ${subscription.name?cap_first}Subscription {
         return message -> {
 <#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
             // Idempotent consumer (inbox pattern): at-least-once delivery redelivers the SAME
-            // payload (retries, rebalances, DLQ replays) — dedup on the message hash, before
-            // any side effect.
-            var messageHash = Inbox.hashOf(message.getPayload());
+            // broker message (retries, rebalances, DLQ replays), so the dedup key is the
+            // topic+partition+offset — two distinct events may share a payload and BOTH must
+            // be processed (e.g. cupo going 4 → 3 → 4). Only redeliveries share coordinates.
+            var messageHash = Inbox.dedupKey(message);
             if (inbox.alreadyProcessed("${subscription.name}", messageHash)) {
                 return;
             }

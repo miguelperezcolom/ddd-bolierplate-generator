@@ -10,8 +10,10 @@ import java.time.LocalDateTime;
 
 /**
  * Idempotent-consumer support (inbox pattern). Kafka delivery is at-least-once: retries,
- * rebalances and DLQ replays redeliver the SAME payload, so the dedup key is the hash of the
- * message itself — identical redeliveries are skipped, distinct events always pass.
+ * rebalances and DLQ replays redeliver the SAME broker record, so the dedup key is its
+ * topic+partition+offset — identical redeliveries share it and are skipped, while distinct
+ * events (even with byte-identical payloads, like a state returning to a previous value)
+ * always pass.
  */
 @Service("${module.slug}Inbox")
 @RequiredArgsConstructor
@@ -30,6 +32,23 @@ public class Inbox {
         } catch (DataIntegrityViolationException e) {
             // a concurrent consumer recorded it first — same outcome
         }
+    }
+
+    /**
+     * The dedup key: the broker coordinates (topic:partition:offset) when the kafka headers
+     * are present, falling back to the payload hash otherwise (unit tests, other binders).
+     */
+    public static String dedupKey(org.springframework.messaging.Message<?> message) {
+        var headers = message.getHeaders();
+        var topic = headers.get("kafka_receivedTopic");
+        var partition = headers.get("kafka_receivedPartitionId") != null
+                ? headers.get("kafka_receivedPartitionId")
+                : headers.get("kafka_receivedPartition");
+        var offset = headers.get("kafka_offset");
+        if (topic != null && partition != null && offset != null) {
+            return hashOf(topic + ":" + partition + ":" + offset);
+        }
+        return hashOf(message.getPayload() == null ? "" : message.getPayload().toString());
     }
 
     public static String hashOf(String payload) {
