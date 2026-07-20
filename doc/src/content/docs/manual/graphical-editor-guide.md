@@ -97,6 +97,9 @@ out the gestures for the current view.
   the nodes AND routes the lines **orthogonally** (horizontal/vertical) around the
   boxes, so the diagram reads like a wiring schematic. One **undo** brings back your
   previous arrangement.
+- **Select first to scope it**: with elements selected, **✨ Auto-layout (N)** rearranges
+  *only those* — kept where they are (their centroid doesn't move) so the rest of the
+  diagram stays put. With nothing selected it re-lays the whole view.
 - Lines route around the boxes on their own as you drag; a line you **drag** splits into
   an adjustable bend point and becomes yours (the auto-router then leaves it alone).
 - Node positions and bends are saved to the view's sheet automatically — no save button.

@@ -4185,10 +4185,13 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * Relayout for the current view, applied as ONE undoable composite move.
-   * Map-like views use the semantic lane layout (canonical, deterministic:
-   * actors/consumers left, domain center, consumed right); pipeline views keep
-   * ELK's layered flow (also deterministic, left→right along the pipeline).
+   * Relayout for the current view, applied as ONE undoable composite move. ELK
+   * places the nodes and routes the edges orthogonally; map-like views pass one
+   * lane per semantic rank so the left→right meaning is preserved.
+   *
+   * With a selection, the layout is SCOPED to it: only the selected top-level
+   * nodes are rearranged, kept in place (their centroid doesn't move) so the rest
+   * of the diagram stays put. With nothing selected, the whole view is relaid.
    */
   private async runAutoLayout(): Promise<void> {
     const view = this._view;
@@ -4198,10 +4201,15 @@ export class ModuxEditor extends LitElement {
     // position, so only top-level nodes take part in the layout. Areas are frames:
     // the layout ignores them (they stay where their author framed them).
     const topNodes = scene.nodes.filter((n) => !n.parentId && n.kind !== 'area');
-    const topIds = new Set(topNodes.map((n) => n.id));
+    const selection = this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
+    const scoped = selection.length > 0;
+    const selSet = new Set(selection);
+    const layoutNodes = scoped ? topNodes.filter((n) => selSet.has(n.id)) : topNodes;
+    if (layoutNodes.length < 2) return; // nothing to arrange (or a selection of edges/children)
+    const ids = new Set(layoutNodes.map((n) => n.id));
     const layoutScene = {
-      nodes: topNodes,
-      edges: scene.edges.filter((e) => topIds.has(e.sourceId) && topIds.has(e.targetId)),
+      nodes: layoutNodes,
+      edges: scene.edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId)),
     };
     const isPipeline =
       view === 'flows' || view === 'processes' || view === 'workflows' || view === 'eventstorming';
@@ -4213,26 +4221,72 @@ export class ModuxEditor extends LitElement {
     const partitions = isPipeline ? undefined : semanticPartitions(semanticLayout(layoutScene));
     const result = await autoLayout(layoutScene, partitions ? { partitions } : undefined);
     const current = this.viewLayout(view);
+
+    // A scoped layout keeps the selection where it is: translate ELK's output so
+    // its centroid matches the selection's current centroid.
+    if (scoped) {
+      let ox = 0;
+      let oy = 0;
+      let nx = 0;
+      let ny = 0;
+      for (const n of layoutNodes) {
+        const cur = current.nodes[n.id] ?? { x: n.x, y: n.y };
+        ox += cur.x;
+        oy += cur.y;
+        nx += result.nodes[n.id].x;
+        ny += result.nodes[n.id].y;
+      }
+      const k = layoutNodes.length;
+      const dx = (ox - nx) / k;
+      const dy = (oy - ny) / k;
+      for (const id of Object.keys(result.nodes)) {
+        result.nodes[id] = { x: result.nodes[id].x + dx, y: result.nodes[id].y + dy };
+      }
+      for (const id of Object.keys(result.edges)) {
+        result.edges[id] = result.edges[id].map((p) => ({ x: p.x + dx, y: p.y + dy }));
+      }
+    }
+
+    // Edges that straddle the selection boundary lose their stored route so the
+    // canvas re-routes them live from the moved endpoints; edges wholly inside get
+    // ELK's fresh route; everything outside is left alone.
+    const boundaryEdgeIds = scoped
+      ? scene.edges.filter((e) => ids.has(e.sourceId) !== ids.has(e.targetId)).map((e) => e.id)
+      : [];
+    const changedEdgeIds = scoped
+      ? [...new Set([...Object.keys(result.edges), ...boundaryEdgeIds])]
+      : Object.keys(current.edges);
+
     this.pushUndoEntry([
-      ...topNodes.map((n) => ({
+      ...layoutNodes.map((n) => ({
         kind: 'move-node' as const,
         view,
         id: n.id,
         pos: current.nodes[n.id] ?? null,
       })),
-      // relayout rewrites every route — restore the previous bends on undo
-      ...Object.keys(current.edges).map((edgeId) => ({
+      // relayout rewrites these routes — restore the previous bends on undo
+      ...changedEdgeIds.map((edgeId) => ({
         kind: 'set-edge-points' as const,
         view,
         id: edgeId,
-        points: current.edges[edgeId],
+        points: current.edges[edgeId] ?? null,
       })),
     ]);
+
     // Keep container sizes AND the expansion state: auto-layout redistributes,
-    // it never folds. Edge routes are replaced by ELK's fresh orthogonal ones.
-    this.writeViewLayout(view, { ...current, nodes: result.nodes, edges: result.edges });
+    // it never folds.
+    if (scoped) {
+      const nodes = { ...current.nodes };
+      for (const n of layoutNodes) nodes[n.id] = result.nodes[n.id];
+      const edges = { ...current.edges, ...result.edges };
+      for (const id of boundaryEdgeIds) delete edges[id];
+      this.writeViewLayout(view, { ...current, nodes, edges });
+    } else {
+      this.writeViewLayout(view, { ...current, nodes: result.nodes, edges: result.edges });
+    }
     await this.updateComplete;
-    this.renderRoot.querySelector('modux-canvas')?.fit();
+    // A full relayout re-fits; a scoped one keeps the user's viewport.
+    if (!scoped) this.renderRoot.querySelector('modux-canvas')?.fit();
   }
 
   /**
@@ -4916,11 +4970,13 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          title="Recolocar los nodos automáticamente (deshacible)"
+          title=${this._multi.length >= 2
+            ? `Recoloca solo los ${this._multi.length} elementos seleccionados (deshacible)`
+            : 'Recoloca todo el diagrama automáticamente — o solo la selección si la hay (deshacible)'}
           ?disabled=${this._yugo}
           @click=${() => void this.runAutoLayout()}
         >
-          ✨ Auto-layout
+          ✨ Auto-layout${this._multi.length >= 2 ? ` (${this._multi.length})` : ''}
         </button>
         ${this._view === 'workflows'
           && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length)

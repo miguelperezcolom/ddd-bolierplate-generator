@@ -229,7 +229,9 @@ maps stay readable.
   their orthogonal edge routes. Maps keep their canonical left→right meaning (driving
   side left, domain centre, driven side right) by feeding ELK one lane per semantic
   rank; flows and processes layer freely along the pipeline. One undo step brings
-  everything back.
+  everything back. **With a selection it is scoped** — «✨ Auto-layout (N)» rearranges
+  only the selected top-level nodes, translated to keep their centroid in place so the
+  rest of the sheet stays put; edges straddling the selection re-route live.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.
