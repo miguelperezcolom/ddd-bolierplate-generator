@@ -1008,6 +1008,28 @@ export class ModuxCanvas extends LitElement {
     return { x: x + dx * scale, y: y + dy * scale };
   }
 
+  /**
+   * Border exit for a routed edge: when the first/last waypoint sits beside the
+   * node (its perpendicular coordinate falls within the node's span), leave the
+   * facing side aligned to it, so the end segment is horizontal/vertical — this
+   * is what keeps ELK's and the auto-router's orthogonal routes orthogonal right
+   * up to the box. Otherwise fall back to the plain centre-ray border point.
+   */
+  private orthoBorderPoint(node: SceneNode, tx: number, ty: number): { x: number; y: number } {
+    const { x, y } = this.nodePos(node);
+    const dx = tx - x;
+    const dy = ty - y;
+    const hw = node.w / 2;
+    const hh = node.h / 2;
+    if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dy) <= hh) {
+      return { x: x + Math.sign(dx) * hw, y: ty };
+    }
+    if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dx) <= hw) {
+      return { x: tx, y: y + Math.sign(dy) * hh };
+    }
+    return this.borderPoint(node, tx, ty);
+  }
+
   // ---- rendering -----------------------------------------------------------
 
   /** Perpendicular offset so edges sharing a node pair don't overlap. */
@@ -1053,8 +1075,8 @@ export class ModuxCanvas extends LitElement {
     }
     const firstTowards = waypoints[0];
     const lastTowards = waypoints[waypoints.length - 1];
-    const a = this.borderPoint(source, firstTowards.x, firstTowards.y);
-    const b = this.borderPoint(target, lastTowards.x, lastTowards.y);
+    const a = this.orthoBorderPoint(source, firstTowards.x, firstTowards.y);
+    const b = this.orthoBorderPoint(target, lastTowards.x, lastTowards.y);
     return [a, ...waypoints, b];
   }
 
@@ -1286,6 +1308,27 @@ export class ModuxCanvas extends LitElement {
     );
   }
 
+  private _measureCtx: CanvasRenderingContext2D | null | undefined;
+  private measureLabel(text: string, font: string): number {
+    if (this._measureCtx === undefined) this._measureCtx = document.createElement('canvas').getContext('2d');
+    if (!this._measureCtx) return text.length * 7.3; // headless fallback
+    this._measureCtx.font = font;
+    return this._measureCtx.measureText(text).width;
+  }
+
+  /** Label clipped with an ellipsis so it never spills past `maxW` px of its box. */
+  private fitLabel(label: string, maxW: number, font = '600 13px ui-sans-serif, system-ui'): string {
+    if (maxW <= 0 || this.measureLabel(label, font) <= maxW) return label;
+    let lo = 0;
+    let hi = label.length;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (this.measureLabel(`${label.slice(0, mid)}…`, font) <= maxW) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo > 0 ? `${label.slice(0, lo)}…` : '…';
+  }
+
   private renderNode(node: SceneNode): TemplateResult | typeof svg.prototype {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
@@ -1406,7 +1449,7 @@ export class ModuxCanvas extends LitElement {
               : node.kind === 'area'
                 ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
                 : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
-                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`}
+                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 16)}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
                 style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`

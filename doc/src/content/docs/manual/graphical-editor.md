@@ -200,22 +200,32 @@ person / gear (human / automated steps), double circle (events), return arrow
 
 ## Lines
 
-On the context map, edges **auto-route around the node boxes**: a line that would
-cross a box takes the smallest detour instead, recomputed on every render — nothing
-is stored for an edge the hand never touched. With an edge selected, **dragging it
+Lines are **orthogonal** — horizontal and vertical segments only, never a diagonal cut
+across a corner — and they route **around the node boxes** instead of over them. **✨
+Auto-layout** hands the whole view to ELK, which places the nodes AND threads every
+edge through the gaps between the boxes so the lines neither overlap nor cross a box;
+those routes are kept with the layout. Elsewhere — a line the layout didn't route, an
+edge you just drew, a node you dragged — the canvas re-routes on the fly: a line that
+would run over a box slides its channel into the nearest gap (above/below or
+left/right), recomputed on every render so it follows the drag; a line whose straight
+orthogonal path is already clear is drawn as-is. With an edge selected, **dragging it
 splits the line** into an adjustable bend point, and from that moment **the edge is
-yours**: the auto-router respects the hand's decision and leaves it alone. Bend
-points drag freely; **double click (or Supr) removes one**, and removing the LAST
-bend **pins the edge straight** — the empty route persists as a decision of its own,
-so the router doesn't fall back to automatic detours. Deleting a relation takes its
-bends with it, so a recreated relation is born with default routing; **✨
-Auto-layout** resets every bend (one undo brings them back). Where lines cross, the
-one drawn later **hops over with a small bridge arc**, so dense maps stay readable.
+yours**: the router respects the hand's decision and leaves it alone. Bend points drag
+freely; **double click (or Supr) removes one**, and removing the LAST bend **pins the
+edge straight** — the empty route persists as a decision of its own, so the router
+doesn't fall back to automatic detours. Deleting a relation takes its bends with it, so
+a recreated relation is born with default routing; **✨ Auto-layout** clears every
+hand-placed bend (one undo brings them back), so the whole view re-routes fresh. Where
+lines still cross, the one drawn later **hops over with a small bridge arc**, so dense
+maps stay readable.
 
 ## Layout & navigation
 
-- **✨ Auto-layout** repositions the current view with ELK (organic for maps, layered
-  left-to-right for flows and processes) — one undo step brings everything back.
+- **✨ Auto-layout** re-lays the current view with ELK's layered algorithm — nodes AND
+  their orthogonal edge routes. Maps keep their canonical left→right meaning (driving
+  side left, domain centre, driven side right) by feeding ELK one lane per semantic
+  rank; flows and processes layer freely along the pipeline. One undo step brings
+  everything back.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.

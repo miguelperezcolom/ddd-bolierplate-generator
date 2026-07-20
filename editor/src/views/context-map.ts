@@ -80,6 +80,18 @@ function proxyOps(
 // their own absolute position; these are just their default dimensions.
 const CHILD_W = 108;
 const CHILD_H = 32;
+const CHILD_MAX_W = 240;
+
+/**
+ * Width for a free child box that fits its label. No DOM here (the scene builder
+ * runs headless in tests), so we estimate from the label length at the 13px
+ * 600-weight label font — a slight over-estimate, then clamped. Longer names
+ * stop growing at CHILD_MAX_W and the canvas ellipsises whatever still overflows.
+ */
+function childBoxWidth(label: string): number {
+  const fitted = Math.ceil(label.length * 7.6) + 26; // ~char width + horizontal padding
+  return Math.min(CHILD_MAX_W, Math.max(CHILD_W + 12, fitted));
+}
 
 export function relationEdgeId(sourceId: string, targetId: string): string {
   return `rel:${sourceId}->${targetId}`;
@@ -535,7 +547,7 @@ function buildScene(
         kind: k.kind,
         x: pos.x,
         y: pos.y,
-        w: subsystem ? 150 : CHILD_W + 12,
+        w: subsystem ? 150 : childBoxWidth(k.name),
         h: subsystem ? 44 : CHILD_H + 4,
         symbol: style.symbol,
         fill: style.fill,

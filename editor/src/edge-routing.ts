@@ -1,4 +1,4 @@
-import type { Point } from './scene.js';
+import type { Point, SceneNode } from './scene.js';
 
 /** A node's resolved geometry on the canvas: center plus size. */
 export interface RouteBox {
@@ -71,4 +71,156 @@ export function orthogonalRoute(a: RouteBox, b: RouteBox, spread = 0): Point[] {
   if (gapX >= 0) return horizontal();
   // Overlap on both axes: no clean orthogonal route — straight line.
   return straightRoute(a, b, spread);
+}
+
+/** Does the segment a→b pass through the axis-aligned box? (Liang–Barsky clip) */
+export function segmentCrossesBox(
+  a: Point,
+  b: Point,
+  box: { x: number; y: number; w: number; h: number },
+): boolean {
+  const minX = box.x - box.w / 2;
+  const maxX = box.x + box.w / 2;
+  const minY = box.y - box.h / 2;
+  const maxY = box.y + box.h / 2;
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  for (const [p, q] of [
+    [-dx, a.x - minX],
+    [dx, maxX - a.x],
+    [-dy, a.y - minY],
+    [dy, maxY - a.y],
+  ] as [number, number][]) {
+    if (p === 0) {
+      if (q < 0) return false;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+  }
+  return t1 - t0 > 0.02; // a mere corner graze does not count
+}
+
+/**
+ * Re-routes every edge whose default straight orthogonal path would run over a
+ * node it is not attached to. The detour is itself **orthogonal** — horizontal
+ * and vertical segments only, never a diagonal cut across a corner — so diagram
+ * lines read like a wiring diagram. For each blocked edge we try a family of
+ * orthogonal shapes (an L, and a Z whose middle channel slides across the span
+ * to hunt for a gap, on either axis) and keep the one that clears the most boxes
+ * at the least length. Edges whose default route is already clean are left to
+ * the caller (the canvas draws the same orthogonal route from `orthogonalRoute`).
+ * The endpoints stay centre-anchored, so the rendered ends are orthogonal too
+ * and the route follows the nodes as they are dragged. Only edges without
+ * hand-placed bends are touched; nodes are treated as obstacles with a margin.
+ */
+export function routeEdgesAroundNodes(
+  scene: { nodes: SceneNode[]; edges: { id: string; sourceId: string; targetId: string }[] },
+  existing: Record<string, Point[]>,
+  margin = 28,
+): Map<string, Point[]> {
+  const byId = new Map(scene.nodes.map((n) => [n.id, n]));
+  const ancestorsOf = (id: string | undefined): Set<string> => {
+    const out = new Set<string>();
+    for (let cur = id; cur; cur = byId.get(cur)?.parentId) out.add(cur);
+    return out;
+  };
+  // Children count as obstacles too (with a tighter margin — grids are dense).
+  // Areas are background frames: edges cross them as if they weren't there.
+  const obstacles = scene.nodes.filter((n) => n.kind !== 'area');
+  const marginOf = (o: SceneNode) => (o.parentId ? Math.min(margin, 6) : margin);
+  const routed = new Map<string, Point[]>();
+
+  /** Boxes (other than the edge's own ends) that the polyline `pts` runs over. */
+  const crossings = (pts: Point[], skip: Set<string>): number => {
+    let n = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      for (const o of obstacles) {
+        if (skip.has(o.id)) continue;
+        const m = marginOf(o);
+        if (segmentCrossesBox(pts[i], pts[i + 1], { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m })) n++;
+      }
+    }
+    return n;
+  };
+  const length = (pts: Point[]): number => {
+    let total = 0;
+    for (let i = 0; i < pts.length - 1; i++) total += Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    return total;
+  };
+
+  for (const edge of scene.edges) {
+    if (existing[edge.id]) continue; // any hand decision wins — even "straight" (empty)
+    const src = byId.get(edge.sourceId);
+    const tgt = byId.get(edge.targetId);
+    if (!src || !tgt) continue;
+    const skip = new Set([...ancestorsOf(src.id), ...ancestorsOf(tgt.id)]);
+    // The route the canvas would draw on its own (border-to-border, orthogonal).
+    const box = (o: SceneNode) => ({ x: o.x, y: o.y, w: o.w, h: o.h });
+    const fallbackCrossings = crossings(orthogonalRoute(box(src), box(tgt)), skip);
+    if (fallbackCrossings === 0) continue; // already clean — nothing to store
+
+    // Orthogonal candidates, expressed as INTERIOR bends (centre-based): the
+    // canvas anchors the ends to the borders, and because every bend shares an
+    // axis with a centre, the rendered segments stay horizontal/vertical. A
+    // vertical-channel Z bends [(mx,S.y),(mx,T.y)]; a horizontal-channel bump
+    // bends [(S.x,my),(T.x,my)]. Endpoints exit orthogonally either way.
+    const S = { x: src.x, y: src.y };
+    const T = { x: tgt.x, y: tgt.y };
+    const cands: Point[][] = [[{ x: T.x, y: S.y }], [{ x: S.x, y: T.y }]]; // two L shapes
+    // Channels interpolated across the span — enough when S and T differ on the axis.
+    for (const f of [0.5, 0.38, 0.62, 0.26, 0.74]) {
+      const mx = S.x + (T.x - S.x) * f;
+      const my = S.y + (T.y - S.y) * f;
+      cands.push([{ x: mx, y: S.y }, { x: mx, y: T.y }]);
+      cands.push([{ x: S.x, y: my }, { x: T.x, y: my }]);
+    }
+    // Channels that clear each nearby obstacle's edge, so a blocker sitting right
+    // on the (near-)straight line can be dodged above/below or left/right — the
+    // interpolated channels collapse when the endpoints are colinear.
+    const loX = Math.min(S.x, T.x);
+    const hiX = Math.max(S.x, T.x);
+    const loY = Math.min(S.y, T.y);
+    const hiY = Math.max(S.y, T.y);
+    for (const o of obstacles) {
+      if (skip.has(o.id)) continue;
+      const m = marginOf(o) + 8;
+      if (o.x > loX - o.w && o.x < hiX + o.w) {
+        cands.push([{ x: S.x, y: o.y - o.h / 2 - m }, { x: T.x, y: o.y - o.h / 2 - m }]);
+        cands.push([{ x: S.x, y: o.y + o.h / 2 + m }, { x: T.x, y: o.y + o.h / 2 + m }]);
+      }
+      if (o.y > loY - o.h && o.y < hiY + o.h) {
+        cands.push([{ x: o.x - o.w / 2 - m, y: S.y }, { x: o.x - o.w / 2 - m, y: T.y }]);
+        cands.push([{ x: o.x + o.w / 2 + m, y: S.y }, { x: o.x + o.w / 2 + m, y: T.y }]);
+      }
+    }
+
+    let best: Point[] | null = null;
+    let bestCross = Infinity;
+    let bestLen = Infinity;
+    for (const c of cands) {
+      const full = [S, ...c, T];
+      const cross = crossings(full, skip);
+      const len = length(full) + c.length * 40; // a small bias against extra bends
+      if (cross < bestCross || (cross === bestCross && len < bestLen)) {
+        best = c;
+        bestCross = cross;
+        bestLen = len;
+      }
+    }
+    // Only override the canvas's own orthogonal route when a candidate clears
+    // strictly more boxes; otherwise leave it be (it is already orthogonal).
+    if (best && bestCross < fallbackCrossings) {
+      routed.set(edge.id, best.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })));
+    }
+  }
+  return routed;
 }

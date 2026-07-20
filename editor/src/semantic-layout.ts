@@ -81,6 +81,19 @@ function rankOf(node: SceneNode, scene: Scene): number {
   return RANKS[node.kind] ?? FALLBACK_LANE;
 }
 
+/**
+ * Lane index (0-based, left→right) per node, read off a semantic layout's
+ * x-columns. Fed to ELK as partitions so it keeps the canonical lane order
+ * while doing its own placement and orthogonal routing.
+ */
+export function semanticPartitions(layout: DiagramLayout): Record<string, number> {
+  const xs = [...new Set(Object.values(layout).map((p) => Math.round(p.x)))].sort((a, b) => a - b);
+  const lane = new Map(xs.map((x, i) => [x, i]));
+  const out: Record<string, number> = {};
+  for (const [id, p] of Object.entries(layout)) out[id] = lane.get(Math.round(p.x)) ?? 0;
+  return out;
+}
+
 /** Canonical placement for the top-level nodes of `scene` (children follow their container). */
 export function semanticLayout(scene: Scene): DiagramLayout {
   const nodes = scene.nodes.filter((n) => !n.parentId && n.kind !== 'area');

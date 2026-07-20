@@ -16,7 +16,8 @@ import { mappingsScene } from './views/mappings.js';
 import { integrationsScene } from './views/integrations.js';
 import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
-import { semanticLayout } from './semantic-layout.js';
+import { routeEdgesAroundNodes } from './edge-routing.js';
+import { semanticLayout, semanticPartitions } from './semantic-layout.js';
 import { derivedElementIds, hideDerived, markDerived } from './derived.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
@@ -84,145 +85,6 @@ type ResizeNodeOp = {
   size: { w: number; h: number } | null;
 };
 type EditOp = ModuxCommand | MoveNodeOp | SetEdgePointsOp | ResizeNodeOp;
-
-/** Does the segment a→b pass through the axis-aligned box? (Liang–Barsky clip) */
-function segmentCrossesBox(
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  box: { x: number; y: number; w: number; h: number },
-): boolean {
-  const minX = box.x - box.w / 2;
-  const maxX = box.x + box.w / 2;
-  const minY = box.y - box.h / 2;
-  const maxY = box.y + box.h / 2;
-  let t0 = 0;
-  let t1 = 1;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  for (const [p, q] of [
-    [-dx, a.x - minX],
-    [dx, maxX - a.x],
-    [-dy, a.y - minY],
-    [dy, maxY - a.y],
-  ] as [number, number][]) {
-    if (p === 0) {
-      if (q < 0) return false;
-      continue;
-    }
-    const r = q / p;
-    if (p < 0) {
-      if (r > t1) return false;
-      if (r > t0) t0 = r;
-    } else {
-      if (r < t0) return false;
-      if (r < t1) t1 = r;
-    }
-  }
-  return t1 - t0 > 0.02; // a mere corner graze does not count
-}
-
-/**
- * Splits every straight edge that runs over a node it is not attached to: the
- * offending segment detours around the obstacle via one corner or a full side
- * (two corners) — whichever clears the box at the least added length. Only
- * edges without hand-placed bends are touched, against top-level boxes.
- */
-function routeEdgesAroundNodes(
-  scene: { nodes: SceneNode[]; edges: { id: string; sourceId: string; targetId: string }[] },
-  existing: Record<string, { x: number; y: number }[]>,
-  margin = 28,
-): Map<string, { x: number; y: number }[]> {
-  type Pt = { x: number; y: number };
-  const byId = new Map(scene.nodes.map((n) => [n.id, n]));
-  const ancestorsOf = (id: string | undefined): Set<string> => {
-    const out = new Set<string>();
-    for (let cur = id; cur; cur = byId.get(cur)?.parentId) out.add(cur);
-    return out;
-  };
-  // Children count as obstacles too (with a tighter margin — grids are dense).
-  // Areas are background frames: edges cross them as if they weren't there.
-  const obstacles = scene.nodes.filter((n) => n.kind !== 'area');
-  const marginOf = (o: SceneNode) => (o.parentId ? Math.min(margin, 6) : margin);
-  const routed = new Map<string, Pt[]>();
-
-  /** Corner/side detours for segment a→b around o; corners sit strictly outside the test box. */
-  const detoursAround = (a: Pt, b: Pt, o: SceneNode): Pt[][] => {
-    const m = marginOf(o);
-    const test = { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m };
-    const px = o.w / 2 + m * 1.5;
-    const py = o.h / 2 + m * 1.5;
-    const tl = { x: o.x - px, y: o.y - py };
-    const tr = { x: o.x + px, y: o.y - py };
-    const bl = { x: o.x - px, y: o.y + py };
-    const br = { x: o.x + px, y: o.y + py };
-    const options: Pt[][] = [];
-    for (const c of [tl, tr, bl, br]) {
-      if (!segmentCrossesBox(a, c, test) && !segmentCrossesBox(c, b, test)) options.push([c]);
-    }
-    for (const [c1, c2] of [
-      [tl, tr], [tr, tl], [tr, br], [br, tr], [br, bl], [bl, br], [bl, tl], [tl, bl],
-    ] as [Pt, Pt][]) {
-      if (!segmentCrossesBox(a, c1, test) && !segmentCrossesBox(c2, b, test)) {
-        options.push([c1, c2]);
-      }
-    }
-    return options;
-  };
-
-  for (const edge of scene.edges) {
-    if (existing[edge.id]) continue; // any hand decision wins — even "straight" (empty)
-    const src = byId.get(edge.sourceId);
-    const tgt = byId.get(edge.targetId);
-    if (!src || !tgt) continue;
-    const skip = new Set([...ancestorsOf(src.id), ...ancestorsOf(tgt.id)]);
-    const path: Pt[] = [
-      { x: src.x, y: src.y },
-      { x: tgt.x, y: tgt.y },
-    ];
-    for (let guard = 0; guard < 12; guard++) {
-      let detoured = false;
-      outer: for (let i = 0; i < path.length - 1; i++) {
-        for (const o of obstacles) {
-          if (skip.has(o.id)) continue;
-          const m = marginOf(o);
-          const test = { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m };
-          if (!segmentCrossesBox(path[i], path[i + 1], test)) continue;
-          const options = detoursAround(path[i], path[i + 1], o);
-          if (!options.length) continue; // endpoints boxed in — leave this one be
-          const insideOther = (c: Pt) =>
-            obstacles.some(
-              (other) =>
-                other !== o &&
-                !skip.has(other.id) &&
-                Math.abs(c.x - other.x) < other.w / 2 + marginOf(other) / 2 &&
-                Math.abs(c.y - other.y) < other.h / 2 + marginOf(other) / 2,
-            );
-          const cost = (pts: Pt[]) => {
-            let total = 0;
-            const seq = [path[i], ...pts, path[i + 1]];
-            for (let k = 0; k < seq.length - 1; k++) {
-              total += Math.hypot(seq[k + 1].x - seq[k].x, seq[k + 1].y - seq[k].y);
-            }
-            return total + (pts.some(insideOther) ? 10000 : 0);
-          };
-          options.sort((o1, o2) => cost(o1) - cost(o2));
-          path.splice(i + 1, 0, ...options[0]);
-          detoured = true;
-          break outer;
-        }
-      }
-      if (!detoured) break;
-    }
-    if (path.length > 2) {
-      routed.set(
-        edge.id,
-        path.slice(1, -1).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
-      );
-    }
-  }
-  return routed;
-}
-
 
 /**
  * Canvas activation → semantic element reference. Node ids carry view-specific
@@ -1212,16 +1074,18 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * Display-time edge routing: straight edges that run over a foreign node get
-   * detour bends, recomputed with every scene (no persistence, so they follow
-   * every level change and drag). Hand-placed bends always win.
+   * Display-time edge routing: edges whose straight orthogonal path would run
+   * over a foreign node get orthogonal detour bends, recomputed with every scene
+   * (no persistence, so they follow every level change and drag) — this is what
+   * keeps the lines horizontal/vertical and off the boxes on every diagram view.
+   * Hand-placed bends always win.
    */
   private routedEdgePoints(scene: {
     nodes: SceneNode[];
     edges: { id: string; sourceId: string; targetId: string }[];
   }): Record<string, Point[]> {
     const stored = this.viewLayout(this._view).edges;
-    if (this._view !== 'context-map') return stored;
+    if (!scene.edges.length) return stored;
     const routed = routeEdgesAroundNodes(scene, stored);
     if (!routed.size) return stored;
     return { ...Object.fromEntries(routed), ...stored };
@@ -4333,7 +4197,13 @@ export class ModuxEditor extends LitElement {
     };
     const isPipeline =
       view === 'flows' || view === 'processes' || view === 'workflows' || view === 'eventstorming';
-    const positions = isPipeline ? await autoLayout(layoutScene) : semanticLayout(layoutScene);
+    // ELK does the placement AND the orthogonal edge routing for every view, so
+    // the lines come out horizontal/vertical without overlapping or crossing a
+    // box. Pipeline views let ELK layer freely; map-like views hand it one lane
+    // per semantic rank (derived from the canonical lane layout) so the left→
+    // right meaning — driving side, domain, driven side — is preserved.
+    const partitions = isPipeline ? undefined : semanticPartitions(semanticLayout(layoutScene));
+    const result = await autoLayout(layoutScene, partitions ? { partitions } : undefined);
     const current = this.viewLayout(view);
     this.pushUndoEntry([
       ...topNodes.map((n) => ({
@@ -4342,7 +4212,7 @@ export class ModuxEditor extends LitElement {
         id: n.id,
         pos: current.nodes[n.id] ?? null,
       })),
-      // manual bends no longer make sense after relayout — restore them on undo
+      // relayout rewrites every route — restore the previous bends on undo
       ...Object.keys(current.edges).map((edgeId) => ({
         kind: 'set-edge-points' as const,
         view,
@@ -4351,8 +4221,8 @@ export class ModuxEditor extends LitElement {
       })),
     ]);
     // Keep container sizes AND the expansion state: auto-layout redistributes,
-    // it never folds. Only hand-made edge bends reset.
-    this.writeViewLayout(view, { ...current, nodes: positions, edges: {} });
+    // it never folds. Edge routes are replaced by ELK's fresh orthogonal ones.
+    this.writeViewLayout(view, { ...current, nodes: result.nodes, edges: result.edges });
     await this.updateComplete;
     this.renderRoot.querySelector('modux-canvas')?.fit();
   }
