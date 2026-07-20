@@ -139,13 +139,18 @@ export function routeEdgesAroundNodes(
   const marginOf = (o: SceneNode) => (o.parentId ? Math.min(margin, 6) : margin);
   const routed = new Map<string, Point[]>();
 
-  /** Boxes (other than the edge's own ends) that the polyline `pts` runs over. */
-  const crossings = (pts: Point[], skip: Set<string>): number => {
+  /**
+   * Boxes (other than the edge's own ends) that the polyline `pts` runs over.
+   * `margin` overrides the routing clearance: use a small one to ask "does this
+   * actually touch a box?" (judging an existing route), the default to ask "does
+   * this keep a comfortable channel?" (placing a fresh one).
+   */
+  const crossings = (pts: Point[], skip: Set<string>, margin?: number): number => {
     let n = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       for (const o of obstacles) {
         if (skip.has(o.id)) continue;
-        const m = marginOf(o);
+        const m = margin ?? marginOf(o);
         if (segmentCrossesBox(pts[i], pts[i + 1], { x: o.x, y: o.y, w: o.w + 2 * m, h: o.h + 2 * m })) n++;
       }
     }
@@ -158,6 +163,20 @@ export function routeEdgesAroundNodes(
   };
 
   const box = (o: SceneNode) => ({ x: o.x, y: o.y, w: o.w, h: o.h });
+  // The border exit the canvas draws for a routed edge (mirrors orthoBorderPoint):
+  // aligned to the waypoint's perpendicular coordinate when it lands beside the
+  // node, so the checked polyline matches what's rendered.
+  const orthoBorder = (o: SceneNode, tx: number, ty: number): Point => {
+    const dx = tx - o.x;
+    const dy = ty - o.y;
+    const hw = o.w / 2;
+    const hh = o.h / 2;
+    if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dy) <= hh) return { x: o.x + Math.sign(dx) * hw, y: ty };
+    if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dx) <= hw) return { x: tx, y: o.y + Math.sign(dy) * hh };
+    if (dx === 0 && dy === 0) return { x: o.x, y: o.y };
+    const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+    return { x: o.x + dx * scale, y: o.y + dy * scale };
+  };
   for (const edge of scene.edges) {
     const src = byId.get(edge.sourceId);
     const tgt = byId.get(edge.targetId);
@@ -173,8 +192,20 @@ export function routeEdgesAroundNodes(
     let baseline: number;
     if (stored) {
       if (stored.length === 0) continue; // pinned straight — always respected
-      baseline = crossings([S, ...stored, T], skip);
-      if (baseline === 0) continue; // stored route is clean — keep it
+      // Judge the route AS RENDERED (border→bends→border). Wrapping with node
+      // CENTRES instead would falsely flag an edge that merely leaves its node
+      // past a neighbour — the real border-to-first-bend stub is short and clear —
+      // and needlessly replace ELK's good route. This keeps clean routes untouched
+      // yet still catches a stale bend that genuinely ploughs through a box.
+      const rendered = [
+        orthoBorder(src, stored[0].x, stored[0].y),
+        ...stored,
+        orthoBorder(tgt, stored[stored.length - 1].x, stored[stored.length - 1].y),
+      ];
+      // Small margin: only a route that actually sits on a box is stale; ELK's
+      // routes legitimately pass within the routing clearance of neighbours.
+      baseline = crossings(rendered, skip, 2);
+      if (baseline === 0) continue; // routed path stays off the boxes — keep it
     } else {
       // The route the canvas would draw on its own (border-to-border, orthogonal).
       baseline = crossings(orthogonalRoute(box(src), box(tgt)), skip);
@@ -214,17 +245,27 @@ export function routeEdgesAroundNodes(
       }
     }
 
+    // A route must leave room at each end for the marker (arrow, composition
+    // diamond) — a stub shorter than this crushes it against the border.
+    const CLEARANCE = 14;
     let best: Point[] | null = null;
     let bestCross = Infinity;
-    let bestLen = Infinity;
+    let bestScore = Infinity;
     for (const c of cands) {
       const full = [S, ...c, T];
       const cross = crossings(full, skip);
-      const len = length(full) + c.length * 40; // a small bias against extra bends
-      if (cross < bestCross || (cross === bestCross && len < bestLen)) {
+      // End stubs as the canvas will draw them (border → first/last bend).
+      const a0 = orthoBorder(src, c[0].x, c[0].y);
+      const bN = orthoBorder(tgt, c[c.length - 1].x, c[c.length - 1].y);
+      const firstStub = Math.hypot(c[0].x - a0.x, c[0].y - a0.y);
+      const lastStub = Math.hypot(c[c.length - 1].x - bN.x, c[c.length - 1].y - bN.y);
+      const crush = (firstStub < CLEARANCE ? 1 : 0) + (lastStub < CLEARANCE ? 1 : 0);
+      // Boxes crossed dominate; then marker room; then length + a bend bias.
+      const score = cross * 1e6 + crush * 3000 + length(full) + c.length * 40;
+      if (score < bestScore) {
         best = c;
+        bestScore = score;
         bestCross = cross;
-        bestLen = len;
       }
     }
     // Only take over when a candidate clears strictly more boxes than the route
