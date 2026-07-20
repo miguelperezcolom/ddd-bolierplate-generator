@@ -2088,11 +2088,11 @@ export class ModuxEditor extends LitElement {
   /** Canvas node ids → catalog element ids (view members). */
   /** What «crear vista» works on: the multi-selection, or — on the UI and Diseño
    * views, where one page or app is a perfectly good seed — the single selection. */
+  /** What a new modux View would draw from: the rubber-band set, else the single
+   * selected element. Feeds ⊞ Vista on every diagram surface. */
   private viewSelection(): string[] {
     if (this._multi.length) return this._multi;
-    if (this._selectedId && (this._view === 'ui' || this._view === 'design')) {
-      return [this._selectedId];
-    }
+    if (this._selectedId) return [this._selectedId];
     return [];
   }
 
@@ -2153,9 +2153,15 @@ export class ModuxEditor extends LitElement {
 
   private createViewFromSelection(): void {
     const name = this._newViewName.trim();
-    // No selection: the whole diagram on screen becomes the vista.
+    // Selection → its catalog members. Only when NOTHING is selected does the
+    // whole diagram on screen become the vista; a selection that maps to no
+    // member (e.g. an edge) makes no view rather than silently grabbing all.
     const selected = this.memberIdsFromSelection();
-    const memberIds = selected.length ? selected : this.visibleMemberIds();
+    const memberIds = selected.length
+      ? selected
+      : this.viewSelection().length
+        ? []
+        : this.visibleMemberIds();
     if (!name || !memberIds.length) return;
     const id = crypto.randomUUID();
     this.command({ kind: 'add-view', id, name, memberIds });

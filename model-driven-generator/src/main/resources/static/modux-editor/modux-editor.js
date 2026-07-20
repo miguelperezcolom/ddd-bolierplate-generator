@@ -16875,8 +16875,10 @@ let ie = class extends Ge {
   /** Canvas node ids → catalog element ids (view members). */
   /** What «crear vista» works on: the multi-selection, or — on the UI and Diseño
    * views, where one page or app is a perfectly good seed — the single selection. */
+  /** What a new modux View would draw from: the rubber-band set, else the single
+   * selected element. Feeds ⊞ Vista on every diagram surface. */
   viewSelection() {
-    return this._multi.length ? this._multi : this._selectedId && (this._view === "ui" || this._view === "design") ? [this._selectedId] : [];
+    return this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
   }
   memberIdsFromSelection() {
     if (this._view === "design") {
@@ -16929,7 +16931,7 @@ let ie = class extends Ge {
     return [...t];
   }
   createViewFromSelection() {
-    const e = this._newViewName.trim(), t = this.memberIdsFromSelection(), i = t.length ? t : this.visibleMemberIds();
+    const e = this._newViewName.trim(), t = this.memberIdsFromSelection(), i = t.length ? t : this.viewSelection().length ? [] : this.visibleMemberIds();
     if (!e || !i.length) return;
     const n = crypto.randomUUID();
     this.command({ kind: "add-view", id: n, name: e, memberIds: i }), this._newViewName = "", this._multi = [], this.activateVista(n);

@@ -293,10 +293,13 @@ a field.
 
 ## Selections and views
 
-**Shift+click** accumulates a multi-selection; **shift+drag** on the background draws
-a rubber band. With elements selected, **⊞ Vista** creates a **CURATED view** (see
+A **single click** selects one element; **Shift+click** accumulates a
+multi-selection; **shift+drag** on the background draws a rubber band. With one or
+more elements selected, **⊞ Vista (N)** (N = how many members the selection maps to)
+creates a **CURATED view** (see
 [Views & Large Models](/manual/views-and-large-models/)) whose members are the
-selected catalog elements. The **Vista:** selector scopes the canvas to one view's
+selected catalog elements — a selection that maps to no member (an edge, a note)
+makes none. The **Vista:** selector scopes the canvas to one view's
 members — relations and flows appear when both endpoints are in, entities follow
 their aggregates. **Each vista is a full sheet of its own**: geometry AND
 per-element expansion live under the vista's key, seeded from whatever you were
