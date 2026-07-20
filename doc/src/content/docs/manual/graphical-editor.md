@@ -229,6 +229,10 @@ maps stay readable.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.
+- **Hover spotlights a node's neighbourhood**: pointing at a node keeps it, the nodes
+  one edge away and their connecting lines at full strength and **fades everything
+  else back**, so on a dense map you see at a glance what talks to what. A node's
+  container and its nested chips ride along. It steps aside during any drag.
 - **⛶ (or F) takes the diagram fullscreen** — the whole editor, toolbar and palette
   included, via the browser's Fullscreen API; **Esc** (or F again) comes back.
 - **⬦ 3D (or V) tilts the diagram** — the Firefox-Tilt view of the model: the same

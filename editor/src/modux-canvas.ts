@@ -172,6 +172,10 @@ export class ModuxCanvas extends LitElement {
   @state() private _guides: { v: number[]; h: number[] } | null = null;
   @state() private _pendingLink: { sourceId: string; x: number; y: number } | null = null;
   @state() private _hoverNodeId: string | null = null;
+  /** Hovered node whose neighbourhood is spotlit (everything else fades). */
+  @state() private _focusNodeId: string | null = null;
+  private _focusNodes = new Set<string>();
+  private _focusEdges = new Set<string>();
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
@@ -598,6 +602,53 @@ export class ModuxCanvas extends LitElement {
    */
   private nodeIdAt(ev: PointerEvent): string | null {
     return this.nodeIdAtClient(ev.clientX, ev.clientY);
+  }
+
+  /** True while a node is hovered and no gesture is in progress. */
+  private get spotlighting(): boolean {
+    return !!this._focusNodeId && !this.gestureActive();
+  }
+
+  /** A gesture owns the pointer — don't spotlight a neighbourhood mid-drag. */
+  private gestureActive(): boolean {
+    return !!(
+      this._dragPos ||
+      this._dragGroup ||
+      this._pendingLink ||
+      this._wpDrag ||
+      this._resize ||
+      this._rubber ||
+      this._spaceDown
+    );
+  }
+
+  /**
+   * Spotlight a node's neighbourhood: hovering it keeps the node, the nodes one
+   * edge away and those connecting edges at full strength, and fades everything
+   * else back. A node's container/nested chips ride along so a chip and its box
+   * stay lit together. Passing null (pointer left) clears the spotlight.
+   */
+  private setFocusNode(id: string | null): void {
+    if (id && this.gestureActive()) return;
+    if (id === this._focusNodeId) return;
+    this._focusNodeId = id;
+    const nodes = new Set<string>();
+    const edges = new Set<string>();
+    if (id) {
+      nodes.add(id);
+      const focus = this.scene.nodes.find((n) => n.id === id);
+      if (focus?.parentId) nodes.add(focus.parentId);
+      for (const n of this.scene.nodes) if (n.parentId === id) nodes.add(n.id);
+      for (const e of this.scene.edges) {
+        if (e.sourceId === id || e.targetId === id) {
+          edges.add(e.id);
+          nodes.add(e.sourceId);
+          nodes.add(e.targetId);
+        }
+      }
+    }
+    this._focusNodes = nodes;
+    this._focusEdges = edges;
   }
 
   /** Topmost node at a client-space point (also used by palette drops). */
@@ -1225,8 +1276,10 @@ export class ModuxCanvas extends LitElement {
       y: (pts[midIndex].y + pts[midIndex + 1].y) / 2,
     };
     const waypoints = pts.slice(1, -1);
+    // Spotlight in effect and this edge isn't one of the hovered node's own.
+    const faded = this.spotlighting && !this._focusEdges.has(edge.id);
     return svg`
-      <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : 1}>
+      <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : faded ? 0.1 : 1}>
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
               stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
@@ -1333,6 +1386,8 @@ export class ModuxCanvas extends LitElement {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
     const hovered = this._hoverNodeId === node.id;
+    // Spotlight in effect and this node is outside the hovered neighbourhood.
+    const faded = this.spotlighting && !this._focusNodes.has(node.id);
     const isContainer = !!node.container;
     const isChild = !!node.parentId;
     // A container previews its in-progress size while being resized.
@@ -1348,12 +1403,14 @@ export class ModuxCanvas extends LitElement {
       : node.tooltip;
     return svg`
       <g data-node-id=${node.id}
-         opacity=${node.dim ? 0.25 : 1}
+         opacity=${node.dim ? 0.25 : faded ? 0.16 : 1}
          transform="translate(${x}, ${y})${hovered ? ' scale(1.06)' : ''}"
          pointer-events=${(this._dragPos && this._dragPos.id === node.id) ||
            this._dragGroup?.has(node.id)
              ? 'none'
              : 'auto'}
+         @pointerenter=${() => this.setFocusNode(node.id)}
+         @pointerleave=${() => this.setFocusNode(null)}
          @pointerdown=${(e: PointerEvent) => this.onNodePointerDown(e, node)}
          @dblclick=${(e: MouseEvent) => {
            e.stopPropagation();
