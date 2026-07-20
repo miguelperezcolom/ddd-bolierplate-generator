@@ -4247,14 +4247,17 @@ export class ModuxEditor extends LitElement {
       }
     }
 
-    // Edges that straddle the selection boundary lose their stored route so the
-    // canvas re-routes them live from the moved endpoints; edges wholly inside get
-    // ELK's fresh route; everything outside is left alone.
+    // Every edge touching the moved nodes loses its now-stale stored route:
+    // wholly-inside ones get ELK's fresh route (or, when ELK left them straight,
+    // the canvas draws them clean); boundary ones re-route live from the moved
+    // endpoint. Without clearing them, an inside edge ELK routed straight would
+    // keep the OLD bends and render diagonal. Everything else is left alone.
+    const internalEdgeIds = scoped ? layoutScene.edges.map((e) => e.id) : [];
     const boundaryEdgeIds = scoped
       ? scene.edges.filter((e) => ids.has(e.sourceId) !== ids.has(e.targetId)).map((e) => e.id)
       : [];
     const changedEdgeIds = scoped
-      ? [...new Set([...Object.keys(result.edges), ...boundaryEdgeIds])]
+      ? [...new Set([...internalEdgeIds, ...boundaryEdgeIds])]
       : Object.keys(current.edges);
 
     this.pushUndoEntry([
@@ -4278,7 +4281,9 @@ export class ModuxEditor extends LitElement {
     if (scoped) {
       const nodes = { ...current.nodes };
       for (const n of layoutNodes) nodes[n.id] = result.nodes[n.id];
-      const edges = { ...current.edges, ...result.edges };
+      const edges = { ...current.edges };
+      for (const id of internalEdgeIds) delete edges[id]; // drop stale routes first
+      Object.assign(edges, result.edges); // then ELK's fresh ones (bended edges only)
       for (const id of boundaryEdgeIds) delete edges[id];
       this.writeViewLayout(view, { ...current, nodes, edges });
     } else {
