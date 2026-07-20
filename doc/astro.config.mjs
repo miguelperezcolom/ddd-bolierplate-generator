@@ -31,7 +31,8 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'manual/overview' },
 						{ label: 'Search', slug: 'manual/search' },
-						{ label: 'Graphical Editor', slug: 'manual/graphical-editor' },
+						{ label: 'Graphical Editor Guide', slug: 'manual/graphical-editor-guide' },
+						{ label: 'Graphical Editor Reference', slug: 'manual/graphical-editor' },
 						{ label: 'Projects', slug: 'manual/projects' },
 						{ label: 'Services', slug: 'manual/services' },
 						{ label: 'Bounded Contexts & Modules', slug: 'manual/modules' },

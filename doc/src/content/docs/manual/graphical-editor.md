@@ -1,7 +1,11 @@
 ---
-title: Graphical Editor
+title: Graphical Editor Reference
 description: Edit the model on a live canvas — context map, aggregates, flows, workflows, UI, mappings, integrations and EventStorming, on three surfaces (2D, 3D, Yugo), with every change saved to the spec
 ---
+
+For a task-oriented walkthrough, start with the
+[Graphical Editor Guide](/manual/graphical-editor-guide/); this page is the exhaustive
+reference.
 
 The **Graphical editor** page is a fully editable canvas over the model. It is not a
 drawing tool with a save button: every gesture emits a command that mutates the spec
