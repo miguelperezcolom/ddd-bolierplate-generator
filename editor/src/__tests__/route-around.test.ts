@@ -40,12 +40,35 @@ describe('routeEdgesAroundNodes', () => {
     expect(routeEdgesAroundNodes(scene, {}).has('a->c')).toBe(false);
   });
 
-  it('never overrides a hand-placed route', () => {
+  it('keeps a stored route that stays off the boxes', () => {
     const scene = {
       nodes: [node('a', 0, 0), node('b', 300, 0), node('c', 600, 0)],
       edges: [{ id: 'a->c', sourceId: 'a', targetId: 'c', kind: 'rel' }],
     };
+    // A clean detour above B is respected (not re-routed).
     expect(routeEdgesAroundNodes(scene, { 'a->c': [{ x: 300, y: 200 }] }).has('a->c')).toBe(false);
+  });
+
+  it('respects a pinned-straight (empty) route even when it would cross a box', () => {
+    const scene = {
+      nodes: [node('a', 0, 0), node('b', 300, 0), node('c', 600, 0)],
+      edges: [{ id: 'a->c', sourceId: 'a', targetId: 'c', kind: 'rel' }],
+    };
+    expect(routeEdgesAroundNodes(scene, { 'a->c': [] }).has('a->c')).toBe(false);
+  });
+
+  it('re-routes a STORED route that runs over a box (stale / orphaned by a move)', () => {
+    const scene = {
+      nodes: [node('a', 0, 0), node('b', 300, 0), node('c', 600, 0)],
+      edges: [{ id: 'a->c', sourceId: 'a', targetId: 'c', kind: 'rel' }],
+    };
+    // Stored bends that plough straight through B: must be replaced with a route
+    // that clears it.
+    const routed = routeEdgesAroundNodes(scene, { 'a->c': [{ x: 300, y: 0 }] });
+    const bends = routed.get('a->c');
+    expect(bends, 'stale crossing route should be re-routed').toBeTruthy();
+    assertOrthogonalThrough({ x: 0, y: 0 }, bends!, { x: 600, y: 0 });
+    expect(bends!.some((p) => Math.abs(p.y) > 30)).toBe(true);
   });
 
   it('does not treat the edge\'s own endpoints as obstacles', () => {

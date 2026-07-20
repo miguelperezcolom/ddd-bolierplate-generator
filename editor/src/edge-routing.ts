@@ -157,24 +157,35 @@ export function routeEdgesAroundNodes(
     return total;
   };
 
+  const box = (o: SceneNode) => ({ x: o.x, y: o.y, w: o.w, h: o.h });
   for (const edge of scene.edges) {
-    if (existing[edge.id]) continue; // any hand decision wins — even "straight" (empty)
     const src = byId.get(edge.sourceId);
     const tgt = byId.get(edge.targetId);
     if (!src || !tgt) continue;
     const skip = new Set([...ancestorsOf(src.id), ...ancestorsOf(tgt.id)]);
-    // The route the canvas would draw on its own (border-to-border, orthogonal).
-    const box = (o: SceneNode) => ({ x: o.x, y: o.y, w: o.w, h: o.h });
-    const fallbackCrossings = crossings(orthogonalRoute(box(src), box(tgt)), skip);
-    if (fallbackCrossings === 0) continue; // already clean — nothing to store
+    const S = { x: src.x, y: src.y };
+    const T = { x: tgt.x, y: tgt.y };
+    // A stored route (auto-layout's or a hand-placed one) is respected AS LONG AS
+    // it stays off the boxes; an empty route is a deliberate "pin straight". But a
+    // stored route that runs over a box — a stale one left by an older layout, or
+    // one orphaned by a node move — is re-routed fresh so no line sits on a node.
+    const stored = existing[edge.id];
+    let baseline: number;
+    if (stored) {
+      if (stored.length === 0) continue; // pinned straight — always respected
+      baseline = crossings([S, ...stored, T], skip);
+      if (baseline === 0) continue; // stored route is clean — keep it
+    } else {
+      // The route the canvas would draw on its own (border-to-border, orthogonal).
+      baseline = crossings(orthogonalRoute(box(src), box(tgt)), skip);
+      if (baseline === 0) continue; // already clean — nothing to store
+    }
 
     // Orthogonal candidates, expressed as INTERIOR bends (centre-based): the
     // canvas anchors the ends to the borders, and because every bend shares an
     // axis with a centre, the rendered segments stay horizontal/vertical. A
     // vertical-channel Z bends [(mx,S.y),(mx,T.y)]; a horizontal-channel bump
     // bends [(S.x,my),(T.x,my)]. Endpoints exit orthogonally either way.
-    const S = { x: src.x, y: src.y };
-    const T = { x: tgt.x, y: tgt.y };
     const cands: Point[][] = [[{ x: T.x, y: S.y }], [{ x: S.x, y: T.y }]]; // two L shapes
     // Channels interpolated across the span — enough when S and T differ on the axis.
     for (const f of [0.5, 0.38, 0.62, 0.26, 0.74]) {
@@ -216,9 +227,10 @@ export function routeEdgesAroundNodes(
         bestLen = len;
       }
     }
-    // Only override the canvas's own orthogonal route when a candidate clears
-    // strictly more boxes; otherwise leave it be (it is already orthogonal).
-    if (best && bestCross < fallbackCrossings) {
+    // Only take over when a candidate clears strictly more boxes than the route
+    // we'd otherwise draw (the canvas's orthogonal fallback, or the stored route
+    // being replaced); otherwise leave it be.
+    if (best && bestCross < baseline) {
       routed.set(edge.id, best.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })));
     }
   }

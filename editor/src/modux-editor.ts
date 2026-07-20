@@ -1088,7 +1088,9 @@ export class ModuxEditor extends LitElement {
     if (!scene.edges.length) return stored;
     const routed = routeEdgesAroundNodes(scene, stored);
     if (!routed.size) return stored;
-    return { ...Object.fromEntries(routed), ...stored };
+    // `routed` also carries fresh routes for stored ones that ran over a box, so
+    // it must WIN over `stored` — those stale/orphaned routes are what it fixes.
+    return { ...stored, ...Object.fromEntries(routed) };
   }
 
   private pushUndoEntry(ops: EditOp[]): void {
