@@ -19,13 +19,26 @@ public record ApiOperationEntity(
         /** Request payload data model (a ModelEntity id), when the contract declares one. */
         String requestModelId,
         /** Response payload data model (a ModelEntity id), when the contract declares one. */
-        String responseModelId
+        String responseModelId,
+        /** Fine wiring for a READ operation: the query service whose operation implements it. */
+        String targetQueryServiceId,
+        /** Fine wiring for a READ operation: the query operation implementing it (REST-exposes it). */
+        String targetQueryOperationId
 ) {
 
     /** Backward-compatible constructor (pre request/response model callers and stores). */
     public ApiOperationEntity(String id, String name, String httpMethod, String path,
                               String description, String targetBoundedContextId, String targetUseCaseId) {
-        this(id, name, httpMethod, path, description, targetBoundedContextId, targetUseCaseId, null, null);
+        this(id, name, httpMethod, path, description, targetBoundedContextId, targetUseCaseId,
+                null, null, null, null);
+    }
+
+    /** Backward-compatible constructor (pre query-target callers and stores). */
+    public ApiOperationEntity(String id, String name, String httpMethod, String path,
+                              String description, String targetBoundedContextId, String targetUseCaseId,
+                              String requestModelId, String responseModelId) {
+        this(id, name, httpMethod, path, description, targetBoundedContextId, targetUseCaseId,
+                requestModelId, responseModelId, null, null);
     }
 
     // Single-field copies: unlike the positional constructor, these can never silently

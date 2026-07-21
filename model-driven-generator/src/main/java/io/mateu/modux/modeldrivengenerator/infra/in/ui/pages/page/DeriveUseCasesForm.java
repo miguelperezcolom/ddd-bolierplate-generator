@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 public class DeriveUseCasesForm {
 
     final DerivePageUseCasesUseCase useCase;
+    final io.mateu.modux.modeldrivengenerator.application.usecases.uiadapter.derive.DeriveMenuCrudUseCase menuCrud;
     final io.mateu.modux.modeldrivengenerator.application.usecases.usecase.consume.DeriveConsumptionApisUseCase consumptionApis;
 
     @PlainText
@@ -30,7 +31,9 @@ public class DeriveUseCasesForm {
 
     @Button
     void derive() {
-        resultado = useCase.handle();
+        // Materialize UI→aggregate intentions first (they create CRUD pages), then derive every page.
+        var menu = menuCrud.handle();
+        resultado = menu + " " + useCase.handle();
     }
 
     @Button

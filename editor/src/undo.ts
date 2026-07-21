@@ -722,6 +722,18 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'remove-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-actor-crud':
         return [{ kind: 'add-actor-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-ui-crud':
+        return [{ kind: 'remove-ui-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-ui-crud':
+        return [{ kind: 'add-ui-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-external-crud':
+        return [{ kind: 'remove-external-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-external-crud':
+        return [{ kind: 'add-external-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'add-context-crud':
+        return [{ kind: 'remove-context-crud', sourceId: c.sourceId, targetId: c.targetId }];
+      case 'remove-context-crud':
+        return [{ kind: 'add-context-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case':
         return [{ kind: 'remove-use-case', id: c.id }];
       case 'remove-use-case': {

@@ -62,6 +62,8 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'api-implementation', label: 'Implementación', hint: 'API → contexto: el contexto la implementa (la sirve él mismo)' },
   { id: 'api-consumption', label: 'Consumo (servidumbre)', hint: 'API → contexto: el contexto la consume (relación serving)' },
   { id: 'external-call', label: 'Llamada ACL', hint: 'Sistema externo → caso de uso nuestro (entra por ACL)' },
+  { id: 'external-crud', label: 'CRUD (API)', hint: 'Sistema externo → agregado: crea la API CRUD y lo cablea como consumidor' },
+  { id: 'context-crud', label: 'CRUD (API)', hint: 'Otro contexto → agregado: crea la API CRUD que consumirá' },
   { id: 'external-uc-call', label: 'Llamada saliente', hint: 'Caso de uso nuestro → operación de un sistema externo' },
   { id: 'agent-tool', label: 'Herramienta IA', hint: 'Agente → caso de uso, operación, MCP, gateway, API o query service' },
   { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
@@ -232,6 +234,14 @@ export function connectionOptions(
         }
       });
     }
+    if (isAggregate(targetId)) {
+      offer('external-crud', () => host.command({ kind: 'add-external-crud', sourceId, targetId }));
+    }
+  }
+  // Another context → aggregate (not its own): it consumes the aggregate's CRUD through a first-class API.
+  if (isContext(sourceId) && isAggregate(targetId)
+      && (m.aggregates ?? []).find((a) => a.id === targetId)?.boundedContextId !== sourceId) {
+    offer('context-crud', () => host.command({ kind: 'add-context-crud', sourceId, targetId }));
   }
   {
     // API (o el proxy que la fronteña) → contexto: dos sentidos muy distintos que NO
@@ -722,6 +732,13 @@ export function applyConnectionGesture(
             ...menuRef,
           });
         }
+        return;
+      }
+      // app → aggregate: the app manages that aggregate through a CRUD — a menu entry is added
+      // and its CRUD page (+ listing query, use cases, lifecycle events) is materialized from it.
+      // The UI twin of actor → aggregate: the actor says WHO may run the CRUD, the app says WHERE.
+      if (isApp(sourceId) && (host.model.aggregates ?? []).some((a) => a.id === targetId)) {
+        host.command({ kind: 'add-ui-crud', sourceId, targetId });
         return;
       }
       // actor → app: the actor uses that app

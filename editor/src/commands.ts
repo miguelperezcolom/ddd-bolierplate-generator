@@ -622,6 +622,41 @@ export type ModuxCommand =
       targetId: string;
     }
   | {
+      /** A UI app manages an aggregate through a CRUD: a menu entry is added and the CRUD
+       * page (+ listing query, CRUD use cases, lifecycle events) is materialized from it. */
+      kind: 'add-ui-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-ui-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      /** An external system integrates with an aggregate: its CRUD API is materialized
+       * (resting on the CRUD use cases + listing query) and the system is wired as consumer. */
+      kind: 'add-external-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-external-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      /** Another bounded context consumes an aggregate: its CRUD API is materialized. */
+      kind: 'add-context-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
+      kind: 'remove-context-crud';
+      sourceId: string;
+      targetId: string;
+    }
+  | {
       /** A plain use case in a bounded context — or a policy when flagged. */
       kind: 'add-use-case';
       id: string;

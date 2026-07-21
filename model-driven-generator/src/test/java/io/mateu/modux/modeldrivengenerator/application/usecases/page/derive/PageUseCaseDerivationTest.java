@@ -40,14 +40,14 @@ class PageUseCaseDerivationTest {
 
         // trio + button stub
         var ids = result.newUseCases().stream().map(UseCaseEntity::id).toList();
-        assertTrue(ids.contains("uc-agg-reserva-create"));
-        assertTrue(ids.contains("uc-agg-reserva-update"));
-        assertTrue(ids.contains("uc-agg-reserva-delete"));
+        assertTrue(ids.contains("uc-crearAgg-reserva"));
+        assertTrue(ids.contains("uc-actualizarAgg-reserva"));
+        assertTrue(ids.contains("uc-eliminarAgg-reserva"));
         assertTrue(ids.contains("uc-pg-reservas-confirmar-llegada"));
 
         // the CRUD stubs are UI-exposed and carry their persistence pipeline + the publish step
         var create = result.newUseCases().stream()
-                .filter(uc -> uc.id().equals("uc-agg-reserva-create")).findFirst().orElseThrow();
+                .filter(uc -> uc.id().equals("uc-crearAgg-reserva")).findFirst().orElseThrow();
         assertTrue(create.exposedAsUi());
         assertEquals("m-reserva", create.inputModelId());
         assertEquals(UseCaseStepType.SaveAggregate, create.steps().get(0).type());
@@ -56,14 +56,14 @@ class PageUseCaseDerivationTest {
         assertEquals("ev-agg-reservaCreada", lastStep(create).domainEventId());
 
         var update = result.newUseCases().stream()
-                .filter(uc -> uc.id().equals("uc-agg-reserva-update")).findFirst().orElseThrow();
+                .filter(uc -> uc.id().equals("uc-actualizarAgg-reserva")).findFirst().orElseThrow();
         assertEquals(List.of(UseCaseStepType.ReadAggregate, UseCaseStepType.SaveAggregate,
                         UseCaseStepType.PublishDomainEvent),
                 update.steps().stream().map(UseCaseStepEntity::type).toList());
         assertEquals("ev-agg-reservaModificada", lastStep(update).domainEventId());
 
         var delete = result.newUseCases().stream()
-                .filter(uc -> uc.id().equals("uc-agg-reserva-delete")).findFirst().orElseThrow();
+                .filter(uc -> uc.id().equals("uc-eliminarAgg-reserva")).findFirst().orElseThrow();
         assertEquals(null, delete.inputModelId());
         assertEquals(UseCaseStepType.Custom, delete.steps().get(0).type());
         assertEquals("ev-agg-reservaEliminada", lastStep(delete).domainEventId());
@@ -104,7 +104,7 @@ class PageUseCaseDerivationTest {
         assertEquals(List.of("ev-agg-reservaModificada", "ev-agg-reservaEliminada"),
                 result.newDomainEvents().stream().map(DomainEventEntity::id).toList());
         var create = result.newUseCases().stream()
-                .filter(uc -> uc.id().equals("uc-agg-reserva-create")).findFirst().orElseThrow();
+                .filter(uc -> uc.id().equals("uc-crearAgg-reserva")).findFirst().orElseThrow();
         assertEquals("ev-agg-reservaCreada", lastStep(create).domainEventId());
     }
 

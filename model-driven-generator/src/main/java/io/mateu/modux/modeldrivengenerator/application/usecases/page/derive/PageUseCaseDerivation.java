@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.page.derive;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudLifecycleEvents;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
+import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
@@ -9,7 +9,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryCardinality;
 
 import java.util.ArrayList;
@@ -55,22 +54,19 @@ public final class PageUseCaseDerivation {
         changed |= toolbar.changed || bottomBar.changed || completion.changed;
 
         // --- CRUD over an aggregate: the standard trio + the lifecycle domain events ---
+        // The trio is the SAME one the actor→aggregate gesture implies (CrudUseCases): a UI over an
+        // aggregate and an actor over it reinforce the same use cases rather than each minting its own.
         var aggregate = page.aggregateId() == null ? null : aggregates.stream()
                 .filter(a -> a.id().equals(page.aggregateId())).findFirst().orElse(null);
         if (isCrud(page) && aggregate != null) {
-            var events = CrudLifecycleEvents.lifecycleOf(aggregate.id(), aggregate.name());
             var existingEventIds = existingDomainEvents.stream()
                     .map(DomainEventEntity::id).collect(java.util.stream.Collectors.toSet());
             CrudLifecycleEvents.forAggregate(aggregate).stream()
                     .filter(e -> !existingEventIds.contains(e.id()))
                     .forEach(newDomainEvents::add);
-            for (var action : List.of("create", "update", "delete")) {
-                var id = "uc-" + aggregate.id() + "-" + action;
-                if (!existingIds.contains(id)) {
-                    newUseCases.add(crudStub(id, action, aggregate, events));
-                    existingIds.add(id);
-                }
-            }
+            CrudUseCases.forAggregate(aggregate).stream()
+                    .filter(uc -> !existingIds.contains(uc.id()))
+                    .forEach(uc -> { newUseCases.add(uc); existingIds.add(uc.id()); });
         }
 
         // --- listing without a query service: derive one with a paged list operation ---
@@ -100,43 +96,6 @@ public final class PageUseCaseDerivation {
     }
 
     // --- helpers ------------------------------------------------------------
-
-    /**
-     * A CRUD use case with its pipeline already wired: persistence steps against the
-     * aggregate plus the publication of its lifecycle domain event. create → save +
-     * Creado/a; update → read + save + Modificado/a; delete → delete + Eliminado/a.
-     */
-    private static UseCaseEntity crudStub(String id, String action, AggregateEntity aggregate,
-                                          List<CrudLifecycleEvents.LifecycleEvent> events) {
-        var cap = aggregate.name();
-        var steps = switch (action) {
-            case "create" -> List.of(
-                    new UseCaseStepEntity("step-save", "save" + cap, UseCaseStepType.SaveAggregate,
-                            aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                    CrudLifecycleEvents.publishStep(events.get(0)));
-            case "update" -> List.of(
-                    new UseCaseStepEntity("step-read", "read" + cap, UseCaseStepType.ReadAggregate,
-                            aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                    new UseCaseStepEntity("step-save", "save" + cap, UseCaseStepType.SaveAggregate,
-                            aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                    CrudLifecycleEvents.publishStep(events.get(1)));
-            default -> List.of(
-                    new UseCaseStepEntity("step-delete", "delete" + cap, UseCaseStepType.Custom,
-                            aggregate.id(), null, null, null, null, null, null, null,
-                            "Elimina el agregado " + cap, null, null),
-                    CrudLifecycleEvents.publishStep(events.get(2)));
-        };
-        return new UseCaseEntity(id, pascal(action) + cap,
-                false, false, false, false, true,
-                "delete".equals(action) ? null : aggregate.modelId(), null,
-                steps, List.of(), List.of(),
-                null, null, null, null,
-                null, null, null, null, null,
-                false, null, null,
-                null, false, null,
-                false, null,
-                null, null);
-    }
 
     private record Buttons(List<PageButtonEntity> buttons, boolean changed) {}
 

@@ -445,7 +445,8 @@ public class EditorModelProjection {
         var apis = scoped(ApiEntity.class).stream()
                 .map(a -> new ApiDto(a.id(), a.name(), a.operations().stream()
                         .map(op -> new ApiOperationDto(op.id(), op.name(), op.httpMethod(),
-                                op.path(), op.targetBoundedContextId(), op.targetUseCaseId()))
+                                op.path(), op.targetBoundedContextId(), op.targetUseCaseId(),
+                                op.targetQueryServiceId(), op.targetQueryOperationId()))
                         .toList(),
                         a.publishedByExternalSystemId()))
                 .toList();

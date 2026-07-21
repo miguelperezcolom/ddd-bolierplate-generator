@@ -25,15 +25,12 @@ public record DerivedElementIds(
         var queryServices = new HashSet<String>();
         var domainEvents = new HashSet<String>();
         for (var aggregateId : aggregateIds) {
-            // EditorApiController.crudUseCases: the actor-CRUD trio.
+            // CrudUseCases: the CRUD trio shared by the actor→aggregate gesture and the
+            // UI→aggregate / CRUD-page derivation (one convention, no duplicates).
             var cap = EditorApiController.capitalize(aggregateId);
             useCases.add("uc-crear" + cap);
             useCases.add("uc-actualizar" + cap);
             useCases.add("uc-eliminar" + cap);
-            // PageUseCaseDerivation: the CRUD-page trio.
-            useCases.add("uc-" + aggregateId + "-create");
-            useCases.add("uc-" + aggregateId + "-update");
-            useCases.add("uc-" + aggregateId + "-delete");
             // CrudLifecycleEvents: the lifecycle domain events (both participle genders).
             for (var stem : List.of("Cread", "Modificad", "Eliminad")) {
                 domainEvents.add("ev-" + aggregateId + stem + "o");

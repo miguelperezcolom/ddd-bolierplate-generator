@@ -1318,14 +1318,19 @@ function buildScene(
   // the detail level; at the contexts level the API box points at the boundedContext.
   const apiWireEdges: SceneEdge[] = (model.apis ?? []).flatMap((api) =>
     api.operations.flatMap((op) => {
+      // A READ operation rests on a query service; a command operation on a use case.
+      const queryTarget =
+        detailed && op.targetQueryServiceId && nodeIds.has(op.targetQueryServiceId)
+          ? op.targetQueryServiceId
+          : null;
       const target =
         detailed && op.targetUseCaseId && nodeIds.has(op.targetUseCaseId)
           ? op.targetUseCaseId
-          : op.targetBoundedContextId && nodeIds.has(op.targetBoundedContextId)
-            ? op.targetBoundedContextId
-            : op.targetUseCaseId && !detailed
-              ? null // fine wiring is invisible at the contexts level unless a boundedContext is set
-              : null;
+          : queryTarget
+            ? queryTarget
+            : op.targetBoundedContextId && nodeIds.has(op.targetBoundedContextId)
+              ? op.targetBoundedContextId
+              : null; // fine wiring is invisible at the contexts level unless a boundedContext is set
       if (!target) return [];
       // Global wiring always paints from the operation AS PUBLISHED (per-site wiring —
       // apiOperationImplementations — carries its own site and paints from there).
@@ -1340,7 +1345,10 @@ function buildScene(
           color: '#4f46e5',
           dashed: true,
           arrow: true,
-          tooltip: `${op.name} la implementa ${target}`,
+          tooltip:
+            target === queryTarget
+              ? `${op.name} lee de ${target}`
+              : `${op.name} la implementa ${target}`,
         },
       ];
     }),

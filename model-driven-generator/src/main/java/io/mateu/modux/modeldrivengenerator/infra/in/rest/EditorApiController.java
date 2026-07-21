@@ -131,6 +131,7 @@ public class EditorApiController {
     private final AgentEditorCommands agentCommands;
     private final UiEditorCommands uiCommands;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.interaction.derive.DeriveInteractionUseCase deriveInteractionUseCase;
+    private final io.mateu.modux.modeldrivengenerator.application.usecases.uiadapter.derive.DeriveMenuCrudUseCase deriveMenuCrud;
 
     // ---- projection -------------------------------------------------------
 
@@ -297,7 +298,8 @@ public class EditorApiController {
     public record ApiDto(String id, String name, List<ApiOperationDto> operations,
                          String publishedByExternalSystemId) {}
     public record ApiOperationDto(String id, String name, String httpMethod, String path,
-                                  String targetBoundedContextId, String targetUseCaseId) {}
+                                  String targetBoundedContextId, String targetUseCaseId,
+                                  String targetQueryServiceId, String targetQueryOperationId) {}
     /** An AI agent grounds its answers on a knowledge base. */
     public record AgentRagDto(String agentId, String ragId) {}
     /** Use case A invokes use case B (a CallUseCase step in A). */
@@ -805,6 +807,10 @@ public class EditorApiController {
             case "add-actor-use" -> addActorUse(command);
             case "remove-actor-use" -> removeActorUse(command);
             case "add-actor-crud" -> addActorCrud(command);
+            case "add-external-crud" -> addExternalCrud(command);
+            case "remove-external-crud" -> removeExternalCrud(command);
+            case "add-context-crud" -> addContextCrud(command);
+            case "remove-context-crud" -> removeContextCrud(command);
             case "add-actor-external" -> addActorExternalDependency(command);
             case "remove-actor-external" -> removeActorExternalDependency(command);
             case "add-external-dependency" -> addExternalSystemDependency(command);
@@ -905,6 +911,8 @@ public class EditorApiController {
             case "delete-ui-page" -> uiCommands.deleteUiPage(command);
             case "add-menu-item" -> uiCommands.addMenuItem(command);
             case "remove-menu-item" -> uiCommands.removeMenuItem(command);
+            case "add-ui-crud" -> addUiCrud(command);
+            case "remove-ui-crud" -> removeUiCrud(command);
             case "set-menu-page" -> uiCommands.setMenuPage(command);
             case "move-menu-item" -> uiCommands.moveMenuItem(command);
             case "set-menu-app" -> uiCommands.setMenuApp(command);
@@ -2127,35 +2135,217 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
         var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        ensureCrudCore(aggregate);
+        var allowed = new ArrayList<>(role.allowedUseCaseIds());
+        for (var id : io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudUseCases.idsOf(aggregate.id())) {
+            if (!allowed.contains(id)) allowed.add(id);
+        }
+        repository.save(role.withAllowedUseCaseIds(allowed));
+    }
+
+    /**
+     * The consumer-agnostic CRUD core: the shared use-case trio and its lifecycle domain events,
+     * attached to the aggregate's bounded context. Every consumer relationship (actor, UI, API)
+     * reinforces this same core. Idempotent; returns the owning bounded context.
+     */
+    private BoundedContextEntity ensureCrudCore(AggregateEntity aggregate) {
         var boundedContext = repository.findAllOfType(BoundedContextEntity.class).stream()
                 .filter(m -> m.aggregateIds() != null && m.aggregateIds().contains(aggregate.id()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "El agregado " + aggregate.id() + " no pertenece a ningún bounded context"));
-        var useCaseIds = new ArrayList<>(boundedContext.useCaseIds() == null ? List.of() : boundedContext.useCaseIds());
-        var allowed = new ArrayList<>(role.allowedUseCaseIds());
+        var useCaseIds = new ArrayList<>(boundedContext.useCaseIds() == null
+                ? List.<String>of() : boundedContext.useCaseIds());
         for (var uc : crudUseCases(aggregate)) {
-            if (repository.findById(uc.id(), UseCaseEntity.class).isEmpty()) {
-                repository.save(uc);
-            }
+            if (repository.findById(uc.id(), UseCaseEntity.class).isEmpty()) repository.save(uc);
             if (!useCaseIds.contains(uc.id())) useCaseIds.add(uc.id());
-            if (!allowed.contains(uc.id())) allowed.add(uc.id());
         }
-        // The CRUD also implies the aggregate's lifecycle domain events — derive them too.
         var eventIds = new ArrayList<>(boundedContext.domainEventIds() == null
                 ? List.<String>of() : boundedContext.domainEventIds());
         for (var ev : io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
                 .CrudLifecycleEvents.forAggregate(aggregate)) {
-            if (repository.findById(ev.id(), DomainEventEntity.class).isEmpty()) {
-                repository.save(ev);
-            }
+            if (repository.findById(ev.id(), DomainEventEntity.class).isEmpty()) repository.save(ev);
             if (!eventIds.contains(ev.id())) eventIds.add(ev.id());
         }
-        repository.save(boundedContext.toBuilder()
-                .useCaseIds(useCaseIds)
-                .domainEventIds(eventIds)
-                .build());
-        repository.save(role.withAllowedUseCaseIds(allowed));
+        var saved = boundedContext.toBuilder().useCaseIds(useCaseIds).domainEventIds(eventIds).build();
+        repository.save(saved);
+        return saved;
+    }
+
+    /**
+     * The integration surface: the CRUD core plus a canonical listing query and a first-class
+     * REST API ({@code api-crud-{aggId}}) whose operations rest on the trio and the query. Idempotent;
+     * returns the API id.
+     */
+    private String ensureCrudApi(AggregateEntity aggregate) {
+        var boundedContext = ensureCrudCore(aggregate);
+        var qsId = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudApi.queryServiceId(aggregate.id());
+        if (repository.findById(qsId, QueryServiceEntity.class).isEmpty()) {
+            repository.save(io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                    .CrudApi.listingQuery(aggregate, boundedContext.id()));
+        }
+        var apiId = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudApi.apiId(aggregate.id());
+        if (repository.findById(apiId, ApiEntity.class).isEmpty()) {
+            repository.save(io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                    .CrudApi.forAggregate(aggregate, boundedContext.id()));
+        }
+        return apiId;
+    }
+
+    /**
+     * An external system operates on an aggregate through its CRUD: the CRUD API is materialized
+     * (resting on the trio + listing query), the external system is wired as a consumer
+     * (dependsOnApiIds), and an INBOUND ACL routes its calls to the CRUD use cases. The API twin of
+     * {@link #addUiCrud}: the UI says WHERE the CRUD is shown, the API says WHO integrates with it.
+     */
+    private void addExternalCrud(EditorCommand command) {
+        var project = projects.owningProject();
+        var external = project.externalSystems().stream()
+                .filter(x -> x.id().equals(command.sourceId())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        var apiId = ensureCrudApi(aggregate);
+        var boundedContext = ensureCrudCore(aggregate);
+        wireInboundAcl(boundedContext, external.id(), external.name(),
+                io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                        .CrudUseCases.idsOf(aggregate.id()));
+        if (!external.dependsOnApiIds().contains(apiId)) {
+            var ids = new ArrayList<>(external.dependsOnApiIds());
+            ids.add(apiId);
+            repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+                    .map(x -> x.id().equals(external.id()) ? x.withDependsOnApiIds(ids) : x).toList()));
+        }
+    }
+
+    private void removeExternalCrud(EditorCommand command) {
+        var apiId = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudApi.apiId(command.targetId());
+        var project = projects.owningProject();
+        project.externalSystems().stream().filter(x -> x.id().equals(command.sourceId())).findFirst()
+                .filter(x -> x.dependsOnApiIds().contains(apiId))
+                .ifPresent(x -> repository.save(EditorProjectSupport.withExternalSystems(project,
+                        project.externalSystems().stream()
+                                .map(s -> s.id().equals(x.id())
+                                        ? s.withDependsOnApiIds(s.dependsOnApiIds().stream()
+                                                .filter(id -> !id.equals(apiId)).toList())
+                                        : s).toList())));
+        // Drop the external system's INBOUND ACL entries to the aggregate's CRUD use cases; leave the API.
+        var crudIds = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudUseCases.idsOf(command.targetId());
+        repository.findAllOfType(BoundedContextEntity.class).stream()
+                .filter(m -> m.acls() != null && m.acls().stream().anyMatch(a ->
+                        command.sourceId().equals(a.externalSystem())
+                                && "INBOUND".equalsIgnoreCase(a.direction())))
+                .forEach(m -> repository.save(m.toBuilder().acls(m.acls().stream()
+                        .map(a -> command.sourceId().equals(a.externalSystem())
+                                && "INBOUND".equalsIgnoreCase(a.direction()) && a.translatedUseCaseIds() != null
+                                ? new AclEntity(a.id(), a.name(), a.externalSystem(), a.description(),
+                                        a.direction(), a.gatewayId(), a.translatedDomainEventIds(),
+                                        a.translatedUseCaseIds().stream().filter(id -> !crudIds.contains(id)).toList())
+                                : a)
+                        .filter(a -> !(command.sourceId().equals(a.externalSystem())
+                                && "INBOUND".equalsIgnoreCase(a.direction())
+                                && (a.translatedUseCaseIds() == null || a.translatedUseCaseIds().isEmpty())
+                                && (a.translatedDomainEventIds() == null || a.translatedDomainEventIds().isEmpty())))
+                        .toList()).build()));
+    }
+
+    /**
+     * Another bounded context consumes an aggregate through its CRUD API: the API is materialized
+     * (resting on the trio + listing query), ready for the consuming context to call. Cross-service
+     * consumption becomes gRPC through the existing consumption derivation once a use case calls it.
+     */
+    private void addContextCrud(EditorCommand command) {
+        repository.findById(command.sourceId(), BoundedContextEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown bounded context: " + command.sourceId()));
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        ensureCrudApi(aggregate);
+    }
+
+    private void removeContextCrud(EditorCommand command) {
+        // The API is shared across consumers; relating/unrelating a context leaves it in place.
+    }
+
+    /** Route an external system's inbound calls to the given use cases via a single INBOUND ACL. */
+    private void wireInboundAcl(BoundedContextEntity boundedContext, String externalId,
+                                String externalName, List<String> useCaseIds) {
+        var acls = new ArrayList<>(boundedContext.acls() == null ? List.<AclEntity>of() : boundedContext.acls());
+        var existing = acls.stream()
+                .filter(a -> externalId.equals(a.externalSystem()) && "INBOUND".equalsIgnoreCase(a.direction()))
+                .findFirst().orElse(null);
+        var translated = new ArrayList<>(existing == null || existing.translatedUseCaseIds() == null
+                ? List.<String>of() : existing.translatedUseCaseIds());
+        useCaseIds.stream().filter(id -> !translated.contains(id)).forEach(translated::add);
+        if (existing != null) {
+            acls.set(acls.indexOf(existing), new AclEntity(existing.id(), existing.name(),
+                    existing.externalSystem(), existing.description(), existing.direction(),
+                    existing.gatewayId(), existing.translatedDomainEventIds(), translated));
+        } else {
+            acls.add(new AclEntity("acl-" + externalId + "-" + boundedContext.id(),
+                    "Acl" + capitalize(externalName), externalId, null, "INBOUND", null,
+                    List.of(), translated));
+        }
+        repository.save(boundedContext.toBuilder().acls(acls).build());
+    }
+
+    /**
+     * A UI app manages an aggregate through a CRUD: the intention (a menu entry targeting the
+     * aggregate) is added and immediately materialized — a CRUD page, its listing query, the shared
+     * CRUD use cases and the lifecycle events — by the menu→aggregate derivation. Symmetric to
+     * {@link #addActorCrud}: the actor says WHO may run the CRUD, the app says WHERE it is shown.
+     */
+    private void addUiCrud(EditorCommand command) {
+        var app = repository.findById(command.sourceId(), UiAdapterEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown UI app: " + command.sourceId()));
+        var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown aggregate: " + command.targetId()));
+        var pageId = "pg-crud-" + aggregate.id();
+        if (!menuOpensCrud(app.menuItems(), pageId, aggregate.id())) {
+            var items = new ArrayList<>(app.menuItems() == null
+                    ? List.<UiMenuItemEntity>of() : app.menuItems());
+            items.add(new UiMenuItemEntity(aggregate.name(), null, null, null, null, List.of(),
+                    "mi-crud-" + aggregate.id(), null, null, aggregate.id(), null, null));
+            repository.save(app.toBuilder().menuItems(items).build());
+        }
+        deriveMenuCrud.handle(app.id());
+    }
+
+    private void removeUiCrud(EditorCommand command) {
+        var pageId = "pg-crud-" + command.targetId();
+        repository.findById(command.sourceId(), UiAdapterEntity.class).ifPresent(app ->
+                repository.save(app.toBuilder()
+                        .menuItems(withoutCrudEntries(app.menuItems(), pageId, command.targetId()))
+                        .build()));
+    }
+
+    /** True when some menu entry (at any depth) already opens the aggregate's CRUD — page or intention. */
+    private static boolean menuOpensCrud(List<UiMenuItemEntity> items, String pageId, String aggregateId) {
+        if (items == null) return false;
+        for (var item : items) {
+            if (pageId.equals(item.pageId()) || aggregateId.equals(item.aggregateId())) return true;
+            if (menuOpensCrud(item.children(), pageId, aggregateId)) return true;
+        }
+        return false;
+    }
+
+    /** Drops every menu entry (at any depth) that opens this aggregate's CRUD; leaves the page in place. */
+    private static List<UiMenuItemEntity> withoutCrudEntries(List<UiMenuItemEntity> items,
+                                                             String pageId, String aggregateId) {
+        if (items == null) return null;
+        var out = new ArrayList<UiMenuItemEntity>();
+        for (var item : items) {
+            if (pageId.equals(item.pageId()) || aggregateId.equals(item.aggregateId())) continue;
+            out.add(new UiMenuItemEntity(item.label(), item.icon(), item.description(), item.route(),
+                    item.pageId(), withoutCrudEntries(item.children(), pageId, aggregateId),
+                    item.id(), item.uiAdapterId(), item.useCaseId(), item.aggregateId(),
+                    item.queryServiceId(), item.queryOperationId()));
+        }
+        return out;
     }
 
     private void removeActorCrud(EditorCommand command) {
@@ -2445,32 +2635,10 @@ public class EditorApiController {
 
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
     static List<UseCaseEntity> crudUseCases(AggregateEntity aggregate) {
-        var cap = capitalize(aggregate.name());
-        var events = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
-                .CrudLifecycleEvents.lifecycleOf(aggregate.id(), aggregate.name());
-        return List.of(
-                stubUseCase("uc-crear" + capitalize(aggregate.id()), "Crear" + cap, List.of(
-                        new UseCaseStepEntity("step-save", "save" + cap,
-                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
-                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
-                                .CrudLifecycleEvents.publishStep(events.get(0)))),
-                stubUseCase("uc-actualizar" + capitalize(aggregate.id()), "Actualizar" + cap, List.of(
-                        new UseCaseStepEntity("step-read", "read" + cap,
-                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.ReadAggregate,
-                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                        new UseCaseStepEntity("step-save", "save" + cap,
-                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.SaveAggregate,
-                                aggregate.id(), null, null, null, null, null, null, null, null, null, null),
-                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
-                                .CrudLifecycleEvents.publishStep(events.get(1)))),
-                stubUseCase("uc-eliminar" + capitalize(aggregate.id()), "Eliminar" + cap, List.of(
-                        new UseCaseStepEntity("step-delete", "delete" + cap,
-                                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom,
-                                aggregate.id(), null, null, null, null, null, null, null, null,
-                                "Elimina el agregado " + cap, null),
-                        io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
-                                .CrudLifecycleEvents.publishStep(events.get(2)))));
+        // Shared with the CRUD-page derivation so an actor over an aggregate and a UI over it
+        // reinforce the same trio instead of each minting its own (see CrudUseCases).
+        return io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
+                .CrudUseCases.forAggregate(aggregate);
     }
 
     /** UI-exposed stub (the CRUD default). */

@@ -311,6 +311,10 @@ export interface ApiOperationRef {
   targetBoundedContextId?: string;
   /** Fine wiring: the use case (or policy) that implements it. */
   targetUseCaseId?: string;
+  /** Fine wiring for a READ operation: the query service whose operation implements it. */
+  targetQueryServiceId?: string;
+  /** Fine wiring for a READ operation: the query operation implementing it. */
+  targetQueryOperationId?: string;
 }
 
 /** A published API as a first-class element on the map. */

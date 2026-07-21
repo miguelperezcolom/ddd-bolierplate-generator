@@ -13,7 +13,8 @@ class DerivedElementIdsTest {
             List.of("reserva", "compra-hotel"), List.of("pagina-reservas"));
 
     @Test
-    void marksTheActorCrudTrio() {
+    void marksTheCrudTrio() {
+        // The one trio shared by the actor→aggregate gesture and the UI/CRUD-page derivation.
         assertTrue(ids.isDerivedUseCase("uc-crearReserva"));
         assertTrue(ids.isDerivedUseCase("uc-actualizarReserva"));
         assertTrue(ids.isDerivedUseCase("uc-eliminarCompra-hotel"));
@@ -26,13 +27,6 @@ class DerivedElementIdsTest {
         assertTrue(ids.isDerivedDomainEvent("ev-compra-hotelModificado"));
         assertTrue(ids.isDerivedDomainEvent("ev-compra-hotelEliminada"));
         assertFalse(ids.isDerivedDomainEvent("ev-estanciaCreada"));
-    }
-
-    @Test
-    void marksThePageCrudTrio() {
-        assertTrue(ids.isDerivedUseCase("uc-reserva-create"));
-        assertTrue(ids.isDerivedUseCase("uc-compra-hotel-update"));
-        assertTrue(ids.isDerivedUseCase("uc-compra-hotel-delete"));
     }
 
     @Test
