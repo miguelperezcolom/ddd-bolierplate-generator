@@ -60,6 +60,13 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     const boundedContext = boundedContextById.get(a.boundedContextId);
     const subdomain = boundedContext?.subdomainType ?? 'GENERIC';
     const p = pos(a.id);
+    const entCount = (model.entities ?? []).filter((e) => e.aggregateId === a.id).length;
+    const voCount = (model.valueObjects ?? []).filter((v) => v.aggregateId === a.id).length;
+    const invCount = (a.invariants ?? []).length;
+    const chips =
+      (entCount ? ` · 🗂${entCount}` : '') +
+      (voCount ? ` · ◈${voCount}` : '') +
+      (invCount ? ` · ⚖${invCount}` : '');
     return {
       id: a.id,
       label: a.name,
@@ -71,8 +78,8 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       symbol: 'aggregate',
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#64748b',
-      badge: `${boundedContext ? `${boundedContext.name.toUpperCase()} · ` : ''}AGGREGATE${(a.invariants ?? []).length ? ` · ⚖${a.invariants!.length}` : ''}`,
-      tooltip: `Agregado ${a.name}${boundedContext ? ` — contexto ${boundedContext.name} (${subdomain})` : ''}`,
+      badge: `${boundedContext ? `${boundedContext.name.toUpperCase()} · ` : ''}AGGREGATE${chips}`,
+      tooltip: `Agregado ${a.name}${boundedContext ? ` — contexto ${boundedContext.name} (${subdomain})` : ''}${voCount || entCount ? ` · ${entCount} entidad(es), ${voCount} value object(s)` : ''}`,
     };
   });
 

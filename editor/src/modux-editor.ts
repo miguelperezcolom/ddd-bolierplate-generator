@@ -3276,6 +3276,14 @@ export class ModuxEditor extends LitElement {
       // Born fresh: a deleted namesake's leftover geometry (a size, a position in
       // another view) must not dress the newcomer — same sweep as stale edge bends.
       this.purgeNodeGeometry(id);
+      // The aggregates view nests by containment EDGES, not parentId geometry: its
+      // value objects / entities are free satellites the view lays out under their
+      // owner. Writing a parent-relative offset here would drop them at a wrong
+      // absolute spot (0,0 when released on the aggregate centre), so we skip the
+      // write and let the default layout place the satellite.
+      if (view === 'aggregates') {
+        return { kind: 'move-node', view, id, pos: null } as EditOp;
+      }
       const current = this.viewLayout(view);
       const parent = container ? scene.nodes.find((n) => n.id === container) : undefined;
       const p = parent
