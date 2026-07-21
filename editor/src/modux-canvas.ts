@@ -98,6 +98,10 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   area: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1" stroke-dasharray="2.4 1.8"></rect>`,
   entity: svg`<rect x="0.5" y="1.5" width="11" height="9" rx="1"></rect>
     <line x1="0.5" y1="4.6" x2="11.5" y2="4.6"></line>`,
+  // A value object: a rounded card (immutable value) with its fields stacked inside.
+  'value-object': svg`<rect x="1.5" y="1.5" width="9" height="9" rx="2.6"></rect>
+    <line x1="3.6" y1="4.6" x2="8.4" y2="4.6"></line>
+    <line x1="3.6" y1="7.4" x2="8.4" y2="7.4"></line>`,
   flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
   process: svg`<path d="M0.5 3 H7 V0.8 L11.5 6 L7 11.2 V9 H0.5 Z"></path>`,
   person: svg`<circle cx="6" cy="3.2" r="2.4"></circle>

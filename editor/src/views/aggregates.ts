@@ -17,24 +17,29 @@ const AGG_W = 176;
 const AGG_H = 60;
 const ENT_W = 140;
 const ENT_H = 40;
+const VO_W = 140;
+const VO_H = 40;
 
-/** Column per boundedContext, aggregates stacked, entities hanging under their aggregate. */
+/** Column per boundedContext, aggregates stacked, entities and value objects hanging under their aggregate. */
 function defaultPositions(model: ModuxModel): DiagramLayout {
   const layout: DiagramLayout = {};
   const aggregates = model.aggregates ?? [];
   const entities = model.entities ?? [];
+  const valueObjects = model.valueObjects ?? [];
   model.boundedContexts.forEach((m, mi) => {
     const columnX = 220 + mi * 340;
     const own = aggregates.filter((a) => a.boundedContextId === m.id);
     own.forEach((a, ai) => {
-      const entCount = entities.filter((e) => e.aggregateId === a.id).length;
-      const y = 140 + ai * (170 + entCount * 60);
+      const ents = entities.filter((e) => e.aggregateId === a.id);
+      const vos = valueObjects.filter((v) => v.aggregateId === a.id);
+      const y = 140 + ai * (170 + (ents.length + vos.length) * 60);
       layout[a.id] = { x: columnX, y };
-      entities
-        .filter((e) => e.aggregateId === a.id)
-        .forEach((e, ei) => {
-          layout[e.id] = { x: columnX + 60, y: y + 100 + ei * 60 };
-        });
+      ents.forEach((e, ei) => {
+        layout[e.id] = { x: columnX + 60, y: y + 100 + ei * 60 };
+      });
+      vos.forEach((v, vi) => {
+        layout[v.id] = { x: columnX + 60, y: y + 100 + (ents.length + vi) * 60 };
+      });
     });
   });
   // Aggregates whose boundedContext is unknown still get a slot.
@@ -88,6 +93,40 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       tooltip: `Entidad ${e.name} (dentro del agregado)`,
     };
   });
+
+  const valueObjectNodes: SceneNode[] = (model.valueObjects ?? []).map((v) => {
+    const p = pos(v.id);
+    const summary =
+      v.type === 'Enum'
+        ? (v.enumValues ?? []).join(' · ')
+        : v.type === 'Wrapper'
+          ? (v.dataType ?? '')
+          : (v.fields ?? []).map((f) => f.name).join(', ');
+    return {
+      id: v.id,
+      label: v.name,
+      x: p.x,
+      y: p.y,
+      w: VO_W,
+      h: VO_H,
+      kind: 'value-object',
+      symbol: 'value-object',
+      fill: '#faf5ff',
+      stroke: '#a855f7',
+      badge: `VALUE OBJECT${v.type ? ` · ${v.type.toUpperCase()}` : ''}`,
+      tooltip: `Value object ${v.name}${summary ? ` — ${summary}` : ''}`,
+    };
+  });
+
+  const valueObjectEdges: SceneEdge[] = (model.valueObjects ?? []).map((v) => ({
+    id: `contains-vo:${v.aggregateId}->${v.id}`,
+    sourceId: v.aggregateId,
+    targetId: v.id,
+    kind: 'containment',
+    color: '#a855f7',
+    dashed: true,
+    tooltip: 'Value object dentro del agregado',
+  }));
 
   // The rules the aggregate protects, orbiting it — declare them from the palette.
   const invariantNodes: SceneNode[] = (model.aggregates ?? []).flatMap((a) =>
@@ -145,7 +184,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
   }));
 
   return {
-    nodes: [...aggregateNodes, ...entityNodes, ...invariantNodes],
-    edges: [...containmentEdges, ...referenceEdges, ...invariantEdges],
+    nodes: [...aggregateNodes, ...entityNodes, ...valueObjectNodes, ...invariantNodes],
+    edges: [...containmentEdges, ...valueObjectEdges, ...referenceEdges, ...invariantEdges],
   };
 }

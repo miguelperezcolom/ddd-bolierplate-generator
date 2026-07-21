@@ -264,6 +264,40 @@ public class EditorModelProjection {
                 .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId()))
                 .toList();
 
+        // Value objects, projected under the aggregate that owns them (via valueObjectIds).
+        // A VO carries its own shape — Record fields, Enum values or a Wrapper dataType —
+        // unlike the flat state Model; this is what lets it host invariants later.
+        var allValueObjects = scoped(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity.class);
+        var valueObjects = new ArrayList<ValueObjectDto>();
+        var voSeen = new java.util.HashSet<String>();
+        for (var agg : allAggregates) {
+            if (agg.valueObjectIds() == null) continue;
+            for (var voId : agg.valueObjectIds()) {
+                if (voId == null || !voSeen.add(agg.id() + " " + voId)) continue;
+                allValueObjects.stream().filter(v -> v.id().equals(voId)).findFirst().ifPresent(v -> {
+                    var fieldDtos = (v.fieldsJson() == null || v.fieldsJson().isBlank())
+                            ? java.util.List.<ValueObjectFieldDto>of()
+                            : io.mateu.core.infra.JsonSerializer.listFromJson(v.fieldsJson(),
+                                    io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectField.class)
+                            .stream()
+                            .map(f -> new ValueObjectFieldDto(f.name(),
+                                    f.dataType() != null ? f.dataType().name() : null,
+                                    f.stereotype() != null ? f.stereotype().name() : null))
+                            .toList();
+                    var enumValues = (v.valuesJson() == null || v.valuesJson().isBlank())
+                            ? java.util.List.<String>of()
+                            : io.mateu.core.infra.JsonSerializer.listFromJson(v.valuesJson(),
+                                    io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue.class)
+                            .stream()
+                            .map(io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue::value)
+                            .toList();
+                    valueObjects.add(new ValueObjectDto(v.id(), v.name(), agg.id(), v.type(),
+                            v.dataType(), fieldDtos, enumValues));
+                });
+            }
+        }
+
         // A field of aggregate A's state model typed as another aggregate's state
         // model is projected as a cross-aggregate reference (heuristic; the model
         // remains the source of truth).
@@ -721,7 +755,7 @@ public class EditorModelProjection {
                 .forEach(e -> putDesc.accept(e.id(), e.description()));
 
         return new EditorModelDto(
-                boundedContexts, externalSystems, relations, flows, aggregates, entities, references, processes,
+                boundedContexts, externalSystems, relations, flows, aggregates, entities, valueObjects, references, processes,
                 views, emissions.stream().distinct().toList(), actors,
                 useCaseCalls.stream().distinct().toList(),
                 queryCalls.stream().distinct().toList(),

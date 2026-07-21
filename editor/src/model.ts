@@ -428,6 +428,22 @@ export interface EntityRef {
   aggregateId: string;
 }
 
+/** A value object owned by an aggregate — its own shape, richer than a plain model. */
+export interface ValueObjectRef {
+  id: string;
+  name: string;
+  /** Aggregate that owns it (via the aggregate's valueObjectIds). */
+  aggregateId: string;
+  /** Enum | Record | Wrapper. */
+  type?: string;
+  /** For Wrapper VOs, the wrapped primitive. */
+  dataType?: string;
+  /** For Record VOs, the composed fields. */
+  fields?: { name: string; dataType?: string; stereotype?: string }[];
+  /** For Enum VOs, the allowed values. */
+  enumValues?: string[];
+}
+
 /** Cross-aggregate reference derived server-side from model fields. */
 export interface AggregateReference {
   sourceAggregateId: string;
@@ -859,6 +875,7 @@ export interface ModuxModel {
   flows: FlowRef[];
   aggregates?: AggregateRef[];
   entities?: EntityRef[];
+  valueObjects?: ValueObjectRef[];
   aggregateReferences?: AggregateReference[];
   processes?: ProcessRef[];
   views?: ViewRef[];

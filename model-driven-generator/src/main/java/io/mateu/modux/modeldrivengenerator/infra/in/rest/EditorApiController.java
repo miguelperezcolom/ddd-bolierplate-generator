@@ -200,6 +200,15 @@ public class EditorApiController {
                                List<AggregateInvariantDto> invariants) {}
     public record AggregateInvariantDto(String id, String name) {}
     public record EntityDto(String id, String name, String aggregateId) {}
+    /** One field of a value object (Record type) — its name and data type. */
+    public record ValueObjectFieldDto(String name, String dataType, String stereotype) {}
+    /**
+     * A value object owned by an aggregate: its own fields (Record), enum values (Enum) or
+     * wrapped type (Wrapper). Richer than a plain model — the seat for invariants to come.
+     */
+    public record ValueObjectDto(String id, String name, String aggregateId, String type,
+                                 String dataType, List<ValueObjectFieldDto> fields,
+                                 List<String> enumValues) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
     public record ProcessStepDto(String id, String name, String type, String useCaseId, String roleId,
                                  String deadline, String compensationUseCaseId) {}
@@ -375,6 +384,7 @@ public class EditorApiController {
             List<FlowDto> flows,
             List<AggregateDto> aggregates,
             List<EntityDto> entities,
+            List<ValueObjectDto> valueObjects,
             List<AggregateReferenceDto> aggregateReferences,
             List<ProcessDto> processes,
             List<ViewDto> views,
