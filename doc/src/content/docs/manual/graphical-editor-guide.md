@@ -100,6 +100,11 @@ out the gestures for the current view.
 - **Select first to scope it**: with elements selected, **✨ Auto-layout (N)** rearranges
   *only those* — kept where they are (their centroid doesn't move) so the rest of the
   diagram stays put. With nothing selected it re-lays the whole view.
+- **↻ Líneas** re-routes the **lines only**, on the current node positions — the
+  companion for when you've placed the nodes yourself and just the lines look stale
+  (e.g. after dragging a box). It moves nothing; it redraws each edge clean and
+  orthogonal, and leaves them *live* so they follow later drags. A selection scopes it
+  to that node's lines.
 - Lines route around the boxes on their own as you drag; a line you **drag** splits into
   an adjustable bend point and becomes yours (the auto-router then leaves it alone).
 - Node positions and bends are saved to the view's sheet automatically — no save button.

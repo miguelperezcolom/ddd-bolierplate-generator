@@ -4295,6 +4295,44 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
+   * Re-route the edges on the CURRENT node positions without moving anything —
+   * the companion to auto-layout for when you've placed the nodes yourself and
+   * only the lines look stale. It simply drops the stored routes so the canvas
+   * re-draws each edge fresh (orthogonal, around the boxes) and, from then on,
+   * live — the routes follow later drags instead of freezing again. With a
+   * selection it only touches the lines of the selected nodes. Undoable.
+   */
+  private runRerouteEdges(): void {
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const stored = Object.keys(current.edges);
+    if (!stored.length) return; // nothing frozen — the canvas already routes live
+    const selection = this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
+    let targetIds = stored;
+    if (selection.length) {
+      const sel = new Set(selection);
+      const touches = new Set(
+        this.sceneFor(view)
+          .edges.filter((e) => sel.has(e.sourceId) || sel.has(e.targetId))
+          .map((e) => e.id),
+      );
+      targetIds = stored.filter((id) => touches.has(id));
+    }
+    if (!targetIds.length) return;
+    this.pushUndoEntry(
+      targetIds.map((id) => ({
+        kind: 'set-edge-points' as const,
+        view,
+        id,
+        points: current.edges[id],
+      })),
+    );
+    const edges = { ...current.edges };
+    for (const id of targetIds) delete edges[id];
+    this.writeViewLayout(view, { ...current, edges });
+  }
+
+  /**
    * Toolbar controls keep keyboard focus after use, so the next space bar
    * reopens the select (or re-fires the button) instead of panning the canvas.
    * Once a select changes or a button is clicked, the keyboard belongs to the
@@ -4982,6 +5020,16 @@ export class ModuxEditor extends LitElement {
           @click=${() => void this.runAutoLayout()}
         >
           ✨ Auto-layout${this._multi.length >= 2 ? ` (${this._multi.length})` : ''}
+        </button>
+        <button
+          class="tab"
+          title=${this.viewSelection().length
+            ? 'Recalcula solo las líneas de la selección sobre las posiciones actuales, sin mover los nodos (deshacible)'
+            : 'Recalcula todas las líneas sobre las posiciones actuales, sin mover los nodos (deshacible)'}
+          ?disabled=${this._yugo}
+          @click=${() => this.runRerouteEdges()}
+        >
+          ↻ Líneas
         </button>
         ${this._view === 'workflows'
           && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length)

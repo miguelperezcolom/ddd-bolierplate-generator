@@ -232,6 +232,10 @@ maps stay readable.
   everything back. **With a selection it is scoped** — «✨ Auto-layout (N)» rearranges
   only the selected top-level nodes, translated to keep their centroid in place so the
   rest of the sheet stays put; edges straddling the selection re-route live.
+- **↻ Líneas** re-routes the edges **without moving any node** — the companion to
+  auto-layout for a hand-placed sheet. It drops the stored routes so the canvas redraws
+  each line clean and orthogonal on the current positions and keeps them live (they
+  follow later drags). A selection scopes it to the lines touching those nodes; undoable.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.
