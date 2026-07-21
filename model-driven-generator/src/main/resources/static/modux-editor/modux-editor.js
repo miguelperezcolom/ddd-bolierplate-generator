@@ -17863,10 +17863,13 @@ let ie = class extends je {
       return;
     }
     const s = this._view, a = this.sceneFor(s), r = (v, b) => {
-      if (this.purgeNodeGeometry(v), s === "aggregates")
+      if (this.purgeNodeGeometry(v), b)
         return { kind: "move-node", view: s, id: v, pos: null };
-      const d = this.viewLayout(s), c = b ? a.nodes.find((_) => _.id === b) : void 0, y = c ? { x: Math.round(t.x - c.x), y: Math.round(t.y - c.y) } : { x: Math.round(t.x), y: Math.round(t.y) };
-      return this.writeViewLayout(s, { ...d, nodes: { ...d.nodes, [v]: y } }), { kind: "move-node", view: s, id: v, pos: null };
+      const d = this.viewLayout(s);
+      return this.writeViewLayout(s, {
+        ...d,
+        nodes: { ...d.nodes, [v]: { x: Math.round(t.x), y: Math.round(t.y) } }
+      }), { kind: "move-node", view: s, id: v, pos: null };
     }, l = (v, b, d) => {
       const c = this.inverseOf(v) ?? [];
       this.command(v, !1);

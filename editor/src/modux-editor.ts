@@ -3303,20 +3303,20 @@ export class ModuxEditor extends LitElement {
       // Born fresh: a deleted namesake's leftover geometry (a size, a position in
       // another view) must not dress the newcomer — same sweep as stale edge bends.
       this.purgeNodeGeometry(id);
-      // The aggregates view nests by containment EDGES, not parentId geometry: its
-      // value objects / entities are free satellites the view lays out under their
-      // owner. Writing a parent-relative offset here would drop them at a wrong
-      // absolute spot (0,0 when released on the aggregate centre), so we skip the
-      // write and let the default layout place the satellite.
-      if (view === 'aggregates') {
+      // A CHILD of a container gets no stored geometry. Its owner may be collapsed at
+      // drop time, so an absolute drop point is meaningless; and a parent-relative
+      // offset would be read back as absolute (dragged children and emitChildren both
+      // use absolute), landing the child near (0,0). Let the view place it around its
+      // owner when expanded (context-map/distribution ring, aggregates satellite).
+      // Only a TOP-LEVEL node keeps the drop point.
+      if (container) {
         return { kind: 'move-node', view, id, pos: null } as EditOp;
       }
       const current = this.viewLayout(view);
-      const parent = container ? scene.nodes.find((n) => n.id === container) : undefined;
-      const p = parent
-        ? { x: Math.round(pos.x - parent.x), y: Math.round(pos.y - parent.y) }
-        : { x: Math.round(pos.x), y: Math.round(pos.y) };
-      this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: p } });
+      this.writeViewLayout(view, {
+        ...current,
+        nodes: { ...current.nodes, [id]: { x: Math.round(pos.x), y: Math.round(pos.y) } },
+      });
       return { kind: 'move-node', view, id, pos: null } as EditOp;
     };
     const issue = (cmd: ModuxCommand, id: string, container?: string) => {
