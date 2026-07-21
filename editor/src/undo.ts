@@ -531,6 +531,20 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const a = (host.model.aggregates ?? []).find((x) => x.id === c.id);
         return a ? [{ kind: 'add-aggregate', id: a.id, name: a.name, boundedContextId: a.boundedContextId }] : null;
       }
+      case 'add-entity':
+        return [{ kind: 'remove-entity', id: c.id, aggregateId: c.aggregateId }];
+      case 'remove-entity': {
+        const e = (host.model.entities ?? []).find((x) => x.id === c.id);
+        return e ? [{ kind: 'add-entity', id: e.id, name: e.name, aggregateId: e.aggregateId }] : null;
+      }
+      case 'add-value-object':
+        return [{ kind: 'remove-value-object', id: c.id, aggregateId: c.aggregateId }];
+      case 'remove-value-object': {
+        const v = (host.model.valueObjects ?? []).find((x) => x.id === c.id);
+        return v
+          ? [{ kind: 'add-value-object', id: v.id, name: v.name, aggregateId: v.aggregateId, type: v.type }]
+          : null;
+      }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
       case 'add-query-service':

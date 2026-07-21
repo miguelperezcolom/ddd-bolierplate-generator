@@ -37,6 +37,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalApiOperationUseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity;
@@ -753,6 +754,10 @@ public class EditorApiController {
             case "add-aggregate" -> addAggregate(command);
             case "add-invariant" -> addInvariant(command);
             case "remove-invariant" -> removeInvariant(command);
+            case "add-entity" -> addEntity(command);
+            case "remove-entity" -> removeEntity(command);
+            case "add-value-object" -> addValueObject(command);
+            case "remove-value-object" -> removeValueObject(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
             case "add-application-event" -> addApplicationEvent(command);
@@ -1394,6 +1399,48 @@ public class EditorApiController {
                     .build());
             return;
         }
+    }
+
+    /** An entity WITHIN an aggregate (its parent) — its own fields come later, through the ficha. */
+    private void addEntity(EditorCommand command) {
+        if (repository.findById(command.id(), EntityEntity.class).isPresent()) return;
+        repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        repository.save(new EntityEntity(command.id(), command.name(), null, command.aggregateId(), false, null));
+    }
+
+    private void removeEntity(EditorCommand command) {
+        repository.deleteAllById(List.of(command.id()), EntityEntity.class);
+    }
+
+    /**
+     * A value object owned by an aggregate (added to its valueObjectIds). Born a Record by
+     * default (type carries Enum/Record/Wrapper when given); its shape is filled in the ficha.
+     */
+    private void addValueObject(EditorCommand command) {
+        if (repository.findById(command.id(), ValueObjectEntity.class).isPresent()) return;
+        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        var type = command.type() != null && !command.type().isBlank() ? command.type() : "Record";
+        repository.save(new ValueObjectEntity(command.id(), command.name(), type, "[]", "[]", null, null));
+        var voIds = new ArrayList<>(
+                aggregate.valueObjectIds() == null ? List.<String>of() : aggregate.valueObjectIds());
+        if (!voIds.contains(command.id())) {
+            voIds.add(command.id());
+            repository.save(aggregate.toBuilder().valueObjectIds(voIds).build());
+        }
+    }
+
+    private void removeValueObject(EditorCommand command) {
+        repository.findAllOfType(AggregateEntity.class).stream()
+                .filter(a -> a.valueObjectIds() != null && a.valueObjectIds().contains(command.id()))
+                .forEach(a -> repository.save(a.toBuilder()
+                        .valueObjectIds(a.valueObjectIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build()));
+        repository.deleteAllById(List.of(command.id()), ValueObjectEntity.class);
     }
 
     private void addAggregate(EditorCommand command) {

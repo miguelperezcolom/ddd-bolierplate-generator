@@ -89,6 +89,24 @@ export type ModuxCommand =
     }
   | { kind: 'remove-invariant'; id: string }
   | {
+      /** An entity WITHIN an aggregate (its parent) — richer than a plain model field. */
+      kind: 'add-entity';
+      id: string;
+      name: string;
+      aggregateId: string;
+    }
+  | { kind: 'remove-entity'; id: string; aggregateId: string }
+  | {
+      /** A value object owned by an aggregate — its own shape, invariant-ready. */
+      kind: 'add-value-object';
+      id: string;
+      name: string;
+      aggregateId: string;
+      /** Enum | Record | Wrapper (defaults to Record). */
+      type?: string;
+    }
+  | { kind: 'remove-value-object'; id: string; aggregateId: string }
+  | {
       kind: 'add-domain-event';
       id: string;
       name: string;

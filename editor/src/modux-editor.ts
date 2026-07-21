@@ -3096,16 +3096,12 @@ export class ModuxEditor extends LitElement {
       'notification', 'document', 'module',
     ].includes(type);
     if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
-    if (type === 'invariant') {
+    // Children of an aggregate: dropped on the aggregate itself, or on its context
+    // (then the context's first aggregate takes them).
+    if (['invariant', 'read-model', 'entity', 'value-object'].includes(type)) {
       const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
       if (agg) return agg;
       const mod = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
-      return (this.model.aggregates ?? []).find((a) => a.boundedContextId === mod)?.id ?? null;
-    }
-    if (type === 'read-model') {
-      const agg = chain.find((id) => (this.model.aggregates ?? []).some((a) => a.id === id));
-      if (agg) return agg;
-      const mod = chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id));
       return (this.model.aggregates ?? []).find((a) => a.boundedContextId === mod)?.id ?? null;
     }
     if (['external-use-case', 'external-table', 'mcp-server'].includes(type)) {
@@ -3576,13 +3572,19 @@ export class ModuxEditor extends LitElement {
               ? 'Suelta el paso sobre un caso de uso'
               : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
                 ? 'Suelta el elemento sobre un sistema externo'
-                : 'Suelta el elemento sobre un contexto',
+                : ['entity', 'value-object', 'invariant'].includes(type)
+                  ? 'Suelta el elemento sobre un agregado (o un contexto que tenga uno)'
+                  : 'Suelta el elemento sobre un contexto',
       });
       return;
     }
     const { id, name } = this.uniquePaletteName(def.label);
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, boundedContextId: container }, id, container);
+    } else if (type === 'entity') {
+      issue({ kind: 'add-entity', id, name, aggregateId: container }, id, container);
+    } else if (type === 'value-object') {
+      issue({ kind: 'add-value-object', id, name, aggregateId: container }, id, container);
     } else if (type === 'invariant') {
       this.command({ kind: 'add-invariant', aggregateId: container, id, name });
       this.emit('modux-notice', {
@@ -3898,12 +3900,14 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations', 'aggregates'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = PALETTE_NEW.filter(
       (k) =>
-        (this._view === 'workflows'
+        (this._view === 'aggregates'
+          ? ['entity', 'value-object', 'invariant'].includes(k.type)
+          : this._view === 'workflows'
           ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'
             ? ['ui', 'ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
@@ -4198,7 +4202,7 @@ export class ModuxEditor extends LitElement {
   /** Screen space the overlays occupy on the left — fit() centers in what remains. */
   private fitInsets(): { left: number } {
     const paletteVisible =
-      this._paletteOpen && ['context-map', 'distribution', 'workflows', 'ui'].includes(this._view);
+      this._paletteOpen && ['context-map', 'distribution', 'workflows', 'ui', 'aggregates'].includes(this._view);
     const treeVisible = this._treeOpen && !!this._activeViewId;
     // Geometry mirrors the CSS: tree at 8+264, palette 244 wide (shifted past the tree).
     if (treeVisible && paletteVisible) return { left: 280 + 244 + 8 };
@@ -4609,7 +4613,7 @@ export class ModuxEditor extends LitElement {
         >Editor gráfico</span>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)}
+          ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations', 'aggregates'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
