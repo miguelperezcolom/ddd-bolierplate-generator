@@ -522,6 +522,10 @@ public class GenerateCodeUseCase {
                 .filter(qs -> inScope(qs.id()))
                 .forEach(qs -> generateQueryService(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, qs));
 
+        // First-class CRUD APIs implemented here: a REST controller whose write operations call the
+        // CRUD use cases and whose listing reads the aggregate's query service.
+        generateApiControllers(project, service, boundedContext, boundedContextDir, boundedContextPackageDir);
+
         // Entities (embedded/child entities within aggregates)
         if (boundedContext.entityIds() != null) {
             boundedContext.entityIds().stream()
@@ -1431,6 +1435,80 @@ public class GenerateCodeUseCase {
     private String queryTypeRef(String modelId, Map<String, String> typeNameByModelId) {
         if (modelId == null || modelId.isBlank()) return "Object";
         return typeNameByModelId.getOrDefault(modelId, "Object");
+    }
+
+    // ─── First-class CRUD API REST controllers ─────────────────────────────────
+
+    /** Generate a REST controller for each CRUD API implemented in this bounded context. */
+    private void generateApiControllers(ProjectEntity project, ServiceEntity service,
+                                        BoundedContextEntity boundedContext, String boundedContextDir,
+                                        String boundedContextPackageDir) {
+        repository.findAllOfType(
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity.class).stream()
+                .filter(api -> api.id() != null && api.id().startsWith("api-crud-"))
+                .filter(api -> api.implementedByBoundedContextIds().contains(boundedContext.id()))
+                .filter(api -> inScope(api.id()))
+                .forEach(api -> generateCrudApiController(project, service, boundedContext,
+                        boundedContextDir, boundedContextPackageDir, api));
+    }
+
+    private void generateCrudApiController(ProjectEntity project, ServiceEntity service,
+                                           BoundedContextEntity boundedContext, String boundedContextDir,
+                                           String boundedContextPackageDir,
+                                           io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity api) {
+        var aggregateId = api.id().substring("api-crud-".length());
+        var aggregate = repository.findById(aggregateId, AggregateEntity.class).orElse(null);
+        if (aggregate == null) return;
+
+        var pkg = project.packageName();
+        var bcSlug = boundedContextSlug(boundedContext.name());
+        var imports = new LinkedHashSet<String>();
+        var writeOps = new ArrayList<Map<String, Object>>();
+        Map<String, Object> read = null;
+
+        for (var op : api.operations()) {
+            if ("GET".equalsIgnoreCase(op.httpMethod()) && op.targetQueryServiceId() != null) {
+                var qsClass = toTypeName(aggregate.name()) + "QueryService";
+                var rowType = toTypeName(aggregate.name()) + "Row";
+                read = new HashMap<>();
+                read.put("path", op.path() != null ? op.path() : "");
+                read.put("method", "list");
+                read.put("qsClass", qsClass);
+                read.put("qsField", uncapitalize(qsClass));
+                read.put("rowType", rowType);
+                imports.add(pkg + "." + bcSlug + ".application.query." + qsClass);
+                imports.add(pkg + "." + bcSlug + ".application.query.dto." + rowType);
+            } else if (op.targetUseCaseId() != null) {
+                var uc = repository.findById(op.targetUseCaseId(), UseCaseEntity.class).orElse(null);
+                if (uc == null) continue;
+                var ucClass = toTypeName(uc.name());
+                var ucSlug = uc.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+                var hasOutput = uc.outputModelId() != null && !uc.outputModelId().isBlank();
+                var wm = new HashMap<String, Object>();
+                wm.put("mappingAnn", capitalize(op.httpMethod().toLowerCase()) + "Mapping");
+                wm.put("path", op.path() != null ? op.path() : "");
+                wm.put("ucClass", ucClass);
+                wm.put("ucField", uncapitalize(ucClass));
+                wm.put("method", uncapitalize(ucClass));
+                wm.put("hasOutput", hasOutput);
+                writeOps.add(wm);
+                var ucPkg = pkg + "." + bcSlug + ".application.usecases." + ucSlug + ".";
+                imports.add(ucPkg + ucClass + "UseCase");
+                imports.add(ucPkg + ucClass + "Command");
+                if (hasOutput) imports.add(ucPkg + ucClass + "Result");
+            }
+        }
+        if (writeOps.isEmpty() && read == null) return;
+
+        Map<String, Object> model = buildBaseModel(project, service, boundedContext);
+        model.put("api", Map.of("className", toTypeName(api.name()), "name", api.name()));
+        model.put("writeOps", writeOps);
+        if (read != null) model.put("read", read);
+        model.put("imports", new ArrayList<>(imports));
+        createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
+        createFile(boundedContextDir, model, "api-controller.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
+                        + toTypeName(api.name()) + "Controller.java");
     }
 
     // ─── Sagas ────────────────────────────────────────────────────────────────

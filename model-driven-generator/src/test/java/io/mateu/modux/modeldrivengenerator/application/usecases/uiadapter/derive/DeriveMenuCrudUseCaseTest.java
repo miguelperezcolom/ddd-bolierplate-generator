@@ -60,8 +60,8 @@ class DeriveMenuCrudUseCaseTest {
         var page = store.findById("pg-crud-agg-reserva", PageEntity.class).orElseThrow();
         assertEquals("CRUD", page.type());
         assertEquals("agg-reserva", page.aggregateId());
-        assertEquals("qs-pg-crud-agg-reserva", page.listingQueryServiceId());
-        assertTrue(store.findById("qs-pg-crud-agg-reserva", QueryServiceEntity.class).isPresent());
+        assertEquals("qs-crud-agg-reserva", page.listingQueryServiceId());
+        assertTrue(store.findById("qs-crud-agg-reserva", QueryServiceEntity.class).isPresent());
 
         // the shared CRUD trio (same ids as the actor→aggregate gesture) is present
         assertTrue(store.findById("uc-crearAgg-reserva", UseCaseEntity.class).isPresent());

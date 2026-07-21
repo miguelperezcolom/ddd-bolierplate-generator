@@ -76,7 +76,9 @@ class PageUseCaseDerivationTest {
         // the button is rewired to its stub and the listing gets its derived query service
         assertEquals("uc-pg-reservas-confirmar-llegada", result.rewiredPage().toolbar().get(0).useCaseId());
         assertNotNull(result.newQueryService());
-        assertEquals("qs-pg-reservas", result.rewiredPage().listingQueryServiceId());
+        // the ONE canonical per-aggregate listing query (shared with the CRUD API), not a per-page one
+        assertEquals("qs-crud-agg-reserva", result.rewiredPage().listingQueryServiceId());
+        assertEquals("qs-crud-agg-reserva", result.newQueryService().id());
         assertEquals("m-reserva", result.newQueryService().operations().get(0).outputModelId());
     }
 

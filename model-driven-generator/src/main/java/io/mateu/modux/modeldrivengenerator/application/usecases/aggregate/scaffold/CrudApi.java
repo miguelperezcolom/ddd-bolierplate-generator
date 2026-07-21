@@ -1,11 +1,9 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold;
 
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryCardinality;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiOperationImplementationEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 
 import java.util.List;
@@ -22,14 +20,9 @@ public final class CrudApi {
 
     private CrudApi() {}
 
-    /** The canonical per-aggregate listing query the CRUD API's GET rests on. */
+    /** The canonical per-aggregate listing query the CRUD API's GET rests on (shared with the UI). */
     public static QueryServiceEntity listingQuery(AggregateEntity aggregate, String boundedContextId) {
-        var qsId = queryServiceId(aggregate.id());
-        return new QueryServiceEntity(qsId, cap(aggregate.name()) + "Queries", boundedContextId,
-                "Listado canónico del agregado " + aggregate.name() + ".",
-                List.of(new QueryOperationEntity(qsId + "-list", "list",
-                        "Listado paginado de " + aggregate.name(),
-                        null, aggregate.modelId(), QueryCardinality.Page)));
+        return CrudListingQuery.forAggregate(aggregate, boundedContextId);
     }
 
     /** The CRUD API: POST/PUT/DELETE rest on the trio, GET rests on the listing query. */
@@ -46,7 +39,7 @@ public final class CrudApi {
         var delete = op(apiId + "-delete", "Eliminar" + cap(aggregate.name()), "DELETE", base + "/{id}",
                 boundedContextId, ids.get(2), null, null, null, null);
         var list = op(apiId + "-list", "Listar" + cap(aggregate.name()), "GET", base,
-                boundedContextId, null, null, model, qsId, qsId + "-list");
+                boundedContextId, null, null, model, qsId, CrudListingQuery.listOperationId(aggregate.id()));
         return ApiEntity.builder()
                 .id(apiId).name(cap(aggregate.name()) + "API")
                 .description("CRUD del agregado " + aggregate.name() + ".")
@@ -64,7 +57,7 @@ public final class CrudApi {
     }
 
     public static String queryServiceId(String aggregateId) {
-        return "qs-crud-" + aggregateId;
+        return CrudListingQuery.idFor(aggregateId);
     }
 
     private static ApiOperationEntity op(String id, String name, String method, String path,

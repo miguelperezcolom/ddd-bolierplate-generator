@@ -31,6 +31,8 @@ public record DerivedElementIds(
             useCases.add("uc-crear" + cap);
             useCases.add("uc-actualizar" + cap);
             useCases.add("uc-eliminar" + cap);
+            // CrudListingQuery: the one canonical listing query the UI page and CRUD API share.
+            queryServices.add("qs-crud-" + aggregateId);
             // CrudLifecycleEvents: the lifecycle domain events (both participle genders).
             for (var stem : List.of("Cread", "Modificad", "Eliminad")) {
                 domainEvents.add("ev-" + aggregateId + stem + "o");

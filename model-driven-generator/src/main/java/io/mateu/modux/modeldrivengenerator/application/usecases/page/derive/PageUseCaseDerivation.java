@@ -1,15 +1,14 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.page.derive;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudLifecycleEvents;
+import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudListingQuery;
 import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServiceEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
-import io.mateu.modux.modeldrivengenerator.domain.aggregates.queryservice.vo.QueryCardinality;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,17 +68,15 @@ public final class PageUseCaseDerivation {
                     .forEach(uc -> { newUseCases.add(uc); existingIds.add(uc.id()); });
         }
 
-        // --- listing without a query service: derive one with a paged list operation ---
+        // --- listing without a query service: point at the aggregate's ONE canonical listing query ---
+        // (CrudListingQuery — the same qs-crud-{aggId} the CRUD API's GET rests on, not a per-page one).
         QueryServiceEntity newQueryService = null;
         String listingQueryServiceId = page.listingQueryServiceId();
-        if (isCrud(page) && isBlank(listingQueryServiceId)) {
-            var qsId = "qs-" + page.id();
+        if (isCrud(page) && isBlank(listingQueryServiceId) && aggregate != null) {
+            var qsId = CrudListingQuery.idFor(aggregate.id());
             var exists = existingQueryServices.stream().anyMatch(qs -> qs.id().equals(qsId));
             if (!exists) {
-                newQueryService = new QueryServiceEntity(qsId, page.name() + "Queries", null,
-                        "Derived from page '" + page.name() + "'.",
-                        List.of(new QueryOperationEntity(qsId + "-list", "list",
-                                "Listing of " + page.name(), null, page.modelId(), QueryCardinality.Page)));
+                newQueryService = CrudListingQuery.forAggregate(aggregate, null);
             }
             listingQueryServiceId = qsId;
             changed = true;
