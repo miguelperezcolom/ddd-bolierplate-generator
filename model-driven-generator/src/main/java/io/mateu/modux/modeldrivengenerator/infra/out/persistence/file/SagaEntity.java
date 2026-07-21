@@ -17,6 +17,16 @@ public record SagaEntity(
         boolean persistenceEnabled
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public SagaEntity(String id, String name, Long timeoutMs, Long compensationTimeoutMs,
+            List<String> triggeringEventIds, List<SagaStepEntity> steps, Integer maxRetries,
+            Long retryBackoffMs, String deadLetterQueue, boolean persistenceEnabled, String projectId) {
+        this(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, steps, maxRetries,
+                retryBackoffMs, deadLetterQueue, persistenceEnabled, projectId, null);
+    }
 }

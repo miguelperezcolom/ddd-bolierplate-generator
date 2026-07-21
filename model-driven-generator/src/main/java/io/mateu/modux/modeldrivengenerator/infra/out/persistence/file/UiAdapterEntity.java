@@ -34,8 +34,20 @@ public record UiAdapterEntity(
         String identityProviderId
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public UiAdapterEntity(String id, String name, String serviceId, String title, String path,
+            UiAppVariant appVariant, List<UiMenuItemEntity> menuItems, UiAppType appType,
+            String headerPageId, String homePageId, String homeAppId, String modelId,
+            String viewPageId, String editPageId, String identityProviderId, String projectId) {
+        this(id, name, serviceId, title, path, appVariant, menuItems, appType, headerPageId,
+                homePageId, homeAppId, modelId, viewPageId, editPageId, identityProviderId,
+                projectId, null);
+    }
 
     /** Backward-compatible constructor (pre-identityProviderId callers and stores). */
     public UiAdapterEntity(String id, String name, String serviceId, String title,

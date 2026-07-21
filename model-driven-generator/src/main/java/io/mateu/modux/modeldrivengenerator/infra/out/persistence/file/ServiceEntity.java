@@ -48,7 +48,9 @@ public record ServiceEntity(
         List<String> urlIds
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
 
     public ServiceEntity {

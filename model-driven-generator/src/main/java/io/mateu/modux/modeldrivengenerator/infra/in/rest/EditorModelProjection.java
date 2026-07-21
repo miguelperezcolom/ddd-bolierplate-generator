@@ -705,6 +705,20 @@ public class EditorModelProjection {
                 .forEach(e -> putDesc.accept(e.id(), e.description()));
         scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity.class)
                 .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NotificationEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
 
         return new EditorModelDto(
                 boundedContexts, externalSystems, relations, flows, aggregates, entities, references, processes,

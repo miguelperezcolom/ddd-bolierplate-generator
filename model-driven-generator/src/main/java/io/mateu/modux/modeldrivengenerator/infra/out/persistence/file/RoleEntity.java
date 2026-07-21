@@ -19,8 +19,18 @@ public record RoleEntity(
         List<String> uiAdapterIds
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public RoleEntity(String id, String name, List<String> allowedUseCaseIds,
+            List<String> allowedQueryServiceIds, List<String> externalSystemIds,
+            List<String> aiAgentIds, List<String> uiAdapterIds, String projectId) {
+        this(id, name, allowedUseCaseIds, allowedQueryServiceIds, externalSystemIds,
+                aiAgentIds, uiAdapterIds, projectId, null);
+    }
 
     /** Backward-compatible constructor (pre-uiAdapterIds callers and stores). */
     public RoleEntity(String id, String name, List<String> allowedUseCaseIds,

@@ -29,8 +29,18 @@ public record NotificationEntity(
         String body
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public NotificationEntity(String id, String name, String ownerBoundedContextId, String eventId,
+            List<String> channels, List<String> recipientRoleIds, String recipientExpression,
+            String subject, String body, String projectId) {
+        this(id, name, ownerBoundedContextId, eventId, channels, recipientRoleIds,
+                recipientExpression, subject, body, projectId, null);
+    }
 
     public static final Set<String> CHANNELS = Set.of("EMAIL", "SMS", "PUSH", "WEBHOOK");
 
