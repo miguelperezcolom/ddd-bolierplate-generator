@@ -1863,6 +1863,7 @@ export class ModuxEditor extends LitElement {
       kind === 'boundedContext' ||
       kind === 'aggregate' ||
       kind === 'entity' ||
+      kind === 'value-object' ||
       kind === 'process-step' ||
       kind === 'workflow' ||
       kind === 'workflow-step' ||

@@ -1193,7 +1193,14 @@ public class EditorApiController {
                             a.decisionIds(), null)));
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
-                            e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection(), null)));
+                            e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection(),
+                            e.projectId(), e.description(), e.invariants())));
+            // Renames the value object's NAME (its identity in the aggregate), keeping its
+            // type (Enum/Record/Wrapper), fields, values and invariants intact.
+            case "value-object" -> repository.findById(command.id(), ValueObjectEntity.class)
+                    .ifPresent(v -> repository.save(new ValueObjectEntity(
+                            v.id(), command.name(), v.type(), v.valuesJson(), v.fieldsJson(),
+                            v.dataType(), v.projectId(), v.description(), v.invariants())));
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
                     .ifPresent(a -> repository.save(a.withName(command.name())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
