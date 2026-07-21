@@ -870,6 +870,28 @@ export class ModuxCanvas extends LitElement {
         }
         return;
       } else if (moved && this._dragPos) {
+        // A value object / entity dropped ON an aggregate is associated with it — the
+        // composition wiring of the aggregates view. Routes through the connect gesture.
+        if (node.kind === 'value-object' || node.kind === 'entity') {
+          const overId = this.nodeIdAt(ev);
+          const over = overId && overId !== node.id ? this.scene.nodes.find((n) => n.id === overId) : null;
+          const alreadyOwned = over
+            ? this.scene.edges.some(
+                (e) => e.kind === 'containment' && e.sourceId === over.id && e.targetId === node.id,
+              )
+            : false;
+          if (over?.kind === 'aggregate' && !alreadyOwned) {
+            this.emit('connect-requested', {
+              sourceId: node.id,
+              targetId: over.id,
+              x: ev.clientX,
+              y: ev.clientY,
+            });
+            this._dragPos = null;
+            this._hoverNodeId = null;
+            return;
+          }
+        }
         if (freeDrag(ev)) {
           const home = dropHome(ev);
           // Ctrl over a system CREATES A PROXY of the API there (the API stays put);

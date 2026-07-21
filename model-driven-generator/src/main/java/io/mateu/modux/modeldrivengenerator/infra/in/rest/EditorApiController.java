@@ -758,6 +758,8 @@ public class EditorApiController {
             case "remove-entity" -> removeEntity(command);
             case "add-value-object" -> addValueObject(command);
             case "remove-value-object" -> removeValueObject(command);
+            case "set-value-object-aggregate" -> setValueObjectAggregate(command);
+            case "set-entity-aggregate" -> setEntityAggregate(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
             case "add-application-event" -> addApplicationEvent(command);
@@ -1441,6 +1443,39 @@ public class EditorApiController {
                                 .filter(id -> !id.equals(command.id())).toList())
                         .build()));
         repository.deleteAllById(List.of(command.id()), ValueObjectEntity.class);
+    }
+
+    /** Re-home a value object under an aggregate: pulled off any previous owner, added here. */
+    private void setValueObjectAggregate(EditorCommand command) {
+        var target = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+            if (a.id().equals(target.id())) continue;
+            if (a.valueObjectIds() != null && a.valueObjectIds().contains(command.id())) {
+                repository.save(a.toBuilder()
+                        .valueObjectIds(a.valueObjectIds().stream()
+                                .filter(id -> !id.equals(command.id())).toList())
+                        .build());
+            }
+        }
+        var voIds = new ArrayList<>(
+                target.valueObjectIds() == null ? List.<String>of() : target.valueObjectIds());
+        if (!voIds.contains(command.id())) {
+            voIds.add(command.id());
+            repository.save(target.toBuilder().valueObjectIds(voIds).build());
+        }
+    }
+
+    /** Re-home an entity under an aggregate (its parentAggregateId changes). */
+    private void setEntityAggregate(EditorCommand command) {
+        var entity = repository.findById(command.id(), EntityEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Entidad desconocida: " + command.id()));
+        repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        repository.save(new EntityEntity(entity.id(), entity.name(), entity.modelId(),
+                command.aggregateId(), entity.isCollection(), entity.projectId(), entity.description()));
     }
 
     private void addAggregate(EditorCommand command) {

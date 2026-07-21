@@ -870,6 +870,25 @@ export function applyConnectionGesture(
       });
       return;
     }
+    // Aggregates view: the only wiring is composition — a value object (or an entity)
+    // dropped on an aggregate belongs there. A VO has exactly one owner, so this moves
+    // it off any previous aggregate; an entity's parentAggregateId changes.
+    if (view === 'aggregates') {
+      if ((host.model.aggregates ?? []).some((a) => a.id === targetId)) {
+        const vo = (host.model.valueObjects ?? []).find((v) => v.id === sourceId);
+        if (vo) {
+          if (vo.aggregateId !== targetId) {
+            host.command({ kind: 'set-value-object-aggregate', id: sourceId, aggregateId: targetId });
+          }
+          return;
+        }
+        const ent = (host.model.entities ?? []).find((e) => e.id === sourceId);
+        if (ent && ent.aggregateId !== targetId) {
+          host.command({ kind: 'set-entity-aggregate', id: sourceId, aggregateId: targetId });
+        }
+      }
+      return;
+    }
     if (view !== 'context-map') return;
     // The relation vocabulary: a traced line asks when SEVERAL typed meanings
     // fit — draw first, decide after. The classic resolver keeps the unambiguous

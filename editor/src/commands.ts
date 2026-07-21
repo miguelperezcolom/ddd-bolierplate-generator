@@ -107,6 +107,18 @@ export type ModuxCommand =
     }
   | { kind: 'remove-value-object'; id: string; aggregateId: string }
   | {
+      /** Re-home a value object under an aggregate (a VO belongs to exactly one). */
+      kind: 'set-value-object-aggregate';
+      id: string;
+      aggregateId: string;
+    }
+  | {
+      /** Re-home an entity under an aggregate (changes its parentAggregateId). */
+      kind: 'set-entity-aggregate';
+      id: string;
+      aggregateId: string;
+    }
+  | {
       kind: 'add-domain-event';
       id: string;
       name: string;

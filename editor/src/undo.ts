@@ -545,6 +545,14 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           ? [{ kind: 'add-value-object', id: v.id, name: v.name, aggregateId: v.aggregateId, type: v.type }]
           : null;
       }
+      case 'set-value-object-aggregate': {
+        const v = (host.model.valueObjects ?? []).find((x) => x.id === c.id);
+        return v ? [{ kind: 'set-value-object-aggregate', id: c.id, aggregateId: v.aggregateId }] : null;
+      }
+      case 'set-entity-aggregate': {
+        const e = (host.model.entities ?? []).find((x) => x.id === c.id);
+        return e ? [{ kind: 'set-entity-aggregate', id: c.id, aggregateId: e.aggregateId }] : null;
+      }
       case 'add-domain-event':
         return [{ kind: 'remove-domain-event', id: c.id }];
       case 'add-query-service':
