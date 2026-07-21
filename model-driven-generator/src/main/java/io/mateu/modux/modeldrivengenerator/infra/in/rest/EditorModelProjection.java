@@ -244,6 +244,15 @@ public class EditorModelProjection {
                 })
                 .toList();
 
+        // Fields (attributes) of aggregates / entities / Record VOs, grouped by their owner.
+        var allFields = scoped(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FieldEntity.class);
+        java.util.function.Function<String, java.util.List<FieldDto>> fieldsOf = ownerId ->
+                allFields.stream()
+                        .filter(f -> ownerId.equals(f.ownerId()))
+                        .map(f -> new FieldDto(f.id(), f.name(), f.required(), f.typeKind(), f.typeRef()))
+                        .toList();
+
         var allAggregates = scoped(AggregateEntity.class);
         var aggregates = new ArrayList<AggregateDto>();
         for (var boundedContext : scoped(BoundedContextEntity.class)) {
@@ -255,7 +264,8 @@ public class EditorModelProjection {
                         .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), boundedContext.id(),
                                 a.invariants().stream()
                                         .map(i -> new AggregateInvariantDto(i.id(), i.name()))
-                                        .toList())));
+                                        .toList(),
+                                fieldsOf.apply(a.id()))));
             }
         }
 
@@ -263,7 +273,8 @@ public class EditorModelProjection {
                 .filter(e -> e.parentAggregateId() != null && !e.parentAggregateId().isBlank())
                 .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId(),
                         e.invariants().stream()
-                                .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList()))
+                                .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList(),
+                        fieldsOf.apply(e.id())))
                 .toList();
 
         // Value objects, projected under the aggregate that owns them (via valueObjectIds).

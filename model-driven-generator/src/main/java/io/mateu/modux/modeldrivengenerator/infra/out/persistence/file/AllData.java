@@ -58,7 +58,8 @@ public record AllData(
         List<ArchimateRelationEntity> archimateRelations,
         List<UiEntity> uis,
         List<UrlEntity> urls,
-        List<InteractionEntity> interactions
+        List<InteractionEntity> interactions,
+        List<FieldEntity> fields
         ) {
 
     /** An empty model — the starting point when the store file does not exist yet. */
@@ -67,7 +68,7 @@ public record AllData(
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     public AllData {
@@ -127,5 +128,6 @@ public record AllData(
         uis = uis != null ? uis : List.of();
         urls = urls != null ? urls : List.of();
         interactions = interactions != null ? interactions : List.of();
+        fields = fields != null ? fields : List.of();
     }
 }

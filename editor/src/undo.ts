@@ -1,6 +1,11 @@
-import type { ModuxModel, UiMenuEntryRef, UiComponentNodeRef } from './model.js';
+import type { ModuxModel, UiMenuEntryRef, UiComponentNodeRef, FieldRef } from './model.js';
 import type { ModuxCommand } from './commands.js';
 import { saveInteractionCommand } from './interaction-utils.js';
+
+/** The elements that own fields — aggregates and entities (Record VOs join later). */
+function fieldOwners(host: { model: ModuxModel }): { id: string; fields?: FieldRef[] }[] {
+  return [...(host.model.aggregates ?? []), ...(host.model.entities ?? [])];
+}
 
 /**
  * Undo lives OUTSIDE the component: the inverse of a command is a pure
@@ -552,6 +557,23 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'set-entity-aggregate': {
         const e = (host.model.entities ?? []).find((x) => x.id === c.id);
         return e ? [{ kind: 'set-entity-aggregate', id: c.id, aggregateId: e.aggregateId }] : null;
+      }
+      case 'add-field':
+        return [{ kind: 'remove-field', id: c.id, ownerId: c.ownerId }];
+      case 'remove-field': {
+        const owner = fieldOwners(host).find((o) => (o.fields ?? []).some((f) => f.id === c.id));
+        const f = owner?.fields?.find((x) => x.id === c.id);
+        return owner && f
+          ? [{ kind: 'add-field', id: f.id, name: f.name, ownerId: owner.id, type: f.typeKind, targetId: f.typeRef }]
+          : null;
+      }
+      case 'set-field-type': {
+        const f = fieldOwners(host).flatMap((o) => o.fields ?? []).find((x) => x.id === c.id);
+        return f ? [{ kind: 'set-field-type', id: c.id, type: f.typeKind, targetId: f.typeRef }] : null;
+      }
+      case 'set-field-required': {
+        const f = fieldOwners(host).flatMap((o) => o.fields ?? []).find((x) => x.id === c.id);
+        return f ? [{ kind: 'set-field-required', id: c.id, required: f.required }] : null;
       }
       case 'add-invariant':
         return [{ kind: 'remove-invariant', id: c.id }];

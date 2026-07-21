@@ -413,12 +413,25 @@ export interface ProcessRef {
   steps: ProcessStepRef[];
 }
 
+/** A field (attribute) of an aggregate, entity or Record value object. */
+export interface FieldRef {
+  id: string;
+  name: string;
+  required: boolean;
+  /** primitive | value-object | entity | aggregate */
+  typeKind: string;
+  /** a primitive type name, or the referenced element's id. */
+  typeRef: string;
+}
+
 export interface AggregateRef {
   id: string;
   name: string;
   boundedContextId: string;
   /** The rules the aggregate protects — its very reason to exist. */
   invariants?: { id: string; name: string }[];
+  /** Its attributes: name, required, and a type reference. */
+  fields?: FieldRef[];
 }
 
 export interface EntityRef {
@@ -428,6 +441,8 @@ export interface EntityRef {
   aggregateId: string;
   /** The rules this entity protects. */
   invariants?: { id: string; name: string }[];
+  /** Its attributes. */
+  fields?: FieldRef[];
 }
 
 /** A value object owned by an aggregate — its own shape, richer than a plain model. */

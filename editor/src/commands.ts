@@ -89,6 +89,21 @@ export type ModuxCommand =
     }
   | { kind: 'remove-invariant'; id: string }
   | {
+      /** A field (attribute) of an aggregate / entity / Record VO — the universal building block. */
+      kind: 'add-field';
+      id: string;
+      name: string;
+      /** The aggregate / entity / value object it belongs to. */
+      ownerId: string;
+      /** primitive | value-object | entity | aggregate (defaults to primitive). */
+      type?: string;
+      /** The primitive name or referenced element id. */
+      targetId?: string;
+    }
+  | { kind: 'remove-field'; id: string; ownerId: string }
+  | { kind: 'set-field-type'; id: string; type: string; targetId: string }
+  | { kind: 'set-field-required'; id: string; required: boolean }
+  | {
       /** An entity WITHIN an aggregate (its parent) — richer than a plain model field. */
       kind: 'add-entity';
       id: string;
