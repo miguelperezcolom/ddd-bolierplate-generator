@@ -236,6 +236,10 @@ maps stay readable.
   auto-layout for a hand-placed sheet. It drops the stored routes so the canvas redraws
   each line clean and orthogonal on the current positions and keeps them live (they
   follow later drags). A selection scopes it to the lines touching those nodes; undoable.
+- **↔ Alinear / ↕ Alinear** (shown with two or more nodes selected) line the selection
+  up on a shared axis — «↔» a common Y (a row), «↕» a common X (a column) — snapping to
+  the selection's centroid so it moves the least; the moved nodes' lines re-route.
+  One undoable step.
 - **⌖ Ajustar** fits the diagram to the window; the **minimap** (bottom-right) shows
   the whole scene and recenters on click or drag; **mouse wheel** zooms; **hold
   space** to pan from anywhere.

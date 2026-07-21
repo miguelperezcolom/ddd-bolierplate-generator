@@ -4333,6 +4333,44 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
+   * Line up the selected top-level nodes on a shared axis: `'row'` gives them a
+   * common Y (a horizontal row), `'column'` a common X (a vertical column). The
+   * shared value is the selection's centroid, so the group stays put on average
+   * and moves the least. Lines of the moved nodes re-route clean on the new
+   * positions. One undoable step; needs at least two nodes.
+   */
+  private alignSelection(axis: 'row' | 'column'): void {
+    const view = this._view;
+    const selection = this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
+    const sel = new Set(selection);
+    const nodes = this.sceneFor(view).nodes.filter(
+      (n) => sel.has(n.id) && !n.parentId && n.kind !== 'area',
+    );
+    if (nodes.length < 2) return;
+    const current = this.viewLayout(view);
+    const posOf = (n: SceneNode) => current.nodes[n.id] ?? { x: n.x, y: n.y };
+    const key = axis === 'row' ? 'y' : 'x';
+    const target = nodes.reduce((s, n) => s + posOf(n)[key], 0) / nodes.length;
+    const ids = new Set(nodes.map((n) => n.id));
+    const affectedEdges = this.sceneFor(view)
+      .edges.filter((e) => ids.has(e.sourceId) || ids.has(e.targetId))
+      .map((e) => e.id)
+      .filter((id) => current.edges[id]);
+    this.pushUndoEntry([
+      ...nodes.map((n) => ({ kind: 'move-node' as const, view, id: n.id, pos: current.nodes[n.id] ?? null })),
+      ...affectedEdges.map((id) => ({ kind: 'set-edge-points' as const, view, id, points: current.edges[id] })),
+    ]);
+    const newNodes = { ...current.nodes };
+    for (const n of nodes) {
+      const p = posOf(n);
+      newNodes[n.id] = key === 'y' ? { x: p.x, y: target } : { x: target, y: p.y };
+    }
+    const edges = { ...current.edges };
+    for (const id of affectedEdges) delete edges[id]; // re-route on the aligned positions
+    this.writeViewLayout(view, { ...current, nodes: newNodes, edges });
+  }
+
+  /**
    * Toolbar controls keep keyboard focus after use, so the next space bar
    * reopens the select (or re-fires the button) instead of panning the canvas.
    * Once a select changes or a button is clicked, the keyboard belongs to the
@@ -5031,6 +5069,24 @@ export class ModuxEditor extends LitElement {
         >
           ↻ Líneas
         </button>
+        ${this._multi.length >= 2 && !this._yugo
+          ? html`
+              <button
+                class="tab"
+                title="Alinear los seleccionados en una fila (misma altura)"
+                @click=${() => this.alignSelection('row')}
+              >
+                ↔ Alinear
+              </button>
+              <button
+                class="tab"
+                title="Alinear los seleccionados en una columna (misma vertical)"
+                @click=${() => this.alignSelection('column')}
+              >
+                ↕ Alinear
+              </button>
+            `
+          : ''}
         ${this._view === 'workflows'
           && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length)
           ? html`<button

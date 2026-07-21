@@ -105,6 +105,9 @@ out the gestures for the current view.
   (e.g. after dragging a box). It moves nothing; it redraws each edge clean and
   orthogonal, and leaves them *live* so they follow later drags. A selection scopes it
   to that node's lines.
+- **↔ Alinear / ↕ Alinear** line up the selected nodes (two or more): **↔** puts them
+  on a shared row (same height), **↕** on a shared column (same vertical). They snap to
+  the selection's centre so the group moves the least, and their lines re-route clean.
 - Lines route around the boxes on their own as you drag; a line you **drag** splits into
   an adjustable bend point and becomes yours (the auto-router then leaves it alone).
 - Node positions and bends are saved to the view's sheet automatically — no save button.

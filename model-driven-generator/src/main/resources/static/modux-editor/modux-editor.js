@@ -18392,6 +18392,32 @@ let ie = class extends Ge {
     this.writeViewLayout(e, { ...t, edges: s });
   }
   /**
+   * Line up the selected top-level nodes on a shared axis: `'row'` gives them a
+   * common Y (a horizontal row), `'column'` a common X (a vertical column). The
+   * shared value is the selection's centroid, so the group stays put on average
+   * and moves the least. Lines of the moved nodes re-route clean on the new
+   * positions. One undoable step; needs at least two nodes.
+   */
+  alignSelection(e) {
+    const t = this._view, i = this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [], n = new Set(i), o = this.sceneFor(t).nodes.filter(
+      (y) => n.has(y.id) && !y.parentId && y.kind !== "area"
+    );
+    if (o.length < 2) return;
+    const s = this.viewLayout(t), a = (y) => s.nodes[y.id] ?? { x: y.x, y: y.y }, r = e === "row" ? "y" : "x", c = o.reduce((y, b) => y + a(b)[r], 0) / o.length, u = new Set(o.map((y) => y.id)), g = this.sceneFor(t).edges.filter((y) => u.has(y.sourceId) || u.has(y.targetId)).map((y) => y.id).filter((y) => s.edges[y]);
+    this.pushUndoEntry([
+      ...o.map((y) => ({ kind: "move-node", view: t, id: y.id, pos: s.nodes[y.id] ?? null })),
+      ...g.map((y) => ({ kind: "set-edge-points", view: t, id: y, points: s.edges[y] }))
+    ]);
+    const m = { ...s.nodes };
+    for (const y of o) {
+      const b = a(y);
+      m[y.id] = r === "y" ? { x: b.x, y: c } : { x: c, y: b.y };
+    }
+    const f = { ...s.edges };
+    for (const y of g) delete f[y];
+    this.writeViewLayout(t, { ...s, nodes: m, edges: f });
+  }
+  /**
    * Toolbar controls keep keyboard focus after use, so the next space bar
    * reopens the select (or re-fires the button) instead of panning the canvas.
    * Once a select changes or a button is clicked, the keyboard belongs to the
@@ -18991,6 +19017,22 @@ let ie = class extends Ge {
         >
           ↻ Líneas
         </button>
+        ${this._multi.length >= 2 && !this._yugo ? v`
+              <button
+                class="tab"
+                title="Alinear los seleccionados en una fila (misma altura)"
+                @click=${() => this.alignSelection("row")}
+              >
+                ↔ Alinear
+              </button>
+              <button
+                class="tab"
+                title="Alinear los seleccionados en una columna (misma vertical)"
+                @click=${() => this.alignSelection("column")}
+              >
+                ↕ Alinear
+              </button>
+            ` : ""}
         ${this._view === "workflows" && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length) ? v`<button
               class="tab"
               title="Procesos y sagas se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
