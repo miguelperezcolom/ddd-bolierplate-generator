@@ -178,6 +178,17 @@ person / gear (human / automated steps), double circle (events), return arrow
   wire unwires (the operation stays published, flagged by `api-operation-unwired`);
   APIs and operations are also creatable from the palette (an API is dropped onto
   the system or context that owns it), renamable and deletable.
+- **API → bounded context: implements it or consumes it?**: tracing a line from a
+  whole **API** (or a **proxy** fronting one) onto a **bounded context** carries two
+  very different meanings, so the canvas asks instead of assuming. The picker offers
+  **Implementación** (the context hosts/implements the API — an `api-impl` occurrence
+  nests inside it, strangler style) and **Consumo (servidumbre)** (the context calls
+  the API — a `serving` relation), on top of the full ArchiMate vocabulary. The
+  serving relation always anchors to the **API itself, never its proxy** — even when
+  you drew the line from the proxy. When an API is implemented in a context AND a
+  proxy fronts it, the proxy's route to that implementation is drawn as a **faint,
+  dotted, arrow-less line** — a *derived route*, deliberately distinct from any
+  relation you drew, so it never reads as «the proxy serves the context».
 - **The agent's whole tool surface is drawn**: drag an agent onto a use case (MCP),
   a **query service** (read tool), an **API operation**, an **external operation**,
   an **external MCP server**, an **MCP gateway** or **another agent** (delegation) —
