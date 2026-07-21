@@ -28,7 +28,8 @@ to a canvas with the **view selector** at the top-left (see [Pick a view](#pick-
 - **⛶ (or `F`)** takes the diagram fullscreen; **Esc** (or `F` again) leaves.
 - **Hover a node** to spotlight its neighbourhood: the node, everything one edge away
   and their connecting lines stay lit while the rest fades — the fastest way to read
-  a dense map.
+  a dense map. The hover tooltip also shows the element's **description** (the free-text
+  field you edit in its ficha), so you can read what a box means without opening it.
 
 ### Three surfaces
 
