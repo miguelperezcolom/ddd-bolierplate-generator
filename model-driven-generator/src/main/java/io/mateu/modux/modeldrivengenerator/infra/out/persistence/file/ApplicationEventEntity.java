@@ -15,6 +15,13 @@ public record ApplicationEventEntity(
         String modelId
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public ApplicationEventEntity(String id, String name, String modelId, String projectId) {
+        this(id, name, modelId, projectId, null);
+    }
 }

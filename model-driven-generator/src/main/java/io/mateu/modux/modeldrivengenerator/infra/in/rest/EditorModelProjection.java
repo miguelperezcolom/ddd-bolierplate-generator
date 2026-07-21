@@ -691,6 +691,20 @@ public class EditorModelProjection {
         scoped(ScheduledTriggerEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
         scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class)
                 .forEach(e -> putDesc.accept(e.id(), e.description()));
+        // Core domain elements (description field added recently).
+        scoped(AggregateEntity.class).forEach(e -> {
+            putDesc.accept(e.id(), e.description());
+            e.operations().forEach(op -> putDesc.accept(op.id(), op.description()));
+        });
+        scoped(UseCaseEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(DomainEventEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(PageEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApplicationEventEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
 
         return new EditorModelDto(
                 boundedContexts, externalSystems, relations, flows, aggregates, entities, references, processes,

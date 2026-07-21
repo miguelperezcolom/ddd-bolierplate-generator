@@ -36,8 +36,23 @@ public record AggregateEntity(
          * Data-access override for this aggregate: JPA, JDBC or STORED_PROCEDURE;
          * null inherits the project's {@code dataAccess} strategy.
          */
-        String dataAccess
+        String dataAccess,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public AggregateEntity(String id, String name, String modelId,
+            AggregatePersistenceType persistenceType, AggregateIdType idType,
+            String tableName, String tableSchema, boolean optimisticLockingEnabled,
+            boolean eventSourcingEnabled, Integer snapshotFrequency, List<OperationEntity> operations,
+            List<InvariantEntity> invariants, List<String> valueObjectIds, LifecycleEntity lifecycle,
+            boolean audited, List<String> decisionIds, String title, String projectId, String dataAccess) {
+        this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
+                optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency, operations,
+                invariants, valueObjectIds, lifecycle, audited, decisionIds, title, projectId,
+                dataAccess, null);
+    }
 
     /** Backward-compatible constructor (pre-lifecycle/audited callers and stores). */
     public AggregateEntity(String id, String name, String modelId,

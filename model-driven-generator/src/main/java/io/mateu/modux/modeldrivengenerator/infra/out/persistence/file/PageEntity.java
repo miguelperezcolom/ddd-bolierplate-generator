@@ -49,7 +49,9 @@ public record PageEntity(
         String style
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-buttonGroups callers and stores). */
@@ -67,7 +69,7 @@ public record PageEntity(
                 listingGatewayId, toolbar, bottomBar, triggers, rules, validations, fieldConfigs,
                 wizardSteps, completionActions, listingQueryServiceId, content, crudDetailPageId,
                 crudDetailAppId, crudCreatePageId, crudCreateAppId, customCodeId, null, null,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-customCodeId callers and stores). */

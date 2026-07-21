@@ -18,8 +18,18 @@ public record OperationEntity(
          * two-zone hook — travels into the generated scaffold as javadoc, and
          * {@code mvn modux:ai-complete} proposes an implementation from it.
          */
-        String intent
+        String intent,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-description callers). */
+    public OperationEntity(String id, String name, String inputModelId, String outputModelId,
+            String preconditions, String sets, String emits, String type, boolean paginated,
+            Integer defaultPageSize, String intent) {
+        this(id, name, inputModelId, outputModelId, preconditions, sets, emits, type, paginated,
+                defaultPageSize, intent, null);
+    }
 
     /** Backward-compatible constructor (pre-intent callers and stores). */
     public OperationEntity(String id, String name, String inputModelId, String outputModelId,

@@ -53,7 +53,9 @@ public record UseCaseEntity(
         String rowActionForAggregateId
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
-        String projectId
+        String projectId,
+        /** Free-text description — shown on hover in the editor, edited in the ficha. */
+        String description
 ) implements Identifiable {
 
     /** Backward-compatible constructor (pre-title/rowAction callers). */
@@ -75,7 +77,7 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                decisionIds, policy, null, null, projectId);
+                decisionIds, policy, null, null, projectId, null);
     }
 
     /** Backward-compatible constructor (pre-policy callers). */
@@ -96,7 +98,7 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                decisionIds, false, null, null, null);
+                decisionIds, false, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-decisionIds callers). */
@@ -117,6 +119,6 @@ public record UseCaseEntity(
                 asyncOrderingKey, asyncTopicName, asyncConsumerGroup, cacheable, cacheTtlSeconds,
                 timeoutMs, transactionBoundary, idempotencyEnabled, idempotencyKeyField,
                 rateLimitEnabled, rateLimitRequestsPerSecond, grpcServiceName, grpcMethodName,
-                List.of(), false, null, null, null);
+                List.of(), false, null, null, null, null);
     }
 }
