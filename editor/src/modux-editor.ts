@@ -2999,7 +2999,15 @@ export class ModuxEditor extends LitElement {
     const pos = surface.sceneFromClient(e.clientX, e.clientY);
     // Solution/diff overlays and flow lanes prefix node ids; the drop resolvers work
     // on the bare catalog id, like every other handler.
-    const targetId = surface.nodeIdAtClient(e.clientX, e.clientY)?.replace(/^(tgt:|flow:)/, '') ?? null;
+    let targetId = surface.nodeIdAtClient(e.clientX, e.clientY)?.replace(/^(tgt:|flow:)/, '') ?? null;
+    // Exact hit-testing misses small nodes (SVG fill hit areas vary, boxes shrink when
+    // zoomed out): fall back to the nearest node so a drop just SHORT of it still lands.
+    if (!targetId && 'nodeIdNearClient' in surface) {
+      targetId =
+        (surface as import('./modux-canvas.js').ModuxCanvas)
+          .nodeIdNearClient(e.clientX, e.clientY)
+          ?.replace(/^(tgt:|flow:)/, '') ?? null;
+    }
     const slot =
       this._view === 'design' && 'dropSlotAtClient' in surface
         ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(e.clientX, e.clientY)

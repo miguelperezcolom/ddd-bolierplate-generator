@@ -665,6 +665,29 @@ export class ModuxCanvas extends LitElement {
     return null;
   }
 
+  /**
+   * The node whose box is nearest to a client point, within maxPx screen pixels — a
+   * forgiving fallback for palette drops when the exact hit-test misses a small node
+   * (SVG fill hit-testing is finicky, and boxes shrink when zoomed out).
+   */
+  nodeIdNearClient(clientX: number, clientY: number, maxPx = 44): string | null {
+    const p = this.sceneFromClient(clientX, clientY);
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const n of this.scene.nodes) {
+      if (n.kind === 'area') continue;
+      const c = this.nodePos(n);
+      const dx = Math.max(Math.abs(p.x - c.x) - (n.w ?? 0) / 2, 0);
+      const dy = Math.max(Math.abs(p.y - c.y) - (n.h ?? 0) / 2, 0);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) {
+        bestD = d;
+        best = n.id;
+      }
+    }
+    return best && bestD * this._t.k <= maxPx ? best : null;
+  }
+
   /** Topmost edge at a client-space point — note threads can land on relations. */
   private edgeIdAtClient(clientX: number, clientY: number): string | null {
     const els = this.shadowRoot?.elementsFromPoint(clientX, clientY) ?? [];

@@ -280,12 +280,15 @@ function boundedContextElementDescs(
   return [
     ...(model.aggregates ?? [])
       .filter((a) => a.boundedContextId === boundedContext.id)
-      .map((a): ChildDesc => ({
-        id: a.id,
-        // The invariants ARE the aggregate's reason to exist: they show on the chip.
-        name: (a.invariants ?? []).length ? `${a.name} ⚖${a.invariants!.length}` : a.name,
-        kind: 'aggregate',
-      })),
+      .map((a): ChildDesc => {
+        // What the aggregate holds shows on the chip: 🗂 entities, ◈ value objects,
+        // ⚖ invariants (its reason to exist).
+        const entN = (model.entities ?? []).filter((e) => e.aggregateId === a.id).length;
+        const voN = (model.valueObjects ?? []).filter((v) => v.aggregateId === a.id).length;
+        const invN = (a.invariants ?? []).length;
+        const chips = (entN ? ` 🗂${entN}` : '') + (voN ? ` ◈${voN}` : '') + (invN ? ` ⚖${invN}` : '');
+        return { id: a.id, name: `${a.name}${chips}`, kind: 'aggregate' };
+      }),
     ...(boundedContext.useCases ?? []).map(
       (u): ChildDesc => ({ id: u.id, name: u.name, kind: 'use-case', policy: u.policy }),
     ),

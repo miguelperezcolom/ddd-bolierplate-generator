@@ -215,12 +215,10 @@ const Ka = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, Xa = {
 };
 function jt(e, t) {
   return [
-    ...(e.aggregates ?? []).filter((i) => i.boundedContextId === t.id).map((i) => ({
-      id: i.id,
-      // The invariants ARE the aggregate's reason to exist: they show on the chip.
-      name: (i.invariants ?? []).length ? `${i.name} ⚖${i.invariants.length}` : i.name,
-      kind: "aggregate"
-    })),
+    ...(e.aggregates ?? []).filter((i) => i.boundedContextId === t.id).map((i) => {
+      const n = (e.entities ?? []).filter((r) => r.aggregateId === i.id).length, o = (e.valueObjects ?? []).filter((r) => r.aggregateId === i.id).length, s = (i.invariants ?? []).length, a = (n ? ` 🗂${n}` : "") + (o ? ` ◈${o}` : "") + (s ? ` ⚖${s}` : "");
+      return { id: i.id, name: `${i.name}${a}`, kind: "aggregate" };
+    }),
     ...(t.useCases ?? []).map(
       (i) => ({ id: i.id, name: i.name, kind: "use-case", policy: i.policy })
     ),
@@ -4931,6 +4929,21 @@ let ye = class extends je {
       if (a) return a.getAttribute("data-node-id");
     }
     return null;
+  }
+  /**
+   * The node whose box is nearest to a client point, within maxPx screen pixels — a
+   * forgiving fallback for palette drops when the exact hit-test misses a small node
+   * (SVG fill hit-testing is finicky, and boxes shrink when zoomed out).
+   */
+  nodeIdNearClient(e, t, i = 44) {
+    const n = this.sceneFromClient(e, t);
+    let o = null, s = 1 / 0;
+    for (const a of this.scene.nodes) {
+      if (a.kind === "area") continue;
+      const r = this.nodePos(a), l = Math.max(Math.abs(n.x - r.x) - (a.w ?? 0) / 2, 0), u = Math.max(Math.abs(n.y - r.y) - (a.h ?? 0) / 2, 0), h = Math.hypot(l, u);
+      h < s && (s = h, o = a.id);
+    }
+    return o && s * this._t.k <= i ? o : null;
   }
   /** Topmost edge at a client-space point — note threads can land on relations. */
   edgeIdAtClient(e, t) {
@@ -17614,13 +17627,16 @@ let ie = class extends je {
     (i = e.dataTransfer) == null || i.setData("application/x-modux-palette", JSON.stringify(t)), e.dataTransfer && (e.dataTransfer.effectAllowed = "copy");
   }
   onPaletteDrop(e) {
-    var r, l;
+    var r, l, u;
     const t = (r = e.dataTransfer) == null ? void 0 : r.getData("application/x-modux-palette");
     if (!t) return;
     e.preventDefault();
     const i = this._view === "design" ? this.renderRoot.querySelector("modux-figma") : this._yugo ? this.renderRoot.querySelector("modux-explorer") : this._tilt ? this.renderRoot.querySelector("modux-tilt") : this.renderRoot.querySelector("modux-canvas");
     if (!i) return;
-    const n = i.sceneFromClient(e.clientX, e.clientY), o = ((l = i.nodeIdAtClient(e.clientX, e.clientY)) == null ? void 0 : l.replace(/^(tgt:|flow:)/, "")) ?? null, s = this._view === "design" && "dropSlotAtClient" in i ? i.dropSlotAtClient(e.clientX, e.clientY) : null;
+    const n = i.sceneFromClient(e.clientX, e.clientY);
+    let o = ((l = i.nodeIdAtClient(e.clientX, e.clientY)) == null ? void 0 : l.replace(/^(tgt:|flow:)/, "")) ?? null;
+    !o && "nodeIdNearClient" in i && (o = ((u = i.nodeIdNearClient(e.clientX, e.clientY)) == null ? void 0 : u.replace(/^(tgt:|flow:)/, "")) ?? null);
+    const s = this._view === "design" && "dropSlotAtClient" in i ? i.dropSlotAtClient(e.clientX, e.clientY) : null;
     let a;
     try {
       a = JSON.parse(t);
