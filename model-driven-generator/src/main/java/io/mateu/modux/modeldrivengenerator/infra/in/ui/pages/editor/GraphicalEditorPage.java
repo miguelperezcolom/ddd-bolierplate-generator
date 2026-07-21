@@ -77,6 +77,7 @@ public class GraphicalEditorPage implements ComponentTreeSupplier, ActionHandler
             Map.entry("service", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.service.ServiceCrudAdapter.class),
             Map.entry("aggregate", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.aggregate.AggregateCrudAdapter.class),
             Map.entry("entity", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.entity.EntityCrudAdapter.class),
+            Map.entry("value-object", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.valueobject.ValueObjectCrudAdapter.class),
             Map.entry("model", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.model.ModelCrudAdapter.class),
             Map.entry("flow", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.flow.FlowCrudAdapter.class),
             Map.entry("workflow", io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.workflow.WorkflowCrudAdapter.class),

@@ -100,6 +100,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'use-case', id };
     case 'entity':
       return { elementType: 'entity', id };
+    case 'value-object':
+      return { elementType: 'value-object', id };
     case 'flow':
       return { elementType: 'flow', id: id.replace(/^flow:/, '') };
     case 'process':
@@ -2383,9 +2385,12 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (e.detail.kind === 'invariant') {
-      const owner = (this.model.aggregates ?? [])
-        .find((a) => (a.invariants ?? []).some((i) => i.id === e.detail.id));
-      if (owner) this.openInDrawer({ elementType: 'aggregate', id: owner.id });
+      const inAgg = (this.model.aggregates ?? []).find((a) => (a.invariants ?? []).some((i) => i.id === e.detail.id));
+      if (inAgg) { this.openInDrawer({ elementType: 'aggregate', id: inAgg.id }); return; }
+      const inVo = (this.model.valueObjects ?? []).find((v) => (v.invariants ?? []).some((i) => i.id === e.detail.id));
+      if (inVo) { this.openInDrawer({ elementType: 'value-object', id: inVo.id }); return; }
+      const inEnt = (this.model.entities ?? []).find((en) => (en.invariants ?? []).some((i) => i.id === e.detail.id));
+      if (inEnt) { this.openInDrawer({ elementType: 'entity', id: inEnt.id }); return; }
       return;
     }
     const mapped =
@@ -3096,9 +3101,21 @@ export class ModuxEditor extends LitElement {
       'notification', 'document', 'module',
     ].includes(type);
     if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
+    // An invariant belongs to whatever it is dropped on: a value object, an entity, or
+    // an aggregate (dropping on a context falls back to its first aggregate).
+    if (type === 'invariant') {
+      const vo = chain.find((cid) => (this.model.valueObjects ?? []).some((v) => v.id === cid));
+      if (vo) return vo;
+      const ent = chain.find((cid) => (this.model.entities ?? []).some((e) => e.id === cid));
+      if (ent) return ent;
+      const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
+      if (agg) return agg;
+      const mod = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
+      return (this.model.aggregates ?? []).find((a) => a.boundedContextId === mod)?.id ?? null;
+    }
     // Children of an aggregate: dropped on the aggregate itself, or on its context
     // (then the context's first aggregate takes them).
-    if (['invariant', 'read-model', 'entity', 'value-object'].includes(type)) {
+    if (['read-model', 'entity', 'value-object'].includes(type)) {
       const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
       if (agg) return agg;
       const mod = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
@@ -3586,9 +3603,14 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'value-object') {
       issue({ kind: 'add-value-object', id, name, aggregateId: container }, id, container);
     } else if (type === 'invariant') {
-      this.command({ kind: 'add-invariant', aggregateId: container, id, name });
+      this.command({ kind: 'add-invariant', ownerId: container, id, name });
+      const ownerKind = (this.model.valueObjects ?? []).some((v) => v.id === container)
+        ? 'value object'
+        : (this.model.entities ?? []).some((e) => e.id === container)
+          ? 'entidad'
+          : 'agregado';
       this.emit('modux-notice', {
-        message: `Invariante declarado en el agregado — sus condiciones se detallan en la ficha del agregado`,
+        message: `Invariante declarado en el ${ownerKind} — sus condiciones se detallan en su ficha`,
       });
     } else if (type === 'ui-button') {
       const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);

@@ -261,7 +261,9 @@ public class EditorModelProjection {
 
         var entities = scoped(EntityEntity.class).stream()
                 .filter(e -> e.parentAggregateId() != null && !e.parentAggregateId().isBlank())
-                .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId()))
+                .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId(),
+                        e.invariants().stream()
+                                .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList()))
                 .toList();
 
         // Value objects, projected under the aggregate that owns them (via valueObjectIds).
@@ -293,7 +295,9 @@ public class EditorModelProjection {
                             .map(io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue::value)
                             .toList();
                     valueObjects.add(new ValueObjectDto(v.id(), v.name(), agg.id(), v.type(),
-                            v.dataType(), fieldDtos, enumValues));
+                            v.dataType(), fieldDtos, enumValues,
+                            v.invariants().stream()
+                                    .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList()));
                 });
             }
         }

@@ -200,16 +200,20 @@ public class EditorApiController {
                                /** The rules the aggregate protects — its very reason to exist. */
                                List<AggregateInvariantDto> invariants) {}
     public record AggregateInvariantDto(String id, String name) {}
-    public record EntityDto(String id, String name, String aggregateId) {}
+    public record EntityDto(String id, String name, String aggregateId,
+                            /** The rules this entity protects. */
+                            List<AggregateInvariantDto> invariants) {}
     /** One field of a value object (Record type) — its name and data type. */
     public record ValueObjectFieldDto(String name, String dataType, String stereotype) {}
     /**
      * A value object owned by an aggregate: its own fields (Record), enum values (Enum) or
-     * wrapped type (Wrapper). Richer than a plain model — the seat for invariants to come.
+     * wrapped type (Wrapper). Richer than a plain model — it can carry invariants.
      */
     public record ValueObjectDto(String id, String name, String aggregateId, String type,
                                  String dataType, List<ValueObjectFieldDto> fields,
-                                 List<String> enumValues) {}
+                                 List<String> enumValues,
+                                 /** The rules this value object protects. */
+                                 List<AggregateInvariantDto> invariants) {}
     public record AggregateReferenceDto(String sourceAggregateId, String targetAggregateId, String label) {}
     public record ProcessStepDto(String id, String name, String type, String useCaseId, String roleId,
                                  String deadline, String compensationUseCaseId) {}
@@ -571,6 +575,8 @@ public class EditorApiController {
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
                                 String id, String name, String subdomainType, String boundedContextId,
                                 String aggregateId,
+                                /** Polymorphic owner of an invariant: an aggregate, value object or entity. */
+                                String ownerId,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String triggerDomainServiceId, String triggerUseCaseId,
                                 String readModelName, String targetUseCaseId,
@@ -1381,24 +1387,63 @@ public class EditorApiController {
     }
 
     /** The invariant declares WHY the aggregate exists; its conditions detail HOW (ficha). */
+    /** Declares an invariant on its owner — an aggregate, a value object OR an entity. */
     private void addInvariant(EditorCommand command) {
-        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Agregado desconocido: " + command.aggregateId()));
-        if (aggregate.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
-        var invariants = new ArrayList<>(aggregate.invariants());
-        invariants.add(new InvariantEntity(command.id(), command.name(), List.of(), null));
-        repository.save(aggregate.toBuilder().invariants(invariants).build());
+        var ownerId = command.ownerId() != null ? command.ownerId() : command.aggregateId();
+        var newInvariant = new InvariantEntity(command.id(), command.name(), List.of(), null);
+        var agg = repository.findById(ownerId, AggregateEntity.class);
+        if (agg.isPresent()) {
+            var a = agg.get();
+            if (a.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
+            var invs = new ArrayList<>(a.invariants());
+            invs.add(newInvariant);
+            repository.save(a.toBuilder().invariants(invs).build());
+            return;
+        }
+        var vo = repository.findById(ownerId, ValueObjectEntity.class);
+        if (vo.isPresent()) {
+            var v = vo.get();
+            if (v.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
+            var invs = new ArrayList<>(v.invariants());
+            invs.add(newInvariant);
+            repository.save(new ValueObjectEntity(v.id(), v.name(), v.type(), v.valuesJson(),
+                    v.fieldsJson(), v.dataType(), v.projectId(), v.description(), invs));
+            return;
+        }
+        var ent = repository.findById(ownerId, EntityEntity.class);
+        if (ent.isPresent()) {
+            var e = ent.get();
+            if (e.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) return;
+            var invs = new ArrayList<>(e.invariants());
+            invs.add(newInvariant);
+            repository.save(new EntityEntity(e.id(), e.name(), e.modelId(), e.parentAggregateId(),
+                    e.isCollection(), e.projectId(), e.description(), invs));
+            return;
+        }
+        throw new IllegalArgumentException("Dueño de invariante desconocido: " + ownerId);
     }
 
     private void removeInvariant(EditorCommand command) {
-        for (var aggregate : repository.findAllOfType(AggregateEntity.class)) {
-            if (aggregate.invariants().stream().noneMatch(i -> i.id().equals(command.id()))) continue;
-            repository.save(aggregate.toBuilder()
-                    .invariants(aggregate.invariants().stream()
-                            .filter(i -> !i.id().equals(command.id()))
-                            .toList())
+        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+            if (a.invariants().stream().noneMatch(i -> i.id().equals(command.id()))) continue;
+            repository.save(a.toBuilder()
+                    .invariants(a.invariants().stream()
+                            .filter(i -> !i.id().equals(command.id())).toList())
                     .build());
+            return;
+        }
+        for (var v : repository.findAllOfType(ValueObjectEntity.class)) {
+            if (v.invariants().stream().noneMatch(i -> i.id().equals(command.id()))) continue;
+            repository.save(new ValueObjectEntity(v.id(), v.name(), v.type(), v.valuesJson(),
+                    v.fieldsJson(), v.dataType(), v.projectId(), v.description(),
+                    v.invariants().stream().filter(i -> !i.id().equals(command.id())).toList()));
+            return;
+        }
+        for (var e : repository.findAllOfType(EntityEntity.class)) {
+            if (e.invariants().stream().noneMatch(i -> i.id().equals(command.id()))) continue;
+            repository.save(new EntityEntity(e.id(), e.name(), e.modelId(), e.parentAggregateId(),
+                    e.isCollection(), e.projectId(), e.description(),
+                    e.invariants().stream().filter(i -> !i.id().equals(command.id())).toList()));
             return;
         }
     }
@@ -1475,7 +1520,8 @@ public class EditorApiController {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Agregado desconocido: " + command.aggregateId()));
         repository.save(new EntityEntity(entity.id(), entity.name(), entity.modelId(),
-                command.aggregateId(), entity.isCollection(), entity.projectId(), entity.description()));
+                command.aggregateId(), entity.isCollection(), entity.projectId(), entity.description(),
+                entity.invariants()));
     }
 
     private void addAggregate(EditorCommand command) {

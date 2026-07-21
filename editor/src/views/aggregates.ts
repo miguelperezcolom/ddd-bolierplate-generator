@@ -128,11 +128,23 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     tooltip: 'Value object dentro del agregado',
   }));
 
-  // The rules the aggregate protects, orbiting it — declare them from the palette.
-  const invariantNodes: SceneNode[] = (model.aggregates ?? []).flatMap((a) =>
-    (a.invariants ?? []).map((inv, i) => {
-      const base = pos(a.id);
-      const p = layout[inv.id] ?? { x: base.x - 150, y: base.y + 90 + i * 52 };
+  // The rules an owner protects, orbiting it — declared from the palette. Owners are
+  // aggregates AND, now, value objects and entities (each can carry invariants).
+  const aggIds = new Set((model.aggregates ?? []).map((a) => a.id));
+  const invariantHosts: { id: string; ownerKind: string; invariants?: { id: string; name: string }[] }[] = [
+    ...(model.aggregates ?? []).map((a) => ({ id: a.id, ownerKind: 'agregado', invariants: a.invariants })),
+    ...(model.valueObjects ?? []).map((v) => ({ id: v.id, ownerKind: 'value object', invariants: v.invariants })),
+    ...(model.entities ?? []).map((e) => ({ id: e.id, ownerKind: 'entidad', invariants: e.invariants })),
+  ];
+  const invariantNodes: SceneNode[] = invariantHosts.flatMap((owner) =>
+    (owner.invariants ?? []).map((inv, i) => {
+      const base = pos(owner.id);
+      // Aggregates park their invariants to the left; VOs/entities (already indented
+      // right of the aggregate) park theirs further right to avoid the column.
+      const p = layout[inv.id] ??
+        (aggIds.has(owner.id)
+          ? { x: base.x - 150, y: base.y + 90 + i * 52 }
+          : { x: base.x + 160, y: base.y + i * 46 });
       return {
         id: inv.id,
         label: inv.name,
@@ -145,20 +157,20 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
         fill: '#f0fdfa',
         stroke: '#0f766e',
         badge: '⚖ INVARIANTE',
-        tooltip: `${inv.name} — regla que el agregado protege; doble click abre la ficha del agregado (sus condiciones se detallan allí)`,
+        tooltip: `${inv.name} — regla que el ${owner.ownerKind} protege; doble click abre su ficha (las condiciones se detallan allí)`,
       } as SceneNode;
     }),
   );
 
-  const invariantEdges: SceneEdge[] = (model.aggregates ?? []).flatMap((a) =>
-    (a.invariants ?? []).map((inv) => ({
-      id: `protects:${a.id}->${inv.id}`,
-      sourceId: a.id,
+  const invariantEdges: SceneEdge[] = invariantHosts.flatMap((owner) =>
+    (owner.invariants ?? []).map((inv) => ({
+      id: `protects:${owner.id}->${inv.id}`,
+      sourceId: owner.id,
       targetId: inv.id,
       kind: 'invariant-containment',
       color: '#0f766e',
       dashed: true,
-      tooltip: 'El agregado protege esta regla — Supr la retira',
+      tooltip: 'Protege esta regla — Supr la retira',
     })),
   );
 

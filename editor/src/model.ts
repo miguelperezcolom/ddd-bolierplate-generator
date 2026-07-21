@@ -426,6 +426,8 @@ export interface EntityRef {
   name: string;
   /** Aggregate this entity belongs to (entities-within-aggregates). */
   aggregateId: string;
+  /** The rules this entity protects. */
+  invariants?: { id: string; name: string }[];
 }
 
 /** A value object owned by an aggregate — its own shape, richer than a plain model. */
@@ -442,6 +444,8 @@ export interface ValueObjectRef {
   fields?: { name: string; dataType?: string; stereotype?: string }[];
   /** For Enum VOs, the allowed values. */
   enumValues?: string[];
+  /** The rules this value object protects. */
+  invariants?: { id: string; name: string }[];
 }
 
 /** Cross-aggregate reference derived server-side from model fields. */

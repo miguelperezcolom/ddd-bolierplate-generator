@@ -81,9 +81,9 @@ export type ModuxCommand =
       boundedContextId: string;
     }
   | {
-      /** An invariant INSIDE its aggregate — the rule that justifies the boundary. */
+      /** An invariant on its owner — an aggregate, value object OR entity. */
       kind: 'add-invariant';
-      aggregateId: string;
+      ownerId: string;
       id: string;
       name: string;
     }
