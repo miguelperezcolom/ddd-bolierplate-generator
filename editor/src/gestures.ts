@@ -2595,6 +2595,18 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-aggregate', id });
       return;
     }
+    if (elementType === 'node' && kind === 'value-object') {
+      const aggregateId = (host.model.valueObjects ?? []).find((v) => v.id === id)?.aggregateId ?? '';
+      host.clearSelection();
+      host.command({ kind: 'remove-value-object', id, aggregateId });
+      return;
+    }
+    if (elementType === 'node' && kind === 'entity') {
+      const aggregateId = (host.model.entities ?? []).find((e) => e.id === id)?.aggregateId ?? '';
+      host.clearSelection();
+      host.command({ kind: 'remove-entity', id, aggregateId });
+      return;
+    }
     if (elementType === 'node' && kind === 'domain-event') {
       host.clearSelection();
       host.command({ kind: 'remove-domain-event', id });
