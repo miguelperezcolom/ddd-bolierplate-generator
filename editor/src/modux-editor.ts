@@ -2997,7 +2997,9 @@ export class ModuxEditor extends LitElement {
             : this.renderRoot.querySelector('modux-canvas');
     if (!surface) return;
     const pos = surface.sceneFromClient(e.clientX, e.clientY);
-    const targetId = surface.nodeIdAtClient(e.clientX, e.clientY);
+    // Solution/diff overlays and flow lanes prefix node ids; the drop resolvers work
+    // on the bare catalog id, like every other handler.
+    const targetId = surface.nodeIdAtClient(e.clientX, e.clientY)?.replace(/^(tgt:|flow:)/, '') ?? null;
     const slot =
       this._view === 'design' && 'dropSlotAtClient' in surface
         ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(e.clientX, e.clientY)
@@ -3092,6 +3094,23 @@ export class ModuxEditor extends LitElement {
   }
 
   /** The container a child kind needs, resolved from whatever the drop landed on. */
+  /** The aggregate whose box is nearest to a scene point — the forgiving drop target. */
+  private nearestAggregateTo(pos: Point): string | null {
+    const aggs = this.sceneFor('aggregates').nodes.filter((n) => n.kind === 'aggregate');
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const a of aggs) {
+      const dx = Math.max(Math.abs(pos.x - a.x) - (a.w ?? 0) / 2, 0);
+      const dy = Math.max(Math.abs(pos.y - a.y) - (a.h ?? 0) / 2, 0);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) {
+        bestD = d;
+        best = a.id;
+      }
+    }
+    return best;
+  }
+
   private dropContainerFor(type: string, targetId: string | null): string | null {
     if (!targetId) return null;
     const chain = this.dropChain(targetId);
@@ -3587,7 +3606,13 @@ export class ModuxEditor extends LitElement {
       this.pushUndoEntry([...inverse, { kind: 'move-node', view: this._view, id, pos: null }]);
       return;
     }
-    const container = this.dropContainerFor(type, targetId);
+    let container = this.dropContainerFor(type, targetId);
+    // Forgiving drop in the aggregates view: its nodes are small and edge hit-testing
+    // is finicky, so a value object / entity / invariant dropped near (not exactly on)
+    // an aggregate still lands on the nearest one.
+    if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant'].includes(type)) {
+      container = this.nearestAggregateTo(pos);
+    }
     if (!container) {
       this.emit('modux-notice', {
         message:
