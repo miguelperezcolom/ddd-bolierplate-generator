@@ -1511,7 +1511,7 @@ function Ao(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
     color: "#475569",
     label: p.label || void 0,
     ...Ja[p.type] ?? {},
-    tooltip: `${So[p.type] ?? p.type} (ArchiMate)${p.label ? ` · ${p.label}` : ""} — doble click retipa · Supr la borra`
+    tooltip: `${So[p.type] ?? p.type} (ArchiMate)${p.label ? ` · ${p.label}` : ""} — doble click retipa o invierte el sentido · Supr la borra`
   }));
   return {
     nodes: d,
@@ -12175,6 +12175,8 @@ function _p(e) {
 function Cp(e, t) {
   var i, n, o, s, a, r, c, u, g, m, f, y, b;
   switch (t.kind) {
+    case "invert-archimate-relation":
+      return [{ kind: "invert-archimate-relation", id: t.id }];
     case "add-relation":
       return [{ kind: "remove-relation", sourceId: t.sourceId, targetId: t.targetId }];
     case "remove-relation": {
@@ -17078,17 +17080,25 @@ let ie = class extends Ge {
       o && (this._connectPicker = {
         x: e.detail.x ?? this.clientWidth / 2,
         y: e.detail.y ?? 120,
-        options: Ni(this.gestureHost(), o.sourceId, o.targetId).map((s) => ({
-          ...s,
-          label: s.id === `archimate:${o.type}` ? `● ${s.label}` : s.label,
-          apply: () => {
-            this.command({
-              kind: "set-archimate-relation-type",
-              id: n,
-              type: s.id.replace(/^archimate:/, "")
-            });
-          }
-        }))
+        options: [
+          {
+            id: "invert-direction",
+            label: "↔ Invertir sentido",
+            hint: "Intercambia origen y destino de la relación",
+            apply: () => this.command({ kind: "invert-archimate-relation", id: n })
+          },
+          ...Ni(this.gestureHost(), o.sourceId, o.targetId).map((s) => ({
+            ...s,
+            label: s.id === `archimate:${o.type}` ? `● ${s.label}` : s.label,
+            apply: () => {
+              this.command({
+                kind: "set-archimate-relation-type",
+                id: n,
+                type: s.id.replace(/^archimate:/, "")
+              });
+            }
+          }))
+        ]
       });
       return;
     }

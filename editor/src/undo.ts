@@ -26,6 +26,9 @@ export interface UndoHost {
 
 export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | null {
     switch (c.kind) {
+      case 'invert-archimate-relation':
+        // Its own inverse: swapping the ends back restores the direction.
+        return [{ kind: 'invert-archimate-relation', id: c.id }];
       case 'add-relation':
         return [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-relation': {

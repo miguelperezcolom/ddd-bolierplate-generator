@@ -624,6 +624,7 @@ public class EditorApiController {
             case "add-relation" -> addRelation(command);
             case "add-archimate-relation" -> addArchimateRelation(command);
             case "set-archimate-relation-type" -> setArchimateRelationType(command);
+            case "invert-archimate-relation" -> invertArchimateRelation(command);
             case "remove-archimate-relation" -> removeArchimateRelation(command);
             case "remove-relation" -> removeRelation(command);
             case "set-relation-type" -> setRelationType(command);
@@ -2713,6 +2714,13 @@ public class EditorApiController {
             throw new IllegalArgumentException("Tipo ArchiMate desconocido: " + command.type());
         }
         repository.save(rel.toBuilder().type(command.type()).build());
+    }
+
+    /** Swap an ArchiMate relation's ends (keeps the id, so the swap is its own undo). */
+    private void invertArchimateRelation(EditorCommand command) {
+        var rel = repository.findById(command.id(), ArchimateRelationEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Relación desconocida: " + command.id()));
+        repository.save(rel.toBuilder().sourceId(rel.targetId()).targetId(rel.sourceId()).build());
     }
 
     private void removeArchimateRelation(EditorCommand command) {

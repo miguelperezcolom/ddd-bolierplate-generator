@@ -2108,7 +2108,7 @@ function buildScene(
     color: '#475569',
     label: r.label || undefined,
     ...(ARCHIMATE_NOTATION[r.type] ?? {}),
-    tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa · Supr la borra`,
+    tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa o invierte el sentido · Supr la borra`,
   }));
 
   return {

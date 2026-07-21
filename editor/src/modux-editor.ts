@@ -2345,17 +2345,25 @@ export class ModuxEditor extends LitElement {
         this._connectPicker = {
           x: e.detail.x ?? this.clientWidth / 2,
           y: e.detail.y ?? 120,
-          options: archimateOptions(this.gestureHost(), rel.sourceId, rel.targetId).map((o) => ({
-            ...o,
-            label: o.id === `archimate:${rel.type}` ? `● ${o.label}` : o.label,
-            apply: () => {
-              this.command({
-                kind: 'set-archimate-relation-type',
-                id: relId,
-                type: o.id.replace(/^archimate:/, ''),
-              });
+          options: [
+            {
+              id: 'invert-direction',
+              label: '↔ Invertir sentido',
+              hint: 'Intercambia origen y destino de la relación',
+              apply: () => this.command({ kind: 'invert-archimate-relation', id: relId }),
             },
-          })),
+            ...archimateOptions(this.gestureHost(), rel.sourceId, rel.targetId).map((o) => ({
+              ...o,
+              label: o.id === `archimate:${rel.type}` ? `● ${o.label}` : o.label,
+              apply: () => {
+                this.command({
+                  kind: 'set-archimate-relation-type',
+                  id: relId,
+                  type: o.id.replace(/^archimate:/, ''),
+                });
+              },
+            })),
+          ],
         };
       }
       return;

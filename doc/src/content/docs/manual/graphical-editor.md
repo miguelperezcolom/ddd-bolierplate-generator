@@ -83,8 +83,10 @@ person / gear (human / automated steps), double circle (events), return arrow
   specialization, triggering, flow) can be drawn between ANY two elements as
   documentation intent, rendered with their proper notation (diamonds, hollow
   triangles, open arrowheads, dotted and dashed lines); they also ride along at
-  the bottom of every ambiguity picker. Double click retypes one in place; Supr
-  deletes it. The specialized views without a palette keep their
+  the bottom of every ambiguity picker. Double click opens the menu to **retype**
+  one in place OR **↔ invert its direction** (source↔target — for the relations
+  that read either way, like serving); Supr deletes it. The specialized views
+  without a palette keep their
   toolbar creation: aggregates (with owner
   bounded context, plus a stub state model), flows (archetype, trigger aggregate, event,
   target) and processes; with a process or step selected you can append/insert

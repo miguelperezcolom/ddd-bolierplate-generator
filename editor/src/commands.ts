@@ -23,6 +23,11 @@ export type ModuxCommand =
     }
   | { kind: 'set-archimate-relation-type'; id: string; type: string }
   | {
+      /** Swap an ArchiMate relation's ends (some — serving, association… — read either way). */
+      kind: 'invert-archimate-relation';
+      id: string;
+    }
+  | {
       /** The declared human interface — loose, or exposed by a context. */
       kind: 'add-ui';
       id: string;
