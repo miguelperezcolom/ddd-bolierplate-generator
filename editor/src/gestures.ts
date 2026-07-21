@@ -59,6 +59,8 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'flow-materializes', label: 'Flow · materializa', hint: 'Evento → contexto o read model (MATERIALIZES)' },
   { id: 'actor-use', label: 'Uso (actor)', hint: 'Actor → caso de uso, query service, agregado (CRUD) o agente' },
   { id: 'ext-dep', label: 'Dependencia', hint: 'Sistema externo/actor → sistema, API o proxy' },
+  { id: 'api-implementation', label: 'Implementación', hint: 'API → contexto: el contexto la implementa (la sirve él mismo)' },
+  { id: 'api-consumption', label: 'Consumo (servidumbre)', hint: 'API → contexto: el contexto la consume (relación serving)' },
   { id: 'external-call', label: 'Llamada ACL', hint: 'Sistema externo → caso de uso nuestro (entra por ACL)' },
   { id: 'external-uc-call', label: 'Llamada saliente', hint: 'Caso de uso nuestro → operación de un sistema externo' },
   { id: 'agent-tool', label: 'Herramienta IA', hint: 'Agente → caso de uso, operación, MCP, gateway, API o query service' },
@@ -227,6 +229,42 @@ export function connectionOptions(
       offer('external-call', () => {
         if (!(m.externalCalls ?? []).some((c) => c.externalSystemId === sourceId && c.useCaseId === targetId)) {
           host.command({ kind: 'add-external-call', sourceId, targetId });
+        }
+      });
+    }
+  }
+  {
+    // API (o el proxy que la fronteña) → contexto: dos sentidos muy distintos que NO
+    // se deben asumir. El contexto la IMPLEMENTA (la sirve él mismo, strangler) o la
+    // CONSUME (servidumbre: la API le sirve). Se pregunta con el picker.
+    const isApi = (id: string) => (m.apis ?? []).some((a) => a.id === id);
+    const px = (m.proxyApis ?? []).find((p) => p.id === sourceId);
+    const apiToImpl = isApi(sourceId) ? sourceId : px?.targetApiId;
+    if ((isApi(sourceId) || px?.targetApiId) && isContext(targetId)) {
+      if (apiToImpl) {
+        offer('api-implementation', () => {
+          if (
+            !(m.apiImplementations ?? []).some(
+              (i) => i.apiId === apiToImpl && i.boundedContextId === targetId,
+            )
+          ) {
+            host.command({ kind: 'add-api-implementation', apiId: apiToImpl, boundedContextId: targetId });
+          }
+        });
+      }
+      offer('api-consumption', () => {
+        if (
+          !(m.archimateRelations ?? []).some(
+            (r) => r.sourceId === sourceId && r.targetId === targetId && r.type === 'serving',
+          )
+        ) {
+          host.command({
+            kind: 'add-archimate-relation',
+            id: `ar-${sourceId}-${targetId}-serving`,
+            sourceId,
+            targetId,
+            type: 'serving',
+          });
         }
       });
     }
