@@ -455,6 +455,18 @@ function buildScene(
   const proxyById = new Map((model.proxyApis ?? []).map((px) => [px.id, px]));
 
   /** Direct children of an element in the ownership tree (mode-aware). */
+  // Fields are the primary content; a value object / entity used as a field's TYPE shows
+  // UNDER that field, not loose. Those not yet used by any field stay loose (transitional).
+  const fieldOwnersAll = [...(model.aggregates ?? []), ...(model.entities ?? [])];
+  const fieldById = new Map<string, FieldRef>();
+  const referencedTypeIds = new Set<string>();
+  fieldOwnersAll.forEach((o) =>
+    (o.fields ?? []).forEach((f) => {
+      fieldById.set(f.id, f);
+      if (f.typeKind !== 'primitive' && f.typeRef) referencedTypeIds.add(f.typeRef);
+    }),
+  );
+
   const ownedChildren = (id: string, kind: string): ChildDesc[] => {
     if (distributionLevel) {
       if (kind === 'boundedContext') {
@@ -514,18 +526,18 @@ function buildScene(
         ];
       }
       case 'aggregate': {
-        // Expanding an aggregate reveals what it holds: entities, value objects, fields
-        // and invariants.
+        // Its FIELDS and invariants; plus any value objects / entities it defines that
+        // no field uses yet (loose "types waiting to be used").
         const agg = (model.aggregates ?? []).find((a) => a.id === id);
         return [
-          ...(model.entities ?? [])
-            .filter((e) => e.aggregateId === id)
-            .map((e): ChildDesc => ({ id: e.id, name: e.name, kind: 'entity' })),
-          ...(model.valueObjects ?? [])
-            .filter((v) => v.aggregateId === id)
-            .map((v): ChildDesc => ({ id: v.id, name: v.name, kind: 'value-object' })),
           ...(agg?.fields ?? []).map((f) => fieldChildDesc(model, f)),
           ...(agg?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' })),
+          ...(model.valueObjects ?? [])
+            .filter((v) => v.aggregateId === id && !referencedTypeIds.has(v.id))
+            .map((v): ChildDesc => ({ id: v.id, name: v.name, kind: 'value-object' })),
+          ...(model.entities ?? [])
+            .filter((e) => e.aggregateId === id && !referencedTypeIds.has(e.id))
+            .map((e): ChildDesc => ({ id: e.id, name: e.name, kind: 'entity' })),
         ];
       }
       case 'entity': {
@@ -538,6 +550,19 @@ function buildScene(
       case 'value-object': {
         const vo = (model.valueObjects ?? []).find((v) => v.id === id);
         return (vo?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' }));
+      }
+      case 'field': {
+        // Expanding a field reveals its TYPE — the value object / entity / aggregate it
+        // points at (primitives have nothing to expand).
+        const f = fieldById.get(id);
+        if (!f || f.typeKind === 'primitive' || !f.typeRef) return [];
+        const vo = (model.valueObjects ?? []).find((v) => v.id === f.typeRef);
+        if (vo) return [{ id: vo.id, name: vo.name, kind: 'value-object' }];
+        const ent = (model.entities ?? []).find((e) => e.id === f.typeRef);
+        if (ent) return [{ id: ent.id, name: ent.name, kind: 'entity' }];
+        const agg = (model.aggregates ?? []).find((a) => a.id === f.typeRef);
+        if (agg) return [{ id: agg.id, name: agg.name, kind: 'aggregate' }];
+        return [];
       }
       case 'api':
         return (apiById.get(id)?.operations ?? []).map(

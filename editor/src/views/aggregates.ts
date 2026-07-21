@@ -83,7 +83,18 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     };
   });
 
-  const entityNodes: SceneNode[] = (model.entities ?? []).map((e) => {
+  // A value object / entity used as a field's TYPE shows via the field (its name is on the
+  // field chip); only those NOT yet used by any field appear loose here.
+  const referencedTypeIds = new Set<string>();
+  [...(model.aggregates ?? []), ...(model.entities ?? [])].forEach((o) =>
+    (o.fields ?? []).forEach((f) => {
+      if (f.typeKind !== 'primitive' && f.typeRef) referencedTypeIds.add(f.typeRef);
+    }),
+  );
+
+  const entityNodes: SceneNode[] = (model.entities ?? [])
+    .filter((e) => !referencedTypeIds.has(e.id))
+    .map((e) => {
     const p = pos(e.id);
     return {
       id: e.id,
@@ -101,7 +112,9 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     };
   });
 
-  const valueObjectNodes: SceneNode[] = (model.valueObjects ?? []).map((v) => {
+  const valueObjectNodes: SceneNode[] = (model.valueObjects ?? [])
+    .filter((v) => !referencedTypeIds.has(v.id))
+    .map((v) => {
     const p = pos(v.id);
     const summary =
       v.type === 'Enum'
@@ -125,7 +138,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     };
   });
 
-  const valueObjectEdges: SceneEdge[] = (model.valueObjects ?? []).map((v) => ({
+  const valueObjectEdges: SceneEdge[] = (model.valueObjects ?? []).filter((v) => !referencedTypeIds.has(v.id)).map((v) => ({
     id: `contains-vo:${v.aggregateId}->${v.id}`,
     sourceId: v.aggregateId,
     targetId: v.id,
@@ -181,7 +194,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     })),
   );
 
-  const containmentEdges: SceneEdge[] = (model.entities ?? []).map((e) => ({
+  const containmentEdges: SceneEdge[] = (model.entities ?? []).filter((e) => !referencedTypeIds.has(e.id)).map((e) => ({
     id: `contains:${e.aggregateId}->${e.id}`,
     sourceId: e.aggregateId,
     targetId: e.id,
