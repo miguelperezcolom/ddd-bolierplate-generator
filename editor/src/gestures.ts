@@ -874,6 +874,20 @@ export function applyConnectionGesture(
     // dropped on an aggregate belongs there. A VO has exactly one owner, so this moves
     // it off any previous aggregate; an entity's parentAggregateId changes.
     if (view === 'aggregates') {
+      // Dropping a value object / entity / aggregate ON a field sets that field's TYPE.
+      const isField = [...(host.model.aggregates ?? []), ...(host.model.entities ?? [])].some((o) =>
+        (o.fields ?? []).some((f) => f.id === targetId),
+      );
+      if (isField) {
+        if ((host.model.valueObjects ?? []).some((v) => v.id === sourceId)) {
+          host.command({ kind: 'set-field-type', id: targetId, type: 'value-object', targetId: sourceId });
+        } else if ((host.model.entities ?? []).some((e) => e.id === sourceId)) {
+          host.command({ kind: 'set-field-type', id: targetId, type: 'entity', targetId: sourceId });
+        } else if ((host.model.aggregates ?? []).some((a) => a.id === sourceId)) {
+          host.command({ kind: 'set-field-type', id: targetId, type: 'aggregate', targetId: sourceId });
+        }
+        return;
+      }
       if ((host.model.aggregates ?? []).some((a) => a.id === targetId)) {
         const vo = (host.model.valueObjects ?? []).find((v) => v.id === sourceId);
         if (vo) {
@@ -2605,6 +2619,14 @@ export function performDeleteGesture(
       const aggregateId = (host.model.entities ?? []).find((e) => e.id === id)?.aggregateId ?? '';
       host.clearSelection();
       host.command({ kind: 'remove-entity', id, aggregateId });
+      return;
+    }
+    if (elementType === 'node' && kind === 'field') {
+      const owner =
+        (host.model.aggregates ?? []).find((a) => (a.fields ?? []).some((f) => f.id === id)) ??
+        (host.model.entities ?? []).find((e) => (e.fields ?? []).some((f) => f.id === id));
+      host.clearSelection();
+      host.command({ kind: 'remove-field', id, ownerId: owner?.id ?? '' });
       return;
     }
     if (elementType === 'node' && kind === 'domain-event') {

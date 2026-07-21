@@ -37,6 +37,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'aggregate', label: 'Agregado', child: true, symbol: 'aggregate', color: '#8b5cf6', group: 'Dominio' },
   { type: 'entity', label: 'Entidad', child: true, symbol: 'entity', color: '#14b8a6', group: 'Dominio' },
   { type: 'value-object', label: 'Value object', child: true, symbol: 'value-object', color: '#a855f7', group: 'Dominio' },
+  { type: 'field', label: 'Campo', child: true, symbol: 'field', color: '#64748b', group: 'Dominio' },
   { type: 'invariant', label: 'Invariante', child: true, symbol: 'shield', color: '#0f766e', group: 'Dominio' },
   { type: 'use-case', label: 'Caso de uso', child: true, symbol: 'usecase', color: '#06b6d4', group: 'Dominio' },
   { type: 'use-case-step', label: 'Paso de caso de uso', child: true, symbol: 'gear', color: '#06b6d4', group: 'Dominio' },

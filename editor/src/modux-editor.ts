@@ -102,6 +102,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'entity', id };
     case 'value-object':
       return { elementType: 'value-object', id };
+    case 'field':
+      return { elementType: 'field', id };
     case 'flow':
       return { elementType: 'flow', id: id.replace(/^flow:/, '') };
     case 'process':
@@ -1864,6 +1866,7 @@ export class ModuxEditor extends LitElement {
       kind === 'aggregate' ||
       kind === 'entity' ||
       kind === 'value-object' ||
+      kind === 'field' ||
       kind === 'process-step' ||
       kind === 'workflow' ||
       kind === 'workflow-step' ||
@@ -3129,9 +3132,9 @@ export class ModuxEditor extends LitElement {
       'notification', 'document', 'module',
     ].includes(type);
     if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
-    // An invariant belongs to whatever it is dropped on: a value object, an entity, or
-    // an aggregate (dropping on a context falls back to its first aggregate).
-    if (type === 'invariant') {
+    // A field or invariant belongs to whatever it is dropped on: a value object, an
+    // entity, or an aggregate (dropping on a context falls back to its first aggregate).
+    if (type === 'invariant' || type === 'field') {
       const vo = chain.find((cid) => (this.model.valueObjects ?? []).some((v) => v.id === cid));
       if (vo) return vo;
       const ent = chain.find((cid) => (this.model.entities ?? []).some((e) => e.id === cid));
@@ -3619,7 +3622,7 @@ export class ModuxEditor extends LitElement {
     // Forgiving drop in the aggregates view: its nodes are small and edge hit-testing
     // is finicky, so a value object / entity / invariant dropped near (not exactly on)
     // an aggregate still lands on the nearest one.
-    if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant'].includes(type)) {
+    if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field'].includes(type)) {
       container = this.nearestAggregateTo(pos);
     }
     if (!container) {
@@ -3631,7 +3634,7 @@ export class ModuxEditor extends LitElement {
               ? 'Suelta el paso sobre un caso de uso'
               : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
                 ? 'Suelta el elemento sobre un sistema externo'
-                : ['entity', 'value-object', 'invariant'].includes(type)
+                : ['entity', 'value-object', 'invariant', 'field'].includes(type)
                   ? 'Suéltalo sobre un agregado (o cerca de uno, en la vista de agregados)'
                   : 'Suelta el elemento sobre un contexto',
       });
@@ -3657,6 +3660,16 @@ export class ModuxEditor extends LitElement {
           : 'agregado';
       this.emit('modux-notice', {
         message: `Invariante declarado en el ${ownerKind} — sus condiciones se detallan en su ficha`,
+      });
+    } else if (type === 'field') {
+      this.command({ kind: 'add-field', id, name, ownerId: container });
+      const ownerName =
+        (this.model.aggregates ?? []).find((a) => a.id === container)?.name ??
+        (this.model.entities ?? []).find((e) => e.id === container)?.name ??
+        (this.model.valueObjects ?? []).find((v) => v.id === container)?.name ??
+        container;
+      this.emit('modux-notice', {
+        message: `Campo «${name}» creado en «${ownerName}» — arrastra un value object sobre él para tiparlo`,
       });
     } else if (type === 'ui-button') {
       const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);
@@ -3974,7 +3987,7 @@ export class ModuxEditor extends LitElement {
     const news = PALETTE_NEW.filter(
       (k) =>
         (this._view === 'aggregates'
-          ? ['entity', 'value-object', 'invariant'].includes(k.type)
+          ? ['entity', 'value-object', 'invariant', 'field'].includes(k.type)
           : this._view === 'workflows'
           ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'

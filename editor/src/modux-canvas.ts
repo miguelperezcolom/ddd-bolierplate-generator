@@ -102,6 +102,8 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   'value-object': svg`<rect x="1.5" y="1.5" width="9" height="9" rx="2.6"></rect>
     <line x1="3.6" y1="4.6" x2="8.4" y2="4.6"></line>
     <line x1="3.6" y1="7.4" x2="8.4" y2="7.4"></line>`,
+  // A field (attribute): a bullet and its value line — one row of a shape.
+  field: svg`<circle cx="2.4" cy="6" r="1.3"></circle><line x1="5" y1="6" x2="11" y2="6"></line>`,
   flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
   process: svg`<path d="M0.5 3 H7 V0.8 L11.5 6 L7 11.2 V9 H0.5 Z"></path>`,
   person: svg`<circle cx="6" cy="3.2" r="2.4"></circle>
@@ -893,9 +895,9 @@ export class ModuxCanvas extends LitElement {
         }
         return;
       } else if (moved && this._dragPos) {
-        // A value object / entity dropped ON an aggregate is associated with it — the
-        // composition wiring of the aggregates view. Routes through the connect gesture.
-        if (node.kind === 'value-object' || node.kind === 'entity') {
+        // A value object / entity / aggregate dropped ON an aggregate is associated with
+        // it, or ON a field sets that field's type — both route through the connect gesture.
+        if (node.kind === 'value-object' || node.kind === 'entity' || node.kind === 'aggregate') {
           const overId = this.nodeIdAt(ev);
           const over = overId && overId !== node.id ? this.scene.nodes.find((n) => n.id === overId) : null;
           const alreadyOwned = over
@@ -903,7 +905,7 @@ export class ModuxCanvas extends LitElement {
                 (e) => e.kind === 'containment' && e.sourceId === over.id && e.targetId === node.id,
               )
             : false;
-          if (over?.kind === 'aggregate' && !alreadyOwned) {
+          if ((over?.kind === 'field' || (over?.kind === 'aggregate' && node.kind !== 'aggregate')) && !alreadyOwned) {
             this.emit('connect-requested', {
               sourceId: node.id,
               targetId: over.id,

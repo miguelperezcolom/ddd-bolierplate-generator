@@ -1,5 +1,16 @@
-import type { ModuxModel, ContextMapRelationType, FlowRef } from '../model.js';
+import type { ModuxModel, ContextMapRelationType, FlowRef, FieldRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+
+/** A field child, labelled «nombre * : tipo» (★ = required), the type resolved to its name. */
+function fieldChildDesc(model: ModuxModel, f: FieldRef): { id: string; name: string; kind: 'field' } {
+  const typeLabel =
+    f.typeKind === 'primitive'
+      ? f.typeRef || 'texto'
+      : [...(model.valueObjects ?? []), ...(model.entities ?? []), ...(model.aggregates ?? [])].find(
+          (x) => x.id === f.typeRef,
+        )?.name ?? '¿tipo?';
+  return { id: f.id, name: `${f.name}${f.required ? ' ∗' : ''} : ${typeLabel}`, kind: 'field' };
+}
 
 /**
  * Context-map view adapter: projects the modux model into a generic Scene.
@@ -194,6 +205,8 @@ interface ChildDesc {
     | 'aggregate'
     | 'entity'
     | 'value-object'
+    | 'field'
+    | 'invariant'
     | 'use-case'
     | 'domain-event'
     | 'application-event'
@@ -226,6 +239,8 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
   entity: { symbol: 'entity', fill: '#f0fdfa', stroke: '#14b8a6' },
   'value-object': { symbol: 'value-object', fill: '#faf5ff', stroke: '#a855f7' },
+  field: { symbol: 'field', fill: '#f8fafc', stroke: '#64748b' },
+  invariant: { symbol: 'shield', fill: '#f0fdfa', stroke: '#0f766e' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
@@ -254,6 +269,8 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   aggregate: 'Agregado',
   entity: 'Entidad — dentro del agregado',
   'value-object': 'Value object — dentro del agregado',
+  field: 'Campo — nombre, obligatoriedad y tipo',
+  invariant: 'Invariante — una regla que este elemento protege',
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'application-event': 'Evento de aplicación',
@@ -292,7 +309,12 @@ function boundedContextElementDescs(
         const entN = (model.entities ?? []).filter((e) => e.aggregateId === a.id).length;
         const voN = (model.valueObjects ?? []).filter((v) => v.aggregateId === a.id).length;
         const invN = (a.invariants ?? []).length;
-        const chips = (entN ? ` 🗂${entN}` : '') + (voN ? ` ◈${voN}` : '') + (invN ? ` ⚖${invN}` : '');
+        const fN = (a.fields ?? []).length;
+        const chips =
+          (fN ? ` ∷${fN}` : '') +
+          (entN ? ` 🗂${entN}` : '') +
+          (voN ? ` ◈${voN}` : '') +
+          (invN ? ` ⚖${invN}` : '');
         return { id: a.id, name: `${a.name}${chips}`, kind: 'aggregate' };
       }),
     ...(boundedContext.useCases ?? []).map(
@@ -491,8 +513,10 @@ function buildScene(
           ),
         ];
       }
-      case 'aggregate':
-        // Expanding an aggregate reveals what it holds: its entities and value objects.
+      case 'aggregate': {
+        // Expanding an aggregate reveals what it holds: entities, value objects, fields
+        // and invariants.
+        const agg = (model.aggregates ?? []).find((a) => a.id === id);
         return [
           ...(model.entities ?? [])
             .filter((e) => e.aggregateId === id)
@@ -500,7 +524,21 @@ function buildScene(
           ...(model.valueObjects ?? [])
             .filter((v) => v.aggregateId === id)
             .map((v): ChildDesc => ({ id: v.id, name: v.name, kind: 'value-object' })),
+          ...(agg?.fields ?? []).map((f) => fieldChildDesc(model, f)),
+          ...(agg?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' })),
         ];
+      }
+      case 'entity': {
+        const ent = (model.entities ?? []).find((e) => e.id === id);
+        return [
+          ...(ent?.fields ?? []).map((f) => fieldChildDesc(model, f)),
+          ...(ent?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' })),
+        ];
+      }
+      case 'value-object': {
+        const vo = (model.valueObjects ?? []).find((v) => v.id === id);
+        return (vo?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' }));
+      }
       case 'api':
         return (apiById.get(id)?.operations ?? []).map(
           (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),

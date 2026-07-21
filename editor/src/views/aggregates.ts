@@ -202,8 +202,52 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     tooltip: r.label ? `Referencia: ${r.label}` : 'Referencia entre agregados',
   }));
 
+  // Fields (attributes) of aggregates and entities, orbiting their owner. Their type
+  // (primitive name or the referenced VO/entity/aggregate name) shows on the chip.
+  const nameById = new Map<string, string>();
+  (model.valueObjects ?? []).forEach((v) => nameById.set(v.id, v.name));
+  (model.entities ?? []).forEach((e) => nameById.set(e.id, e.name));
+  (model.aggregates ?? []).forEach((a) => nameById.set(a.id, a.name));
+  const fieldHosts = [
+    ...(model.aggregates ?? []).map((a) => ({ id: a.id, fields: a.fields })),
+    ...(model.entities ?? []).map((e) => ({ id: e.id, fields: e.fields })),
+  ];
+  const fieldNodes: SceneNode[] = fieldHosts.flatMap((owner) =>
+    (owner.fields ?? []).map((f, i) => {
+      const base = pos(owner.id);
+      const p = layout[f.id] ?? { x: base.x + 175, y: base.y - 20 + i * 44 };
+      const typeLabel =
+        f.typeKind === 'primitive' ? f.typeRef || 'texto' : nameById.get(f.typeRef) ?? '¿tipo?';
+      return {
+        id: f.id,
+        label: `${f.name}${f.required ? ' ∗' : ''}`,
+        x: p.x,
+        y: p.y,
+        w: 150,
+        h: 34,
+        kind: 'field',
+        symbol: 'field',
+        fill: '#f8fafc',
+        stroke: '#64748b',
+        badge: `CAMPO · ${typeLabel}`,
+        tooltip: `Campo ${f.name}${f.required ? ' (obligatorio)' : ''} : ${typeLabel}`,
+      } as SceneNode;
+    }),
+  );
+  const fieldEdges: SceneEdge[] = fieldHosts.flatMap((owner) =>
+    (owner.fields ?? []).map((f) => ({
+      id: `contains-field:${owner.id}->${f.id}`,
+      sourceId: owner.id,
+      targetId: f.id,
+      kind: 'containment',
+      color: '#94a3b8',
+      dashed: true,
+      tooltip: 'Campo de este elemento',
+    })),
+  );
+
   return {
-    nodes: [...aggregateNodes, ...entityNodes, ...valueObjectNodes, ...invariantNodes],
-    edges: [...containmentEdges, ...valueObjectEdges, ...referenceEdges, ...invariantEdges],
+    nodes: [...aggregateNodes, ...entityNodes, ...valueObjectNodes, ...invariantNodes, ...fieldNodes],
+    edges: [...containmentEdges, ...valueObjectEdges, ...referenceEdges, ...invariantEdges, ...fieldEdges],
   };
 }
