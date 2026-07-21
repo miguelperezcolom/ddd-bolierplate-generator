@@ -667,6 +667,31 @@ public class EditorModelProjection {
                 .forEach(a -> relations.add(new RelationDto(a.sourceBoundedContextId(), a.targetBoundedContextId(),
                         a.type(), null, true, "declarada a mano — aún sin dependencia concreta")));
 
+        // Element id → description, collected generically so the editor can show it
+        // on hover. Types without a description field are simply skipped (nothing
+        // to show) until they gain one.
+        var descriptions = new java.util.LinkedHashMap<String, String>();
+        java.util.function.BiConsumer<String, String> putDesc = (id, d) -> {
+            if (id != null && d != null && !d.isBlank()) descriptions.put(id, d);
+        };
+        scoped(BoundedContextEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ExternalSystemEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(DomainServiceEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ApiEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ProxyApiEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ReadModelEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(QueryServiceEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(FlowEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ProcessEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(WorkflowEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(RagEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(AiAgentEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(McpGatewayEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(EtlFlowEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(ScheduledTriggerEntity.class).forEach(e -> putDesc.accept(e.id(), e.description()));
+        scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity.class)
+                .forEach(e -> putDesc.accept(e.id(), e.description()));
+
         return new EditorModelDto(
                 boundedContexts, externalSystems, relations, flows, aggregates, entities, references, processes,
                 views, emissions.stream().distinct().toList(), actors,
@@ -790,7 +815,8 @@ public class EditorModelProjection {
                 scoped(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity.class).stream()
                         .map(u -> new EditorApiController.UrlDto(u.id(), u.name(), u.url()))
                         .toList(),
-                interactions);
+                interactions,
+                descriptions);
     }
 
     /** The pool narrowed to the SELECTED project (unstamped legacy elements stay visible). */

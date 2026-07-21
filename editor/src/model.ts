@@ -910,4 +910,6 @@ export interface ModuxModel {
   projections?: ProjectionRef[];
   /** Authored sequence scenarios (derived ones are ephemeral, never listed here). */
   interactions?: InteractionRef[];
+  /** Element id → its description, surfaced as a node's hover tooltip. */
+  descriptions?: Record<string, string>;
 }

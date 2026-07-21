@@ -4076,6 +4076,7 @@ export class ModuxEditor extends LitElement {
       this.withAreas(scene, view);
       this.withNotes(scene, view);
     }
+    this.withDescriptions(scene);
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
       for (const node of scene.nodes) {
@@ -4094,6 +4095,20 @@ export class ModuxEditor extends LitElement {
    * rectangle is that view's layout). It renders BEHIND everything — a named frame whose
    * membership is geometric — and anchors note threads like any other element.
    */
+  /**
+   * Append each element's description (edited in its ficha) to its node tooltip,
+   * so it shows on hover. Node ids may carry a view prefix; the descriptions map
+   * is keyed by the raw element id.
+   */
+  private withDescriptions(scene: Scene): void {
+    const descs = this.model.descriptions;
+    if (!descs) return;
+    for (const node of scene.nodes) {
+      const d = descs[node.id] ?? descs[node.id.replace(/^(tgt:|flow:)/, '')];
+      if (d) node.tooltip = node.tooltip ? `${node.tooltip}\n\n${d}` : d;
+    }
+  }
+
   private withAreas(scene: Scene, view: ViewId): void {
     const areas = this.model.areas ?? [];
     if (!areas.length) return;

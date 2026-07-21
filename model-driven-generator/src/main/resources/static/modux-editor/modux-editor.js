@@ -18222,7 +18222,7 @@ let ie = class extends Ge {
   }
   sceneFor(e, t) {
     const i = this.viewLayout(e), n = this.filteredModel(), o = (t == null ? void 0 : t.expandAll) ?? !1, s = e === "aggregates" ? rs(n, i.nodes) : e === "flows" ? gs(n, i.nodes) : e === "processes" ? wn(n, i.nodes) : e === "workflows" ? Pc(n, i.nodes, new Set(i.expanded ?? []), o) : e === "ui" ? Lc(n, i.nodes, new Set(i.expanded ?? []), o) : e === "design" || e === "interactions" ? { nodes: [], edges: [] } : e === "integrations" ? Bc(n, i.nodes) : e === "mappings" ? Uc(n, i.nodes) : e === "eventstorming" ? kc(n, i.nodes, new Set(i.expanded ?? []), o) : e === "distribution" ? es(n, i.nodes, i.sizes ?? {}, new Set(i.expanded ?? []), o) : Za(n, i.nodes, i.sizes ?? {}, new Set(i.expanded ?? []), o);
-    if (e !== "design" && e !== "interactions" && (this.withAreas(s, e), this.withNotes(s, e)), this.diff)
+    if (e !== "design" && e !== "interactions" && (this.withAreas(s, e), this.withNotes(s, e)), this.withDescriptions(s), this.diff)
       for (const r of s.nodes) {
         const c = this.diff[r.id] ?? this.diff[r.id.replace(/^(tgt:|flow:)/, "")];
         c && (r.diffKind = c);
@@ -18235,6 +18235,21 @@ let ie = class extends Ge {
    * rectangle is that view's layout). It renders BEHIND everything — a named frame whose
    * membership is geometric — and anchors note threads like any other element.
    */
+  /**
+   * Append each element's description (edited in its ficha) to its node tooltip,
+   * so it shows on hover. Node ids may carry a view prefix; the descriptions map
+   * is keyed by the raw element id.
+   */
+  withDescriptions(e) {
+    const t = this.model.descriptions;
+    if (t)
+      for (const i of e.nodes) {
+        const n = t[i.id] ?? t[i.id.replace(/^(tgt:|flow:)/, "")];
+        n && (i.tooltip = i.tooltip ? `${i.tooltip}
+
+${n}` : n);
+      }
+  }
   withAreas(e, t) {
     var s, a;
     const i = this.model.areas ?? [];

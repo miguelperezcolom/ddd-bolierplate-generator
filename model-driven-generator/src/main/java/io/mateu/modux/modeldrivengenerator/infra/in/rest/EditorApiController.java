@@ -433,7 +433,9 @@ public class EditorApiController {
             List<ArchimateRelationDto> archimateRelations,
             List<UiDto> uis,
             List<UrlDto> urls,
-            List<io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto> interactions) {}
+            List<io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto> interactions,
+            /** Element id → its description, for the editor to show on hover. */
+            java.util.Map<String, String> descriptions) {}
 
     public record NoteDto(String id, String text, List<String> targetIds, List<String> edgeRefs) {}
 
