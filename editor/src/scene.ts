@@ -167,6 +167,11 @@ export interface SceneEdge {
   tooltip?: string;
   /** Faded to the background while an overlay has the stage. */
   dim?: boolean;
+  /**
+   * Toned down (lower opacity) so it reads as a derived/secondary route rather
+   * than a relation the user drew — e.g. a proxy routing to an implementation.
+   */
+  faint?: boolean;
 }
 
 export interface Scene {

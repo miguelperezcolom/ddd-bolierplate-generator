@@ -1279,7 +1279,7 @@ export class ModuxCanvas extends LitElement {
     // Spotlight in effect and this edge isn't one of the hovered node's own.
     const faded = this.spotlighting && !this._focusEdges.has(edge.id);
     return svg`
-      <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : faded ? 0.1 : 1}>
+      <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : faded ? 0.1 : edge.faint ? 0.4 : 1}>
         <path d=${pathWithBridges(pts, priorSegments)}
               fill="none"
               stroke=${color} stroke-width=${highlighted ? 3 : 1.6}

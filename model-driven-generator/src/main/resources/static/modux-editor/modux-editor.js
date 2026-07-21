@@ -1284,9 +1284,12 @@ function Ao(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
         targetId: P,
         kind: "proxy-route",
         color: "#0e7490",
-        dashed: !0,
-        arrow: !0,
-        tooltip: "enruta también a"
+        // A derived route, not a relation the user drew: dotted, toned down and
+        // arrow-less so it never reads like a serving/association from the proxy.
+        dashArray: "2 5",
+        arrow: !1,
+        faint: !0,
+        tooltip: "el proxy enruta a esta implementación (ruta derivada, no una relación)"
       });
     }
     return G;
@@ -5263,7 +5266,7 @@ let ye = class extends Ge {
       y: (t[a].y + t[a + 1].y) / 2
     }, c = t.slice(1, -1), u = this.spotlighting && !this._focusEdges.has(e.id);
     return J`
-      <g data-edge-ink=${e.id} pointer-events="none" opacity=${e.dim ? 0.18 : u ? 0.1 : 1}>
+      <g data-edge-ink=${e.id} pointer-events="none" opacity=${e.dim ? 0.18 : u ? 0.1 : e.faint ? 0.4 : 1}>
         <path d=${wc(t, i)}
               fill="none"
               stroke=${n} stroke-width=${s ? 3 : 1.6}

@@ -1768,9 +1768,12 @@ function buildScene(
           targetId: nid,
           kind: 'proxy-route',
           color: '#0e7490',
-          dashed: true,
-          arrow: true,
-          tooltip: 'enruta también a',
+          // A derived route, not a relation the user drew: dotted, toned down and
+          // arrow-less so it never reads like a serving/association from the proxy.
+          dashArray: '2 5',
+          arrow: false,
+          faint: true,
+          tooltip: 'el proxy enruta a esta implementación (ruta derivada, no una relación)',
         });
       }
     }
