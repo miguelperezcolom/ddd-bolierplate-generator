@@ -166,6 +166,8 @@ function st(e, t) {
 }
 const Ka = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, Xa = {
   aggregate: { symbol: "aggregate", fill: "#f5f3ff", stroke: "#8b5cf6" },
+  entity: { symbol: "entity", fill: "#f0fdfa", stroke: "#14b8a6" },
+  "value-object": { symbol: "value-object", fill: "#faf5ff", stroke: "#a855f7" },
   "use-case": { symbol: "usecase", fill: "#ecfeff", stroke: "#06b6d4" },
   "domain-event": { symbol: "event", fill: "#fff7ed", stroke: "#f59e0b" },
   "application-event": { symbol: "event", fill: "#fefce8", stroke: "#eab308" },
@@ -190,6 +192,8 @@ const Ka = { symbol: "flow", fill: "#f3e8ff", stroke: "#7e22ce" }, Xa = {
   module: { symbol: "component", fill: "#ffffff", stroke: "#334155" }
 }, Qa = {
   aggregate: "Agregado",
+  entity: "Entidad — dentro del agregado",
+  "value-object": "Value object — dentro del agregado",
   "use-case": "Caso de uso",
   "domain-event": "Evento de dominio",
   "application-event": "Evento de aplicación",
@@ -283,6 +287,7 @@ function Ao(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
   if (s) {
     const p = new Set(o);
     for (const T of e.boundedContexts) p.add(T.id);
+    for (const T of e.aggregates ?? []) p.add(T.id);
     for (const T of e.externalSystems) p.add(T.id);
     for (const T of e.apis ?? []) p.add(T.id);
     for (const T of e.proxyApis ?? []) p.add(T.id);
@@ -337,6 +342,11 @@ function Ao(e, t, i, n = {}, o = /* @__PURE__ */ new Set(), s = !1) {
           )
         ];
       }
+      case "aggregate":
+        return [
+          ...(e.entities ?? []).filter((L) => L.aggregateId === p).map((L) => ({ id: L.id, name: L.name, kind: "entity" })),
+          ...(e.valueObjects ?? []).filter((L) => L.aggregateId === p).map((L) => ({ id: L.id, name: L.name, kind: "value-object" }))
+        ];
       case "api":
         return (((H = g.get(p)) == null ? void 0 : H.operations) ?? []).map(
           (L) => ({ id: L.id, name: L.name, kind: "api-operation" })

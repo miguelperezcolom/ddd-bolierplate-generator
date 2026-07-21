@@ -192,6 +192,8 @@ interface ChildDesc {
   name: string;
   kind:
     | 'aggregate'
+    | 'entity'
+    | 'value-object'
     | 'use-case'
     | 'domain-event'
     | 'application-event'
@@ -222,6 +224,8 @@ const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
 
 const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; stroke: string }> = {
   aggregate: { symbol: 'aggregate', fill: '#f5f3ff', stroke: '#8b5cf6' },
+  entity: { symbol: 'entity', fill: '#f0fdfa', stroke: '#14b8a6' },
+  'value-object': { symbol: 'value-object', fill: '#faf5ff', stroke: '#a855f7' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
@@ -248,6 +252,8 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
 
 const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   aggregate: 'Agregado',
+  entity: 'Entidad — dentro del agregado',
+  'value-object': 'Value object — dentro del agregado',
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'application-event': 'Evento de aplicación',
@@ -394,6 +400,7 @@ function buildScene(
   if (expandAll) {
     const all = new Set(toggledIds);
     for (const m of model.boundedContexts) all.add(m.id);
+    for (const a of model.aggregates ?? []) all.add(a.id);
     for (const x of model.externalSystems) all.add(x.id);
     for (const a of model.apis ?? []) all.add(a.id);
     for (const px of model.proxyApis ?? []) all.add(px.id);
@@ -484,6 +491,16 @@ function buildScene(
           ),
         ];
       }
+      case 'aggregate':
+        // Expanding an aggregate reveals what it holds: its entities and value objects.
+        return [
+          ...(model.entities ?? [])
+            .filter((e) => e.aggregateId === id)
+            .map((e): ChildDesc => ({ id: e.id, name: e.name, kind: 'entity' })),
+          ...(model.valueObjects ?? [])
+            .filter((v) => v.aggregateId === id)
+            .map((v): ChildDesc => ({ id: v.id, name: v.name, kind: 'value-object' })),
+        ];
       case 'api':
         return (apiById.get(id)?.operations ?? []).map(
           (op): ChildDesc => ({ id: op.id, name: op.name, kind: 'api-operation' }),
