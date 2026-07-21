@@ -18026,18 +18026,22 @@ let ie = class extends je {
     let u = this.dropContainerFor(e, i);
     if (!u && this._view === "aggregates" && ["value-object", "entity", "invariant"].includes(e) && (u = this.nearestAggregateTo(t)), !u) {
       this.emit("modux-notice", {
-        message: e === "api-operation" ? "Suelta la operación sobre una API" : e === "use-case-step" ? "Suelta el paso sobre un caso de uso" : ["external-use-case", "external-table", "mcp-server"].includes(e) ? "Suelta el elemento sobre un sistema externo" : ["entity", "value-object", "invariant"].includes(e) ? "Suelta el elemento sobre un agregado (o un contexto que tenga uno)" : "Suelta el elemento sobre un contexto"
+        message: e === "api-operation" ? "Suelta la operación sobre una API" : e === "use-case-step" ? "Suelta el paso sobre un caso de uso" : ["external-use-case", "external-table", "mcp-server"].includes(e) ? "Suelta el elemento sobre un sistema externo" : ["entity", "value-object", "invariant"].includes(e) ? "Suéltalo sobre un agregado (o cerca de uno, en la vista de agregados)" : "Suelta el elemento sobre un contexto"
       });
       return;
     }
     const { id: h, name: m } = this.uniquePaletteName(o.label);
     if (e === "aggregate")
       l({ kind: "add-aggregate", id: h, name: m, boundedContextId: u }, h, u);
-    else if (e === "entity")
+    else if (e === "entity") {
       l({ kind: "add-entity", id: h, name: m, aggregateId: u }, h, u);
-    else if (e === "value-object")
+      const v = (this.model.aggregates ?? []).find((b) => b.id === u);
+      this.emit("modux-notice", { message: `Entidad «${m}» creada en el agregado «${(v == null ? void 0 : v.name) ?? u}»` });
+    } else if (e === "value-object") {
       l({ kind: "add-value-object", id: h, name: m, aggregateId: u }, h, u);
-    else if (e === "invariant") {
+      const v = (this.model.aggregates ?? []).find((b) => b.id === u);
+      this.emit("modux-notice", { message: `Value object «${m}» creado en el agregado «${(v == null ? void 0 : v.name) ?? u}»` });
+    } else if (e === "invariant") {
       this.command({ kind: "add-invariant", ownerId: u, id: h, name: m });
       const v = (this.model.valueObjects ?? []).some((b) => b.id === u) ? "value object" : (this.model.entities ?? []).some((b) => b.id === u) ? "entidad" : "agregado";
       this.emit("modux-notice", {

@@ -3623,7 +3623,7 @@ export class ModuxEditor extends LitElement {
               : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
                 ? 'Suelta el elemento sobre un sistema externo'
                 : ['entity', 'value-object', 'invariant'].includes(type)
-                  ? 'Suelta el elemento sobre un agregado (o un contexto que tenga uno)'
+                  ? 'Suéltalo sobre un agregado (o cerca de uno, en la vista de agregados)'
                   : 'Suelta el elemento sobre un contexto',
       });
       return;
@@ -3633,8 +3633,12 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-aggregate', id, name, boundedContextId: container }, id, container);
     } else if (type === 'entity') {
       issue({ kind: 'add-entity', id, name, aggregateId: container }, id, container);
+      const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
+      this.emit('modux-notice', { message: `Entidad «${name}» creada en el agregado «${agg?.name ?? container}»` });
     } else if (type === 'value-object') {
       issue({ kind: 'add-value-object', id, name, aggregateId: container }, id, container);
+      const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
+      this.emit('modux-notice', { message: `Value object «${name}» creado en el agregado «${agg?.name ?? container}»` });
     } else if (type === 'invariant') {
       this.command({ kind: 'add-invariant', ownerId: container, id, name });
       const ownerKind = (this.model.valueObjects ?? []).some((v) => v.id === container)
