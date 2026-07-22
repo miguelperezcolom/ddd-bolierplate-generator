@@ -776,6 +776,27 @@ export class ModuxEditor extends LitElement {
         e.preventDefault();
         this._tilt = !this._tilt;
         break;
+      case 'c':
+      case 'C':
+      case 'r':
+      case 'R': {
+        // With a field selected: c toggles COLLECTION (multiplicity), r toggles REQUIRED.
+        const fid = this._selectedId;
+        const field = fid
+          ? [...(this.model.aggregates ?? []), ...(this.model.entities ?? [])]
+              .flatMap((o) => o.fields ?? [])
+              .find((f) => f.id === fid)
+          : undefined;
+        if (field?.modelId) {
+          e.preventDefault();
+          if (e.key === 'c' || e.key === 'C') {
+            this.command({ kind: 'set-model-field-collection', modelId: field.modelId, fieldId: field.id, collection: !field.collection });
+          } else {
+            this.command({ kind: 'set-model-field-required', modelId: field.modelId, fieldId: field.id, required: !field.required });
+          }
+        }
+        break;
+      }
       case 'e':
       case 'E': scope('view:eventstorming'); break;
       case 'a':

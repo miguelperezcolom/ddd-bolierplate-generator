@@ -30,8 +30,22 @@ public record ModelFieldEntity(
          * When set, the field is typed by a VALUE OBJECT (a domain type WITH invariants), as
          * opposed to {@code modelId} (a pure Model), {@code enumId} (an enum) or a basic type.
          */
-        String valueObjectId
+        String valueObjectId,
+        /** When set, the field is typed by a child ENTITY (has identity), by its id. */
+        String entityId,
+        /** Multiplicity: true = a COLLECTION of the type (List/Set), false/null = a single value. */
+        Boolean collection
 ) {
+
+    /** Backward-compatible constructor (pre-entity/collection callers). */
+    public ModelFieldEntity(String id, String name, boolean basicType, FieldDataType type,
+                            String modelId, boolean isEnum, String enumId,
+                            List<ModelFieldValidationEntity> validations,
+                            PiiClassification piiClassification, AnonymizationStrategy anonymizationStrategy,
+                            String label, Integer priority, Boolean identifier, String valueObjectId) {
+        this(id, name, basicType, type, modelId, isEnum, enumId, validations, piiClassification,
+                anonymizationStrategy, label, priority, identifier, valueObjectId, null, null);
+    }
 
     /** Backward-compatible constructor (pre-valueObject callers and stores). */
     public ModelFieldEntity(String id, String name, boolean basicType, FieldDataType type,
@@ -40,7 +54,7 @@ public record ModelFieldEntity(
                             PiiClassification piiClassification, AnonymizationStrategy anonymizationStrategy,
                             String label, Integer priority, Boolean identifier) {
         this(id, name, basicType, type, modelId, isEnum, enumId, validations, piiClassification,
-                anonymizationStrategy, label, priority, identifier, null);
+                anonymizationStrategy, label, priority, identifier, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-PII callers and stores). */

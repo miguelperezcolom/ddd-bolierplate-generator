@@ -1,14 +1,15 @@
 import type { ModuxModel, ContextMapRelationType, FlowRef, FieldRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 
-/** A field child, labelled «nombre * : tipo» (★ = required), the type resolved to its name. */
+/** A field child, labelled «nombre ∗ : tipo» (∗ = required, [tipo] = collection). */
 function fieldChildDesc(model: ModuxModel, f: FieldRef): { id: string; name: string; kind: 'field' } {
-  const typeLabel =
+  const base =
     f.typeKind === 'primitive'
       ? f.typeRef || 'texto'
       : [...(model.valueObjects ?? []), ...(model.entities ?? []), ...(model.aggregates ?? [])].find(
           (x) => x.id === f.typeRef,
         )?.name ?? '¿tipo?';
+  const typeLabel = f.collection ? `[${base}]` : base;
   return { id: f.id, name: `${f.name}${f.required ? ' ∗' : ''} : ${typeLabel}`, kind: 'field' };
 }
 

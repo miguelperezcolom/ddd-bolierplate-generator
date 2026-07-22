@@ -899,6 +899,8 @@ export function applyConnectionGesture(
         const modelId = targetField.modelId;
         if (modelId && (host.model.valueObjects ?? []).some((v) => v.id === sourceId)) {
           host.command({ kind: 'set-model-field-type', modelId, fieldId: targetId, type: 'value-object', targetId: sourceId });
+        } else if (modelId && (host.model.entities ?? []).some((e) => e.id === sourceId)) {
+          host.command({ kind: 'set-model-field-type', modelId, fieldId: targetId, type: 'entity', targetId: sourceId });
         } else if (modelId && (host.model.models ?? []).some((m) => m.id === sourceId)) {
           host.command({ kind: 'set-model-field-type', modelId, fieldId: targetId, type: 'model', targetId: sourceId });
         }

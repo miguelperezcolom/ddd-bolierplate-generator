@@ -580,6 +580,12 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           ? [{ kind: 'set-model-field-required', modelId: c.modelId, fieldId: c.fieldId, required: f.required }]
           : null;
       }
+      case 'set-model-field-collection': {
+        const f = fieldOwners(host).flatMap((o) => o.fields ?? []).find((x) => x.id === c.fieldId);
+        return f
+          ? [{ kind: 'set-model-field-collection', modelId: c.modelId, fieldId: c.fieldId, collection: !!f.collection }]
+          : null;
+      }
       case 'add-invariant':
         return [{ kind: 'remove-invariant', id: c.id }];
       case 'remove-invariant': {

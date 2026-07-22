@@ -259,6 +259,9 @@ public class EditorModelProjection {
                 if (f.valueObjectId() != null && !f.valueObjectId().isBlank()) {
                     typeKind = "value-object";
                     typeRef = f.valueObjectId();
+                } else if (f.entityId() != null && !f.entityId().isBlank()) {
+                    typeKind = "entity";
+                    typeRef = f.entityId();
                 } else if (f.modelId() != null && !f.modelId().isBlank()) {
                     typeKind = "model";
                     typeRef = f.modelId();
@@ -273,7 +276,8 @@ public class EditorModelProjection {
                         v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotNull
                         || v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotEmpty
                         || v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotBlank);
-                return new FieldDto(f.id(), f.name(), required, typeKind, typeRef, modelId);
+                return new FieldDto(f.id(), f.name(), required, typeKind, typeRef,
+                        f.collection() != null && f.collection(), modelId);
             }).toList();
         };
 

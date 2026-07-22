@@ -426,6 +426,8 @@ export interface FieldRef {
   typeKind: string;
   /** a primitive type name, or the referenced element's id. */
   typeRef: string;
+  /** Multiplicity: true = a collection (List/Set) of the type. */
+  collection?: boolean;
   /** The Model this field lives in (its fields are ModelFields) — for field commands. */
   modelId?: string;
 }

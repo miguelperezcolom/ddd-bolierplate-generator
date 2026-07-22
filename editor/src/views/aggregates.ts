@@ -229,8 +229,9 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     (owner.fields ?? []).map((f, i) => {
       const base = pos(owner.id);
       const p = layout[f.id] ?? { x: base.x + 175, y: base.y - 20 + i * 44 };
-      const typeLabel =
+      const base2 =
         f.typeKind === 'primitive' ? f.typeRef || 'texto' : nameById.get(f.typeRef) ?? '¿tipo?';
+      const typeLabel = f.collection ? `[${base2}]` : base2;
       return {
         id: f.id,
         label: `${f.name}${f.required ? ' ∗' : ''}`,
@@ -243,7 +244,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
         fill: '#f8fafc',
         stroke: '#64748b',
         badge: `CAMPO · ${typeLabel}`,
-        tooltip: `Campo ${f.name}${f.required ? ' (obligatorio)' : ''} : ${typeLabel}`,
+        tooltip: `Campo ${f.name}${f.required ? ' (obligatorio)' : ''}${f.collection ? ' (colección)' : ''} : ${typeLabel}`,
       } as SceneNode;
     }),
   );

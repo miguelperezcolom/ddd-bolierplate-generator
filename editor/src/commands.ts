@@ -97,6 +97,7 @@ export type ModuxCommand =
       targetId: string;
     }
   | { kind: 'set-model-field-required'; modelId: string; fieldId: string; required: boolean }
+  | { kind: 'set-model-field-collection'; modelId: string; fieldId: string; collection: boolean }
   | {
       /** An entity WITHIN an aggregate (its parent) — richer than a plain model field. */
       kind: 'add-entity';

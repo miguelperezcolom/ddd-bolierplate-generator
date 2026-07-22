@@ -707,8 +707,10 @@ public class UiEditorCommands {
                     boolean isEnum = false;
                     String enumRef = null;
                     String voRef = null;
+                    String entRef = null;
                     switch (command.type() == null ? "primitive" : command.type()) {
                         case "value-object" -> voRef = command.targetId();
+                        case "entity" -> entRef = command.targetId();
                         case "model" -> modelRef = command.targetId();
                         case "enum" -> { isEnum = true; enumRef = command.targetId(); }
                         default -> {
@@ -720,7 +722,7 @@ public class UiEditorCommands {
                     }
                     return new ModelFieldEntity(f.id(), f.name(), basic, type, modelRef, isEnum, enumRef,
                             f.validations(), f.piiClassification(), f.anonymizationStrategy(),
-                            f.label(), f.priority(), f.identifier(), voRef);
+                            f.label(), f.priority(), f.identifier(), voRef, entRef, f.collection());
                 })
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
@@ -753,8 +755,25 @@ public class UiEditorCommands {
                     }
                     return new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
                             f.isEnum(), f.enumId(), vals, f.piiClassification(), f.anonymizationStrategy(),
-                            f.label(), f.priority(), f.identifier(), f.valueObjectId());
+                            f.label(), f.priority(), f.identifier(), f.valueObjectId(), f.entityId(),
+                            f.collection());
                 })
+                .toList();
+        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
+    }
+
+    /** Toggles a field's multiplicity: a collection (List/Set) of its type, or a single value. */
+    public void setModelFieldCollection(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var coll = command.collection() != null && command.collection();
+        var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
+                .map(f -> f.id().equals(command.fieldId())
+                        ? new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
+                                f.isEnum(), f.enumId(), f.validations(), f.piiClassification(),
+                                f.anonymizationStrategy(), f.label(), f.priority(), f.identifier(),
+                                f.valueObjectId(), f.entityId(), coll)
+                        : f)
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
     }
@@ -764,13 +783,17 @@ public class UiEditorCommands {
                 .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
         var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
                 .map(f -> f.id().equals(command.fieldId())
+                        // Preserve type ref (value object / entity / model / enum), multiplicity and
+                        // metadata; only name/basic-type change here.
                         ? new ModelFieldEntity(f.id(),
                                 command.name() == null || command.name().isBlank() ? f.name() : command.name(),
                                 f.basicType(),
                                 command.type() == null || command.type().isBlank()
                                         ? f.type() : io.mateu.uidl.data.FieldDataType.valueOf(command.type()),
                                 f.modelId(), f.isEnum(), f.enumId(), f.validations(),
-                                f.piiClassification(), f.anonymizationStrategy())
+                                f.piiClassification(), f.anonymizationStrategy(),
+                                f.label(), f.priority(), f.identifier(), f.valueObjectId(), f.entityId(),
+                                f.collection())
                         : f)
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));

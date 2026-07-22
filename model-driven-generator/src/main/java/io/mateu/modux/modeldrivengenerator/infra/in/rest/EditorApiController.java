@@ -211,7 +211,7 @@ public class EditorApiController {
      * typeKind + typeRef, and the modelId it lives in.
      */
     public record FieldDto(String id, String name, boolean required, String typeKind, String typeRef,
-                           String modelId) {}
+                           boolean collection, String modelId) {}
     public record EntityDto(String id, String name, String aggregateId,
                             /** The rules this entity protects. */
                             List<AggregateInvariantDto> invariants,
@@ -596,6 +596,8 @@ public class EditorApiController {
                                 String ownerId,
                                 /** Whether a field is mandatory. */
                                 Boolean required,
+                                /** Whether a field is a collection (List/Set) of its type. */
+                                Boolean collection,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String triggerDomainServiceId, String triggerUseCaseId,
                                 String readModelName, String targetUseCaseId,
@@ -787,6 +789,7 @@ public class EditorApiController {
             case "set-entity-aggregate" -> setEntityAggregate(command);
             case "set-model-field-type" -> uiCommands.setModelFieldType(command);
             case "set-model-field-required" -> uiCommands.setModelFieldRequired(command);
+            case "set-model-field-collection" -> uiCommands.setModelFieldCollection(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
             case "add-application-event" -> addApplicationEvent(command);
