@@ -25,15 +25,30 @@ public record ModelFieldEntity(
         /** Column priority for compact listings (1 = most important); null = no preference. */
         Integer priority,
         /** Marks the field as the row title in compact/master-detail listings. */
-        Boolean identifier
+        Boolean identifier,
+        /**
+         * When set, the field is typed by a VALUE OBJECT (a domain type WITH invariants), as
+         * opposed to {@code modelId} (a pure Model), {@code enumId} (an enum) or a basic type.
+         */
+        String valueObjectId
 ) {
+
+    /** Backward-compatible constructor (pre-valueObject callers and stores). */
+    public ModelFieldEntity(String id, String name, boolean basicType, FieldDataType type,
+                            String modelId, boolean isEnum, String enumId,
+                            List<ModelFieldValidationEntity> validations,
+                            PiiClassification piiClassification, AnonymizationStrategy anonymizationStrategy,
+                            String label, Integer priority, Boolean identifier) {
+        this(id, name, basicType, type, modelId, isEnum, enumId, validations, piiClassification,
+                anonymizationStrategy, label, priority, identifier, null);
+    }
 
     /** Backward-compatible constructor (pre-PII callers and stores). */
     public ModelFieldEntity(String id, String name, boolean basicType, FieldDataType type,
                             String modelId, boolean isEnum, String enumId,
                             List<ModelFieldValidationEntity> validations) {
         this(id, name, basicType, type, modelId, isEnum, enumId, validations, null, null,
-                null, null, null);
+                null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-label/priority callers). */

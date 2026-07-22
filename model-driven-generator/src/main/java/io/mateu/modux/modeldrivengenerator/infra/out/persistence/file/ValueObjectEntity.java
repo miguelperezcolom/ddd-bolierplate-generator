@@ -16,7 +16,12 @@ public record ValueObjectEntity(
         /** Free-text description — shown on hover in the editor, edited in the ficha. */
         String description,
         /** The rules this value object protects — a VO can carry invariants, unlike a plain model. */
-        List<InvariantEntity> invariants
+        List<InvariantEntity> invariants,
+        /**
+         * A RECORD value object IS a Model with invariants on the outside: its structure lives in
+         * the referenced Model (its fields). Null for Enum/Wrapper. Replaces the legacy fieldsJson.
+         */
+        String modelId
 ) implements Identifiable {
 
     /** The invariants, never null. */
@@ -24,10 +29,17 @@ public record ValueObjectEntity(
         return invariants != null ? invariants : List.of();
     }
 
+    /** Backward-compatible constructor (pre-modelId callers). */
+    public ValueObjectEntity(String id, String name, String type, String valuesJson,
+            String fieldsJson, String dataType, String projectId, String description,
+            List<InvariantEntity> invariants) {
+        this(id, name, type, valuesJson, fieldsJson, dataType, projectId, description, invariants, null);
+    }
+
     /** Backward-compatible constructor (pre-invariants callers). */
     public ValueObjectEntity(String id, String name, String type, String valuesJson,
             String fieldsJson, String dataType, String projectId, String description) {
-        this(id, name, type, valuesJson, fieldsJson, dataType, projectId, description, List.of());
+        this(id, name, type, valuesJson, fieldsJson, dataType, projectId, description, List.of(), null);
     }
 
     /** Backward-compatible constructor (pre-description callers). */
