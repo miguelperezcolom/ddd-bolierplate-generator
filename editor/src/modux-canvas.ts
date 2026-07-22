@@ -104,6 +104,9 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <line x1="3.6" y1="7.4" x2="8.4" y2="7.4"></line>`,
   // A field (attribute): a bullet and its value line — one row of a shape.
   field: svg`<circle cx="2.4" cy="6" r="1.3"></circle><line x1="5" y1="6" x2="11" y2="6"></line>`,
+  // An operation: a rounded «play/gear» — a behaviour with input→output.
+  operation: svg`<circle cx="6" cy="6" r="2.4"></circle>
+    <path d="M6 0.8 V2.6 M6 9.4 V11.2 M0.8 6 H2.6 M9.4 6 H11.2" stroke-linecap="round"></path>`,
   flow: svg`<path d="M0.5 6 H8"></path><path d="M5.5 2.5 L9.5 6 L5.5 9.5"></path>`,
   process: svg`<path d="M0.5 3 H7 V0.8 L11.5 6 L7 11.2 V9 H0.5 Z"></path>`,
   person: svg`<circle cx="6" cy="3.2" r="2.4"></circle>

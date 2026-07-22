@@ -550,6 +550,15 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           ? [{ kind: 'add-value-object', id: v.id, name: v.name, aggregateId: v.aggregateId, type: v.type }]
           : null;
       }
+      case 'add-operation':
+        return [{ kind: 'remove-operation', id: c.id, aggregateId: c.aggregateId }];
+      case 'remove-operation': {
+        const owner = (host.model.aggregates ?? []).find((a) => (a.operations ?? []).some((o) => o.id === c.id));
+        const op = owner?.operations?.find((o) => o.id === c.id);
+        return owner && op
+          ? [{ kind: 'add-operation', id: op.id, name: op.name, aggregateId: owner.id }]
+          : null;
+      }
       case 'set-value-object-aggregate': {
         const v = (host.model.valueObjects ?? []).find((x) => x.id === c.id);
         return v ? [{ kind: 'set-value-object-aggregate', id: c.id, aggregateId: v.aggregateId }] : null;

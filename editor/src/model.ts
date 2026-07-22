@@ -432,6 +432,14 @@ export interface FieldRef {
   modelId?: string;
 }
 
+/** An operation of an aggregate — a name and the models it takes in and returns. */
+export interface OperationRef {
+  id: string;
+  name: string;
+  inputModelId?: string;
+  outputModelId?: string;
+}
+
 export interface AggregateRef {
   id: string;
   name: string;
@@ -442,6 +450,8 @@ export interface AggregateRef {
   invariants?: { id: string; name: string }[];
   /** Its attributes: name, required, and a type reference. */
   fields?: FieldRef[];
+  /** Its operations — each with an input and an output model. */
+  operations?: OperationRef[];
 }
 
 export interface EntityRef {

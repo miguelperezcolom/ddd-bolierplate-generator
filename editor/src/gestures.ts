@@ -2647,6 +2647,12 @@ export function performDeleteGesture(
       if (field?.modelId) host.command({ kind: 'remove-model-field', modelId: field.modelId, fieldId: id });
       return;
     }
+    if (elementType === 'node' && kind === 'operation') {
+      const owner = (host.model.aggregates ?? []).find((a) => (a.operations ?? []).some((o) => o.id === id));
+      host.clearSelection();
+      host.command({ kind: 'remove-operation', id, aggregateId: owner?.id ?? '' });
+      return;
+    }
     if (elementType === 'node' && kind === 'domain-event') {
       host.clearSelection();
       host.command({ kind: 'remove-domain-event', id });

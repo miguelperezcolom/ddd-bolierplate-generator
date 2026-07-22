@@ -203,8 +203,12 @@ public class EditorApiController {
                                /** Its attributes (its Model's fields). */
                                List<FieldDto> fields,
                                /** The Model that holds its fields (edited via model-field commands). */
-                               String modelId) {}
+                               String modelId,
+                               /** Its operations — each with an input and an output model. */
+                               List<AggregateOperationDto> operations) {}
     public record AggregateInvariantDto(String id, String name) {}
+    /** An operation of an aggregate: a name, and the models it takes in and returns. */
+    public record AggregateOperationDto(String id, String name, String inputModelId, String outputModelId) {}
     /**
      * A field (attribute) of an aggregate / entity / Record VO — one ModelField of its Model:
      * a name, whether it is required, its type (primitive | enum | model | value-object) via
@@ -787,6 +791,8 @@ public class EditorApiController {
             case "remove-value-object" -> removeValueObject(command);
             case "set-value-object-aggregate" -> setValueObjectAggregate(command);
             case "set-entity-aggregate" -> setEntityAggregate(command);
+            case "add-operation" -> addOperation(command);
+            case "remove-operation" -> removeOperation(command);
             case "set-model-field-type" -> uiCommands.setModelFieldType(command);
             case "set-model-field-required" -> uiCommands.setModelFieldRequired(command);
             case "set-model-field-collection" -> uiCommands.setModelFieldCollection(command);
@@ -1231,6 +1237,19 @@ public class EditorApiController {
                     .ifPresent(v -> repository.save(new ValueObjectEntity(
                             v.id(), command.name(), v.type(), v.valuesJson(), v.fieldsJson(),
                             v.dataType(), v.projectId(), v.description(), v.invariants())));
+            case "operation" -> repository.findAllOfType(AggregateEntity.class).stream()
+                    .filter(a -> a.operations().stream().anyMatch(o -> o.id().equals(command.id())))
+                    .findFirst()
+                    .ifPresent(a -> repository.save(a.toBuilder()
+                            .operations(a.operations().stream()
+                                    .map(o -> o.id().equals(command.id())
+                                            ? new OperationEntity(o.id(), command.name(), o.inputModelId(),
+                                                    o.outputModelId(), o.preconditions(), o.sets(), o.emits(),
+                                                    o.type(), o.paginated(), o.defaultPageSize(), o.intent(),
+                                                    o.description())
+                                            : o)
+                                    .toList())
+                            .build()));
             case "ai-agent" -> repository.findById(command.id(), AiAgentEntity.class)
                     .ifPresent(a -> repository.save(a.withName(command.name())));
             case "rag" -> repository.findById(command.id(), RagEntity.class)
@@ -1546,6 +1565,28 @@ public class EditorApiController {
         if (!voIds.contains(command.id())) {
             voIds.add(command.id());
             repository.save(target.toBuilder().valueObjectIds(voIds).build());
+        }
+    }
+
+    /** An operation of an aggregate — born a bare CUSTOM operation; its models are set later. */
+    private void addOperation(EditorCommand command) {
+        var aggregate = repository.findById(command.aggregateId(), AggregateEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Agregado desconocido: " + command.aggregateId()));
+        if (aggregate.operations().stream().anyMatch(o -> o.id().equals(command.id()))) return;
+        var ops = new ArrayList<>(aggregate.operations() == null ? List.<OperationEntity>of() : aggregate.operations());
+        ops.add(new OperationEntity(command.id(), command.name(),
+                null, null, null, null, null, "CUSTOM", false, null, null));
+        repository.save(aggregate.toBuilder().operations(ops).build());
+    }
+
+    private void removeOperation(EditorCommand command) {
+        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+            if (a.operations().stream().noneMatch(o -> o.id().equals(command.id()))) continue;
+            repository.save(a.toBuilder()
+                    .operations(a.operations().stream().filter(o -> !o.id().equals(command.id())).toList())
+                    .build());
+            return;
         }
     }
 

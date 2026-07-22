@@ -117,6 +117,14 @@ export type ModuxCommand =
     }
   | { kind: 'remove-value-object'; id: string; aggregateId: string }
   | {
+      /** An operation of an aggregate (input model → output model). */
+      kind: 'add-operation';
+      id: string;
+      name: string;
+      aggregateId: string;
+    }
+  | { kind: 'remove-operation'; id: string; aggregateId: string }
+  | {
       /** Re-home a value object under an aggregate (a VO belongs to exactly one). */
       kind: 'set-value-object-aggregate';
       id: string;

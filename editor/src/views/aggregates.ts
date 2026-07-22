@@ -63,9 +63,11 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     const entCount = (model.entities ?? []).filter((e) => e.aggregateId === a.id).length;
     const voCount = (model.valueObjects ?? []).filter((v) => v.aggregateId === a.id).length;
     const invCount = (a.invariants ?? []).length;
+    const opCount = (a.operations ?? []).length;
     const chips =
       (entCount ? ` · 🗂${entCount}` : '') +
       (voCount ? ` · ◈${voCount}` : '') +
+      (opCount ? ` · ⚙${opCount}` : '') +
       (invCount ? ` · ⚖${invCount}` : '');
     return {
       id: a.id,
@@ -260,8 +262,44 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     })),
   );
 
+  // Operations of the aggregate — behaviours with an input and an output model.
+  const modelName = (mid?: string) => (mid ? model.models?.find((m) => m.id === mid)?.name : undefined);
+  const operationNodes: SceneNode[] = (model.aggregates ?? []).flatMap((a) =>
+    (a.operations ?? []).map((o, i) => {
+      const base = pos(a.id);
+      const p = layout[o.id] ?? { x: base.x - 190, y: base.y - 20 + i * 44 };
+      const inN = modelName(o.inputModelId) ?? '';
+      const outN = modelName(o.outputModelId);
+      return {
+        id: o.id,
+        label: o.name,
+        x: p.x,
+        y: p.y,
+        w: 150,
+        h: 34,
+        kind: 'operation',
+        symbol: 'operation',
+        fill: '#f5f3ff',
+        stroke: '#7c3aed',
+        badge: `OP · ${inN}${outN ? ` → ${outN}` : ''}`,
+        tooltip: `Operación ${o.name}(${inN})${outN ? ` : ${outN}` : ''}`,
+      } as SceneNode;
+    }),
+  );
+  const operationEdges: SceneEdge[] = (model.aggregates ?? []).flatMap((a) =>
+    (a.operations ?? []).map((o) => ({
+      id: `contains-op:${a.id}->${o.id}`,
+      sourceId: a.id,
+      targetId: o.id,
+      kind: 'containment',
+      color: '#a78bfa',
+      dashed: true,
+      tooltip: 'Operación del agregado',
+    })),
+  );
+
   return {
-    nodes: [...aggregateNodes, ...entityNodes, ...valueObjectNodes, ...invariantNodes, ...fieldNodes],
-    edges: [...containmentEdges, ...valueObjectEdges, ...referenceEdges, ...invariantEdges, ...fieldEdges],
+    nodes: [...aggregateNodes, ...entityNodes, ...valueObjectNodes, ...invariantNodes, ...fieldNodes, ...operationNodes],
+    edges: [...containmentEdges, ...valueObjectEdges, ...referenceEdges, ...invariantEdges, ...fieldEdges, ...operationEdges],
   };
 }

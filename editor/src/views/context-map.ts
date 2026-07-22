@@ -208,6 +208,7 @@ interface ChildDesc {
     | 'value-object'
     | 'field'
     | 'invariant'
+    | 'operation'
     | 'use-case'
     | 'domain-event'
     | 'application-event'
@@ -242,6 +243,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'value-object': { symbol: 'value-object', fill: '#faf5ff', stroke: '#a855f7' },
   field: { symbol: 'field', fill: '#f8fafc', stroke: '#64748b' },
   invariant: { symbol: 'shield', fill: '#f0fdfa', stroke: '#0f766e' },
+  operation: { symbol: 'operation', fill: '#f5f3ff', stroke: '#7c3aed' },
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
@@ -272,6 +274,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'value-object': 'Value object — dentro del agregado',
   field: 'Campo — nombre, obligatoriedad y tipo',
   invariant: 'Invariante — una regla que este elemento protege',
+  operation: 'Operación — modelo de entrada → modelo de salida',
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'application-event': 'Evento de aplicación',
@@ -311,8 +314,10 @@ function boundedContextElementDescs(
         const voN = (model.valueObjects ?? []).filter((v) => v.aggregateId === a.id).length;
         const invN = (a.invariants ?? []).length;
         const fN = (a.fields ?? []).length;
+        const opN = (a.operations ?? []).length;
         const chips =
           (fN ? ` ∷${fN}` : '') +
+          (opN ? ` ⚙${opN}` : '') +
           (entN ? ` 🗂${entN}` : '') +
           (voN ? ` ◈${voN}` : '') +
           (invN ? ` ⚖${invN}` : '');
@@ -530,8 +535,15 @@ function buildScene(
         // Its FIELDS and invariants; plus any value objects / entities it defines that
         // no field uses yet (loose "types waiting to be used").
         const agg = (model.aggregates ?? []).find((a) => a.id === id);
+        const opLabel = (o: { name: string; inputModelId?: string; outputModelId?: string }) => {
+          const nm = (mid?: string) => (mid ? model.models?.find((m) => m.id === mid)?.name ?? '' : '');
+          const inN = nm(o.inputModelId);
+          const outN = nm(o.outputModelId);
+          return `${o.name}(${inN})${outN ? ` : ${outN}` : ''}`;
+        };
         return [
           ...(agg?.fields ?? []).map((f) => fieldChildDesc(model, f)),
+          ...(agg?.operations ?? []).map((o): ChildDesc => ({ id: o.id, name: opLabel(o), kind: 'operation' })),
           ...(agg?.invariants ?? []).map((iv): ChildDesc => ({ id: iv.id, name: iv.name, kind: 'invariant' })),
           ...(model.valueObjects ?? [])
             .filter((v) => v.aggregateId === id && !referencedTypeIds.has(v.id))

@@ -47,8 +47,8 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingRuleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.TransformationRefEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageButtonEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EtlFlowEntity;
@@ -293,7 +293,12 @@ public class EditorModelProjection {
                                 a.invariants().stream()
                                         .map(i -> new AggregateInvariantDto(i.id(), i.name()))
                                         .toList(),
-                                fieldsOf.apply(a.modelId()), a.modelId())));
+                                fieldsOf.apply(a.modelId()), a.modelId(),
+                                (a.operations() == null ? java.util.List.<OperationEntity>of() : a.operations())
+                                        .stream()
+                                        .map(op -> new AggregateOperationDto(op.id(), op.name(),
+                                                op.inputModelId(), op.outputModelId()))
+                                        .toList())));
             }
         }
 
@@ -315,7 +320,7 @@ public class EditorModelProjection {
         for (var agg : allAggregates) {
             if (agg.valueObjectIds() == null) continue;
             for (var voId : agg.valueObjectIds()) {
-                if (voId == null || !voSeen.add(agg.id() + " " + voId)) continue;
+                if (voId == null || !voSeen.add(agg.id() + " " + voId)) continue;
                 allValueObjects.stream().filter(v -> v.id().equals(voId)).findFirst().ifPresent(v -> {
                     var fieldDtos = (v.fieldsJson() == null || v.fieldsJson().isBlank())
                             ? java.util.List.<ValueObjectFieldDto>of()

@@ -1895,6 +1895,7 @@ export class ModuxEditor extends LitElement {
       kind === 'aggregate' ||
       kind === 'entity' ||
       kind === 'value-object' ||
+      kind === 'operation' ||
       kind === 'process-step' ||
       kind === 'workflow' ||
       kind === 'workflow-step' ||
@@ -3174,7 +3175,7 @@ export class ModuxEditor extends LitElement {
     }
     // Children of an aggregate: dropped on the aggregate itself, or on its context
     // (then the context's first aggregate takes them).
-    if (['read-model', 'entity', 'value-object'].includes(type)) {
+    if (['read-model', 'entity', 'value-object', 'operation'].includes(type)) {
       const agg = chain.find((cid) => (this.model.aggregates ?? []).some((a) => a.id === cid));
       if (agg) return agg;
       const mod = chain.find((cid) => this.model.boundedContexts.some((mo) => mo.id === cid));
@@ -3650,7 +3651,7 @@ export class ModuxEditor extends LitElement {
     // Forgiving drop in the aggregates view: its nodes are small and edge hit-testing
     // is finicky, so a value object / entity / invariant dropped near (not exactly on)
     // an aggregate still lands on the nearest one.
-    if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field'].includes(type)) {
+    if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field', 'operation'].includes(type)) {
       container = this.nearestAggregateTo(pos);
     }
     if (!container) {
@@ -3662,7 +3663,7 @@ export class ModuxEditor extends LitElement {
               ? 'Suelta el paso sobre un caso de uso'
               : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
                 ? 'Suelta el elemento sobre un sistema externo'
-                : ['entity', 'value-object', 'invariant', 'field'].includes(type)
+                : ['entity', 'value-object', 'invariant', 'field', 'operation'].includes(type)
                   ? 'Suéltalo sobre un agregado (o cerca de uno, en la vista de agregados)'
                   : 'Suelta el elemento sobre un contexto',
       });
@@ -3679,6 +3680,12 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-value-object', id, name, aggregateId: container }, id, container);
       const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
       this.emit('modux-notice', { message: `Value object «${name}» creado en el agregado «${agg?.name ?? container}»` });
+    } else if (type === 'operation') {
+      issue({ kind: 'add-operation', id, name, aggregateId: container }, id, container);
+      const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
+      this.emit('modux-notice', {
+        message: `Operación «${name}» creada en «${agg?.name ?? container}» — sus modelos de entrada/salida se editan en la ficha`,
+      });
     } else if (type === 'invariant') {
       this.command({ kind: 'add-invariant', ownerId: container, id, name });
       const ownerKind = (this.model.valueObjects ?? []).some((v) => v.id === container)
@@ -4019,7 +4026,7 @@ export class ModuxEditor extends LitElement {
     const news = PALETTE_NEW.filter(
       (k) =>
         (this._view === 'aggregates'
-          ? ['entity', 'value-object', 'invariant', 'field'].includes(k.type)
+          ? ['entity', 'value-object', 'invariant', 'field', 'operation'].includes(k.type)
           : this._view === 'workflows'
           ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'
