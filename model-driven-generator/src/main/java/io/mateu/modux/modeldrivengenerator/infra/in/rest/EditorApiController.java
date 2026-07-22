@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.flow.vo.FlowArchety
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.SubdomainType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantConditionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AreaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ArchimateRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
@@ -206,7 +207,7 @@ public class EditorApiController {
                                String modelId,
                                /** Its operations — each with an input and an output model. */
                                List<AggregateOperationDto> operations) {}
-    public record AggregateInvariantDto(String id, String name) {}
+    public record AggregateInvariantDto(String id, String name, String expression, String errorMessage) {}
     /** An operation of an aggregate: a name, and the models it takes in and returns. */
     public record AggregateOperationDto(String id, String name, String inputModelId, String outputModelId) {}
     /**
@@ -602,6 +603,8 @@ public class EditorApiController {
                                 Boolean required,
                                 /** Whether a field is a collection (List/Set) of its type. */
                                 Boolean collection,
+                                /** An invariant's primary condition: the rule expression and its error message. */
+                                String expression, String errorMessage,
                                 String archetype, String triggerAggregateId, String triggerEvent,
                                 String triggerDomainServiceId, String triggerUseCaseId,
                                 String readModelName, String targetUseCaseId,
@@ -785,6 +788,7 @@ public class EditorApiController {
             case "add-aggregate" -> addAggregate(command);
             case "add-invariant" -> addInvariant(command);
             case "remove-invariant" -> removeInvariant(command);
+            case "set-invariant-condition" -> setInvariantCondition(command);
             case "add-entity" -> addEntity(command);
             case "remove-entity" -> removeEntity(command);
             case "add-value-object" -> addValueObject(command);
@@ -1501,6 +1505,41 @@ public class EditorApiController {
                     e.isCollection(), e.projectId(), e.description(),
                     e.invariants().stream().filter(i -> !i.id().equals(command.id())).toList()));
             return;
+        }
+    }
+
+    /** Sets an invariant's PRIMARY condition (expression + error message); blank clears it. */
+    private void setInvariantCondition(EditorCommand command) {
+        var blank = (command.expression() == null || command.expression().isBlank())
+                && (command.errorMessage() == null || command.errorMessage().isBlank());
+        var conds = blank
+                ? List.<InvariantConditionEntity>of()
+                : List.of(new InvariantConditionEntity(command.id() + "-cond", command.expression(),
+                        false, null, command.errorMessage()));
+        java.util.function.Function<InvariantEntity, InvariantEntity> patch = i ->
+                i.id().equals(command.id()) ? new InvariantEntity(i.id(), i.name(), conds, i.projectId()) : i;
+        for (var a : repository.findAllOfType(AggregateEntity.class)) {
+            if (a.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) {
+                repository.save(a.toBuilder()
+                        .invariants(a.invariants().stream().map(patch).toList()).build());
+                return;
+            }
+        }
+        for (var v : repository.findAllOfType(ValueObjectEntity.class)) {
+            if (v.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) {
+                repository.save(new ValueObjectEntity(v.id(), v.name(), v.type(), v.valuesJson(),
+                        v.fieldsJson(), v.dataType(), v.projectId(), v.description(),
+                        v.invariants().stream().map(patch).toList(), v.modelId()));
+                return;
+            }
+        }
+        for (var e : repository.findAllOfType(EntityEntity.class)) {
+            if (e.invariants().stream().anyMatch(i -> i.id().equals(command.id()))) {
+                repository.save(new EntityEntity(e.id(), e.name(), e.modelId(), e.parentAggregateId(),
+                        e.isCollection(), e.projectId(), e.description(),
+                        e.invariants().stream().map(patch).toList()));
+                return;
+            }
         }
     }
 

@@ -89,6 +89,13 @@ export type ModuxCommand =
     }
   | { kind: 'remove-invariant'; id: string }
   | {
+      /** An invariant's primary condition: the rule expression and its error message (blank clears). */
+      kind: 'set-invariant-condition';
+      id: string;
+      expression: string;
+      errorMessage: string;
+    }
+  | {
       /** Point a field (a ModelField) at a type: primitive | enum | model | value-object. */
       kind: 'set-model-field-type';
       modelId: string;

@@ -432,6 +432,14 @@ export interface FieldRef {
   modelId?: string;
 }
 
+/** An invariant (a rule) with its primary condition — expression and error message. */
+export interface InvariantRef {
+  id: string;
+  name: string;
+  expression?: string;
+  errorMessage?: string;
+}
+
 /** An operation of an aggregate — a name and the models it takes in and returns. */
 export interface OperationRef {
   id: string;
@@ -447,7 +455,7 @@ export interface AggregateRef {
   /** The Model that holds its fields. */
   modelId?: string;
   /** The rules the aggregate protects — its very reason to exist. */
-  invariants?: { id: string; name: string }[];
+  invariants?: InvariantRef[];
   /** Its attributes: name, required, and a type reference. */
   fields?: FieldRef[];
   /** Its operations — each with an input and an output model. */
@@ -462,7 +470,7 @@ export interface EntityRef {
   /** The Model that holds its fields. */
   modelId?: string;
   /** The rules this entity protects. */
-  invariants?: { id: string; name: string }[];
+  invariants?: InvariantRef[];
   /** Its attributes. */
   fields?: FieldRef[];
 }
@@ -482,7 +490,7 @@ export interface ValueObjectRef {
   /** For Enum VOs, the allowed values. */
   enumValues?: string[];
   /** The rules this value object protects. */
-  invariants?: { id: string; name: string }[];
+  invariants?: InvariantRef[];
 }
 
 /** Cross-aggregate reference derived server-side from model fields. */

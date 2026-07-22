@@ -239,6 +239,8 @@ export class ModuxEditor extends LitElement {
   @state() private _wfStepPicker: { pos: Point; stepType?: string } | null = null;
   /** Editing the condition of one EXCLUSIVE-split branch. */
   @state() private _branchCondEditor: { gatewayId: string; targetId: string; value: string } | null = null;
+  /** The invariant-condition editor (double-click an invariant): its expression and error message. */
+  @state() private _invariantCondEditor: { id: string; name: string; expression: string; errorMessage: string } | null = null;
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
@@ -816,6 +818,7 @@ export class ModuxEditor extends LitElement {
       case 'Escape':
         if (this._helpOpen) this._helpOpen = false;
         if (this._connectPicker) this._connectPicker = null;
+        if (this._invariantCondEditor) this._invariantCondEditor = null;
         break;
       default:
         break;
@@ -1782,7 +1785,7 @@ export class ModuxEditor extends LitElement {
   ): void {
     const before = this._gestureEffects;
     const pickers = () =>
-      !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker);
+      !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker || this._invariantCondEditor);
     const pickersBefore = pickers();
     applyConnectionGesture(this.gestureHost(), this._view, sourceId, targetId, x, y, connectKind);
     // Nothing modux meant anything for this pair — no command, no picker, no
@@ -2418,12 +2421,18 @@ export class ModuxEditor extends LitElement {
       return;
     }
     if (e.detail.kind === 'invariant') {
-      const inAgg = (this.model.aggregates ?? []).find((a) => (a.invariants ?? []).some((i) => i.id === e.detail.id));
-      if (inAgg) { this.openInDrawer({ elementType: 'aggregate', id: inAgg.id }); return; }
-      const inVo = (this.model.valueObjects ?? []).find((v) => (v.invariants ?? []).some((i) => i.id === e.detail.id));
-      if (inVo) { this.openInDrawer({ elementType: 'value-object', id: inVo.id }); return; }
-      const inEnt = (this.model.entities ?? []).find((en) => (en.invariants ?? []).some((i) => i.id === e.detail.id));
-      if (inEnt) { this.openInDrawer({ elementType: 'entity', id: inEnt.id }); return; }
+      // Double-click edits the invariant's rule (expression + error message) inline.
+      const inv = [...(this.model.aggregates ?? []), ...(this.model.valueObjects ?? []), ...(this.model.entities ?? [])]
+        .flatMap((o) => o.invariants ?? [])
+        .find((i) => i.id === e.detail.id);
+      if (inv) {
+        this._invariantCondEditor = {
+          id: inv.id,
+          name: inv.name,
+          expression: inv.expression ?? '',
+          errorMessage: inv.errorMessage ?? '',
+        };
+      }
       return;
     }
     const mapped =
@@ -5451,7 +5460,7 @@ export class ModuxEditor extends LitElement {
             rueda para zoom`}
         · pulsa <b>?</b> para los atajos
       </div>
-      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
+      ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderInvariantCondEditor()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
       ${this.renderInteractionPrompt()} ${this.renderInteractionDelete()}
       ${this.renderHelpPopover()}
     `;
@@ -5680,6 +5689,49 @@ export class ModuxEditor extends LitElement {
             </button>
           `,
         )}
+      </div>
+    `;
+  }
+
+  /** The condition editor of an invariant: its rule expression and the error message. */
+  private renderInvariantCondEditor() {
+    const p = this._invariantCondEditor;
+    if (!p) return '';
+    const save = () => {
+      this.command({ kind: 'set-invariant-condition', id: p.id, expression: p.expression, errorMessage: p.errorMessage });
+      this._invariantCondEditor = null;
+    };
+    const inputStyle =
+      'width: 260px; margin: 6px 10px; padding: 5px 8px; border: 1px solid var(--modux-border-strong, #cbd5e1); border-radius: 6px; font: 12px system-ui;';
+    return html`
+      <div class="picker-backdrop" @pointerdown=${() => (this._invariantCondEditor = null)}></div>
+      <div
+        class="relation-picker"
+        style="left:${this.clientWidth / 2}px; top:120px"
+        @pointerdown=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="picker-title">⚖ ${p.name} — condición (vacío la quita)</div>
+        <input
+          style=${inputStyle}
+          placeholder="expresión — p. ej. importe >= 0"
+          .value=${p.expression}
+          @input=${(e: Event) => (p.expression = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') this._invariantCondEditor = null;
+          }}
+        />
+        <input
+          style=${inputStyle}
+          placeholder="mensaje de error — p. ej. El importe no puede ser negativo"
+          .value=${p.errorMessage}
+          @input=${(e: Event) => (p.errorMessage = (e.target as HTMLInputElement).value)}
+          @keydown=${(e: KeyboardEvent) => {
+            if (e.key === 'Enter') save();
+            if (e.key === 'Escape') this._invariantCondEditor = null;
+          }}
+        />
+        <button class="picker-item" @click=${save}>Guardar</button>
       </div>
     `;
   }

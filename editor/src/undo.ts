@@ -597,6 +597,14 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'add-invariant':
         return [{ kind: 'remove-invariant', id: c.id }];
+      case 'set-invariant-condition': {
+        const inv = [...(host.model.aggregates ?? []), ...(host.model.valueObjects ?? []), ...(host.model.entities ?? [])]
+          .flatMap((o) => o.invariants ?? [])
+          .find((i) => i.id === c.id);
+        return inv
+          ? [{ kind: 'set-invariant-condition', id: c.id, expression: inv.expression ?? '', errorMessage: inv.errorMessage ?? '' }]
+          : null;
+      }
       case 'remove-invariant': {
         const owners: { id: string; invariants?: { id: string; name: string }[] }[] = [
           ...(host.model.aggregates ?? []),

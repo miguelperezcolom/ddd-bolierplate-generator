@@ -31,6 +31,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEdg
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNodeEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InvariantEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalApiOperationUseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
@@ -291,7 +292,7 @@ public class EditorModelProjection {
                         .findFirst()
                         .ifPresent(a -> aggregates.add(new AggregateDto(a.id(), a.name(), boundedContext.id(),
                                 a.invariants().stream()
-                                        .map(i -> new AggregateInvariantDto(i.id(), i.name()))
+                                        .map(i -> invDto(i))
                                         .toList(),
                                 fieldsOf.apply(a.modelId()), a.modelId(),
                                 (a.operations() == null ? java.util.List.<OperationEntity>of() : a.operations())
@@ -306,7 +307,7 @@ public class EditorModelProjection {
                 .filter(e -> e.parentAggregateId() != null && !e.parentAggregateId().isBlank())
                 .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId(),
                         e.invariants().stream()
-                                .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList(),
+                                .map(i -> invDto(i)).toList(),
                         fieldsOf.apply(e.modelId()), e.modelId()))
                 .toList();
 
@@ -341,7 +342,7 @@ public class EditorModelProjection {
                     valueObjects.add(new ValueObjectDto(v.id(), v.name(), agg.id(), v.type(),
                             v.dataType(), fieldDtos, enumValues,
                             v.invariants().stream()
-                                    .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList()));
+                                    .map(i -> invDto(i)).toList()));
                 });
             }
         }
@@ -928,6 +929,13 @@ public class EditorModelProjection {
                         .toList(),
                 interactions,
                 descriptions);
+    }
+
+    /** An invariant with its PRIMARY condition (expression + error message) surfaced for editing. */
+    private static AggregateInvariantDto invDto(InvariantEntity i) {
+        var c = i.conditions() != null && !i.conditions().isEmpty() ? i.conditions().get(0) : null;
+        return new AggregateInvariantDto(i.id(), i.name(),
+                c != null ? c.expression() : null, c != null ? c.errorMessage() : null);
     }
 
     /** The pool narrowed to the SELECTED project (unstamped legacy elements stay visible). */
