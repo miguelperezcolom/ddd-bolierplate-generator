@@ -422,16 +422,20 @@ export interface FieldRef {
   id: string;
   name: string;
   required: boolean;
-  /** primitive | value-object | entity | aggregate */
+  /** primitive | enum | model | value-object */
   typeKind: string;
   /** a primitive type name, or the referenced element's id. */
   typeRef: string;
+  /** The Model this field lives in (its fields are ModelFields) — for field commands. */
+  modelId?: string;
 }
 
 export interface AggregateRef {
   id: string;
   name: string;
   boundedContextId: string;
+  /** The Model that holds its fields. */
+  modelId?: string;
   /** The rules the aggregate protects — its very reason to exist. */
   invariants?: { id: string; name: string }[];
   /** Its attributes: name, required, and a type reference. */
@@ -443,6 +447,8 @@ export interface EntityRef {
   name: string;
   /** Aggregate this entity belongs to (entities-within-aggregates). */
   aggregateId: string;
+  /** The Model that holds its fields. */
+  modelId?: string;
   /** The rules this entity protects. */
   invariants?: { id: string; name: string }[];
   /** Its attributes. */

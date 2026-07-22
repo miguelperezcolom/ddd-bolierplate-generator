@@ -38,7 +38,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramNod
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DiagramPointEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FieldEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalApiOperationUseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity;
@@ -201,20 +200,25 @@ public class EditorApiController {
     public record AggregateDto(String id, String name, String boundedContextId,
                                /** The rules the aggregate protects — its very reason to exist. */
                                List<AggregateInvariantDto> invariants,
-                               /** Its attributes: name, required, and a type reference. */
-                               List<FieldDto> fields) {}
+                               /** Its attributes (its Model's fields). */
+                               List<FieldDto> fields,
+                               /** The Model that holds its fields (edited via model-field commands). */
+                               String modelId) {}
     public record AggregateInvariantDto(String id, String name) {}
     /**
-     * A field (attribute) of an aggregate, entity or Record value object: a name, whether it
-     * is required, and its type — a primitive, value object, entity or aggregate (typeKind +
-     * typeRef).
+     * A field (attribute) of an aggregate / entity / Record VO — one ModelField of its Model:
+     * a name, whether it is required, its type (primitive | enum | model | value-object) via
+     * typeKind + typeRef, and the modelId it lives in.
      */
-    public record FieldDto(String id, String name, boolean required, String typeKind, String typeRef) {}
+    public record FieldDto(String id, String name, boolean required, String typeKind, String typeRef,
+                           String modelId) {}
     public record EntityDto(String id, String name, String aggregateId,
                             /** The rules this entity protects. */
                             List<AggregateInvariantDto> invariants,
-                            /** Its attributes. */
-                            List<FieldDto> fields) {}
+                            /** Its attributes (its Model's fields). */
+                            List<FieldDto> fields,
+                            /** The Model that holds its fields. */
+                            String modelId) {}
     /** One field of a value object (Record type) — its name and data type. */
     public record ValueObjectFieldDto(String name, String dataType, String stereotype) {}
     /**
@@ -781,10 +785,8 @@ public class EditorApiController {
             case "remove-value-object" -> removeValueObject(command);
             case "set-value-object-aggregate" -> setValueObjectAggregate(command);
             case "set-entity-aggregate" -> setEntityAggregate(command);
-            case "add-field" -> addField(command);
-            case "remove-field" -> removeField(command);
-            case "set-field-type" -> setFieldType(command);
-            case "set-field-required" -> setFieldRequired(command);
+            case "set-model-field-type" -> uiCommands.setModelFieldType(command);
+            case "set-model-field-required" -> uiCommands.setModelFieldRequired(command);
             case "add-domain-event" -> addDomainEvent(command);
             case "add-domain-service" -> addDomainService(command);
             case "add-application-event" -> addApplicationEvent(command);
@@ -1220,10 +1222,6 @@ public class EditorApiController {
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection(),
                             e.projectId(), e.description(), e.invariants())));
-            case "field" -> repository.findById(command.id(), FieldEntity.class)
-                    .ifPresent(f -> repository.save(new FieldEntity(
-                            f.id(), command.name(), f.required(), f.typeKind(), f.typeRef(),
-                            f.ownerId(), f.projectId(), f.description())));
             // Renames the value object's NAME (its identity in the aggregate), keeping its
             // type (Enum/Record/Wrapper), fields, values and invariants intact.
             case "value-object" -> repository.findById(command.id(), ValueObjectEntity.class)
@@ -1546,34 +1544,6 @@ public class EditorApiController {
             voIds.add(command.id());
             repository.save(target.toBuilder().valueObjectIds(voIds).build());
         }
-    }
-
-    /** A field (attribute) of an aggregate / entity / Record VO — born a non-required primitive. */
-    private void addField(EditorCommand command) {
-        if (repository.findById(command.id(), FieldEntity.class).isPresent()) return;
-        var typeKind = command.type() != null && !command.type().isBlank() ? command.type() : "primitive";
-        var typeRef = command.targetId() != null && !command.targetId().isBlank()
-                ? command.targetId() : "string";
-        repository.save(new FieldEntity(command.id(), command.name(),
-                command.required() != null && command.required(), typeKind, typeRef, command.ownerId(), null));
-    }
-
-    private void removeField(EditorCommand command) {
-        repository.deleteAllById(List.of(command.id()), FieldEntity.class);
-    }
-
-    /** Point a field at a type: a primitive, or a value object / entity / aggregate by id. */
-    private void setFieldType(EditorCommand command) {
-        repository.findById(command.id(), FieldEntity.class).ifPresent(f ->
-                repository.save(new FieldEntity(f.id(), f.name(), f.required(),
-                        command.type(), command.targetId(), f.ownerId(), f.projectId(), f.description())));
-    }
-
-    private void setFieldRequired(EditorCommand command) {
-        repository.findById(command.id(), FieldEntity.class).ifPresent(f ->
-                repository.save(new FieldEntity(f.id(), f.name(),
-                        command.required() != null && command.required(), f.typeKind(), f.typeRef(),
-                        f.ownerId(), f.projectId(), f.description())));
     }
 
     /** Re-home an entity under an aggregate (its parentAggregateId changes). */

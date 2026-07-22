@@ -244,14 +244,38 @@ public class EditorModelProjection {
                 })
                 .toList();
 
-        // Fields (attributes) of aggregates / entities / Record VOs, grouped by their owner.
-        var allFields = scoped(
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FieldEntity.class);
-        java.util.function.Function<String, java.util.List<FieldDto>> fieldsOf = ownerId ->
-                allFields.stream()
-                        .filter(f -> ownerId.equals(f.ownerId()))
-                        .map(f -> new FieldDto(f.id(), f.name(), f.required(), f.typeKind(), f.typeRef()))
-                        .toList();
+        // Fields of an aggregate / entity / Record VO ARE the fields of its Model: one concept
+        // (ModelField). The type is derived from how the ModelField points (value object,
+        // pure Model, enum or basic type); "required" from a NotNull-family validation.
+        var modelsById = scoped(ModelEntity.class).stream()
+                .collect(java.util.stream.Collectors.toMap(ModelEntity::id, m -> m, (a, b) -> a));
+        java.util.function.Function<String, java.util.List<FieldDto>> fieldsOf = modelId -> {
+            if (modelId == null) return java.util.List.of();
+            var model = modelsById.get(modelId);
+            if (model == null || model.fields() == null) return java.util.List.of();
+            return model.fields().stream().map(f -> {
+                String typeKind;
+                String typeRef;
+                if (f.valueObjectId() != null && !f.valueObjectId().isBlank()) {
+                    typeKind = "value-object";
+                    typeRef = f.valueObjectId();
+                } else if (f.modelId() != null && !f.modelId().isBlank()) {
+                    typeKind = "model";
+                    typeRef = f.modelId();
+                } else if (f.isEnum() && f.enumId() != null && !f.enumId().isBlank()) {
+                    typeKind = "enum";
+                    typeRef = f.enumId();
+                } else {
+                    typeKind = "primitive";
+                    typeRef = f.type() != null ? f.type().name() : "string";
+                }
+                var required = f.validations() != null && f.validations().stream().anyMatch(v ->
+                        v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotNull
+                        || v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotEmpty
+                        || v.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotBlank);
+                return new FieldDto(f.id(), f.name(), required, typeKind, typeRef, modelId);
+            }).toList();
+        };
 
         var allAggregates = scoped(AggregateEntity.class);
         var aggregates = new ArrayList<AggregateDto>();
@@ -265,7 +289,7 @@ public class EditorModelProjection {
                                 a.invariants().stream()
                                         .map(i -> new AggregateInvariantDto(i.id(), i.name()))
                                         .toList(),
-                                fieldsOf.apply(a.id()))));
+                                fieldsOf.apply(a.modelId()), a.modelId())));
             }
         }
 
@@ -274,7 +298,7 @@ public class EditorModelProjection {
                 .map(e -> new EntityDto(e.id(), e.name(), e.parentAggregateId(),
                         e.invariants().stream()
                                 .map(i -> new AggregateInvariantDto(i.id(), i.name())).toList(),
-                        fieldsOf.apply(e.id())))
+                        fieldsOf.apply(e.modelId()), e.modelId()))
                 .toList();
 
         // Value objects, projected under the aggregate that owns them (via valueObjectIds).

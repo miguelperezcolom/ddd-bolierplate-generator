@@ -1855,6 +1855,14 @@ export class ModuxEditor extends LitElement {
 
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
+    if (kind === 'field') {
+      // A field is a ModelField: rename it in its Model.
+      const field = [...(this.model.aggregates ?? []), ...(this.model.entities ?? [])]
+        .flatMap((o) => o.fields ?? [])
+        .find((f) => f.id === id);
+      if (field?.modelId) this.command({ kind: 'set-model-field', modelId: field.modelId, fieldId: id, name });
+      return;
+    }
     if (
       kind === 'note' ||
       kind === 'area' ||
@@ -1866,7 +1874,6 @@ export class ModuxEditor extends LitElement {
       kind === 'aggregate' ||
       kind === 'entity' ||
       kind === 'value-object' ||
-      kind === 'field' ||
       kind === 'process-step' ||
       kind === 'workflow' ||
       kind === 'workflow-step' ||
@@ -3662,15 +3669,19 @@ export class ModuxEditor extends LitElement {
         message: `Invariante declarado en el ${ownerKind} — sus condiciones se detallan en su ficha`,
       });
     } else if (type === 'field') {
-      this.command({ kind: 'add-field', id, name, ownerId: container });
-      const ownerName =
-        (this.model.aggregates ?? []).find((a) => a.id === container)?.name ??
-        (this.model.entities ?? []).find((e) => e.id === container)?.name ??
-        (this.model.valueObjects ?? []).find((v) => v.id === container)?.name ??
-        container;
-      this.emit('modux-notice', {
-        message: `Campo «${name}» creado en «${ownerName}» — arrastra un value object sobre él para tiparlo`,
-      });
+      // A field IS a ModelField of the owner's Model (one concept).
+      const owner =
+        (this.model.aggregates ?? []).find((a) => a.id === container) ??
+        (this.model.entities ?? []).find((e) => e.id === container);
+      const modelId = owner?.modelId;
+      if (modelId) {
+        this.command({ kind: 'add-model-field', modelId, fieldId: id, name });
+        this.emit('modux-notice', {
+          message: `Campo «${name}» creado en «${owner?.name ?? container}» — arrastra un value object sobre él para tiparlo`,
+        });
+      } else {
+        this.emit('modux-notice', { message: 'Suelta el campo sobre un agregado o entidad' });
+      }
     } else if (type === 'ui-button') {
       const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);
       const taken = new Set((group?.buttons ?? []).map((bt) => bt.id));

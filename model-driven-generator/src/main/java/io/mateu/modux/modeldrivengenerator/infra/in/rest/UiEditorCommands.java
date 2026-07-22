@@ -691,6 +691,74 @@ public class UiEditorCommands {
         pruneMappingRulesReferencing(model.id(), command.fieldId());
     }
 
+    /**
+     * Points a field at a TYPE: a value object (with invariants), a pure Model, an enum, or a
+     * basic type. Exactly one reference is kept; the rest are cleared.
+     */
+    public void setModelFieldType(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
+                .map(f -> {
+                    if (!f.id().equals(command.fieldId())) return f;
+                    boolean basic = false;
+                    io.mateu.uidl.data.FieldDataType type = f.type();
+                    String modelRef = null;
+                    boolean isEnum = false;
+                    String enumRef = null;
+                    String voRef = null;
+                    switch (command.type() == null ? "primitive" : command.type()) {
+                        case "value-object" -> voRef = command.targetId();
+                        case "model" -> modelRef = command.targetId();
+                        case "enum" -> { isEnum = true; enumRef = command.targetId(); }
+                        default -> {
+                            basic = true;
+                            type = command.targetId() != null && !command.targetId().isBlank()
+                                    ? io.mateu.uidl.data.FieldDataType.valueOf(command.targetId())
+                                    : (f.type() != null ? f.type() : io.mateu.uidl.data.FieldDataType.string);
+                        }
+                    }
+                    return new ModelFieldEntity(f.id(), f.name(), basic, type, modelRef, isEnum, enumRef,
+                            f.validations(), f.piiClassification(), f.anonymizationStrategy(),
+                            f.label(), f.priority(), f.identifier(), voRef);
+                })
+                .toList();
+        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
+    }
+
+    /** Toggles a field's mandatory flag as a NotNull validation. */
+    public void setModelFieldRequired(EditorCommand command) {
+        var model = repository.findById(command.modelId(), ModelEntity.class)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
+        var req = command.required() != null && command.required();
+        var reqTypes = java.util.Set.of(
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotNull,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotEmpty,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotBlank);
+        var fields = (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
+                .map(f -> {
+                    if (!f.id().equals(command.fieldId())) return f;
+                    var vals = new ArrayList<>(f.validations() == null
+                            ? List.<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity>of()
+                            : f.validations());
+                    boolean has = vals.stream().anyMatch(v -> reqTypes.contains(v.type()));
+                    if (req && !has) {
+                        vals.add(new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldValidationEntity(
+                                java.util.UUID.randomUUID().toString(),
+                                io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.ModelFieldValidationType.NotNull,
+                                null));
+                    } else if (!req && has) {
+                        vals = vals.stream().filter(v -> !reqTypes.contains(v.type()))
+                                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                    }
+                    return new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
+                            f.isEnum(), f.enumId(), vals, f.piiClassification(), f.anonymizationStrategy(),
+                            f.label(), f.priority(), f.identifier(), f.valueObjectId());
+                })
+                .toList();
+        repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
+    }
+
     public void setModelField(EditorCommand command) {
         var model = repository.findById(command.modelId(), ModelEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown model: " + command.modelId()));
