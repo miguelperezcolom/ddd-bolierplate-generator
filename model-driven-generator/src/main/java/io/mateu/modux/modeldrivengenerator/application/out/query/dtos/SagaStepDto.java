@@ -13,6 +13,16 @@ public record SagaStepDto(
         String gatewayOperationId,
         String domainEventId,
         String useCaseId,
-        String modelMappingId
+        String modelMappingId,
+        Integer maxSuccessfulExecutions
 ) {
+
+    /** Backward-compatible constructor (pre-maxSuccessfulExecutions callers). */
+    public SagaStepDto(String id, String name, SagaStepType type, String compensatingStepId,
+                       String aggregateId, String operationId, String gatewayId,
+                       String gatewayOperationId, String domainEventId, String useCaseId,
+                       String modelMappingId) {
+        this(id, name, type, compensatingStepId, aggregateId, operationId, gatewayId,
+                gatewayOperationId, domainEventId, useCaseId, modelMappingId, null);
+    }
 }

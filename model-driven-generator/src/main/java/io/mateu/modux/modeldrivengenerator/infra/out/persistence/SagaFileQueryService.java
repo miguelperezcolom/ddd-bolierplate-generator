@@ -52,11 +52,13 @@ public class SagaFileQueryService implements SagaQueryService {
                                 .map(s -> new SagaStepDto(s.id(), s.name(), s.type(), s.compensatingStepId(),
                                         s.aggregateId(), s.operationId(),
                                         s.gatewayId(), s.gatewayOperationId(),
-                                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                                        s.domainEventId(), s.useCaseId(), s.modelMappingId(),
+                                        s.maxSuccessfulExecutions()))
                                 .toList(),
                         entity.maxRetries(),
                         entity.retryBackoffMs(),
                         entity.deadLetterQueue(),
-                        entity.persistenceEnabled()));
+                        entity.persistenceEnabled(),
+                        entity.defaultMaxStepExecutions()));
     }
 }

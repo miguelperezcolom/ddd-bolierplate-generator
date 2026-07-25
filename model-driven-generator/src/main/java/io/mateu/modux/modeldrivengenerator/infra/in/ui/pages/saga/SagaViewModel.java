@@ -44,6 +44,9 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
     String deadLetterQueue;
     boolean persistenceEnabled;
 
+    @io.mateu.uidl.annotations.Help("Tope por defecto de ejecuciones EXITOSAS por paso (vacío = sin tope). Cada paso puede sobreescribirlo.")
+    Integer defaultMaxStepExecutions;
+
     @Lookup(search = DomainEventIdOptionsSupplier.class, label = DomainEventIdLabelSupplier.class)
     List<String> triggeringEventIds = new ArrayList<>();
 
@@ -55,13 +58,13 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
 
     @Override
     public String create(HttpRequest httpRequest) {
-        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue, persistenceEnabled));
+        createUseCase.handle(new CreateSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue, persistenceEnabled, defaultMaxStepExecutions));
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
-        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue, persistenceEnabled));
+        saveUseCase.handle(new SaveSagaCommand(id, name, timeoutMs, compensationTimeoutMs, triggeringEventIds, toStepData(steps), maxRetries, retryBackoffMs, deadLetterQueue, persistenceEnabled, defaultMaxStepExecutions));
     }
 
     @Override
@@ -78,6 +81,7 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
         retryBackoffMs = model.retryBackoffMs();
         deadLetterQueue = model.deadLetterQueue();
         persistenceEnabled = model.persistenceEnabled();
+        defaultMaxStepExecutions = model.defaultMaxStepExecutions();
         triggeringEventIds = model.triggeringEventIds() != null ? new ArrayList<>(model.triggeringEventIds()) : new ArrayList<>();
         steps = model.steps() == null ? new ArrayList<>() : model.steps().stream().map(s -> {
             var vm = new SagaStepViewModel();
@@ -92,6 +96,7 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
             vm.domainEventId = s.domainEventId();
             vm.useCaseId = s.useCaseId();
             vm.modelMappingId = s.modelMappingId();
+            vm.maxSuccessfulExecutions = s.maxSuccessfulExecutions();
             return vm;
         }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         return this;
@@ -103,7 +108,8 @@ public class SagaViewModel implements Identifiable, CrudEditorForm<String>, Crud
                 .map(s -> new SagaStepData(s.id, s.name, s.type, s.compensatingStepId,
                         s.aggregateId, s.operationId,
                         s.gatewayId, s.gatewayOperationId,
-                        s.domainEventId, s.useCaseId, s.modelMappingId))
+                        s.domainEventId, s.useCaseId, s.modelMappingId,
+                        s.maxSuccessfulExecutions))
                 .toList();
     }
 

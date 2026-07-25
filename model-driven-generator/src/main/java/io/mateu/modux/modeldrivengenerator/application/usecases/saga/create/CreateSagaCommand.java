@@ -14,6 +14,7 @@ public record CreateSagaCommand(
         Integer maxRetries,
         Long retryBackoffMs,
         String deadLetterQueue,
-        boolean persistenceEnabled
+        boolean persistenceEnabled,
+        Integer defaultMaxStepExecutions
 ) {
 }

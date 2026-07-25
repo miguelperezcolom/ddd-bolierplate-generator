@@ -32,7 +32,8 @@ public class SagaFileRepository implements SagaRepository {
                         entity.maxRetries(),
                         entity.retryBackoffMs(),
                         entity.deadLetterQueue(),
-                        entity.persistenceEnabled()));
+                        entity.persistenceEnabled(),
+                        entity.defaultMaxStepExecutions()));
     }
 
     @Override
@@ -47,7 +48,8 @@ public class SagaFileRepository implements SagaRepository {
                 entity.getMaxRetries(),
                 entity.getRetryBackoffMs(),
                 entity.getDeadLetterQueue(),
-                entity.isPersistenceEnabled(), null));
+                entity.isPersistenceEnabled(), null, null,
+                entity.getDefaultMaxStepExecutions()));
         return entity;
     }
 
@@ -62,7 +64,8 @@ public class SagaFileRepository implements SagaRepository {
                 .map(s -> new SagaStep(s.id(), s.name(), s.type(), s.compensatingStepId(),
                         s.aggregateId(), s.operationId(),
                         s.gatewayId(), s.gatewayOperationId(),
-                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                        s.domainEventId(), s.useCaseId(), s.modelMappingId(),
+                        s.maxSuccessfulExecutions()))
                 .toList();
     }
 
@@ -72,7 +75,8 @@ public class SagaFileRepository implements SagaRepository {
                 .map(s -> new SagaStepEntity(s.id(), s.name(), s.type(), s.compensatingStepId(),
                         s.aggregateId(), s.operationId(),
                         s.gatewayId(), s.gatewayOperationId(),
-                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                        s.domainEventId(), s.useCaseId(), s.modelMappingId(),
+                        s.maxSuccessfulExecutions()))
                 .toList();
     }
 }

@@ -27,7 +27,8 @@ public class SaveSagaUseCase {
                 command.maxRetries(),
                 command.retryBackoffMs(),
                 command.deadLetterQueue(),
-                command.persistenceEnabled());
+                command.persistenceEnabled(),
+                command.defaultMaxStepExecutions());
         repository.save(saga);
     }
 
@@ -37,7 +38,8 @@ public class SaveSagaUseCase {
                 .map(s -> new SagaStep(s.id(), s.name(), s.type(), s.compensatingStepId(),
                         s.aggregateId(), s.operationId(),
                         s.gatewayId(), s.gatewayOperationId(),
-                        s.domainEventId(), s.useCaseId(), s.modelMappingId()))
+                        s.domainEventId(), s.useCaseId(), s.modelMappingId(),
+                        s.maxSuccessfulExecutions()))
                 .toList();
     }
 }

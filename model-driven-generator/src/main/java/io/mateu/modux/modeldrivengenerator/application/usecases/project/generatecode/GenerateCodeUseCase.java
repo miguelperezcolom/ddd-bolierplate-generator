@@ -1557,6 +1557,9 @@ public class GenerateCodeUseCase {
                 if (step.compensatingStepId() != null) {
                     stepMap.put("compensatingStepId", step.compensatingStepId());
                 }
+                if (step.maxSuccessfulExecutions() != null) {
+                    stepMap.put("maxSuccessfulExecutions", step.maxSuccessfulExecutions());
+                }
                 enrichedSteps.add(stepMap);
             }
         }

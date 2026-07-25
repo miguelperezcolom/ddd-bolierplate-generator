@@ -47,4 +47,7 @@ public class SagaStepViewModel {
     @Lookup(search = ModelMappingIdOptionsSupplier.class, label = ModelMappingIdLabelSupplier.class)
     String modelMappingId;
 
+    @io.mateu.uidl.annotations.Help("Tope de ejecuciones EXITOSAS de este paso por instancia (vacío = usa el tope por defecto de la saga).")
+    Integer maxSuccessfulExecutions;
+
 }
