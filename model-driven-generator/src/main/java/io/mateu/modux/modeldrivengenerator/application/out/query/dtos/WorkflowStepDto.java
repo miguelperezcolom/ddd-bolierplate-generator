@@ -16,8 +16,21 @@ public record WorkflowStepDto(
         String deadline,
         String escalationRoleId,
         String compensationUseCaseId,
-        String formPageId
+        String formPageId,
+        /** Cap on successful runs of this step per workflow instance (null = inherit workflow default). */
+        Integer maxSuccessfulExecutions
 ) {
+
+    /** Backward-compatible constructor (pre-maxSuccessfulExecutions callers). */
+    public WorkflowStepDto(String id, String name, String emittedEventName, String targetUseCaseId,
+                           String completionEventName, List<String> dependsOnStepIds,
+                           String description, String type, String handoffWorkflowId, String roleId,
+                           String deadline, String escalationRoleId, String compensationUseCaseId,
+                           String formPageId) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName, dependsOnStepIds,
+                description, type, handoffWorkflowId, roleId, deadline, escalationRoleId,
+                compensationUseCaseId, formPageId, null);
+    }
 
     /** Backward-compatible constructor (pre-formPageId callers). */
     public WorkflowStepDto(String id, String name, String emittedEventName, String targetUseCaseId,

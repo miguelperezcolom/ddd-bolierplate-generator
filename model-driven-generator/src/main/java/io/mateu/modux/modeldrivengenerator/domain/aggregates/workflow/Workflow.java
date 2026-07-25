@@ -31,10 +31,14 @@ public class Workflow {
     // event published when every step completes (defaults to <Name>Completed)
     private String onCompletionEventName;
 
+    // default cap on successful runs per step (null = unbounded); a step may override it
+    private Integer defaultMaxStepExecutions;
+
     public static Workflow of(WorkflowId id, WorkflowName name, String description,
                               String triggerAggregateId, String triggerDomainServiceId,
                               String triggerUseCaseId, String triggerEvent,
-                              List<WorkflowStep> steps, String onCompletionEventName) {
+                              List<WorkflowStep> steps, String onCompletionEventName,
+                              Integer defaultMaxStepExecutions) {
         var workflow = new Workflow();
         workflow.id = id;
         workflow.name = name;
@@ -45,22 +49,25 @@ public class Workflow {
         workflow.triggerEvent = triggerEvent;
         workflow.steps = steps != null ? steps : List.of();
         workflow.onCompletionEventName = onCompletionEventName;
+        workflow.defaultMaxStepExecutions = defaultMaxStepExecutions;
         return workflow;
     }
 
     public static Workflow load(String id, String name, String description,
                                 String triggerAggregateId, String triggerDomainServiceId,
                                 String triggerUseCaseId, String triggerEvent,
-                                List<WorkflowStep> steps, String onCompletionEventName) {
+                                List<WorkflowStep> steps, String onCompletionEventName,
+                                Integer defaultMaxStepExecutions) {
         return of(new WorkflowId(id), new WorkflowName(name), description,
                 triggerAggregateId, triggerDomainServiceId, triggerUseCaseId, triggerEvent,
-                steps, onCompletionEventName);
+                steps, onCompletionEventName, defaultMaxStepExecutions);
     }
 
     public void update(WorkflowName name, String description,
                        String triggerAggregateId, String triggerDomainServiceId,
                        String triggerUseCaseId, String triggerEvent,
-                       List<WorkflowStep> steps, String onCompletionEventName) {
+                       List<WorkflowStep> steps, String onCompletionEventName,
+                       Integer defaultMaxStepExecutions) {
         this.name = name;
         this.description = description;
         this.triggerAggregateId = triggerAggregateId;
@@ -69,5 +76,6 @@ public class Workflow {
         this.triggerEvent = triggerEvent;
         this.steps = steps != null ? steps : List.of();
         this.onCompletionEventName = onCompletionEventName;
+        this.defaultMaxStepExecutions = defaultMaxStepExecutions;
     }
 }

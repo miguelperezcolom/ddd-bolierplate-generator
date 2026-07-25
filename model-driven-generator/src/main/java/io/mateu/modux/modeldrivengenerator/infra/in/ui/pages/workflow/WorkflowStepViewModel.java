@@ -55,6 +55,10 @@ public class WorkflowStepViewModel {
     @Help("Paso humano: página que el forms engine presenta como formulario de la tarea.")
     String formPageId;
 
+    @Help("Tope de ejecuciones EXITOSAS de este paso por instancia (corta bucles descontrolados). "
+            + "Vacío = usa el tope por defecto del workflow.")
+    Integer maxSuccessfulExecutions;
+
     /** Carried through so saving the ficha never wipes what the diagram declared. */
     @Hidden
     String type;

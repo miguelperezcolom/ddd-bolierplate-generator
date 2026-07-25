@@ -1088,10 +1088,7 @@ public class EditorApiController {
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
     static WorkflowEntity withWorkflowSteps(WorkflowEntity w, List<WorkflowStepEntity> steps) {
-        return new WorkflowEntity(
-                w.id(), w.name(), w.description(), w.triggerAggregateId(),
-                w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
-                steps, w.onCompletionEventName(), w.decisionIds(), null);
+        return w.toBuilder().steps(steps).build();
     }
 
     /** Record copy with only dependsOnStepIds replaced — every other field preserved verbatim. */
@@ -1357,10 +1354,7 @@ public class EditorApiController {
                         .toList()));
             }
             case "workflow" -> repository.findById(command.id(), WorkflowEntity.class)
-                    .ifPresent(w -> repository.save(new WorkflowEntity(
-                            w.id(), command.name(), w.description(), w.triggerAggregateId(),
-                            w.triggerDomainServiceId(), w.triggerUseCaseId(), w.triggerEvent(),
-                            w.steps(), w.onCompletionEventName(), w.decisionIds(), null)));
+                    .ifPresent(w -> repository.save(w.toBuilder().name(command.name()).build()));
             case "workflow-step" -> repository.findAllOfType(WorkflowEntity.class).stream()
                     .filter(w -> w.steps().stream().anyMatch(s -> s.id().equals(command.id())))
                     .findFirst()

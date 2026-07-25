@@ -46,7 +46,8 @@ public class WorkflowFileQueryService implements WorkflowQueryService {
                 .map(entity -> new WorkflowDto(entity.id(), entity.name(), entity.description(),
                         entity.triggerAggregateId(), entity.triggerDomainServiceId(),
                         entity.triggerUseCaseId(), entity.triggerEvent(),
-                        toStepDtos(entity.steps()), entity.onCompletionEventName()));
+                        toStepDtos(entity.steps()), entity.onCompletionEventName(),
+                        entity.defaultMaxStepExecutions()));
     }
 
     private static List<WorkflowStepDto> toStepDtos(List<WorkflowStepEntity> steps) {
@@ -56,7 +57,7 @@ public class WorkflowFileQueryService implements WorkflowQueryService {
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
-                        s.formPageId()))
+                        s.formPageId(), s.maxSuccessfulExecutions()))
                 .toList();
     }
 }

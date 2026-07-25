@@ -108,6 +108,7 @@ public class WorkflowEditorCommands {
 
     private final ModelStore repository;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
+    private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowLoopValidator loopValidator;
     private final EditorProjectSupport projects;
 
     public void addWorkflow(EditorCommand command) {
@@ -132,10 +133,12 @@ public class WorkflowEditorCommands {
     /** Points the workflow at the event that starts it (drawn event → workflow). */
     public void setWorkflowTrigger(EditorCommand command) {
         var wf = projects.requireWorkflow(command.id());
-        repository.save(new WorkflowEntity(wf.id(), wf.name(), wf.description(),
-                command.triggerAggregateId(), command.triggerDomainServiceId(),
-                command.triggerUseCaseId(), command.triggerEvent(),
-                wf.steps(), wf.onCompletionEventName(), wf.decisionIds(), null));
+        repository.save(wf.toBuilder()
+                .triggerAggregateId(command.triggerAggregateId())
+                .triggerDomainServiceId(command.triggerDomainServiceId())
+                .triggerUseCaseId(command.triggerUseCaseId())
+                .triggerEvent(command.triggerEvent())
+                .build());
     }
 
     /**
@@ -313,6 +316,12 @@ public class WorkflowEditorCommands {
         if (srcWf != null && tgtWf != null && !srcWf.equals(tgtWf)) {
             throw new IllegalArgumentException(
                     "Los dos extremos ya pertenecen a workflows distintos: a otro workflow solo se llega apuntando al workflow");
+        }
+        // a hand-off to another workflow leaves this one (a sink); every other link adds the edge
+        // source → target, so reject it now if that edge would close a loop with no conditioned exit
+        if (!targetIsWorkflow) {
+            loopValidator.assertLinkBounded(srcWf != null ? srcWf : tgtWf,
+                    command.sourceId(), command.targetId());
         }
         if (targetGw != null) {
             if ("SPLIT".equals(targetGw.type()) && !targetGw.sourceIds().isEmpty()
@@ -510,12 +519,15 @@ public class WorkflowEditorCommands {
         if (workflow.steps().stream().noneMatch(s -> s.id().equals(command.dependsOnStepId()))) {
             throw new IllegalArgumentException("Paso desconocido: " + command.dependsOnStepId());
         }
-        repository.save(EditorApiController.withWorkflowSteps(workflow, workflow.steps().stream()
+        var steps = workflow.steps().stream()
                 .map(s -> s.id().equals(command.id())
                         && !s.dependsOnStepIds().contains(command.dependsOnStepId())
                         ? EditorApiController.withDependsOn(s, EditorApiController.concat(s.dependsOnStepIds(), command.dependsOnStepId()))
                         : s)
-                .toList()));
+                .toList();
+        // a step-dependency cycle can never carry a condition, so it is always an infinite loop
+        loopValidator.assertWorkflowBounded(workflow.id(), steps);
+        repository.save(EditorApiController.withWorkflowSteps(workflow, steps));
     }
 
     public void removeWorkflowDependency(EditorCommand command) {

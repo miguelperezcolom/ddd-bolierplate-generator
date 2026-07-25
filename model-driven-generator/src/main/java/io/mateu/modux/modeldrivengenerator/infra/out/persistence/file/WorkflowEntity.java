@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.uidl.interfaces.Identifiable;
+import lombok.Builder;
 
 import java.util.List;
 
@@ -10,6 +11,7 @@ import java.util.List;
  * which emits an event that starts a task — a use case, for now — inside a bounded context. The
  * workflow never calls anything directly; all workflow↔context communication travels as events.
  */
+@Builder(toBuilder = true)
 public record WorkflowEntity(
         String id,
         String name,
@@ -30,7 +32,19 @@ public record WorkflowEntity(
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId
+,
+        /** Default cap on successful runs per step (null = unbounded); a step may override it. */
+        Integer defaultMaxStepExecutions
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-defaultMaxStepExecutions callers and stores). */
+    public WorkflowEntity(String id, String name, String description, String triggerAggregateId,
+                          String triggerDomainServiceId, String triggerUseCaseId, String triggerEvent,
+                          List<WorkflowStepEntity> steps, String onCompletionEventName,
+                          List<String> decisionIds, String projectId) {
+        this(id, name, description, triggerAggregateId, triggerDomainServiceId, triggerUseCaseId,
+                triggerEvent, steps, onCompletionEventName, decisionIds, projectId, null);
+    }
 
     public WorkflowEntity {
         if (steps == null) steps = List.of();

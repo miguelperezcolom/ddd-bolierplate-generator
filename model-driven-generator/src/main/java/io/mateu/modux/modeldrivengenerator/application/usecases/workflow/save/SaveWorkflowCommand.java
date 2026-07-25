@@ -13,6 +13,7 @@ public record SaveWorkflowCommand(
         String triggerUseCaseId,
         String triggerEvent,
         List<WorkflowStepDto> steps,
-        String onCompletionEventName
+        String onCompletionEventName,
+        Integer defaultMaxStepExecutions
 ) {
 }

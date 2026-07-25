@@ -31,8 +31,25 @@ public record WorkflowStepEntity(
         /** Use case run to UNDO this step when the workflow compensates. */
         String compensationUseCaseId,
         /** HUMAN step: the declared PAGE the forms engine renders as the task's form. */
-        String formPageId
+        String formPageId,
+        /**
+         * Cap on how many times this step may SUCCESSFULLY run in one workflow instance (runtime
+         * backstop against runaway loops). {@code null} inherits the workflow's default.
+         */
+        Integer maxSuccessfulExecutions
 ) {
+
+    /** Backward-compatible constructor (pre-maxSuccessfulExecutions callers and stores). */
+    public WorkflowStepEntity(String id, String name, String emittedEventName,
+                              String targetUseCaseId, String completionEventName,
+                              List<String> dependsOnStepIds, String description, String type,
+                              String handoffWorkflowId, String roleId, String deadline,
+                              String escalationRoleId, String compensationUseCaseId,
+                              String formPageId) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName, dependsOnStepIds,
+                description, type, handoffWorkflowId, roleId, deadline, escalationRoleId,
+                compensationUseCaseId, formPageId, null);
+    }
 
     /** Backward-compatible constructor (pre-formPageId callers and stores). */
     public WorkflowStepEntity(String id, String name, String emittedEventName,

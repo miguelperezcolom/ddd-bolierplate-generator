@@ -64,6 +64,10 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
     @Help("Event published when every step completes. Defaults to <Name>Completed.")
     String onCompletionEventName;
 
+    @Help("Tope por defecto de ejecuciones EXITOSAS por paso (vacío = sin tope). "
+            + "Cada paso puede sobreescribirlo. Es la red de seguridad frente a bucles descontrolados.")
+    Integer defaultMaxStepExecutions;
+
     @Tab("Ramas")
     @Help("Las ramas de los splits EXCLUSIVOS de este workflow, con la condición que elige cada una. Las ramas se trazan en el diagrama; aquí se editan sus expresiones (vacía = sin condición).")
     List<WorkflowBranchConditionViewModel> branchConditions = new ArrayList<>();
@@ -77,7 +81,7 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
     public String create(HttpRequest httpRequest) {
         createUseCase.handle(new CreateWorkflowCommand(id, name, description,
                 triggerAggregateId, triggerDomainServiceId, triggerUseCaseId, triggerEvent,
-                toStepDtos(steps), onCompletionEventName));
+                toStepDtos(steps), onCompletionEventName, defaultMaxStepExecutions));
         return id;
     }
 
@@ -85,7 +89,7 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
     public void save(HttpRequest httpRequest) {
         saveUseCase.handle(new SaveWorkflowCommand(id, name, description,
                 triggerAggregateId, triggerDomainServiceId, triggerUseCaseId, triggerEvent,
-                toStepDtos(steps), onCompletionEventName));
+                toStepDtos(steps), onCompletionEventName, defaultMaxStepExecutions));
         saveBranchConditions();
     }
 
@@ -141,9 +145,11 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                     vm.formPageId = s.formPageId();
                     vm.type = s.type();
                     vm.handoffWorkflowId = s.handoffWorkflowId();
+                    vm.maxSuccessfulExecutions = s.maxSuccessfulExecutions();
                     return vm;
                 }).collect(Collectors.toCollection(ArrayList::new));
         onCompletionEventName = model.onCompletionEventName();
+        defaultMaxStepExecutions = model.defaultMaxStepExecutions();
         // the EXCLUSIVE splits belonging (by inference) to this workflow, one row per branch
         branchConditions = modelStore.findAllOfType(
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity.class)
@@ -167,7 +173,7 @@ public class WorkflowViewModel implements Identifiable, CrudEditorForm<String>, 
                 .map(s -> new WorkflowStepDto(s.id, s.name, s.emittedEventName, s.targetUseCaseId,
                         s.completionEventName, s.dependsOnStepIds, s.description,
                         s.type, s.handoffWorkflowId, s.roleId, s.deadline, s.escalationRoleId,
-                        s.compensationUseCaseId, s.formPageId))
+                        s.compensationUseCaseId, s.formPageId, s.maxSuccessfulExecutions))
                 .toList();
     }
 

@@ -17,7 +17,7 @@ public final class WorkflowStepMapper {
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
-                        s.formPageId()))
+                        s.formPageId(), s.maxSuccessfulExecutions()))
                 .toList();
     }
 
@@ -28,7 +28,7 @@ public final class WorkflowStepMapper {
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
-                        s.formPageId()))
+                        s.formPageId(), s.maxSuccessfulExecutions()))
                 .toList();
     }
 }

@@ -23,7 +23,8 @@ public class SaveWorkflowUseCase {
                 command.triggerUseCaseId(),
                 command.triggerEvent(),
                 WorkflowStepMapper.toSteps(command.steps()),
-                command.onCompletionEventName());
+                command.onCompletionEventName(),
+                command.defaultMaxStepExecutions());
         repository.save(workflow);
     }
 }

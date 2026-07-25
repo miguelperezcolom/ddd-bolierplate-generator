@@ -18,6 +18,7 @@ import java.util.Optional;
 public class WorkflowFileRepository implements WorkflowRepository {
 
     final ModelStore repository;
+    final WorkflowLoopValidator loopValidator;
 
     @Override
     public Optional<Workflow> findById(WorkflowId id) {
@@ -25,7 +26,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 .map(entity -> Workflow.load(entity.id(), entity.name(), entity.description(),
                         entity.triggerAggregateId(), entity.triggerDomainServiceId(),
                         entity.triggerUseCaseId(), entity.triggerEvent(),
-                        toSteps(entity.steps()), entity.onCompletionEventName()));
+                        toSteps(entity.steps()), entity.onCompletionEventName(),
+                        entity.defaultMaxStepExecutions()));
     }
 
     @Override
@@ -33,6 +35,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
         // decisionIds are not modeled in the domain Workflow yet — carry them over from the stored
         // entity so a UI save never wipes what was authored in the YAML store.
         var existing = repository.findById(entity.getId().id(), WorkflowEntity.class).orElse(null);
+        var stepEntities = toStepEntities(entity.getSteps());
+        loopValidator.assertWorkflowBounded(entity.getId().id(), stepEntities);
         repository.save(new WorkflowEntity(
                 entity.getId().id(),
                 entity.getName().name(),
@@ -41,9 +45,10 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 entity.getTriggerDomainServiceId(),
                 entity.getTriggerUseCaseId(),
                 entity.getTriggerEvent(),
-                toStepEntities(entity.getSteps()),
+                stepEntities,
                 entity.getOnCompletionEventName(),
-                existing != null ? existing.decisionIds() : List.of(), null));
+                existing != null ? existing.decisionIds() : List.of(), null,
+                entity.getDefaultMaxStepExecutions()));
         return entity;
     }
 
@@ -59,7 +64,7 @@ public class WorkflowFileRepository implements WorkflowRepository {
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
-                        s.formPageId()))
+                        s.formPageId(), s.maxSuccessfulExecutions()))
                 .toList();
     }
 
@@ -70,7 +75,7 @@ public class WorkflowFileRepository implements WorkflowRepository {
                         s.targetUseCaseId(), s.completionEventName(), s.dependsOnStepIds(),
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
-                        s.formPageId()))
+                        s.formPageId(), s.maxSuccessfulExecutions()))
                 .toList();
     }
 }
