@@ -1,7 +1,9 @@
 # RFC: Modux como plugin de IDE — sin servidor
 
-> Estado: **propuesta** (2026-08-04). Nada implementado. Recoge tres decisiones de
-> planteamiento tomadas en conversación y el inventario medido que las sostiene.
+> Estado: **en construcción** en la rama `ide-plugin` (2026-08-04). El applier, el árbol de
+> ficheros, el plugin maven y un plugin de IntelliJ que empaqueta están hechos y verificados;
+> el port de comandos y la proyección van por el núcleo. Ver §8 para el estado real y §6 para
+> lo que falta.
 > Relacionado: [`storage-ports.md`](./storage-ports.md), [`two-zone-codegen.md`](./two-zone-codegen.md),
 > [`catalog-and-views.md`](./catalog-and-views.md).
 
@@ -86,30 +88,73 @@ Contenido de cada bloque:
 - **Agentes**: AI agents, RAG, MCP gateways, proxies, implementaciones de API.
 - **Workflows**: pasos, gateways, links, dependencias, triggers, y 2 migraciones one-shot.
 
-### 2.4 El vocabulario es abrumadoramente regular
+### 2.4 El vocabulario es regular de nombre; la semántica, a medias
+
+Los nombres son casi perfectamente simétricos:
 
 ```
 add-*     103        pares add-/remove- simétricos: 101
-remove-*  103        → 261 de 281 (93%) son:
-set-*      55           añadir a lista / quitar de lista / set escalar
+remove-*  103        → 261 de 281 (93%) se llaman
+set-*      55           añadir / quitar / set
 otros      20
 ```
 
-Los 20 irregulares, completos: `move-model-field`, `move-process-step`,
+**Pero eso mide los nombres, no lo que hacen.** Midiendo los 274 handlers por número de
+tipos de elemento que tocan y si validan:
+
+| | Handlers | |
+|---|---:|---|
+| Puros: un tipo, sin validación | **116 (42%)** | los cubre un applier genérico |
+| Un tipo + validación | 25 (9%) | |
+| **Dos tipos** | **90 (33%)** | mantienen back-reference, o crean un stub |
+| Tres o más tipos | 43 (16%) | |
+
+Media: **12,1 líneas por handler**. Los más grandes: `renameElement` (160 líneas, 29 tipos),
+`addWorkflowLink` (71), `addProjection` (66).
+
+Los 20 irregulares por nombre, completos: `move-model-field`, `move-process-step`,
 `move-workflow-step`, `move-page-wizard-step`, `move-menu-item`, `move-page-component`,
 `create-ui-app`, `delete-ui-app`, `create-ui-page`, `delete-ui-page`,
 `update-process-step`, `update-workflow-step`, `migrate-processes-to-workflows`,
 `migrate-sagas-to-workflows`, `rename-element`, `rename-ui-page`,
 `invert-archimate-relation`, `save-interaction`, `note-attach`, `note-detach`.
 
-**Consecuencia para el presupuesto:** no hay que portar 281 handlers a mano. Un applier
-genérico por path sobre el árbol YAML (`add-item-at-path`, `remove-item-by-id-at-path`,
-`set-scalar-at-path`) más una tabla declarativa `kind → path` cubre el 93%. A mano quedan
-~20 comandos y la tabla. Además, esas 5500 líneas son Java con su ceremonia (DTOs, null
-checks, imports): sobre el modelo ya tipado en TS no es una traducción 1:1.
+**Consecuencia para el presupuesto.** Una tabla `kind → path` no basta: un tercio de los
+comandos mantiene integridad referencial (meter el id del agregado en el `aggregateIds` de
+su contexto), crea elementos satélite para que el modelo nazca completo, o resuelve dueños
+polimórficos. Pero eso también es declarativo — solo que la tabla necesita `{tipo, padre,
+back-reference, guardas, cascada}`, no un path. Con esa forma, los 12 líneas medias se
+reparten en cuatro tareas comunes escritas una vez y dos o tres líneas propias por comando.
 
-**Este es el riesgo principal del RFC.** Si el applier genérico no se sostiene, el coste
-se multiplica. Hacer spike antes de comprometerse con fechas.
+Verificado en el spike (§8): el bloque núcleo son 46 comandos en ~330 líneas de tabla sobre
+~200 de motor.
+
+### 2.5 La proyección, que no estaba contada
+
+Además del applier hay que traer **`EditorModelProjection`, 951 líneas**: el store tiene una
+lista por tipo, y el editor dibuja de una forma desnormalizada (`editor/src/model.ts`) donde
+un bounded context lleva dentro sus use cases, sus eventos y sus read models.
+
+El port total es entonces **~6450 líneas**, no 5500. Pero buena parte de esas 951 es
+**scoping multi-proyecto** —decidir qué contextos son del proyecto actual recorriendo
+servicios y módulos, y ocultar los cableados en otro sitio— y eso desaparece entero con un
+repositorio por proyecto (§4.6): todo lo que hay en el árbol es del proyecto, porque el
+árbol *es* el proyecto.
+
+### 2.6 Dos detalles de formato que hay que replicar exactamente
+
+Descubiertos al portar, y ninguno es cosmético:
+
+1. **El writer de Java omite lo vacío.** `ModelYaml.writer()` usa `NON_EMPTY` más
+   `NON_DEFAULT` para booleanos: nulls, cadenas vacías, listas vacías y `false` no se
+   escriben. Si TypeScript no hace lo mismo, cada fichero que toque el plugin sale con un
+   diff lleno de `aggregateIds: []` — justo el ruido que este diseño quiere evitar.
+   El store en memoria normaliza al escribir, así que la forma en memoria y la del fichero
+   son la misma por construcción.
+2. **El formato granular no guarda el orden de los elementos de un tipo.** Se cargan por
+   orden de nombre de fichero. Convertir un store monolítico reordena cada tipo una vez —un
+   diff de una sola vez, estable a partir de ahí. El orden *dentro* de un elemento (los
+   pasos de un use case) vive en su fichero y no se toca.
 
 ## 3. El MCP sobra; hace falta un skill
 
@@ -317,6 +362,30 @@ de sitio, de `~/.modux` al modelo.
 El puntero solo se usa **al refrescar** la referencia. El resto del tiempo manda el snapshot,
 y por eso perder el acceso al otro repo no rompe nada.
 
+### 4.8 Las soluciones son ramas
+
+Hoy modux tiene un concepto propio de **solución** —variantes del modelo con su diff, sus
+tags y su merge— implementado sobre git en `SolutionApiController` + `SolutionGitService` +
+`SolutionDiffService` (538 líneas), con su propio vocabulario en el editor.
+
+Con el modelo dentro del repositorio eso deja de tener sentido: **una solución es una rama.**
+
+- Explorar un to-be: `git checkout -b solucion-x`. El modelo va en el árbol, así que la rama
+  lo lleva.
+- Comparar: `git diff`. El formato granular hace que el diff sea legible por elemento — un
+  fichero por elemento es precisamente lo que lo hace revisable.
+- Aprobar: un merge, o una pull request con revisión.
+- Descartar: borrar la rama.
+
+Todo eso ya lo hace el IDE con la interfaz que el usuario conoce, y lo hace mejor que una
+reimplementación: blame, historia, revisión, conflictos, `git bisect`.
+
+Lo que **no** cubre git y hay que decidir aparte es la capa semántica de
+[`system-and-solutions.md`](./system-and-solutions.md): el as-is frente al to-be, y los ADRs
+que justifican una propuesta. Eso es contenido del modelo, no control de versiones — un tipo
+de elemento más, que vive en el árbol y viaja en la rama como todo lo demás. Sin resolver
+(§7), pero conviene no confundirlo con lo que git ya da gratis.
+
 ## 5. Qué se borra y qué sobrevive
 
 Sobre **62 885 líneas de Java**:
@@ -396,3 +465,39 @@ resto se edite como YAML de texto. El conjunto de comandos es aditivo, no un big
   contiene referencias, y es eso un proyecto modux o un tipo distinto? Los snapshots (§4.7)
   quitan hierro —la vista se compone sin checkoutear nada— pero la pregunta de quién es el
   dueño de esa vista sigue abierta. **Sin resolver — no darlo por muerto por omisión.**
+- **La capa semántica de soluciones.** Git cubre las variantes (§4.8), pero no el as-is
+  frente al to-be ni los ADRs de `system-and-solutions.md`. ¿Se modelan como tipos de
+  elemento en el árbol? Sin resolver.
+
+## 8. Estado de la implementación
+
+Rama `ide-plugin`. Lo construido y verificado hasta ahora:
+
+| Pieza | Dónde | Estado |
+|---|---|---|
+| Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ 46 tests |
+| Motor de comandos declarativo | `editor/src/store/spec.ts` | ✅ |
+| Bloque núcleo DDD (46 de 127 comandos) | `editor/src/store/commands/core.ts` | ✅ |
+| Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
+| Proyección store → vista (capa estratégica) | `editor/src/store/project.ts` | ✅ parcial, declara lo que no cubre |
+| Host del editor en el IDE | `editor/src/host/modux-editor-ide.ts` | ✅ compila |
+| Plugin de IntelliJ | `intellij-plugin/` | ✅ empaqueta zip instalable |
+| `modux:generate` desde el árbol granular | `plugin/` | ✅ |
+| `modux:validate` (integridad referencial) | `plugin/` | ✅ 5 tests, limpio sobre el sample |
+| `modux:schema` | `plugin/` | ✅ |
+| Skill de autoría | `.claude/skills/modux-model/` | ✅ |
+
+Lo que falta, por orden de peso:
+
+1. **Los otros 235 comandos** — UI (93), agentes (42), workflows (19) y el resto del núcleo (81).
+2. **El resto de la proyección** — hoy cubre la capa estratégica; faltan UI, workflows y agentes.
+3. **Fase 0 en el Java** (§6.0): `projects` a singleton, partir `ProjectEntity`, sacar
+   `contextMapRelations` a tipo de primer nivel. **El lado TypeScript ya escribe el formato
+   objetivo**, así que hasta que esto se haga, el árbol que produce el plugin y el que produce
+   el servidor divergen en esos tres puntos.
+4. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía.
+5. **El borrado** (§6.6), que es la última fase a propósito: mientras la proyección esté
+   incompleta, el servidor sigue siendo lo único que dibuja un modelo entero.
+
+No se ha probado el plugin dentro de un IDEA en marcha: compila, empaqueta e instala, pero
+la verificación end-to-end (abrir un `index.yaml` y dibujar) está pendiente.
