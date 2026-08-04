@@ -40,7 +40,8 @@ There is **no root Maven aggregator POM**; each module is built separately.
 |---|---|
 | `model-driven-generator/` | The main Spring Boot app — the modux product itself (Java 21, Maven). |
 | `editor/` | `@modux/editor` — standalone Lit/TypeScript graphical model editor (Vite + Vitest). Bundled into the Spring app's static resources. |
-| `plugin/` | `modux-maven-plugin` — experimental Maven plugin that reuses the generator jar. |
+| `plugin/` | `modux-maven-plugin` — Maven plugin over the generator jar: `generate`, `validate`, `schema`. |
+| `intellij-plugin/` | IntelliJ plugin (Gradle) hosting the editor over the repo's model files. See `docs/design/ide-plugin.md`. |
 | `figma-maven-plugin/` | Maven plugin generating Mateu views (Java/C#/Python) from Figma files. |
 | `sample/hla-booking/` | Hand-authored example spec (`model-driven-store.yaml` + JSON schema). Versioned. |
 | `sample/patterns/` | Hand-authored didactic pattern stores (BFF, ACL, CQRS, event-driven, saga, event sourcing, human process). Versioned; seeded to `~/.modux/examples` by `install.sh`. |
