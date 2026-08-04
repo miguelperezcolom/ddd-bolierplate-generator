@@ -1,0 +1,21 @@
+<idea-plugin>
+    <id>io.mateu.modux</id>
+    <name>Modux</name>
+    <vendor email="miguelperezcolom@gmail.com" url="https://modux.mateu.io">Mateu</vendor>
+
+    <description><![CDATA[
+      Graphical editor for a <b>modux</b> domain model.
+      <p>
+        The model is a directory of YAML files in the repository, versioned next to the code it
+        generates. This plugin edits those files — nothing else. Code generation is the
+        <code>modux-maven-plugin</code>, and there is no server to run.
+      </p>
+      <p>Open a model by opening its <code>index.yaml</code>.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileEditorProvider implementation="io.mateu.modux.idea.ModuxFileEditorProvider"/>
+    </extensions>
+</idea-plugin>
