@@ -1,0 +1,309 @@
+/**
+ * The core DDD / architecture command block: bounded contexts, aggregates and
+ * what hangs off them, plus the strategic relations and the canvas furniture.
+ *
+ * Ported from `EditorApiController`'s handlers. Two deliberate departures from
+ * what that file does today, both target state per `docs/design/ide-plugin.md`:
+ *
+ * - Context map relations are a top-level type (`contextMapRelations`), not a
+ *   list inside the project — so a relation is one file, like every other
+ *   element, and drawing one stops touching the project's file.
+ * - There is no "current project" to look up: a repository is one project.
+ */
+
+import { asList, type Element, type ModelStore } from '../store.js';
+import {
+  add,
+  addNested,
+  CommandError,
+  type Handler,
+  remove,
+  removeNested,
+  setField,
+  setNested,
+} from '../spec.js';
+
+/** A bounded context is born with its main module; the module is what a service deploys. */
+const mainModuleId = (boundedContextId: string) => `${boundedContextId}-main`;
+
+/** Give the context its main module and let the single service deploy it. */
+function wireMainModule(boundedContextId: string, store: ModelStore): void {
+  const moduleId = mainModuleId(boundedContextId);
+  const context = store.get('boundedContexts', boundedContextId);
+  if (!store.has('modules', moduleId)) {
+    store.put('modules', {
+      id: moduleId,
+      name: context?.name ?? boundedContextId,
+      boundedContextId,
+      main: true,
+    });
+  }
+  const alreadyDeployed = store.all('services')
+    .some((s) => asList(s.moduleIds).includes(moduleId));
+  if (alreadyDeployed) return;
+  const service = store.all('services')[0];
+  if (service) store.addToList('services', service.id, 'moduleIds', moduleId);
+}
+
+/** Owners an invariant may hang from, in resolution order. */
+const INVARIANT_OWNERS = ['aggregates', 'valueObjects', 'entities'];
+
+/** The stub state model an aggregate is born with, so it is complete from birth. */
+const stateModelId = (aggregateId: string) => `model-${aggregateId.replace(/^agg-/, '')}`;
+
+export const CORE_COMMANDS: Record<string, Handler> = {
+  // ---- bounded contexts --------------------------------------------------
+
+  'add-boundedContext': add({
+    type: 'boundedContexts',
+    init: (c) => ({
+      subdomainType: c.subdomainType ?? null,
+      aggregateIds: [],
+      useCaseIds: [],
+      valueObjectIds: [],
+    }),
+    after: (id, store) => wireMainModule(id, store),
+  }),
+
+  'remove-boundedContext': (store, command) => {
+    const id = String(command.id);
+    const context = store.get('boundedContexts', id);
+    if (!context) return;
+    if (asList(context.aggregateIds).length > 0) {
+      throw new CommandError(`El bounded context ${id} tiene agregados; bórralos primero`);
+    }
+    // The strategic relations that mention it go with it.
+    for (const relation of store.all('contextMapRelations')) {
+      if (relation.sourceBoundedContextId === id || relation.targetBoundedContextId === id) {
+        store.remove('contextMapRelations', relation.id);
+      }
+    }
+    // So do its modules — services let go of them first.
+    for (const module of store.all('modules').filter((m) => m.boundedContextId === id)) {
+      store.removeFromAllLists('services', 'moduleIds', module.id);
+      store.remove('modules', module.id);
+    }
+    store.remove('boundedContexts', id);
+  },
+
+  // ---- aggregates and their contents -------------------------------------
+
+  'add-aggregate': add({
+    type: 'aggregates',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds' },
+    stubs: (c) => [{
+      type: 'models',
+      element: { id: stateModelId(String(c.id)), name: c.name, fields: [], mappings: [] },
+    }],
+    init: (c) => ({
+      modelId: stateModelId(String(c.id)),
+      eventSourced: false,
+      invariants: [],
+      operations: [],
+      valueObjectIds: [],
+    }),
+  }),
+
+  'remove-aggregate': remove({
+    type: 'aggregates',
+    guards: [{
+      type: 'entities',
+      field: 'parentAggregateId',
+      message: (id) => `El agregado ${id} tiene entidades; bórralas primero`,
+    }],
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds' },
+  }),
+
+  'add-entity': add({
+    type: 'entities',
+    parent: { type: 'aggregates', from: 'aggregateId' },
+    init: (c) => ({ parentAggregateId: c.aggregateId, isCollection: false, invariants: [] }),
+  }),
+
+  'remove-entity': remove({ type: 'entities' }),
+
+  'set-entity-aggregate': setField({
+    type: 'entities',
+    field: 'parentAggregateId',
+    from: 'aggregateId',
+    map: (value, _command, store) => {
+      if (!store.has('aggregates', value)) {
+        throw new CommandError(`Agregado desconocido: ${value}`);
+      }
+      return value;
+    },
+  }),
+
+  'add-value-object': add({
+    type: 'valueObjects',
+    parent: { type: 'aggregates', from: 'aggregateId', list: 'valueObjectIds' },
+    init: (c) => ({
+      type: c.type && String(c.type).trim() ? c.type : 'Record',
+      valuesJson: '[]',
+      fieldsJson: '[]',
+      invariants: [],
+    }),
+  }),
+
+  'remove-value-object': remove({
+    type: 'valueObjects',
+    parent: { type: 'aggregates', from: 'aggregateId', list: 'valueObjectIds' },
+  }),
+
+  'set-value-object-aggregate': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('valueObjects', id)) throw new CommandError(`Value object desconocido: ${id}`);
+    const target = command.aggregateId as string | undefined;
+    if (target && !store.has('aggregates', target)) {
+      throw new CommandError(`Agregado desconocido: ${target}`);
+    }
+    store.removeFromAllLists('aggregates', 'valueObjectIds', id);
+    if (target) store.addToList('aggregates', target, 'valueObjectIds', id);
+  },
+
+  // ---- invariants: nested, with three possible owners ---------------------
+
+  'add-invariant': addNested({
+    owners: INVARIANT_OWNERS,
+    list: 'invariants',
+    ownerFrom: ['ownerId', 'aggregateId'],
+    init: () => ({ conditions: [] }),
+  }),
+
+  'remove-invariant': removeNested({ owners: INVARIANT_OWNERS, list: 'invariants' }),
+
+  'set-invariant-condition': setNested({
+    owners: INVARIANT_OWNERS,
+    list: 'invariants',
+    patch: (invariant, command) => {
+      const expression = String(command.expression ?? '').trim();
+      const errorMessage = String(command.errorMessage ?? '').trim();
+      const blank = !expression && !errorMessage;
+      return {
+        conditions: blank ? [] : [{
+          id: `${invariant.id}-cond`,
+          expression: command.expression ?? null,
+          warning: false,
+          errorMessage: command.errorMessage ?? null,
+        }],
+      };
+    },
+  }),
+
+  // ---- domain surface ----------------------------------------------------
+
+  'add-domain-event': add({ type: 'domainEvents', parent: { type: 'aggregates', from: 'aggregateId', required: false } }),
+  'remove-domain-event': remove({ type: 'domainEvents' }),
+  'add-application-event': add({ type: 'applicationEvents' }),
+  'remove-application-event': remove({ type: 'applicationEvents' }),
+  'add-domain-service': add({ type: 'domainServices' }),
+  'remove-domain-service': remove({ type: 'domainServices' }),
+  'add-read-model': add({ type: 'readModels', init: (c) => ({ aggregateId: c.aggregateId ?? null }) }),
+  'remove-read-model': remove({ type: 'readModels' }),
+
+  'add-use-case': add({
+    type: 'useCases',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'useCaseIds', required: false },
+    init: (c) => ({ policy: c.policy ?? false, steps: [] }),
+  }),
+
+  'remove-use-case': remove({
+    type: 'useCases',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'useCaseIds' },
+    detach: [{ type: 'actors', field: 'useCaseIds' }],
+  }),
+
+  // ---- strategic relations (top-level, one file each) ---------------------
+
+  'add-relation': (store, command) => {
+    const source = String(command.sourceId);
+    const target = String(command.targetId);
+    const duplicate = store.all('contextMapRelations').some(
+      (r) => r.sourceBoundedContextId === source && r.targetBoundedContextId === target);
+    if (duplicate) return;
+    store.put('contextMapRelations', {
+      id: `rel-${source}-${target}`,
+      sourceBoundedContextId: source,
+      targetBoundedContextId: target,
+      type: command.type ?? null,
+      upstreamRoles: [],
+    });
+  },
+
+  'remove-relation': remove({ type: 'contextMapRelations' }),
+  'set-relation-type': setField({ type: 'contextMapRelations', field: 'type' }),
+
+  'add-archimate-relation': add({
+    type: 'archimateRelations',
+    init: (c) => ({ sourceId: c.sourceId, targetId: c.targetId, type: c.type }),
+  }),
+
+  'remove-archimate-relation': remove({ type: 'archimateRelations' }),
+  'set-archimate-relation-type': setField({ type: 'archimateRelations', field: 'type' }),
+
+  'invert-archimate-relation': (store, command) => {
+    const relation = store.get('archimateRelations', String(command.id));
+    if (!relation) return;
+    store.patch('archimateRelations', relation.id, {
+      sourceId: relation.targetId,
+      targetId: relation.sourceId,
+    });
+  },
+
+  // ---- canvas furniture --------------------------------------------------
+
+  'add-note': add({ type: 'notes', init: (c) => ({ text: c.text ?? null }) }),
+  'remove-note': remove({ type: 'notes' }),
+  'add-area': add({ type: 'areas', init: (c) => ({ title: c.title ?? null, memberIds: [] }) }),
+  'remove-area': remove({ type: 'areas' }),
+  'add-url': add({ type: 'urls', init: (c) => ({ uri: c.uri ?? null }) }),
+  'remove-url': remove({ type: 'urls' }),
+
+  'note-attach': (store, command) => {
+    const note = store.get('notes', String(command.id));
+    if (!note) throw new CommandError(`Nota desconocida: ${command.id}`);
+    store.addToList('notes', note.id, 'attachedToIds', String(command.targetId));
+  },
+
+  'note-detach': (store, command) => {
+    const note = store.get('notes', String(command.id));
+    if (!note) return;
+    store.removeFromList('notes', note.id, 'attachedToIds', String(command.targetId));
+  },
+
+  // ---- topology ----------------------------------------------------------
+
+  'add-module': add({
+    type: 'modules',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', required: false },
+    init: (c) => ({ boundedContextId: c.boundedContextId ?? null, main: false, elementIds: [] }),
+  }),
+
+  'remove-module': (store, command) => {
+    const id = String(command.id);
+    store.removeFromAllLists('services', 'moduleIds', id);
+    store.remove('modules', id);
+  },
+
+  'add-service': add({ type: 'services', init: () => ({ moduleIds: [] }) }),
+  'remove-service': remove({ type: 'services' }),
+  'add-service-module': (store, command) => {
+    const service = String(command.id);
+    if (!store.has('services', service)) throw new CommandError(`Servicio desconocido: ${service}`);
+    // A module is deployed by exactly one service.
+    store.removeFromAllLists('services', 'moduleIds', String(command.targetId));
+    store.addToList('services', service, 'moduleIds', String(command.targetId));
+  },
+  'remove-service-module': (store, command) => {
+    store.removeFromList('services', String(command.id), 'moduleIds', String(command.targetId));
+  },
+};
+
+/** Element shapes this block creates, for the schema-defaults check in tests. */
+export const CORE_TYPES: string[] = [
+  'boundedContexts', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
+  'domainEvents', 'applicationEvents', 'domainServices', 'readModels', 'useCases',
+  'contextMapRelations', 'archimateRelations', 'notes', 'areas', 'urls',
+];
+
+export type { Element };
