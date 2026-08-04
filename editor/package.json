@@ -1,7 +1,7 @@
 {
   "name": "@modux/editor",
   "version": "0.1.0",
-  "description": "Graphical model editor for modux \u2014 Lit web component, embeddable in Mateu",
+  "description": "Graphical model editor for modux — Lit web component, embeddable in Mateu",
   "type": "module",
   "main": "dist/modux-editor.js",
   "module": "dist/modux-editor.js",
@@ -20,7 +20,8 @@
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
     "elkjs": "^0.11.1",
-    "lit": "^3.2.0"
+    "lit": "^3.2.0",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/d3-selection": "^3.0.11",
