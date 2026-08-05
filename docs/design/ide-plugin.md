@@ -877,9 +877,15 @@ Del RFC, nada: la lista se cerró con §8.1.7 y esto está mergeado a `main`. Lo
    instalar—, así que quedan una cuenta de JetBrains, la moderación del primer envío (que va por
    web, no por token) y el `pluginIcon.svg`, ya añadido.
 
-   Lo que sí hay que decidir es el **`since-build`**. Declara `242` (2024.2) pero se construye
-   contra `252`: es una promesa de compatibilidad que nadie ha comprobado. O se estrecha a `252`,
-   o se pasa el Plugin Verifier contra `242` y se sostiene con datos.
+   **El `since-build` estaba mal, y el Plugin Verifier lo cazó.** Declaraba `242` (2024.2), pero
+   `com.intellij.ui.jcef.utils.JBCefStreamResourceHandler` —con lo que `EditorResources` sirve el
+   bundle— no existe hasta `251`. Medido: 242 ✗, 243 ✗, 251 ✓, 252 ✓. O sea que en 2024.2 el
+   panel habría reventado nada más abrir un modelo, y lo habría descubierto quien lo instalara.
+   `sinceBuild = "251"`, y el verificador queda configurado sobre el rango que sí se sostiene.
+
+   Ensanchar a 2024.x es posible: `JBCefStreamResourceHandler` es un envoltorio de conveniencia
+   sobre `CefResourceHandler` y se puede escribir a mano. No se ha hecho porque sería otra
+   promesa sin ejecutar hasta arrancar un 2024.2 de verdad.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
 Lo revelador fue dónde: **lo único que no compilaba era `infra/in/ui` (17 578 líneas, referencias

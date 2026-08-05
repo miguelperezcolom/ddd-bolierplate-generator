@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -43,7 +44,11 @@ intellijPlatform {
     pluginConfiguration {
         name = "Modux"
         ideaVersion {
-            sinceBuild = "242"
+            // 251 (2025.1) y no menos, MEDIDO con el Plugin Verifier: en 242 y 243 no existe
+            // com.intellij.ui.jcef.utils.JBCefStreamResourceHandler, que es con lo que
+            // EditorResources sirve el bundle del editor. Declarar 242 era prometer que el panel
+            // abre en 2024.2, donde en realidad habría reventado nada más abrir un modelo.
+            sinceBuild = "251"
             untilBuild = provider { null }
         }
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
@@ -59,6 +64,23 @@ intellijPlatform {
             </ul>
             <p>Code generation is the <code>modux-maven-plugin</code>, a separate artifact.</p>
         """.trimIndent()
+    }
+
+    /**
+     * `since-build` is a promise, and this is what checks it — the same Plugin Verifier the
+     * Marketplace runs during moderation, so failing here is strictly better than failing there.
+     * It already earned its keep: the original claim of 2024.2 was false, and the floor measured
+     * out at 2025.1 (see `ideaVersion` above). What is listed here is the range actually
+     * claimed — the floor, and the version built against.
+     *
+     * Run with `./gradlew verifyPlugin`. It downloads the IDEs it checks against, so it is not
+     * part of the normal build.
+     */
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2025.1")
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
+        }
     }
 }
 
