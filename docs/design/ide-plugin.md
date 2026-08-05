@@ -872,8 +872,14 @@ Del RFC, nada: la lista se cerró con §8.1.7 y esto está mergeado a `main`. Lo
    pero quien lo instale no puede generar. Por eso v0.1.0 se publica como release de GitHub —para
    instalar desde disco— y **no** en el Marketplace de JetBrains. Publicar ahí la mitad que se ve,
    sabiendo que la otra no existe públicamente, sería vender una puerta sin habitación detrás.
-4. Subir al Marketplace, cuando toque, pide además firma (obligatoria), un token de la cuenta de
-   JetBrains, moderación del primer envío y un `pluginIcon.svg`.
+4. Subir al Marketplace pide menos de lo que parecía: **la firma NO es obligatoria** —el propio
+   Marketplace firma lo que se le sube, y firmarlo tú solo evita un diálogo de aviso al
+   instalar—, así que quedan una cuenta de JetBrains, la moderación del primer envío (que va por
+   web, no por token) y el `pluginIcon.svg`, ya añadido.
+
+   Lo que sí hay que decidir es el **`since-build`**. Declara `242` (2024.2) pero se construye
+   contra `252`: es una promesa de compatibilidad que nadie ha comprobado. O se estrecha a `252`,
+   o se pasa el Plugin Verifier contra `242` y se sostiene con datos.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
 Lo revelador fue dónde: **lo único que no compilaba era `infra/in/ui` (17 578 líneas, referencias

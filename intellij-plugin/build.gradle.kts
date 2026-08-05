@@ -46,6 +46,19 @@ intellijPlatform {
             sinceBuild = "242"
             untilBuild = provider { null }
         }
+        // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
+        // must be about THIS version — the full history belongs in the repository.
+        changeNotes = """
+            <h4>0.1.0</h4>
+            <p>First release. The modux model editor, inside the IDE.</p>
+            <ul>
+              <li>Graphical editor over the YAML model in your repository — no server to run.</li>
+              <li>Edits are plain file changes: what you see is what git sees.</li>
+              <li>Diagram geometry is versioned with the model, not stored elsewhere.</li>
+              <li>References to other modux projects resolve from the git URL alone.</li>
+            </ul>
+            <p>Code generation is the <code>modux-maven-plugin</code>, a separate artifact.</p>
+        """.trimIndent()
     }
 }
 
