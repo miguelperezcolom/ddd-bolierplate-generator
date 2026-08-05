@@ -20,6 +20,40 @@ export interface IdeFileSystem extends FileSystem {
   pending(): number;
 }
 
+/**
+ * Where another project's model is on this machine, or null when it cannot be found.
+ *
+ * The coordinate travels with the model (§4.7); turning it into a place on disk is I/O and
+ * machine-specific, so the host answers it. Not finding it is an answer, not a failure: the
+ * reference's snapshot is what generation reads, and losing sight of the source does not
+ * invalidate it — only refreshing it becomes impossible.
+ */
+export async function resolveProject(
+  bridge: Bridge, coordinate: { gitUrl?: string; path?: string },
+): Promise<string | null> {
+  const root = await bridge({ op: 'resolveProject', ...coordinate });
+  return typeof root === 'string' && root ? root : null;
+}
+
+/**
+ * A read-only view of ANOTHER project's model.
+ *
+ * Read-only is structural, not a promise: there is no write operation that takes a root, so
+ * writing outside the open model is not something this can express.
+ */
+export function readOnlyFileSystem(bridge: Bridge, root: string): FileSystem {
+  const refuse = () => {
+    throw new Error('El modelo de otro proyecto se lee, no se escribe');
+  };
+  return {
+    list: async (dir) => (await bridge({ op: 'list', path: dir, root })) as string[],
+    read: async (path) => (await bridge({ op: 'read', path, root })) as string,
+    exists: async (path) => (await bridge({ op: 'exists', path, root })) as boolean,
+    write: refuse,
+    delete: refuse,
+  };
+}
+
 /** The bridge the IDE injected, or null when running outside one. */
 export function hostBridge(): Bridge | null {
   const bridge = (globalThis as { moduxBridge?: Bridge }).moduxBridge;

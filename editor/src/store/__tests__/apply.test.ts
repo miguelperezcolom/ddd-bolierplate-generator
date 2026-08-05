@@ -307,9 +307,7 @@ describe('coverage', () => {
     const declared = [...union.matchAll(/kind: '([a-z0-9-]+)'/g)].map((m) => m[1]);
 
     expect(new Set(declared).size).toBeGreaterThan(250);
-    // the one exception, and it is deliberate: referencing another project means READING another
-    // model off disk, which is the host's job — the applier stays pure over an in-memory store
-    // (docs/design/ide-plugin.md §8.1.1)
-    expect(unsupported([...new Set(declared)])).toEqual(['add-project-reference']);
+    // no exceptions left: every kind the editor can emit has a handler
+    expect(unsupported([...new Set(declared)])).toEqual([]);
   });
 });

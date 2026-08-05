@@ -12,10 +12,13 @@ import type { ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
 import { apply, CommandError } from '../store/apply.js';
 import { layoutOf, saveLayout } from '../store/layout.js';
+import { snapshotOf } from '../store/project-snapshot.js';
 import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
-import { hostBridge, ideFileSystem, type IdeFileSystem } from './ide-fs.js';
+import {
+  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, type IdeFileSystem,
+} from './ide-fs.js';
 import '../modux-editor.js';
 
 /** Paths from here are relative to the model root: the host is already rooted there. */
@@ -94,6 +97,30 @@ export class ModuxEditorIde extends LitElement {
   }
 
   /**
+   * The one command that needs the outside world: referencing another project means READING its
+   * model. The applier does no I/O, so the host does it here and hands over the snapshot already
+   * read — see `docs/design/ide-plugin.md` §4.7.
+   *
+   * Not finding the other project is reported, not thrown: it is an ordinary situation (a sibling
+   * that is not checked out) and the user can fix it by cloning it or giving the reference a path.
+   */
+  private async enrich(command: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (command.kind !== 'add-project-reference') return command;
+    const bridge = hostBridge();
+    const coordinate = (command.referencedProject ?? {}) as { gitUrl?: string; path?: string };
+    if (!bridge) throw new CommandError('Sin puente con el IDE');
+    const root = await resolveProject(bridge, coordinate);
+    if (!root) {
+      throw new CommandError(
+        `No encuentro el modelo de ${coordinate.gitUrl ?? coordinate.path}. Clónalo al lado de`
+        + ' este repositorio, o dale un path a la referencia.');
+    }
+    const other = await loadTree(readOnlyFileSystem(bridge, root), ROOT);
+    const fallback = root.split('/').filter(Boolean).at(-1) ?? 'proyecto';
+    return { ...command, snapshot: snapshotOf(other, fallback) };
+  }
+
+  /**
    * The geometry is model data like everything else — it lives in `diagrams/`, one file per view,
    * versioned on purpose (§4.4). So it takes the same road as a command: into the store, then out
    * to the files that changed.
@@ -131,7 +158,8 @@ export class ModuxEditorIde extends LitElement {
   private async run(command: unknown): Promise<void> {
     if (!this.fs) return;
     try {
-      apply(this.store, command as never);
+      const enriched = await this.enrich(command as Record<string, unknown>);
+      apply(this.store, enriched as never);
       await flush(this.fs, ROOT, this.store);
       await this.fs.commit();
       this.error = null;

@@ -34,8 +34,12 @@ public final class EditorBridge implements Disposable {
     private final JBCefBrowser browser;
     private final JBCefJSQuery query;
     private final ModelFiles files;
+    private final Project project;
+    private final VirtualFile modelRoot;
 
     public EditorBridge(Project project, VirtualFile modelRoot) {
+        this.project = project;
+        this.modelRoot = modelRoot;
         this.files = new ModelFiles(project, modelRoot);
         this.browser = JBCefBrowser.createBuilder().setOffScreenRendering(false).build();
         this.query = JBCefJSQuery.create((com.intellij.ui.jcef.JBCefBrowserBase) browser);
@@ -92,11 +96,13 @@ public final class EditorBridge implements Disposable {
         try {
             var request = GSON.fromJson(raw, JsonObject.class);
             var op = request.get("op").getAsString();
+            var files = filesFor(request);
             var result = switch (op) {
                 case "list" -> GSON.toJsonTree(files.list(path(request)));
                 case "read" -> GSON.toJsonTree(files.read(path(request)));
                 case "exists" -> GSON.toJsonTree(files.exists(path(request)));
                 case "flush" -> flush(request);
+                case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
                 default -> throw new IllegalArgumentException("unknown op: " + op);
             };
             var envelope = new JsonObject();
@@ -110,6 +116,40 @@ public final class EditorBridge implements Disposable {
             envelope.add("error", GSON.toJsonTree(String.valueOf(e.getMessage())));
             return new JBCefJSQuery.Response(GSON.toJson(envelope));
         }
+    }
+
+    /**
+     * Which model a read is against.
+     *
+     * <p>Without a `root` it is the open one, which is every request but the ones that go looking
+     * at ANOTHER project. Those carry the root {@code resolveProject} handed back, and are
+     * read-only by construction: no write operation reads this, so nothing outside the open model
+     * can be written whatever the editor asks.
+     */
+    private ModelFiles filesFor(JsonObject request) {
+        var root = request.has("root") && !request.get("root").isJsonNull()
+                ? request.get("root").getAsString() : null;
+        if (root == null || root.isBlank()) return files;
+        var other = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                .findFileByPath(root);
+        if (other == null) throw new IllegalArgumentException("no such project root: " + root);
+        return new ModelFiles(project, other);
+    }
+
+    /**
+     * Where another project's model is on this machine, given the coordinate the model stores
+     * (§4.7), or null when it cannot be found — which the editor reports rather than failing:
+     * the reference's snapshot is what generation reads, and it is intact either way.
+     */
+    private String resolveProject(JsonObject request) {
+        var located = ReferencedProjects.locate(modelRoot,
+                string(request, "gitUrl"), string(request, "path"));
+        return located == null ? null : located.getPath();
+    }
+
+    private static String string(JsonObject request, String field) {
+        return request.has(field) && !request.get(field).isJsonNull()
+                ? request.get(field).getAsString() : null;
     }
 
     /**
