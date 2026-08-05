@@ -286,11 +286,12 @@ describe('coverage', () => {
   it('rejects a command kind it does not know instead of silently dropping it', () => {
     const store = withContext();
 
-    expect(() => apply(store, { kind: 'add-page-wizard-step', id: 'x' })).toThrow(/no soportado/);
+    // a workflow command: that block is not ported yet, so this is a real unknown
+    expect(() => apply(store, { kind: 'add-workflow-step', id: 'x' })).toThrow(/no soportado/);
   });
 
   it('reports which kinds are still missing', () => {
-    expect(unsupported(['add-aggregate', 'add-page'])).toEqual(['add-page']);
+    expect(unsupported(['add-aggregate', 'add-workflow'])).toEqual(['add-workflow']);
     expect(Object.keys(HANDLERS).length).toBeGreaterThan(30);
   });
 });
