@@ -211,8 +211,7 @@ public class EditorModelProjection {
                 .toList();
 
         var projects = scoped(ProjectEntity.class);
-        var externalSystems = java.util.stream.Stream.ofNullable(currentProject)
-                .flatMap(p -> p.externalSystems().stream())
+        var externalSystems = scoped(ExternalSystemEntity.class).stream()
                 .map(x -> new ExternalSystemDto(x.id(), x.name(), x.useCases().stream()
                         .map(u -> new ExternalUseCaseDto(u.id(), u.name()))
                         .toList(),
@@ -577,16 +576,15 @@ public class EditorModelProjection {
             role.externalSystemIds().forEach(id ->
                     actorExternalDependencies.add(new ActorExternalDependencyDto(role.id(), id)));
         }
+        // external systems are top-level elements now: they exist whether or not a project does
         var externalSystemDependencies = new ArrayList<ExternalSystemDependencyDto>();
-        if (currentProject != null) {
-            for (var x : currentProject.externalSystems()) {
-                x.dependsOnExternalSystemIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
-                x.dependsOnApiIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
-                x.cqrsExternalSystemIds().forEach(id -> externalSystemDependencies.add(
-                        new ExternalSystemDependencyDto(x.id(), id, "CQRS")));
-            }
+        for (var x : scoped(ExternalSystemEntity.class)) {
+            x.dependsOnExternalSystemIds().forEach(id -> externalSystemDependencies.add(
+                    new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
+            x.dependsOnApiIds().forEach(id -> externalSystemDependencies.add(
+                    new ExternalSystemDependencyDto(x.id(), id, "DEPENDS")));
+            x.cqrsExternalSystemIds().forEach(id -> externalSystemDependencies.add(
+                    new ExternalSystemDependencyDto(x.id(), id, "CQRS")));
         }
         var proxyApis = scoped(ProxyApiEntity.class).stream()
                 .map(px -> new ProxyApiDto(px.id(), px.name(), px.targetApiId(),
@@ -600,8 +598,7 @@ public class EditorModelProjection {
                 .flatMap(px -> px.operationRoutes().stream()
                         .map(r -> new ProxyOperationRouteDto(px.id(), r.operationId(), r.targetSiteId())))
                 .toList();
-        var externalOperationUses = java.util.stream.Stream.ofNullable(currentProject)
-                .flatMap(pr -> pr.externalSystems().stream())
+        var externalOperationUses = scoped(ExternalSystemEntity.class).stream()
                 .flatMap(x -> x.apiOperationUses().stream()
                         .map(u -> new ExternalOperationUseDto(x.id(), u.operationId(), u.siteId())))
                 .toList();
@@ -707,8 +704,7 @@ public class EditorModelProjection {
                     Objects.toString(boundedContextOfAggregate.apply(ref.sourceAggregateId()), "")),
                     "referencia " + ref.sourceAggregateId() + " → " + ref.targetAggregateId());
         }
-        var annotations = currentProject == null
-                ? List.<ContextMapRelationEntity>of() : currentProject.contextMap();
+        var annotations = scoped(ContextMapRelationEntity.class);
         // The PATTERN of a derived pair can often be read off its dependencies: mutual
         // → partnership; embedded aggregates → shared kernel; events only → published
         // language; one upstream serving many → open host service; direct calls →

@@ -59,7 +59,8 @@ class DeriveInteractionUseCaseTest {
                 .id("housekeeping").name("Housekeeping")
                 .useCases(List.of(new ExternalSystemUseCaseEntity("ext-limpieza", "POST /limpieza", null)))
                 .build();
-        var project = ProjectEntity.builder().id("p1").externalSystems(List.of(housekeeping)).build();
+        // external systems are top-level elements now, not a field of the project
+        var project = ProjectEntity.builder().id("p1").build();
 
         var ucValidar = useCase("uc-validar",
                 step(UseCaseStepType.CallExternalUseCase, null, null, null, null, null, null, "ext-limpieza"));
@@ -85,6 +86,7 @@ class DeriveInteractionUseCaseTest {
                 .with(DomainEventEntity.class, List.of(checkinRealizado))
                 .with(QueryServiceEntity.class, List.of(qs))
                 .with(ProjectEntity.class, List.of(project))
+                .with(ExternalSystemEntity.class, List.of(housekeeping))
                 .with(UseCaseEntity.class, List.of(ucCheckin, ucValidar, ucNotificar, ucAuditar))
                 .with(FlowEntity.class, List.of(flow))
                 .with(SubscriptionEntity.class, List.of(subscription));

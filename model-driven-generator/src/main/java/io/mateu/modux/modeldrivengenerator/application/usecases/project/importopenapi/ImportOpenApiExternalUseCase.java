@@ -3,7 +3,6 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.importo
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.swagger.parser.OpenAPIParser;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -34,8 +33,7 @@ public class ImportOpenApiExternalUseCase {
                 .getOpenAPI();
         var result = OpenApiGatewayMapper.map(openApi);
 
-        var project = owningProject();
-        var external = project.externalSystems().stream()
+        var external = repository.findAllOfType(ExternalSystemEntity.class).stream()
                 .filter(x -> x.id().equals(command.externalSystemId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -56,7 +54,7 @@ public class ImportOpenApiExternalUseCase {
             }
             imported++;
         }
-        replaceExternal(project, withUseCases(external, List.copyOf(merged)));
+        replaceExternal(withUseCases(external, List.copyOf(merged)));
         log.info("Imported {} operations into external system '{}'",
                 imported, command.externalSystemId());
     }
@@ -72,17 +70,11 @@ public class ImportOpenApiExternalUseCase {
                 .toLowerCase();
     }
 
-    private void replaceExternal(ProjectEntity project, ExternalSystemEntity updated) {
-        repository.save(withExternalSystems(project, project.externalSystems().stream()
-                .map(x -> x.id().equals(updated.id()) ? updated : x)
-                .toList()));
+    /** An external system is its own element now, so replacing one is just saving it. */
+    private void replaceExternal(ExternalSystemEntity updated) {
+        repository.save(updated);
     }
 
-    private ProjectEntity owningProject() {
-        return repository.findAllOfType(ProjectEntity.class).stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No project in the model store"));
-    }
 
     /** Record copy with only useCases replaced — every other field preserved verbatim. */
     public static ExternalSystemEntity withUseCases(
@@ -90,16 +82,4 @@ public class ImportOpenApiExternalUseCase {
         return x.withUseCases(useCases);
     }
 
-    /** Record copy with only externalSystems replaced — every other field preserved verbatim. */
-    public static ProjectEntity withExternalSystems(
-            ProjectEntity p, List<ExternalSystemEntity> externalSystems) {
-        return new ProjectEntity(
-                p.id(), p.name(), p.outputPath(), p.packageName(), p.gitRepository(), p.database(),
-                p.dbMigrationTool(), p.terraformProvider(), p.terraformProviderVersion(),
-                p.terraformBackendType(), p.iamProvider(), p.messageBrokerType(), p.tracingProvider(),
-                p.metricsProvider(), p.loggingProvider(), p.llmProvider(), p.cacheProvider(),
-                p.fileStorageProvider(), p.emailProvider(), p.secretsProvider(), p.cicdProvider(),
-                p.environments(), p.serviceIds(), p.contextMap(), p.tenancyStrategy(),
-                externalSystems, p.objective());
-    }
 }

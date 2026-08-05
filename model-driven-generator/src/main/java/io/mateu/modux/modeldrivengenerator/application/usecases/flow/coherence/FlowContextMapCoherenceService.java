@@ -7,7 +7,6 @@ import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,18 +33,14 @@ public class FlowContextMapCoherenceService {
                 repository.findAllOfType(FlowEntity.class),
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(BoundedContextEntity.class),
-                repository.findAllOfType(ProjectEntity.class));
+                repository.findAllOfType(ContextMapRelationEntity.class));
     }
 
     /** Pure analysis over the given model slices — unit-testable without Spring or files. */
     public static List<FlowContextMapFinding> analyze(List<FlowEntity> flows,
                                                List<AggregateEntity> aggregates,
                                                List<BoundedContextEntity> boundedContexts,
-                                               List<ProjectEntity> projects) {
-        var relations = projects.stream()
-                .flatMap(p -> p.contextMap().stream())
-                .toList();
-
+                                               List<ContextMapRelationEntity> relations) {
         var findings = new ArrayList<FlowContextMapFinding>();
         for (var flow : flows) {
             findings.add(analyzeOne(flow, boundedContexts, relations));

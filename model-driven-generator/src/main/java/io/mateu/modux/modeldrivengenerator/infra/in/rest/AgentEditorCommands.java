@@ -162,7 +162,7 @@ public class AgentEditorCommands {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Unknown MCP gateway: " + command.sourceId()));
         var target = command.targetId();
-        if (projects.owningProject().externalSystems().stream()
+        if (projects.externalSystems().stream()
                 .flatMap(x -> x.mcpServers().stream()).anyMatch(s -> s.id().equals(target))) {
             if (!gateway.mcpServerIds().contains(target)) {
                 repository.save(gateway.withMcpServerIds(appended(gateway.mcpServerIds(), target)));
@@ -399,7 +399,7 @@ public class AgentEditorCommands {
     /** An external system calls one API operation at a site (published API, proxy or implementation). */
     public void addExternalOperationUse(EditorCommand command) {
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.sourceId()))
                 .findFirst()
@@ -411,12 +411,12 @@ public class AgentEditorCommands {
         uses.add(use);
         externalSystems.set(externalSystems.indexOf(external),
                 external.withApiOperationUses(java.util.List.copyOf(uses)));
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     public void removeExternalOperationUse(EditorCommand command) {
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         externalSystems.stream()
                 .filter(x -> x.id().equals(command.sourceId()))
                 .findFirst()
@@ -427,7 +427,7 @@ public class AgentEditorCommands {
                             .toList();
                     externalSystems.set(externalSystems.indexOf(external),
                             external.withApiOperationUses(uses));
-                    repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+                    projects.replaceExternalSystems(externalSystems);
                 });
     }
 
@@ -468,7 +468,7 @@ public class AgentEditorCommands {
     public void addAgentExternalUse(EditorCommand command) {
         var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var known = projects.owningProject().externalSystems().stream()
+        var known = projects.externalSystems().stream()
                 .flatMap(x -> x.useCases().stream())
                 .anyMatch(u -> u.id().equals(command.targetId()));
         if (!known) {
@@ -492,7 +492,7 @@ public class AgentEditorCommands {
     public void addAgentMcp(EditorCommand command) {
         var agent = repository.findById(command.sourceId(), AiAgentEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown AI agent: " + command.sourceId()));
-        var known = projects.owningProject().externalSystems().stream()
+        var known = projects.externalSystems().stream()
                 .flatMap(x -> x.mcpServers().stream())
                 .anyMatch(s -> s.id().equals(command.targetId()));
         if (!known) {
@@ -567,8 +567,7 @@ public class AgentEditorCommands {
             repository.save(rag.withSourceReadModelIds(appended(rag.sourceReadModelIds(), target)));
             return;
         }
-        var isExternalTable = projects.currentProject().stream()
-                .flatMap(pr -> pr.externalSystems().stream())
+        var isExternalTable = projects.externalSystems().stream()
                 .flatMap(x -> x.tables().stream())
                 .anyMatch(t -> t.id().equals(target));
         if (isExternalTable) {
@@ -583,7 +582,7 @@ public class AgentEditorCommands {
             repository.save(rag.withSourceApiIds(appended(rag.sourceApiIds(), target)));
             return;
         }
-        if (projects.currentProject().stream().flatMap(pr -> pr.externalSystems().stream())
+        if (projects.externalSystems().stream()
                 .anyMatch(x -> x.id().equals(target))) {
             if (rag.sourceExternalSystemIds().contains(target)) return;
             repository.save(rag.withSourceExternalSystemIds(

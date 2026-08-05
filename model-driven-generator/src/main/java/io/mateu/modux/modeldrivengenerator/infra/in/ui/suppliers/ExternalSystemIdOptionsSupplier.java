@@ -18,7 +18,7 @@ public class ExternalSystemIdOptionsSupplier implements LookupOptionsSupplier {
 
     @Override
     public ListingData<Option> search(String fieldName, String searchText, Pageable pageable, HttpRequest httpRequest) {
-        var all = projects.owningProject().externalSystems().stream()
+        var all = projects.externalSystems().stream()
                 .filter(x -> searchText == null || searchText.isBlank()
                         || x.name().toLowerCase().contains(searchText.toLowerCase())
                         || x.id().toLowerCase().contains(searchText.toLowerCase()))

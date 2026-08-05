@@ -13,6 +13,8 @@ import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
@@ -65,7 +67,10 @@ public record ModelSnapshot(
         List<UiAdapterEntity> uiAdapters,
         List<DomainServiceEntity> domainServices,
         List<ApplicationEventEntity> applicationEvents,
-        List<InteractionEntity> interactions
+        List<InteractionEntity> interactions,
+        /** Top-level now, no longer nested in the project. */
+        List<ExternalSystemEntity> externalSystems,
+        List<ContextMapRelationEntity> contextMapRelations
 ) {
 
     /** Backward-compatible constructor (pre-interactions callers). */
@@ -86,7 +91,7 @@ public record ModelSnapshot(
         this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
-                rags, apis, mcpGateways, modules, null, null, null, null, null);
+                rags, apis, mcpGateways, modules, null, null, null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-modules callers). */
@@ -233,6 +238,8 @@ public record ModelSnapshot(
         domainServices = nvl(domainServices);
         applicationEvents = nvl(applicationEvents);
         interactions = nvl(interactions);
+        externalSystems = nvl(externalSystems);
+        contextMapRelations = nvl(contextMapRelations);
     }
 
     public static ModelSnapshot from(ModelStore repository) {
@@ -266,13 +273,20 @@ public record ModelSnapshot(
                 repository.findAllOfType(UiAdapterEntity.class),
                 repository.findAllOfType(DomainServiceEntity.class),
                 repository.findAllOfType(ApplicationEventEntity.class),
-                repository.findAllOfType(InteractionEntity.class));
+                repository.findAllOfType(InteractionEntity.class),
+                repository.findAllOfType(ExternalSystemEntity.class),
+                repository.findAllOfType(ContextMapRelationEntity.class));
     }
 
     /** Snapshot with only the given slices — for tests. Everything else is empty. */
     public static ModelSnapshot empty() {
-        return new ModelSnapshot(null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        var constructor = ModelSnapshot.class.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        try {
+            return (ModelSnapshot) constructor.newInstance(new Object[constructor.getParameterCount()]);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Could not build an empty ModelSnapshot", e);
+        }
     }
 
     private static <T> List<T> nvl(List<T> list) {

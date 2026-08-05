@@ -187,6 +187,6 @@ class InteractionLintRulesTest {
             List<FlowEntity> flows) {
         return new ModelSnapshot(null, null, null, aggregates, null, useCases, domainEvents, null,
                 null, null, null, null, flows, null, null, pages, null, null, null, null, null,
-                null, null, null, null, roles, uiAdapters, null, null, interactions);
+                null, null, null, null, roles, uiAdapters, null, null, interactions, null, null);
     }
 }

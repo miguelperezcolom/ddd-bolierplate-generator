@@ -1168,12 +1168,12 @@ public class EditorApiController {
         }
         // Drop the strategic relations that mention it, then the boundedContext itself.
         var project = projects.owningProject();
-        var relations = project.contextMap().stream()
+        var relations = projects.contextMap().stream()
                 .filter(r -> !command.id().equals(r.sourceBoundedContextId())
                         && !command.id().equals(r.targetBoundedContextId()))
                 .toList();
-        if (relations.size() != project.contextMap().size()) {
-            repository.save(EditorProjectSupport.withContextMap(project, relations));
+        if (relations.size() != projects.contextMap().size()) {
+            projects.replaceContextMap(relations);
         }
         // Its modules go with it: services let go of them first.
         var moduleIds = repository.findAllOfType(ModuleEntity.class).stream()
@@ -1269,33 +1269,33 @@ public class EditorApiController {
                             .toList())));
             case "external-table" -> {
                 var project = projects.owningProject();
-                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+                projects.replaceExternalSystems(projects.externalSystems().stream()
                         .map(x -> withTables(x, x.tables().stream()
                                 .map(t -> t.id().equals(command.id())
                                         ? new ExternalSystemTableEntity(
                                                 t.id(), command.name(), t.description())
                                         : t)
                                 .toList()))
-                        .toList()));
+                        .toList());
             }
             case "mcp-server" -> {
                 var project = projects.owningProject();
-                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+                projects.replaceExternalSystems(projects.externalSystems().stream()
                         .map(x -> x.withMcpServers(x.mcpServers().stream()
                                 .map(s -> s.id().equals(command.id())
                                         ? new McpServerEntity(
                                                 s.id(), command.name(), s.description(), s.uri())
                                         : s)
                                 .toList()))
-                        .toList()));
+                        .toList());
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
             case "external-system" -> {
                 var project = projects.owningProject();
-                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+                projects.replaceExternalSystems(projects.externalSystems().stream()
                         .map(x -> x.id().equals(command.id()) ? x.withName(command.name()) : x)
-                        .toList()));
+                        .toList());
             }
             case "application-event" -> repository.findById(command.id(), ApplicationEventEntity.class)
                     .ifPresent(ev -> repository.save(new ApplicationEventEntity(
@@ -1344,14 +1344,14 @@ public class EditorApiController {
                             uc.decisionIds(), uc.policy(), null)));
             case "external-use-case" -> {
                 var project = projects.owningProject();
-                repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+                projects.replaceExternalSystems(projects.externalSystems().stream()
                         .map(x -> withUseCases(x, x.useCases().stream()
                                 .map(u -> u.id().equals(command.id())
                                         ? new ExternalSystemUseCaseEntity(
                                                 u.id(), command.name(), u.description())
                                         : u)
                                 .toList()))
-                        .toList()));
+                        .toList());
             }
             case "workflow" -> repository.findById(command.id(), WorkflowEntity.class)
                     .ifPresent(w -> repository.save(w.toBuilder().name(command.name()).build()));
@@ -1995,7 +1995,7 @@ public class EditorApiController {
     private void addActorExternalDependency(EditorCommand command) {
         var role = repository.findById(command.sourceId(), RoleEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown actor: " + command.sourceId()));
-        var known = projects.owningProject().externalSystems().stream()
+        var known = projects.externalSystems().stream()
                 .anyMatch(x -> x.id().equals(command.targetId()));
         if (!known) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
@@ -2021,7 +2021,7 @@ public class EditorApiController {
             throw new IllegalArgumentException("Un sistema externo no puede depender de sí mismo");
         }
         var project = projects.owningProject();
-        var source = project.externalSystems().stream()
+        var source = projects.externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Sistema externo desconocido: " + command.sourceId()));
@@ -2035,16 +2035,16 @@ public class EditorApiController {
             if (source.dependsOnApiIds().contains(command.targetId())) return;
             var ids = new ArrayList<>(source.dependsOnApiIds());
             ids.add(command.targetId());
-            repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+            projects.replaceExternalSystems(projects.externalSystems().stream()
                     .map(x -> x.id().equals(command.sourceId()) ? x.withDependsOnApiIds(ids) : x)
-                    .toList()));
+                    .toList());
             return;
         }
-        if (project.externalSystems().stream().noneMatch(x -> x.id().equals(command.targetId()))) {
+        if (projects.externalSystems().stream().noneMatch(x -> x.id().equals(command.targetId()))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());
         }
         // The two flavours are exclusive: re-drawing with the other type retypes the edge.
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> {
                     if (!x.id().equals(command.sourceId())) return x;
                     var plainWithout = (List<String>) x.dependsOnExternalSystemIds().stream()
@@ -2062,13 +2062,13 @@ public class EditorApiController {
                     return x.withDependsOnExternalSystemIds(ids)
                             .withCqrsExternalSystemIds(cqrsWithout);
                 })
-                .toList()));
+                .toList());
     }
 
     /** The target may live in any list (system, CQRS, API/proxy): clear it everywhere. */
     private void removeExternalSystemDependency(EditorCommand command) {
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> x.id().equals(command.sourceId())
                         ? x.withDependsOnExternalSystemIds(x.dependsOnExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
@@ -2077,14 +2077,14 @@ public class EditorApiController {
                                 .withCqrsExternalSystemIds(x.cqrsExternalSystemIds().stream()
                                         .filter(id -> !id.equals(command.targetId())).toList())
                         : x)
-                .toList()));
+                .toList());
     }
 
     /** Nest an API (or an API proxy) inside its host external system; empty target un-nests. */
     private void setApiPublisher(EditorCommand command) {
         var target = command.targetId();
         if (target != null && !target.isBlank()) {
-            var known = projects.owningProject().externalSystems().stream()
+            var known = projects.externalSystems().stream()
                     .anyMatch(x -> x.id().equals(target));
             if (!known) {
                 throw new IllegalArgumentException("Sistema externo desconocido: " + target);
@@ -2111,7 +2111,7 @@ public class EditorApiController {
         }
         var host = command.boundedContextId();
         if (host != null && !host.isBlank()
-                && projects.owningProject().externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
+                && projects.externalSystems().stream().noneMatch(x -> x.id().equals(host))) {
             throw new IllegalArgumentException("Sistema externo desconocido: " + host);
         }
         var targetApi = target == null || target.isBlank() ? null : target;
@@ -2129,21 +2129,20 @@ public class EditorApiController {
      */
     private void repointApiDependencies(String fromId, String toId, String exceptSystemId) {
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> x.dependsOnApiIds().contains(fromId) && !x.id().equals(exceptSystemId)
                         ? x.withDependsOnApiIds(x.dependsOnApiIds().stream()
                                 .map(i -> i.equals(fromId) ? toId : i)
                                 .distinct()
                                 .toList())
                         : x)
-                .toList()));
+                .toList());
     }
 
     private void removeProxyApi(EditorCommand command) {
         var proxy = repository.findById(command.id(), ProxyApiEntity.class).orElse(null);
         if (proxy == null) return;
-        var dependedOn = projects.currentProject().stream()
-                .flatMap(p -> p.externalSystems().stream())
+        var dependedOn = projects.externalSystems().stream()
                 .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
         if (dependedOn && proxy.targetApiId() == null) {
             throw new IllegalArgumentException(
@@ -2250,7 +2249,7 @@ public class EditorApiController {
      */
     private void addExternalCrud(EditorCommand command) {
         var project = projects.owningProject();
-        var external = project.externalSystems().stream()
+        var external = projects.externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
         var aggregate = repository.findById(command.targetId(), AggregateEntity.class)
@@ -2263,8 +2262,8 @@ public class EditorApiController {
         if (!external.dependsOnApiIds().contains(apiId)) {
             var ids = new ArrayList<>(external.dependsOnApiIds());
             ids.add(apiId);
-            repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
-                    .map(x -> x.id().equals(external.id()) ? x.withDependsOnApiIds(ids) : x).toList()));
+            projects.replaceExternalSystems(projects.externalSystems().stream()
+                    .map(x -> x.id().equals(external.id()) ? x.withDependsOnApiIds(ids) : x).toList());
         }
     }
 
@@ -2272,14 +2271,13 @@ public class EditorApiController {
         var apiId = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
                 .CrudApi.apiId(command.targetId());
         var project = projects.owningProject();
-        project.externalSystems().stream().filter(x -> x.id().equals(command.sourceId())).findFirst()
+        projects.externalSystems().stream().filter(x -> x.id().equals(command.sourceId())).findFirst()
                 .filter(x -> x.dependsOnApiIds().contains(apiId))
-                .ifPresent(x -> repository.save(EditorProjectSupport.withExternalSystems(project,
-                        project.externalSystems().stream()
+                .ifPresent(x -> projects.replaceExternalSystems(projects.externalSystems().stream()
                                 .map(s -> s.id().equals(x.id())
                                         ? s.withDependsOnApiIds(s.dependsOnApiIds().stream()
                                                 .filter(id -> !id.equals(apiId)).toList())
-                                        : s).toList())));
+                                        : s).toList()));
         // Drop the external system's INBOUND ACL entries to the aggregate's CRUD use cases; leave the API.
         var crudIds = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold
                 .CrudUseCases.idsOf(command.targetId());
@@ -2490,7 +2488,7 @@ public class EditorApiController {
 
     /** An external system calls one of our use cases: an INBOUND ACL in the target boundedContext. */
     private void addExternalCall(EditorCommand command) {
-        var external = projects.owningProject().externalSystems().stream()
+        var external = projects.externalSystems().stream()
                 .filter(x -> x.id().equals(command.sourceId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown external system: " + command.sourceId()));
@@ -2548,7 +2546,7 @@ public class EditorApiController {
     /** A use case OFFERED by an external system (boundedContextId carries the external system id). */
     private void addExternalUseCase(EditorCommand command) {
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
@@ -2557,7 +2555,7 @@ public class EditorApiController {
         var useCases = new ArrayList<>(external.useCases());
         useCases.add(new ExternalSystemUseCaseEntity(command.id(), command.name(), null));
         externalSystems.set(externalSystems.indexOf(external), withUseCases(external, useCases));
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     private void removeExternalUseCase(EditorCommand command) {
@@ -2569,17 +2567,17 @@ public class EditorApiController {
                     "El caso de uso externo " + command.id() + " lo llaman casos de uso; quita esas llamadas primero");
         }
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> withUseCases(x, x.useCases().stream()
                         .filter(u -> !u.id().equals(command.id())).toList()))
-                .toList()));
+                .toList());
     }
 
     /** Our use case calls an external system's use case: a CallExternalUseCase step. */
     private void addExternalUcCall(EditorCommand command) {
         var source = repository.findById(command.sourceId(), UseCaseEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown use case: " + command.sourceId()));
-        var target = projects.owningProject().externalSystems().stream()
+        var target = projects.externalSystems().stream()
                 .flatMap(x -> x.useCases().stream())
                 .filter(u -> u.id().equals(command.targetId()))
                 .findFirst()
@@ -2615,7 +2613,7 @@ public class EditorApiController {
     /** An MCP server published by an external system (boundedContextId carries the external system id). */
     private void addMcpServer(EditorCommand command) {
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
@@ -2625,7 +2623,7 @@ public class EditorApiController {
         var servers = new ArrayList<>(external.mcpServers());
         servers.add(new McpServerEntity(command.id(), command.name(), null, command.uri()));
         externalSystems.set(externalSystems.indexOf(external), external.withMcpServers(servers));
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     /** Removing an MCP server also unlinks it from agents and gateways that aggregated it. */
@@ -2640,16 +2638,16 @@ public class EditorApiController {
                 .forEach(g -> repository.save(g.withMcpServerIds(
                         AgentEditorCommands.without(g.mcpServerIds(), command.id()))));
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> x.withMcpServers(x.mcpServers().stream()
                         .filter(s -> !s.id().equals(command.id())).toList()))
-                .toList()));
+                .toList());
     }
 
     /** A table offered by an external system (boundedContextId carries the external system id). */
     private void addExternalTable(EditorCommand command) {
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         var external = externalSystems.stream()
                 .filter(x -> x.id().equals(command.boundedContextId()))
                 .findFirst()
@@ -2659,7 +2657,7 @@ public class EditorApiController {
         var tables = new ArrayList<>(external.tables());
         tables.add(new ExternalSystemTableEntity(command.id(), command.name(), null));
         externalSystems.set(externalSystems.indexOf(external), withTables(external, tables));
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     private void removeExternalTable(EditorCommand command) {
@@ -2674,10 +2672,10 @@ public class EditorApiController {
                 .forEach(r -> repository.save(r.withSourceExternalTableIds(
                         AgentEditorCommands.without(r.sourceExternalTableIds(), command.id()))));
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                 .map(x -> withTables(x, x.tables().stream()
                         .filter(t -> !t.id().equals(command.id())).toList()))
-                .toList()));
+                .toList());
     }
 
     /** The three stub CRUD use cases for an aggregate, with steps anchored to it. */
@@ -2827,7 +2825,7 @@ public class EditorApiController {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Unknown aggregate: " + command.aggregateId()));
         } else if (command.externalUseCaseId() != null) {
-            var known = projects.owningProject().externalSystems().stream()
+            var known = projects.externalSystems().stream()
                     .flatMap(x -> x.useCases().stream())
                     .anyMatch(u -> u.id().equals(command.externalUseCaseId()));
             if (!known) {
@@ -2835,7 +2833,7 @@ public class EditorApiController {
                         "Unknown external use case: " + command.externalUseCaseId());
             }
         } else if (command.externalTableId() != null) {
-            var known = projects.owningProject().externalSystems().stream()
+            var known = projects.externalSystems().stream()
                     .flatMap(x -> x.tables().stream())
                     .anyMatch(t -> t.id().equals(command.externalTableId()));
             if (!known) {
@@ -2911,8 +2909,7 @@ public class EditorApiController {
     }
 
     private void removeApi(EditorCommand command) {
-        var dependedOn = projects.currentProject().stream()
-                .flatMap(p -> p.externalSystems().stream())
+        var dependedOn = projects.externalSystems().stream()
                 .anyMatch(x -> x.dependsOnApiIds().contains(command.id()));
         if (dependedOn) {
             throw new IllegalArgumentException(
@@ -3140,11 +3137,11 @@ public class EditorApiController {
 
     private void addRelation(EditorCommand command) {
         var project = projects.owningProject();
-        var alreadyThere = project.contextMap().stream()
+        var alreadyThere = projects.contextMap().stream()
                 .anyMatch(r -> r.sourceBoundedContextId().equals(command.sourceId())
                         && r.targetBoundedContextId().equals(command.targetId()));
         if (alreadyThere) return;
-        var relations = new ArrayList<>(project.contextMap());
+        var relations = new ArrayList<>(projects.contextMap());
         relations.add(new ContextMapRelationEntity(
                 "rel-" + command.sourceId() + "-" + command.targetId(),
                 null,
@@ -3153,22 +3150,22 @@ public class EditorApiController {
                 command.type(),
                 null,
                 List.of()));
-        repository.save(EditorProjectSupport.withContextMap(project, relations));
+        projects.replaceContextMap(relations);
     }
 
     private void removeRelation(EditorCommand command) {
         var project = projects.owningProject();
-        var relations = project.contextMap().stream()
+        var relations = projects.contextMap().stream()
                 .filter(r -> !(r.sourceBoundedContextId().equals(command.sourceId())
                         && r.targetBoundedContextId().equals(command.targetId())))
                 .toList();
-        repository.save(EditorProjectSupport.withContextMap(project, relations));
+        projects.replaceContextMap(relations);
     }
 
     /** Upserts the type ANNOTATION of a derived relation (the pair itself is computed). */
     private void setRelationType(EditorCommand command) {
         var project = projects.owningProject();
-        var relations = new ArrayList<>(project.contextMap());
+        var relations = new ArrayList<>(projects.contextMap());
         var existing = relations.stream()
                 .filter(r -> r.sourceBoundedContextId().equals(command.sourceId())
                         && r.targetBoundedContextId().equals(command.targetId()))
@@ -3183,7 +3180,7 @@ public class EditorApiController {
                     "rel-" + command.sourceId() + "-" + command.targetId(), null,
                     command.sourceId(), command.targetId(), command.type(), null, List.of()));
         }
-        repository.save(EditorProjectSupport.withContextMap(project, relations));
+        projects.replaceContextMap(relations);
     }
 
     /**
@@ -3197,7 +3194,7 @@ public class EditorApiController {
         var id = command.id() == null || command.id().isBlank()
                 ? "proj-" + command.targetId() : command.id();
         var project = projects.owningProject();
-        var externalSystems = new ArrayList<>(project.externalSystems().stream()
+        var externalSystems = new ArrayList<>(projects.externalSystems().stream()
                 .filter(x -> !x.id().equals(id))
                 .toList());
         externalSystems.add(new ExternalSystemEntity(
@@ -3209,28 +3206,28 @@ public class EditorApiController {
                         .toList(),
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                 command.targetId()));
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     private void addExternalSystem(EditorCommand command) {
         var project = projects.owningProject();
-        if (project.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
+        if (projects.externalSystems().stream().anyMatch(x -> x.id().equals(command.id()))) return;
         if (command.parentId() != null
-                && project.externalSystems().stream().noneMatch(x -> x.id().equals(command.parentId()))) {
+                && projects.externalSystems().stream().noneMatch(x -> x.id().equals(command.parentId()))) {
             throw new IllegalArgumentException(
                     "El sistema externo padre " + command.parentId() + " no existe");
         }
-        var externalSystems = new ArrayList<>(project.externalSystems());
+        var externalSystems = new ArrayList<>(projects.externalSystems());
         externalSystems.add(ExternalSystemEntity.builder()
                 .id(command.id()).name(command.name()).decisionIds(List.of())
                 .parentExternalSystemId(command.parentId())
                 .build());
-        repository.save(EditorProjectSupport.withExternalSystems(project, externalSystems));
+        projects.replaceExternalSystems(externalSystems);
     }
 
     private void setExternalSystemParent(EditorCommand command) {
         var project = projects.owningProject();
-        var systems = project.externalSystems();
+        var systems = projects.externalSystems();
         if (systems.stream().noneMatch(x -> x.id().equals(command.id()))) {
             throw new IllegalArgumentException("El sistema externo " + command.id() + " no existe");
         }
@@ -3253,8 +3250,7 @@ public class EditorApiController {
                         .findFirst().orElse(null);
             }
         }
-        repository.save(EditorProjectSupport.withExternalSystems(project,
-                systems.stream()
+        projects.replaceExternalSystems(systems.stream()
                         .map(x -> x.id().equals(command.id())
                                 ? x.toBuilder().parentExternalSystemId(command.parentId()).build()
                                 : x)
@@ -3262,7 +3258,7 @@ public class EditorApiController {
                         // directions, plain and CQRS) stop making sense once nested
                         .map(x -> command.parentId() == null ? x
                                 : stripPairDependency(x, command.id(), command.parentId()))
-                        .toList()));
+                        .toList());
     }
 
     private static ExternalSystemEntity stripPairDependency(ExternalSystemEntity x, String childId, String parentId) {
@@ -3279,7 +3275,7 @@ public class EditorApiController {
     }
 
     private void removeExternalSystem(EditorCommand command) {
-        var hasSubsystems = projects.owningProject().externalSystems().stream()
+        var hasSubsystems = projects.externalSystems().stream()
                 .anyMatch(x -> command.id().equals(x.parentExternalSystemId()));
         if (hasSubsystems) {
             throw new IllegalArgumentException(
@@ -3297,7 +3293,7 @@ public class EditorApiController {
             throw new IllegalArgumentException(
                     "El sistema externo " + command.id() + " tiene actores que dependen de él; quita esas dependencias primero");
         }
-        var dependedOnByExternals = projects.owningProject().externalSystems().stream()
+        var dependedOnByExternals = projects.externalSystems().stream()
                 .anyMatch(x -> x.dependsOnExternalSystemIds().contains(command.id())
                         || x.cqrsExternalSystemIds().contains(command.id()));
         if (dependedOnByExternals) {
@@ -3305,7 +3301,7 @@ public class EditorApiController {
                     "El sistema externo " + command.id() + " tiene sistemas externos que dependen de él; quita esas dependencias primero");
         }
         // Agents lose their links to the MCP servers leaving with the system.
-        var leavingMcpIds = projects.owningProject().externalSystems().stream()
+        var leavingMcpIds = projects.externalSystems().stream()
                 .filter(x -> x.id().equals(command.id()))
                 .flatMap(x -> x.mcpServers().stream())
                 .map(McpServerEntity::id)
@@ -3329,8 +3325,8 @@ public class EditorApiController {
                 .filter(px -> command.id().equals(px.publishedByExternalSystemId()))
                 .forEach(px -> repository.save(px.withPublishedByExternalSystemId(null)));
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project, project.externalSystems().stream()
-                .filter(x -> !x.id().equals(command.id())).toList()));
+        projects.replaceExternalSystems(projects.externalSystems().stream()
+                .filter(x -> !x.id().equals(command.id())).toList());
     }
 
     private void addViewMember(EditorCommand command) {

@@ -43,10 +43,16 @@ public record ProjectEntity(
         String cicdProvider,
         List<ProjectEnvironmentConfigEntity> environments,
         List<String> serviceIds,
+        /**
+         * LEGACY — do not read. Strategic relations are a top-level element type
+         * ({@code contextMapRelations}) now that every element is its own file. This field
+         * survives only so a store written before that migrates instead of losing them; see
+         * {@code CommonFileRepository.hoistLegacyProjectElements}, which empties it on load.
+         */
         List<ContextMapRelationEntity> contextMap,
         /** How the system isolates tenants; NONE/null for single-tenant. */
         TenancyStrategy tenancyStrategy,
-        /** Systems outside the project's bounded contexts (partners on the context map). */
+        /** LEGACY — do not read, like {@code contextMap}. Migrated out on load. */
         List<ExternalSystemEntity> externalSystems,
         /** Context and objective of the system, in prose (the §1 of a design document). */
         String objective,

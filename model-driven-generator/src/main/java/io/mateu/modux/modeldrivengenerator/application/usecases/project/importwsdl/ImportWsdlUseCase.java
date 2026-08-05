@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.importop
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +44,7 @@ public class ImportWsdlUseCase {
 
     private void importIntoExternal(String externalSystemId,
                                     List<WsdlParser.WsdlOperation> operations) {
-        var project = owningProject();
-        var external = project.externalSystems().stream()
+        var external = repository.findAllOfType(ExternalSystemEntity.class).stream()
                 .filter(x -> x.id().equals(externalSystemId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -63,12 +62,9 @@ public class ImportWsdlUseCase {
                 merged.add(operation);
             }
         }
-        repository.save(ImportOpenApiExternalUseCase.withExternalSystems(project,
-                project.externalSystems().stream()
-                        .map(x -> x.id().equals(externalSystemId)
-                                ? ImportOpenApiExternalUseCase.withUseCases(x, List.copyOf(merged))
-                                : x)
-                        .toList()));
+        repository.findById(externalSystemId, ExternalSystemEntity.class)
+                .map(x -> ImportOpenApiExternalUseCase.withUseCases(x, List.copyOf(merged)))
+                .ifPresent(repository::save);
         log.info("Imported {} SOAP operations into external system '{}'",
                 operations.size(), externalSystemId);
     }
@@ -118,9 +114,4 @@ public class ImportWsdlUseCase {
                 ? base : base + " — " + op.documentation();
     }
 
-    private ProjectEntity owningProject() {
-        return repository.findAllOfType(ProjectEntity.class).stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No project in the model store"));
-    }
 }

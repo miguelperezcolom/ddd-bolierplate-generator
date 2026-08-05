@@ -6,7 +6,6 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -84,9 +83,8 @@ class FlowContextMapCoherenceServiceTest {
     // --- helpers ---
 
     private static FlowContextMapFinding analyzeOne(FlowEntity flow, List<ContextMapRelationEntity> relations) {
-        var project = proj("proj-hotel", List.of("svc"), relations);
         var findings = FlowContextMapCoherenceService.analyze(
-                List.of(flow), AGGREGATES, BOUNDED_CONTEXTS, List.of(project));
+                List.of(flow), AGGREGATES, BOUNDED_CONTEXTS, relations);
         return findings.get(0);
     }
 
@@ -112,8 +110,4 @@ class FlowContextMapCoherenceServiceTest {
                 null, null, null, null, false, null, null, null, null, null);
     }
 
-    private static ProjectEntity proj(String id, List<String> serviceIds, List<ContextMapRelationEntity> contextMap) {
-        return new ProjectEntity(id, id, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, serviceIds, contextMap);
-    }
 }

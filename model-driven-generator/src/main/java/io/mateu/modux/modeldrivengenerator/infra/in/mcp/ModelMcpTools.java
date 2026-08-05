@@ -359,11 +359,10 @@ public class ModelMcpTools {
         repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity.class)
                 .forEach(m -> nodes.add(new io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node(
                         m.id(), m.name(), m.subdomainType(), false)));
-        repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
-                .forEach(p -> p.externalSystems().forEach(x -> nodes.add(
-                        io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node.external(x.id(), x.name()))));
-        var relations = repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class).stream()
-                .flatMap(p -> p.contextMap().stream())
+        repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity.class)
+                .forEach(x -> nodes.add(
+                        io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Node.external(x.id(), x.name())));
+        var relations = repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity.class).stream()
                 .map(r -> new io.mateu.modux.modeldrivengenerator.infra.in.ui.pages.contextmap.ContextMapSvgRenderer.Relation(
                         r.sourceBoundedContextId(), r.targetBoundedContextId(), parseRelationType(r.type())))
                 .toList();

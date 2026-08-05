@@ -481,7 +481,7 @@ public final class LintRules {
         public String id() { return "flow-context-relation"; }
         public String description() { return "Cross-context flows should be backed by a context-map relation"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            return FlowContextMapCoherenceService.analyze(m.flows(), m.aggregates(), m.boundedContexts(), m.projects()).stream()
+            return FlowContextMapCoherenceService.analyze(m.flows(), m.aggregates(), m.boundedContexts(), m.contextMapRelations()).stream()
                     .filter(f -> f.status() == FlowContextMapFinding.Status.MISSING_RELATION
                             || f.status() == FlowContextMapFinding.Status.REVERSED)
                     .map(f -> new LintFinding(id(), LintSeverity.WARNING, "Flow", f.flowId(), f.flowName(), f.message()))
@@ -829,7 +829,7 @@ public final class LintRules {
         public String id() { return "notifies-external-system"; }
         public String description() { return "NOTIFIES flows should have declared external systems"; }
         public List<LintFinding> apply(ModelSnapshot m) {
-            boolean anyExternal = m.projects().stream().anyMatch(p -> !p.externalSystems().isEmpty());
+            boolean anyExternal = !m.externalSystems().isEmpty();
             if (anyExternal) return List.of();
             return m.flows().stream()
                     .filter(f -> f.archetype() == FlowArchetype.NOTIFIES)
@@ -1145,7 +1145,7 @@ public final class LintRules {
     private static InteractionCatalog catalogOf(ModelSnapshot m) {
         return new InteractionCatalog(m.roles(), m.uiAdapters(), m.pages(), m.useCases(),
                 m.aggregates(), m.domainServices(), m.queryServices(), m.readModels(),
-                m.projects().stream().flatMap(p -> p.externalSystems().stream()).toList(),
+                m.externalSystems(),
                 m.apis(), m.aiAgents(), m.processes(), m.workflows(), m.flows(),
                 m.subscriptions(), m.domainEvents(), m.applicationEvents());
     }
