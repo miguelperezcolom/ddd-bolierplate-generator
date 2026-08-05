@@ -9,7 +9,9 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
+import type { EditorLayout } from '../scene.js';
 import { apply, CommandError } from '../store/apply.js';
+import { layoutOf, saveLayout } from '../store/layout.js';
 import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
@@ -35,6 +37,7 @@ export class ModuxEditorIde extends LitElement {
   `;
 
   @state() private model: ModuxModel | null = null;
+  @state() private layout: EditorLayout = {};
   @state() private error: string | null = null;
   @state() private notice: string | null = null;
 
@@ -43,6 +46,12 @@ export class ModuxEditorIde extends LitElement {
 
   /** Serializes edits: a command must land before the next one reads the store. */
   private chain: Promise<void> = Promise.resolve();
+
+  /**
+   * Dragging emits a position per frame. Writing each one would put a commit per pixel in the
+   * IDE's undo stack and a diff per pixel in git, so the geometry lands once the hand stops.
+   */
+  private layoutTimer: number | undefined;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -58,6 +67,7 @@ export class ModuxEditorIde extends LitElement {
     this.fs = ideFileSystem(bridge);
     try {
       this.store = await loadTree(this.fs, ROOT);
+      this.layout = layoutOf(this.store);
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
@@ -81,6 +91,37 @@ export class ModuxEditorIde extends LitElement {
   private onCommand(event: CustomEvent): void {
     const { command } = event.detail;
     this.chain = this.chain.then(() => this.run(command));
+  }
+
+  /**
+   * The geometry is model data like everything else — it lives in `diagrams/`, one file per view,
+   * versioned on purpose (§4.4). So it takes the same road as a command: into the store, then out
+   * to the files that changed.
+   */
+  private onLayoutChanged(event: CustomEvent): void {
+    this.layout = event.detail.layout as EditorLayout;
+    window.clearTimeout(this.layoutTimer);
+    this.layoutTimer = window.setTimeout(() => this.flushLayout(), 400);
+  }
+
+  private flushLayout(): void {
+    this.chain = this.chain.then(async () => {
+      if (!this.fs) return;
+      try {
+        saveLayout(this.store, this.layout);
+        await flush(this.fs, ROOT, this.store);
+        await this.fs.commit();
+      } catch (e) {
+        this.error = `No se pudo guardar la geometría: ${message(e)}`;
+      }
+    });
+  }
+
+  /** Closing inside the debounce window must not lose the last drag. */
+  override disconnectedCallback(): void {
+    window.clearTimeout(this.layoutTimer);
+    this.flushLayout();
+    super.disconnectedCallback();
   }
 
   /**
@@ -109,7 +150,12 @@ export class ModuxEditorIde extends LitElement {
     return html`
       ${this.error ? html`<div class="banner" role="alert">${this.error}</div>` : nothing}
       ${this.notice && !this.error ? html`<div class="banner info">${this.notice}</div>` : nothing}
-      <modux-editor .model=${this.model} @modux-command=${this.onCommand}></modux-editor>
+      <modux-editor
+        .model=${this.model}
+        .layout=${this.layout}
+        @modux-command=${this.onCommand}
+        @layout-changed=${this.onLayoutChanged}
+      ></modux-editor>
     `;
   }
 }
