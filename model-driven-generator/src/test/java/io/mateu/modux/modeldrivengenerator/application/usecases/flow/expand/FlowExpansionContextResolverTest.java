@@ -88,8 +88,7 @@ class FlowExpansionContextResolverTest {
     }
 
     private static ProjectEntity proj(String id, String name, List<String> serviceIds) {
-        return new ProjectEntity(id, name, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, serviceIds, null);
+        return ProjectEntity.builder().id(id).name(name).serviceIds(serviceIds).build();
     }
 
     private static ModelEntity model(String id, ModelFieldEntity... fields) {

@@ -4,6 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.lint.Model
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEntity;
@@ -245,8 +246,10 @@ public final class HlaDocumentRenderer {
         if (!piiFields.isEmpty()) {
             md.append("- **PII**: ").append(String.join(", ", piiFields)).append(".\n");
         }
-        if (project != null && project.tenancyStrategy() != null) {
-            md.append("- **Tenancy**: ").append(project.tenancyStrategy().name()).append(".\n");
+        var tenancy = m.deployments().stream().map(DeploymentEntity::tenancyStrategy)
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+        if (tenancy != null) {
+            md.append("- **Tenancy**: ").append(tenancy.name()).append(".\n");
         }
         for (var boundedContext : m.boundedContexts()) {
             for (var policy : boundedContext.accessPolicies()) {

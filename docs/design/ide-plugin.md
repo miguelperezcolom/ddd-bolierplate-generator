@@ -251,12 +251,28 @@ Con un fichero por elemento en todo lo demás, **cualquier edición de cualquier
 tres cosas colisiona con las otras dos en git**. Dibujar una relación toca el mismo fichero
 que cambiar el proveedor de tracing.
 
-**Partirlo en tres es trabajo previo al spike** (§6.0):
+**Hecho** (§8). Partido en tres tipos de primer nivel:
 
 - `contextMapRelations/{id}.yaml` — un fichero por relación, simétrico con `archimateRelations/`
-- `externalSystems/{id}.yaml` — ya es un tipo, solo hay que sacarlo del proyecto
-- `deployment.yaml` — toda la config de infra, que cambia por otras razones y en otros
-  momentos que el modelo
+- `externalSystems/{id}.yaml` — ya era un tipo, solo había que sacarlo del proyecto
+- `deployments/deployment-{projectId}.yaml` — la config de infra, que cambia por otras razones
+  y en otros momentos que el modelo
+
+Dos cosas que aparecieron al hacerlo:
+
+1. **La migración es la parte que importa, no el split.** Un store escrito antes lleva todo eso
+   anidado, y Jackson ignora las propiedades que no conoce: quitar los campos sin más habría
+   hecho desaparecer seis relaciones de un modelo que abre sin quejarse. Se migra al cargar
+   (`CommonFileRepository.hoistLegacyProjectElements`), junto al `healMainModules()` que ya
+   seguía ese patrón. Los campos legacy siguen en `ProjectEntity`, agrupados y marcados, solo
+   para eso; se pueden borrar cuando no queden stores anteriores.
+2. **El id del despliegue no puede ser el del proyecto.** Se intentó, y el lint lo cazó: los ids
+   son únicos en todo el modelo, y de esa invariante dependen tanto el validador como el applier
+   del editor. Es `deployment-{projectId}`.
+
+De las tres, **la que de verdad quitaba conflictos era la de las relaciones**: era la única que
+escribía el fichero del proyecto en cada gesto del editor. Las otras dos separan concerns que se
+editan desde la misma pantalla y de uvas a peras.
 
 ### 4.4 Las vistas ya están; la decisión es el versionado
 
@@ -422,14 +438,15 @@ movimiento, por encima de la ergonomía del IDE.
 
 ## 6. Fases propuestas
 
-0. **Asentar el formato en disco.** Todo es trabajo en el Java actual, sin plugin de por
-   medio, y hay que hacerlo antes del spike para no diseñar la tabla de paths contra una
-   forma que va a cambiar:
-   - `projects` deja de ser lista → `project.yaml` singleton por carpeta (§4.6).
-   - Partir `ProjectEntity` (§4.3): extraer `contextMapRelations/`, `externalSystems/` y
-     `deployment.yaml`.
+0. **Asentar el formato en disco.** ✅ Hecho salvo el último punto — ver §8.
+   - Partir `ProjectEntity` (§4.3): `contextMapRelations/`, `externalSystems/`, `deployments/`. ✅
+   - Sin "proyecto actual": `currentProject()` → `theProject()`, que no desambigua nada. ✅
+   - `projects` sigue siendo una lista de un elemento, en `projects/{id}.yaml` y no
+     `project.yaml`: el formato granular es reflexivo sobre las listas de `AllData`, y
+     convertir un tipo en singleton obligaría a un caso especial en los dos lenguajes a
+     cambio de un nombre de fichero. Se enforcea semánticamente en su lugar.
    - Mover la resolución de referencias del registro en `~/.modux` a coordenadas
-     versionadas en el modelo (§4.7).
+     versionadas en el modelo (§4.7). **Pendiente.**
 1. **Spike del applier genérico** + tabla de paths, con escritura incremental (§4.5).
    Decide si esto son semanas o meses. No comprometer fechas antes de esto.
 2. **Núcleo DDD** (127 comandos). Es de lo que genera el maven-plugin y es el vocabulario
@@ -486,18 +503,24 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | `modux:validate` (integridad referencial) | `plugin/` | ✅ 5 tests, limpio sobre el sample |
 | `modux:schema` | `plugin/` | ✅ |
 | Skill de autoría | `.claude/skills/modux-model/` | ✅ |
+| **Fase 0 en Java**: relaciones, externos y despliegue a tipos propios | `model-driven-generator/` | ✅ 159 tests |
 
 Lo que falta, por orden de peso:
 
 1. **Los otros 235 comandos** — UI (93), agentes (42), workflows (19) y el resto del núcleo (81).
 2. **El resto de la proyección** — hoy cubre la capa estratégica; faltan UI, workflows y agentes.
-3. **Fase 0 en el Java** (§6.0): `projects` a singleton, partir `ProjectEntity`, sacar
-   `contextMapRelations` a tipo de primer nivel. **El lado TypeScript ya escribe el formato
-   objetivo**, así que hasta que esto se haga, el árbol que produce el plugin y el que produce
-   el servidor divergen en esos tres puntos.
+3. **Resolución de referencias** (§4.7): sigue leyendo el registro de `~/.modux`. Es lo único
+   de la fase 0 que queda.
 4. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía.
 5. **El borrado** (§6.6), que es la última fase a propósito: mientras la proyección esté
    incompleta, el servidor sigue siendo lo único que dibuja un modelo entero.
 
 No se ha probado el plugin dentro de un IDEA en marcha: compila, empaqueta e instala, pero
 la verificación end-to-end (abrir un `index.yaml` y dibujar) está pendiente.
+
+**El build de `model-driven-generator` estaba roto antes de todo esto**, y sigue estándolo:
+`infra/in/ui` referencia `CrudAdapter`, `CrudEditorForm` y `CrudCreationForm`, que no existen
+en el mateu local. Lo revelador es dónde: **lo único que no compila son `infra/in/ui` (17 578
+líneas) y `infra/in/mcp` (922) — exactamente los dos paquetes que este RFC borra.** Todo lo que
+sobrevive compila y pasa sus tests. Eso invierte el argumento de §6.6 para dejar el borrado
+para el final: no es un riesgo que aplazar, es lo que desbloquea el build.

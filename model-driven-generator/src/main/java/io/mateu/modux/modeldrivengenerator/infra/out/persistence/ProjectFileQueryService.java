@@ -6,6 +6,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectDto
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
 import java.util.List;
@@ -43,31 +44,43 @@ public class ProjectFileQueryService implements ProjectQueryService {
     @Override
     public Optional<ProjectDto> getById(String id) {
         return repository.findById(id, ProjectEntity.class)
-                .map(entity -> new ProjectDto(
+                .map(entity -> toDto(entity, deploymentOf(entity)));
+    }
+
+    /** The project's deployment element, falling back to a not-yet-migrated project's own fields. */
+    private DeploymentEntity deploymentOf(ProjectEntity project) {
+        return repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .orElseGet(() -> DeploymentEntity.isCarriedBy(project)
+                        ? DeploymentEntity.fromLegacy(project)
+                        : DeploymentEntity.emptyFor(project.id()));
+    }
+
+    private ProjectDto toDto(ProjectEntity entity, DeploymentEntity deployment) {
+        return new ProjectDto(
                         entity.id(),
                         entity.name(),
                         entity.outputPath(),
                         entity.packageName(),
                         entity.gitRepository(),
-                        entity.database(),
-                        entity.dbMigrationTool(),
-                        entity.terraformProvider(), entity.terraformProviderVersion(),
-                        entity.terraformBackendType(),
-                        entity.iamProvider(),
-                        entity.messageBrokerType(),
-                        entity.tracingProvider(),
-                        entity.metricsProvider(),
-                        entity.loggingProvider(),
-                        entity.llmProvider(),
-                        entity.cacheProvider(),
-                        entity.fileStorageProvider(),
-                        entity.emailProvider(),
-                        entity.secretsProvider(),
-                        entity.cicdProvider(),
-                        entity.environments(),
+                        deployment.database(),
+                        deployment.dbMigrationTool(),
+                        deployment.terraformProvider(), deployment.terraformProviderVersion(),
+                        deployment.terraformBackendType(),
+                        deployment.iamProvider(),
+                        deployment.messageBrokerType(),
+                        deployment.tracingProvider(),
+                        deployment.metricsProvider(),
+                        deployment.loggingProvider(),
+                        deployment.llmProvider(),
+                        deployment.cacheProvider(),
+                        deployment.fileStorageProvider(),
+                        deployment.emailProvider(),
+                        deployment.secretsProvider(),
+                        deployment.cicdProvider(),
+                        deployment.environments(),
                         entity.serviceIds(),
                         repository.findAllOfType(ContextMapRelationEntity.class).stream()
                                 .map(r -> new ContextMapRelationDto(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(), r.type(), r.description()))
-                                .toList()));
+                                .toList());
     }
 }

@@ -1,5 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.registry;
 
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,10 @@ import java.util.Optional;
  */
 @Service
 @Slf4j
+@lombok.RequiredArgsConstructor
 public class ImageRegistryResolver {
+
+    private final io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore repository;
 
     public static final String LOCAL_REGISTRY = "localhost:5000";
 
@@ -43,8 +47,9 @@ public class ImageRegistryResolver {
         if (service.dockerImageRegistry() != null && !service.dockerImageRegistry().isBlank()) {
             return Optional.of(trimSlash(service.dockerImageRegistry()));
         }
-        if (project.dockerRegistry() != null && !project.dockerRegistry().isBlank()) {
-            return Optional.of(trimSlash(project.dockerRegistry()));
+        var projectRegistry = deploymentOf(project).dockerRegistry();
+        if (projectRegistry != null && !projectRegistry.isBlank()) {
+            return Optional.of(trimSlash(projectRegistry));
         }
         var property = System.getProperty("modux.docker.registry", System.getenv("MODUX_DOCKER_REGISTRY"));
         if (property != null && !property.isBlank()) {
@@ -78,6 +83,14 @@ public class ImageRegistryResolver {
             log.debug("sin registry local en {}: {}", LOCAL_REGISTRY, e.getMessage());
             return false;
         }
+    }
+
+    /** The project's deployment element, falling back to a not-yet-migrated project's own fields. */
+    private DeploymentEntity deploymentOf(ProjectEntity project) {
+        return repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .orElseGet(() -> DeploymentEntity.isCarriedBy(project)
+                        ? DeploymentEntity.fromLegacy(project)
+                        : DeploymentEntity.emptyFor(project.id()));
     }
 
     private static String trimSlash(String s) {

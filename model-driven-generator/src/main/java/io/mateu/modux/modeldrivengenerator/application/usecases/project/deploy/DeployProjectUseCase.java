@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeCommand;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -312,8 +313,9 @@ public class DeployProjectUseCase {
     }
 
     private ProjectEnvironmentConfigEntity environmentFor(ProjectEntity project, String name) {
-        var environments = project.environments() == null
-                ? List.<ProjectEnvironmentConfigEntity>of() : project.environments();
+        var environments = repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .map(DeploymentEntity::environments)
+                .orElseGet(List::of);
         return environments.stream()
                 .filter(e -> name == null || name.isBlank() || name.equalsIgnoreCase(e.environment()))
                 .findFirst()

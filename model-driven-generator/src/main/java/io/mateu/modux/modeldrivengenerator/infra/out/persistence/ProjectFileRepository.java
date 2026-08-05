@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ProjectE
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ProjectId;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
 import lombok.RequiredArgsConstructor;
@@ -26,29 +27,41 @@ public class ProjectFileRepository implements ProjectRepository {
     @Override
     public Optional<Project> findById(ProjectId id) {
         return repository.findById(id.id(), ProjectEntity.class)
-                .map(entity -> Project.load(
+                .map(entity -> loadWith(entity, deploymentOf(entity)));
+    }
+
+    /** The project's deployment element, or an empty one when the store has none yet. */
+    private DeploymentEntity deploymentOf(ProjectEntity project) {
+        return repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .orElseGet(() -> DeploymentEntity.isCarriedBy(project)
+                        ? DeploymentEntity.fromLegacy(project)
+                        : DeploymentEntity.emptyFor(project.id()));
+    }
+
+    private Project loadWith(ProjectEntity entity, DeploymentEntity deployment) {
+        return Project.load(
                         entity.id(),
                         entity.name(),
                         entity.outputPath(),
                         entity.packageName(),
                         entity.gitRepository(),
-                        entity.database(),
-                        entity.dbMigrationTool(),
-                        entity.terraformProvider(), entity.terraformProviderVersion(),
-                        entity.terraformBackendType(),
-                        entity.iamProvider(),
-                        entity.messageBrokerType(),
-                        entity.tracingProvider(),
-                        entity.metricsProvider(),
-                        entity.loggingProvider(),
-                        entity.llmProvider(),
-                        entity.cacheProvider(),
-                        entity.fileStorageProvider(),
-                        entity.emailProvider(),
-                        entity.secretsProvider(),
-                        entity.cicdProvider(),
-                        entity.environments() == null ? List.<ProjectEnvironmentConfig>of() :
-                                entity.environments().stream().map(e -> new ProjectEnvironmentConfig(
+                        deployment.database(),
+                        deployment.dbMigrationTool(),
+                        deployment.terraformProvider(), deployment.terraformProviderVersion(),
+                        deployment.terraformBackendType(),
+                        deployment.iamProvider(),
+                        deployment.messageBrokerType(),
+                        deployment.tracingProvider(),
+                        deployment.metricsProvider(),
+                        deployment.loggingProvider(),
+                        deployment.llmProvider(),
+                        deployment.cacheProvider(),
+                        deployment.fileStorageProvider(),
+                        deployment.emailProvider(),
+                        deployment.secretsProvider(),
+                        deployment.cicdProvider(),
+                        deployment.environments() == null ? List.<ProjectEnvironmentConfig>of() :
+                                deployment.environments().stream().map(e -> new ProjectEnvironmentConfig(
                                         e.environment() != null ? ProjectEnvironment.valueOf(e.environment()) : null,
                                         e.kubernetesClusterUrl(),
                                         e.kubernetesNamespace(),
@@ -96,7 +109,7 @@ public class ProjectFileRepository implements ProjectRepository {
                         repository.findAllOfType(ContextMapRelationEntity.class).stream()
                                 .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                         r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
-                                .toList()));
+                                .toList());
     }
 
     @Override
@@ -113,6 +126,30 @@ public class ProjectFileRepository implements ProjectRepository {
                 .outputPath(entity.getOutputPath().path())
                 .packageName(entity.getPackageName().packageName())
                 .gitRepository(entity.getGitRepository())
+                .serviceIds(entity.getServices().stream()
+                        .map(s -> s.id())
+                        .toList())
+                .build());
+        saveDeployment(entity);
+        saveContextMap(entity);
+        return entity;
+    }
+
+    /**
+     * Persist the deployment settings as their own element.
+     *
+     * <p>Starts from what is stored so a save through the form never wipes a field the domain
+     * {@code Project} does not model.
+     */
+    private void saveDeployment(Project entity) {
+        var id = entity.getId().id();
+        // start from what is stored — including a not-yet-migrated project's inline settings —
+        // so the fields the domain does not model (dockerRegistry, tenancy) are not wiped
+        var stored = repository.findById(id, ProjectEntity.class)
+                .map(this::deploymentOf)
+                .orElseGet(() -> DeploymentEntity.emptyFor(id));
+        var builder = stored.toBuilder().id(DeploymentEntity.idFor(id));
+        repository.save(builder
                 .database(entity.getDatabase())
                 .dbMigrationTool(entity.getDbMigrationTool())
                 .terraformProvider(entity.getTerraformProvider())
@@ -174,12 +211,7 @@ public class ProjectFileRepository implements ProjectRepository {
                                 e.ingressTlsEnabled(),
                                 e.ingressClassName()
                         )).toList())
-                .serviceIds(entity.getServices().stream()
-                        .map(s -> s.id())
-                        .toList())
                 .build());
-        saveContextMap(entity);
-        return entity;
     }
 
     /**

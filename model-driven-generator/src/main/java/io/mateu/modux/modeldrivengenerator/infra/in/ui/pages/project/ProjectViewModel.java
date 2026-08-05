@@ -156,12 +156,15 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         stampExtras();
     }
 
-    /** Fields the domain does not model yet: straight onto the stored entity. */
+    /** Fields the domain does not model yet: straight onto the stored deployment element. */
     private void stampExtras() {
-        store.findById(id, io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
-                .ifPresent(p -> store.save(p.toBuilder()
-                        .dockerRegistry(dockerRegistry == null || dockerRegistry.isBlank() ? null : dockerRegistry.trim())
-                        .build()));
+        var type = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity.class;
+        var deploymentId = io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity.idFor(id);
+        var current = store.findById(deploymentId, type).orElseGet(
+                () -> io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity.emptyFor(id));
+        store.save(current.toBuilder()
+                .dockerRegistry(dockerRegistry == null || dockerRegistry.isBlank() ? null : dockerRegistry.trim())
+                .build());
     }
 
     @Override
@@ -174,9 +177,11 @@ public class ProjectViewModel implements Identifiable, CrudEditorForm<String>, C
         name = model.name();
         outputPath = model.outputPath();
         packageName = model.packageName();
-        dockerRegistry = store.findById(id,
-                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity.class)
-                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity::dockerRegistry)
+        // the registry lives on the project's deployment element now, not on the project
+        dockerRegistry = store.findById(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity.idFor(id),
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity.class)
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity::dockerRegistry)
                 .orElse(null);
         gitRepository = model.gitRepository();
         database = model.database();

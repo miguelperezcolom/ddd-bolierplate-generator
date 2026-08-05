@@ -1,6 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.project.deploy;
 
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,7 +33,9 @@ public class ApplyTerraformUseCase {
     public reactor.core.publisher.Flux<?> handle(String projectId) {
         var project = repository.findById(projectId, ProjectEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto desconocido: " + projectId));
-        if (project.terraformProvider() == null) {
+        var deployment = repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .orElseGet(() -> DeploymentEntity.emptyFor(project.id()));
+        if (deployment.terraformProvider() == null) {
             throw new IllegalStateException(
                     "El proyecto no declara proveedor de infraestructura: elige terraformProvider en su ficha");
         }

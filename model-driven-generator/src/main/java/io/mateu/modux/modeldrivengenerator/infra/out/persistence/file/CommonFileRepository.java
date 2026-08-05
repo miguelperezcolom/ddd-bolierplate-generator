@@ -257,6 +257,37 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
                     relations == null ? 0 : relations.size(),
                     externals == null ? 0 : externals.size(), project.id());
         }
+        hoistLegacyDeployment();
+    }
+
+    /**
+     * The deployment settings — providers, environments, tenancy — were fields of the project too.
+     * They answer a different question and change on a different rhythm, so they are their own
+     * element now. Same lossless migration as above: read from the legacy fields, written back in
+     * the new shape, source emptied.
+     */
+    @SuppressWarnings("deprecation")
+    private void hoistLegacyDeployment() {
+        for (var project : findAllOfType(ProjectEntity.class)) {
+            if (findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class).isPresent()) continue;
+            if (!DeploymentEntity.isCarriedBy(project)) continue;
+            putTransient(DeploymentEntity.fromLegacy(project));
+            putTransient(clearDeployment(project));
+            log.info("migrated the deployment settings out of project {}", project.id());
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static ProjectEntity clearDeployment(ProjectEntity p) {
+        return p.toBuilder()
+                .database(null).dbMigrationTool(null).terraformProvider(null)
+                .terraformProviderVersion(null).terraformBackendType(null).iamProvider(null)
+                .messageBrokerType(null).tracingProvider(null).metricsProvider(null)
+                .loggingProvider(null).llmProvider(null).cacheProvider(null)
+                .fileStorageProvider(null).emailProvider(null).secretsProvider(null)
+                .cicdProvider(null).dockerRegistry(null).environments(List.of())
+                .tenancyStrategy(null)
+                .build();
     }
 
     /**
