@@ -8,10 +8,12 @@
  * With one project per repository that whole question disappears: everything in
  * the tree belongs to the project, because the tree is the project.
  *
- * COVERAGE: the whole core block — bounded contexts and what they own, the
- * context map, actors, services and modules, APIs, the read side, flows, and the
- * canvas furniture. The UI, workflow and agent blocks are not projected yet, and
- * neither are processes, which have a view of their own.
+ * COVERAGE: the core block — bounded contexts and what they own, the context
+ * map, actors, services and modules, APIs, the read side, flows, and the canvas
+ * furniture — plus the UI block, which lives in `project-ui.ts` because it
+ * answers a different question and is the half that keeps moving. The workflow
+ * and agent blocks are not projected yet, and neither are processes, which have
+ * a view of their own.
  * `projectedTypes()` reports what is covered, so a host can tell the difference
  * between "empty" and "not ported" — and say so rather than draw a blank.
  */
@@ -30,6 +32,7 @@ import type {
   UseCaseRef,
   ValueObjectRef,
 } from '../model.js';
+import { projectUi, UI_PROJECTED_TYPES } from './project-ui.js';
 import { asList, type Element, type ModelStore } from './store.js';
 
 /** Element types this projection reads. Anything else in the tree is passed over. */
@@ -40,6 +43,7 @@ export function projectedTypes(): string[] {
     'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows',
+    ...UI_PROJECTED_TYPES,
   ];
 }
 
@@ -97,6 +101,7 @@ export function project(store: ModelStore): ModuxModel {
       label: str(r.name),
     })),
     flows: store.all('flows').map((f) => flow(f, owner)).filter(isDrawable),
+    ...projectUi(store),
   };
 }
 

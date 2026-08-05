@@ -9,11 +9,15 @@
 import type { ModuxCommand } from '../commands.js';
 import { ACTOR_COMMANDS } from './commands/actors.js';
 import { API_COMMANDS } from './commands/apis.js';
+import { APP_COMMANDS } from './commands/apps.js';
 import { BEHAVIOR_COMMANDS } from './commands/behavior.js';
 import { CORE_COMMANDS } from './commands/core.js';
 import { CRUD_COMMANDS } from './commands/crud.js';
 import { EXTERNAL_COMMANDS } from './commands/externals.js';
 import { FLOW_COMMANDS } from './commands/flows.js';
+import { MODEL_COMMANDS } from './commands/models.js';
+import { PAGE_COMMANDS } from './commands/pages.js';
+import { PLATFORM_COMMANDS } from './commands/platform.js';
 import { READSIDE_COMMANDS } from './commands/readside.js';
 import { RENAME_COMMANDS } from './commands/rename.js';
 import { UI_COMMANDS } from './commands/ui-wiring.js';
@@ -32,6 +36,11 @@ export const HANDLERS: Record<string, Handler> = {
   ...CRUD_COMMANDS,
   ...UI_COMMANDS,
   ...RENAME_COMMANDS,
+  // the UI block
+  ...APP_COMMANDS,
+  ...PAGE_COMMANDS,
+  ...MODEL_COMMANDS,
+  ...PLATFORM_COMMANDS,
 };
 
 export { CommandError };

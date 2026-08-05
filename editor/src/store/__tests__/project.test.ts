@@ -60,10 +60,12 @@ describe('projection', () => {
 
   it('reports what it does not cover instead of silently dropping it', () => {
     const store = seeded();
+    // a page IS projected now; a workflow and an agent are the blocks still to come
     store.put('pages', { id: 'page-1', name: 'Home' });
     store.put('workflows', { id: 'wf-1', name: 'Checkin' });
+    store.put('aiAgents', { id: 'ag-1', name: 'Copiloto' });
 
-    expect(unprojectedTypes(store)).toEqual(['pages', 'workflows']);
+    expect(unprojectedTypes(store)).toEqual(['aiAgents', 'workflows']);
     expect(projectedTypes()).toContain('boundedContexts');
   });
 });

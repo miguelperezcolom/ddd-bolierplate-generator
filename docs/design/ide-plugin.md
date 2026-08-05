@@ -560,11 +560,13 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 |---|---|---|
 | Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ |
 | Motor de comandos declarativo | `editor/src/store/spec.ts` | ✅ |
-| **Bloque núcleo DDD: 124 de 125 comandos** | `editor/src/store/commands/` | ✅ 224 tests en el editor |
+| **Bloque núcleo DDD: 124 de 125 comandos** | `editor/src/store/commands/` | ✅ |
+| **Bloque UI: los 93 comandos** | `editor/src/store/commands/` | ✅ 263 tests en el editor |
+| Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
 | Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
 | Migración de árboles anteriores al split | `editor/src/store/legacy.ts` | ✅ simétrica con la de Java (§4.3) |
-| Proyección store → vista | `editor/src/store/project.ts` | ✅ todo el núcleo; declara lo que no cubre |
+| Proyección store → vista | `editor/src/store/project.ts`, `project-ui.ts` | ✅ núcleo + UI; declara lo que no cubre |
 | Host del editor en el IDE | `editor/src/host/modux-editor-ide.ts` | ✅ 166 tests en el editor |
 | Plugin de IntelliJ | `intellij-plugin/` | ✅ 23 tests; **dibuja dentro de un IDEA en marcha** |
 | `modux:generate` desde el árbol granular | `plugin/` | ✅ |
@@ -641,10 +643,37 @@ abriera un modelo real:
 Nada de eso lo habría cazado un test de los comandos contra sí mismos: se cazan comparando con
 el esquema que Java escribe, que es lo que este port obliga a hacer.
 
+### 8.1.2 El bloque UI, portado
+
+Los 93 comandos de `UiEditorCommands` (2003 líneas) están en TypeScript, repartidos en `apps.ts`,
+`pages.ts`, `models.ts` y `platform.ts`. Lo que este bloque enseñó:
+
+**Es un bosque, y está escrito dos veces.** El menú de una app y el contenido de una página son
+la misma estructura —nodos con hijos— y Java lleva una copia entera de cada operación para cada
+uno: dos `find`, dos `insert`, dos `remove`, dos `replace`, dos «inserta bajo este padre». Aquí
+hay una de cada, en `forest.ts`, y la diferencia entre los dos bosques se reduce a qué lleva un
+nodo y cómo se reconoce —una entrada de menú se reconoce por id **o por etiqueta**, porque las
+escritas a mano en YAML son anteriores a los ids—.
+
+**La regla que más código ocupa es de exclusividad**, y aparece cuatro veces con la misma forma:
+una entrada de menú *abre* una cosa o *agrupa* otras pero no las dos (apuntarla borra los demás
+destinos, ganar submenú borra el destino que tenía, y una que ya tiene hijos se niega a que la
+apunten); el detalle de un CRUD es una página *o* una app; la home de una app es una página *o*
+otra app; un campo es de un tipo *y solo uno*. En los cuatro casos lo que se protege es lo mismo:
+que el modelo no pueda decir dos cosas incompatibles que la generación resolvería en silencio
+mirando la primera que encuentre.
+
+**Y hay una asimetría deliberada en los borrados** que conviene no «arreglar»: al borrar una
+página, las entradas de menú que la abrían **se van**, pero los pasos de wizard que la
+implementaban **se quedan, desmapeados**. No es inconsistencia: una entrada de menú existe para
+abrir algo, y sin ese algo no es nada; un paso de wizard es una *etapa*, y que se quede sin
+página no significa que la etapa dejara de existir. Lo mismo con las apps: al borrar una, las
+entradas de otras apps que apuntaban a ella pierden el destino pero **conservan su sitio**.
+
 ### 8.2 Lo que falta, por orden de peso
 
-1. **Los otros 154 comandos** — UI (93), agentes (42) y workflows (19).
-2. **El resto de la proyección** — faltan UI, workflows, agentes y la vista de procesos.
+1. **Los otros 61 comandos** — agentes (42) y workflows (19).
+2. **El resto de la proyección** — faltan workflows, agentes y la vista de procesos.
 3. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
    que mantiene vivo `/layout` (§5.1).
 4. **Superficie para las dos capacidades huérfanas** (§5.1): el Mojo de `ImportApiEntityUseCase`
