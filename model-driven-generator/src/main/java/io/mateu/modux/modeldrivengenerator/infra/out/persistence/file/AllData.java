@@ -4,6 +4,8 @@ import java.util.List;
 
 public record AllData(
         List<ProjectEntity> projects,
+        /** How the project is deployed — providers, environments, tenancy. */
+        List<DeploymentEntity> deployments,
         List<ServiceEntity> services,
         List<BoundedContextEntity> boundedContexts,
         List<AggregateEntity> aggregates,
@@ -78,6 +80,7 @@ public record AllData(
 
     public AllData {
         projects = projects != null ? projects : List.of();
+        deployments = deployments != null ? deployments : List.of();
         services = services != null ? services : List.of();
         boundedContexts = boundedContexts != null ? boundedContexts : List.of();
         aggregates = aggregates != null ? aggregates : List.of();

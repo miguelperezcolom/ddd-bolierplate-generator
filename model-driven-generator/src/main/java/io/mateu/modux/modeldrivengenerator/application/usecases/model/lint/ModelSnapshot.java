@@ -14,6 +14,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEn
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
@@ -70,7 +71,8 @@ public record ModelSnapshot(
         List<InteractionEntity> interactions,
         /** Top-level now, no longer nested in the project. */
         List<ExternalSystemEntity> externalSystems,
-        List<ContextMapRelationEntity> contextMapRelations
+        List<ContextMapRelationEntity> contextMapRelations,
+        List<DeploymentEntity> deployments
 ) {
 
     /** Backward-compatible constructor (pre-interactions callers). */
@@ -91,7 +93,7 @@ public record ModelSnapshot(
         this(projects, services, boundedContexts, aggregates, models, useCases, domainEvents,
                 integrationEvents, subscriptions, projections, readModels, sagas, flows, processes,
                 decisions, pages, queryServices, modelMappings, entities, workflows, aiAgents,
-                rags, apis, mcpGateways, modules, null, null, null, null, null, null, null);
+                rags, apis, mcpGateways, modules, null, null, null, null, null, null, null, null);
     }
 
     /** Backward-compatible constructor (pre-modules callers). */
@@ -240,6 +242,7 @@ public record ModelSnapshot(
         interactions = nvl(interactions);
         externalSystems = nvl(externalSystems);
         contextMapRelations = nvl(contextMapRelations);
+        deployments = nvl(deployments);
     }
 
     public static ModelSnapshot from(ModelStore repository) {
@@ -275,7 +278,8 @@ public record ModelSnapshot(
                 repository.findAllOfType(ApplicationEventEntity.class),
                 repository.findAllOfType(InteractionEntity.class),
                 repository.findAllOfType(ExternalSystemEntity.class),
-                repository.findAllOfType(ContextMapRelationEntity.class));
+                repository.findAllOfType(ContextMapRelationEntity.class),
+                repository.findAllOfType(DeploymentEntity.class));
     }
 
     /** Snapshot with only the given slices — for tests. Everything else is empty. */

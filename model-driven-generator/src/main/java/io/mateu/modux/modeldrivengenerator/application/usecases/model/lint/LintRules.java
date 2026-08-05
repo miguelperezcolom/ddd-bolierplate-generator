@@ -11,6 +11,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassif
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity;
@@ -817,7 +818,8 @@ public final class LintRules {
         public String description() { return "Projects should declare a tenancy strategy"; }
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.projects().stream()
-                    .filter(p -> p.tenancyStrategy() == null)
+                    .filter(p -> m.deployments().stream()
+                            .noneMatch(d -> DeploymentEntity.idFor(p.id()).equals(d.id()) && d.tenancyStrategy() != null))
                     .map(p -> new LintFinding(id(), LintSeverity.INFO, "Project", p.id(), p.name(),
                             "No tenancy strategy declared — say NONE explicitly if single-tenant."))
                     .toList();

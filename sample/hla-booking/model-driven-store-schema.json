@@ -1044,6 +1044,78 @@
       "type" : "string",
       "enum" : [ "PROPOSED", "ACCEPTED", "DEPRECATED", "SUPERSEDED" ]
     },
+    "DeploymentEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cacheProvider" : {
+          "$ref" : "#/$defs/CacheProvider"
+        },
+        "cicdProvider" : {
+          "type" : "string"
+        },
+        "database" : {
+          "type" : "string"
+        },
+        "dbMigrationTool" : {
+          "$ref" : "#/$defs/DbMigrationTool"
+        },
+        "dockerRegistry" : {
+          "type" : "string"
+        },
+        "emailProvider" : {
+          "$ref" : "#/$defs/EmailProvider"
+        },
+        "environments" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ProjectEnvironmentConfigEntity"
+          }
+        },
+        "fileStorageProvider" : {
+          "$ref" : "#/$defs/FileStorageProvider"
+        },
+        "iamProvider" : {
+          "$ref" : "#/$defs/IamProvider"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "llmProvider" : {
+          "$ref" : "#/$defs/LlmProvider"
+        },
+        "loggingProvider" : {
+          "$ref" : "#/$defs/LoggingProvider"
+        },
+        "messageBrokerType" : {
+          "$ref" : "#/$defs/MessageBrokerType"
+        },
+        "metricsProvider" : {
+          "$ref" : "#/$defs/MetricsProvider"
+        },
+        "secretsProvider" : {
+          "$ref" : "#/$defs/SecretsProvider"
+        },
+        "tenancyStrategy" : {
+          "$ref" : "#/$defs/TenancyStrategy"
+        },
+        "terraformBackendType" : {
+          "$ref" : "#/$defs/TerraformBackendType"
+        },
+        "terraformProvider" : {
+          "$ref" : "#/$defs/TerraformProvider"
+        },
+        "terraformProviderVersion" : {
+          "type" : "string"
+        },
+        "tracingProvider" : {
+          "$ref" : "#/$defs/TracingProvider"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "DiagramEdgeEntity" : {
       "type" : "object",
       "properties" : {
@@ -5403,6 +5475,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/DecisionEntity"
+      }
+    },
+    "deployments" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DeploymentEntity"
       }
     },
     "diagrams" : {

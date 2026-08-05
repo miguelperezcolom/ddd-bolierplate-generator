@@ -92,4 +92,44 @@ class LegacyProjectElementsMigrationTest {
 
         assertEquals(before, again.findAllOfType(ContextMapRelationEntity.class).size());
     }
+
+    @Test
+    void the_deployment_settings_are_hoisted_too(@TempDir Path dir) throws Exception {
+        var model = dir.resolve("model.yaml");
+        Files.writeString(model, """
+                projects:
+                  - id: proj-1
+                    name: Demo
+                    packageName: com.example
+                    database: postgres
+                    dockerRegistry: docker.io/acme
+                    tenancyStrategy: SCHEMA_PER_TENANT
+                """);
+
+        var repository = repositoryOn(model);
+
+        var deployment = repository.findById(DeploymentEntity.idFor("proj-1"), DeploymentEntity.class).orElseThrow();
+        assertEquals("postgres", deployment.database());
+        assertEquals("docker.io/acme", deployment.dockerRegistry());
+
+        var project = repository.findById("proj-1", ProjectEntity.class).orElseThrow();
+        assertEquals(null, project.database(), "the legacy field must be emptied on load");
+        assertEquals(null, project.dockerRegistry(), "the legacy field must be emptied on load");
+    }
+
+    @Test
+    void a_project_with_no_deployment_settings_gets_no_deployment_element(@TempDir Path dir) throws Exception {
+        var model = dir.resolve("model.yaml");
+        Files.writeString(model, """
+                projects:
+                  - id: proj-1
+                    name: Demo
+                    packageName: com.example
+                """);
+
+        var repository = repositoryOn(model);
+
+        assertTrue(repository.findAllOfType(DeploymentEntity.class).isEmpty(),
+                "nothing to migrate must leave no empty element behind");
+    }
 }

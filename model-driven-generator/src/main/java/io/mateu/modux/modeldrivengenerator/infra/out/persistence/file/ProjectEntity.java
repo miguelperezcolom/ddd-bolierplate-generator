@@ -25,117 +25,74 @@ public record ProjectEntity(
         String outputPath,
         String packageName,
         String gitRepository,
-        String database,
-        DbMigrationTool dbMigrationTool,
-        TerraformProvider terraformProvider,
-        String terraformProviderVersion,
-        TerraformBackendType terraformBackendType,
-        IamProvider iamProvider,
-        MessageBrokerType messageBrokerType,
-        TracingProvider tracingProvider,
-        MetricsProvider metricsProvider,
-        LoggingProvider loggingProvider,
-        LlmProvider llmProvider,
-        CacheProvider cacheProvider,
-        FileStorageProvider fileStorageProvider,
-        EmailProvider emailProvider,
-        SecretsProvider secretsProvider,
-        String cicdProvider,
-        List<ProjectEnvironmentConfigEntity> environments,
         List<String> serviceIds,
-        /**
-         * LEGACY — do not read. Strategic relations are a top-level element type
-         * ({@code contextMapRelations}) now that every element is its own file. This field
-         * survives only so a store written before that migrates instead of losing them; see
-         * {@code CommonFileRepository.hoistLegacyProjectElements}, which empties it on load.
-         */
-        List<ContextMapRelationEntity> contextMap,
-        /** How the system isolates tenants; NONE/null for single-tenant. */
-        TenancyStrategy tenancyStrategy,
-        /** LEGACY — do not read, like {@code contextMap}. Migrated out on load. */
-        List<ExternalSystemEntity> externalSystems,
         /** Context and objective of the system, in prose (the §1 of a design document). */
         String objective,
         /** i18n: the locales the system speaks (e.g. es-ES, en, de); labels become keys at generation. */
         List<String> locales,
-        String defaultLocale
-,
-        /** Default image registry/user for the project's services (e.g. docker.io/<user>). */
-        String dockerRegistry,
+        String defaultLocale,
         /**
          * Data-access strategy for the generated code: JPA (legacy), JDBC (reads via
          * JdbcTemplate) or STORED_PROCEDURE (aggregate retrieval via a generated stored
          * procedure, falling back to JDBC — the default when unset). Overridable per aggregate.
          */
-        String dataAccess) implements Identifiable {
+        String dataAccess,
 
-    /** Backward-compatible constructor (pre-locales callers and stores). */
-    public ProjectEntity(String id, String name, String outputPath, String packageName,
-                         String gitRepository, String database, DbMigrationTool dbMigrationTool,
-                         TerraformProvider terraformProvider, String terraformProviderVersion,
-                         TerraformBackendType terraformBackendType, IamProvider iamProvider,
-                         MessageBrokerType messageBrokerType, TracingProvider tracingProvider,
-                         MetricsProvider metricsProvider, LoggingProvider loggingProvider,
-                         LlmProvider llmProvider, CacheProvider cacheProvider,
-                         FileStorageProvider fileStorageProvider, EmailProvider emailProvider,
-                         SecretsProvider secretsProvider, String cicdProvider,
-                         List<ProjectEnvironmentConfigEntity> environments, List<String> serviceIds,
-                         List<ContextMapRelationEntity> contextMap, TenancyStrategy tenancyStrategy,
-                         List<ExternalSystemEntity> externalSystems, String objective) {
-        this(id, name, outputPath, packageName, gitRepository, database, dbMigrationTool,
-                terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
-                messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
-                cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
-                environments, serviceIds, contextMap, tenancyStrategy, externalSystems, objective,
-                null, null, null, null);
-    }
+        // ---- LEGACY: read by the migration on load, never by anything else -----------------
+        // Each of these became its own element type so it stops sharing a file — and a git
+        // conflict — with everything else. They survive here only so a store written before
+        // that migrates instead of silently losing its content, because Jackson drops unknown
+        // properties. CommonFileRepository.hoistLegacyProjectElements empties them on load, and
+        // they can go once no store in the wild predates the split.
+
+        /** @see ContextMapRelationEntity */
+        List<ContextMapRelationEntity> contextMap,
+        /** @see ExternalSystemEntity */
+        List<ExternalSystemEntity> externalSystems,
+        /** @see DeploymentEntity */
+        String database,
+        /** @see DeploymentEntity */
+        DbMigrationTool dbMigrationTool,
+        /** @see DeploymentEntity */
+        TerraformProvider terraformProvider,
+        /** @see DeploymentEntity */
+        String terraformProviderVersion,
+        /** @see DeploymentEntity */
+        TerraformBackendType terraformBackendType,
+        /** @see DeploymentEntity */
+        IamProvider iamProvider,
+        /** @see DeploymentEntity */
+        MessageBrokerType messageBrokerType,
+        /** @see DeploymentEntity */
+        TracingProvider tracingProvider,
+        /** @see DeploymentEntity */
+        MetricsProvider metricsProvider,
+        /** @see DeploymentEntity */
+        LoggingProvider loggingProvider,
+        /** @see DeploymentEntity */
+        LlmProvider llmProvider,
+        /** @see DeploymentEntity */
+        CacheProvider cacheProvider,
+        /** @see DeploymentEntity */
+        FileStorageProvider fileStorageProvider,
+        /** @see DeploymentEntity */
+        EmailProvider emailProvider,
+        /** @see DeploymentEntity */
+        SecretsProvider secretsProvider,
+        /** @see DeploymentEntity */
+        String cicdProvider,
+        /** @see DeploymentEntity */
+        String dockerRegistry,
+        /** @see DeploymentEntity */
+        List<ProjectEnvironmentConfigEntity> environments,
+        /** @see DeploymentEntity */
+        TenancyStrategy tenancyStrategy) implements Identifiable {
 
     public ProjectEntity {
         if (serviceIds == null) serviceIds = List.of();
-        if (contextMap == null) contextMap = List.of();
-        if (environments == null) environments = List.of();
-        if (externalSystems == null) externalSystems = List.of();
         if (locales == null) locales = List.of();
+        if (contextMap == null) contextMap = List.of();
+        if (externalSystems == null) externalSystems = List.of();
+        if (environments == null) environments = List.of();
     }
-
-    /** Backward-compatible constructor (pre tenancy/externalSystems callers and stores). */
-    public ProjectEntity(String id, String name, String outputPath, String packageName,
-                         String gitRepository, String database, DbMigrationTool dbMigrationTool,
-                         TerraformProvider terraformProvider, String terraformProviderVersion,
-                         TerraformBackendType terraformBackendType, IamProvider iamProvider,
-                         MessageBrokerType messageBrokerType, TracingProvider tracingProvider,
-                         MetricsProvider metricsProvider, LoggingProvider loggingProvider,
-                         LlmProvider llmProvider, CacheProvider cacheProvider,
-                         FileStorageProvider fileStorageProvider, EmailProvider emailProvider,
-                         SecretsProvider secretsProvider, String cicdProvider,
-                         List<ProjectEnvironmentConfigEntity> environments,
-                         List<String> serviceIds, List<ContextMapRelationEntity> contextMap) {
-        this(id, name, outputPath, packageName, gitRepository, database, dbMigrationTool,
-                terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
-                messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
-                cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
-                environments, serviceIds, contextMap, null, List.of(), null, null, null, null, null);
-    }
-
-    /** Backward-compatible constructor (pre-objective callers). */
-    public ProjectEntity(String id, String name, String outputPath, String packageName,
-                         String gitRepository, String database, DbMigrationTool dbMigrationTool,
-                         TerraformProvider terraformProvider, String terraformProviderVersion,
-                         TerraformBackendType terraformBackendType, IamProvider iamProvider,
-                         MessageBrokerType messageBrokerType, TracingProvider tracingProvider,
-                         MetricsProvider metricsProvider, LoggingProvider loggingProvider,
-                         LlmProvider llmProvider, CacheProvider cacheProvider,
-                         FileStorageProvider fileStorageProvider, EmailProvider emailProvider,
-                         SecretsProvider secretsProvider, String cicdProvider,
-                         List<ProjectEnvironmentConfigEntity> environments,
-                         List<String> serviceIds, List<ContextMapRelationEntity> contextMap,
-                         TenancyStrategy tenancyStrategy, List<ExternalSystemEntity> externalSystems) {
-        this(id, name, outputPath, packageName, gitRepository, database, dbMigrationTool,
-                terraformProvider, terraformProviderVersion, terraformBackendType, iamProvider,
-                messageBrokerType, tracingProvider, metricsProvider, loggingProvider, llmProvider,
-                cacheProvider, fileStorageProvider, emailProvider, secretsProvider, cicdProvider,
-                environments, serviceIds, contextMap, tenancyStrategy, externalSystems, null,
-                null, null, null, null);
-    }
-
 }

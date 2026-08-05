@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.FieldValue
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationDto;
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
@@ -1812,7 +1813,8 @@ public class GenerateCodeUseCase {
     // ─── Database schema migrations (Flyway) ───────────────────────────────────
 
     private void generateDatabaseMigrations(ProjectEntity project, ServiceEntity service, String serviceDir) {
-        var tool = project.dbMigrationTool();
+        var tool = repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .map(DeploymentEntity::dbMigrationTool).orElse(null);
         if (tool == DbMigrationTool.None) return;            // explicit opt-out → keep ddl-auto
         if (tool == DbMigrationTool.Liquibase) {
             System.out.println("[modux] Liquibase migrations are not generated yet; skipping for service "
