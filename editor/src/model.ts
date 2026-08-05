@@ -563,7 +563,11 @@ export interface ProjectionRef {
 export interface WorkflowStepRef {
   id: string;
   name: string;
-  /** TASK (default), JOIN (waits for every dependency) or SPLIT (fans out). */
+  /**
+   * The kind of step, in EventConductor's own vocabulary — ACTION, USER_TASK, JOIN, FORK, END…
+   * — because EventConductor is what runs it. modux used to say TASK/SPLIT here; see
+   * `docs/design/ide-plugin.md` §8.1.3.
+   */
   type?: string;
   /** The step's single outgoing link when it is ANOTHER workflow (hand-off). */
   handoffWorkflowId?: string;

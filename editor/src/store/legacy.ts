@@ -112,9 +112,54 @@ export function healMainModules(store: ModelStore): number {
 /** The id a bounded context's main module gets. Mirrors `ModuleTopology.mainModuleId`. */
 export const mainModuleId = (boundedContextId: string) => `${boundedContextId}-main`;
 
+/**
+ * The step types EventConductor's engine understands.
+ *
+ * modux GENERATES EventConductor workflow definitions, so this is the vocabulary of the thing
+ * being produced and modux follows it rather than keeping its own. The list is checked against
+ * EventConductor's actual schema in `legacy.test.ts` — a copy nobody compares is how the two
+ * drifted apart in the first place.
+ */
+export const EVENT_CONDUCTOR_STEP_TYPES = [
+  'START', 'ACTION', 'JOIN', 'FORK', 'END', 'USER_TASK', 'PROCESS', 'TIMER',
+  'WAIT_FOR_MESSAGE', 'SEND_MESSAGE', 'RULE',
+];
+
+/**
+ * Say what kind of step it is in EventConductor's words.
+ *
+ * modux used to say TASK/SPLIT where the engine says ACTION/FORK, and the generator hid the gap
+ * by emitting ACTION for everything — so a step with somebody assigned to it reached the engine
+ * as automated work. A step with a role or a form IS a user task; that is what having somebody
+ * assigned means. Mirrors `CommonFileRepository.adoptEventConductorStepTypes`.
+ */
+export function adoptEventConductorStepTypes(store: ModelStore): number {
+  const known = new Set(EVENT_CONDUCTOR_STEP_TYPES);
+  let adopted = 0;
+  for (const workflow of store.all('workflows')) {
+    const steps = nested(workflow.steps);
+    if (!steps.length) continue;
+    let touched = false;
+    const rewritten = steps.map((step) => {
+      const current = typeof step.type === 'string' ? step.type : '';
+      if (current && known.has(current)) return step;
+      touched = true;
+      const type = current === 'SPLIT' ? 'FORK'
+        : current === 'JOIN' ? 'JOIN'
+          : (step.roleId || step.formPageId) ? 'USER_TASK' : 'ACTION';
+      return { ...step, type };
+    });
+    if (!touched) continue;
+    store.patch('workflows', workflow.id, { steps: rewritten });
+    adopted += 1;
+  }
+  return adopted;
+}
+
 /** Every migration a freshly loaded tree needs, in order. */
 export function migrate(store: ModelStore): Migration {
   const result = hoistLegacyProjectElements(store);
+  adoptEventConductorStepTypes(store);
   healMainModules(store);
   return result;
 }

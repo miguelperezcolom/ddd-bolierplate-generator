@@ -561,7 +561,10 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ |
 | Motor de comandos declarativo | `editor/src/store/spec.ts` | ✅ |
 | **Bloque núcleo DDD: 124 de 125 comandos** | `editor/src/store/commands/` | ✅ |
-| **Bloque UI: los 93 comandos** | `editor/src/store/commands/` | ✅ 263 tests en el editor |
+| **Bloque UI: los 93 comandos** | `editor/src/store/commands/` | ✅ |
+| **Workflows (19) y agentes (42)** | `editor/src/store/commands/` | ✅ 270 tests en el editor |
+| Grafo de flujo y validador de bucles | `editor/src/store/workflow-graph.ts` | ✅ Tarjan, igual que Java |
+| **Manda EventConductor** | `eventconductor/`, `EventConductorSchema` | ✅ 178 tests en Java |
 | Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
 | Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
@@ -670,15 +673,63 @@ abrir algo, y sin ese algo no es nada; un paso de wizard es una *etapa*, y que s
 página no significa que la etapa dejara de existir. Lo mismo con las apps: al borrar una, las
 entradas de otras apps que apuntaban a ella pierden el destino pero **conservan su sitio**.
 
+### 8.1.3 Manda EventConductor
+
+El applier está completo: **los 281 comandos**, con una sola excepción deliberada
+(`add-project-reference`, §8.1.1). Portar los últimos 61 —workflows y agentes— sacó a la luz que
+modux y **EventConductor**, el motor que ejecuta los workflows que modux genera, habían
+divergido.
+
+**Tres vocabularios que no coincidían.** El modelo de modux decía `TASK`/`JOIN`/`SPLIT`. El
+esquema de EventConductor dice `START`, `ACTION`, `JOIN`, `FORK`, `END`, `USER_TASK`, `PROCESS`,
+`TIMER`, `WAIT_FOR_MESSAGE`, `SEND_MESSAGE`, `RULE`. Y el test de generación validaba contra una
+lista propia de seis, escrita a mano, **a la que le faltaban cinco**. Los tres estaban de acuerdo
+consigo mismos y ninguno con el motor.
+
+**Y la plantilla lo tapaba.** Emitía `"type": "ACTION"` a pelo para todos los pasos, así que la
+divergencia no se notaba: un paso humano —con su rol y su formulario— llegaba al motor como
+trabajo automático. Traducir en el último momento es lo que permitió que pasara desapercibido
+tanto tiempo, así que la traducción se hace ahora al *cargar*, una vez:
+
+- `SPLIT` → `FORK`, que es el mismo concepto con el nombre del motor.
+- Un paso **con rol o con formulario** es un `USER_TASK`. Eso es lo que significa tener a alguien
+  asignado; deducirlo es más fiable que pedir que se declare dos veces.
+- Un tipo que ya es del motor se respeta, aunque el paso tenga rol: lo explícito manda.
+
+**El esquema se lee, no se reescribe.** `EventConductorSchema` es el único sitio que lo lee, y de
+ahí salen el enum, los campos que un paso admite y los obligatorios. El test de generación ya no
+lleva su lista: la pide. Un test que está de acuerdo con una copia caducada de la verdad pasa
+mientras el fichero generado está mal.
+
+**Copiado, no dependido, y con detector de deriva.** La generación es hermética: construir no
+puede exigir que EventConductor esté checkouteado. Así que los esquemas se copian a
+`model-driven-generator/src/main/resources/eventconductor/` —el *snapshot*— y
+`EventConductorSchemaDriftTest` los compara con el checkout hermano cuando existe, saltándose la
+comprobación cuando no. Es la misma división que §4.7: el snapshot es lo que lee el build, la
+coordenada solo se consulta para refrescar. Y la deriva se ve en la máquina de quien trabaja en
+los dos, que es la única donde se puede arreglar.
+
+**Un defecto mayor que esto destapó, y que sigue abierto.** `GenerateCodeUseCase` **no lee
+`WorkflowEntity` en ningún sitio**: la generación es toda por `sagas`. Como
+`migrate-sagas-to-workflows` convierte las sagas en workflows y las borra, después de la fusión
+un modelo genera **cero definiciones de workflow** — la orquestación desaparece del output sin
+que nada lo diga. Es lo siguiente que hay que arreglar, y es más gordo que el vocabulario.
+
+**Sobre reutilizar el editor gráfico de EventConductor.** Tiene un
+`eventconductor-workflow-graph` —un web component Lit con elkjs, el mismo stack y el mismo motor
+de layout que el editor de modux— que dibuja workflows. **Decidido que no, de momento.** La vista
+de workflows de modux está integrada en su lenguaje visual (cajas Archi, carriles, expansión por
+lámina, ver `lenguaje-visual-archi`); meter un componente ajeno para una sola lámina rompe esa
+coherencia y ata el bundle de modux al de otro repositorio. Que el *vocabulario* mande no obliga
+a que mande el *dibujo*.
+
 ### 8.2 Lo que falta, por orden de peso
 
-1. **Los otros 61 comandos** — agentes (42) y workflows (19).
-2. **El resto de la proyección** — faltan workflows, agentes y la vista de procesos.
-3. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
+1. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
    que mantiene vivo `/layout` (§5.1).
-4. **Superficie para las dos capacidades huérfanas** (§5.1): el Mojo de `ImportApiEntityUseCase`
+2. **Superficie para las dos capacidades huérfanas** (§5.1): el Mojo de `ImportApiEntityUseCase`
    y la derivación de interacciones en TypeScript.
-5. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
+3. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
    la razón de §8.1.1: leer otro modelo del disco es trabajo del host.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.

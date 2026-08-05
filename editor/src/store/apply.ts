@@ -8,6 +8,7 @@
 
 import type { ModuxCommand } from '../commands.js';
 import { ACTOR_COMMANDS } from './commands/actors.js';
+import { AGENT_COMMANDS } from './commands/agents.js';
 import { API_COMMANDS } from './commands/apis.js';
 import { APP_COMMANDS } from './commands/apps.js';
 import { BEHAVIOR_COMMANDS } from './commands/behavior.js';
@@ -21,6 +22,7 @@ import { PLATFORM_COMMANDS } from './commands/platform.js';
 import { READSIDE_COMMANDS } from './commands/readside.js';
 import { RENAME_COMMANDS } from './commands/rename.js';
 import { UI_COMMANDS } from './commands/ui-wiring.js';
+import { WORKFLOW_COMMANDS } from './commands/workflows.js';
 import type { Changes, ModelStore } from './store.js';
 import { CommandError, type Command, type Handler } from './spec.js';
 
@@ -41,6 +43,9 @@ export const HANDLERS: Record<string, Handler> = {
   ...PAGE_COMMANDS,
   ...MODEL_COMMANDS,
   ...PLATFORM_COMMANDS,
+  // orchestration and agents
+  ...WORKFLOW_COMMANDS,
+  ...AGENT_COMMANDS,
 };
 
 export { CommandError };
