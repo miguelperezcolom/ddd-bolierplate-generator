@@ -476,17 +476,17 @@ movimiento, por encima de la ergonomía del IDE.
 | Endpoint | Destino | Estado |
 |---|---|---|
 | `/model`, `/version` | I/O de ficheros del IDE — trivial | vive |
-| `/layout` | fichero sidecar, I/O del plugin | **vive** — ver abajo |
+| `/layout` | I/O del plugin por el árbol (§8.1.6) | vive mientras viva el host web |
 | `/commands` | **el port a TS — el trabajo real** | vive |
 | `/solutions/*` (diff, tag, tags, merge-check), `/repositories` | lo hace el IDE + git | ✅ borrado |
 | `/import-api` (swagger-parser) | goal del maven-plugin, no vivo en el editor | ✅ borrado |
 | `/interactions/derive` | derivación client-side (ya falla en silencio hoy) | ✅ borrado |
 | `/events` (SSE) | no hay servidor que notifique | ✅ borrado |
 
-**`/layout` se queda, de momento.** Es el único sitio donde se persiste la geometría, y el plugin
-todavía no la lee ni la escribe (§8, pendiente 4). Borrarlo ahora no movería el trabajo de sitio:
-destruiría la colocación manual de cada lámina sin nada que la recoja. Sale cuando el plugin
-sepa hacerlo.
+**`/layout` se queda, y la razón ha cambiado.** Se mantuvo porque era el único sitio donde se
+persistía la geometría y el plugin no sabía hacerlo. Ya sabe (§8.1.6): la lee y la escribe por los
+elementos `diagrams` del árbol. Lo que lo mantiene vivo ahora es el **host web**, que sigue
+guardando por ahí — así que muere con él, en el borrado de §6.6, y no antes.
 
 **Dos capacidades quedaron sin puerta al borrar sus endpoints**, y conviene no confundirlas con
 código muerto: `ImportApiEntityUseCase` —importar un contrato OpenAPI/WSDL *dentro* de un nodo API
@@ -568,6 +568,7 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | **Generación desde workflows** | `EventConductorWorkflowDefinition`, lint `workflow-home` | ✅ |
 | **La proyección cubre el modelo entero** | `project-catalog.ts` + test de cobertura | ✅ 297 tests en el editor |
 | Derivación de interacciones, client-side | `editor/src/derive-interaction.ts` | ✅ |
+| **Geometría por el árbol** (`diagrams/`) | `editor/src/store/layout.ts` | ✅ 308 tests en el editor |
 | `modux:import-api` | `plugin/` | ✅ 10 tests en el maven-plugin |
 | Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
@@ -794,11 +795,42 @@ proyectado no llevaba sus destinos: sin ellos no hay de dónde sacar la arista.
 Cerrado, y con un test que lee la lista de campos de `model.ts` en vez de repetirla: un campo
 nuevo sin nadie que lo proyecte falla **ahí**, no delante de alguien mirando una vista en blanco.
 
+### 8.1.6 La geometría, por el árbol
+
+El plugin lee y escribe ya la colocación por los elementos `diagrams` del árbol — un fichero por
+vista, versionado, como decidió §4.4. Sale así:
+
+```yaml
+id: context-map
+nodes:
+  - ref: bc-1
+    x: 120.4
+    y: 240
+edges:
+  - ref: bc-1->bc-2
+    points:
+      - x: 5
+        y: 6
+```
+
+Tres cosas que decide este formato, y que son la razón de que la geometría pueda versionarse sin
+que el repo se vuelva insoportable:
+
+- **Un fichero por vista.** Recolocar una lámina no toca las demás. Es lo que acota el coste que
+  §4.4 aceptaba a cambio de que un diagrama sea documentación.
+- **Coordenadas a un decimal.** Un píxel no necesita más, y el YAML se lee.
+- **Se escribe solo lo que se movió.** El primer intento marcaba *todas* las vistas en cada
+  guardado, así que abrir un modelo reescribía la geometría entera — el diff fantasma de §2.6,
+  otra vez, y en la mitad del store que más cambia. El test que lo caza es el que importa de ese
+  fichero: leer el árbol y volver a escribirlo **no toca nada**.
+
+Y el arrastre se agrupa: mover un nodo emite una posición por frame, y escribir cada una pondría
+un commit por píxel en la pila de deshacer del IDE. La geometría baja a disco cuando la mano
+para — y también al cerrar, porque cerrar dentro de esa ventana no puede perder el último gesto.
+
 ### 8.2 Lo que falta, por orden de peso
 
-1. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
-   que mantiene vivo `/layout` (§5.1).
-2. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
+1. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
    la razón de §8.1.1: leer otro modelo del disco es trabajo del host.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
