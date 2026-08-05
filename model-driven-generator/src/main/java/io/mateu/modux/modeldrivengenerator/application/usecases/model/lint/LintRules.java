@@ -68,6 +68,7 @@ public final class LintRules {
                 new CustomStepIntent(),
                 new WorkflowDag(),
                 new WorkflowTrigger(),
+                new WorkflowHome(),
                 new WorkflowStepTarget(),
                 new WorkflowDependsScope(),
                 new PolicyWithoutTrigger(),
@@ -426,6 +427,53 @@ public final class LintRules {
                     .map(w -> new LintFinding(id(), LintSeverity.WARNING, "Workflow", w.id(), w.name(),
                             "No trigger event — the workflow never starts."))
                     .toList();
+        }
+    }
+
+    /**
+     * A workflow has to be reachable from SOME context, or it generates nothing.
+     *
+     * <p>A workflow lives outside every bounded context, but its EventConductor definition has to
+     * end up on a running service's classpath — and the service that will certainly be running
+     * when the workflow starts is the one the trigger comes from. When nothing says where it
+     * starts, generation has nowhere to put the file and writes none, which is exactly the kind of
+     * silence this rule exists to break.
+     */
+    static class WorkflowHome implements LintRule {
+        public String id() { return "workflow-home"; }
+        public String description() {
+            return "Every workflow must be startable from a bounded context";
+        }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var owned = new HashSet<String>();
+            for (var context : m.boundedContexts()) {
+                addAll(owned, context.aggregateIds());
+                addAll(owned, context.useCaseIds());
+                addAll(owned, context.domainServiceIds());
+            }
+            return m.workflows().stream()
+                    .filter(w -> !homed(w, owned))
+                    .map(w -> new LintFinding(id(), LintSeverity.ERROR, "Workflow", w.id(), w.name(),
+                            "No se sabe desde qué contexto arranca: no genera definición para el"
+                                    + " motor. Dale un trigger (agregado, servicio de dominio o"
+                                    + " caso de uso), o un paso con caso de uso."))
+                    .toList();
+        }
+
+        private static boolean homed(
+                io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity w,
+                Set<String> owned) {
+            if (owned.contains(w.triggerAggregateId())
+                    || owned.contains(w.triggerDomainServiceId())
+                    || owned.contains(w.triggerUseCaseId())) {
+                return true;
+            }
+            return w.steps() != null && w.steps().stream()
+                    .anyMatch(s -> owned.contains(s.targetUseCaseId()));
+        }
+
+        private static void addAll(Set<String> target, List<String> source) {
+            if (source != null) target.addAll(source);
         }
     }
 

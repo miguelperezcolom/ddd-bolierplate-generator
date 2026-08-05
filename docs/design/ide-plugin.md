@@ -564,7 +564,8 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | **Bloque UI: los 93 comandos** | `editor/src/store/commands/` | ✅ |
 | **Workflows (19) y agentes (42)** | `editor/src/store/commands/` | ✅ 270 tests en el editor |
 | Grafo de flujo y validador de bucles | `editor/src/store/workflow-graph.ts` | ✅ Tarjan, igual que Java |
-| **Manda EventConductor** | `eventconductor/`, `EventConductorSchema` | ✅ 178 tests en Java |
+| **Manda EventConductor** | `eventconductor/`, `EventConductorSchema` | ✅ |
+| **Generación desde workflows** | `EventConductorWorkflowDefinition`, lint `workflow-home` | ✅ 198 tests en Java |
 | Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
 | Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
@@ -709,11 +710,11 @@ comprobación cuando no. Es la misma división que §4.7: el snapshot es lo que 
 coordenada solo se consulta para refrescar. Y la deriva se ve en la máquina de quien trabaja en
 los dos, que es la única donde se puede arreglar.
 
-**Un defecto mayor que esto destapó, y que sigue abierto.** `GenerateCodeUseCase` **no lee
-`WorkflowEntity` en ningún sitio**: la generación es toda por `sagas`. Como
+**Un defecto mayor que esto destapó — arreglado, §8.1.4.** `GenerateCodeUseCase` no leía
+`WorkflowEntity` en ningún sitio: la generación era toda por `sagas`. Como
 `migrate-sagas-to-workflows` convierte las sagas en workflows y las borra, después de la fusión
-un modelo genera **cero definiciones de workflow** — la orquestación desaparece del output sin
-que nada lo diga. Es lo siguiente que hay que arreglar, y es más gordo que el vocabulario.
+un modelo generaba **cero definiciones de workflow** — la orquestación desaparecía del output sin
+que nada lo dijera.
 
 **Sobre reutilizar el editor gráfico de EventConductor.** Tiene un
 `eventconductor-workflow-graph` —un web component Lit con elkjs, el mismo stack y el mismo motor
@@ -722,6 +723,41 @@ de workflows de modux está integrada en su lenguaje visual (cajas Archi, carril
 lámina, ver `lenguaje-visual-archi`); meter un componente ajeno para una sola lámina rompe esa
 coherencia y ata el bundle de modux al de otro repositorio. Que el *vocabulario* mande no obliga
 a que mande el *dibujo*.
+
+### 8.1.4 La orquestación vuelve a generarse
+
+Un workflow genera ya su definición de EventConductor. Lo que hacía falta decidir:
+
+**Dónde vive el fichero.** Un workflow no tiene contexto dueño —esa es su definición, cruza
+contextos— pero el motor lee `classpath:/workflows/*.json`, así que el fichero tiene que estar
+dentro de un módulo, que es lo que acaba siendo un jar en el classpath de un servicio en marcha.
+La regla: **su casa es el contexto desde el que arranca**. Es el único que con certeza estará
+corriendo cuando el disparador salte. Si no hay disparador, decide el caso de uso del primer
+paso.
+
+**Solo el JSON, ninguna clase.** EventConductor es dueño de la orquestación, así que un workflow
+no es código: es una definición que el motor carga. Una saga sí genera su clase, porque una saga
+era orquestación en proceso.
+
+**Dos formas que no encajaban** y que se traducen en un solo sitio
+(`EventConductorWorkflowDefinition`, función pura y por tanto testeable contra el schema):
+
+- **Un gateway es un PASO.** modux modela un join o un split como elemento propio, porque en un
+  lienzo es su propia caja. EventConductor no tiene tal cosa: un `JOIN` y un `FORK` son pasos como
+  cualquier otro. Así que los gateways se pliegan dentro de la lista de pasos, y la semántica de
+  un join (`ALL`/`ANY`) pasa a ser su `joinType` (`AND`/`XOR`).
+- **Una dependencia es una precondición.** modux dice «este paso depende de esos», el motor dice
+  «estos tienen que haber terminado». Es la misma arista leída desde el mismo extremo.
+
+**Y una tercera divergencia menor**: la forma generada no llevaba `id`, pero el schema lo exige en
+un `USER_TASK`. Ahora lleva uno determinista, para que el paso humano pueda apuntar a su
+formulario.
+
+**Que no vuelva a pasar en silencio.** Un workflow cuyo contexto de arranque no se resuelva se
+habría saltado calladamente, que es el fallo que esto arregla. La generación avisa, y —mejor— la
+regla de lint `workflow-home` lo caza en `modux:validate`, antes de que nadie construya y se
+pregunte dónde fue la orquestación. La regla que ya existía miraba el *evento* disparador; esta
+mira la *fuente*, que es lo que decide dónde vive.
 
 ### 8.2 Lo que falta, por orden de peso
 

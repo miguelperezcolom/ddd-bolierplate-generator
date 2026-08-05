@@ -73,6 +73,33 @@ The schema guards shape. These are the ones that break a model while still valid
    top-level directory.
 7. **Sagas and workflows have an execution ceiling per step.** A cycle without a bound is
    rejected: the build refuses workflows that can loop forever.
+8. **A workflow must be startable from a bounded context.** It lives outside every context, but
+   its generated definition has to end up on some running service's classpath — so it needs a
+   trigger (`triggerAggregateId`, `triggerDomainServiceId` or `triggerUseCaseId`) naming
+   something a context owns, or at least one step with a `targetUseCaseId`. Without that it
+   generates nothing at all. `triggerEvent` alone is NOT enough: it says what starts the
+   workflow, not from where.
+
+## Workflows speak EventConductor's language
+
+A workflow is run by [EventConductor](https://eventconductor.mateu.io/), and modux generates its
+definition — so the engine's vocabulary is the one the model uses. A step's `type` is one of
+EventConductor's own:
+
+`START` · `ACTION` · `JOIN` · `FORK` · `END` · `USER_TASK` · `PROCESS` · `TIMER` ·
+`WAIT_FOR_MESSAGE` · `SEND_MESSAGE` · `RULE`
+
+Two things follow that are easy to get wrong by hand:
+
+- **A step with a `roleId` or a `formPageId` is a `USER_TASK`**, not an `ACTION`. Leave `type`
+  out and it is inferred from exactly that; write `ACTION` on a step with a role and you have
+  told the engine a person's task is automated work.
+- **modux says `dependsOnStepIds`, the engine says preconditions.** Same edge; the translation
+  happens at generation, so declare dependencies the modux way.
+
+An older model saying `TASK` or `SPLIT` is migrated on load (`SPLIT` → `FORK`). The schemas
+themselves live in `model-driven-generator/src/main/resources/eventconductor/`, copied from
+EventConductor — when the two disagree, the one that is wrong is modux.
 
 ## Referencing another project
 
