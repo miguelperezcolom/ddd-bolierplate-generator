@@ -25,7 +25,7 @@ Supported architecture patterns in generated code: DDD, CQRS, Event Sourcing
 Models, Outbox, RBAC, Gateways (circuit breakers, rate limiting), Scheduled
 Triggers.
 
-- Group / version: `io.mateu.modux` / `0.0.1-SNAPSHOT`, MIT license.
+- Group / version: `io.mateu.modux` / `0.1.0`, MIT license.
 - Docs site: <https://modux.mateu.io> (source in `doc/`).
 - **Languages**: code, code comments, `README.md` and the docs site are in
   **English**; design RFCs (`docs/design/`), specs (`docs/specs/`), and ops

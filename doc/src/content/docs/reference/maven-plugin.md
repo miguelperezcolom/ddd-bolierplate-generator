@@ -10,7 +10,7 @@ The `modux-maven-plugin` lets you trigger Modux code generation from any Maven b
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.0.1-SNAPSHOT</version>
+<version>0.1.0</version>
 ```
 
 ## Goal: `generate`
@@ -35,7 +35,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 <plugin>
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <configuration>
         <projectId>my-project-id</projectId>
     </configuration>
@@ -53,7 +53,7 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 <plugin>
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <configuration>
         <projectId>acme-platform</projectId>
         <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>

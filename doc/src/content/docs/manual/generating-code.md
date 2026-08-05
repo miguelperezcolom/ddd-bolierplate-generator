@@ -31,7 +31,7 @@ Add the plugin to any Maven project that should trigger generation:
 <plugin>
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <configuration>
         <projectId>my-project-id</projectId>
         <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>

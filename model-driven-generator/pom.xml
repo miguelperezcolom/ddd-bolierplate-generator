@@ -10,10 +10,10 @@
     </parent>
     <groupId>io.mateu.modux</groupId>
     <artifactId>model-driven-generator</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <name>model-driven-generator</name>
     <description>model-driven-generator</description>
-    <url>https://mateu.io</url>
+    <url>https://modux.mateu.io</url>
     <licenses>
         <license>
             <name>MIT License</name>
@@ -22,9 +22,9 @@
     </licenses>
 
     <scm>
-        <connection>scm:git:git@github.com:miguelperezcolom/mateu-security.git</connection>
-        <developerConnection>scm:git:git@github.com:miguelperezcolom/mateu-security.git</developerConnection>
-        <url>https://github.com/miguelperezcolom/mateu-security</url>
+        <connection>scm:git:git@github.com:miguelperezcolom/modux.git</connection>
+        <developerConnection>scm:git:git@github.com:miguelperezcolom/modux.git</developerConnection>
+        <url>https://github.com/miguelperezcolom/modux</url>
     </scm>
 
     <developers>
@@ -205,6 +205,11 @@
                     </jvmArguments>
                     <!-- exec classifier keeps the original thin JAR for use as a dependency -->
                     <classifier>exec</classifier>
+                    <!-- ...y NO se adjunta: el fat jar son 40 MB de aplicación ejecutable, útil
+                         para arrancar el generador aquí, pero no algo que deba acompañar a una
+                         librería en Maven Central, donde además no se puede retirar. Se sigue
+                         construyendo en target/; solo no se instala ni se publica. -->
+                    <attach>false</attach>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
