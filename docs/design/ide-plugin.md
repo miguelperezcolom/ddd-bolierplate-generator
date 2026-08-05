@@ -863,9 +863,16 @@ que la referencia se invente: sin snapshot, el comando se niega.
 Del RFC, nada: la lista se cerró con §8.1.7 y esto está mergeado a `main`. Lo que queda es
 **distribución**, que es otro problema y conviene no confundirlo con este.
 
-1. **El generador no lo puede construir nadie más.** `model-driven-generator` depende de
+1. **El generador no lo puede construir nadie más.** `model-driven-generator` fija
    `mateu:0.0.1-MATEU`, que es un `mvn install` local. Mientras siga así, `modux-maven-plugin` no
-   puede salir de `0.0.1-SNAPSHOT` ni llegar a Maven Central.
+   puede salir de `0.0.1-SNAPSHOT`.
+
+   Medido, resulta ser mucho menos de lo que parece: **modux ya no corre sobre mateu** —eso se fue
+   con `infra/in/ui`— y lo que queda son **8 tipos** en 147 ficheros: `Identifiable` (una interfaz
+   con `id()`), `Pageable`/`ListingData`/`Page`, la anotación `@Hidden`, los enums `FieldDataType`
+   y `FieldStereotype`, y `JsonSerializer`. De los cuatro artefactos declarados en el pom,
+   `agent-cli` —el único que no está en Central— no se importa en ningún sitio. Así que el trabajo
+   es **absorber esos 8 tipos y borrar las cuatro dependencias**, no publicar nada.
 2. **Y sin eso, el plugin de IDE es media herramienta.** Edita el modelo, sí, pero quien lo
    instale no puede generar: la generación es el maven plugin. Por eso v0.1.0 se publica como
    release de GitHub —para instalar desde disco— y **no** en el Marketplace de JetBrains. Publicar
