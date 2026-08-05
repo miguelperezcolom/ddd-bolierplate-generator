@@ -14,6 +14,7 @@
  */
 
 import { parse, stringify } from 'yaml';
+import { migrate } from './legacy.js';
 import { ModelStore, normalize, type Changes, type Element, type TypeName } from './store.js';
 
 /** The file operations the tree needs. Paths are relative to the model root. */
@@ -44,6 +45,10 @@ export async function isModelRoot(fs: FileSystem, root: string): Promise<boolean
  * Read the whole tree. Directories are discovered from disk rather than from a
  * fixed list, so a store written by a newer modux — with element types this
  * build has never heard of — still round-trips instead of losing them.
+ *
+ * A tree written by an older modux is migrated on the way in (see `legacy.ts`).
+ * What the migration moves is left pending, so it reaches disk with the next
+ * flush rather than on opening the model.
  */
 export async function loadTree(fs: FileSystem, root: string): Promise<ModelStore> {
   const index = (await readYaml<IndexFile>(fs, join(root, INDEX))) ?? { formatVersion: 1, counts: {} };
@@ -60,6 +65,7 @@ export async function loadTree(fs: FileSystem, root: string): Promise<ModelStore
   }
   const store = ModelStore.from(data);
   store.clearChanges();
+  migrate(store);
   return store;
 }
 

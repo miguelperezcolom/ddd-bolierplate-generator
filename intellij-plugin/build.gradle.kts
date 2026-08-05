@@ -1,6 +1,8 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     id("java")
-    id("org.jetbrains.intellij.platform") version "2.1.0"
+    id("org.jetbrains.intellij.platform") version "2.18.1"
 }
 
 group = "io.mateu.modux"
@@ -19,9 +21,14 @@ dependencies {
         // whole SDK, and it is what a developer already has. Falls back to a pinned Community
         // release so CI and a fresh clone work with no configuration.
         val local = providers.gradleProperty("moduxIdeaLocalPath").orNull
-        if (!local.isNullOrBlank()) local(local) else intellijIdeaCommunity("2024.2")
-        instrumentationTools()
+        if (!local.isNullOrBlank()) local(local) else intellijIdeaCommunity("2025.2")
+        testFramework(TestFrameworkType.Platform)
     }
+    testImplementation("junit:junit:4.13.2")
+}
+
+tasks.test {
+    useJUnit()
 }
 
 java {
@@ -59,4 +66,14 @@ sourceSets.main {
 
 tasks.processResources {
     dependsOn(editorBundle)
+}
+
+/**
+ * `-PmoduxRunProject=/path/to/a/repo` opens that project straight away in the sandbox IDE,
+ * instead of landing on the welcome screen. The point of the plugin is what happens when you
+ * open a model, so getting there should not need clicking.
+ */
+tasks.named<JavaExec>("runIde") {
+    val project = providers.gradleProperty("moduxRunProject")
+    argumentProviders.add(CommandLineArgumentProvider { listOfNotNull(project.orNull) })
 }
