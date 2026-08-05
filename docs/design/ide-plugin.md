@@ -1,9 +1,9 @@
 # RFC: Modux como plugin de IDE — sin servidor
 
-> Estado: **en construcción** en la rama `ide-plugin` (2026-08-04). El applier, el árbol de
-> ficheros, el plugin maven y un plugin de IntelliJ que empaqueta están hechos y verificados;
-> el port de comandos y la proyección van por el núcleo. Ver §8 para el estado real y §6 para
-> lo que falta.
+> Estado: **en construcción** en la rama `ide-plugin` (2026-08-05). El editor gráfico ya dibuja
+> un modelo del repositorio dentro de un IntelliJ en marcha, y el borrado ya está hecho: el build
+> de `model-driven-generator`, roto desde antes de este RFC, compila y pasa sus tests. El port de
+> comandos y la proyección van por el núcleo. Ver §8 para el estado real y §6 para lo que falta.
 > Relacionado: [`storage-ports.md`](./storage-ports.md), [`two-zone-codegen.md`](./two-zone-codegen.md),
 > [`catalog-and-views.md`](./catalog-and-views.md).
 
@@ -266,6 +266,14 @@ Dos cosas que aparecieron al hacerlo:
    (`CommonFileRepository.hoistLegacyProjectElements`), junto al `healMainModules()` que ya
    seguía ese patrón. Los campos legacy siguen en `ProjectEntity`, agrupados y marcados, solo
    para eso; se pueden borrar cuando no queden stores anteriores.
+
+   **Y tiene que estar en los dos lenguajes.** Durante un tiempo estuvo solo en Java, y el efecto
+   era exactamente el que la migración existe para evitar: el plugin abría un árbol anterior al
+   split *perdiendo las relaciones en silencio*, porque su proyección las lee como tipo de primer
+   nivel y en el fichero seguían dentro del proyecto. Está portada en
+   `editor/src/store/legacy.ts`, con el mismo contrato —lo migrado queda pendiente de escritura y
+   llega al disco con el siguiente flush, nunca por el mero hecho de abrir el modelo—. Medido
+   sobre `sample/hla-booking`: 6 relaciones, 2 sistemas externos y 1 despliegue.
 2. **El id del despliegue no puede ser el del proyecto.** Se intentó, y el lint lo cazó: los ids
    son únicos en todo el modelo, y de esa invariante dependen tanto el validador como el applier
    del editor. Es `deployment-{projectId}`.
@@ -363,26 +371,46 @@ proyecto actual, y guarda el `targetId` como puntero.
 otro proyecto presente —ni checkouteado, ni accesible— para construir. Hay que protegerlo
 explícitamente.
 
-Lo único que hay que rehousing es **dónde se resuelve el puntero**. Hoy es una clave en
-`~/.modux/repositories.yaml`, un registro machine-local que desaparece con el home. Pasa a
-ser una coordenada resoluble guardada **en el modelo y versionada**:
+Lo único que hay que rehousing es **dónde se resuelve el puntero**. Era una clave en
+`~/.modux/repositories.yaml`, un registro machine-local que desaparece con el home. Es ahora una
+coordenada guardada **en el modelo y versionada** (`ReferencedProjectEntity`, en el campo
+`referencedProject` del sistema externo):
 
 - **Coordenada git** (URL + branch) como forma canónica: con un proyecto por repo, referenciar
   otro proyecto es siempre referenciar otro repositorio.
 - **Path local** (`../checkin/modux`) como atajo para checkouts hermanos en disco, que es lo
   normal mientras se trabaja en varios a la vez. Sin red y sin configuración por máquina.
 
-`RepositoryEntity` ya distingue `LOCAL` / `GIT` / `JDBC`, así que el tipo existe: solo cambia
-de sitio, de `~/.modux` al modelo.
-
 El puntero solo se usa **al refrescar** la referencia. El resto del tiempo manda el snapshot,
 y por eso perder el acceso al otro repo no rompe nada.
 
+**Hecho.** Tres cosas que aparecieron al implementarlo:
+
+1. **La URL git sola basta casi siempre, y por eso es la que hay que guardar.** De ella sale el
+   nombre del repositorio, y de ahí un checkout hermano (`../<nombre>/modux`, o `../<nombre>`).
+   Eso cubre el caso normal —los dos repos al lado mientras trabajas en ambos— *sin* escribir en
+   un fichero versionado dónde guarda las cosas tu máquina, que es lo que un path hace. El path
+   queda como override para cuando el checkout no está donde se adivina.
+2. **La migración solo puede ocurrir en la máquina que tenía el registro.** Convertir un id
+   antiguo exige leer `~/.modux/repositories.yaml`, así que en cualquier otro sitio no hay nada
+   que convertir. La regla es entonces **no perder**: un id que el registro no explica se deja
+   como estaba en vez de borrarse, porque el snapshot sigue intacto y es lo que lee la
+   generación — lo único que no se puede hacer es refrescar. Una carpeta local se convierte en
+   path *relativo* al modelo que la referencia, que es lo que la hace resoluble para otro.
+3. **El schema mentía sobre el campo legacy.** `referencedRepositoryId` termina en `Id`, y el
+   generador describe por convención todo `*Id` como «referencia a un elemento existente, el
+   linter comprueba la integridad». No hay tal elemento. El schema es lo que lee un agente antes
+   de escribir un modelo (§3.1), así que anunciar un destino inexistente es justo cómo se le
+   convence de inventarlo: ahora el campo se describe como legado y dice qué usar en su lugar.
+
+Con esto se cae también el selector de repositorios del editor: la paleta ya no ofrece una lista
+de un catálogo que no existe, sino una caja donde dices dónde está el otro proyecto.
+
 ### 4.8 Las soluciones son ramas
 
-Hoy modux tiene un concepto propio de **solución** —variantes del modelo con su diff, sus
-tags y su merge— implementado sobre git en `SolutionApiController` + `SolutionGitService` +
-`SolutionDiffService` (538 líneas), con su propio vocabulario en el editor.
+modux tenía un concepto propio de **solución** —variantes del modelo con su diff, sus tags y su
+merge— implementado sobre git en `SolutionApiController` + `SolutionGitService` +
+`SolutionDiffService` + `SolutionMergeService`, con su propio vocabulario en el editor.
 
 Con el modelo dentro del repositorio eso deja de tener sentido: **una solución es una rama.**
 
@@ -406,19 +434,38 @@ de elemento más, que vive en el árbol y viaja en la rama como todo lo demás. 
 
 Sobre **62 885 líneas de Java**:
 
-| Paquete | Líneas | Destino |
-|---|---:|---|
-| `infra/in/ui` (Mateu UIDL) | 17 578 | **borrar** — la sustituye el editor gráfico |
-| `infra/in/mcp` | 922 | **borrar** — §3 |
-| `infra/out/git` | 718 | **borrar** — git lo hace el IDE |
-| `infra/in/rest` | 8 189 | ~5500 → TS; el resto borrar |
-| `application` + `domain` | 24 249 | **sobrevive** → maven-plugin |
-| `infra/out/persistence` | 10 549 | parcial — sobrevive el formato granular (§4); el resto, ver §7 |
+| Paquete | Líneas | Destino | Estado |
+|---|---:|---|---|
+| `infra/in/ui` (Mateu UIDL) | 17 578 | la sustituye el editor gráfico | ✅ borrado |
+| `infra/in/mcp` | 922 | §3 | ✅ borrado |
+| `infra/out/git` | 718 | git lo hace el IDE | ✅ borrado |
+| `infra/in/rest` | 8 189 | ~5500 → TS; el resto borrar | parcial |
+| `application` + `domain` | 24 249 | **sobrevive** → maven-plugin | — |
+| `infra/out/persistence` | 10 549 | parcial — sobrevive el formato granular (§4); el resto, ver §7 | parcial |
 
-Dentro de `infra/in/rest`, se borran en lugar de portarse: `SolutionApiController` +
-`SolutionGitService` + `SolutionDiffService` (538 líneas juntas), los endpoints `/layout`
-(`EditorApiController:3516-3653`), `/repositories`, `/import-api`,
-`/interactions/derive` y `/events` (SSE).
+**Hecho.** 21 641 líneas borradas: 20 856 de Java, 769 del editor. Además de los tres paquetes,
+se fue con ellos la capa de workspaces, que resultó existir **solo** para las soluciones — fuera
+de sus propias implementaciones, sus únicos consumidores eran `SolutionApiController` y
+`RepositoryStoreOpener`. Cayeron enteros el puerto `application/out/store/WorkspaceStore`, su
+router y las dos implementaciones (`GitWorkspaceStore`, `DbWorkspaceStore`). Eso responde en
+parte a la primera pregunta abierta de §7.
+
+En el editor se fue la UI de soluciones del host web —barra de workspace, badge y listado de
+diff, etiquetado de versiones, y el flujo de resolución de conflictos del merge—: 1086 líneas
+quedaron en 330. El anillo de diff sigue en el núcleo del editor como propiedad que nadie
+alimenta, a propósito: §7 deja abierta la capa semántica as-is/to-be, que es lo que volvería a
+alimentarla.
+
+Lo que se conservó al borrar, en vez de irse por arrastre:
+
+- **La cobertura de la generación.** Los tres e2e de MCP se fueron —su asunto era el camino de
+  autoría vía MCP—, pero validar y generar sigue cubierto por otros doce e2e.
+- **El backend DATABASE.** `DbStorageTest` afirmaba «paridad completa con git» para las
+  soluciones; se redujo a lo que sobrevive, que es que el catálogo persiste como filas y aguanta
+  una reapertura.
+- **El documento HLA.** `GenerateHlaUseCase` cerraba con una sección «Qué cambia respecto al
+  sistema» calculada diffeando la rama contra el sistema. Es `git diff` ahora, que sobre un
+  fichero por elemento se lee mejor y no necesita modux levantado (§4.8).
 
 **Esto no es un replanteamiento de empaquetado: borra del orden de un tercio del código
 Java** y convierte el resto en un maven-plugin que solo lee. Es el argumento de fondo del
@@ -426,19 +473,30 @@ movimiento, por encima de la ergonomía del IDE.
 
 ### 5.1 Endpoints actuales y su destino
 
-| Endpoint | Destino |
-|---|---|
-| `/model`, `/version` | I/O de ficheros del IDE — trivial |
-| `/layout` | fichero sidecar, I/O del plugin |
-| `/commands` | **el port a TS — el trabajo real** |
-| `/solutions/*` (diff, tag, tags, merge-check), `/repositories` | **borrar** — lo hace el IDE + git |
-| `/import-api` (swagger-parser) | goal del maven-plugin, no vivo en el editor |
-| `/interactions/derive` | derivación client-side (ya falla en silencio hoy) |
-| `/events` (SSE) | **borrar** — no hay servidor que notifique |
+| Endpoint | Destino | Estado |
+|---|---|---|
+| `/model`, `/version` | I/O de ficheros del IDE — trivial | vive |
+| `/layout` | fichero sidecar, I/O del plugin | **vive** — ver abajo |
+| `/commands` | **el port a TS — el trabajo real** | vive |
+| `/solutions/*` (diff, tag, tags, merge-check), `/repositories` | lo hace el IDE + git | ✅ borrado |
+| `/import-api` (swagger-parser) | goal del maven-plugin, no vivo en el editor | ✅ borrado |
+| `/interactions/derive` | derivación client-side (ya falla en silencio hoy) | ✅ borrado |
+| `/events` (SSE) | no hay servidor que notifique | ✅ borrado |
+
+**`/layout` se queda, de momento.** Es el único sitio donde se persiste la geometría, y el plugin
+todavía no la lee ni la escribe (§8, pendiente 4). Borrarlo ahora no movería el trabajo de sitio:
+destruiría la colocación manual de cada lámina sin nada que la recoja. Sale cuando el plugin
+sepa hacerlo.
+
+**Dos capacidades quedaron sin puerta al borrar sus endpoints**, y conviene no confundirlas con
+código muerto: `ImportApiEntityUseCase` —importar un contrato OpenAPI/WSDL *dentro* de un nodo API
+existente— no tiene Mojo (`ImportOpenApiMojo` usa `ImportOpenApiUseCase`, que es otra cosa), y
+`DeriveInteractionUseCase` espera su port a TypeScript. Ambas siguen en `application`, que es
+donde §5 dice que viven las cosas que sobreviven al maven-plugin; les falta la superficie.
 
 ## 6. Fases propuestas
 
-0. **Asentar el formato en disco.** ✅ Hecho salvo el último punto — ver §8.
+0. **Asentar el formato en disco.** ✅ Hecho.
    - Partir `ProjectEntity` (§4.3): `contextMapRelations/`, `externalSystems/`, `deployments/`. ✅
    - Sin "proyecto actual": `currentProject()` → `theProject()`, que no desambigua nada. ✅
    - `projects` sigue siendo una lista de un elemento, en `projects/{id}.yaml` y no
@@ -446,7 +504,7 @@ movimiento, por encima de la ergonomía del IDE.
      convertir un tipo en singleton obligaría a un caso especial en los dos lenguajes a
      cambio de un nombre de fichero. Se enforcea semánticamente en su lugar.
    - Mover la resolución de referencias del registro en `~/.modux` a coordenadas
-     versionadas en el modelo (§4.7). **Pendiente.**
+     versionadas en el modelo (§4.7). ✅
 1. **Spike del applier genérico** + tabla de paths, con escritura incremental (§4.5).
    Decide si esto son semanas o meses. No comprometer fechas antes de esto.
 2. **Núcleo DDD** (127 comandos). Es de lo que genera el maven-plugin y es el vocabulario
@@ -454,17 +512,25 @@ movimiento, por encima de la ergonomía del IDE.
 3. **Workflows** (19) y **agentes** (42). Pequeños y autocontenidos.
 4. **UI** (93). El más grande y el que más va a seguir moviéndose.
 5. **Skill + emisión del JSON schema** por proyecto.
-6. **Borrado**: `infra/in/ui`, `infra/in/mcp`, `infra/out/git`, endpoints de soluciones.
+6. **Borrado**: `infra/in/ui`, `infra/in/mcp`, `infra/out/git`, endpoints de soluciones. ✅ Hecho.
 
 No hace falta tener los 281 el día uno: el plugin puede salir con el núcleo y dejar que el
 resto se edite como YAML de texto. El conjunto de comandos es aditivo, no un big bang.
+
+**El orden real fue 0 → 1 → 6 → resto, y esa inversión resultó ser la correcta.** El borrado se
+planteó como última fase para no quedarse sin nada que dibujara un modelo entero mientras la
+proyección estuviera incompleta; pero lo único que impedía compilar eran precisamente los dos
+paquetes que se borran, así que aplazarlo era aplazar tener un build. Y el miedo no se
+materializó: lo que dibuja el modelo entero es `infra/in/rest` + el editor web, que no se tocan.
+`infra/in/ui` era la administración en Mateu UIDL, que es otra cosa.
 
 ## 7. Preguntas abiertas
 
 - **El resto de `infra/out/persistence` (10 549 líneas).** El formato granular sobrevive
   (§4.1), pero el paquete contiene además el tipo de repositorio DATABASE (H2/PostgreSQL) y
-  el workspace store de `storage-ports.md`. Sin servidor, ¿sobrevive algo de eso? Sospecha:
-  se borra casi entero. Sin medir.
+  el workspace store de `storage-ports.md`. **Medido a medias:** el workspace store se fue entero
+  con las soluciones (§5) — puerto, router y las dos implementaciones—, porque no tenía ningún
+  otro consumidor. Lo que queda por decidir es el tipo DATABASE, que sigue vivo y con su test.
 - **`MonolithicYamlStorageFormat`.** ¿Se mantiene como formato de importación para modelos
   existentes, o se fuerza la migración a granular con `--modux.split` y se borra? El plugin
   solo va a saber hablar granular.
@@ -492,35 +558,103 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 
 | Pieza | Dónde | Estado |
 |---|---|---|
-| Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ 46 tests |
+| Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ |
 | Motor de comandos declarativo | `editor/src/store/spec.ts` | ✅ |
-| Bloque núcleo DDD (46 de 127 comandos) | `editor/src/store/commands/core.ts` | ✅ |
+| **Bloque núcleo DDD: 124 de 125 comandos** | `editor/src/store/commands/` | ✅ 224 tests en el editor |
+| Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
 | Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
-| Proyección store → vista (capa estratégica) | `editor/src/store/project.ts` | ✅ parcial, declara lo que no cubre |
-| Host del editor en el IDE | `editor/src/host/modux-editor-ide.ts` | ✅ compila |
-| Plugin de IntelliJ | `intellij-plugin/` | ✅ empaqueta zip instalable |
+| Migración de árboles anteriores al split | `editor/src/store/legacy.ts` | ✅ simétrica con la de Java (§4.3) |
+| Proyección store → vista | `editor/src/store/project.ts` | ✅ todo el núcleo; declara lo que no cubre |
+| Host del editor en el IDE | `editor/src/host/modux-editor-ide.ts` | ✅ 166 tests en el editor |
+| Plugin de IntelliJ | `intellij-plugin/` | ✅ 23 tests; **dibuja dentro de un IDEA en marcha** |
 | `modux:generate` desde el árbol granular | `plugin/` | ✅ |
-| `modux:validate` (integridad referencial) | `plugin/` | ✅ 5 tests, limpio sobre el sample |
-| `modux:schema` | `plugin/` | ✅ |
+| `modux:validate` (integridad referencial) | `plugin/` | ✅ limpio sobre el sample |
+| `modux:schema` | `plugin/` | ✅ 6 tests en el maven-plugin |
 | Skill de autoría | `.claude/skills/modux-model/` | ✅ |
-| **Fase 0 en Java**: relaciones, externos y despliegue a tipos propios | `model-driven-generator/` | ✅ 159 tests |
+| **Fase 0 en Java**: relaciones, externos y despliegue a tipos propios | `model-driven-generator/` | ✅ |
+| **Fase 6**: el borrado | `model-driven-generator/`, `editor/` | ✅ build verde por fin |
+| **Fase 0 (3/3)**: referencias por coordenada versionada | `model-driven-generator/`, `editor/` | ✅ 169 tests en Java, 184 en el editor |
 
-Lo que falta, por orden de peso:
+### 8.1 Lo que enseñó verificarlo dentro de un IDE
 
-1. **Los otros 235 comandos** — UI (93), agentes (42), workflows (19) y el resto del núcleo (81).
-2. **El resto de la proyección** — hoy cubre la capa estratégica; faltan UI, workflows y agentes.
-3. **Resolución de referencias** (§4.7): sigue leyendo el registro de `~/.modux`. Es lo único
-   de la fase 0 que queda.
-4. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía.
-5. **El borrado** (§6.6), que es la última fase a propósito: mientras la proyección esté
-   incompleta, el servidor sigue siendo lo único que dibuja un modelo entero.
+La verificación end-to-end estaba pendiente y encontró tres cosas rotas, ninguna visible desde
+Java:
 
-No se ha probado el plugin dentro de un IDEA en marcha: compila, empaqueta e instala, pero
-la verificación end-to-end (abrir un `index.yaml` y dibujar) está pendiente.
+1. **El bundle era inalcanzable para el webview.** El puente apuntaba el `<script type="module">`
+   a `getResource(...)`, que en un plugin empaquetado devuelve `jar:file:…!/modux-editor.js` — un
+   esquema que el navegador no sabe cargar. El panel habría salido en blanco *siempre*, sin un
+   solo error del lado Java. El plugin sirve ahora el bundle desde un origen propio
+   (`EditorResources`), resolviendo contra el classpath a demanda: así el chunk de ELK, cuyo
+   nombre lleva un hash de contenido, no necesita ninguna lista que mantener.
+2. **El plugin de gradle no arrancaba un IDEA actual.** `buildPlugin` colaba con 2.1.0 y `runIde`
+   moría al leer el `product-info.json` de 2025.2. Actualizado a 2.18.1, que exige Gradle 9 — y
+   el proyecto no tenía wrapper, así que dependía del gradle que hubiera suelto en la máquina.
+3. **El marcador era demasiado laxo.** `isMarker` aceptaba cualquier fichero llamado `index.yaml`,
+   así que un `docs/index.yaml` de otra herramienta ofrecía una pestaña «Modux» condenada a
+   fallar. Discrimina por `formatVersion`, que es exactamente lo que §4.6 dice que convierte a ese
+   fichero en marcador.
 
-**El build de `model-driven-generator` estaba roto antes de todo esto**, y sigue estándolo:
-`infra/in/ui` referencia `CrudAdapter`, `CrudEditorForm` y `CrudCreationForm`, que no existen
-en el mateu local. Lo revelador es dónde: **lo único que no compila son `infra/in/ui` (17 578
-líneas) y `infra/in/mcp` (922) — exactamente los dos paquetes que este RFC borra.** Todo lo que
-sobrevive compila y pasa sus tests. Eso invierte el argumento de §6.6 para dejar el borrado
-para el final: no es un riesgo que aplazar, es lo que desbloquea el build.
+Lo que no es automatizable es el último palmo: que dibuje. El resto sí está cubierto sin pantalla
+—`ModelFiles` sobre el VFS real (incluida la regla de §4.5: escribir un elemento no toca el
+`stamp` de ningún otro), la resolución por marcador más cercano, y que el bundle sea servible—.
+Para el palmo visual: `./gradlew runIde -PmoduxRunProject=<ruta>` abre el sandbox sobre un
+proyecto, y los mensajes de consola del webview van al log del IDE, que era la otra cosa que
+faltaba: sin ellos, un modelo que cargó y uno que nunca llegó a cargar se ven igual.
+
+### 8.1.1 El núcleo, portado
+
+El bloque núcleo está en TypeScript: **124 de sus 125 comandos**, repartidos por asunto en
+`editor/src/store/commands/` en vez de en un fichero. El que falta es `add-project-reference`, y
+falta por una razón que no es pereza: **leer otro modelo del disco es trabajo del host, no del
+motor de comandos**. El applier es puro sobre un store en memoria, y esa pureza es lo que lo hace
+testable sin ficheros; el día que se porte, el host resolverá la coordenada (§4.7) y le pasará el
+snapshot ya leído.
+
+Lo que la medición de §2.4 predijo se cumplió —la mayoría son tabla— y lo que no predijo fue
+dónde estaba el trabajo real:
+
+- **El scaffolding CRUD**, en `scaffold.ts`. Cuatro gestos distintos —un actor que puede
+  ejecutarlo, una app que lo muestra, un sistema externo que se integra, otro contexto que lo
+  lee— derivan **el mismo** trío de casos de uso, los mismos tres eventos de ciclo de vida, la
+  misma query de listado y el mismo contrato REST. Que los ids dependan solo del agregado es lo
+  que hace que se refuercen entre sí en vez de que cada uno acuñe su copia, y que «ya está
+  relacionado» sea un `store.has`.
+- **`rename-element`**, que en Java es un switch de 160 líneas sobre 29 tipos donde cada brazo
+  dice lo mismo dos veces. Aquí es una tabla de 31 entradas: es el caso donde el argumento de
+  `spec.ts` se ve más claro, porque es donde el código por tipo era más idéntico.
+- **Los pasos de un proceso**, donde el orden es dato: añadir, mover y borrar tienen que decir
+  exactamente dónde, y un `move` sin ancla va al frente, que es el único «a ninguna parte» que
+  no es ambiguo.
+
+**Y portar encontró cuatro defectos en lo que ya estaba portado**, todos de la misma clase —el
+campo almacenado no se llama como el comando lo llama—, y todos invisibles hasta que alguien
+abriera un modelo real:
+
+1. La proyección leía `actors`, un tipo que no existe: los actores son `roles` en el store.
+2. Una URL se guardaba con la dirección en `uri`, pero el campo es `url`. Una URL cargada de un
+   modelo de verdad salía con la dirección vacía.
+3. Una nota guardaba sus anclajes en `attachedToIds`, pero el campo es `targetIds` — y además
+   hay dos: un ancla a una relación es una coordenada de vista (`edgeRefs`), no un id, y no debe
+   acabar donde algo va a intentar resolverla.
+4. `remove-url` no desenganchaba la URL de los servicios que respondían en ella.
+
+Nada de eso lo habría cazado un test de los comandos contra sí mismos: se cazan comparando con
+el esquema que Java escribe, que es lo que este port obliga a hacer.
+
+### 8.2 Lo que falta, por orden de peso
+
+1. **Los otros 154 comandos** — UI (93), agentes (42) y workflows (19).
+2. **El resto de la proyección** — faltan UI, workflows, agentes y la vista de procesos.
+3. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
+   que mantiene vivo `/layout` (§5.1).
+4. **Superficie para las dos capacidades huérfanas** (§5.1): el Mojo de `ImportApiEntityUseCase`
+   y la derivación de interacciones en TypeScript.
+5. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
+   la razón de §8.1.1: leer otro modelo del disco es trabajo del host.
+
+**El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
+Lo revelador fue dónde: **lo único que no compilaba era `infra/in/ui` (17 578 líneas, referencias
+a `CrudAdapter`, `CrudEditorForm` y `CrudCreationForm` que no existen en el mateu local) e
+`infra/in/mcp` (922) — exactamente los dos paquetes que este RFC borra.** Borrarlos dejó el módulo
+compilando y sus 159 tests en verde, sin tocar nada más. Era la única deuda que no había que
+pagar: había que dejar de arrastrarla.

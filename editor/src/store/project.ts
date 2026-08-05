@@ -8,11 +8,12 @@
  * With one project per repository that whole question disappears: everything in
  * the tree belongs to the project, because the tree is the project.
  *
- * COVERAGE: the strategic layer — bounded contexts and what they own, the
- * context map, actors, services and modules, canvas furniture. Enough to draw
- * the context map and the aggregates view. The UI, workflow and agent blocks are
- * not projected yet; `projectedTypes()` reports what is covered so a host can
- * tell the difference between "empty" and "not ported".
+ * COVERAGE: the whole core block — bounded contexts and what they own, the
+ * context map, actors, services and modules, APIs, the read side, flows, and the
+ * canvas furniture. The UI, workflow and agent blocks are not projected yet, and
+ * neither are processes, which have a view of their own.
+ * `projectedTypes()` reports what is covered, so a host can tell the difference
+ * between "empty" and "not ported" — and say so rather than draw a blank.
  */
 
 import type {
@@ -23,6 +24,7 @@ import type {
   DomainEventRef,
   DomainServiceRef,
   EntityRef,
+  FlowRef,
   ModuxModel,
   ReadModelRef,
   UseCaseRef,
@@ -35,8 +37,9 @@ export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
-    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'actors', 'externalSystems',
-    'notes', 'areas', 'urls',
+    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
+    'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
+    'scheduledTriggers', 'flows',
   ];
 }
 
@@ -67,7 +70,8 @@ export function project(store: ModelStore): ModuxModel {
       boundedContextId: str(m.boundedContextId) ?? '',
       main: m.main === true,
     })),
-    actors: store.all('actors').map(named),
+    // an actor is a `roles` element in the store — `RoleEntity` on the Java side
+    actors: store.all('roles').map(named),
     models: store.all('models').map((m) => ({
       id: m.id,
       name: name(m),
@@ -80,10 +84,11 @@ export function project(store: ModelStore): ModuxModel {
     notes: store.all('notes').map((n) => ({
       id: n.id,
       text: str(n.text) ?? '',
-      targetIds: asList(n.attachedToIds),
+      // elements only: the edge refs are view coordinates and the editor reads them per view
+      targetIds: asList(n.targetIds),
     })),
     areas: store.all('areas').map((a) => ({ id: a.id, name: str(a.title) ?? name(a) })),
-    urls: store.all('urls').map((u) => ({ id: u.id, name: name(u), uri: str(u.uri) ?? '' })),
+    urls: store.all('urls').map((u) => ({ id: u.id, name: name(u), uri: str(u.url) ?? '' })),
     archimateRelations: store.all('archimateRelations').map((r) => ({
       id: r.id,
       sourceId: str(r.sourceId) ?? '',
@@ -91,9 +96,34 @@ export function project(store: ModelStore): ModuxModel {
       type: str(r.type) ?? '',
       label: str(r.name),
     })),
-    flows: [],
+    flows: store.all('flows').map((f) => flow(f, owner)).filter(isDrawable),
   };
 }
+
+/**
+ * A flow's TARGET is stored; its SOURCE is not — it is whichever context owns whatever fires the
+ * flow. Deriving it rather than storing it is what keeps the two from disagreeing: move an
+ * aggregate to another context and every flow it triggers follows, with nothing to update.
+ *
+ * Mirrors `FlowContextMapCoherenceService.analyzeOne` on the Java side.
+ */
+function flow(f: Element, owner: OwnerIndex): FlowRef {
+  const trigger = str(f.triggerAggregateId) ?? str(f.triggerDomainServiceId) ?? str(f.triggerUseCaseId);
+  return {
+    id: f.id,
+    name: name(f),
+    sourceId: (trigger ? owner.of.get(trigger) : undefined) ?? '',
+    targetId: str(f.targetBoundedContextId) ?? '',
+    archetype: f.archetype as FlowRef['archetype'],
+    triggerAggregateId: str(f.triggerAggregateId),
+    triggerEvent: str(f.triggerEvent),
+    targetUseCaseId: str(f.targetUseCaseId),
+    readModelName: str(f.readModelName),
+  };
+}
+
+/** A flow missing either end is not an edge yet; the canvas has nothing to draw it between. */
+const isDrawable = (f: FlowRef) => Boolean(f.sourceId && f.targetId);
 
 /**
  * Which bounded context owns each element.
@@ -115,7 +145,8 @@ function ownerIndex(store: ModelStore): OwnerIndex {
     }
   }
   // the other direction: elements that name their context themselves
-  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'domainServices', 'readModels']) {
+  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'domainServices', 'readModels',
+    'queryServices', 'projections', 'scheduledTriggers']) {
     for (const element of store.all(type)) {
       const declared = str(element.boundedContextId);
       if (declared) of.set(element.id, declared);

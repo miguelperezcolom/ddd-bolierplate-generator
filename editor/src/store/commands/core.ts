@@ -45,6 +45,12 @@ function wireMainModule(boundedContextId: string, store: ModelStore): void {
   if (service) store.addToList('services', service.id, 'moduleIds', moduleId);
 }
 
+/**
+ * Where a note's target belongs. An edge ref carries «->» and is a presentation coordinate, not
+ * a model reference — it names two endpoints in a view, and nothing resolves it as an id.
+ */
+const listForTarget = (target: string) => (target.includes('->') ? 'edgeRefs' : 'targetIds');
+
 /** Owners an invariant may hang from, in resolution order. */
 const INVARIANT_OWNERS = ['aggregates', 'valueObjects', 'entities'];
 
@@ -210,7 +216,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   'remove-use-case': remove({
     type: 'useCases',
     parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'useCaseIds' },
-    detach: [{ type: 'actors', field: 'useCaseIds' }],
+    detach: [{ type: 'roles', field: 'allowedUseCaseIds' }],
   }),
 
   // ---- strategic relations (top-level, one file each) ---------------------
@@ -252,23 +258,39 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   // ---- canvas furniture --------------------------------------------------
 
-  'add-note': add({ type: 'notes', init: (c) => ({ text: c.text ?? null }) }),
+  // a note IS its text, and the command carries that text in `name` — the store has no `name`
+  'add-note': (store, command) => {
+    const id = String(command.id);
+    if (store.has('notes', id)) return;
+    store.put('notes', { id, text: command.name ?? null, targetIds: [], edgeRefs: [] });
+  },
+
   'remove-note': remove({ type: 'notes' }),
   'add-area': add({ type: 'areas', init: (c) => ({ title: c.title ?? null, memberIds: [] }) }),
   'remove-area': remove({ type: 'areas' }),
-  'add-url': add({ type: 'urls', init: (c) => ({ uri: c.uri ?? null }) }),
-  'remove-url': remove({ type: 'urls' }),
+  // the address is stored as `url`; `uri` is only what the command calls it
+  'add-url': add({ type: 'urls', init: (c) => ({ url: c.uri ?? null }) }),
 
+  /** The url goes, and every service that answered at it stops claiming to. */
+  'remove-url': remove({ type: 'urls', detach: [{ type: 'services', field: 'urlIds' }] }),
+
+  /**
+   * A note annotates either an element (a plain id) or a relation (an edge ref carrying «->»),
+   * and the two are kept in different lists — an edge ref is not an element id and must not end
+   * up somewhere that resolves ids.
+   */
   'note-attach': (store, command) => {
     const note = store.get('notes', String(command.id));
     if (!note) throw new CommandError(`Nota desconocida: ${command.id}`);
-    store.addToList('notes', note.id, 'attachedToIds', String(command.targetId));
+    const target = String(command.targetId);
+    store.addToList('notes', note.id, listForTarget(target), target);
   },
 
   'note-detach': (store, command) => {
     const note = store.get('notes', String(command.id));
     if (!note) return;
-    store.removeFromList('notes', note.id, 'attachedToIds', String(command.targetId));
+    const target = String(command.targetId);
+    store.removeFromList('notes', note.id, listForTarget(target), target);
   },
 
   // ---- topology ----------------------------------------------------------

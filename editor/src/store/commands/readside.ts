@@ -1,0 +1,158 @@
+/**
+ * The read side: query services, projections and the read models they feed, plus the scheduled
+ * triggers that drive work with no one asking.
+ *
+ * A projection is the one command here that is not a thin write. It needs a source and a
+ * destination, and the destination is usually a read model that does not exist yet — so it is
+ * created along the way, which is what «the model is complete from birth» means for this corner.
+ * Ported from `EditorApiController`.
+ */
+
+import { nested, type Element, type ModelStore } from '../store.js';
+import { add, CommandError, type Handler, remove } from '../spec.js';
+
+export const READSIDE_COMMANDS: Record<string, Handler> = {
+  'add-query-service': add({
+    type: 'queryServices',
+    parent: { type: 'boundedContexts', from: 'boundedContextId' },
+    init: (c) => ({ boundedContextId: c.boundedContextId, operations: [] }),
+  }),
+
+  'remove-query-service': (store, command) => {
+    const id = String(command.id);
+    const consumed = store.all('useCases').some((uc) =>
+      nested(uc.steps).some((step) => step.queryServiceId === id));
+    if (consumed) {
+      throw new CommandError(`El query service ${id} lo consumen casos de uso;`
+        + ' quita esas llamadas primero');
+    }
+    store.removeFromAllLists('roles', 'allowedQueryServiceIds', id);
+    store.removeFromAllLists('aiAgents', 'allowedQueryServiceIds', id);
+    store.remove('queryServices', id);
+  },
+
+  /**
+   * A projection reads one source and writes one read model.
+   *
+   * Exactly one source: an aggregate's own state, an external operation to poll, or a legacy
+   * table. Naming none is the mistake worth catching — the projection would generate nothing and
+   * say nothing about why.
+   */
+  'add-projection': (store, command) => {
+    const id = String(command.id);
+    if (store.has('projections', id)) return;
+    const aggregate = resolveSource(store, command);
+
+    let readModelId: string;
+    let owner: Element;
+    const target = command.targetId as string | undefined;
+    if (target && store.has('readModels', target)) {
+      readModelId = target;
+      const holder = store.findByListMember('boundedContexts', 'readModelIds', target);
+      if (!holder) {
+        throw new CommandError(
+          `El read model ${target} no pertenece a ningún bounded context`);
+      }
+      owner = holder;
+    } else {
+      const context = store.get('boundedContexts', String(command.boundedContextId));
+      if (!context) {
+        throw new CommandError(`Bounded context desconocido: ${command.boundedContextId}`);
+      }
+      owner = context;
+      readModelId = `rm-${id.replace(/^proj-/, '')}`;
+      if (!store.has('readModels', readModelId)) {
+        store.put('readModels', {
+          id: readModelId,
+          name: command.readModelName
+            ?? (aggregate ? `${aggregate.name}View` : command.name),
+          boundedContextId: owner.id,
+          modelId: aggregate?.modelId ?? null,
+          aggregateId: aggregate?.id ?? null,
+        });
+        store.addToList('boundedContexts', owner.id, 'readModelIds', readModelId);
+      }
+    }
+
+    store.put('projections', {
+      id,
+      name: command.name,
+      readModelId,
+      mappings: [],
+      aggregateId: aggregate?.id ?? null,
+      externalUseCaseId: command.externalUseCaseId ?? null,
+      externalTableId: command.externalTableId ?? null,
+    });
+    store.addToList('boundedContexts', owner.id, 'projectionIds', id);
+  },
+
+  'remove-projection': (store, command) => {
+    const id = String(command.id);
+    const updated = store.all('subscriptions').some((s) =>
+      nested(s.actions).some((action) => action.projectionId === id));
+    if (updated) {
+      throw new CommandError(`La proyección ${id} la actualizan subscriptions;`
+        + ' quita esas acciones primero');
+    }
+    store.removeFromAllLists('boundedContexts', 'projectionIds', id);
+    store.remove('projections', id);
+  },
+
+  // ---- scheduled triggers --------------------------------------------------
+
+  'add-scheduled-trigger': add({
+    type: 'scheduledTriggers',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'scheduledTriggerIds' },
+    init: (c) => ({
+      // daily at midnight: a schedule you have to mean to keep, not one that fires every minute
+      cronExpression: c.cronExpression ?? '0 0 * * *',
+      targetUseCaseId: c.targetUseCaseId ?? null,
+    }),
+  }),
+
+  'remove-scheduled-trigger': remove({
+    type: 'scheduledTriggers',
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'scheduledTriggerIds' },
+  }),
+
+  'set-scheduled-trigger-target': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('scheduledTriggers', id)) {
+      throw new CommandError(`Disparador desconocido: ${id}`);
+    }
+    const target = command.targetUseCaseId as string | undefined;
+    if (target && !store.has('useCases', target)) {
+      throw new CommandError(`Caso de uso desconocido: ${target}`);
+    }
+    store.patch('scheduledTriggers', id, { targetUseCaseId: target ?? null });
+  },
+};
+
+/** The aggregate a projection reads, when that is its source. Raises when no source is named. */
+function resolveSource(store: ModelStore, command: Record<string, any>): Element | undefined {
+  if (command.aggregateId) {
+    const aggregate = store.get('aggregates', String(command.aggregateId));
+    if (!aggregate) throw new CommandError(`Agregado desconocido: ${command.aggregateId}`);
+    return aggregate;
+  }
+  if (command.externalUseCaseId) {
+    const known = store.all('externalSystems')
+      .some((x) => nested(x.useCases).some((u) => u.id === command.externalUseCaseId));
+    if (!known) {
+      throw new CommandError(`Operación externa desconocida: ${command.externalUseCaseId}`);
+    }
+    return undefined;
+  }
+  if (command.externalTableId) {
+    const known = store.all('externalSystems')
+      .some((x) => nested(x.tables).some((t) => t.id === command.externalTableId));
+    if (!known) throw new CommandError(`Tabla externa desconocida: ${command.externalTableId}`);
+    return undefined;
+  }
+  throw new CommandError('La proyección necesita una fuente: agregado, operación externa o tabla');
+}
+
+/** Element shapes this block creates, for the schema-defaults check in tests. */
+export const READSIDE_TYPES: string[] = [
+  'queryServices', 'projections', 'readModels', 'scheduledTriggers',
+];

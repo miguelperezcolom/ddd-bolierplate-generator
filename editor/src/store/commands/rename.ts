@@ -1,0 +1,103 @@
+/**
+ * Renaming, for every kind of thing that has a name.
+ *
+ * On the Java side this is one 160-line switch over 29 element types, and almost every arm says
+ * the same thing twice: find it, copy it with a new name. Here it is a table — which is the whole
+ * argument of `spec.ts` at its clearest, since renaming is where the per-type code was most
+ * nearly identical. Ported from `EditorApiController.renameElement`.
+ */
+
+import { nested, type Element, type ModelStore } from '../store.js';
+import { CommandError, type Handler } from '../spec.js';
+
+/** A type whose element carries the name directly. `field` is what actually holds it. */
+interface TopLevel {
+  type: string;
+  field?: string;
+}
+
+/** A type whose elements live nested in a list inside some owner. */
+interface Nested {
+  owners: string[];
+  list: string;
+  field?: string;
+}
+
+const TOP_LEVEL: Record<string, TopLevel> = {
+  'boundedContext': { type: 'boundedContexts' },
+  // a note IS its text: it has nothing else to be called
+  'note': { type: 'notes', field: 'text' },
+  'url': { type: 'urls' },
+  'area': { type: 'areas' },
+  'ui': { type: 'uis' },
+  'page': { type: 'pages' },
+  'ui-app': { type: 'uiAdapters' },
+  'aggregate': { type: 'aggregates' },
+  'entity': { type: 'entities' },
+  'value-object': { type: 'valueObjects' },
+  'ai-agent': { type: 'aiAgents' },
+  'rag': { type: 'rags' },
+  'mcp-gateway': { type: 'mcpGateways' },
+  'api': { type: 'apis' },
+  'proxy-api': { type: 'proxyApis' },
+  'actor': { type: 'roles' },
+  'external-system': { type: 'externalSystems' },
+  'application-event': { type: 'applicationEvents' },
+  'domain-service': { type: 'domainServices' },
+  'query-service': { type: 'queryServices' },
+  'read-model': { type: 'readModels' },
+  'domain-event': { type: 'domainEvents' },
+  'use-case': { type: 'useCases' },
+  'workflow': { type: 'workflows' },
+};
+
+const NESTED: Record<string, Nested> = {
+  'operation': { owners: ['aggregates'], list: 'operations' },
+  'api-operation': { owners: ['apis'], list: 'operations' },
+  'external-table': { owners: ['externalSystems'], list: 'tables' },
+  'mcp-server': { owners: ['externalSystems'], list: 'mcpServers' },
+  'external-use-case': { owners: ['externalSystems'], list: 'useCases' },
+  'process-step': { owners: ['processes'], list: 'steps' },
+  'workflow-step': { owners: ['workflows'], list: 'steps' },
+};
+
+export const RENAME_COMMANDS: Record<string, Handler> = {
+  /**
+   * The `type` says which kind of thing is being renamed — the canvas knows it, and without it
+   * the id alone could match elements of different types.
+   */
+  'rename-element': (store, command) => {
+    const kind = String(command.type ?? '');
+    if (!kind) throw new CommandError('rename-element: falta el tipo de elemento');
+    const id = String(command.id);
+
+    const top = TOP_LEVEL[kind];
+    if (top) {
+      // a rename of something that is not there is a no-op, not a failure: the canvas may be
+      // one step behind the model
+      if (store.has(top.type, id)) {
+        store.patch(top.type, id, { [top.field ?? 'name']: command.name });
+      }
+      return;
+    }
+
+    const nestedSpec = NESTED[kind];
+    if (!nestedSpec) {
+      throw new CommandError(`rename-element no soportado para: ${kind}`);
+    }
+    renameNested(store, nestedSpec, id, command.name);
+  },
+};
+
+function renameNested(store: ModelStore, spec: Nested, id: string, name: unknown): void {
+  const found = store.findOwner(spec.owners, spec.list, id);
+  if (!found) return;
+  const items = nested(found.element[spec.list]) as Element[];
+  store.patch(found.type, found.element.id, {
+    [spec.list]: items.map((item) =>
+      (item.id === id ? { ...item, [spec.field ?? 'name']: name } : item)),
+  });
+}
+
+/** The element kinds `rename-element` understands — for the editor and for tests. */
+export const RENAMEABLE: string[] = [...Object.keys(TOP_LEVEL), ...Object.keys(NESTED)];

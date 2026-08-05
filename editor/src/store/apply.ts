@@ -7,13 +7,31 @@
  */
 
 import type { ModuxCommand } from '../commands.js';
+import { ACTOR_COMMANDS } from './commands/actors.js';
+import { API_COMMANDS } from './commands/apis.js';
+import { BEHAVIOR_COMMANDS } from './commands/behavior.js';
 import { CORE_COMMANDS } from './commands/core.js';
+import { CRUD_COMMANDS } from './commands/crud.js';
+import { EXTERNAL_COMMANDS } from './commands/externals.js';
+import { FLOW_COMMANDS } from './commands/flows.js';
+import { READSIDE_COMMANDS } from './commands/readside.js';
+import { RENAME_COMMANDS } from './commands/rename.js';
+import { UI_COMMANDS } from './commands/ui-wiring.js';
 import type { Changes, ModelStore } from './store.js';
 import { CommandError, type Command, type Handler } from './spec.js';
 
 /** Every command kind the applier knows, by block. */
 export const HANDLERS: Record<string, Handler> = {
   ...CORE_COMMANDS,
+  ...ACTOR_COMMANDS,
+  ...API_COMMANDS,
+  ...BEHAVIOR_COMMANDS,
+  ...EXTERNAL_COMMANDS,
+  ...FLOW_COMMANDS,
+  ...READSIDE_COMMANDS,
+  ...CRUD_COMMANDS,
+  ...UI_COMMANDS,
+  ...RENAME_COMMANDS,
 };
 
 export { CommandError };
