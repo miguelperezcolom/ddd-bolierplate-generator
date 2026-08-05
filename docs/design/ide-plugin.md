@@ -860,8 +860,19 @@ que la referencia se invente: sin snapshot, el comando se niega.
 
 ### 8.2 Lo que falta, por orden de peso
 
-1. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
-   la razón de §8.1.1: leer otro modelo del disco es trabajo del host.
+Del RFC, nada: la lista se cerró con §8.1.7 y esto está mergeado a `main`. Lo que queda es
+**distribución**, que es otro problema y conviene no confundirlo con este.
+
+1. **El generador no lo puede construir nadie más.** `model-driven-generator` depende de
+   `mateu:0.0.1-MATEU`, que es un `mvn install` local. Mientras siga así, `modux-maven-plugin` no
+   puede salir de `0.0.1-SNAPSHOT` ni llegar a Maven Central.
+2. **Y sin eso, el plugin de IDE es media herramienta.** Edita el modelo, sí, pero quien lo
+   instale no puede generar: la generación es el maven plugin. Por eso v0.1.0 se publica como
+   release de GitHub —para instalar desde disco— y **no** en el Marketplace de JetBrains. Publicar
+   ahí la mitad que se ve, sabiendo que la otra no existe públicamente, sería vender una puerta
+   sin habitación detrás.
+3. Subir al Marketplace, cuando toque, pide además firma (obligatoria), un token de la cuenta de
+   JetBrains, moderación del primer envío y un `pluginIcon.svg`.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
 Lo revelador fue dónde: **lo único que no compilaba era `infra/in/ui` (17 578 líneas, referencias
