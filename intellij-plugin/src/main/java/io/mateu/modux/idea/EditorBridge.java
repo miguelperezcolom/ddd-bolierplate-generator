@@ -9,6 +9,11 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.jcef.JBCefJSQuery;
+import org.cef.CefSettings;
+import org.cef.browser.CefBrowser;
+import org.cef.browser.CefFrame;
+import org.cef.handler.CefDisplayHandlerAdapter;
+import org.cef.handler.CefLoadHandlerAdapter;
 
 import javax.swing.JComponent;
 import java.util.ArrayList;
@@ -38,7 +43,44 @@ public final class EditorBridge implements Disposable {
         query.addHandler(this::handle);
         Disposer.register(this, browser);
         Disposer.register(this, query);
-        browser.loadHTML(page());
+        instrument();
+
+        if (!EditorResources.isBundled()) {
+            LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
+        }
+        // per-browser, so several open models never answer each other's requests
+        browser.getJBCefClient().addRequestHandler(
+                new EditorResources(page(), this), browser.getCefBrowser());
+        browser.loadURL(EditorResources.INDEX);
+    }
+
+    /**
+     * Send what happens inside the webview to the IDE log.
+     *
+     * <p>Without this a failure in the editor is an empty panel and nothing else: the browser
+     * swallows its own console, and a bundle that fails to load looks exactly like a bundle that
+     * loaded and drew nothing. Both are things this plugin can get wrong, so both have to be
+     * visible in {@code idea.log}.
+     */
+    private void instrument() {
+        browser.getJBCefClient().addDisplayHandler(new CefDisplayHandlerAdapter() {
+            @Override
+            public boolean onConsoleMessage(CefBrowser browser, CefSettings.LogSeverity level,
+                                            String message, String source, int line) {
+                var text = "modux editor: " + message + " (" + source + ":" + line + ")";
+                if (level == CefSettings.LogSeverity.LOGSEVERITY_ERROR) LOG.warn(text);
+                else LOG.info(text);
+                return false;
+            }
+        }, browser.getCefBrowser());
+
+        browser.getJBCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
+            @Override
+            public void onLoadError(CefBrowser browser, CefFrame frame, ErrorCode errorCode,
+                                    String errorText, String failedUrl) {
+                LOG.warn("modux editor failed to load " + failedUrl + ": " + errorText + " (" + errorCode + ")");
+            }
+        }, browser.getCefBrowser());
     }
 
     public JComponent component() {
@@ -96,6 +138,9 @@ public final class EditorBridge implements Disposable {
     /**
      * The page that hosts the editor. `moduxBridge` is the single entry point the TypeScript
      * host talks to; everything else about the editor is the same bundle the web app serves.
+     *
+     * <p>The script is referenced relatively, so it and the chunks it imports resolve against
+     * {@link EditorResources#ORIGIN} and are answered from the plugin jar.
      */
     private String page() {
         return """
@@ -116,21 +161,17 @@ public final class EditorBridge implements Disposable {
                           %s
                         });
                       };
+                      window.addEventListener('error', function (e) {
+                        console.error('modux editor crashed: ' + (e.error ? e.error.stack : e.message));
+                      });
                     </script>
-                    <script type="module" src="%s"></script>
+                    <script type="module" src="./modux-editor.js"></script>
                   </body>
                 </html>
                 """.formatted(
                 query.inject("JSON.stringify(request)",
                         "function(r){ var p = JSON.parse(r); p.ok ? resolve(p.value) : reject(new Error(p.error)); }",
-                        "function(code, message){ reject(new Error(message)); }"),
-                bundleUrl());
-    }
-
-    /** Where the editor bundle is served from inside the plugin. */
-    private static String bundleUrl() {
-        var resource = EditorBridge.class.getResource("/modux-editor/modux-editor.js");
-        return resource == null ? "" : resource.toExternalForm();
+                        "function(code, message){ reject(new Error(message)); }"));
     }
 
     @Override

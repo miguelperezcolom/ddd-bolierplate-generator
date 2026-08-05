@@ -3,6 +3,9 @@ package io.mateu.modux.idea;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Finds the model a file belongs to.
  *
@@ -27,15 +30,36 @@ public final class ModuxProject {
      */
     public static @Nullable VirtualFile rootFor(@Nullable VirtualFile file) {
         for (var candidate = directoryOf(file); candidate != null; candidate = candidate.getParent()) {
-            if (candidate.findChild(MARKER) != null) return candidate;
+            if (isMarker(candidate.findChild(MARKER))) return candidate;
         }
         return null;
     }
 
-    /** Whether this file is a model marker — what the editor opens on. */
+    /**
+     * Whether this file is a model marker — what the editor opens on.
+     *
+     * <p>The name alone is not enough: {@code index.yaml} is a common name, and offering a
+     * "Modux" tab on someone else's file would produce an editor that can only fail to load. What
+     * makes the file a marker is what it carries — the format version and the counts per type
+     * (§4.6) — so that is what is checked.
+     */
     public static boolean isMarker(@Nullable VirtualFile file) {
         return file != null && !file.isDirectory() && MARKER.equals(file.getName())
-                && file.getParent() != null;
+                && file.getParent() != null && declaresFormatVersion(file);
+    }
+
+    /** How big a marker can plausibly be: one line per element type, and no element bodies. */
+    private static final int MARKER_SIZE_LIMIT = 256 * 1024;
+
+    private static boolean declaresFormatVersion(VirtualFile file) {
+        if (file.getLength() > MARKER_SIZE_LIMIT) return false;
+        try {
+            return new String(file.contentsToByteArray(), StandardCharsets.UTF_8)
+                    .lines()
+                    .anyMatch(line -> line.startsWith("formatVersion:"));
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private static @Nullable VirtualFile directoryOf(@Nullable VirtualFile file) {

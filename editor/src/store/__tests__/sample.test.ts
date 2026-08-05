@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { migrate } from '../legacy.js';
 import { ModelStore, type Element } from '../store.js';
 import { flush, loadTree, type FileSystem, writeTree } from '../tree.js';
 
@@ -41,14 +42,24 @@ function memoryFs(): FileSystem & { files: Map<string, string> } {
   };
 }
 
-/** The monolithic store is `AllData`: one list of elements per element type. */
+/**
+ * The monolithic store is `AllData`: one list of elements per element type.
+ *
+ * It predates the phase-0 split, so it carries the context map and the deployment
+ * settings inside its project element. Migrating here is what a load does anyway
+ * (`legacy.ts`); the guarantees below are about the *tree*, and a tree is only ever
+ * written from a migrated store.
+ */
 function readSample(): Record<string, Element[]> {
   const raw = parse(readFileSync(SAMPLE, 'utf8')) as Record<string, unknown>;
-  return Object.fromEntries(
+  const lists = Object.fromEntries(
     Object.entries(raw).filter(([, value]) =>
       Array.isArray(value) && value.length > 0
       && value.every((e) => e && typeof e === 'object' && 'id' in e)),
   ) as Record<string, Element[]>;
+  const store = ModelStore.from(lists);
+  migrate(store);
+  return store.toData();
 }
 
 /** Compare content without depending on element order within a type. */

@@ -59,8 +59,12 @@ export class ModuxEditorIde extends LitElement {
     try {
       this.store = await loadTree(this.fs, ROOT);
       this.refresh();
+      // the host has no other window into the webview: without this, a model that
+      // loaded and one that never got here look the same from the IDE log
+      console.info(`modux: modelo cargado — ${summary(this.store)}`);
     } catch (e) {
       this.error = `No se pudo leer el modelo: ${message(e)}`;
+      console.error(`modux: no se pudo leer el modelo: ${message(e)}`);
     }
   }
 
@@ -111,6 +115,10 @@ export class ModuxEditorIde extends LitElement {
 }
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** What was read, by type, for the IDE log. */
+const summary = (store: ModelStore) =>
+  store.types().map((type) => `${type}=${store.all(type).length}`).join(' ') || 'vacío';
 
 declare global {
   interface HTMLElementTagNameMap {
