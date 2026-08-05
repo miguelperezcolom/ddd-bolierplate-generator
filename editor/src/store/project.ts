@@ -32,6 +32,7 @@ import type {
   UseCaseRef,
   ValueObjectRef,
 } from '../model.js';
+import { CATALOG_PROJECTED_TYPES, projectCatalog } from './project-catalog.js';
 import { ORCHESTRATION_PROJECTED_TYPES, projectOrchestration } from './project-orchestration.js';
 import { projectUi, UI_PROJECTED_TYPES } from './project-ui.js';
 import { asList, type Element, type ModelStore } from './store.js';
@@ -46,6 +47,7 @@ export function projectedTypes(): string[] {
     'scheduledTriggers', 'flows',
     ...UI_PROJECTED_TYPES,
     ...ORCHESTRATION_PROJECTED_TYPES,
+    ...CATALOG_PROJECTED_TYPES,
   ];
 }
 
@@ -105,6 +107,7 @@ export function project(store: ModelStore): ModuxModel {
     flows: store.all('flows').map((f) => flow(f, owner)).filter(isDrawable),
     ...projectUi(store),
     ...projectOrchestration(store),
+    ...projectCatalog(store),
   };
 }
 
@@ -197,6 +200,16 @@ function useCase(uc: Element): UseCaseRef {
       name: str(s.name),
       type: str(s.type),
       customCodeId: str(s.customCodeId),
+      // a step's targets: what the canvas draws every call and publish edge from
+      aggregateId: str(s.aggregateId),
+      operationId: str(s.operationId),
+      useCaseId: str(s.useCaseId),
+      queryServiceId: str(s.queryServiceId),
+      queryOperationId: str(s.queryOperationId),
+      domainEventId: str(s.domainEventId),
+      applicationEventId: str(s.applicationEventId),
+      externalUseCaseId: str(s.externalUseCaseId),
+      modelMappingId: str(s.modelMappingId),
     })),
     inputModelId: str(uc.inputModelId),
   };
