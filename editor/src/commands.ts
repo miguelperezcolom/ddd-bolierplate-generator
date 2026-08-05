@@ -1037,9 +1037,14 @@ export type ModuxCommand =
     }
   | { kind: 'remove-model-mapping-rule'; id: string; itemId: string }
   | {
-      /** References ANOTHER project (~/.modux repository) as an external system. */
+      /**
+       * References ANOTHER modux project as an external system.
+       *
+       * The host reads that project once and snapshots its name and public surface; the
+       * coordinate is stored so the reference can be refreshed later. See §4.7.
+       */
       kind: 'add-project-reference';
-      targetId: string;
+      referencedProject: { gitUrl?: string; branch?: string; path?: string };
       id?: string;
     }
   | { kind: 'add-button-group'; id: string; name: string }

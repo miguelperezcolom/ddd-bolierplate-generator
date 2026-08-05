@@ -56,6 +56,8 @@ The schema guards shape. These are the ones that break a model while still valid
 
 1. **Every id reference must resolve.** Any field ending in `Id` or `Ids` must name an element
    that exists in the model. This is the single most common breakage from a hand edit.
+   The one exception is `referencedRepositoryId`, which is legacy and points outside the model —
+   see «Referencing another project» below. The schema says so on the field itself.
 2. **Back-references are two-way.** An aggregate declares nothing about its context; the
    *context* lists it in `aggregateIds`. Adding `aggregates/agg-x.yaml` without adding `agg-x`
    to its context's `aggregateIds` produces an orphan the editor will not draw.
@@ -71,6 +73,32 @@ The schema guards shape. These are the ones that break a model while still valid
    top-level directory.
 7. **Sagas and workflows have an execution ceiling per step.** A cycle without a bound is
    rejected: the build refuses workflows that can loop forever.
+
+## Referencing another project
+
+A repository holds one project, so referencing another project is referencing another repository.
+It appears in this model as an `externalSystems/` element carrying two different things, and the
+difference is the whole point:
+
+- a **snapshot** — the other project's name and its exposed use cases, copied in. This is what
+  generation reads, which is why a build never needs the other repository present. Do not
+  hand-maintain it; it is refreshed from the source.
+- a **coordinate**, `referencedProject`, saying where that source is:
+
+```yaml
+referencedProject:
+  gitUrl: git@github.com:acme/checkin.git   # the identity — means the same to everyone
+  branch: main                              # optional
+  path: ../../checkin/modux                 # optional: only when the checkout is not a sibling
+```
+
+Prefer `gitUrl` alone. A sibling checkout is found from it with no network and nothing configured,
+and unlike a path it does not encode where *your* machine keeps things. `path` is an override.
+
+`referencedRepositoryId` on the same element is the old form — an id into `~/.modux/repositories.yaml`,
+a file that lived on one machine. Never write it. A model still carrying it is migrated on load
+where that registry survives; where it does not, the snapshot still stands and only refreshing is
+lost.
 
 ## The loop
 

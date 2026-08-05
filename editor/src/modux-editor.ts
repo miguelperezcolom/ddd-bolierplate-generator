@@ -26,6 +26,7 @@ import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
 import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
+import { coordinateFrom, repoNameOf } from './project-reference.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
@@ -222,8 +223,6 @@ export class ModuxEditor extends LitElement {
   @state() private _yugo = true;
   /** Whether machine-made stubs (derived elements, ✦) show in the diagram. */
   @state() private _showDerived = true;
-  /** The ~/.modux repository catalog, handed down by the host (project references). */
-  @property({ attribute: false }) repositories: { id: string; name: string }[] = [];
 
   /** Mirrors mateu's <html theme="dark"> flag — set by the connected host. */
   @property({ type: Boolean, reflect: true }) dark = false;
@@ -233,8 +232,8 @@ export class ModuxEditor extends LitElement {
 
   /** The blank-canvas palette auto-open fired already (once per mount). */
   private _paletteOpenedForBlank = false;
-  /** Open picker: choosing WHICH project to reference (drop of «Proyecto (catálogo)»). */
-  @state() private _repoPicker: { pos: Point } | null = null;
+  /** Open picker: saying WHERE the project being referenced lives (drop of «Proyecto»). */
+  @state() private _repoPicker: { pos: Point; coordinate: string } | null = null;
   /** Open picker: a loose step drop asking WHICH workflow adopts it. */
   @state() private _wfStepPicker: { pos: Point; stepType?: string } | null = null;
   /** Editing the condition of one EXCLUSIVE-split branch. */
@@ -553,6 +552,16 @@ export class ModuxEditor extends LitElement {
       letter-spacing: 0.06em;
       padding: 4px 8px 6px;
     }
+    .picker-input {
+      margin: 0 8px 6px;
+      min-width: 320px;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-radius: 7px;
+      border: 1px solid var(--modux-border-strong);
+      background: var(--modux-input-bg);
+      color: var(--modux-text);
+    }
     .picker-item {
       display: flex;
       align-items: center;
@@ -565,6 +574,10 @@ export class ModuxEditor extends LitElement {
       text-align: left;
       font-size: 13px;
       color: var(--modux-text);
+    }
+    .picker-item:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
     .picker-item:hover {
       background: var(--modux-surface-2);
@@ -3240,11 +3253,7 @@ export class ModuxEditor extends LitElement {
     const def = PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
     if (type === 'project-reference') {
-      if (!this.repositories.length) {
-        this.emit('modux-notice', { message: 'No hay repositorios en ~/.modux que referenciar' });
-        return;
-      }
-      this._repoPicker = { pos };
+      this._repoPicker = { pos, coordinate: '' };
       return;
     }
     if (type === 'custom-code' && this._view === 'design') {
@@ -5653,10 +5662,33 @@ export class ModuxEditor extends LitElement {
     `;
   }
 
-  /** The «which project?» picker: one button per ~/.modux repository. */
+  /**
+   * The «which project?» picker: you say where the other project is.
+   *
+   * It used to list a catalog the server read from `~/.modux`. Nothing lists them now, because
+   * there is no such catalog to list — what identifies another project is its repository, and
+   * that is what gets stored, versioned with the model (§4.7).
+   */
   private renderRepoPicker() {
     const p = this._repoPicker;
     if (!p) return '';
+    const add = () => {
+      const coordinate = this._repoPicker?.coordinate.trim();
+      if (!coordinate) return;
+      const referencedProject = coordinateFrom(coordinate);
+      const id = `proj-${repoNameOf(coordinate)}`;
+      this._repoPicker = null;
+      this.command({ kind: 'add-project-reference', referencedProject, id }, false);
+      const current = this.viewLayout(this._view);
+      this.writeViewLayout(this._view, {
+        ...current,
+        nodes: { ...current.nodes, [id]: { x: Math.round(p.pos.x), y: Math.round(p.pos.y) } },
+      });
+      this.pushUndoEntry([
+        { kind: 'remove-external-system', id },
+        { kind: 'move-node', view: this._view, id, pos: null },
+      ]);
+    };
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._repoPicker = null)}></div>
       <div
@@ -5664,31 +5696,18 @@ export class ModuxEditor extends LitElement {
         style="left:${this.clientWidth / 2}px; top:120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">Referenciar proyecto del catálogo</div>
-        ${this.repositories.map(
-          (r) => html`
-            <button
-              class="picker-item"
-              title=${r.id}
-              @click=${() => {
-                this._repoPicker = null;
-                const id = `proj-${r.id}`;
-                this.command({ kind: 'add-project-reference', targetId: r.id, id }, false);
-                const current = this.viewLayout(this._view);
-                this.writeViewLayout(this._view, {
-                  ...current,
-                  nodes: { ...current.nodes, [id]: { x: Math.round(p.pos.x), y: Math.round(p.pos.y) } },
-                });
-                this.pushUndoEntry([
-                  { kind: 'remove-external-system', id },
-                  { kind: 'move-node', view: this._view, id, pos: null },
-                ]);
-              }}
-            >
-              ${r.name}
-            </button>
-          `,
-        )}
+        <div class="picker-title">Referenciar otro proyecto modux</div>
+        <input
+          class="picker-input"
+          placeholder="URL del repositorio, o ../otro-repo/modux"
+          .value=${p.coordinate}
+          @input=${(e: Event) =>
+            (this._repoPicker = { ...p, coordinate: (e.target as HTMLInputElement).value })}
+          @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && add()}
+        />
+        <button class="picker-item" ?disabled=${!p.coordinate.trim()} @click=${add}>
+          Referenciar
+        </button>
       </div>
     `;
   }
