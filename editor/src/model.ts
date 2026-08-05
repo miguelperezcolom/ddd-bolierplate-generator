@@ -27,8 +27,26 @@ export interface UseCaseRef {
   derived?: boolean;
   /** Ids of the use case's steps (typed step editing stays in its form). */
   stepIds?: string[];
-  /** The pipeline steps, enough to draw them (full editing stays in the form). */
-  steps?: { id: string; name?: string; type?: string; customCodeId?: string }[];
+  /**
+   * The pipeline steps. They carry their TARGETS as well as their shape: a step is where an
+   * arrow starts — «this use case calls that aggregate» is a step, not a field of either end —
+   * so without them the canvas has nothing to draw the edge from.
+   */
+  steps?: {
+    id: string;
+    name?: string;
+    type?: string;
+    customCodeId?: string;
+    aggregateId?: string;
+    operationId?: string;
+    useCaseId?: string;
+    queryServiceId?: string;
+    queryOperationId?: string;
+    domainEventId?: string;
+    applicationEventId?: string;
+    externalUseCaseId?: string;
+    modelMappingId?: string;
+  }[];
   /** The request/command model this use case receives. */
   inputModelId?: string;
 }

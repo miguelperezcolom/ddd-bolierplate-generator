@@ -565,7 +565,10 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | **Workflows (19) y agentes (42)** | `editor/src/store/commands/` | ✅ 270 tests en el editor |
 | Grafo de flujo y validador de bucles | `editor/src/store/workflow-graph.ts` | ✅ Tarjan, igual que Java |
 | **Manda EventConductor** | `eventconductor/`, `EventConductorSchema` | ✅ |
-| **Generación desde workflows** | `EventConductorWorkflowDefinition`, lint `workflow-home` | ✅ 198 tests en Java |
+| **Generación desde workflows** | `EventConductorWorkflowDefinition`, lint `workflow-home` | ✅ |
+| **La proyección cubre el modelo entero** | `project-catalog.ts` + test de cobertura | ✅ 297 tests en el editor |
+| Derivación de interacciones, client-side | `editor/src/derive-interaction.ts` | ✅ |
+| `modux:import-api` | `plugin/` | ✅ 10 tests en el maven-plugin |
 | Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
 | Árbol de ficheros, escritura incremental | `editor/src/store/tree.ts` | ✅ validado contra `sample/hla-booking` |
@@ -759,13 +762,43 @@ regla de lint `workflow-home` lo caza en `modux:validate`, antes de que nadie co
 pregunte dónde fue la orquestación. La regla que ya existía miraba el *evento* disparador; esta
 mira la *fuente*, que es lo que decide dónde vive.
 
+### 8.1.5 Las capacidades sin puerta, y el agujero que destaparon
+
+Las dos capacidades que §5.1 dejó sin forma de invocarse ya la tienen:
+
+- **`modux:import-api`**, un goal nuevo. No es lo mismo que `import-openapi`, y la diferencia es
+  hacia dónde apunta la flecha: aquel importa un contrato como *gateway* —algo que el sistema
+  llama— y este como API de primera clase, un contrato publicado que se pone en el mapa junto a
+  los bounded contexts. Los ids son deterministas, así que re-importar un contrato que evolucionó
+  actualiza las operaciones en su sitio y **conserva el cableado ya dibujado**, que es lo que hace
+  que «vuelve a correrlo» sea una instrucción segura.
+- **La derivación de interacciones, en el cliente** (`derive-interaction.ts`). No lee nada que el
+  editor no tenga ya en la mano, así que el viaje al servidor era la única razón por la que una
+  respuesta podía no llegar — y no llegaba, en silencio, que es como el endpoint acabó borrado con
+  la capacidad detrás.
+
+**Y al ir a portarla resultó que no se podía**, porque necesitaba `apis`, `subscriptions` y
+`processes` y la proyección no los emitía. Medido: **el editor lee 67 campos del modelo y la
+proyección emitía 39**. Faltaban 28, entre ellos las APIs, las vistas, las proyecciones y
+**catorce listas de aristas** (`actorUses`, `aggregateCalls`, `useCaseCalls`, `emissions`,
+`externalCalls`…). Es la misma clase de fallo que los cuatro de §8.1.1, pero a escala: esas vistas
+dibujaban vacío y no decían nada, y un lienzo vacío se ve exactamente igual que un modelo sin nada
+dentro.
+
+Lo interesante es *por qué* faltaban todas juntas: **una arista no está guardada en ninguna
+parte**. El store dice «el tercer paso de este caso de uso llama a ese agregado» —porque un
+fichero por elemento es lo que quiere un repositorio— y el lienzo dibuja una flecha. Convertir lo
+uno en lo otro es trabajo de la proyección, y era justo el trabajo que faltaba. De paso, un paso
+proyectado no llevaba sus destinos: sin ellos no hay de dónde sacar la arista.
+
+Cerrado, y con un test que lee la lista de campos de `model.ts` en vez de repetirla: un campo
+nuevo sin nadie que lo proyecte falla **ahí**, no delante de alguien mirando una vista en blanco.
+
 ### 8.2 Lo que falta, por orden de peso
 
 1. **Layout / `diagrams`** — el editor todavía no lee ni escribe geometría por esta vía, y es lo
    que mantiene vivo `/layout` (§5.1).
-2. **Superficie para las dos capacidades huérfanas** (§5.1): el Mojo de `ImportApiEntityUseCase`
-   y la derivación de interacciones en TypeScript.
-3. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
+2. **`add-project-reference` en el applier de TypeScript** — el único del núcleo sin portar, por
    la razón de §8.1.1: leer otro modelo del disco es trabajo del host.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.

@@ -26,6 +26,7 @@ import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
 import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
+import { DerivationError, deriveInteraction, type DerivationKind } from './derive-interaction.js';
 import { coordinateFrom, repoNameOf } from './project-reference.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
@@ -283,11 +284,8 @@ export class ModuxEditor extends LitElement {
   @state() private _editingInteraction: InteractionRef | null = null;
   /** Derived mode shows the ephemeral server-computed interaction, read-only. */
   @state() private _interactionMode: 'authored' | 'derived' = 'authored';
-  /** Set by the host (modux-editor-connected) answering interaction-derive-requested. */
-  @property({ attribute: false }) derivedInteraction: InteractionRef | null = null;
-  /** A derive request is in flight; if it never gets answered the view warns. */
-  @state() private _derivePending = false;
-  private _deriveTimer: number | undefined;
+  /** The chain derived from the current entry point (`enterDerived`), read-only. */
+  @state() private derivedInteraction: InteractionRef | null = null;
   /** Mini prompt for names (nueva secuencia, fijar derivada). */
   @state() private _interactionPrompt: {
     title: string;
@@ -913,11 +911,6 @@ export class ModuxEditor extends LitElement {
         this._interactionId = null; // borrada fuera (o por undo)
       }
     }
-    // The host answered a derive request (a null answer fails silently → the view warns).
-    if (changed.has('derivedInteraction') && this._derivePending && this.derivedInteraction) {
-      this._derivePending = false;
-      window.clearTimeout(this._deriveTimer);
-    }
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
         && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0) {
@@ -1388,13 +1381,21 @@ export class ModuxEditor extends LitElement {
     return proxy?.targetApiId ?? null;
   }
 
-  /** Reads the picked contract and hands it to the host (the import is a server call). */
+  /**
+   * Tells you how to import a contract, rather than importing it.
+   *
+   * Importing reads a file and writes model elements, which is a build step and not an editing
+   * gesture: it belongs where it can run in CI and be re-run when the contract moves. That is
+   * `mvn modux:import-api`, and its ids are deterministic, so re-running updates the operations in
+   * place and preserves the wiring already drawn. This used to POST to the editor's server; what
+   * is left here is the instruction, because a button that silently does nothing is worse than no
+   * button at all.
+   */
   private async onImportApiFile(e: Event): Promise<void> {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    const content = await file.text();
     const apiId = this.selectedApiId();
     // An API never floats: without an API selected, the selected external system
     // or context becomes the home of the imported contract.
@@ -1412,12 +1413,11 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    this.emit('modux-import-api', {
-      content,
-      fileName: file.name,
-      apiId,
-      homeExternalId,
-      homeBoundedContextId,
+    const target = apiId ? ` -Dmodux.apiId=${apiId}` : '';
+    this.emit('modux-notice', {
+      kind: 'info',
+      message: `Importar un contrato es un paso de build: mvn modux:import-api`
+        + ` -Dmodux.filePath=${file.name}${target}`,
     });
   }
 
@@ -1639,22 +1639,30 @@ export class ModuxEditor extends LitElement {
   }
 
   private enterAuthored(id: string | null): void {
-    window.clearTimeout(this._deriveTimer);
-    this._derivePending = false;
     this._interactionMode = 'authored';
     this._interactionId = id;
     const found = id ? (this.model.interactions ?? []).find((i) => i.id === id) : null;
     this._editingInteraction = found ? JSON.parse(JSON.stringify(found)) : null;
   }
 
-  /** Derived mode: ask the host (it fetches /interactions/derive); silence ⇒ the view warns. */
+  /**
+   * Derived mode: the chain that follows from an entry point.
+   *
+   * Computed here, from the model already in hand. It used to be a round trip to the server, and
+   * a round trip is what made the answer able to not arrive — hence the timeout and the «pending»
+   * state this no longer needs. The derivation reads nothing the editor is not already holding.
+   */
   private enterDerived(kind: string, ref: string): void {
-    window.clearTimeout(this._deriveTimer);
     this._interactionMode = 'derived';
-    this.derivedInteraction = null; // a stale answer must not pose as this request's
-    this._derivePending = true;
-    this._deriveTimer = window.setTimeout(() => (this._derivePending = false), 4000);
-    this.emit('interaction-derive-requested', { kind, ref });
+    try {
+      this.derivedInteraction = deriveInteraction(this.model, kind as DerivationKind, ref);
+    } catch (error) {
+      this.derivedInteraction = null;
+      this.emit('modux-notice', {
+        message: error instanceof DerivationError
+          ? error.message : `No se pudo derivar la secuencia: ${String(error)}`,
+      });
+    }
   }
 
   private uniqueInteractionId(name: string): string {
@@ -4644,13 +4652,10 @@ export class ModuxEditor extends LitElement {
   /** The «Secuencias» surface: one interaction as lifelines — no canvas Scene. */
   private renderInteractionsView() {
     if (this._interactionMode === 'derived') {
-      if (this._derivePending) {
-        return html`<div class="seq-status">Derivando la secuencia…</div>`;
-      }
       if (!this.derivedInteraction) {
         return html`<div class="seq-status">
-          La derivación no está disponible en este servidor (o ese punto de entrada no deriva nada
-          todavía) — crea la secuencia a mano con «＋ Nueva…».
+          Ese punto de entrada no deriva nada todavía: nada del modelo sale de él. Crea la
+          secuencia a mano con «＋ Nueva…».
         </div>`;
       }
       return html`<modux-sequence
