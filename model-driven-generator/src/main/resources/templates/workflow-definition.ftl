@@ -11,6 +11,10 @@
 <#list saga.steps as step>
     {
       "id": "${step.id}",
+      <#-- ACTION is right HERE and only here: this template renders a SAGA, and every saga step is
+           automated work (a saga has no roles). A WORKFLOW does have human steps, and its steps
+           already carry EventConductor's own type — see EventConductorSchema. Nothing generates
+           from workflows yet, which is why this file still only ever sees sagas. -->
       "type": "ACTION",
       "name": "${step.name}",
       "topic": "${wfTopic}.${step.id?lower_case?replace("[^a-z0-9]","-",'r')}",

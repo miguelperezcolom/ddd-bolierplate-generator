@@ -7,9 +7,14 @@
  * same trees, so it has to migrate the same way.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { deploymentIdFor, hoistLegacyProjectElements, healMainModules, migrate } from '../legacy.js';
-import { ModelStore } from '../store.js';
+import {
+  adoptEventConductorStepTypes, deploymentIdFor, EVENT_CONDUCTOR_STEP_TYPES,
+  hoistLegacyProjectElements, healMainModules, migrate,
+} from '../legacy.js';
+import { ModelStore, type Element } from '../store.js';
 import { loadTree, writeTree, type FileSystem } from '../tree.js';
 
 function memoryFs(): FileSystem & { files: Map<string, string> } {
@@ -161,5 +166,58 @@ describe('a legacy tree read from disk', () => {
     const again = ModelStore.from(store.toData());
 
     expect(migrate(again)).toEqual({ relations: 0, externalSystems: 0, deployments: 0 });
+  });
+});
+
+describe('speaking EventConductor’s language', () => {
+  const workflow = (step: Record<string, unknown>) =>
+    ModelStore.from({ workflows: [{ id: 'wf-1', name: 'Checkin', steps: [{ id: 's1', ...step }] }] });
+  const typeOf = (store: ModelStore) =>
+    (store.get('workflows', 'wf-1')!.steps as Element[])[0].type;
+
+  function migrated(store: ModelStore): ModelStore {
+    migrate(store);
+    return store;
+  }
+
+  /**
+   * The list is not restated here, it is READ from EventConductor's own schema. Two hand-kept
+   * copies agreeing with each other while the engine moved on is exactly how modux ended up
+   * emitting ACTION for human tasks.
+   */
+  it('knows the step types EventConductor actually declares', () => {
+    const schema = JSON.parse(readFileSync(fileURLToPath(new URL(
+      '../../../../model-driven-generator/src/main/resources/eventconductor/'
+      + 'workflow-definition-schema.json', import.meta.url)), 'utf8'));
+
+    const declared: string[] = schema.$defs.Step.properties.type.enum;
+
+    expect([...EVENT_CONDUCTOR_STEP_TYPES].sort()).toEqual([...declared].sort());
+  });
+
+  it('calls a step with somebody assigned a user task', () => {
+    expect(typeOf(migrated(workflow({ roleId: 'act-1' })))).toBe('USER_TASK');
+    expect(typeOf(migrated(workflow({ formPageId: 'pg-1' })))).toBe('USER_TASK');
+  });
+
+  it('calls a step with nobody assigned an action', () => {
+    expect(typeOf(migrated(workflow({ type: 'TASK' })))).toBe('ACTION');
+    expect(typeOf(migrated(workflow({})))).toBe('ACTION');
+  });
+
+  it('renames a split to a fork', () => {
+    expect(typeOf(migrated(workflow({ type: 'SPLIT' })))).toBe('FORK');
+  });
+
+  /** An explicit engine type wins, even over a role that would otherwise imply USER_TASK. */
+  it('leaves a step that already speaks the engine’s language alone', () => {
+    expect(typeOf(migrated(workflow({ type: 'WAIT_FOR_MESSAGE', roleId: 'act-1' }))))
+      .toBe('WAIT_FOR_MESSAGE');
+  });
+
+  it('adopts once', () => {
+    const store = workflow({ roleId: 'act-1' });
+    expect(adoptEventConductorStepTypes(store)).toBe(1);
+    expect(adoptEventConductorStepTypes(store)).toBe(0);
   });
 });

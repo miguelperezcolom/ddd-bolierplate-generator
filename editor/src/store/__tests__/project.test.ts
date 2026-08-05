@@ -60,12 +60,14 @@ describe('projection', () => {
 
   it('reports what it does not cover instead of silently dropping it', () => {
     const store = seeded();
-    // a page IS projected now; a workflow and an agent are the blocks still to come
+    // every command block is projected now; what is left is the types with no view of their own
     store.put('pages', { id: 'page-1', name: 'Home' });
     store.put('workflows', { id: 'wf-1', name: 'Checkin' });
     store.put('aiAgents', { id: 'ag-1', name: 'Copiloto' });
+    store.put('decisions', { id: 'd1', name: 'Orquestación' });
+    store.put('processes', { id: 'pr-1', name: 'Alta' });
 
-    expect(unprojectedTypes(store)).toEqual(['aiAgents', 'workflows']);
+    expect(unprojectedTypes(store)).toEqual(['decisions', 'processes']);
     expect(projectedTypes()).toContain('boundedContexts');
   });
 });

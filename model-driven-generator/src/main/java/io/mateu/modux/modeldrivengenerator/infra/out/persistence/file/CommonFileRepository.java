@@ -232,7 +232,46 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         hoistLegacyProjectElements();
         // after the hoist: references live on external systems, which may have just moved out
         resolveLegacyProjectReferences();
+        adoptEventConductorStepTypes();
         healMainModules();
+    }
+
+    /**
+     * A workflow step says what KIND of step it is in EventConductor's words, because
+     * EventConductor is what runs it.
+     *
+     * <p>The two vocabularies had drifted: modux said {@code TASK}/{@code JOIN}/{@code SPLIT}
+     * while the engine's schema says {@code ACTION}/{@code JOIN}/{@code FORK}/{@code USER_TASK}
+     * and seven more. The generator papered over it by emitting {@code "ACTION"} for every step,
+     * which meant a human task — a step with a role and a form — was handed to the engine as an
+     * automated one. Translating at the last moment is what let that go unnoticed for so long, so
+     * the translation happens here instead, once, on the way in.
+     *
+     * <p>A step with a role is a {@code USER_TASK}: that is what having someone assigned MEANS.
+     */
+    private void adoptEventConductorStepTypes() {
+        for (var workflow : findAllOfType(WorkflowEntity.class)) {
+            var steps = workflow.steps();
+            if (steps == null || steps.isEmpty()) continue;
+            var adopted = steps.stream().map(CommonFileRepository::withEventConductorType).toList();
+            if (adopted.equals(steps)) continue;
+            putTransient(workflow.toBuilder().steps(adopted).build());
+            log.info("adopted EventConductor step types in workflow {}", workflow.id());
+        }
+    }
+
+    private static WorkflowStepEntity withEventConductorType(WorkflowStepEntity step) {
+        var known = io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                .EventConductorSchema.stepTypes();
+        var current = step.type();
+        if (current != null && known.contains(current)) return step;
+        var adopted = switch (current == null ? "" : current) {
+            case "SPLIT" -> "FORK";
+            case "JOIN" -> "JOIN";
+            // TASK, or nothing said: a step with somebody assigned is a human task
+            default -> step.roleId() != null || step.formPageId() != null ? "USER_TASK" : "ACTION";
+        };
+        return step.toBuilder().type(adopted).build();
     }
 
     /**

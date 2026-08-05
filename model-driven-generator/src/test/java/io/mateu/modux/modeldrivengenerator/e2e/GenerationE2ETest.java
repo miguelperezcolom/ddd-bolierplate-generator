@@ -51,11 +51,18 @@ class GenerationE2ETest {
                 new File("src/test/resources/examples/hotel-checkin-store.yaml").getAbsolutePath());
     }
 
+    /**
+     * Read from EventConductor's own schemas, not written out here. These lists used to be
+     * hard-coded, and by the time anyone looked the step types were FIVE short of what the engine
+     * actually accepts — a test that agrees with a stale copy of the truth passes while the
+     * generated file is wrong. See {@code src/main/resources/eventconductor/README.md}.
+     */
     private static final Set<String> WORKFLOW_STEP_TYPES =
-            Set.of("ACTION", "JOIN", "FORK", "END", "USER_TASK", "PROCESS");
-    private static final Set<String> FORM_DATA_TYPES = Set.of(
-            "integer", "string", "number", "date", "time", "dateTime", "bool", "array", "file",
-            "status", "money", "component", "menu", "range", "action", "actionGroup", "dateRange");
+            io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                    .EventConductorSchema.stepTypes();
+    private static final Set<String> FORM_DATA_TYPES =
+            io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                    .EventConductorSchema.formDataTypes();
 
     private static final String FIXTURE_EXTRA = """
 

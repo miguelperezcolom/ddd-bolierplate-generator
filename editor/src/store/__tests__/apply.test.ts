@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { apply, applyAll, CommandError, HANDLERS, unsupported } from '../apply.js';
+import { apply, applyAll, CommandError, unsupported } from '../apply.js';
 import { asList, ModelStore } from '../store.js';
 
 /** Read a list field the way consuming code does: absent and empty are one thing. */
@@ -286,12 +288,28 @@ describe('coverage', () => {
   it('rejects a command kind it does not know instead of silently dropping it', () => {
     const store = withContext();
 
-    // a workflow command: that block is not ported yet, so this is a real unknown
-    expect(() => apply(store, { kind: 'add-workflow-step', id: 'x' })).toThrow(/no soportado/);
+    expect(() => apply(store, { kind: 'no-existe-este-comando' } as never))
+      .toThrow(/no soportado/);
   });
 
-  it('reports which kinds are still missing', () => {
-    expect(unsupported(['add-aggregate', 'add-workflow'])).toEqual(['add-workflow']);
-    expect(Object.keys(HANDLERS).length).toBeGreaterThan(30);
+  it('reports which kinds are missing', () => {
+    expect(unsupported(['add-aggregate', 'no-existe'])).toEqual(['no-existe']);
+  });
+
+  /**
+   * The vocabulary the editor can emit is `commands.ts`, and the applier has to answer for all
+   * of it. Reading the union at test time rather than listing the kinds here is what makes this
+   * hold: a command added to the editor with no handler fails HERE, not in front of a user.
+   */
+  it('handles every command kind the editor declares', () => {
+    const union = readFileSync(
+      fileURLToPath(new URL('../../commands.ts', import.meta.url)), 'utf8');
+    const declared = [...union.matchAll(/kind: '([a-z0-9-]+)'/g)].map((m) => m[1]);
+
+    expect(new Set(declared).size).toBeGreaterThan(250);
+    // the one exception, and it is deliberate: referencing another project means READING another
+    // model off disk, which is the host's job — the applier stays pure over an in-memory store
+    // (docs/design/ide-plugin.md §8.1.1)
+    expect(unsupported([...new Set(declared)])).toEqual(['add-project-reference']);
   });
 });
