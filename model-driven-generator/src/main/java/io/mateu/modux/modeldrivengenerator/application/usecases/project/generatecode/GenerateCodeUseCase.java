@@ -32,6 +32,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.RoleEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ServiceEntity;
@@ -76,6 +79,8 @@ public class GenerateCodeUseCase {
     final io.mateu.modux.modeldrivengenerator.application.usecases.project.registry.ImageRegistryResolver imageRegistryResolver;
     final FlowStoreMaterializer flowStoreMaterializer;
     final io.mateu.modux.modeldrivengenerator.application.usecases.model.view.ResolveViewClosureUseCase resolveViewClosureUseCase;
+    /** Which workflow a loose gateway belongs to — a gateway becomes a step of that definition. */
+    final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
 
     // when generating a view slice, only element ids in this set are emitted (null = full project)
     private java.util.Set<String> generationScope;
@@ -119,6 +124,7 @@ public class GenerateCodeUseCase {
         if (generationScope != null) {
             log.info("Generating view '{}' — scoped to {} element(s)", command.viewId(), generationScope.size());
         }
+        warnAboutHomelessWorkflows();
 
         // integrity: load the previous run's manifest, start a fresh one for this run
         generationRoot = Path.of(project.outputPath()).toAbsolutePath().normalize();
@@ -483,6 +489,14 @@ public class GenerateCodeUseCase {
                     .filter(saga -> inScope(saga.id()))
                     .forEach(saga -> generateSaga(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, saga));
         }
+
+        // Workflows started from this context. A workflow has no owning context (unlike a saga),
+        // so its home is where it BEGINS — and that is also the service that will be running when
+        // its trigger fires. See generateWorkflow.
+        repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> boundedContext.id().equals(homeContextOf(workflow)))
+                .forEach(workflow -> generateWorkflow(project, boundedContextDir, workflow));
 
         // Projections
         if (boundedContext.projectionIds() != null) {
@@ -1541,6 +1555,95 @@ public class GenerateCodeUseCase {
         // EventConductor workflow definition (the workflow engine owns the orchestration)
         createFile(boundedContextDir, model, "workflow-definition.ftl",
                 "src/main/resources/workflows/" + capitalize(saga.name()) + ".workflow.json");
+    }
+
+    /**
+     * The EventConductor definition of a workflow.
+     *
+     * <p>Only the JSON: EventConductor OWNS the orchestration, so there is no class to generate —
+     * a workflow is not code, it is a definition the engine loads from
+     * {@code classpath:/workflows/*.json}. That is also why the file has to live inside a module:
+     * a module is what becomes a jar on a running service's classpath.
+     */
+    private void generateWorkflow(ProjectEntity project, String boundedContextDir,
+                                  WorkflowEntity workflow) {
+        var gateways = repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                .filter(g -> workflow.id().equals(workflowGraph.workflowOf(g.id()).orElse(null)))
+                .toList();
+        var definition = io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                .EventConductorWorkflowDefinition.of(
+                        workflow, gateways, this::formIdOfPage,
+                        io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                                .EventConductorWorkflowDefinition
+                                .topicPrefix(project.name(), workflow.name()));
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("definition", toPrettyJson(definition));
+        createFile(boundedContextDir, model, "workflow-definition-json.ftl",
+                "src/main/resources/workflows/" + capitalize(workflow.name()) + ".workflow.json");
+    }
+
+    /**
+     * A workflow whose home cannot be worked out generates NOTHING — and the whole reason this
+     * code exists is that generating nothing used to be silent. So it says so.
+     */
+    private void warnAboutHomelessWorkflows() {
+        repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> homeContextOf(workflow) == null)
+                .forEach(workflow -> log.warn("el workflow '{}' no genera definición: no se sabe"
+                        + " desde qué contexto arranca. Dale un trigger, o un paso con caso de uso.",
+                        workflow.name()));
+    }
+
+    /**
+     * Where a workflow lives: the context that owns whatever STARTS it.
+     *
+     * <p>A workflow spans contexts by design, so no context owns it — but the file has to be on
+     * somebody's classpath, and the one that will certainly be running when the trigger fires is
+     * the one the trigger comes from. When nothing says how it starts, the first step's use case
+     * decides instead; a workflow with neither has nothing to run and is skipped.
+     */
+    private String homeContextOf(WorkflowEntity workflow) {
+        var trigger = workflow.triggerAggregateId() != null ? workflow.triggerAggregateId()
+                : workflow.triggerDomainServiceId() != null ? workflow.triggerDomainServiceId()
+                : workflow.triggerUseCaseId();
+        if (trigger == null && workflow.steps() != null) {
+            trigger = workflow.steps().stream()
+                    .map(WorkflowStepEntity::targetUseCaseId)
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst().orElse(null);
+        }
+        if (trigger == null) return null;
+        var owner = trigger;
+        return repository.findAllOfType(BoundedContextEntity.class).stream()
+                .filter(bc -> owns(bc, owner))
+                .map(BoundedContextEntity::id)
+                .findFirst().orElse(null);
+    }
+
+    private static boolean owns(BoundedContextEntity boundedContext, String elementId) {
+        return java.util.stream.Stream.of(boundedContext.aggregateIds(),
+                        boundedContext.useCaseIds(), boundedContext.domainServiceIds())
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(ids -> ids.contains(elementId));
+    }
+
+    /** The id of the form generated from a page, or null when that page generates none. */
+    private String formIdOfPage(String pageId) {
+        return repository.findById(pageId, PageEntity.class)
+                .map(page -> io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                        .EventConductorWorkflowDefinition.formId(page.name()))
+                .orElse(null);
+    }
+
+    private String toPrettyJson(Object value) {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writerWithDefaultPrettyPrinter().writeValueAsString(value);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("no se pudo serializar la definición del workflow", e);
+        }
     }
 
     private Map<String, Object> enrichSagaMap(SagaEntity saga) {

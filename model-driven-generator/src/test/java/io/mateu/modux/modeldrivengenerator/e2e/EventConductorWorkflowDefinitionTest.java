@@ -1,0 +1,168 @@
+package io.mateu.modux.modeldrivengenerator.e2e;
+
+import io.mateu.modux.modeldrivengenerator.application.usecases.workflow.EventConductorSchema;
+import io.mateu.modux.modeldrivengenerator.application.usecases.workflow.EventConductorWorkflowDefinition;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowGatewayEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * A modux workflow as the EventConductor definition that runs it.
+ *
+ * <p>This is the translation that was MISSING: generation only ever read sagas, so a model whose
+ * sagas had been fused into workflows generated no orchestration at all — the definitions simply
+ * stopped appearing, with nothing saying so.
+ *
+ * <p>Every assertion here is against EventConductor's own schema, read rather than restated.
+ */
+class EventConductorWorkflowDefinitionTest {
+
+    private static final String TOPIC = "booking.workflow.checkin";
+
+    private static WorkflowStepEntity step(String id, String name) {
+        return WorkflowStepEntity.builder().id(id).name(name).dependsOnStepIds(List.of()).build();
+    }
+
+    private static WorkflowEntity workflow(WorkflowStepEntity... steps) {
+        return WorkflowEntity.builder()
+                .id("wf-checkin").name("Checkin").steps(List.of(steps)).build();
+    }
+
+    private static Map<String, Object> definitionOf(WorkflowEntity workflow,
+                                                    WorkflowGatewayEntity... gateways) {
+        return EventConductorWorkflowDefinition.of(
+                workflow, List.of(gateways), pageId -> "form-" + pageId, TOPIC);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> steps(Map<String, Object> definition) {
+        return (List<Map<String, Object>>) definition.get("steps");
+    }
+
+    @Test
+    void everyStepTypeItEmitsIsOneTheEngineUnderstands() {
+        var definition = definitionOf(workflow(
+                step("s1", "Cobrar").toBuilder().type("ACTION").build(),
+                step("s2", "Revisar").toBuilder().type("USER_TASK").formPageId("pg-1").build()),
+                new WorkflowGatewayEntity("gw-1", "Split", "SPLIT", List.of("s1"), List.of()));
+
+        var known = EventConductorSchema.stepTypes();
+        assertThat(steps(definition)).allSatisfy(s ->
+                assertThat(known).contains((String) s.get("type")));
+    }
+
+    @Test
+    void everyStepCarriesWhatTheSchemaRequires() {
+        var definition = definitionOf(workflow(step("s1", "Cobrar")));
+
+        var required = EventConductorSchema.requiredStepFields();
+        assertThat(steps(definition)).allSatisfy(s -> assertThat(s).containsKeys(
+                required.toArray(String[]::new)));
+    }
+
+    @Test
+    void emitsNoFieldTheSchemaDoesNotDeclare() {
+        var definition = definitionOf(workflow(
+                step("s1", "Cobrar").toBuilder()
+                        .type("ACTION").compensationUseCaseId("uc-anular")
+                        .maxSuccessfulExecutions(3).dependsOnStepIds(List.of("s0")).build()),
+                new WorkflowGatewayEntity("gw-1", "Join", "JOIN", List.of("s1"), List.of()));
+
+        var declared = EventConductorSchema.stepFields();
+        assertThat(steps(definition)).allSatisfy(s -> assertThat(declared).containsAll(s.keySet()));
+    }
+
+    /** An ACTION is dispatched to a topic, and the schema requires one. */
+    @Test
+    void anActionGetsItsTopic() {
+        var definition = definitionOf(workflow(step("s-cobrar", "Cobrar")));
+
+        assertThat(steps(definition).get(0))
+                .containsEntry("type", "ACTION")
+                .containsEntry("topic", TOPIC + ".s-cobrar");
+    }
+
+    /** A USER_TASK is rendered as a form, and the schema requires one. */
+    @Test
+    void aUserTaskPointsAtItsForm() {
+        var definition = definitionOf(workflow(
+                step("s1", "Revisar").toBuilder().type("USER_TASK").formPageId("pg-ficha").build()));
+
+        assertThat(steps(definition).get(0))
+                .containsEntry("formId", "form-pg-ficha")
+                .doesNotContainKey("topic");
+    }
+
+    /** modux says «depends on»; EventConductor says «must have completed». Same edge. */
+    @Test
+    void dependenciesBecomePreconditions() {
+        var definition = definitionOf(workflow(
+                step("s1", "Uno"),
+                step("s2", "Dos").toBuilder().dependsOnStepIds(List.of("s1")).build()));
+
+        assertThat(steps(definition).get(0)).doesNotContainKey("preconditionStepIds");
+        assertThat(steps(definition).get(1)).containsEntry("preconditionStepIds", List.of("s1"));
+    }
+
+    /**
+     * A gateway is its own element in modux because on a canvas it is its own box. EventConductor
+     * has no such thing: a JOIN and a FORK are steps. So they fold in.
+     */
+    @Test
+    void aGatewayBecomesAStep() {
+        var definition = definitionOf(workflow(step("s1", "Uno")),
+                new WorkflowGatewayEntity("gw-split", "Abrir", "SPLIT", List.of("s1"), List.of()),
+                new WorkflowGatewayEntity("gw-join", "Cerrar", "JOIN", List.of("s1"), List.of()));
+
+        assertThat(steps(definition)).extracting(s -> s.get("id") + ":" + s.get("type"))
+                .containsExactly("s1:ACTION", "gw-split:FORK", "gw-join:JOIN");
+        assertThat(steps(definition).get(1)).containsEntry("preconditionStepIds", List.of("s1"));
+    }
+
+    /** ALL waits for every branch (AND); ANY proceeds with the first (XOR). */
+    @Test
+    void aJoinsSemanticsBecomeItsJoinType() {
+        var all = definitionOf(workflow(step("s1", "Uno")),
+                gateway("gw", "JOIN", "ALL"));
+        var any = definitionOf(workflow(step("s1", "Uno")),
+                gateway("gw", "JOIN", "ANY"));
+
+        assertThat(steps(all).get(1)).containsEntry("joinType", "AND");
+        assertThat(steps(any).get(1)).containsEntry("joinType", "XOR");
+        assertThat(EventConductorSchema.stepFields()).contains("joinType");
+    }
+
+    /** A split has no joinType — the schema says the field is JOIN only. */
+    @Test
+    void aForkHasNoJoinType() {
+        var definition = definitionOf(workflow(step("s1", "Uno")), gateway("gw", "SPLIT", "PARALLEL"));
+
+        assertThat(steps(definition).get(1)).doesNotContainKey("joinType");
+    }
+
+    /** The schema requires at least one step; an empty workflow is an END, not a broken file. */
+    @Test
+    void anEmptyWorkflowIsStillAValidDefinition() {
+        var definition = definitionOf(workflow());
+
+        assertThat(steps(definition)).singleElement()
+                .satisfies(s -> assertThat(s).containsEntry("type", "END"));
+    }
+
+    @Test
+    void topicsAreNamespacedPerProjectAndWorkflow() {
+        assertThat(EventConductorWorkflowDefinition.topicPrefix("Booking", "Check In"))
+                .isEqualTo("booking.workflow.check-in");
+    }
+
+    private static WorkflowGatewayEntity gateway(String id, String type, String semantics) {
+        return new WorkflowGatewayEntity(id, id, type, List.of("s1"), List.of())
+                .toBuilder().semantics(semantics).build();
+    }
+}
