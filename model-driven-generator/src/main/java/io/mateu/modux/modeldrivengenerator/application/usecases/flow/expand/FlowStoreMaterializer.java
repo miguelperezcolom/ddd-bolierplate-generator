@@ -11,7 +11,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Projection
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

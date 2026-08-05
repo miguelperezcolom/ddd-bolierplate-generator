@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-import static io.mateu.core.infra.JsonSerializer.toJson;
+import static io.mateu.modux.modeldrivengenerator.domain.shared.Json.toJson;
 
 @Service
 @RequiredArgsConstructor

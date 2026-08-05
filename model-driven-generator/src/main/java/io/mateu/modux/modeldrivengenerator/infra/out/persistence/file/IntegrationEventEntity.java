@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo.IntegrationEventCompressionType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo.IntegrationEventSerializationFormat;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 public record IntegrationEventEntity(
         String id,

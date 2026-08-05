@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.valueobject.sav
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectField;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectType;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 
 import java.util.List;
 

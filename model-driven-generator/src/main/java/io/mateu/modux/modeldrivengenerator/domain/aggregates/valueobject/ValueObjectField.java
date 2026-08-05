@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject;
 
-import io.mateu.uidl.data.FieldDataType;
-import io.mateu.uidl.data.FieldStereotype;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldStereotype;
 
 public record ValueObjectField(
         String name,

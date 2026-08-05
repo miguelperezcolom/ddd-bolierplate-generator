@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.uiadapter.vo.UiAppVariant;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import lombok.Builder;
 
 import java.util.List;

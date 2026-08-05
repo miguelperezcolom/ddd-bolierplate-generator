@@ -24,7 +24,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReadModelE
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelMappingEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.PageEntity;
@@ -67,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.mateu.core.infra.JsonSerializer.*;
+import static io.mateu.modux.modeldrivengenerator.domain.shared.Json.*;
 
 @Service
 @Repository

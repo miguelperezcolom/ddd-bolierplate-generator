@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 /**
  * An architecture decision record (ADR): what was decided, why, and where it came from. Model

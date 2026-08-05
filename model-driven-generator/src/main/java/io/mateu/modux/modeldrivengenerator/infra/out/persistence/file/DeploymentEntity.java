@@ -14,7 +14,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.TenancyS
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.TerraformBackendType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.TerraformProvider;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.TracingProvider;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 import java.util.List;
 

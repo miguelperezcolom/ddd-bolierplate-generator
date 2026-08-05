@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayAuthType;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 import java.util.List;
 

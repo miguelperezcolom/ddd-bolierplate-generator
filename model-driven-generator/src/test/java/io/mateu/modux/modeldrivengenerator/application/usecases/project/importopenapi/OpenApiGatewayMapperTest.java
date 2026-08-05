@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.gateway.vo.GatewayA
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOperationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import io.swagger.parser.OpenAPIParser;
 import org.junit.jupiter.api.Test;
 

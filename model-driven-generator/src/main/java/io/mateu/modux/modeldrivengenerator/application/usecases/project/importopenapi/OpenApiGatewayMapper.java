@@ -5,7 +5,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayOpe
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayParameterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;

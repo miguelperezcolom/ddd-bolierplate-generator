@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 /**
  * A URL — the address where something is reachable. It lives on the

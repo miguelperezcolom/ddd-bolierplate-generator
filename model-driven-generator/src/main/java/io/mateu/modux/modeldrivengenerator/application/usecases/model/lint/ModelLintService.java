@@ -37,7 +37,7 @@ public class ModelLintService {
         // share the id (see GlobalIdPolicy).
         var elementsById = new java.util.LinkedHashMap<String, java.util.List<Object>>();
         for (var element : repository.allElements()) {
-            if (element instanceof io.mateu.uidl.interfaces.Identifiable identifiable) {
+            if (element instanceof io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable identifiable) {
                 elementsById.computeIfAbsent(identifiable.id(), k -> new ArrayList<>()).add(element);
             }
         }

@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.db;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AllData;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import lombok.Getter;
 import lombok.SneakyThrows;
 

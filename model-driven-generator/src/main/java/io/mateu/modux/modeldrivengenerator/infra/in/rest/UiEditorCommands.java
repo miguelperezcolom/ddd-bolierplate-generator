@@ -673,8 +673,8 @@ public class UiEditorCommands {
         var fields = model.fields() == null ? List.<ModelFieldEntity>of() : model.fields();
         if (fields.stream().anyMatch(f -> f.id().equals(command.fieldId()))) return;
         var type = command.type() == null || command.type().isBlank()
-                ? io.mateu.uidl.data.FieldDataType.string
-                : io.mateu.uidl.data.FieldDataType.valueOf(command.type());
+                ? io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType.string
+                : io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType.valueOf(command.type());
         var grown = new ArrayList<>(fields);
         grown.add(new ModelFieldEntity(command.fieldId(), command.name(), true, type,
                 null, false, null, List.of()));
@@ -702,7 +702,7 @@ public class UiEditorCommands {
                 .map(f -> {
                     if (!f.id().equals(command.fieldId())) return f;
                     boolean basic = false;
-                    io.mateu.uidl.data.FieldDataType type = f.type();
+                    io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType type = f.type();
                     String modelRef = null;
                     boolean isEnum = false;
                     String enumRef = null;
@@ -716,8 +716,8 @@ public class UiEditorCommands {
                         default -> {
                             basic = true;
                             type = command.targetId() != null && !command.targetId().isBlank()
-                                    ? io.mateu.uidl.data.FieldDataType.valueOf(command.targetId())
-                                    : (f.type() != null ? f.type() : io.mateu.uidl.data.FieldDataType.string);
+                                    ? io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType.valueOf(command.targetId())
+                                    : (f.type() != null ? f.type() : io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType.string);
                         }
                     }
                     return new ModelFieldEntity(f.id(), f.name(), basic, type, modelRef, isEnum, enumRef,
@@ -789,7 +789,7 @@ public class UiEditorCommands {
                                 command.name() == null || command.name().isBlank() ? f.name() : command.name(),
                                 f.basicType(),
                                 command.type() == null || command.type().isBlank()
-                                        ? f.type() : io.mateu.uidl.data.FieldDataType.valueOf(command.type()),
+                                        ? f.type() : io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType.valueOf(command.type()),
                                 f.modelId(), f.isEnum(), f.enumId(), f.validations(),
                                 f.piiClassification(), f.anonymizationStrategy(),
                                 f.label(), f.priority(), f.identifier(), f.valueObjectId(), f.entityId(),

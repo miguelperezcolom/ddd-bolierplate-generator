@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import java.util.List;
 
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 public record ContextMapRelationEntity(
         String id,

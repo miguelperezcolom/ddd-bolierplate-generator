@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.aicompl
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.infra.out.ai.ClaudeApiClient;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.*;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

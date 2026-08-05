@@ -2,7 +2,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.aggregate.vo.AggregateIdType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.aggregate.vo.AggregatePersistenceType;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 import java.util.List;
 

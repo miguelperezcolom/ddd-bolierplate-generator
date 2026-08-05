@@ -324,7 +324,7 @@ public class EditorModelProjection {
                 allValueObjects.stream().filter(v -> v.id().equals(voId)).findFirst().ifPresent(v -> {
                     var fieldDtos = (v.fieldsJson() == null || v.fieldsJson().isBlank())
                             ? java.util.List.<ValueObjectFieldDto>of()
-                            : io.mateu.core.infra.JsonSerializer.listFromJson(v.fieldsJson(),
+                            : io.mateu.modux.modeldrivengenerator.domain.shared.Json.listFromJson(v.fieldsJson(),
                                     io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectField.class)
                             .stream()
                             .map(f -> new ValueObjectFieldDto(f.name(),
@@ -333,7 +333,7 @@ public class EditorModelProjection {
                             .toList();
                     var enumValues = (v.valuesJson() == null || v.valuesJson().isBlank())
                             ? java.util.List.<String>of()
-                            : io.mateu.core.infra.JsonSerializer.listFromJson(v.valuesJson(),
+                            : io.mateu.modux.modeldrivengenerator.domain.shared.Json.listFromJson(v.valuesJson(),
                                     io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue.class)
                             .stream()
                             .map(io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.EnumValue::value)

@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AllData;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.ParameterizedType;

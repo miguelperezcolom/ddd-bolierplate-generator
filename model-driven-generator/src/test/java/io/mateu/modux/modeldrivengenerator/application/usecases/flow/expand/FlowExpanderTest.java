@@ -8,7 +8,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.projection.vo.Proje
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadModelConsistency;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.readmodel.vo.ReadModelStorageType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.subscription.vo.SubscriptionActionType;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

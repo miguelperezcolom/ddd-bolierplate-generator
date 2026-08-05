@@ -18,7 +18,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SagaStepEn
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ScheduledTriggerEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionActionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

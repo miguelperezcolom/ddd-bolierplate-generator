@@ -10,9 +10,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryServi
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
-import io.mateu.uidl.data.ListingData;
-import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -121,10 +119,6 @@ class DeriveMenuCrudUseCaseTest {
             if (byId != null) ids.forEach(byId::remove);
         }
 
-        @Override
-        public <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> type) {
-            throw new UnsupportedOperationException();
-        }
 
         @Override
         public Collection<Object> allElements() {

@@ -75,7 +75,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Subscripti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;

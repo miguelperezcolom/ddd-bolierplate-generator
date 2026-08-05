@@ -57,7 +57,7 @@ class GenerationLazyLoadTest {
         // partially load only the FrontOffice view's closure
         var load = loadViewScopeUseCase.load("view-frontoffice-lazy");
         var ids = repository.allElements().stream()
-                .map(e -> ((io.mateu.uidl.interfaces.Identifiable) e).id())
+                .map(e -> ((io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable) e).id())
                 .toList();
 
         // only a slice is in memory, far smaller than the whole model

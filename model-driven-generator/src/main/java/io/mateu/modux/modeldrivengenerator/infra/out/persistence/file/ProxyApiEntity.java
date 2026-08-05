@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 /**
  * An API proxy/cache as a FIRST-CLASS element: fronts a published API from another

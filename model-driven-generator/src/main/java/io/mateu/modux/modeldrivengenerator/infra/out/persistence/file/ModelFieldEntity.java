@@ -3,7 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.AnonymizationStrategy;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassification;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 
 import java.util.List;
 

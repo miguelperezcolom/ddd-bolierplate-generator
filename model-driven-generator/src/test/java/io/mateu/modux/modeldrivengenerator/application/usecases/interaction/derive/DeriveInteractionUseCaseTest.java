@@ -20,9 +20,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Subscripti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SubscriptionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseStepEntity;
-import io.mateu.uidl.data.ListingData;
-import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -251,10 +249,6 @@ class DeriveInteractionUseCaseTest {
             throw new UnsupportedOperationException();
         }
 
-        @Override
-        public <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> type) {
-            throw new UnsupportedOperationException();
-        }
 
         @Override
         @SuppressWarnings("unchecked")

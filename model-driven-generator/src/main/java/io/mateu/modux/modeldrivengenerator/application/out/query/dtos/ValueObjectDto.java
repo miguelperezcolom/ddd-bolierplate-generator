@@ -1,7 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.out.query.dtos;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.ValueObjectType;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 
 import java.util.List;
 

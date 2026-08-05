@@ -2,14 +2,13 @@ package io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject;
 
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.vo.ValueObjectId;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.valueobject.vo.ValueObjectName;
-import io.mateu.uidl.annotations.Hidden;
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 import java.util.List;
 
-import static io.mateu.core.infra.JsonSerializer.listFromJson;
+import static io.mateu.modux.modeldrivengenerator.domain.shared.Json.listFromJson;
 
 @Getter
 public class ValueObject {

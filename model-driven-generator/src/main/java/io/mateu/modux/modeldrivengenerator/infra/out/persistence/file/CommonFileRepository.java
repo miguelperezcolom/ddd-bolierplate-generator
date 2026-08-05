@@ -3,10 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
-import io.mateu.uidl.data.ListingData;
-import io.mateu.uidl.data.Page;
-import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -114,17 +111,6 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
     /** Puts an entity into the in-memory store without persisting to disk (transient/derived data). */
     public synchronized void putTransient(Identifiable o) {
         store.put(storeKey(o.id(), o.getClass()), o);
-    }
-
-    public synchronized <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> entityClass) {
-        // The CRUD listing works on the SELECTED project only; whole-model passes
-        // (generation, lint, projections) use findAllOfType and see everything.
-        var data = (List<T>) store.values().stream()
-                .filter(v -> v.getClass().equals(entityClass))
-                .filter(v -> ProjectScope.inProject(v, currentProjectId))
-                .toList();
-        return new ListingData<T>(new Page<T>(searchText, pageable.size(), pageable.page(), data.size(),
-                data.stream().skip(pageable.page() * pageable.size()).limit(pageable.size()).toList()));
     }
 
     public synchronized <T> List<T> findAllOfType(Class<T> type) {

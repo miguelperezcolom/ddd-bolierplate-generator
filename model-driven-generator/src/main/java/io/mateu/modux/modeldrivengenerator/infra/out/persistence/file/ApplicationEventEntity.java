@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 /**
  * An application event: a fact published by a use case (application layer), as opposed to a

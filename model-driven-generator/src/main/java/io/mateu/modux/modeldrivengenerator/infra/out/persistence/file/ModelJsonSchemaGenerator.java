@@ -39,7 +39,7 @@ public class ModelJsonSchemaGenerator {
         configBuilder.forFields()
                 .withRequiredCheck(field -> !field.isFakeContainerItemScope()
                         && "id".equals(field.getName())
-                        && io.mateu.uidl.interfaces.Identifiable.class
+                        && io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable.class
                                 .isAssignableFrom(field.getDeclaringType().getErasedType()))
                 .withStringPatternResolver(field -> {
                     if (!field.getType().getErasedType().equals(String.class)) {

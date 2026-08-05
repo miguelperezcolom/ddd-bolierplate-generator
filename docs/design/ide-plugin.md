@@ -863,22 +863,16 @@ que la referencia se invente: sin snapshot, el comando se niega.
 Del RFC, nada: la lista se cerró con §8.1.7 y esto está mergeado a `main`. Lo que queda es
 **distribución**, que es otro problema y conviene no confundirlo con este.
 
-1. **El generador no lo puede construir nadie más.** `model-driven-generator` fija
-   `mateu:0.0.1-MATEU`, que es un `mvn install` local. Mientras siga así, `modux-maven-plugin` no
-   puede salir de `0.0.1-SNAPSHOT`.
-
-   Medido, resulta ser mucho menos de lo que parece: **modux ya no corre sobre mateu** —eso se fue
-   con `infra/in/ui`— y lo que queda son **8 tipos** en 147 ficheros: `Identifiable` (una interfaz
-   con `id()`), `Pageable`/`ListingData`/`Page`, la anotación `@Hidden`, los enums `FieldDataType`
-   y `FieldStereotype`, y `JsonSerializer`. De los cuatro artefactos declarados en el pom,
-   `agent-cli` —el único que no está en Central— no se importa en ningún sitio. Así que el trabajo
-   es **absorber esos 8 tipos y borrar las cuatro dependencias**, no publicar nada.
-2. **Y sin eso, el plugin de IDE es media herramienta.** Edita el modelo, sí, pero quien lo
-   instale no puede generar: la generación es el maven plugin. Por eso v0.1.0 se publica como
-   release de GitHub —para instalar desde disco— y **no** en el Marketplace de JetBrains. Publicar
-   ahí la mitad que se ve, sabiendo que la otra no existe públicamente, sería vender una puerta
-   sin habitación detrás.
-3. Subir al Marketplace, cuando toque, pide además firma (obligatoria), un token de la cuenta de
+1. ~~**El generador no lo puede construir nadie más.**~~ ✅ **Resuelto** (§8.3): modux ya no
+   depende de mateu. Se verificó escondiendo los 46 artefactos de mateu del repositorio local:
+   198 tests en verde.
+2. **Publicar `modux-maven-plugin`.** Ya no hay nada que lo impida; falta hacerlo, y decidir si
+   `model-driven-generator` va también o se empaqueta dentro.
+3. **Mientras no esté publicado, el plugin de IDE es media herramienta.** Edita el modelo, sí,
+   pero quien lo instale no puede generar. Por eso v0.1.0 se publica como release de GitHub —para
+   instalar desde disco— y **no** en el Marketplace de JetBrains. Publicar ahí la mitad que se ve,
+   sabiendo que la otra no existe públicamente, sería vender una puerta sin habitación detrás.
+4. Subir al Marketplace, cuando toque, pide además firma (obligatoria), un token de la cuenta de
    JetBrains, moderación del primer envío y un `pluginIcon.svg`.
 
 **El build de `model-driven-generator` llevaba roto desde antes de este RFC**, y ya no lo está.
@@ -887,3 +881,43 @@ a `CrudAdapter`, `CrudEditorForm` y `CrudCreationForm` que no existen en el mate
 `infra/in/mcp` (922) — exactamente los dos paquetes que este RFC borra.** Borrarlos dejó el módulo
 compilando y sus 159 tests en verde, sin tocar nada más. Era la única deuda que no había que
 pagar: había que dejar de arrastrarla.
+
+### 8.3 modux deja de depender de mateu
+
+**modux GENERA código que corre sobre mateu; modux no corre sobre mateu.** Esa frase parecía ya
+cierta —la UI de Vaadin se fue con `infra/in/ui`— pero el pom seguía fijando cuatro artefactos en
+`0.0.1-MATEU`, una versión que solo existe en la máquina donde se hizo el `mvn install`. Eso, y no
+otra cosa, es lo que impedía publicar `modux-maven-plugin`.
+
+Medido, el acoplamiento era **8 tipos**, y casi todo resultó ser residuo de la misma amputación:
+
+- **El read side del CRUD borrado (94 ficheros).** Las 31 interfaces `*QueryService`, sus 31
+  `*Row`, las 30 implementaciones `*FileQueryService` y `ModelStore.findAll`. Se llamaban **solo
+  entre ellas**: quien las consumía era el grid de Vaadin. Con ellas se fueron `ListingData`,
+  `Page` y `Pageable` sin necesidad de copiar nada.
+- **`@Hidden`** marcaba columnas para ese mismo grid. Nadie en modux la lee por reflexión. Fuera.
+- **Los casos de uso de despliegue** (`DeployProjectUseCase`, `ApplyTerraformUseCase`, 522 líneas)
+  eran los únicos que usaban `LongTask`, `UICommand` y `ProgressReporter`, tipos de *streaming a
+  una UI*. No los alcanza nada en todo el repositorio: no hay Mojo, ni CLI, ni endpoint. Fuera
+  también — modelar despliegues sigue vivo; ejecutar terraform desde modux nunca tuvo puerta.
+- **`agent-cli`**, el único de los cuatro artefactos que no está en Maven Central, no se importaba
+  en ningún sitio.
+
+Lo que sí era carga estructural se absorbió en `domain/shared/`:
+
+| | |
+|---|---|
+| `Identifiable` | Una interfaz con `id()`. La usan `ModelStore.save`, el lint, la búsqueda y el limpiador de huérfanos para recorrer un modelo heterogéneo sin saber qué elemento tienen |
+| `FieldDataType`, `FieldStereotype` | **Vocabulario ajeno.** No son de modux: los define el framework sobre el que corre el código generado. Se copian con la nota de quién manda, igual que se hizo con el esquema de EventConductor (§8.1.3) |
+| `Json` | La configuración del `ObjectMapper` **es el formato en disco**, así que se traslada literal: cambiar un ajuste reescribiría ficheros |
+
+Lo que quedó de `io.mateu` en el código son **strings** —`ComponentTreeJava` y las plantillas
+`.ftl` emitiendo imports para el código generado— y un string no necesita el tipo en el classpath.
+
+**La verificación que lo cierra**: esconder los 46 artefactos de mateu del repositorio local
+(`~/.m2/repository/io/mateu`, todo menos `modux`) y construir. **198 tests en verde.** Es la única
+prueba que vale, porque un `dependency:tree` limpio solo dice lo que el resolutor cree.
+
+Un cabo suelto que destapó: `Json` importa `jackson-datatype-jsr310` y el pom no lo declaraba —le
+llegaba de arrastre por mateu. El build del maven-plugin se rompió al quitarlo, que es exactamente
+para lo que sirve quitar una dependencia de arrastre.

@@ -4,7 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.CatalogReflection;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ElementTypeRegistry;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

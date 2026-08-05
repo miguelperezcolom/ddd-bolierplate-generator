@@ -1,9 +1,7 @@
 package io.mateu.modux.modeldrivengenerator.application.out.store;
 
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AllData;
-import io.mateu.uidl.data.ListingData;
-import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.Identifiable;
+import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -25,7 +23,6 @@ public interface ModelStore {
     /** Into the in-memory catalog only, never persisted (transient/derived data). */
     void putTransient(Identifiable element);
 
-    <T> ListingData<T> findAll(String searchText, Object filters, Pageable pageable, Class<T> type);
 
     <T> List<T> findAllOfType(Class<T> type);
 

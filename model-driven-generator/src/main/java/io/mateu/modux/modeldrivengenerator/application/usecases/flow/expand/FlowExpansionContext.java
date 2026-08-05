@@ -1,6 +1,6 @@
 package io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand;
 
-import io.mateu.uidl.data.FieldDataType;
+import io.mateu.modux.modeldrivengenerator.domain.shared.FieldDataType;
 
 import java.util.Map;
 
