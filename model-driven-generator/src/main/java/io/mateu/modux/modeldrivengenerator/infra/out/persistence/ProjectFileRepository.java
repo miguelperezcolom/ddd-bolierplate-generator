@@ -93,7 +93,7 @@ public class ProjectFileRepository implements ProjectRepository {
                                         e.ingressClassName()
                                 )).toList(),
                         entity.serviceIds(),
-                        entity.contextMap() == null ? List.<ContextMapRelation>of() : entity.contextMap().stream()
+                        repository.findAllOfType(ContextMapRelationEntity.class).stream()
                                 .map(r -> new ContextMapRelation(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
                                         r.type() != null ? ContextMapRelationType.valueOf(r.type()) : null, r.description()))
                                 .toList()));
@@ -177,17 +177,33 @@ public class ProjectFileRepository implements ProjectRepository {
                 .serviceIds(entity.getServices().stream()
                         .map(s -> s.id())
                         .toList())
-                .contextMap(entity.getContextMap() == null ? List.<ContextMapRelationEntity>of() : entity.getContextMap().stream()
-                        .map(r -> new ContextMapRelationEntity(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
-                                r.type() != null ? r.type().name() : null, r.description(),
-                                // per-relation decisionIds carry-over (not modeled in the domain yet)
-                                existing == null ? List.of() : existing.contextMap().stream()
-                                        .filter(e -> e.id() != null && e.id().equals(r.id()))
-                                        .findFirst().map(ContextMapRelationEntity::decisionIds)
-                                        .orElse(List.of())))
-                        .toList())
                 .build());
+        saveContextMap(entity);
         return entity;
+    }
+
+    /**
+     * Persist the strategic relations as top-level elements.
+     *
+     * <p>They used to be a field of the project, so saving the project saved them. Now each is its
+     * own element and its own file — see {@code docs/design/ide-plugin.md} §4.3 — so the ones the
+     * form dropped have to be deleted explicitly.
+     */
+    private void saveContextMap(Project entity) {
+        var incoming = entity.getContextMap() == null ? List.<ContextMapRelation>of() : entity.getContextMap();
+        var byId = repository.findAllOfType(ContextMapRelationEntity.class).stream()
+                .collect(java.util.stream.Collectors.toMap(ContextMapRelationEntity::id, r -> r, (a, b) -> a));
+        var keep = incoming.stream().map(ContextMapRelation::id).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        var gone = byId.keySet().stream().filter(id -> !keep.contains(id)).toList();
+        if (!gone.isEmpty()) repository.deleteAllById(gone, ContextMapRelationEntity.class);
+        for (var r : incoming) {
+            repository.save(new ContextMapRelationEntity(
+                    r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(),
+                    r.type() != null ? r.type().name() : null, r.description(),
+                    // per-relation decisionIds carry-over (not modeled in the domain yet)
+                    byId.containsKey(r.id()) ? byId.get(r.id()).decisionIds() : List.of()));
+        }
     }
 
     @Override

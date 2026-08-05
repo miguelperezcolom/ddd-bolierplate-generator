@@ -6,7 +6,7 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ContextM
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BoundedContextEntity;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
-import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.Element;
 import io.mateu.uidl.fluent.Component;
@@ -43,12 +43,10 @@ public class ContextMapDiagramPage implements ComponentTreeSupplier {
         var nodes = new java.util.ArrayList<ContextMapSvgRenderer.Node>();
         repository.findAllOfType(BoundedContextEntity.class).forEach(m ->
                 nodes.add(new ContextMapSvgRenderer.Node(m.id(), m.name(), m.subdomainType(), false)));
-        repository.findAllOfType(ProjectEntity.class).forEach(p ->
-                p.externalSystems().forEach(x ->
-                        nodes.add(ContextMapSvgRenderer.Node.external(x.id(), x.name()))));
+        repository.findAllOfType(ExternalSystemEntity.class).forEach(x ->
+                nodes.add(ContextMapSvgRenderer.Node.external(x.id(), x.name())));
 
-        var relations = repository.findAllOfType(ProjectEntity.class).stream()
-                .flatMap(p -> p.contextMap().stream())
+        var relations = repository.findAllOfType(ContextMapRelationEntity.class).stream()
                 .map(ContextMapDiagramPage::toRelation)
                 .toList();
 

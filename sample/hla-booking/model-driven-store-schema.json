@@ -967,6 +967,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "CustomCodeEntity" : {
@@ -1615,6 +1616,7 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ExternalSystemProtocol" : {
@@ -1658,43 +1660,6 @@
     "FieldDataType" : {
       "type" : "string",
       "enum" : [ "integer", "string", "number", "date", "time", "dateTime", "bool", "array", "file", "status", "money", "component", "menu", "range", "action", "actionGroup", "dateRange" ]
-    },
-    "FieldEntity" : {
-      "type" : "object",
-      "properties" : {
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "string",
-          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "name" : {
-          "type" : "string"
-        },
-        "ownerId" : {
-          "type" : "string",
-          "description" : "Reference to an existing 'owner' id (referential integrity is checked by the linter).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "projectId" : {
-          "type" : "string",
-          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
-          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
-        },
-        "required" : {
-          "type" : "boolean"
-        },
-        "typeKind" : {
-          "type" : "string"
-        },
-        "typeRef" : {
-          "type" : "string"
-        }
-      },
-      "required" : [ "id" ],
-      "additionalProperties" : false
     },
     "FileStorageProvider" : {
       "type" : "string",
@@ -2468,6 +2433,14 @@
         "basicType" : {
           "type" : "boolean"
         },
+        "collection" : {
+          "type" : "boolean"
+        },
+        "entityId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'entity' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "enum" : {
           "type" : "boolean"
         },
@@ -2509,6 +2482,11 @@
           "items" : {
             "$ref" : "#/$defs/ModelFieldValidationEntity"
           }
+        },
+        "valueObjectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'valueObject' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -3927,6 +3905,9 @@
         "deadLetterQueue" : {
           "type" : "string"
         },
+        "defaultMaxStepExecutions" : {
+          "type" : "integer"
+        },
         "description" : {
           "type" : "string"
         },
@@ -4005,6 +3986,9 @@
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "maxSuccessfulExecutions" : {
+          "type" : "integer"
         },
         "modelMappingId" : {
           "type" : "string",
@@ -5087,6 +5071,11 @@
             "$ref" : "#/$defs/InvariantEntity"
           }
         },
+        "modelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "name" : {
           "type" : "string"
         },
@@ -5154,6 +5143,9 @@
             "type" : "string",
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
+        },
+        "defaultMaxStepExecutions" : {
+          "type" : "integer"
         },
         "description" : {
           "type" : "string"
@@ -5298,6 +5290,9 @@
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "maxSuccessfulExecutions" : {
+          "type" : "integer"
+        },
         "name" : {
           "type" : "string"
         },
@@ -5391,6 +5386,12 @@
         "$ref" : "#/$defs/ComponentEntity"
       }
     },
+    "contextMapRelations" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ContextMapRelationEntity"
+      }
+    },
     "customCodes" : {
       "type" : "array",
       "items" : {
@@ -5449,10 +5450,10 @@
         "$ref" : "#/$defs/EtlFlowEntity"
       }
     },
-    "fields" : {
+    "externalSystems" : {
       "type" : "array",
       "items" : {
-        "$ref" : "#/$defs/FieldEntity"
+        "$ref" : "#/$defs/ExternalSystemEntity"
       }
     },
     "flows" : {

@@ -31,9 +31,7 @@ public class ExternalSystemCrudAdapter implements CrudAdapter<
     final EditorProjectSupport projects;
 
     private List<ExternalSystemEntity> all() {
-        return projects.currentProject()
-                .map(p -> p.externalSystems())
-                .orElse(List.of());
+        return projects.externalSystems();
     }
 
     @Override
@@ -57,10 +55,9 @@ public class ExternalSystemCrudAdapter implements CrudAdapter<
     @Override
     public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project,
-                project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                         .filter(x -> !selectedIds.contains(x.id()))
-                        .toList()));
+                        .toList());
     }
 
     private ExternalSystemEntity byId(String id) {

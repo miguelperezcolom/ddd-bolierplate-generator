@@ -100,14 +100,12 @@ public final class HlaDocumentRenderer {
             }
             md.append("  end\n");
         }
-        if (project != null) {
-            for (var external : project.externalSystems()) {
-                md.append("  ").append(id(external.id())).append("[[\"").append(external.name()).append("\"]]\n");
-            }
-            for (var rel : project.contextMap()) {
-                md.append("  ").append(id(rel.sourceBoundedContextId())).append(" -->|").append(nvl(rel.type()))
-                        .append("| ").append(id(rel.targetBoundedContextId())).append("\n");
-            }
+        for (var external : m.externalSystems()) {
+            md.append("  ").append(id(external.id())).append("[[\"").append(external.name()).append("\"]]\n");
+        }
+        for (var rel : m.contextMapRelations()) {
+            md.append("  ").append(id(rel.sourceBoundedContextId())).append(" -->|").append(nvl(rel.type()))
+                    .append("| ").append(id(rel.targetBoundedContextId())).append("\n");
         }
         for (var flow : m.flows()) {
             var source = boundedContextOfAggregate(m, flow.triggerAggregateId());
@@ -142,11 +140,9 @@ public final class HlaDocumentRenderer {
                     .append(" | ").append(boundedContext.subdomainType() != null ? boundedContext.subdomainType().name() : "—")
                     .append(" | ").append(notes.isEmpty() ? "—" : notes.toString()).append(" |\n");
         }
-        if (project != null) {
-            for (var external : project.externalSystems()) {
-                md.append("| ").append(external.name()).append(" _(externo)_ | — | ")
-                        .append(nvl(external.description())).append(" |\n");
-            }
+        for (var external : m.externalSystems()) {
+            md.append("| ").append(external.name()).append(" _(externo)_ | — | ")
+                    .append(nvl(external.description())).append(" |\n");
         }
         md.append("\n");
     }

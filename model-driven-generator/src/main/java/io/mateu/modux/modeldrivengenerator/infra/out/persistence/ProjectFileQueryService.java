@@ -5,6 +5,7 @@ import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ContextMap
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.ProjectRow;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ContextMapRelationEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.uidl.data.ListingData;
 import java.util.List;
@@ -65,7 +66,7 @@ public class ProjectFileQueryService implements ProjectQueryService {
                         entity.cicdProvider(),
                         entity.environments(),
                         entity.serviceIds(),
-                        entity.contextMap() == null ? List.<ContextMapRelationDto>of() : entity.contextMap().stream()
+                        repository.findAllOfType(ContextMapRelationEntity.class).stream()
                                 .map(r -> new ContextMapRelationDto(r.id(), r.name(), r.sourceBoundedContextId(), r.targetBoundedContextId(), r.type(), r.description()))
                                 .toList()));
     }

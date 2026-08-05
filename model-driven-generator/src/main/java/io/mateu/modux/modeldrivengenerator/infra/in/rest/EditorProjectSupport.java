@@ -75,6 +75,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.Subscripti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.WorkflowStepEntity;
+import io.mateu.uidl.interfaces.Identifiable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -104,32 +105,69 @@ import io.mateu.modux.modeldrivengenerator.infra.in.rest.EditorApiController.*;
  */
 @Component
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class EditorProjectSupport {
 
     private final ModelStore repository;
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
 
-    public static ProjectEntity withExternalSystems(
-            ProjectEntity p, List<ExternalSystemEntity> externalSystems) {
-        return p.toBuilder().externalSystems(externalSystems).build();
-    }
-
     public ProjectEntity owningProject() {
-        return currentProject().orElseThrow(() -> new IllegalStateException(
+        return theProject().orElseThrow(() -> new IllegalStateException(
                 "No hay ningún proyecto en el store — crea uno en Organización → Projects"));
     }
 
-    public Optional<ProjectEntity> currentProject() {
+    /**
+     * The project. A repository is a project, so there is nothing to disambiguate — see
+     * {@code docs/design/ide-plugin.md} §4.6. A store that still holds several is a store
+     * that predates that and needs splitting; the first one wins so the app still opens.
+     */
+    public Optional<ProjectEntity> theProject() {
         var projects = repository.findAllOfType(ProjectEntity.class);
-        return projectStore.currentProjectId()
-                .flatMap(id -> projects.stream().filter(p -> p.id().equals(id)).findFirst())
-                .or(() -> projects.stream().findFirst());
+        if (projects.size() > 1) {
+            log.warn("the store holds {} projects; a repository is one project. Using '{}'.",
+                    projects.size(), projects.get(0).id());
+        }
+        return projects.stream().findFirst();
     }
 
-    /** Record copy with only contextMap replaced — every other field is preserved verbatim. */
-    public static ProjectEntity withContextMap(
-            ProjectEntity p, List<ContextMapRelationEntity> contextMap) {
-        return p.toBuilder().contextMap(contextMap).build();
+    /** @deprecated there is no "current" project to choose — use {@link #theProject()}. */
+    @Deprecated
+    public Optional<ProjectEntity> currentProject() {
+        return theProject();
+    }
+
+    /** The strategic relations, now top-level elements rather than a field of the project. */
+    public List<ContextMapRelationEntity> contextMap() {
+        return repository.findAllOfType(ContextMapRelationEntity.class);
+    }
+
+    /** The systems outside the project's boundary, now top-level elements. */
+    public List<ExternalSystemEntity> externalSystems() {
+        return repository.findAllOfType(ExternalSystemEntity.class);
+    }
+
+    /**
+     * Replace the whole set of strategic relations.
+     *
+     * <p>Callers used to hand the project a new list and save the project. Now that a relation is
+     * its own element, "replace the list" means saving what is in it and deleting what dropped
+     * out — so only the relations that actually changed touch the disk.
+     */
+    public void replaceContextMap(List<ContextMapRelationEntity> relations) {
+        replaceAll(ContextMapRelationEntity.class, relations);
+    }
+
+    /** Replace the whole set of external systems. See {@link #replaceContextMap}. */
+    public void replaceExternalSystems(List<ExternalSystemEntity> externalSystems) {
+        replaceAll(ExternalSystemEntity.class, externalSystems);
+    }
+
+    private <T extends Identifiable> void replaceAll(Class<T> type, List<T> wanted) {
+        var keep = wanted.stream().map(Identifiable::id).collect(java.util.stream.Collectors.toSet());
+        var gone = repository.findAllOfType(type).stream()
+                .map(Identifiable::id).filter(existing -> !keep.contains(existing)).toList();
+        if (!gone.isEmpty()) repository.deleteAllById(gone, type);
+        wanted.forEach(repository::save);
     }
 
     public WorkflowEntity requireWorkflow(String workflowId) {

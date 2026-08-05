@@ -60,7 +60,7 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
     @Override
     public String create(HttpRequest httpRequest) {
         var project = projects.owningProject();
-        var list = new java.util.ArrayList<>(project.externalSystems());
+        var list = new java.util.ArrayList<>(projects.externalSystems());
         list.add(ExternalSystemEntity.builder()
                 .id(id).name(name).description(description)
                 .protocol(protocol).direction(direction).owner(owner)
@@ -70,15 +70,14 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
                 .apiOperationUses(List.of())
                 .parentExternalSystemId(parentExternalSystemId)
                 .build());
-        repository.save(EditorProjectSupport.withExternalSystems(project, list));
+        projects.replaceExternalSystems(list);
         return id;
     }
 
     @Override
     public void save(HttpRequest httpRequest) {
         var project = projects.owningProject();
-        repository.save(EditorProjectSupport.withExternalSystems(project,
-                project.externalSystems().stream()
+        projects.replaceExternalSystems(projects.externalSystems().stream()
                         .map(x -> x.id().equals(id)
                                 ? x.toBuilder().name(name).description(description)
                                         .protocol(protocol).direction(direction).owner(owner)
@@ -86,7 +85,7 @@ public class ExternalSystemViewModel implements Identifiable, CrudEditorForm<Str
                                                 id.equals(parentExternalSystemId) ? null : parentExternalSystemId)
                                         .build()
                                 : x)
-                        .toList()));
+                        .toList());
     }
 
     @Override

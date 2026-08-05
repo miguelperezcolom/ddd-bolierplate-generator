@@ -82,9 +82,7 @@ public record InteractionCatalog(
                 repository.findAllOfType(DomainServiceEntity.class),
                 repository.findAllOfType(QueryServiceEntity.class),
                 repository.findAllOfType(ReadModelEntity.class),
-                repository.findAllOfType(ProjectEntity.class).stream()
-                        .flatMap(p -> p.externalSystems().stream())
-                        .toList(),
+                repository.findAllOfType(ExternalSystemEntity.class),
                 repository.findAllOfType(ApiEntity.class),
                 repository.findAllOfType(AiAgentEntity.class),
                 repository.findAllOfType(ProcessEntity.class),

@@ -49,8 +49,9 @@ class ImportApiContractTest {
     }
 
     private io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity rumbo() {
-        return repository.findAllOfType(ProjectEntity.class).get(0).externalSystems().stream()
-                .filter(x -> x.id().equals("ext-rumbo")).findFirst().orElseThrow();
+        return repository.findAllOfType(
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity.class)
+                .stream().filter(x -> x.id().equals("ext-rumbo")).findFirst().orElseThrow();
     }
 
     @Test

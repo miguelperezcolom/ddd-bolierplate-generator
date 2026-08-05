@@ -3,6 +3,7 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ExternalSystemDirection;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.ExternalSystemProtocol;
 
+import io.mateu.uidl.interfaces.Identifiable;
 import java.util.List;
 
 /**
@@ -42,7 +43,7 @@ public record ExternalSystemEntity(
         String referencedRepositoryId,
         /** The external system this one lives INSIDE — subsystems of a bigger partner. */
         String parentExternalSystemId
-) {
+) implements Identifiable {
 
     /** Backward-compatible constructor (pre-parentExternalSystemId callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,

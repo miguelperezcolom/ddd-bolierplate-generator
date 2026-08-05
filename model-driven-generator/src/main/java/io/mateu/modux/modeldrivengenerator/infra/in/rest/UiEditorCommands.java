@@ -205,7 +205,7 @@ public class UiEditorCommands {
         var idp = repository.findById(command.id(), IdentityProviderEntity.class)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown IdP: " + command.id()));
         if (command.targetId() != null && !command.targetId().isBlank()) {
-            var known = projects.owningProject().externalSystems().stream()
+            var known = projects.externalSystems().stream()
                     .anyMatch(x -> x.id().equals(command.targetId()));
             if (!known) {
                 throw new IllegalArgumentException("Sistema externo desconocido: " + command.targetId());

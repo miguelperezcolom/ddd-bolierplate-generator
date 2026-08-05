@@ -229,7 +229,34 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
                 throw new IllegalStateException("Could not read AllData component " + component.getName(), e);
             }
         }
+        hoistLegacyProjectElements();
         healMainModules();
+    }
+
+    /**
+     * Strategic relations and external systems used to live INSIDE the project element. They are
+     * top-level elements now, so each one is its own file and drawing a relation stops touching
+     * the project's file — see {@code docs/design/ide-plugin.md} §4.3.
+     *
+     * <p>A store written before that still carries them nested. Hoisting them here, rather than
+     * letting Jackson drop the unknown fields, is what makes the change lossless: they persist in
+     * the new shape with the next save, exactly like the healed main modules below.
+     */
+    @SuppressWarnings("deprecation")
+    private void hoistLegacyProjectElements() {
+        for (var project : findAllOfType(ProjectEntity.class)) {
+            var relations = project.contextMap();
+            var externals = project.externalSystems();
+            if ((relations == null || relations.isEmpty()) && (externals == null || externals.isEmpty())) {
+                continue;
+            }
+            if (relations != null) relations.forEach(this::putTransient);
+            if (externals != null) externals.forEach(this::putTransient);
+            putTransient(project.toBuilder().contextMap(List.of()).externalSystems(List.of()).build());
+            log.info("migrated {} relation(s) and {} external system(s) out of project {}",
+                    relations == null ? 0 : relations.size(),
+                    externals == null ? 0 : externals.size(), project.id());
+        }
     }
 
     /**

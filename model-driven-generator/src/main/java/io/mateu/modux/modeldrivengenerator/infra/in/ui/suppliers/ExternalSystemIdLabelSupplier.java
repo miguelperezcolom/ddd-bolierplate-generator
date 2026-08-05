@@ -14,7 +14,7 @@ public class ExternalSystemIdLabelSupplier implements LookupLabelSupplier {
 
     @Override
     public String label(String fieldName, Object id, HttpRequest httpRequest) {
-        return projects.owningProject().externalSystems().stream()
+        return projects.externalSystems().stream()
                 .filter(x -> x.id().equals(id))
                 .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity::name)
                 .findFirst()

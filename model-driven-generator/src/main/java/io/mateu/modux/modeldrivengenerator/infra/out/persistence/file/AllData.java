@@ -55,6 +55,10 @@ public record AllData(
         List<WorkflowGatewayEntity> workflowGateways,
         List<NoteEntity> notes,
         List<AreaEntity> areas,
+        /** Strategic relations between bounded contexts: one element, one file. */
+        List<ContextMapRelationEntity> contextMapRelations,
+        /** Systems outside the project's boundary, referenced by it. */
+        List<ExternalSystemEntity> externalSystems,
         List<ArchimateRelationEntity> archimateRelations,
         List<UiEntity> uis,
         List<UrlEntity> urls,
@@ -63,11 +67,13 @@ public record AllData(
 
     /** An empty model — the starting point when the store file does not exist yet. */
     public static AllData empty() {
-        return new AllData(null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+        var constructor = AllData.class.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        try {
+            return (AllData) constructor.newInstance(new Object[constructor.getParameterCount()]);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Could not build an empty AllData", e);
+        }
     }
 
     public AllData {
@@ -123,6 +129,8 @@ public record AllData(
         workflowGateways = workflowGateways != null ? workflowGateways : List.of();
         notes = notes != null ? notes : List.of();
         areas = areas != null ? areas : List.of();
+        contextMapRelations = contextMapRelations != null ? contextMapRelations : List.of();
+        externalSystems = externalSystems != null ? externalSystems : List.of();
         archimateRelations = archimateRelations != null ? archimateRelations : List.of();
         uis = uis != null ? uis : List.of();
         urls = urls != null ? urls : List.of();
