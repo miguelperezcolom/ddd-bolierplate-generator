@@ -1040,11 +1040,15 @@ export type ModuxCommand =
       /**
        * References ANOTHER modux project as an external system.
        *
-       * The host reads that project once and snapshots its name and public surface; the
-       * coordinate is stored so the reference can be refreshed later. See §4.7.
+       * The editor emits the COORDINATE; the HOST fills in `snapshot`, because reading another
+       * model off disk is I/O and the applier does none — that is what lets it be tested without
+       * files. The snapshot is what generation reads, so a build never needs the other repository
+       * present; the coordinate is only consulted to refresh. See §4.7.
        */
       kind: 'add-project-reference';
       referencedProject: { gitUrl?: string; branch?: string; path?: string };
+      /** Filled in by the host: the other project's name and exposed use cases. */
+      snapshot?: { name: string; useCases: { id: string; name: string }[] };
       id?: string;
     }
   | { kind: 'add-button-group'; id: string; name: string }

@@ -560,7 +560,7 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 |---|---|---|
 | Store granular + seguimiento de cambios | `editor/src/store/store.ts` | ✅ |
 | Motor de comandos declarativo | `editor/src/store/spec.ts` | ✅ |
-| **Bloque núcleo DDD: 124 de 125 comandos** | `editor/src/store/commands/` | ✅ |
+| **Bloque núcleo DDD: los 125 comandos** | `editor/src/store/commands/` | ✅ |
 | **Bloque UI: los 93 comandos** | `editor/src/store/commands/` | ✅ |
 | **Workflows (19) y agentes (42)** | `editor/src/store/commands/` | ✅ 270 tests en el editor |
 | Grafo de flujo y validador de bucles | `editor/src/store/workflow-graph.ts` | ✅ Tarjan, igual que Java |
@@ -568,7 +568,8 @@ Rama `ide-plugin`. Lo construido y verificado hasta ahora:
 | **Generación desde workflows** | `EventConductorWorkflowDefinition`, lint `workflow-home` | ✅ |
 | **La proyección cubre el modelo entero** | `project-catalog.ts` + test de cobertura | ✅ 297 tests en el editor |
 | Derivación de interacciones, client-side | `editor/src/derive-interaction.ts` | ✅ |
-| **Geometría por el árbol** (`diagrams/`) | `editor/src/store/layout.ts` | ✅ 308 tests en el editor |
+| **Geometría por el árbol** (`diagrams/`) | `editor/src/store/layout.ts` | ✅ |
+| **El applier, completo: los 281** | `editor/src/store/` | ✅ 317 tests en el editor, 29 en el plugin |
 | `modux:import-api` | `plugin/` | ✅ 10 tests en el maven-plugin |
 | Operaciones sobre bosques (menú, contenido) | `editor/src/store/forest.ts` | ✅ una copia, no dos |
 | Scaffolding CRUD determinista | `editor/src/store/scaffold.ts` | ✅ el núcleo que refuerzan las 4 familias |
@@ -613,12 +614,11 @@ faltaba: sin ellos, un modelo que cargó y uno que nunca llegó a cargar se ven 
 
 ### 8.1.1 El núcleo, portado
 
-El bloque núcleo está en TypeScript: **124 de sus 125 comandos**, repartidos por asunto en
-`editor/src/store/commands/` en vez de en un fichero. El que falta es `add-project-reference`, y
-falta por una razón que no es pereza: **leer otro modelo del disco es trabajo del host, no del
-motor de comandos**. El applier es puro sobre un store en memoria, y esa pureza es lo que lo hace
-testable sin ficheros; el día que se porte, el host resolverá la coordenada (§4.7) y le pasará el
-snapshot ya leído.
+El bloque núcleo está en TypeScript: **los 125 comandos**, repartidos por asunto en
+`editor/src/store/commands/` en vez de en un fichero. `add-project-reference` fue el último en
+llegar, y tardó por una razón que no era pereza: **leer otro modelo del disco es trabajo del host,
+no del motor de comandos**, y el applier es puro sobre un store en memoria porque esa pureza es lo
+que lo hace testable sin ficheros. Cómo se repartió, en §8.1.7.
 
 Lo que la medición de §2.4 predijo se cumplió —la mayoría son tabla— y lo que no predijo fue
 dónde estaba el trabajo real:
@@ -680,8 +680,8 @@ entradas de otras apps que apuntaban a ella pierden el destino pero **conservan 
 
 ### 8.1.3 Manda EventConductor
 
-El applier está completo: **los 281 comandos**, con una sola excepción deliberada
-(`add-project-reference`, §8.1.1). Portar los últimos 61 —workflows y agentes— sacó a la luz que
+El applier está completo: **los 281 comandos** (el que faltaba se cerró en §8.1.7). Portar los
+últimos 61 —workflows y agentes— sacó a la luz que
 modux y **EventConductor**, el motor que ejecuta los workflows que modux genera, habían
 divergido.
 
@@ -827,6 +827,36 @@ que el repo se vuelva insoportable:
 Y el arrastre se agrupa: mover un nodo emite una posición por frame, y escribir cada una pondría
 un commit por píxel en la pila de deshacer del IDE. La geometría baja a disco cuando la mano
 para — y también al cerrar, porque cerrar dentro de esa ventana no puede perder el último gesto.
+
+### 8.1.7 El último comando, y el reparto que lo retenía
+
+`add-project-reference` era el único sin portar, y no por pereza: **necesita leer OTRO modelo del
+disco**, y el applier no hace E/S. Esa pureza no es un adorno — es lo que permite probar los otros
+280 comandos sin tocar un fichero. Así que lo que había que decidir no era cómo portarlo sino
+**dónde parte**:
+
+- **El host resuelve y lee.** La coordenada (§4.7) se convierte en un sitio del disco, se lee el
+  árbol de allí, y se saca el *snapshot*: el nombre del otro proyecto y sus casos de uso
+  **expuestos**. Solo los expuestos: el sentido de una referencia es lo que el otro sistema
+  ofrece, y copiar sus interioridades pondría decisiones privadas de otro proyecto en este mapa.
+- **El applier copia lo que le dan.** Recibe el snapshot ya leído y lo deja como sistema externo,
+  con la coordenada al lado. La división importa: **la copia es lo que lee la generación** —así
+  que construir nunca necesita el otro repositorio delante— y la coordenada solo sirve para
+  refrescar.
+
+Los ids de los casos de uso copiados son **nuestros** (`{sistema}-{su id}`), para que dos
+proyectos referenciados que compartan un id no choquen, y para que siga siendo evidente que son
+copias.
+
+**El puente del IDE tuvo que aprender a mirar fuera**, que hasta ahora no sabía: gana
+`resolveProject` —que resuelve el checkout hermano desde la URL git sola, sin red ni
+configuración— y lecturas con raíz. Escribir fuera del modelo abierto **no es expresable**: no hay
+operación de escritura que acepte una raíz, así que el «solo lectura» es estructural y no una
+promesa.
+
+**No encontrar el otro proyecto es una respuesta, no un fallo.** Es lo normal si el hermano no
+está checkouteado, y el usuario lo arregla clonándolo o dándole un path. Lo que no puede pasar es
+que la referencia se invente: sin snapshot, el comando se niega.
 
 ### 8.2 Lo que falta, por orden de peso
 

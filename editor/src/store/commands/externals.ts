@@ -11,6 +11,10 @@
  */
 
 import { asList, nested, type Element, type ModelStore } from '../store.js';
+import { blank } from './models.js';
+import {
+  referenceElement, referenceIdFor, type ProjectSnapshot,
+} from '../project-snapshot.js';
 import { CommandError, type Handler } from '../spec.js';
 
 /** The nested surfaces a system carries, and what refuses to let go of each. */
@@ -251,6 +255,29 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
       : ['dependsOnExternalSystemIds', 'cqrsExternalSystemIds'];
     store.removeFromList('externalSystems', source.id, outOf, targetId);
     store.addToList('externalSystems', source.id, into, targetId);
+  },
+
+  /**
+   * Reference ANOTHER modux project as an external system.
+   *
+   * The applier does no I/O — that is the property that lets it be tested without files — so the
+   * SNAPSHOT arrives already read: the host resolves the coordinate (§4.7), reads the other
+   * model, and hands it over. What lands here is the copy plus the coordinate, and the split
+   * matters: the copy is what generation reads, so a build never needs the other repository
+   * present; the coordinate is only for refreshing.
+   */
+  'add-project-reference': (store, command) => {
+    const coordinate = command.referencedProject as Record<string, unknown> | undefined;
+    if (!coordinate || (!coordinate.gitUrl && !coordinate.path)) {
+      throw new CommandError(
+        'Para referenciar otro proyecto hace falta su URL git o el path a su modelo');
+    }
+    const snapshot = command.snapshot as ProjectSnapshot | undefined;
+    if (!snapshot) {
+      throw new CommandError('No se pudo leer el proyecto referenciado: sin datos que copiar');
+    }
+    const id = blank(command.id) ? referenceIdFor(coordinate) : String(command.id);
+    store.put('externalSystems', referenceElement(id, snapshot, coordinate));
   },
 
   'remove-external-dependency': (store, command) => {
