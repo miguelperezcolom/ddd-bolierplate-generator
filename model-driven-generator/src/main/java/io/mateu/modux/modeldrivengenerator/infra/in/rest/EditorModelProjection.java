@@ -221,7 +221,7 @@ public class EditorModelProjection {
                         x.mcpServers().stream()
                                 .map(s -> new McpServerDto(s.id(), s.name(), s.uri()))
                                 .toList(),
-                        x.referencedRepositoryId(),
+                        referencedProject(x),
                         x.parentExternalSystemId()))
                 .toList();
         var flowEntities = scoped(FlowEntity.class);
@@ -932,6 +932,25 @@ public class EditorModelProjection {
         var c = i.conditions() != null && !i.conditions().isEmpty() ? i.conditions().get(0) : null;
         return new AggregateInvariantDto(i.id(), i.name(),
                 c != null ? c.expression() : null, c != null ? c.errorMessage() : null);
+    }
+
+    /**
+     * The coordinate of a referenced project, or null when the system is a plain third party.
+     *
+     * <p>A store whose reference could not be migrated (no registry left to explain the old id —
+     * see {@code CommonFileRepository.resolveLegacyProjectReferences}) still projects as a
+     * reference, with an empty coordinate: the editor has to be able to say "this is another
+     * modux project, and it does not say where".
+     */
+    @SuppressWarnings("deprecation")
+    private static EditorApiController.ReferencedProjectDto referencedProject(
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity x) {
+        if (!x.isProjectReference()) return null;
+        var coordinate = x.referencedProject();
+        return coordinate == null
+                ? new EditorApiController.ReferencedProjectDto(null, null, null)
+                : new EditorApiController.ReferencedProjectDto(
+                        coordinate.gitUrl(), coordinate.branch(), coordinate.path());
     }
 
     /** The pool narrowed to the SELECTED project (unstamped legacy elements stay visible). */

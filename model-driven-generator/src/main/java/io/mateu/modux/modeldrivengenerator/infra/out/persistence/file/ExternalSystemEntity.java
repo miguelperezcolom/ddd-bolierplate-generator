@@ -39,11 +39,45 @@ public record ExternalSystemEntity(
         List<McpServerEntity> mcpServers,
         /** Specific API operations this system calls (at the published API, a proxy or an implementation). */
         List<ExternalApiOperationUseEntity> apiOperationUses,
-        /** ANOTHER modux project referenced as a system: the ~/.modux repository it lives in. */
+        /**
+         * ANOTHER modux project referenced as a system: the id of the {@code ~/.modux} repository
+         * it lived in.
+         *
+         * <p>LEGACY. Superseded by {@link #referencedProject}, a coordinate versioned with the
+         * model instead of resolved against a machine-local registry (§4.7). Kept so stores
+         * written before the change migrate on load rather than losing the pointer; removable
+         * once none are left.
+         */
         String referencedRepositoryId,
         /** The external system this one lives INSIDE — subsystems of a bigger partner. */
-        String parentExternalSystemId
+        String parentExternalSystemId,
+        /** ANOTHER modux project referenced as a system: where to find it, versioned (§4.7). */
+        ReferencedProjectEntity referencedProject
 ) implements Identifiable {
+
+    /** Whether this system stands for another modux project rather than a third party. */
+    public boolean isProjectReference() {
+        return referencedProject != null || referencedRepositoryId != null;
+    }
+
+    /** Backward-compatible constructor (pre-referencedProject callers and stores). */
+    @SuppressWarnings("deprecation")
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases,
+                                List<ExternalSystemTableEntity> tables,
+                                List<String> dependsOnExternalSystemIds,
+                                List<String> dependsOnApiIds,
+                                List<String> cqrsExternalSystemIds,
+                                List<McpServerEntity> mcpServers,
+                                List<ExternalApiOperationUseEntity> apiOperationUses,
+                                String referencedRepositoryId,
+                                String parentExternalSystemId) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                tables, dependsOnExternalSystemIds, dependsOnApiIds, cqrsExternalSystemIds,
+                mcpServers, apiOperationUses, referencedRepositoryId, parentExternalSystemId, null);
+    }
 
     /** Backward-compatible constructor (pre-parentExternalSystemId callers and stores). */
     public ExternalSystemEntity(String id, String name, String description,
@@ -222,5 +256,9 @@ public record ExternalSystemEntity(
 
     public ExternalSystemEntity withApiOperationUses(List<ExternalApiOperationUseEntity> apiOperationUses) {
         return toBuilder().apiOperationUses(apiOperationUses).build();
+    }
+
+    public ExternalSystemEntity withReferencedProject(ReferencedProjectEntity referencedProject) {
+        return toBuilder().referencedProject(referencedProject).build();
     }
 }

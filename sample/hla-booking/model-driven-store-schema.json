@@ -1670,9 +1670,12 @@
         "protocol" : {
           "$ref" : "#/$defs/ExternalSystemProtocol"
         },
+        "referencedProject" : {
+          "$ref" : "#/$defs/ReferencedProjectEntity"
+        },
         "referencedRepositoryId" : {
           "type" : "string",
-          "description" : "Reference to an existing 'referencedRepository' id (referential integrity is checked by the linter).",
+          "description" : "LEGACY: the id this reference had in ~/.modux/repositories.yaml, before coordinates were versioned with the model. Do not write it — use 'referencedProject'. It is migrated away on load when that registry is still around.",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "tables" : {
@@ -3904,6 +3907,21 @@
     "ReadModelStorageType" : {
       "type" : "string",
       "enum" : [ "Document", "Relational", "KeyValue", "InMemory" ]
+    },
+    "ReferencedProjectEntity" : {
+      "type" : "object",
+      "properties" : {
+        "branch" : {
+          "type" : "string"
+        },
+        "gitUrl" : {
+          "type" : "string"
+        },
+        "path" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
     },
     "RoleEntity" : {
       "type" : "object",

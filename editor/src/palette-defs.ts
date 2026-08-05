@@ -19,7 +19,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
   { type: 'note', label: 'Nota', symbol: 'note', color: '#ca8a04', group: 'Estratégico' },
   { type: 'area', label: 'Área', symbol: 'area', color: '#64748b', group: 'Estratégico' },
-  { type: 'project-reference', label: 'Proyecto (catálogo)', symbol: 'component', color: '#334155', group: 'Estratégico' },
+  { type: 'project-reference', label: 'Otro proyecto modux', symbol: 'component', color: '#334155', group: 'Estratégico' },
   { type: 'external-system', label: 'Sistema externo', symbol: 'component', color: '#64748b', group: 'Estratégico' },
   { type: 'identity-provider', label: 'IdP (identidad)', symbol: 'key', color: '#ca8a04', group: 'Estratégico' },
   { type: 'ai-agent', label: 'Agente IA', symbol: 'robot', color: '#9333ea', group: 'IA' },

@@ -230,7 +230,51 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
             }
         }
         hoistLegacyProjectElements();
+        // after the hoist: references live on external systems, which may have just moved out
+        resolveLegacyProjectReferences();
         healMainModules();
+    }
+
+    /**
+     * A reference to another modux project used to be the id of an entry in
+     * {@code ~/.modux/repositories.yaml} — a registry on one machine, outside version control, so
+     * the same model resolved differently for everyone else and not at all for most. It is a
+     * coordinate stored in the model now ({@code docs/design/ide-plugin.md} §4.7).
+     *
+     * <p>Converting it needs the old registry, so it can only happen on the machine that had one;
+     * anywhere else there is nothing to convert and nothing is touched. An id that the registry
+     * does not explain is LEFT ALONE rather than dropped: the reference still holds its snapshot,
+     * which is what generation reads, and only refreshing it needs the coordinate.
+     */
+    @SuppressWarnings("deprecation")
+    private void resolveLegacyProjectReferences() {
+        var pending = findAllOfType(ExternalSystemEntity.class).stream()
+                .filter(x -> x.referencedRepositoryId() != null && x.referencedProject() == null)
+                .toList();
+        if (pending.isEmpty()) return;
+        var known = io.mateu.modux.modeldrivengenerator.infra.out.persistence.home
+                .LegacyRepositoryRegistry.coordinatesById(modelRoot());
+        for (var system : pending) {
+            var coordinate = known.get(system.referencedRepositoryId());
+            if (coordinate == null || coordinate.isEmpty()) {
+                log.warn("la referencia al proyecto '{}' de {} no dice dónde está: el registro"
+                                + " ~/.modux que la explicaba ya no está. El snapshot se conserva;"
+                                + " dale una URL git o un path para poder refrescarla.",
+                        system.referencedRepositoryId(), system.id());
+                continue;
+            }
+            putTransient(system.toBuilder()
+                    .referencedProject(coordinate)
+                    .referencedRepositoryId(null)
+                    .build());
+            log.info("migrated the reference of {} to a versioned coordinate", system.id());
+        }
+    }
+
+    /** This model's root directory — a granular tree is one, a monolithic file lives in one. */
+    private Path modelRoot() {
+        var path = storePath.toAbsolutePath().normalize();
+        return Files.isDirectory(path) ? path : path.getParent();
     }
 
     /**

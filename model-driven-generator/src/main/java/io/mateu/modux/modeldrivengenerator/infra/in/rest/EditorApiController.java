@@ -41,6 +41,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEnti
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ValueObjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalApiOperationUseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ReferencedProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.McpGatewayEntity;
@@ -122,7 +123,6 @@ public class EditorApiController {
     private final ModelStore repository;
     private final FlowContextMapCoherenceService coherenceService;
     private final io.mateu.modux.modeldrivengenerator.application.out.ProjectStorePort projectStore;
-    private final io.mateu.modux.modeldrivengenerator.application.usecases.project.importapi.ImportApiEntityUseCase importApiEntityUseCase;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.home.ProjectReferenceService projectReferences;
     private final io.mateu.modux.modeldrivengenerator.infra.out.persistence.WorkflowGatewayGraph workflowGraph;
     private final EditorProjectSupport projects;
@@ -130,7 +130,6 @@ public class EditorApiController {
     private final WorkflowEditorCommands workflowCommands;
     private final AgentEditorCommands agentCommands;
     private final UiEditorCommands uiCommands;
-    private final io.mateu.modux.modeldrivengenerator.application.usecases.interaction.derive.DeriveInteractionUseCase deriveInteractionUseCase;
     private final io.mateu.modux.modeldrivengenerator.application.usecases.uiadapter.derive.DeriveMenuCrudUseCase deriveMenuCrud;
 
     // ---- projection -------------------------------------------------------
@@ -162,10 +161,12 @@ public class EditorApiController {
     public record ExternalSystemDto(String id, String name, List<ExternalUseCaseDto> useCases,
                                     List<ExternalTableDto> tables,
                                     List<McpServerDto> mcpServers,
-                                    /** Set when the system IS another modux project (catalog reference). */
-                                    String referencedRepositoryId,
+                                    /** Set when the system IS another modux project: where it lives (§4.7). */
+                                    ReferencedProjectDto referencedProject,
                                     /** Set when this system lives inside another one (subsystem). */
                                     String parentExternalSystemId) {}
+    /** Where a referenced modux project lives — versioned with the model, not with the machine. */
+    public record ReferencedProjectDto(String gitUrl, String branch, String path) {}
     /** A table/dataset owned by an external system — pollable into a read model. */
     public record ExternalTableDto(String id, String name) {}
     /** An MCP server published by an external system — a tool surface for AI agents. */
@@ -500,59 +501,10 @@ public class EditorApiController {
         return Integer.toHexString(hash);
     }
 
-    // ---- change push (SSE) -------------------------------------------------
-
-    private final java.util.concurrent.CopyOnWriteArrayList<org.springframework.web.servlet.mvc.method.annotation.SseEmitter> emitters =
-            new java.util.concurrent.CopyOnWriteArrayList<>();
-    private java.util.concurrent.ScheduledExecutorService watcher;
-    private volatile String lastBroadcast;
-
-    @jakarta.annotation.PostConstruct
-    void startWatcher() {
-        watcher = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
-            var thread = new Thread(r, "modux-editor-events");
-            thread.setDaemon(true);
-            return thread;
-        });
-        watcher.scheduleWithFixedDelay(this::broadcastIfChanged, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
-    }
-
-    @jakarta.annotation.PreDestroy
-    void stopWatcher() {
-        watcher.shutdownNow();
-    }
-
-    private void broadcastIfChanged() {
-        if (emitters.isEmpty()) return;
-        var version = currentVersion();
-        if (version.equals(lastBroadcast)) return;
-        lastBroadcast = version;
-        for (var emitter : emitters) {
-            try {
-                emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
-                        .event().name("version").data(version));
-            } catch (Exception e) {
-                emitters.remove(emitter);
-            }
-        }
-    }
-
-    /** The server watches its own fingerprint and pushes it; clients never poll while connected. */
-    @GetMapping("/events")
-    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter events() {
-        var emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(0L);
-        emitters.add(emitter);
-        emitter.onCompletion(() -> emitters.remove(emitter));
-        emitter.onTimeout(() -> emitters.remove(emitter));
-        try {
-            emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
-                    .event().name("version").data(currentVersion()));
-        } catch (Exception ignored) {
-            emitters.remove(emitter);
-        }
-        return emitter;
-    }
-
+    // The server used to push its fingerprint over SSE so clients never polled. There is no
+    // server to notify from once the model is a file in the repository — the IDE's own file
+    // watching is what tells the editor something changed. The web client already falls back
+    // to polling /version when the stream is absent. See docs/design/ide-plugin.md §5.1.
 
     static UiComponentNodeDto toComponentNode(UiComponentNodeEntity node) {
         return new UiComponentNodeDto(node.id(), node.kind(), node.title(), node.text(), node.label(),
@@ -582,17 +534,9 @@ public class EditorApiController {
         return projection.build();
     }
 
-    /**
-     * Derives an EPHEMERAL interaction from the model: the message chain starting at a use
-     * case, an API operation or an event (ref = element id; the event NAME for EVENT).
-     * Read-only — nothing is persisted.
-     */
-    @GetMapping("/interactions/derive")
-    public io.mateu.modux.modeldrivengenerator.application.usecases.interaction.shared.InteractionDto deriveInteraction(
-            @org.springframework.web.bind.annotation.RequestParam String kind,
-            @org.springframework.web.bind.annotation.RequestParam String ref) {
-        return deriveInteractionUseCase.derive(kind, ref);
-    }
+    // Deriving an interaction — the message chain from a use case, an API operation or an event —
+    // is read-only and needs nothing but the model the editor already holds, so it belongs on the
+    // client. The view it feeds already treats a missing derivation as "nothing to show".
 
     public record EditorCommand(String kind, String sourceId, String targetId, String type,
                                 String id, String name, String subdomainType, String boundedContextId,
@@ -635,35 +579,16 @@ public class EditorApiController {
                                 String serviceId, String elementId, String bar,
                                 String detailPageId, String description, String triggerKind,
                                 String triggerRef,
+                                /** Where another modux project lives, for add-project-reference (§4.7). */
+                                ReferencedProjectDto referencedProject,
                                 List<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionMessageEntity> messages) {}
 
-    public record ImportApiRq(String apiId, String fileName, String content) {}
+    // Importing an OpenAPI/WSDL contract is a build step, not an editing gesture: it reads a file
+    // and writes model elements. That is `modux:import-openapi` / `modux:import-asyncapi` in the
+    // maven plugin, where it can run in CI and be re-run when the contract moves.
 
-    /**
-     * Imports an OpenAPI/WSDL contract as (or into) a first-class API: with apiId the
-     * operations and rq/rs data models land on that node; without it, the node is
-     * created from the contract's title.
-     */
-    @PostMapping("/import-api")
-    public java.util.Map<String, String> importApi(@RequestBody ImportApiRq rq) {
-        if (rq.content() == null || rq.content().isBlank()) {
-            throw new IllegalArgumentException("El contrato está vacío");
-        }
-        var name = rq.fileName() == null ? "" : rq.fileName().toLowerCase();
-        var wsdl = name.endsWith(".wsdl") || name.endsWith(".xml")
-                || (!rq.content().contains("openapi") && !rq.content().contains("swagger")
-                        && rq.content().contains("definitions"));
-        var apiId = importApiEntityUseCase.handle(rq.content(), wsdl, rq.apiId());
-        return java.util.Map.of("apiId", apiId);
-    }
-
-    /** The ~/.modux repository catalog — other projects referenceable as systems. */
-    @org.springframework.web.bind.annotation.GetMapping("/repositories")
-    public List<NamedRefDto> repositories() {
-        return projectReferences.repositories().stream()
-                .map(r -> new NamedRefDto(r.id(), r.name() == null ? r.id() : r.name()))
-                .toList();
-    }
+    // The ~/.modux repository catalog is gone with the home: what another project is, and where to
+    // find it, becomes a coordinate stored in the model and versioned with it (§4.7).
 
     @PostMapping("/commands")
     public void apply(@RequestBody EditorCommand command) {
@@ -3184,29 +3109,50 @@ public class EditorApiController {
     }
 
     /**
-     * References ANOTHER project (a ~/.modux repository) as an external system:
-     * its name and public surface (exposed use cases) land as the system's use
-     * cases, re-readable later. Every project is a system — this is the seed of
-     * the organisation-wide catalog.
+     * References ANOTHER project as an external system: its name and public surface (exposed use
+     * cases) land as this system's use cases. Every project is a system.
+     *
+     * <p>What is stored is a SNAPSHOT plus a coordinate, and the split matters. The snapshot is
+     * what generation reads, so a build never needs the other repository present — that hermetic
+     * property is the reason references work at all across a team. The coordinate says where to
+     * look when someone asks to refresh, and it is versioned with the model rather than resolved
+     * against a registry on one machine. See {@code docs/design/ide-plugin.md} §4.7.
      */
     private void addProjectReference(EditorCommand command) {
-        var summary = projectReferences.read(command.targetId());
+        var given = command.referencedProject();
+        var coordinate = given == null ? ReferencedProjectEntity.builder().build()
+                : ReferencedProjectEntity.builder()
+                        .gitUrl(given.gitUrl()).branch(given.branch()).path(given.path())
+                        .build();
+        if (coordinate.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Para referenciar otro proyecto hace falta su URL git o el path a su modelo");
+        }
+        var summary = projectReferences.read(coordinate);
         var id = command.id() == null || command.id().isBlank()
-                ? "proj-" + command.targetId() : command.id();
-        var project = projects.owningProject();
+                ? "proj-" + defaultIdFor(coordinate) : command.id();
         var externalSystems = new ArrayList<>(projects.externalSystems().stream()
                 .filter(x -> !x.id().equals(id))
                 .toList());
-        externalSystems.add(new ExternalSystemEntity(
-                id, summary.name(), "Proyecto modux referenciado (repositorio "
-                        + command.targetId() + ")",
-                null, null, null, null, List.of(),
-                summary.useCases().stream()
+        externalSystems.add(ExternalSystemEntity.builder()
+                .id(id)
+                .name(summary.name())
+                .description("Proyecto modux referenciado")
+                .decisionIds(List.of())
+                .useCases(summary.useCases().stream()
                         .map(uc -> new ExternalSystemUseCaseEntity(id + "-" + uc.id(), uc.name(), null))
-                        .toList(),
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
-                command.targetId()));
+                        .toList())
+                .referencedProject(coordinate)
+                .build());
         projects.replaceExternalSystems(externalSystems);
+    }
+
+    /** A stable id from the coordinate: the repository's name, else the path's last segment. */
+    private static String defaultIdFor(ReferencedProjectEntity coordinate) {
+        var name = coordinate.repositoryName();
+        if (name != null) return name;
+        var path = java.nio.file.Path.of(coordinate.path()).normalize().getFileName();
+        return path == null ? "referencia" : path.toString();
     }
 
     private void addExternalSystem(EditorCommand command) {

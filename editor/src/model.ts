@@ -343,6 +343,20 @@ export interface McpServerRef {
   uri?: string;
 }
 
+/**
+ * Where another modux project lives, when an external system stands for one.
+ *
+ * Versioned with the model, not looked up in a registry on one machine: `gitUrl` is the identity
+ * everyone shares, `path` an override for a checkout that is not beside this one. Both may be
+ * absent on a model migrated from before that change, and the reference is still a reference —
+ * its snapshot is intact, it just cannot be refreshed. See `docs/design/ide-plugin.md` §4.7.
+ */
+export interface ReferencedProject {
+  gitUrl?: string;
+  branch?: string;
+  path?: string;
+}
+
 export interface ExternalSystemRef {
   id: string;
   name: string;
@@ -352,8 +366,8 @@ export interface ExternalSystemRef {
   tables?: ExternalTableRef[];
   /** MCP servers it publishes — consumable by AI agents. */
   mcpServers?: McpServerRef[];
-  /** Set when the system IS another modux project (catalog reference). */
-  referencedRepositoryId?: string;
+  /** Set when the system IS another modux project: where that project lives. */
+  referencedProject?: ReferencedProject;
   /** The external system this one lives inside (subsystem). */
   parentExternalSystemId?: string;
 }

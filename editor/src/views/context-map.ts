@@ -1,5 +1,17 @@
-import type { ModuxModel, ContextMapRelationType, FlowRef, FieldRef } from '../model.js';
+import type {
+  ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject,
+} from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+
+/**
+ * How a referenced project's whereabouts read in a tooltip. A migrated model may know none —
+ * the reference still holds its snapshot; what it cannot do is refresh itself.
+ */
+function whereItLives(ref: ReferencedProject): string {
+  if (ref.gitUrl) return `en ${ref.gitUrl}${ref.branch ? ` (${ref.branch})` : ''}`;
+  if (ref.path) return `en ${ref.path}`;
+  return 'sin coordenada: no dice dónde está';
+}
 
 /** A field child, labelled «nombre ∗ : tipo» (∗ = required, [tipo] = collection). */
 function fieldChildDesc(model: ModuxModel, f: FieldRef): { id: string; name: string; kind: 'field' } {
@@ -823,9 +835,9 @@ function buildScene(
         fill: '#ffffff',
         stroke: '#64748b',
         dashed: true,
-        badge: x.referencedRepositoryId ? 'PROYECTO' : 'EXTERNAL',
-        tooltip: x.referencedRepositoryId
-          ? `${x.name} — otro proyecto modux (repositorio ${x.referencedRepositoryId}), referenciado del catálogo`
+        badge: x.referencedProject ? 'PROYECTO' : 'EXTERNAL',
+        tooltip: x.referencedProject
+          ? `${x.name} — otro proyecto modux, ${whereItLives(x.referencedProject)}`
           : `${x.name} (sistema externo)`,
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,

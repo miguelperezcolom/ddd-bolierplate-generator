@@ -65,6 +65,9 @@ public class ModelJsonSchemaGenerator {
             return "Unique id of this element in the model; other elements reference it via *Id fields. "
                     + "No spaces (kebab-case recommended).";
         }
+        if (LEGACY_FIELDS.containsKey(name)) {
+            return LEGACY_FIELDS.get(name);
+        }
         if (name.endsWith("Ids") && name.length() > 3) {
             return "References to existing " + referenceTarget(name.substring(0, name.length() - 3))
                     + " ids (referential integrity is checked by the linter).";
@@ -79,6 +82,18 @@ public class ModelJsonSchemaGenerator {
     private static String referenceTarget(String base) {
         return "'" + base + "'";
     }
+
+    /**
+     * Fields whose name matches the {@code *Id} reference convention but which point at nothing in
+     * the model, so the convention would describe a rule that does not exist. The schema is what
+     * an agent reads before writing a model (§3.1); advertising a target that is not there is how
+     * it gets talked into inventing one.
+     */
+    private static final java.util.Map<String, String> LEGACY_FIELDS = java.util.Map.of(
+            "referencedRepositoryId",
+            "LEGACY: the id this reference had in ~/.modux/repositories.yaml, before coordinates"
+                    + " were versioned with the model. Do not write it — use 'referencedProject'."
+                    + " It is migrated away on load when that registry is still around.");
 
     /** One-line hover docs for the top-level sections of the store. */
     private static final java.util.Map<String, String> STORE_SECTIONS = java.util.Map.ofEntries(
