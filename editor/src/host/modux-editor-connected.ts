@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { InteractionRef, ModuxModel } from '../model.js';
+import type { ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
 import type { ModuxEditor } from '../modux-editor.js';
 import { MODUX_THEME } from '../theme.js';
@@ -21,42 +21,9 @@ export class ModuxEditorConnected extends LitElement {
   @state() private _layout: EditorLayout = {};
   @state() private _error: string | null = null;
   @state() private _saving = false;
-  /** In-flight writes of our own (commands, layout, solution ops) — see trackWrite. */
+  /** In-flight writes of our own (commands, layout saves) — see trackWrite. */
   private _writes = 0;
   @state() private _toast: { message: string; kind: 'error' | 'info' } | null = null;
-  /** System/solutions workspace: which branch of the store is checked out. */
-  @state() private _workspace: {
-    current: string;
-    system: boolean;
-    solutions: { branch: string; name: string; status?: string }[];
-  } | null = null;
-  @state() private _creatingSolution = false;
-  @state() private _newSolutionName = '';
-  /** Version tags: naming the current state of the diagrams (git tag on the branch). */
-  @state() private _taggingVersion = false;
-  @state() private _newTagName = '';
-  @state() private _tagsOpen = false;
-  @state() private _tags: { name: string; date: string; message: string }[] = [];
-  /** The ~/.modux repository catalog, for «Proyecto (catálogo)» references. */
-  @state() private _repositories: { id: string; name: string }[] = [];
-  /** Semantic diff of the checked-out solution vs the system (null on the system). */
-  @state() private _diff: {
-    branch: string;
-    system: boolean;
-    added: number;
-    modified: number;
-    removed: number;
-    changes: { type: string; id: string; name?: string; kind: string }[];
-  } | null = null;
-  /** The change-list panel under the bar (toggled by clicking the diff badge). */
-  @state() private _diffListOpen = false;
-  /** Element-by-element conflict resolution before a merge/update. */
-  @state() private _mergeFlow: {
-    op: 'merge' | 'update';
-    conflicts: { key: string; type: string; id: string; name?: string; system?: string; solution?: string }[];
-    resolutions: Record<string, string>;
-  } | null = null;
-
   private _layoutTimer: number | undefined;
   /** A layout edit is waiting for the debounced PUT. */
   private _layoutDirty = false;
@@ -65,7 +32,6 @@ export class ModuxEditorConnected extends LitElement {
   private _lastVersion: string | null = null;
   private _pendingVersion: string | null = null;
   private _interacting = false;
-  private _sse: EventSource | undefined;
 
   /** Mirrors mateu's dark mode: <html theme="dark"> + localStorage 'mateu-theme'. */
   @state() private _dark = false;
@@ -95,177 +61,6 @@ export class ModuxEditorConnected extends LitElement {
       width: 100%;
       flex: 1;
       min-height: 0;
-    }
-    .workspace {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: var(--modux-text);
-      background: var(--modux-surface-2);
-      border: 1px solid var(--modux-border);
-      border-bottom: none;
-      border-radius: 10px 10px 0 0;
-    }
-    .workspace label {
-      font-size: 12px;
-      color: var(--modux-text-dim);
-    }
-    .workspace select,
-    .workspace input {
-      font-size: 13px;
-      padding: 4px 6px;
-      border-radius: 6px;
-      border: 1px solid var(--modux-border-strong);
-      background: var(--modux-input-bg);
-      color: var(--modux-text);
-    }
-    .workspace button {
-      border: none;
-      background: transparent;
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      color: var(--modux-text);
-    }
-    .workspace button:hover {
-      background: var(--modux-border);
-    }
-    .workspace .badge {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--modux-primary-soft);
-      color: var(--modux-primary);
-    }
-    .workspace .badge.solution {
-      background: var(--modux-note-fill);
-      color: var(--modux-text);
-    }
-    .workspace .diff-badge {
-      border: none;
-      cursor: pointer;
-      font: inherit;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-    .workspace .diff-badge:hover,
-    .workspace .diff-badge[data-open] {
-      background: var(--modux-surface-2);
-    }
-    .diff-panel {
-      font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: var(--modux-text);
-      background: var(--modux-surface-2);
-      border: 1px solid var(--modux-border);
-      border-bottom: none;
-      padding: 8px 14px 10px;
-      max-height: 260px;
-      overflow-y: auto;
-    }
-    .diff-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-weight: 600;
-      margin-bottom: 2px;
-    }
-    .diff-head button {
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      font-size: 13px;
-      color: var(--modux-text-dim);
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .diff-head button:hover {
-      background: var(--modux-border);
-    }
-    .diff-group {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--modux-text-dim);
-      margin: 8px 0 2px;
-    }
-    .diff-row {
-      display: flex;
-      gap: 8px;
-      align-items: baseline;
-      padding: 1px 0;
-    }
-    .diff-mark {
-      font-weight: 700;
-      flex: 0 0 14px;
-    }
-    .diff-mark.added {
-      color: #16a34a;
-    }
-    .diff-mark.modified {
-      color: #d97706;
-    }
-    .diff-mark.removed {
-      color: var(--modux-danger);
-    }
-    .diff-type {
-      flex: 0 0 150px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--modux-text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .diff-name {
-      font-weight: 500;
-      color: var(--modux-text);
-    }
-    .merge-panel {
-      font: 13px ui-sans-serif, system-ui, sans-serif;
-      color: var(--modux-text);
-      background: var(--modux-surface-2);
-      border: 1px solid var(--modux-border);
-      border-bottom: none;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .merge-title {
-      font-weight: 600;
-    }
-    .merge-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .merge-el {
-      min-width: 320px;
-      font-family: ui-monospace, monospace;
-      font-size: 12px;
-    }
-    .merge-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
-    }
-    .merge-actions button {
-      border: 1px solid var(--modux-border-strong);
-      background: var(--modux-surface);
-      color: var(--modux-text);
-      padding: 5px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .merge-actions button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
     .status {
       font-family: ui-sans-serif, system-ui, sans-serif;
@@ -307,7 +102,6 @@ export class ModuxEditorConnected extends LitElement {
     window.addEventListener('pointerup', this._onPointerUp, true);
     window.addEventListener('pagehide', this._onPageHide);
     void this.reload();
-    void this.loadWorkspace();
     this.startLiveUpdates();
     // Coordinated with mateu: same flag, live when its top-bar toggle flips it.
     this._dark = (document.documentElement.getAttribute('theme')
@@ -328,7 +122,6 @@ export class ModuxEditorConnected extends LitElement {
   disconnectedCallback(): void {
     window.clearTimeout(this._layoutTimer);
     window.clearInterval(this._pollTimer);
-    this._sse?.close();
     this._themeObserver?.disconnect();
     this.removeEventListener('pointerdown', this._onPointerDown, true);
     window.removeEventListener('pointerup', this._onPointerUp, true);
@@ -349,28 +142,15 @@ export class ModuxEditorConnected extends LitElement {
   };
 
   /**
-   * Live refresh: the server pushes the store fingerprint over SSE; when it
-   * changes, the model is refetched — covering edits from the Mateu CRUDs, MCP
-   * or another editor instance. Falls back to 4s polling when SSE is not
-   * available. Signals are deferred while the user is mid-gesture or a command
-   * is in flight.
+   * Live refresh: poll the store fingerprint and refetch the model when it moves,
+   * covering edits made outside this editor — by hand in the YAML, or by an agent.
+   *
+   * <p>It used to be an SSE push instead, which is a thing only a server can do. There is no
+   * server to push from once the model is a file in the repository, so the fallback became the
+   * mechanism. Signals are deferred while the user is mid-gesture or a command is in flight.
    */
   private startLiveUpdates(): void {
-    try {
-      this._sse = new EventSource(`${this.base}/events`);
-      this._sse.addEventListener('version', (e) =>
-        void this.onVersionSignal((e as MessageEvent).data),
-      );
-      this._sse.onerror = () => {
-        this._sse?.close();
-        this._sse = undefined;
-        if (!this._pollTimer) {
-          this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
-        }
-      };
-    } catch {
-      this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
-    }
+    this._pollTimer = window.setInterval(() => void this.pollVersion(), 4000);
   }
 
   private async pollVersion(): Promise<void> {
@@ -384,8 +164,8 @@ export class ModuxEditorConnected extends LitElement {
   }
 
   /**
-   * Every write WE make (command, layout save, solution op) bumps the store
-   * fingerprint, and the SSE echo of that bump must not read as an external
+   * Every write WE make (command, layout save) bumps the store
+   * fingerprint, and seeing our own bump come back must not read as an external
    * change (it reloaded the model and wiped the undo history mid-session).
    * All own writes funnel through here: while any is in flight the signals are
    * deferred, and once the last one settles we adopt the resulting version
@@ -421,14 +201,10 @@ export class ModuxEditorConnected extends LitElement {
       this._pendingVersion = version; // processed on pointerup / after the last write
       return;
     }
-    // A workspace bar hidden by a transient failure heals with the next signal.
-    if (!this._workspace) void this.loadWorkspace();
     const external = this._lastVersion !== null && version !== this._lastVersion;
     this._lastVersion = version;
     if (external) {
       await this.reload();
-      // External edits move the solution's diff too — keep the badge honest.
-      await this.refreshDiff();
       // Someone else changed the model: the local undo history no longer
       // describes valid inverses, so it is discarded rather than misapplied.
       (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
@@ -456,334 +232,10 @@ export class ModuxEditorConnected extends LitElement {
     }
   }
 
-  private async loadWorkspace(): Promise<void> {
-    try {
-      const repos = await fetch(`${this.base}/repositories`);
-      if (repos.ok) this._repositories = await repos.json();
-    } catch {
-      /* the palette item just reports there is nothing to reference */
-    }
-    try {
-      const res = await fetch(`${this.base}/solutions`);
-      if (res.ok) this._workspace = await res.json();
-      await this.refreshDiff();
-    } catch {
-      /* workspace bar simply stays hidden */
-    }
-  }
-
-  /** The diff rings only make sense on a solution; on the system they clear. */
-  private async refreshDiff(): Promise<void> {
-    if (!this._workspace || this._workspace.system) {
-      this._diff = null;
-      this._diffListOpen = false;
-      return;
-    }
-    try {
-      const res = await fetch(`${this.base}/solutions/diff`);
-      this._diff = res.ok ? await res.json() : null;
-    } catch {
-      this._diff = null;
-    }
-    if (!this._diff?.changes.length) this._diffListOpen = false;
-  }
-
-  /** AllData component names → human labels for the change list. */
-  private static readonly TYPE_LABELS: Record<string, string> = {
-    projects: 'Proyecto',
-    services: 'Servicio',
-    boundedContexts: 'Contexto',
-    aggregates: 'Agregado',
-    entities: 'Entidad',
-    valueObjects: 'Value object',
-    invariants: 'Invariante',
-    domainEvents: 'Evento de dominio',
-    applicationEvents: 'Evento de aplicación',
-    integrationEvents: 'Evento de integración',
-    useCases: 'Caso de uso',
-    queryServices: 'Query service',
-    readModels: 'Read model',
-    projections: 'Proyección',
-    subscriptions: 'Subscription',
-    sagas: 'Saga',
-    scheduledTriggers: 'Scheduled trigger',
-    flows: 'Flow',
-    processes: 'Proceso',
-    workflows: 'Workflow',
-    decisions: 'Decisión',
-    models: 'Modelo',
-    modelMappings: 'Model mapping',
-    gateways: 'Gateway',
-    businessRules: 'Regla de negocio',
-    roles: 'Actor',
-    aiAgents: 'Agente IA',
-    rags: 'RAG',
-    mcpGateways: 'Gateway MCP',
-    apis: 'API',
-    proxyApis: 'Proxy API',
-    pages: 'Pantalla',
-    enums: 'Enum',
-    bddScenarios: 'Escenario BDD',
-    components: 'Componente UI',
-    uiAdapters: 'UI adapter',
-    uiShells: 'UI shell',
-  };
-
-  /** The full change list of the solution, grouped by kind — opened from the badge. */
-  private renderDiffList() {
-    if (!this._diffListOpen || !this._diff || this._workspace?.system) return '';
-    const groups: { kind: string; title: string; mark: string; cls: string }[] = [
-      { kind: 'ADDED', title: 'Añadidos', mark: '＋', cls: 'added' },
-      { kind: 'MODIFIED', title: 'Modificados', mark: '～', cls: 'modified' },
-      { kind: 'REMOVED', title: 'Eliminados', mark: '－', cls: 'removed' },
-    ];
-    const label = (type: string) =>
-      ModuxEditorConnected.TYPE_LABELS[type] ?? type;
-    return html`
-      <div class="diff-panel">
-        <div class="diff-head">
-          <span>Cambios de la solución respecto al sistema</span>
-          <button title="Cerrar el listado" @click=${() => (this._diffListOpen = false)}>✕</button>
-        </div>
-        ${groups.map(({ kind, title, mark, cls }) => {
-          const rows = this._diff!.changes.filter((c) => c.kind === kind);
-          if (!rows.length) return '';
-          return html`
-            <div class="diff-group">${title} (${rows.length})</div>
-            ${rows.map(
-              (c) => html`
-                <div class="diff-row">
-                  <span class="diff-mark ${cls}">${mark}</span>
-                  <span class="diff-type">${label(c.type)}</span>
-                  <span class="diff-name" title=${c.id}>${c.name ?? c.id}</span>
-                </div>
-              `,
-            )}
-          `;
-        })}
-      </div>
-    `;
-  }
-
-  /**
-   * The app-level «Modelo» selector must always match the branch we are on:
-   * otherwise the context filter would silently switch back on the next mateu
-   * request. Same localStorage entries the mateu picker uses.
-   */
-  private syncModelContext(branch: string, label: string): void {
-    try {
-      const ctx = JSON.parse(localStorage.getItem('mateu-app-context') ?? '{}');
-      const labels = JSON.parse(localStorage.getItem('mateu-app-context-labels') ?? '{}');
-      ctx.model = branch;
-      labels.model = label;
-      localStorage.setItem('mateu-app-context', JSON.stringify(ctx));
-      localStorage.setItem('mateu-app-context-labels', JSON.stringify(labels));
-    } catch {
-      /* storage unavailable: the header keeps its previous label */
-    }
-  }
-
-  /** create / discard / status / merge against the solutions API, then reload. */
-  private async solutionOp(op: string, body: unknown): Promise<void> {
-    const before = this._workspace?.current;
-    await this.trackWrite(async () => {
-      try {
-        const res = await fetch(`${this.base}/solutions/${op}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          let message = `El servidor rechazó la operación (${res.status})`;
-          try {
-            const parsed = await res.json();
-            if (parsed?.message) message = parsed.message;
-          } catch {
-            /* not JSON */
-          }
-          this.showToast(message);
-          return;
-        }
-        this._workspace = await res.json();
-        await this.reload();
-        await this.refreshDiff();
-        // A checkout replaces the model wholesale — local undo no longer applies.
-        (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
-      } catch (err) {
-        this.showToast(String(err));
-      }
-    });
-    const after = this._workspace?.current;
-    if (after && after !== before) {
-      const name = this._workspace!.solutions.find((s) => s.branch === after)?.name
-        ?? after.replace(/^solution\//, '');
-      this.syncModelContext(
-        after,
-        this._workspace!.system ? 'Sistema (as-is)' : `Solución: ${name}`,
-      );
-      window.location.reload();
-    }
-  }
-
-  private createSolution(): void {
-    const name = this._newSolutionName.trim();
-    if (!name) return;
-    this._creatingSolution = false;
-    this._newSolutionName = '';
-    void this.solutionOp('create', { name });
-  }
-
-  /** Tags the current branch's HEAD as a named version of the diagrams. */
-  private async createTag(): Promise<void> {
-    const name = this._newTagName.trim();
-    if (!name) return;
-    this._taggingVersion = false;
-    this._newTagName = '';
-    try {
-      const res = await fetch(`${this.base}/solutions/tag`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) {
-        this.showToast(`No se pudo etiquetar la versión (${res.status})`);
-        return;
-      }
-      this._tags = await res.json();
-      this.showToast(`Versión «${name}» etiquetada`, 'info');
-    } catch (e) {
-      this.showToast(`No se pudo etiquetar la versión: ${(e as Error).message}`);
-    }
-  }
-
-  private async toggleTags(): Promise<void> {
-    this._tagsOpen = !this._tagsOpen;
-    if (!this._tagsOpen) return;
-    try {
-      const res = await fetch(`${this.base}/solutions/tags`);
-      if (res.ok) this._tags = await res.json();
-    } catch {
-      /* the panel just shows empty */
-    }
-  }
-
-  /** The named versions of the diagrams — opened from the «Versiones» button. */
-  private renderTagsPanel() {
-    if (!this._tagsOpen) return '';
-    return html`
-      <div class="diff-panel">
-        <div class="diff-head">
-          <span>Versiones etiquetadas</span>
-          <button title="Cerrar el listado" @click=${() => (this._tagsOpen = false)}>✕</button>
-        </div>
-        ${this._tags.length
-          ? this._tags.map(
-              (t) => html`
-                <div class="diff-row">
-                  <span class="diff-mark added">🏷</span>
-                  <span class="diff-type">${t.date}</span>
-                  <span class="diff-name" title=${t.message || t.name}>${t.name}</span>
-                </div>
-              `,
-            )
-          : html`<div class="diff-row"><span class="diff-name">Sin versiones aún — «Etiquetar…» nombra el estado actual</span></div>`}
-      </div>
-    `;
-  }
-
-  /** merge/update start with a dry run; conflicts open the per-element panel. */
-  private async startMergeFlow(op: 'merge' | 'update'): Promise<void> {
-    try {
-      const res = await fetch(`${this.base}/solutions/merge-check`);
-      if (!res.ok) {
-        this.showToast(`No se pudo comprobar el merge (${res.status})`);
-        return;
-      }
-      const check = await res.json();
-      if (!check.conflicts?.length) {
-        await this.solutionOp(op, { resolutions: {} });
-        this.showToast(
-          op === 'merge'
-            ? 'Solución mergeada al sistema: ahora es el nuevo as-is'
-            : 'Solución actualizada desde el sistema',
-          'info',
-        );
-        return;
-      }
-      this._mergeFlow = { op, conflicts: check.conflicts, resolutions: {} };
-    } catch (err) {
-      this.showToast(String(err));
-    }
-  }
-
-  private async confirmMergeFlow(): Promise<void> {
-    const flow = this._mergeFlow;
-    if (!flow || flow.conflicts.some((c) => !flow.resolutions[c.key])) return;
-    this._mergeFlow = null;
-    await this.solutionOp(flow.op, { resolutions: flow.resolutions });
-    this.showToast(
-      flow.op === 'merge'
-        ? 'Solución mergeada al sistema: ahora es el nuevo as-is'
-        : 'Solución actualizada desde el sistema',
-      'info',
-    );
-  }
-
   private showToast(message: string, kind: 'error' | 'info' = 'error'): void {
     this._toast = { message, kind };
     window.clearTimeout(this._toastTimer);
     this._toastTimer = window.setTimeout(() => (this._toast = null), 5000);
-  }
-
-  /** An OpenAPI/WSDL upload from the editor: operations (and rq/rs models) land in the store. */
-  private async onImportApi(e: CustomEvent): Promise<void> {
-    const { content, fileName, apiId, homeExternalId, homeBoundedContextId } = e.detail as {
-      content: string;
-      fileName: string;
-      apiId: string | null;
-      homeExternalId?: string | null;
-      homeBoundedContextId?: string | null;
-    };
-    await this.trackWrite(async () => {
-      try {
-        const res = await fetch(`${this.base}/import-api`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content, fileName, apiId }),
-        });
-        if (!res.ok) {
-          let message = `El servidor rechazó el contrato (${res.status})`;
-          try {
-            const body = await res.json();
-            if (body?.message) message = body.message;
-          } catch {
-            /* not JSON */
-          }
-          this.showToast(message);
-          return;
-        }
-        const { apiId: landed } = await res.json();
-        // A freshly imported API never floats: it lands on the selected home.
-        const homeCommand = homeExternalId
-          ? { kind: 'set-api-publisher', id: landed, targetId: homeExternalId }
-          : homeBoundedContextId
-            ? { kind: 'add-api-implementation', apiId: landed, boundedContextId: homeBoundedContextId }
-            : null;
-        if (homeCommand) {
-          await fetch(`${this.base}/commands`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(homeCommand),
-          });
-        }
-        const modelRes = await fetch(`${this.base}/model`);
-        if (modelRes.ok) this._model = await modelRes.json();
-        await this.refreshDiff();
-        this.showToast(`Contrato importado en ${landed}`, 'info');
-      } catch (err) {
-        this.showToast(String(err));
-      }
-    });
   }
 
   /** Commands run strictly in order: two concurrent edits of the same entity
@@ -818,7 +270,6 @@ export class ModuxEditorConnected extends LitElement {
         // The server is the source of truth: re-read the projection.
         const modelRes = await fetch(`${this.base}/model`);
         if (modelRes.ok) this._model = await modelRes.json();
-        await this.refreshDiff(); // to-be edits move the diff live
       } catch (err) {
         this.showToast(String(err));
       }
@@ -841,27 +292,6 @@ export class ModuxEditorConnected extends LitElement {
     }, 600);
   }
 
-  /** The last derived interaction (answer to interaction-derive-requested). */
-  @state() private _derivedInteraction: InteractionRef | null = null;
-
-  /**
-   * The Secuencias view asks for an ephemeral derived interaction. Old servers
-   * (no /interactions/derive endpoint) fail SILENTLY: the view shows its own
-   * discreet notice once the request times out.
-   */
-  private async onDeriveInteraction(e: CustomEvent): Promise<void> {
-    const { kind, ref } = e.detail as { kind: string; ref: string };
-    try {
-      const res = await fetch(
-        `${this.base}/interactions/derive?kind=${encodeURIComponent(kind)}&ref=${encodeURIComponent(ref)}`,
-      );
-      if (!res.ok) return;
-      this._derivedInteraction = (await res.json()) as InteractionRef;
-    } catch {
-      /* sin endpoint o sin red: silencio — la vista avisa sola */
-    }
-  }
-
   render() {
     if (this._error) {
       return html`<div class="status error">modux editor: ${this._error}</div>`;
@@ -870,197 +300,11 @@ export class ModuxEditorConnected extends LitElement {
       return html`<div class="status">Cargando el modelo…</div>`;
     }
     return html`
-      ${this._workspace
-        ? html`
-            <div class="workspace">
-              <label>Modelo:</label>
-              <span title="El modelo activo se cambia desde el selector «Modelo» de la cabecera">
-                ${this._workspace.system
-                  ? 'Sistema (as-is)'
-                  : `Solución: ${
-                      this._workspace.solutions.find((s) => s.branch === this._workspace!.current)
-                        ?.name ?? this._workspace.current
-                    }`}
-              </span>
-              ${this._creatingSolution
-                ? ''
-                : html`<button @click=${() => (this._creatingSolution = true)}>
-                    ＋ Nueva solución…
-                  </button>`}
-              ${this._taggingVersion
-                ? html`
-                    <input
-                      placeholder="Nombre de la versión…"
-                      .value=${this._newTagName}
-                      @input=${(e: Event) => (this._newTagName = (e.target as HTMLInputElement).value)}
-                      @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && void this.createTag()}
-                    />
-                    <button @click=${() => void this.createTag()}>Etiquetar</button>
-                    <button @click=${() => (this._taggingVersion = false)}>Cancelar</button>
-                  `
-                : html`<button
-                    title="Etiqueta el estado actual de la rama como una versión con nombre (git tag)"
-                    @click=${() => (this._taggingVersion = true)}
-                  >
-                    🏷 Etiquetar…
-                  </button>`}
-              <button
-                title="Las versiones etiquetadas de los diagramas"
-                @click=${() => void this.toggleTags()}
-              >
-                Versiones
-              </button>
-              <span class="badge ${this._workspace.system ? '' : 'solution'}">
-                ${this._workspace.system ? 'AS-IS' : 'TO-BE'}
-              </span>
-              ${this._diff && !this._workspace.system
-                ? (() => {
-                    const count = (kind: string) =>
-                      this._diff!.changes.filter((c) => c.kind === kind).length;
-                    return html`<button
-                      class="badge solution diff-badge"
-                      ?data-open=${this._diffListOpen}
-                      title="Cambios respecto al sistema — click para ver el listado"
-                      @click=${() => (this._diffListOpen = !this._diffListOpen)}
-                    >
-                      ＋${count('ADDED')} ～${count('MODIFIED')} －${count('REMOVED')}
-                    </button>`;
-                  })()
-                : ''}
-              ${this._creatingSolution
-                ? html`
-                    <input
-                      placeholder="Nombre de la solución…"
-                      .value=${this._newSolutionName}
-                      @input=${(e: Event) =>
-                        (this._newSolutionName = (e.target as HTMLInputElement).value)}
-                      @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createSolution()}
-                    />
-                    <button @click=${this.createSolution}>Crear</button>
-                    <button @click=${() => (this._creatingSolution = false)}>Cancelar</button>
-                  `
-                : ''}
-              ${!this._workspace.system && !this._creatingSolution
-                ? (() => {
-                    const status = this._workspace!.solutions.find(
-                      (s) => s.branch === this._workspace!.current,
-                    )?.status;
-                    return html`
-                      ${status === 'EXPLORING'
-                        ? html`<button
-                            title="La solución queda propuesta para revisión"
-                            @click=${() => void this.solutionOp('status', { status: 'PROPOSED' })}
-                          >
-                            → Proponer
-                          </button>`
-                        : ''}
-                      ${status === 'PROPOSED'
-                        ? html`<button
-                            title="Aprueba la solución — exige lint verde y ninguna decisión abierta"
-                            @click=${() => void this.solutionOp('status', { status: 'APPROVED' })}
-                          >
-                            ✓ Aprobar
-                          </button>`
-                        : ''}
-                      ${status === 'APPROVED'
-                        ? html`<button
-                            title="Merge semántico al sistema: la solución pasa a ser el nuevo as-is"
-                            @click=${() => void this.startMergeFlow('merge')}
-                          >
-                            ⇧ Mergear al sistema
-                          </button>`
-                        : ''}
-                      <button
-                        title="Trae al to-be los avances del sistema (merge semántico)"
-                        @click=${() => void this.startMergeFlow('update')}
-                      >
-                        ⟳ Actualizar del sistema
-                      </button>
-                      <button
-                        title="Archiva la solución (tag) y borra su rama"
-                        @click=${() =>
-                          void this.solutionOp('discard', { branch: this._workspace!.current })}
-                      >
-                        ⏏ Descartar
-                      </button>
-                    `;
-                  })()
-                : ''}
-            </div>
-          `
-        : ''}
-      ${this.renderDiffList()}
-      ${this.renderTagsPanel()}
-      ${this._mergeFlow
-        ? html`
-            <div class="merge-panel">
-              <div class="merge-title">
-                ${this._mergeFlow.conflicts.length} elemento(s) cambiados en el sistema Y en la
-                solución — elige qué versión queda:
-              </div>
-              ${this._mergeFlow.conflicts.map(
-                (c) => html`
-                  <div class="merge-row">
-                    <span class="merge-el">${c.type} · ${c.name ?? c.id}</span>
-                    <label title=${c.system ?? '(eliminado en el sistema)'}>
-                      <input
-                        type="radio"
-                        name=${c.key}
-                        .checked=${this._mergeFlow!.resolutions[c.key] === 'system'}
-                        @change=${() =>
-                          (this._mergeFlow = {
-                            ...this._mergeFlow!,
-                            resolutions: { ...this._mergeFlow!.resolutions, [c.key]: 'system' },
-                          })}
-                      />
-                      Sistema
-                    </label>
-                    <label title=${c.solution ?? '(eliminado en la solución)'}>
-                      <input
-                        type="radio"
-                        name=${c.key}
-                        .checked=${this._mergeFlow!.resolutions[c.key] === 'solution'}
-                        @change=${() =>
-                          (this._mergeFlow = {
-                            ...this._mergeFlow!,
-                            resolutions: { ...this._mergeFlow!.resolutions, [c.key]: 'solution' },
-                          })}
-                      />
-                      Solución
-                    </label>
-                  </div>
-                `,
-              )}
-              <div class="merge-actions">
-                <button
-                  ?disabled=${this._mergeFlow.conflicts.some(
-                    (c) => !this._mergeFlow!.resolutions[c.key],
-                  )}
-                  @click=${() => void this.confirmMergeFlow()}
-                >
-                  Confirmar
-                </button>
-                <button @click=${() => (this._mergeFlow = null)}>Cancelar</button>
-              </div>
-            </div>
-          `
-        : ''}
       <modux-editor
         ?dark=${this._dark}
         .model=${this._model}
         .layout=${this._layout}
-        .repositories=${this._repositories}
-        .derivedInteraction=${this._derivedInteraction}
-        .diff=${this._diff && !this._workspace?.system
-          ? Object.fromEntries(
-              this._diff.changes
-                .filter((c) => c.kind !== 'REMOVED')
-                .map((c) => [c.id, c.kind as 'ADDED' | 'MODIFIED']),
-            )
-          : null}
         @modux-command=${this.onCommand}
-        @interaction-derive-requested=${this.onDeriveInteraction}
-        @modux-import-api=${this.onImportApi}
         @layout-changed=${this.onLayoutChanged}
         @modux-notice=${(e: CustomEvent) =>
           this.showToast(e.detail.message, e.detail.kind ?? 'info')}

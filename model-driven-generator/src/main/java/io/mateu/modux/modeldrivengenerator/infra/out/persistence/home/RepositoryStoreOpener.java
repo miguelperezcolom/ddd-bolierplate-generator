@@ -26,8 +26,6 @@ public class RepositoryStoreOpener implements ProjectStorePort {
 
     final ModuxHomeStore home;
     final CommonFileRepository repository;
-    final io.mateu.modux.modeldrivengenerator.infra.out.store.WorkspaceStoreRouter workspaceRouter;
-    final io.mateu.modux.modeldrivengenerator.infra.out.git.GitWorkspaceStore gitWorkspaceStore;
 
     @Override
     @SneakyThrows
@@ -35,7 +33,6 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         if (repo.getType() == io.mateu.modux.modeldrivengenerator.domain.aggregates.repository.vo.RepositoryType.DATABASE) {
             return openDatabase(repo);
         }
-        workspaceRouter.setDelegate(gitWorkspaceStore);
         var location = resolveLocation(repo);
         Files.createDirectories(location);
         var monolithic = location.resolve("model-driven-store.yaml");
@@ -84,15 +81,13 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         });
     }
 
-    /** A DATABASE repository: the catalog loads from rows; workspaces are rows too. */
+    /** A DATABASE repository: the catalog loads from rows. */
     private Path openDatabase(Repository repo) {
         var db = new io.mateu.modux.modeldrivengenerator.infra.out.db.JdbcModelDatabase(
                 repo.getJdbcUrl(),
                 System.getenv().getOrDefault("MODUX_DB_USER", ""),
                 System.getenv().getOrDefault("MODUX_DB_PASSWORD", ""));
         repository.openDatabase(db);
-        workspaceRouter.setDelegate(
-                new io.mateu.modux.modeldrivengenerator.infra.out.db.DbWorkspaceStore(db, repository));
         home.saveCurrentRepositoryId(repo.getId().id());
         selectProject(home.loadCurrentProjectId().orElse(null));
         adoptOrphans();

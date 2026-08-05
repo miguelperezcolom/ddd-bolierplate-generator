@@ -20,22 +20,17 @@ import java.nio.file.Path;
 public class GenerateHlaUseCase {
 
     final ModelStore repository;
-    final io.mateu.modux.modeldrivengenerator.infra.out.git.SolutionDiffService diffService;
 
     /**
-     * Renders the document for the loaded model. On a solution branch this is the HLA of
-     * the TO-BE, closed by a «Qué cambia respecto al sistema» section (the semantic diff).
+     * Renders the document for the loaded model.
+     *
+     * <p>It used to close with a «Qué cambia respecto al sistema» section, computed by diffing a
+     * solution branch against the system. That is git's job now that the model lives in the
+     * repository — {@code git diff} over one file per element reads better than a rendering of it,
+     * and it does not need modux to be running. See {@code docs/design/ide-plugin.md} §4.8.
      */
     public String render() {
-        var document = HlaDocumentRenderer.render(ModelSnapshot.from(repository));
-        var diff = diffService.diffAgainstSystem();
-        if (diff.system() || diff.changes().isEmpty()) return document;
-        var solutionName = repository.findAllOfType(
-                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.SolutionEntity.class)
-                .stream().findFirst()
-                .map(s -> s.name())
-                .orElse(diff.branch());
-        return document + "\n" + SolutionDiffRenderer.render(diff, solutionName);
+        return HlaDocumentRenderer.render(ModelSnapshot.from(repository));
     }
 
     /** Renders and writes the document to the given path (e.g. next to the generated code). */
