@@ -117,6 +117,7 @@ public final class EditorBridge implements Disposable {
                 case "flush" -> flush(request);
                 case "readView" -> GSON.toJsonTree(readView());
                 case "writeView" -> writeView(request);
+                case "createView" -> createView(request);
                 case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
                 default -> throw new IllegalArgumentException("unknown op: " + op);
             };
@@ -181,6 +182,38 @@ public final class EditorBridge implements Disposable {
                 .withName("Modux View Edit")
                 .<IOException>run(() -> viewFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8)));
         return GSON.toJsonTree(true);
+    }
+
+    /**
+     * The "create view from selection" gesture in the editor (§12): its catalog entity is already
+     * written, so this writes and opens the DOCUMENT — the same artifact New → Modux View creates,
+     * so both doors converge. It lands in a {@code views/} folder beside the catalog; a document by
+     * that name already there is opened rather than clobbered.
+     */
+    private com.google.gson.JsonElement createView(JsonObject request) throws IOException {
+        var viewId = request.get("viewId").getAsString();
+        var name = string(request, "name");
+        var kind = string(request, "kind");
+        var repoRoot = catalogRoot != null ? catalogRoot.getParent() : viewFile.getParent();
+        if (repoRoot == null) throw new IOException("no hay dónde crear el documento de vista");
+        var fileName = ModuxActionSupport.slug(name != null && !name.isBlank() ? name : viewId)
+                + ModuxProject.VIEW_SUFFIX;
+        var content = "viewId: " + viewId + "\nkind: " + (kind != null && !kind.isBlank() ? kind : "context-map")
+                + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
+        var created = WriteCommandAction.writeCommandAction(project)
+                .withName("New Modux View")
+                .<VirtualFile, IOException>compute(() -> {
+                    var dir = repoRoot.findChild("views");
+                    if (dir == null) dir = repoRoot.createChildDirectory(this, "views");
+                    var existing = dir.findChild(fileName);
+                    if (existing != null) return existing;
+                    var file = dir.createChildData(this, fileName);
+                    file.setBinaryContent(content.getBytes(StandardCharsets.UTF_8));
+                    return file;
+                });
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(() ->
+                com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project).openFile(created, true));
+        return GSON.toJsonTree(created.getPath());
     }
 
     private static String string(JsonObject request, String field) {

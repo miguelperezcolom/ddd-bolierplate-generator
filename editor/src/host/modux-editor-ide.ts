@@ -97,6 +97,7 @@ export class ModuxEditorIde extends LitElement {
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
       this.viewKey = layoutKeyFor(this.doc.kind ?? 'context-map', this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
+      await this.ensureView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
       this.open = { view: this.doc.kind, activeViewId: this.doc.viewId };
       this.refresh();
@@ -123,6 +124,33 @@ export class ModuxEditorIde extends LitElement {
   private onCommand(event: CustomEvent): void {
     const { command } = event.detail;
     this.chain = this.chain.then(() => this.run(command));
+  }
+
+  /**
+   * A view opens scoped and empty, not showing the whole catalog: if the document names a view the
+   * catalog does not hold yet — as a freshly created `*.modux-view.yaml` does — create it as an
+   * empty curated entity (§12, born-empty). The user then fills it by adding members.
+   */
+  private async ensureView(): Promise<void> {
+    const id = this.doc.viewId;
+    if (!id || !this.fs || this.store.has('views', id)) return;
+    apply(this.store, { kind: 'add-view', id, name: id, memberIds: [] } as never);
+    await flush(this.fs, ROOT, this.store);
+    await this.fs.commit();
+  }
+
+  /**
+   * A view was created in the editor (the "create view from selection" gesture, §12): its entity is
+   * already added to the catalog (queued on the same chain, so it lands first), and now its
+   * document is written and opened. This is what makes the in-editor door and New → Modux View
+   * produce the same thing — a document backed by a catalog view.
+   */
+  private onCreateView(event: CustomEvent): void {
+    const bridge = hostBridge();
+    if (!bridge) return;
+    const { viewId, name, kind } = event.detail as { viewId: string; name: string; kind: string };
+    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name, kind }) as Promise<unknown>)
+      .then(() => undefined);
   }
 
   /**
@@ -211,8 +239,10 @@ export class ModuxEditorIde extends LitElement {
         .model=${this.model}
         .layout=${this.layout}
         .open=${this.open}
+        .hosted=${true}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
+        @create-view=${this.onCreateView}
       ></modux-editor>
     `;
   }
