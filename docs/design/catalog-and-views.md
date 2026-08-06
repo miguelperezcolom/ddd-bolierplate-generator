@@ -367,9 +367,10 @@ lienzo—; el protocolo file-system se reparte por destino.
 
 ### 12.6 Preguntas abiertas (lienzo)
 
-- **P-lienzo-1 — Integridad de refs repartidas.** ⏳ Abierto. Los `*.modux-view.yaml` viven fuera de
-  `.modux/`; `--modux.check` no los ve. ¿Se indexan, se validan solo al abrir, o `check` recibe
-  globs de lienzos?
+- **P-lienzo-1 — Integridad de refs repartidas.** ✅ Resuelto. `--modux.check` recorre el repo
+  (podando `.git`/`node_modules`/build), encuentra cada `*.modux-view.yaml` y reporta el que apunta
+  a un `viewId` que el catálogo no tiene —o que no se puede leer— junto a las refs colgantes del
+  catálogo (`ViewDocumentChecker`). El fichero de lienzo se valida ahora en CI, no solo al abrir.
 - **P-lienzo-2 — Geometría de scope computado.** ⏳ De facto: el editor hace auto-layout al vuelo y
   persiste al arrastrar, como con cualquier vista; falta decidir si merece algo más explícito.
 - **P-lienzo-3 — ¿Lienzo sin `ViewEntity`?** ✅ Resuelto por *born-empty*: al abrir, si el `viewId`
