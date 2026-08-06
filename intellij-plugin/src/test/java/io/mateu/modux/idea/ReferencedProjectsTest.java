@@ -13,15 +13,11 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase;
  */
 public class ReferencedProjectsTest extends BasePlatformTestCase {
 
-    /** A repository with a model in it, beside the others. */
-    private VirtualFile repository(String name, boolean nested) throws Exception {
-        return WriteAction.computeAndWait(() -> {
-            var repo = myFixture.getTempDirFixture().findOrCreateDir("checkouts/" + name);
-            var model = nested ? repo.createChildDirectory(this, ModuxProject.CONVENTIONAL_DIR) : repo;
-            var marker = model.createChildData(this, ModuxProject.MARKER);
-            marker.setBinaryContent("formatVersion: 1\ncounts: {}\n".getBytes());
-            return model;
-        });
+    /** A repository with its catalog (`.modux/`) in it, beside the others. */
+    private VirtualFile repository(String name) throws Exception {
+        return WriteAction.computeAndWait(() -> myFixture.getTempDirFixture()
+                .findOrCreateDir("checkouts/" + name)
+                .createChildDirectory(this, ModuxProject.CATALOG_DIR));
     }
 
     /**
@@ -30,42 +26,34 @@ public class ReferencedProjectsTest extends BasePlatformTestCase {
      * machine-specific written into the versioned model.
      */
     public void testFindsASiblingCheckoutFromTheGitUrlAlone() throws Exception {
-        var here = repository("booking", true);
-        var there = repository("checkin", true);
+        var here = repository("booking");
+        var there = repository("checkin");
 
         assertEquals(there,
                 ReferencedProjects.locate(here, "git@github.com:acme/checkin.git", null));
     }
 
-    /** A model root is conventionally `<repo>/modux`, but a bare model directory is a project too. */
-    public void testFindsASiblingWhoseModelIsTheRepositoryItself() throws Exception {
-        var here = repository("booking", true);
-        var there = repository("checkin", false);
-
-        assertEquals(there,
-                ReferencedProjects.locate(here, "https://github.com/acme/checkin", null));
-    }
-
+    /** An explicit path can point straight at the catalog directory. */
     public void testAnExplicitPathWins() throws Exception {
-        var here = repository("booking", true);
-        var there = repository("elsewhere", true);
+        var here = repository("booking");
+        var there = repository("elsewhere");
 
         assertEquals(there, ReferencedProjects.locate(here,
-                "git@github.com:acme/checkin.git", "../../elsewhere/modux"));
+                "git@github.com:acme/checkin.git", "../../elsewhere/.modux"));
     }
 
     /** Not finding it is an ANSWER: the reference's snapshot is intact, only refreshing is lost. */
     public void testAnsweringNothingWhenThereIsNoCheckout() throws Exception {
-        var here = repository("booking", true);
+        var here = repository("booking");
 
         assertNull(ReferencedProjects.locate(here, "git@github.com:acme/ausente.git", null));
-        assertNull(ReferencedProjects.locate(here, null, "../../ausente/modux"));
+        assertNull(ReferencedProjects.locate(here, null, "../../ausente/.modux"));
         assertNull(ReferencedProjects.locate(here, null, null));
     }
 
-    /** A directory that is not a model is not an answer either. */
-    public void testADirectoryWithoutAMarkerIsNotAProject() throws Exception {
-        var here = repository("booking", true);
+    /** A repository without a catalog is not an answer either. */
+    public void testARepositoryWithoutACatalogIsNotAProject() throws Exception {
+        var here = repository("booking");
         WriteAction.runAndWait(() ->
                 myFixture.getTempDirFixture().findOrCreateDir("checkouts/checkin/src"));
 

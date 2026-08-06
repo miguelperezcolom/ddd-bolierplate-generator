@@ -9,29 +9,25 @@ import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 /**
  * Granular format: the model as a directory tree, one file per element, grouped by type:
  *
  * <pre>
- *   model/
- *   ├── index.yaml              # format version + element counts
+ *   .modux/
  *   ├── aggregates/{id}.yaml
  *   ├── usecases/{id}.yaml
  *   └── …                       # one subdirectory per AllData list
  * </pre>
  *
  * Driven by reflection over {@link AllData}'s record components, so new element types are handled
- * automatically. This is the storage that makes huge models diff/merge cleanly.
+ * automatically, and the directories themselves are the index — there is no manifest file to keep
+ * in step (§12.3). This is the storage that makes huge models diff/merge cleanly.
  */
 @Component
 public class GranularYamlStorageFormat implements ModelStorageFormat {
-
-    private static final String INDEX = "index.yaml";
 
     @Override
     public boolean handles(Path path) {
@@ -108,7 +104,6 @@ public class GranularYamlStorageFormat implements ModelStorageFormat {
     public void save(Path path, AllData data) throws Exception {
         var writer = ModelYaml.writer();
         Files.createDirectories(path);
-        var counts = new LinkedHashMap<String, Integer>();
 
         for (RecordComponent component : AllData.class.getRecordComponents()) {
             var list = (List<?>) component.getAccessor().invoke(data);
@@ -122,24 +117,17 @@ public class GranularYamlStorageFormat implements ModelStorageFormat {
                     }
                 }
             }
-            if (list == null || list.isEmpty()) {
-                counts.put(component.getName(), 0);
-                continue;
-            }
+            if (list == null || list.isEmpty()) continue;
             Files.createDirectories(dir);
             for (var element : list) {
                 var id = element instanceof Identifiable identifiable ? identifiable.id() : null;
                 var fileName = (id != null && !id.isBlank() ? sanitize(id) : "element") + ".yaml";
                 Files.writeString(dir.resolve(fileName), writer.writeValueAsString(element));
             }
-            counts.put(component.getName(), list.size());
         }
-
-        // index: format identity + per-type counts (also how load detects a granular root)
-        Map<String, Object> index = new LinkedHashMap<>();
-        index.put("formatVersion", 1);
-        index.put("counts", counts);
-        Files.writeString(path.resolve(INDEX), writer.writeValueAsString(index));
+        // No index file: the buckets are the directories, discovered on load (§12.3). Keeping a
+        // counts manifest in step would be one more thing to get wrong, for a number `Files.list`
+        // already gives.
     }
 
     @Override

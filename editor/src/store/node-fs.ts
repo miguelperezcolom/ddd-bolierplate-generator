@@ -20,6 +20,12 @@ export function nodeFs(base = ''): FileSystem {
       const entries = await readdir(full, { withFileTypes: true });
       return entries.filter((e) => e.isFile()).map((e) => e.name);
     },
+    async listDirs(dir) {
+      const full = resolve(dir);
+      if (!existsSync(full)) return [];
+      const entries = await readdir(full, { withFileTypes: true });
+      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    },
     read: (path) => readFile(resolve(path), 'utf8'),
     async write(path, content) {
       const full = resolve(path);

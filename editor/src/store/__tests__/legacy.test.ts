@@ -27,6 +27,16 @@ function memoryFs(): FileSystem & { files: Map<string, string> } {
         .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
         .map((p) => p.slice(prefix.length));
     },
+    async listDirs(dir) {
+      const prefix = `${dir}/`;
+      const dirs = new Set<string>();
+      for (const p of files.keys()) {
+        if (!p.startsWith(prefix)) continue;
+        const slash = p.slice(prefix.length).indexOf('/');
+        if (slash > 0) dirs.add(p.slice(prefix.length, prefix.length + slash));
+      }
+      return [...dirs];
+    },
     async read(path) {
       return files.get(path)!;
     },

@@ -8,7 +8,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Initialise a modux catalog: create {@code .modux/} with its marker at the chosen directory
@@ -29,14 +28,11 @@ public final class NewCatalogAction extends AnAction {
             return;
         }
         try {
+            // Just the directory: its name is the marker, and the buckets appear as elements are
+            // added (§12.3). No index file to seed.
             var catalog = WriteCommandAction.writeCommandAction(project)
                     .withName("Init Modux Catalog")
-                    .<VirtualFile, IOException>compute(() -> {
-                        var created = dir.createChildDirectory(this, ModuxProject.CATALOG_DIR);
-                        var index = created.createChildData(this, ModuxProject.MARKER);
-                        index.setBinaryContent("formatVersion: 1\ncounts: {}\n".getBytes(StandardCharsets.UTF_8));
-                        return created;
-                    });
+                    .<VirtualFile, IOException>compute(() -> dir.createChildDirectory(this, ModuxProject.CATALOG_DIR));
             Messages.showInfoMessage(project, "Catálogo creado en " + catalog.getPath()
                     + ".\nCrea una vista con New → Modux View.", "Modux");
         } catch (IOException e) {

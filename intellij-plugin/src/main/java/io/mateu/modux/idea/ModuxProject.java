@@ -3,29 +3,21 @@ package io.mateu.modux.idea;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
 /**
- * Finds the model a file belongs to.
+ * Finds the catalog a file belongs to, and tells a view document from anything else.
  *
- * <p>Resolution walks up to the nearest {@code index.yaml} rather than looking at a fixed path.
- * That needs no notion of a "current project" — the state that would otherwise force a picker
- * into the UI — and it does not have to ask the IDE which workspace root a file sits under.
- * See {@code docs/design/ide-plugin.md} §4.6.
+ * <p>A modux model is a catalog — the elements — in a {@code .modux/} directory at the repo root
+ * (§12.3). The directory's <em>name</em> is the marker: unambiguous, so no index file or content
+ * check is needed. Resolution walks up to the nearest {@code .modux/}, the same "nearest marker"
+ * idea as before, with the directory as the marker. See {@code docs/design/catalog-and-views.md}
+ * §12 and {@code docs/design/ide-plugin.md} §4.6.
  */
 public final class ModuxProject {
 
-    /** The file that marks a directory as a modux model. */
-    public static final String MARKER = "index.yaml";
-
-    /** Where a project keeps its model, by convention. */
-    public static final String CONVENTIONAL_DIR = "modux";
-
     /**
-     * The catalog directory: the single, canonical home of the elements, at the repo root
-     * (`docs/design/catalog-and-views.md` §12.3). Hidden on purpose — the navigable surface is the
-     * views, and the catalog is plumbing you rarely open by hand.
+     * The catalog directory: the single, canonical home of the elements, at the repo root. Hidden
+     * on purpose — the navigable surface is the views, and the catalog is plumbing you rarely open
+     * by hand.
      */
     public static final String CATALOG_DIR = ".modux";
 
@@ -40,57 +32,12 @@ public final class ModuxProject {
     private ModuxProject() {}
 
     /**
-     * The model root owning {@code file}, or null when it belongs to no model. A directory that
-     * holds the marker is its own root.
-     */
-    public static @Nullable VirtualFile rootFor(@Nullable VirtualFile file) {
-        for (var candidate = directoryOf(file); candidate != null; candidate = candidate.getParent()) {
-            if (isMarker(candidate.findChild(MARKER))) return candidate;
-        }
-        return null;
-    }
-
-    /**
-     * Whether this file is a model marker — what the editor opens on.
-     *
-     * <p>The name alone is not enough: {@code index.yaml} is a common name, and offering a
-     * "Modux" tab on someone else's file would produce an editor that can only fail to load. What
-     * makes the file a marker is what it carries — the format version and the counts per type
-     * (§4.6) — so that is what is checked.
-     */
-    public static boolean isMarker(@Nullable VirtualFile file) {
-        return file != null && !file.isDirectory() && MARKER.equals(file.getName())
-                && file.getParent() != null && declaresFormatVersion(file);
-    }
-
-    /** How big a marker can plausibly be: one line per element type, and no element bodies. */
-    private static final int MARKER_SIZE_LIMIT = 256 * 1024;
-
-    private static boolean declaresFormatVersion(VirtualFile file) {
-        if (file.getLength() > MARKER_SIZE_LIMIT) return false;
-        try {
-            return new String(file.contentsToByteArray(), StandardCharsets.UTF_8)
-                    .lines()
-                    .anyMatch(line -> line.startsWith("formatVersion:"));
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    private static @Nullable VirtualFile directoryOf(@Nullable VirtualFile file) {
-        if (file == null) return null;
-        return file.isDirectory() ? file : file.getParent();
-    }
-
-    /**
-     * Whether a directory is a catalog: named {@code .modux} and holding the marker. The name alone
-     * is not enough — a stray {@code .modux/} folder without a model inside should not answer as
-     * one — so the marker is still what confirms it (§12.3 keeps {@code index.yaml} as the marker;
-     * dropping it needs the loader to discover types from disk, which is a separate change).
+     * Whether a directory is a catalog: named {@code .modux} (§12.3). The name alone is the marker —
+     * there is no index file to check — which is why a stray {@code .modux/} is the only false
+     * positive, and an unlikely one for a name this specific.
      */
     public static boolean isCatalog(@Nullable VirtualFile dir) {
-        return dir != null && dir.isDirectory() && CATALOG_DIR.equals(dir.getName())
-                && isMarker(dir.findChild(MARKER));
+        return dir != null && dir.isDirectory() && CATALOG_DIR.equals(dir.getName());
     }
 
     /**
@@ -111,5 +58,10 @@ public final class ModuxProject {
     /** Whether this file is a view document — what the graphical editor opens on. */
     public static boolean isViewDocument(@Nullable VirtualFile file) {
         return file != null && !file.isDirectory() && file.getName().endsWith(VIEW_SUFFIX);
+    }
+
+    private static @Nullable VirtualFile directoryOf(@Nullable VirtualFile file) {
+        if (file == null) return null;
+        return file.isDirectory() ? file : file.getParent();
     }
 }

@@ -47,6 +47,7 @@ export function readOnlyFileSystem(bridge: Bridge, root: string): FileSystem {
   };
   return {
     list: async (dir) => (await bridge({ op: 'list', path: dir, root })) as string[],
+    listDirs: async (dir) => (await bridge({ op: 'listDirs', path: dir, root })) as string[],
     read: async (path) => (await bridge({ op: 'read', path, root })) as string,
     exists: async (path) => (await bridge({ op: 'exists', path, root })) as boolean,
     write: refuse,
@@ -88,6 +89,8 @@ export function ideFileSystem(bridge: Bridge): IdeFileSystem {
       const deletedHere = new Set([...deletes].map((p) => p.slice(p.lastIndexOf('/') + 1)));
       return [...new Set([...names, ...queuedHere])].filter((n) => !deletedHere.has(`${dir}/${n}`.slice(dir.length + 1)));
     },
+
+    listDirs: async (dir) => (await bridge({ op: 'listDirs', path: dir })) as string[],
 
     async read(path) {
       // an uncommitted write is what this file says now

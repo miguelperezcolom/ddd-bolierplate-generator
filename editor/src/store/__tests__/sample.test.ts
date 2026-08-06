@@ -27,6 +27,16 @@ function memoryFs(): FileSystem & { files: Map<string, string> } {
         .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
         .map((p) => p.slice(prefix.length));
     },
+    async listDirs(dir) {
+      const prefix = `${dir}/`;
+      const dirs = new Set<string>();
+      for (const p of files.keys()) {
+        if (!p.startsWith(prefix)) continue;
+        const slash = p.slice(prefix.length).indexOf('/');
+        if (slash > 0) dirs.add(p.slice(prefix.length, prefix.length + slash));
+      }
+      return [...dirs];
+    },
     async read(path) {
       return files.get(path)!;
     },
@@ -129,14 +139,14 @@ describe('the hla-booking sample', () => {
     expect(twice.toData()).toEqual(once.toData());
   });
 
-  it('writes one file per element plus the index', async () => {
+  it('writes exactly one file per element, and nothing else', async () => {
     const fs = memoryFs();
     const store = ModelStore.from(data);
     await writeTree(fs, 'modux', store);
 
     const elements = Object.values(data).reduce((n, list) => n + list.length, 0);
 
-    expect(fs.files.size).toBe(elements + 1);
+    expect(fs.files.size).toBe(elements);
   });
 
   it('reloads clean: a freshly read model has nothing pending to write', async () => {
