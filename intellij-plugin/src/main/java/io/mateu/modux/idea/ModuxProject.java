@@ -66,4 +66,32 @@ public final class ModuxProject {
         if (file == null) return null;
         return file.isDirectory() ? file : file.getParent();
     }
+
+    private static final String YAML = ".yaml";
+
+    /** A model element file: {@code <root>/<type>/<id>.yaml} — the root, its bucket, its id. */
+    public record ElementFile(VirtualFile root, String type, String id) {}
+
+    /**
+     * The element a file stands for, or null when it is not one. The granular model keeps one
+     * file per element in a bucket named after its type ({@code aggregates/booking.yaml}), so an
+     * element is exactly a {@code .yaml} sitting directly in a type bucket of a model — not the
+     * marker, and not something nested deeper. This is what lets the editor open focused on a
+     * component straight from the project tree.
+     *
+     * <p>The id is taken from the file name. The granular writer sanitises ids into file names, so
+     * an id with characters a file name cannot hold will not round-trip here; those do not get a
+     * focused open, they just open the model unfocused. The common case — file-name-safe ids — is
+     * exact.
+     */
+    public static @Nullable ElementFile elementFileOf(@Nullable VirtualFile file) {
+        if (file == null || file.isDirectory()) return null;
+        var name = file.getName();
+        if (MARKER.equals(name) || !name.endsWith(YAML)) return null;
+        var bucket = file.getParent();
+        if (bucket == null || !bucket.isDirectory()) return null;
+        var root = bucket.getParent();
+        if (root == null || !isMarker(root.findChild(MARKER))) return null;
+        return new ElementFile(root, bucket.getName(), name.substring(0, name.length() - YAML.length()));
+    }
 }

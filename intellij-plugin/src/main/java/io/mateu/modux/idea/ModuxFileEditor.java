@@ -29,9 +29,16 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
 
     public ModuxFileEditor(Project project, VirtualFile file) {
         this.file = file;
-        this.modelRoot = file.getParent();
-        this.bridge = new EditorBridge(project, modelRoot);
+        // Opened on the marker, the root is its directory; opened on an element file, the root is
+        // the model that owns it and the element becomes the editor's focus.
+        var element = ModuxProject.elementFileOf(file);
+        this.modelRoot = element != null ? element.root() : file.getParent();
+        this.bridge = new EditorBridge(project, modelRoot, focusFrom(element));
         Disposer.register(this, bridge);
+    }
+
+    private static EditorBridge.Focus focusFrom(ModuxProject.ElementFile element) {
+        return element == null ? null : new EditorBridge.Focus(element.type(), element.id());
     }
 
     @Override

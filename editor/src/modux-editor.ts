@@ -198,6 +198,9 @@ export class ModuxEditor extends LitElement {
   /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
   @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
+  /** Deep-link target from the IDE host: which element to open the editor focused on. */
+  @property({ attribute: false }) focusTarget: { type?: string; id: string } | null = null;
+
   /** The front door is graphics-first: the context map on the yugo surface. */
   @state() private _view: ViewId = 'context-map';
   /** Last chosen relation type — the default pre-selection in the picker. */
@@ -218,6 +221,9 @@ export class ModuxEditor extends LitElement {
     y: number;
   } | null = null;
   @state() private _selectedId: string | null = null;
+
+  /** The focus id already honoured, so a model round-trip does not keep yanking the view back. */
+  @state() private _focusedKey: string | null = null;
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = true;
   /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
@@ -921,6 +927,52 @@ export class ModuxEditor extends LitElement {
       this.migrateLevelLayouts();
       this.migrateNestedGeometry();
     }
+  }
+
+  /**
+   * Deep link from the IDE: the plugin can open the editor already pointed at a component —
+   * opening `aggregates/booking.yaml` from the project tree lands here. The focus is a raw
+   * element id; we find the first view that draws it, select it there, and frame it, reusing
+   * the very path a click takes so the ficha and spotlight react as if the user got there by
+   * hand. Honoured once per id: a model round-trip (every edit reloads it) must not keep
+   * yanking the view back from wherever the user has since navigated.
+   */
+  protected updated(changed: PropertyValues): void {
+    if (!this.focusTarget || (!changed.has('focusTarget') && !changed.has('model'))) return;
+    const key = this.focusTarget.id;
+    if (key && key !== this._focusedKey && this.applyFocus(key)) this._focusedKey = key;
+  }
+
+  /** Views probed when focusing, broad maps first: the first one that draws the element wins. */
+  private static readonly FOCUS_VIEWS: ViewId[] = [
+    'context-map', 'aggregates', 'distribution', 'flows', 'processes',
+    'workflows', 'ui', 'mappings', 'integrations', 'eventstorming',
+  ];
+
+  /**
+   * Switch to a view that draws `rawId` and frame it; returns whether it was found. Node ids
+   * carry a view prefix (`tgt:`, `flow:`…), so a raw id matches either directly or once the
+   * leading `prefix:` is stripped. An element no view draws yet leaves the editor untouched.
+   */
+  private applyFocus(rawId: string): boolean {
+    for (const view of ModuxEditor.FOCUS_VIEWS) {
+      const node = this.sceneFor(view).nodes.find(
+        (n) => n.id === rawId || n.id.replace(/^[a-z][\w-]*:/, '') === rawId,
+      );
+      if (!node) continue;
+      this._view = view;
+      this._selectedId = node.id;
+      this._multi = [];
+      void this.updateComplete.then(() =>
+        this.renderRoot.querySelector('modux-canvas')?.fit(),
+      );
+      // the host has no other window into this: a focus that lands and one that finds nothing
+      // look the same from the IDE, so both say so in the log
+      console.info(`modux: foco en ${rawId} — vista ${view}`);
+      return true;
+    }
+    console.warn(`modux: ningún diagrama dibuja "${rawId}" todavía; abro el modelo sin foco`);
+    return false;
   }
 
   /**

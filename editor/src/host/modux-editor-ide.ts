@@ -7,7 +7,7 @@
  */
 
 import { LitElement, css, html, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
 import type { EditorLayout } from '../scene.js';
 import { apply, CommandError } from '../store/apply.js';
@@ -38,6 +38,14 @@ export class ModuxEditorIde extends LitElement {
     .banner.info { background: #f2f6fd; color: #1f3d8a; border-bottom-color: #c9d8f0; }
     modux-editor { height: 100%; }
   `;
+
+  /**
+   * Deep link from the plugin: which component the editor should open focused on, set as HTML
+   * attributes by the host page when a model element file was opened (not the marker). Static —
+   * the plugin sets them once when it builds the page.
+   */
+  @property({ attribute: 'focus-id' }) focusId: string | null = null;
+  @property({ attribute: 'focus-type' }) focusType: string | null = null;
 
   @state() private model: ModuxModel | null = null;
   @state() private layout: EditorLayout = {};
@@ -181,6 +189,7 @@ export class ModuxEditorIde extends LitElement {
       <modux-editor
         .model=${this.model}
         .layout=${this.layout}
+        .focusTarget=${this.focusId ? { type: this.focusType ?? undefined, id: this.focusId } : null}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
       ></modux-editor>

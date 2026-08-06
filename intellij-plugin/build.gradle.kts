@@ -134,8 +134,14 @@ tasks.processResources {
  * `-PmoduxRunProject=/path/to/a/repo` opens that project straight away in the sandbox IDE,
  * instead of landing on the welcome screen. The point of the plugin is what happens when you
  * open a model, so getting there should not need clicking.
+ *
+ * `-PmoduxOpenFile=/path/to/modux/aggregates/x.yaml` additionally opens that file, so a
+ * component's editor (the focused deep-link) can be reached without navigating the tree.
  */
 tasks.named<JavaExec>("runIde") {
     val project = providers.gradleProperty("moduxRunProject")
-    argumentProviders.add(CommandLineArgumentProvider { listOfNotNull(project.orNull) })
+    val open = providers.gradleProperty("moduxOpenFile")
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOfNotNull(project.orNull, open.orNull)
+    })
 }

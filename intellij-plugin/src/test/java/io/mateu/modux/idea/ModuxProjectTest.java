@@ -61,6 +61,44 @@ public class ModuxProjectTest extends BasePlatformTestCase {
         assertNull(ModuxProject.rootFor(foreign));
     }
 
+    public void testAnElementFileResolvesToItsTypeAndId() throws Exception {
+        var model = myFixture.getTempDirFixture().findOrCreateDir("modux");
+        marker(model);
+        var element = WriteAction.computeAndWait(() ->
+                model.createChildDirectory(this, "aggregates").createChildData(this, "booking.yaml"));
+
+        var resolved = ModuxProject.elementFileOf(element);
+        assertNotNull(resolved);
+        assertEquals(model, resolved.root());
+        assertEquals("aggregates", resolved.type());
+        assertEquals("booking", resolved.id());
+    }
+
+    /** The marker is opened whole, never as an element of itself. */
+    public void testTheMarkerIsNotAnElementFile() throws Exception {
+        var model = myFixture.getTempDirFixture().findOrCreateDir("modux");
+        var index = marker(model);
+
+        assertNull(ModuxProject.elementFileOf(index));
+    }
+
+    /** A yaml right under the root has no type bucket, so it is not an element. */
+    public void testAYamlDirectlyUnderTheRootIsNotAnElementFile() throws Exception {
+        var model = myFixture.getTempDirFixture().findOrCreateDir("modux");
+        marker(model);
+        var loose = WriteAction.computeAndWait(() -> model.createChildData(this, "notes.yaml"));
+
+        assertNull(ModuxProject.elementFileOf(loose));
+    }
+
+    /** A yaml in a bucket whose parent is not a model is not an element — no editor on foreign files. */
+    public void testAYamlInABucketOutsideAnyModelIsNotAnElementFile() throws Exception {
+        var stray = myFixture.getTempDirFixture()
+                .createFile("elsewhere/aggregates/booking.yaml", "name: Booking\n");
+
+        assertNull(ModuxProject.elementFileOf(stray));
+    }
+
     private com.intellij.openapi.vfs.VirtualFile marker(com.intellij.openapi.vfs.VirtualFile dir) throws Exception {
         return WriteAction.computeAndWait(() -> {
             var file = dir.createChildData(this, ModuxProject.MARKER);

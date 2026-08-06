@@ -19,7 +19,9 @@ public final class ModuxFileEditorProvider implements FileEditorProvider {
 
     @Override
     public boolean accept(@NotNull Project project, @NotNull VirtualFile file) {
-        return ModuxProject.isMarker(file) && JBCefApp.isSupported();
+        // The marker opens the whole model; an element file opens it focused on that component.
+        return (ModuxProject.isMarker(file) || ModuxProject.elementFileOf(file) != null)
+                && JBCefApp.isSupported();
     }
 
     @Override

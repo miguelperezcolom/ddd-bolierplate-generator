@@ -36,10 +36,15 @@ public final class EditorBridge implements Disposable {
     private final ModelFiles files;
     private final Project project;
     private final VirtualFile modelRoot;
+    private final Focus focus;
 
-    public EditorBridge(Project project, VirtualFile modelRoot) {
+    /** A component to open the editor focused on, or null to open the whole model unfocused. */
+    public record Focus(String type, String id) {}
+
+    public EditorBridge(Project project, VirtualFile modelRoot, Focus focus) {
         this.project = project;
         this.modelRoot = modelRoot;
+        this.focus = focus;
         this.files = new ModelFiles(project, modelRoot);
         this.browser = JBCefBrowser.createBuilder().setOffScreenRendering(false).build();
         this.query = JBCefJSQuery.create((com.intellij.ui.jcef.JBCefBrowserBase) browser);
@@ -194,7 +199,7 @@ public final class EditorBridge implements Disposable {
                     </style>
                   </head>
                   <body>
-                    <div id="root"><modux-editor-ide></modux-editor-ide></div>
+                    <div id="root"><modux-editor-ide%s></modux-editor-ide></div>
                     <script>
                       window.moduxBridge = function (request) {
                         return new Promise(function (resolve, reject) {
@@ -209,9 +214,21 @@ public final class EditorBridge implements Disposable {
                   </body>
                 </html>
                 """.formatted(
+                focusAttributes(),
                 query.inject("JSON.stringify(request)",
                         "function(r){ var p = JSON.parse(r); p.ok ? resolve(p.value) : reject(new Error(p.error)); }",
                         "function(code, message){ reject(new Error(message)); }"));
+    }
+
+    /** `focus-type`/`focus-id` on the host element, or nothing when opened on the marker. */
+    private String focusAttributes() {
+        if (focus == null) return "";
+        return " focus-type=\"" + escape(focus.type()) + "\" focus-id=\"" + escape(focus.id()) + "\"";
+    }
+
+    private static String escape(String value) {
+        return value.replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;");
     }
 
     @Override
