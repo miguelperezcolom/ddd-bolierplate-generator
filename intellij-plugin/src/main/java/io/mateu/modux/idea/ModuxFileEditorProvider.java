@@ -19,7 +19,9 @@ public final class ModuxFileEditorProvider implements FileEditorProvider {
 
     @Override
     public boolean accept(@NotNull Project project, @NotNull VirtualFile file) {
-        return ModuxProject.isMarker(file) && JBCefApp.isSupported();
+        // The graphical editor opens on a view document (§12), not on the catalog — the catalog is
+        // data, and opens as plain YAML.
+        return ModuxProject.isViewDocument(file) && JBCefApp.isSupported();
     }
 
     @Override

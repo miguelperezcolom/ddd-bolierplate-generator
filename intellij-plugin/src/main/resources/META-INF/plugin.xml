@@ -18,4 +18,19 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="io.mateu.modux.idea.ModuxFileEditorProvider"/>
     </extensions>
+
+    <actions>
+        <action id="io.mateu.modux.NewCatalog"
+                class="io.mateu.modux.idea.NewCatalogAction"
+                text="Modux Model"
+                description="Initialise a modux catalog (.modux/) here">
+            <add-to-group group-id="NewGroup" anchor="last"/>
+        </action>
+        <action id="io.mateu.modux.NewView"
+                class="io.mateu.modux.idea.NewViewAction"
+                text="Modux View"
+                description="Create a modux view document (*.modux-view.yaml) here">
+            <add-to-group group-id="NewGroup" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

@@ -3,9 +3,11 @@ package io.mateu.modux.idea;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.jcef.JBCefJSQuery;
@@ -16,6 +18,8 @@ import org.cef.handler.CefDisplayHandlerAdapter;
 import org.cef.handler.CefLoadHandlerAdapter;
 
 import javax.swing.JComponent;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 /**
@@ -35,12 +39,21 @@ public final class EditorBridge implements Disposable {
     private final JBCefJSQuery query;
     private final ModelFiles files;
     private final Project project;
-    private final VirtualFile modelRoot;
+    private final VirtualFile catalogRoot;
+    private final VirtualFile viewFile;
 
-    public EditorBridge(Project project, VirtualFile modelRoot) {
+    /**
+     * Two roots, by §12: the catalog (`.modux/`) that owns the elements — where {@code list}/
+     * {@code read}/{@code flush} go — and the view document the editor is opened on, read and
+     * written on its own ({@code readView}/{@code writeView}). The catalog may be null when a view
+     * resolves to none above it; catalog ops then fail with a clear message, but the document still
+     * opens.
+     */
+    public EditorBridge(Project project, VirtualFile catalogRoot, VirtualFile viewFile) {
         this.project = project;
-        this.modelRoot = modelRoot;
-        this.files = new ModelFiles(project, modelRoot);
+        this.catalogRoot = catalogRoot;
+        this.viewFile = viewFile;
+        this.files = catalogRoot != null ? new ModelFiles(project, catalogRoot) : null;
         this.browser = JBCefBrowser.createBuilder().setOffScreenRendering(false).build();
         this.query = JBCefJSQuery.create((com.intellij.ui.jcef.JBCefBrowserBase) browser);
 
@@ -102,6 +115,8 @@ public final class EditorBridge implements Disposable {
                 case "read" -> GSON.toJsonTree(files.read(path(request)));
                 case "exists" -> GSON.toJsonTree(files.exists(path(request)));
                 case "flush" -> flush(request);
+                case "readView" -> GSON.toJsonTree(readView());
+                case "writeView" -> writeView(request);
                 case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
                 default -> throw new IllegalArgumentException("unknown op: " + op);
             };
@@ -129,7 +144,11 @@ public final class EditorBridge implements Disposable {
     private ModelFiles filesFor(JsonObject request) {
         var root = request.has("root") && !request.get("root").isJsonNull()
                 ? request.get("root").getAsString() : null;
-        if (root == null || root.isBlank()) return files;
+        if (root == null || root.isBlank()) {
+            if (files == null) throw new IllegalStateException(
+                    "no hay catálogo .modux/ por encima de este documento de vista");
+            return files;
+        }
         var other = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
                 .findFileByPath(root);
         if (other == null) throw new IllegalArgumentException("no such project root: " + root);
@@ -142,9 +161,26 @@ public final class EditorBridge implements Disposable {
      * the reference's snapshot is what generation reads, and it is intact either way.
      */
     private String resolveProject(JsonObject request) {
-        var located = ReferencedProjects.locate(modelRoot,
+        var located = ReferencedProjects.locate(catalogRoot,
                 string(request, "gitUrl"), string(request, "path"));
         return located == null ? null : located.getPath();
+    }
+
+    /** The view document's text — the perspective the editor is opened on. */
+    private String readView() throws IOException {
+        return VfsUtil.loadText(viewFile);
+    }
+
+    /**
+     * Overwrite the view document. Its own undo step, separate from a catalog edit: geometry and
+     * lens are the document's data, and one drag should undo without touching the catalog.
+     */
+    private com.google.gson.JsonElement writeView(JsonObject request) throws IOException {
+        var content = request.get("content").getAsString();
+        WriteCommandAction.writeCommandAction(project)
+                .withName("Modux View Edit")
+                .<IOException>run(() -> viewFile.setBinaryContent(content.getBytes(StandardCharsets.UTF_8)));
+        return GSON.toJsonTree(true);
     }
 
     private static String string(JsonObject request, String field) {

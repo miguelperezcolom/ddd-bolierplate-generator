@@ -28,9 +28,9 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
     private final EditorBridge bridge;
 
     public ModuxFileEditor(Project project, VirtualFile file) {
-        this.file = file;
-        this.modelRoot = file.getParent();
-        this.bridge = new EditorBridge(project, modelRoot);
+        this.file = file;                                 // the view document
+        this.modelRoot = ModuxProject.catalogRootFor(file);   // its catalog (.modux/), may be null
+        this.bridge = new EditorBridge(project, modelRoot, file);
         Disposer.register(this, bridge);
     }
 
