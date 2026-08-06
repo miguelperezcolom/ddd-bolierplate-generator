@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.1.0"
+version = "0.1.1"
 
 repositories {
     mavenCentral()
@@ -54,7 +54,7 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
-            <h4>0.1.0</h4>
+            <h4>0.1.1</h4>
             <p>First release. The modux model editor, inside the IDE.</p>
             <ul>
               <li>Graphical editor over the YAML model in your repository — no server to run.</li>
