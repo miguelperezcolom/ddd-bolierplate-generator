@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,7 +42,8 @@ class GenerationGranularStorageTest {
         // 2. split into a granular tree
         var granularDir = Files.createTempDirectory("modux-granular");
         repository.splitTo(granularDir);
-        assertTrue(Files.exists(granularDir.resolve("index.yaml")), "granular store has no index.yaml");
+        assertFalse(Files.exists(granularDir.resolve("index.yaml")),
+                "the directories are the index now — no manifest file (§12.3)");
         assertTrue(Files.exists(granularDir.resolve("aggregates").resolve("reserva.yaml")),
                 "expected one file per element (aggregates/reserva.yaml)");
 
