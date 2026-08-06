@@ -112,6 +112,7 @@ public final class EditorBridge implements Disposable {
             var files = filesFor(request);
             var result = switch (op) {
                 case "list" -> GSON.toJsonTree(files.list(path(request)));
+                case "listDirs" -> GSON.toJsonTree(files.listDirs(path(request)));
                 case "read" -> GSON.toJsonTree(files.read(path(request)));
                 case "exists" -> GSON.toJsonTree(files.exists(path(request)));
                 case "flush" -> flush(request);

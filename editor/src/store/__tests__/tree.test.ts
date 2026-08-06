@@ -15,6 +15,17 @@ function memoryFs() {
         .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
         .map((p) => p.slice(prefix.length));
     },
+    async listDirs(dir) {
+      const prefix = `${dir}/`;
+      const dirs = new Set<string>();
+      for (const p of files.keys()) {
+        if (!p.startsWith(prefix)) continue;
+        const rest = p.slice(prefix.length);
+        const slash = rest.indexOf('/');
+        if (slash > 0) dirs.add(rest.slice(0, slash));
+      }
+      return [...dirs];
+    },
     async read(path) {
       const content = files.get(path);
       if (content === undefined) throw new Error(`no such file: ${path}`);
@@ -91,7 +102,6 @@ describe('round trip', () => {
 
   it('preserves element types this build does not know about', async () => {
     const { fs } = memoryFs();
-    await fs.write('modux/index.yaml', toYaml({ formatVersion: 1, counts: { gizmos: 1 } }));
     await fs.write('modux/gizmos/g-1.yaml', toYaml({ id: 'g-1', name: 'Gizmo' }));
 
     const store = await loadTree(fs, 'modux');
@@ -114,7 +124,7 @@ describe('incremental writes', () => {
     apply(store, { kind: 'add-note', id: 'note-1', text: 'hola' });
     await flush(fs, 'modux', store);
 
-    expect(writes).toEqual(['modux/notes/note-1.yaml', 'modux/index.yaml']);
+    expect(writes).toEqual(['modux/notes/note-1.yaml']);
   });
 
   it('leaves untouched elements alone when a sibling changes', async () => {
@@ -127,7 +137,7 @@ describe('incremental writes', () => {
     apply(store, { kind: 'remove-note', id: 'note-2' });
     await flush(fs, 'modux', store);
 
-    expect(writes).toEqual(['modux/index.yaml']);
+    expect(writes).toEqual([]);
   });
 
   it('deletes the file of a removed element', async () => {
@@ -150,16 +160,5 @@ describe('incremental writes', () => {
 
     expect(writes).toEqual([]);
     expect(deletes).toEqual([]);
-  });
-
-  it('keeps the index counts in step with the tree', async () => {
-    const { fs, store } = await seeded();
-    apply(store, { kind: 'add-aggregate', id: 'agg-1', name: 'A', boundedContextId: 'bc-booking' });
-    await flush(fs, 'modux', store);
-
-    const index = await fs.read('modux/index.yaml');
-
-    expect(index).toContain('aggregates: 1');
-    expect(index).toContain('boundedContexts: 1');
   });
 });

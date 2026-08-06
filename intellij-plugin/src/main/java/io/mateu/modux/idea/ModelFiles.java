@@ -42,6 +42,16 @@ public final class ModelFiles {
                 .toList();
     }
 
+    /** Subdirectory names directly inside a directory — the element buckets (§12.3). */
+    public List<String> listDirs(String dir) {
+        var directory = resolve(dir);
+        if (directory == null || !directory.isDirectory()) return List.of();
+        return Arrays.stream(directory.getChildren())
+                .filter(VirtualFile::isDirectory)
+                .map(VirtualFile::getName)
+                .toList();
+    }
+
     public String read(String path) throws IOException {
         var file = resolve(path);
         if (file == null) throw new IOException("no such file: " + path);

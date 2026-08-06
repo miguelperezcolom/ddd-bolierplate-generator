@@ -38,21 +38,20 @@ final class ReferencedProjects {
         }
         var name = repositoryName(gitUrl);
         if (name == null) return null;
-        // <siblings>/<name>/modux, then <siblings>/<name>: a model root is conventionally
-        // `<repo>/modux` (§4.6), but a bare model directory is a project too
+        // The catalog is <repo>/.modux (§12.3); modelRoot is that catalog, so its grandparent is
+        // where sibling checkouts sit.
         var siblings = modelRoot.getParent() == null ? null : modelRoot.getParent().getParent();
         if (siblings == null) return null;
         var repo = siblings.findChild(name);
         return repo == null ? null : modelOf(repo);
     }
 
-    /** The directory holding the marker, given a repository root or a model root. */
+    /** The catalog, given a repository root that holds one, or a directory that is one. */
     private static @Nullable VirtualFile modelOf(@Nullable VirtualFile candidate) {
         if (candidate == null || !candidate.isDirectory()) return null;
-        if (ModuxProject.isMarker(candidate.findChild(ModuxProject.MARKER))) return candidate;
-        var nested = candidate.findChild(ModuxProject.CONVENTIONAL_DIR);
-        return nested != null && ModuxProject.isMarker(nested.findChild(ModuxProject.MARKER))
-                ? nested : null;
+        if (ModuxProject.isCatalog(candidate)) return candidate;
+        var catalog = candidate.findChild(ModuxProject.CATALOG_DIR);
+        return ModuxProject.isCatalog(catalog) ? catalog : null;
     }
 
     /**
