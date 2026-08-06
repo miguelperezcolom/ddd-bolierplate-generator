@@ -5,8 +5,9 @@
 > `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`),
 > **B3** (vistas computadas: `kind: COMPUTED` + `seedId`), **C** (carga parcial read-only de un cierre:
 > `--modux.load-view`). Track A y B completos. Ver §8.
-> **Propuesto, no implementado:** la *capa de lienzo* — el editor gráfico como documento
-> `*.modux-view.yaml` que referencia un corte del catálogo. Ver §12.
+> **D — capa de lienzo:** ✅ implementado (PR #3, #4). El editor gráfico como documento
+> `*.modux-view.yaml` que referencia un corte del catálogo; el catálogo es `.modux/` **sin
+> `index.yaml`** (el nombre del directorio es el marcador). Ver §12.
 > Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md), [`ide-plugin.md`](./ide-plugin.md).
 
 ## 1. El problema
@@ -278,8 +279,9 @@ elementos— es la misma tesis de todo el proyecto: una sola fuente de verdad, l
 
 ## 12. Evolución: la capa de lienzo (editor gráfico como documento)
 
-> Estado: **propuesta** (no implementada). Añadida al decidir el editor gráfico del plugin de IDE
-> (ver `ide-plugin.md`). Evoluciona este RFC hacia arriba: no toca A/B/C, se apoya en ellos.
+> Estado: **implementado** — PR #3 (capa de lienzo) y PR #4 (catálogo sin `index.yaml`). Añadida al
+> decidir el editor gráfico del plugin de IDE (ver `ide-plugin.md`). Evoluciona este RFC hacia
+> arriba: no toca A/B/C, se apoya en ellos.
 
 Este RFC dejó el lienzo fuera a propósito (§2, no-objetivo). El plugin de IDE lo trae de vuelta:
 hay un editor gráfico, y la pregunta es dónde vive lo que dibuja. La respuesta separa dos capas
@@ -311,10 +313,10 @@ geometry:                        # lo que hoy es diagrams/{id}.yaml, aquí embeb
   edges: …
 ```
 
-- **`viewId`**: a qué corte del catálogo mira. Un `viewId` colgante es el mismo fallo del §5.3
-  (referencia rota), con un matiz honesto: el fichero de lienzo vive *fuera* de `.modux/`, así que
-  `--modux.check` no lo ve solo; su validación es de editor (al abrir) hasta que se decida indexar
-  los lienzos (P-lienzo-1).
+- **`viewId`**: a qué corte del catálogo mira. Al abrir un lienzo cuyo `viewId` no existe todavía,
+  el editor crea la `ViewEntity` vacía (`CURATED`) en el catálogo —*born-empty*—, así que la vista
+  abre **con scope y vacía**, no mostrando todo el modelo; el usuario la puebla añadiendo miembros.
+  Sigue abierto que `--modux.check` no ve los lienzos, que viven *fuera* de `.modux/` (P-lienzo-1).
 - **`kind`**: la lente. Varios lienzos pueden mirar el **mismo** corte con lentes distintas (un
   context-map y una distribution de `view-reservas`) — cada uno su fichero, su geometría.
 - **`geometry`**: sale de `diagrams/{id}.yaml` (§4.4 de `ide-plugin.md`) al propio documento. Un
@@ -332,6 +334,12 @@ esconderlo es orden.
 Resolución: desde un `*.modux-view.yaml`, el editor sube al `.modux/` más cercano y ese es su
 catálogo. Mismo mecanismo de "marcador más cercano" del §4.6, con el directorio como marcador.
 
+**Realizado (PR #4), sin desviación.** No hay `index.yaml` en ninguna parte: `loadTree` descubre
+los buckets **listando el directorio** (`FileSystem.listDirs`), y `flush`/`writeTree` —y el
+`GranularYamlStorageFormat` del backend— dejan de escribirlo. Los directorios *son* el índice.
+`isCatalog` reconoce `.modux/` solo por el nombre; el viejo marcador (`isMarker` con content-sniff
+de `formatVersion:`) se retiró.
+
 ### 12.4 El editor escribe en dos sitios
 
 Editar un lienzo puede tocar dos ficheros, y es correcto:
@@ -347,21 +355,25 @@ escribe solo lo que cambió— se vuelve crítica: el catálogo lo comparten muc
 Para el puente (`EditorBridge`): de **una** raíz a **dos** —el catálogo (`.modux/`) y el fichero de
 lienzo—; el protocolo file-system se reparte por destino.
 
-### 12.5 Activación y el trabajo en curso
+### 12.5 Activación y creación
 
-- `accept()` del plugin dispara sobre `*.modux-view.yaml`. Un fichero del catálogo se abre como
-  YAML de texto (datos); el editor gráfico **no** se ofrece sobre él.
-- Esto **da la vuelta** al enfoque de la rama `feature/open-element-with-focus` (abrir el editor
-  sobre un fichero de *elemento*). Lo reutilizable de aquella —el deep-link `applyFocus(id)`—
-  sobrevive: saltar dentro de un lienzo, o "revélame este elemento".
+- `accept()` del plugin dispara sobre `*.modux-view.yaml`, y lo abre **en gráfico**
+  (`PLACE_BEFORE_DEFAULT_EDITOR`), con el YAML a una pestaña: un lienzo es un canvas. Un fichero del
+  catálogo se abre como YAML de texto (datos); el editor gráfico **no** se ofrece sobre él.
+- **Dos puertas, un mismo resultado** (documento + `ViewEntity` enlazados por id): *New → Modux
+  Model* inicializa el catálogo `.modux/`; *New → Modux View* crea el documento; y el botón "crear
+  vista desde selección" del editor crea la entidad con los miembros seleccionados y abre su
+  documento (op `createView` del puente). Verificado en sandbox real.
 
 ### 12.6 Preguntas abiertas (lienzo)
 
-- **P-lienzo-1 — Integridad de refs repartidas.** Los `*.modux-view.yaml` viven fuera de `.modux/`;
-  `--modux.check` no los ve. ¿Se indexan, se validan solo al abrir, o `check` recibe globs de
-  lienzos?
-- **P-lienzo-2 — Geometría de scope computado.** Un `kind: COMPUTED` cambia de miembros solo; la
-  geometría de un miembro nuevo aún no existe. ¿Auto-layout al vuelo y persistir al arrastrar?
-  (Inclinación: sí, es lo que ya hace el editor.)
-- **P-lienzo-3 — ¿Lienzo sin `ViewEntity`?** Abrir el editor sobre el catálogo entero sin un corte
-  (la "vista por defecto"): ¿`viewId` ausente = todo el catálogo, o se exige siempre un corte?
+- **P-lienzo-1 — Integridad de refs repartidas.** ⏳ Abierto. Los `*.modux-view.yaml` viven fuera de
+  `.modux/`; `--modux.check` no los ve. ¿Se indexan, se validan solo al abrir, o `check` recibe
+  globs de lienzos?
+- **P-lienzo-2 — Geometría de scope computado.** ⏳ De facto: el editor hace auto-layout al vuelo y
+  persiste al arrastrar, como con cualquier vista; falta decidir si merece algo más explícito.
+- **P-lienzo-3 — ¿Lienzo sin `ViewEntity`?** ✅ Resuelto por *born-empty*: al abrir, si el `viewId`
+  no tiene entidad, se crea vacía, así que una vista siempre tiene su corte. (Un lienzo sin `viewId`
+  —"todo el catálogo"— sigue sin definirse; no ha hecho falta.)
+- **P-lienzo-4 — Ubicación del documento del botón.** El botón "crear vista" deja el lienzo en
+  `<repo>/views/<slug>.modux-view.yaml`. ¿Es la convención buena, o debería preguntar dónde?
