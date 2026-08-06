@@ -61,6 +61,40 @@ public class ModuxProjectTest extends BasePlatformTestCase {
         assertNull(ModuxProject.rootFor(foreign));
     }
 
+    public void testAModuxDirWithTheMarkerIsACatalog() throws Exception {
+        var catalog = myFixture.getTempDirFixture().findOrCreateDir(".modux");
+        marker(catalog);
+
+        assertTrue(ModuxProject.isCatalog(catalog));
+    }
+
+    /** A stray `.modux/` without a model inside must not answer as a catalog. */
+    public void testAModuxDirWithoutTheMarkerIsNotACatalog() throws Exception {
+        var notCatalog = myFixture.getTempDirFixture().findOrCreateDir(".modux");
+
+        assertFalse(ModuxProject.isCatalog(notCatalog));
+    }
+
+    /** A view document, wherever it lives, resolves to the nearest catalog walking up. */
+    public void testAViewResolvesToTheNearestCatalog() throws Exception {
+        var catalog = myFixture.getTempDirFixture().findOrCreateDir(".modux");
+        marker(catalog);
+        var repoRoot = catalog.getParent();
+        var view = WriteAction.computeAndWait(() ->
+                repoRoot.createChildDirectory(this, "docs").createChildData(this, "reservas.modux-view.yaml"));
+
+        assertEquals(catalog, ModuxProject.catalogRootFor(view));
+    }
+
+    public void testAViewDocumentIsRecognisedBySuffix() throws Exception {
+        var dir = myFixture.getTempDirFixture().findOrCreateDir("docs");
+        var view = WriteAction.computeAndWait(() -> dir.createChildData(this, "reservas.modux-view.yaml"));
+        var plain = WriteAction.computeAndWait(() -> dir.createChildData(this, "reservas.yaml"));
+
+        assertTrue(ModuxProject.isViewDocument(view));
+        assertFalse(ModuxProject.isViewDocument(plain));
+    }
+
     private com.intellij.openapi.vfs.VirtualFile marker(com.intellij.openapi.vfs.VirtualFile dir) throws Exception {
         return WriteAction.computeAndWait(() -> {
             var file = dir.createChildData(this, ModuxProject.MARKER);
