@@ -198,6 +198,12 @@ export class ModuxEditor extends LitElement {
   /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
   @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
+  /**
+   * Deep link from the IDE host (§12): open at a given lens and curated scope. Applied once — the
+   * user is free to switch views afterwards — so a model round-trip does not snap them back.
+   */
+  @property({ attribute: false }) open: { view?: string; activeViewId?: string } | null = null;
+
   /** The front door is graphics-first: the context map on the yugo surface. */
   @state() private _view: ViewId = 'context-map';
   /** Last chosen relation type — the default pre-selection in the picker. */
@@ -888,7 +894,15 @@ export class ModuxEditor extends LitElement {
   }
 
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
+  /** Honoured once: the host's requested lens and curated scope, applied when they first arrive. */
+  private _opened = false;
+
   protected willUpdate(changed: PropertyValues): void {
+    if (this.open && !this._opened && (changed.has('open') || changed.has('model'))) {
+      if (this.open.view) this._view = this.open.view as ViewId;
+      this._activeViewId = this.open.activeViewId ?? '';
+      this._opened = true;
+    }
     if (changed.has('model')) this._pendingNames.clear();
     if (changed.has('model')) this.pruneStaleEdgePoints();
     // The interaction working copy resyncs with the projection on every round-trip.

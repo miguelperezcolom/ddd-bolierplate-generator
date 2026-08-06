@@ -6,20 +6,36 @@
  * — same editor, same commands, no server. See `docs/design/ide-plugin.md`.
  */
 
+import { parse, stringify } from 'yaml';
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
-import type { EditorLayout } from '../scene.js';
+import type { DiagramLayout, EditorLayout, ViewLayout } from '../scene.js';
 import { apply, CommandError } from '../store/apply.js';
-import { layoutOf, saveLayout } from '../store/layout.js';
 import { snapshotOf } from '../store/project-snapshot.js';
 import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
 import {
-  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, type IdeFileSystem,
+  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, writeView,
+  type IdeFileSystem,
 } from './ide-fs.js';
 import '../modux-editor.js';
+
+/** The view document (§12): a lens and geometry over a catalog view, referenced by id. */
+interface ViewDoc {
+  viewId?: string;
+  kind?: string;
+  geometry?: ViewLayout | DiagramLayout;
+}
+
+/** Lenses that scope to a curated view; only they key their geometry by the active view id. */
+const CURATED_LENSES = new Set(['context-map', 'distribution']);
+
+/** The layout key the editor stores this view's geometry under — mirrors `ModuxEditor.layoutKey`. */
+function layoutKeyFor(kind: string, viewId?: string): string {
+  return viewId && CURATED_LENSES.has(kind) ? `${kind}@view:${viewId}` : kind;
+}
 
 /** Paths from here are relative to the model root: the host is already rooted there. */
 const ROOT = '';
@@ -43,9 +59,15 @@ export class ModuxEditorIde extends LitElement {
   @state() private layout: EditorLayout = {};
   @state() private error: string | null = null;
   @state() private notice: string | null = null;
+  /** The lens + scope to open at, handed to the editor once the catalog is in. */
+  @state() private open: { view?: string; activeViewId?: string } | null = null;
 
   private store = new ModelStore();
   private fs: IdeFileSystem | null = null;
+
+  /** The view document this editor is bound to: its ref, lens, and where its geometry keys. */
+  private doc: ViewDoc = {};
+  private viewKey = 'context-map';
 
   /** Serializes edits: a command must land before the next one reads the store. */
   private chain: Promise<void> = Promise.resolve();
@@ -69,15 +91,22 @@ export class ModuxEditorIde extends LitElement {
     }
     this.fs = ideFileSystem(bridge);
     try {
+      // The document names the lens and scope; the catalog (.modux/) holds the elements. Geometry
+      // travels with the document, not in the catalog's `diagrams` — so the layout is seeded from
+      // it, under the key the editor will look this view up by.
+      this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
+      this.viewKey = layoutKeyFor(this.doc.kind ?? 'context-map', this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
-      this.layout = layoutOf(this.store);
+      this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
+      this.open = { view: this.doc.kind, activeViewId: this.doc.viewId };
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
-      console.info(`modux: modelo cargado — ${summary(this.store)}`);
+      console.info(`modux: vista abierta — lente=${this.doc.kind ?? 'context-map'} `
+        + `corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
-      this.error = `No se pudo leer el modelo: ${message(e)}`;
-      console.error(`modux: no se pudo leer el modelo: ${message(e)}`);
+      this.error = `No se pudo abrir la vista: ${message(e)}`;
+      console.error(`modux: no se pudo abrir la vista: ${message(e)}`);
     }
   }
 
@@ -121,9 +150,8 @@ export class ModuxEditorIde extends LitElement {
   }
 
   /**
-   * The geometry is model data like everything else — it lives in `diagrams/`, one file per view,
-   * versioned on purpose (§4.4). So it takes the same road as a command: into the store, then out
-   * to the files that changed.
+   * The geometry belongs to the view DOCUMENT now (§12), not to the catalog's `diagrams`. So a
+   * drag lands in the document file — its own undo step — and the catalog is left untouched.
    */
   private onLayoutChanged(event: CustomEvent): void {
     this.layout = event.detail.layout as EditorLayout;
@@ -132,12 +160,13 @@ export class ModuxEditorIde extends LitElement {
   }
 
   private flushLayout(): void {
+    const bridge = hostBridge();
+    if (!bridge) return;
     this.chain = this.chain.then(async () => {
-      if (!this.fs) return;
       try {
-        saveLayout(this.store, this.layout);
-        await flush(this.fs, ROOT, this.store);
-        await this.fs.commit();
+        // Only this view's geometry is the document's; other keys in `layout` (if any) are not.
+        this.doc = { ...this.doc, geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} } };
+        await writeView(bridge, stringify(this.doc));
       } catch (e) {
         this.error = `No se pudo guardar la geometría: ${message(e)}`;
       }
@@ -181,6 +210,7 @@ export class ModuxEditorIde extends LitElement {
       <modux-editor
         .model=${this.model}
         .layout=${this.layout}
+        .open=${this.open}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
       ></modux-editor>

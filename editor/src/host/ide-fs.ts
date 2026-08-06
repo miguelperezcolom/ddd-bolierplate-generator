@@ -54,6 +54,19 @@ export function readOnlyFileSystem(bridge: Bridge, root: string): FileSystem {
   };
 }
 
+/**
+ * The view document the editor is opened on (§12): its raw YAML text. Separate from the catalog
+ * file system — the document is one file, read and written on its own, not part of the tree.
+ */
+export async function readView(bridge: Bridge): Promise<string> {
+  return (await bridge({ op: 'readView' })) as string;
+}
+
+/** Overwrite the view document. Its own undo step, apart from a catalog edit. */
+export async function writeView(bridge: Bridge, content: string): Promise<void> {
+  await bridge({ op: 'writeView', content });
+}
+
 /** The bridge the IDE injected, or null when running outside one. */
 export function hostBridge(): Bridge | null {
   const bridge = (globalThis as { moduxBridge?: Bridge }).moduxBridge;
