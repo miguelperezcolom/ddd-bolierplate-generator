@@ -85,10 +85,37 @@ intellijPlatform {
 }
 
 /**
+ * Build the editor bundle from `editor/`, so the plugin packages the sources it was built with
+ * and not whatever `dist/` happened to hold. That is not hypothetical: `editor/dist` is
+ * gitignored, and the first Marketplace upload shipped a blank editor because the copy step below
+ * copied a month-old build. Depending on the build makes the bundle a function of the sources.
+ *
+ * Incremental: gradle skips it unless the editor sources, its config, or its lockfile changed, so
+ * the normal case pays a hash, not an `npm run build`. Needs node/npm on PATH and the editor's
+ * dependencies installed (`npm ci` in `editor/`); the build fails loudly if either is missing.
+ */
+val buildEditor by tasks.registering(Exec::class) {
+    val editorDir = rootProject.file("../editor")
+    workingDir = editorDir
+    val npm = if (System.getProperty("os.name").startsWith("Windows")) "npm.cmd" else "npm"
+    commandLine(npm, "run", "build")
+
+    inputs.dir(editorDir.resolve("src")).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(
+        editorDir.resolve("package.json"),
+        editorDir.resolve("package-lock.json"),
+        editorDir.resolve("tsconfig.json"),
+        editorDir.resolve("vite.config.ts"),
+    )
+    outputs.dir(editorDir.resolve("dist"))
+}
+
+/**
  * The editor bundle is built by `editor/` and copied in as a plugin resource. The plugin does
  * not vendor a second copy: one editor, two hosts.
  */
 val editorBundle by tasks.registering(Copy::class) {
+    dependsOn(buildEditor)
     from(rootProject.file("../editor/dist")) {
         include("*.js")
     }
