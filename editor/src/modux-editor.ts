@@ -198,6 +198,18 @@ export class ModuxEditor extends LitElement {
   /** On a solution (to-be): element id → ADDED | MODIFIED, drawn as diff rings. */
   @property({ attribute: false }) diff: Record<string, 'ADDED' | 'MODIFIED'> | null = null;
 
+  /**
+   * Deep link from the IDE host (§12): open at a given lens and curated scope. Applied once — the
+   * user is free to switch views afterwards — so a model round-trip does not snap them back.
+   */
+  @property({ attribute: false }) open: { view?: string; activeViewId?: string } | null = null;
+
+  /**
+   * True inside the IDE plugin, where a view is a document file (§12): creating one opens its
+   * document rather than scoping the current sheet in place, which is the web host's behaviour.
+   */
+  @property({ type: Boolean }) hosted = false;
+
   /** The front door is graphics-first: the context map on the yugo surface. */
   @state() private _view: ViewId = 'context-map';
   /** Last chosen relation type — the default pre-selection in the picker. */
@@ -888,7 +900,15 @@ export class ModuxEditor extends LitElement {
   }
 
   /** Adopt the persisted detail level when the host hands us a (re)loaded layout. */
+  /** Honoured once: the host's requested lens and curated scope, applied when they first arrive. */
+  private _opened = false;
+
   protected willUpdate(changed: PropertyValues): void {
+    if (this.open && !this._opened && (changed.has('open') || changed.has('model'))) {
+      if (this.open.view) this._view = this.open.view as ViewId;
+      this._activeViewId = this.open.activeViewId ?? '';
+      this._opened = true;
+    }
     if (changed.has('model')) this._pendingNames.clear();
     if (changed.has('model')) this.pruneStaleEdgePoints();
     // The interaction working copy resyncs with the projection on every round-trip.
@@ -2226,9 +2246,17 @@ export class ModuxEditor extends LitElement {
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
-    // You created it to work in it: the new vista opens with the CURRENT sheet
-    // (geometry + expansion) as the seed of its own.
-    this.activateVista(id);
+    this.afterViewCreated(id, name);
+  }
+
+  /**
+   * The entity is in the catalog; now surface the view. In the IDE a view is a document (§12), so
+   * ask the host to write and open it — the document is the artifact you keep, the entity its
+   * backing scope. In the web host, where there are no documents, scope the current sheet in place.
+   */
+  private afterViewCreated(id: string, name: string): void {
+    if (this.hosted) this.emit('create-view', { viewId: id, name, kind: this._view });
+    else this.activateVista(id);
   }
 
   /** The catalog members currently on stage as top-level nodes (vista candidates). */
@@ -5380,7 +5408,7 @@ export class ModuxEditor extends LitElement {
               }
               const id = crypto.randomUUID();
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
-              this.activateVista(id);
+              this.afterViewCreated(id, e.detail.name);
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });

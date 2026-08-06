@@ -9,17 +9,19 @@ import com.intellij.ui.jcef.JBCefApp;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Offers the graphical editor for a model marker.
+ * Offers the graphical editor for a view document ({@code *.modux-view.yaml}, §12).
  *
- * <p>It is offered alongside the plain YAML editor rather than replacing it: {@code index.yaml}
- * is still a text file, and being able to read it as text is part of the point of keeping the
- * model in the repository.
+ * <p>Graphics first (see {@link #getPolicy()}), with the raw YAML still one tab away — a view is a
+ * canvas, and reading it as text stays possible on purpose. The catalog itself is not offered here:
+ * it is data, and opens as plain YAML.
  */
 public final class ModuxFileEditorProvider implements FileEditorProvider {
 
     @Override
     public boolean accept(@NotNull Project project, @NotNull VirtualFile file) {
-        return ModuxProject.isMarker(file) && JBCefApp.isSupported();
+        // The graphical editor opens on a view document (§12), not on the catalog — the catalog is
+        // data, and opens as plain YAML.
+        return ModuxProject.isViewDocument(file) && JBCefApp.isSupported();
     }
 
     @Override
@@ -34,6 +36,8 @@ public final class ModuxFileEditorProvider implements FileEditorProvider {
 
     @Override
     public @NotNull FileEditorPolicy getPolicy() {
-        return FileEditorPolicy.PLACE_AFTER_DEFAULT_EDITOR;
+        // A view document is a canvas: show the graphical editor first, with the raw YAML still one
+        // tab away. (The catalog, by contrast, is data and is not offered here at all.)
+        return FileEditorPolicy.PLACE_BEFORE_DEFAULT_EDITOR;
     }
 }
