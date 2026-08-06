@@ -5,7 +5,9 @@
 > `View` + cierre `--modux.view`), **B2** (generación por slice: `--modux.generate … --modux.view …`),
 > **B3** (vistas computadas: `kind: COMPUTED` + `seedId`), **C** (carga parcial read-only de un cierre:
 > `--modux.load-view`). Track A y B completos. Ver §8.
-> Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md).
+> **Propuesto, no implementado:** la *capa de lienzo* — el editor gráfico como documento
+> `*.modux-view.yaml` que referencia un corte del catálogo. Ver §12.
+> Relacionado: [`flows-intent-layer.md`](./flows-intent-layer.md), [`two-zone-codegen.md`](./two-zone-codegen.md), [`ide-plugin.md`](./ide-plugin.md).
 
 ## 1. El problema
 
@@ -273,3 +275,93 @@ modux ya es un catálogo (en memoria, un `Map` por id). Faltan dos piezas **inde
 *almacenamiento granular* (el lever de escala real) y *vistas como proyecciones cerradas en
 dependencias* (comprensión, edición y generación parcial). La regla sagrada —la vista nunca posee
 elementos— es la misma tesis de todo el proyecto: una sola fuente de verdad, lo derivable se computa.
+
+## 12. Evolución: la capa de lienzo (editor gráfico como documento)
+
+> Estado: **propuesta** (no implementada). Añadida al decidir el editor gráfico del plugin de IDE
+> (ver `ide-plugin.md`). Evoluciona este RFC hacia arriba: no toca A/B/C, se apoya en ellos.
+
+Este RFC dejó el lienzo fuera a propósito (§2, no-objetivo). El plugin de IDE lo trae de vuelta:
+hay un editor gráfico, y la pregunta es dónde vive lo que dibuja. La respuesta separa dos capas
+que hasta ahora estaban medio pegadas.
+
+### 12.1 Dos capas, una fuente de scope
+
+- **Corte semántico** — `ViewEntity` en el catálogo. Es lo del §6: `CURATED`/`COMPUTED`,
+  `memberIds`/`seedId`. **Dueño único del scope.** Sigue conduciendo `generate --view`, el cierre
+  y la integridad. **No cambia nada.**
+- **Lienzo** — un documento `*.modux-view.yaml`, suelto, que el usuario coloca donde quiera. **No
+  posee scope**: lo *referencia*. Añade lo que el corte semántico no tiene ni debe tener: una
+  **lente** y una **geometría**.
+
+> Decisión (reference, no inline): el lienzo **referencia** una `ViewEntity` por id; no lleva su
+> propio scope. Una sola fuente de verdad del corte —la regla sagrada del §3 aplicada a la nueva
+> capa—: el lienzo es presentación sobre una proyección, nunca una segunda definición de ella.
+
+### 12.2 El documento de lienzo
+
+```yaml
+# reservas.context-map.modux-view.yaml — colocado donde el usuario quiera
+viewId: "view-reservas"          # referencia a la ViewEntity del catálogo (el scope)
+kind: "context-map"              # la lente: context-map | aggregates | ui | flow:<id> | …
+geometry:                        # lo que hoy es diagrams/{id}.yaml, aquí embebido
+  nodes:
+    reserva: { x: 120, y: 80 }
+    uc-crearReserva: { x: 320, y: 80 }
+  edges: …
+```
+
+- **`viewId`**: a qué corte del catálogo mira. Un `viewId` colgante es el mismo fallo del §5.3
+  (referencia rota), con un matiz honesto: el fichero de lienzo vive *fuera* de `.modux/`, así que
+  `--modux.check` no lo ve solo; su validación es de editor (al abrir) hasta que se decida indexar
+  los lienzos (P-lienzo-1).
+- **`kind`**: la lente. Varios lienzos pueden mirar el **mismo** corte con lentes distintas (un
+  context-map y una distribution de `view-reservas`) — cada uno su fichero, su geometría.
+- **`geometry`**: sale de `diagrams/{id}.yaml` (§4.4 de `ide-plugin.md`) al propio documento. Un
+  fichero por lienzo, sin churn cruzado, versionado (misma decisión del §4.4).
+
+### 12.3 El catálogo es `.modux/`, y resuelve por directorio
+
+El catálogo del §5.1 —que aquel escribió como `model/`— y el `modux/` que fijó `ide-plugin.md`
+§4.6 se unifican en **`.modux/` en la raíz del repo**. El nombre del directorio **es el marcador**:
+inequívoco, sin el content-sniff de `formatVersion:` que obligaba `index.yaml`. Se revisa el §4.6 a
+conciencia: su argumento —no ocultar el modelo, que es código de primera clase— lo desactiva esta
+misma capa: cuando navegas por *lienzos* visibles y repartidos, el catálogo es fontanería y
+esconderlo es orden.
+
+Resolución: desde un `*.modux-view.yaml`, el editor sube al `.modux/` más cercano y ese es su
+catálogo. Mismo mecanismo de "marcador más cercano" del §4.6, con el directorio como marcador.
+
+### 12.4 El editor escribe en dos sitios
+
+Editar un lienzo puede tocar dos ficheros, y es correcto:
+
+- **Geometría y lente** → el propio `*.modux-view.yaml`.
+- **Catálogo** (crear/editar/borrar un elemento; añadir/quitar un miembro del corte) → bajo
+  `.modux/`: el elemento y/o los `memberIds` de la `ViewEntity`. **Crear elementos es función del
+  editor**, no solo colocarlos.
+
+Batched como un solo paso de undo (como `ModelFiles.write` hoy). La regla del §4.5 —lee todo,
+escribe solo lo que cambió— se vuelve crítica: el catálogo lo comparten muchos lienzos.
+
+Para el puente (`EditorBridge`): de **una** raíz a **dos** —el catálogo (`.modux/`) y el fichero de
+lienzo—; el protocolo file-system se reparte por destino.
+
+### 12.5 Activación y el trabajo en curso
+
+- `accept()` del plugin dispara sobre `*.modux-view.yaml`. Un fichero del catálogo se abre como
+  YAML de texto (datos); el editor gráfico **no** se ofrece sobre él.
+- Esto **da la vuelta** al enfoque de la rama `feature/open-element-with-focus` (abrir el editor
+  sobre un fichero de *elemento*). Lo reutilizable de aquella —el deep-link `applyFocus(id)`—
+  sobrevive: saltar dentro de un lienzo, o "revélame este elemento".
+
+### 12.6 Preguntas abiertas (lienzo)
+
+- **P-lienzo-1 — Integridad de refs repartidas.** Los `*.modux-view.yaml` viven fuera de `.modux/`;
+  `--modux.check` no los ve. ¿Se indexan, se validan solo al abrir, o `check` recibe globs de
+  lienzos?
+- **P-lienzo-2 — Geometría de scope computado.** Un `kind: COMPUTED` cambia de miembros solo; la
+  geometría de un miembro nuevo aún no existe. ¿Auto-layout al vuelo y persistir al arrastrar?
+  (Inclinación: sí, es lo que ya hace el editor.)
+- **P-lienzo-3 — ¿Lienzo sin `ViewEntity`?** Abrir el editor sobre el catálogo entero sin un corte
+  (la "vista por defecto"): ¿`viewId` ausente = todo el catálogo, o se exige siempre un corte?
