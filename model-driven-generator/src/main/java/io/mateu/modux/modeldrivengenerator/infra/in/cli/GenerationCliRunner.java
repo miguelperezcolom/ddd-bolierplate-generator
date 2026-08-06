@@ -18,7 +18,8 @@ import java.util.List;
  *
  * <pre>
  *   --modux.generate=&lt;projectId&gt; [--modux.output=&lt;dir&gt;]
- *   --modux.check                              # referential-integrity check, exits 1 if broken
+ *   --modux.check                              # referential-integrity check (catalog + view
+ *                                              # documents), exits 1 if broken
  *   --modux.lint                               # full lint catalog, exits 1 on ERROR findings
  *   --modux.lint --modux.watch                 # re-lint on every store save (the authoring loop)
  * </pre>
@@ -228,7 +229,8 @@ public class GenerationCliRunner implements ApplicationRunner {
     }
 
     private void runCheck() {
-        var violations = checkModelUseCase.check();
+        var violations = new java.util.ArrayList<>(checkModelUseCase.check());
+        violations.addAll(checkViewDocuments());
         if (violations.isEmpty()) {
             log.info("Model check passed: no dangling references found.");
             System.exit(SpringApplication.exit(context, () -> 0));
@@ -237,6 +239,25 @@ public class GenerationCliRunner implements ApplicationRunner {
         log.error("Model check failed: {} dangling reference(s) found:", violations.size());
         violations.forEach(v -> log.error("  - {}", v));
         System.exit(SpringApplication.exit(context, () -> 1));
+    }
+
+    /** View documents scattered in the repo whose viewId no longer resolves to a catalog view. */
+    private List<CheckModelUseCase.Violation> checkViewDocuments() {
+        var storePath = repository.storePath();
+        // the catalog is <repo>/.modux; its parent is the repo, which is where the documents live
+        var repoRoot = storePath == null ? null : storePath.getParent();
+        var viewIds = repository.findAllOfType(
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity.class).stream()
+                .map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewEntity::id)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        try {
+            return io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ViewDocumentChecker
+                    .check(repoRoot, viewIds);
+        } catch (java.io.IOException e) {
+            log.warn("Could not scan for view documents under {}: {}", repoRoot, e.getMessage());
+            return List.of();
+        }
     }
 
     private static String firstOrNull(List<String> values) {
