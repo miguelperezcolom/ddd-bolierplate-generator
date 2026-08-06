@@ -378,3 +378,6 @@ lienzo—; el protocolo file-system se reparte por destino.
   —"todo el catálogo"— sigue sin definirse; no ha hecho falta.)
 - **P-lienzo-4 — Ubicación del documento del botón.** El botón "crear vista" deja el lienzo en
   `<repo>/views/<slug>.modux-view.yaml`. ¿Es la convención buena, o debería preguntar dónde?
+
+Las que quedan abiertas (P-lienzo-2 y P-lienzo-4) se discuten en la comunidad:
+[Discord](https://discord.gg/Rt8ae3m4a3).
