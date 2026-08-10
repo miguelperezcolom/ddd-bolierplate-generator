@@ -11,10 +11,14 @@ public enum StepPhase {
     GATHER,
     /** Reshapes data: apply a model mapping. */
     TRANSFORM,
-    /** Produces an effect: mutate an aggregate, publish an event, call outbound. */
+    /** Produces an effect: mutate an aggregate, set a field, publish an event, call outbound. */
     WRITE,
-    /** Delegates to another pipeline (call use case). */
+    /** Delegates to another pipeline (call use case, call domain service). */
     COMPOSE,
+    /** Guards the pipeline: a precondition/invariant check that decides whether to proceed. */
+    GUARD,
+    /** Structures the pipeline: control flow (if/else, for-each) that nests other steps. */
+    CONTROL,
     /** Free-form code (two-zone hook) — the model cannot classify it. */
     CUSTOM
 }

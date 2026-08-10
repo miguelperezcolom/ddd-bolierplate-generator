@@ -87,6 +87,9 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "description" : {
+          "type" : "string"
+        },
         "eventSourcingEnabled" : {
           "type" : "boolean"
         },
@@ -357,6 +360,16 @@
           "description" : "Reference to an existing 'targetBoundedContext' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "targetQueryOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'targetQueryOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "targetQueryServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'targetQueryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "targetUseCaseId" : {
           "type" : "string",
           "description" : "Reference to an existing 'targetUseCase' id (referential integrity is checked by the linter).",
@@ -389,6 +402,9 @@
     "ApplicationEventEntity" : {
       "type" : "object",
       "properties" : {
+        "description" : {
+          "type" : "string"
+        },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
@@ -951,6 +967,7 @@
           "type" : "string"
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "CustomCodeEntity" : {
@@ -1026,6 +1043,78 @@
     "DecisionStatus" : {
       "type" : "string",
       "enum" : [ "PROPOSED", "ACCEPTED", "DEPRECATED", "SUPERSEDED" ]
+    },
+    "DeploymentEntity" : {
+      "type" : "object",
+      "properties" : {
+        "cacheProvider" : {
+          "$ref" : "#/$defs/CacheProvider"
+        },
+        "cicdProvider" : {
+          "type" : "string"
+        },
+        "database" : {
+          "type" : "string"
+        },
+        "dbMigrationTool" : {
+          "$ref" : "#/$defs/DbMigrationTool"
+        },
+        "dockerRegistry" : {
+          "type" : "string"
+        },
+        "emailProvider" : {
+          "$ref" : "#/$defs/EmailProvider"
+        },
+        "environments" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/ProjectEnvironmentConfigEntity"
+          }
+        },
+        "fileStorageProvider" : {
+          "$ref" : "#/$defs/FileStorageProvider"
+        },
+        "iamProvider" : {
+          "$ref" : "#/$defs/IamProvider"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "llmProvider" : {
+          "$ref" : "#/$defs/LlmProvider"
+        },
+        "loggingProvider" : {
+          "$ref" : "#/$defs/LoggingProvider"
+        },
+        "messageBrokerType" : {
+          "$ref" : "#/$defs/MessageBrokerType"
+        },
+        "metricsProvider" : {
+          "$ref" : "#/$defs/MetricsProvider"
+        },
+        "secretsProvider" : {
+          "$ref" : "#/$defs/SecretsProvider"
+        },
+        "tenancyStrategy" : {
+          "$ref" : "#/$defs/TenancyStrategy"
+        },
+        "terraformBackendType" : {
+          "$ref" : "#/$defs/TerraformBackendType"
+        },
+        "terraformProvider" : {
+          "$ref" : "#/$defs/TerraformProvider"
+        },
+        "terraformProviderVersion" : {
+          "type" : "string"
+        },
+        "tracingProvider" : {
+          "$ref" : "#/$defs/TracingProvider"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
     },
     "DiagramEdgeEntity" : {
       "type" : "object",
@@ -1183,6 +1272,9 @@
         "deadLetterQueueName" : {
           "type" : "string"
         },
+        "description" : {
+          "type" : "string"
+        },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
@@ -1300,10 +1392,19 @@
     "EntityEntity" : {
       "type" : "object",
       "properties" : {
+        "description" : {
+          "type" : "string"
+        },
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "invariants" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InvariantEntity"
+          }
         },
         "isCollection" : {
           "type" : "boolean"
@@ -1569,9 +1670,12 @@
         "protocol" : {
           "$ref" : "#/$defs/ExternalSystemProtocol"
         },
+        "referencedProject" : {
+          "$ref" : "#/$defs/ReferencedProjectEntity"
+        },
         "referencedRepositoryId" : {
           "type" : "string",
-          "description" : "Reference to an existing 'referencedRepository' id (referential integrity is checked by the linter).",
+          "description" : "LEGACY: the id this reference had in ~/.modux/repositories.yaml, before coordinates were versioned with the model. Do not write it — use 'referencedProject'. It is migrated away on load when that registry is still around.",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "tables" : {
@@ -1587,6 +1691,7 @@
           }
         }
       },
+      "required" : [ "id" ],
       "additionalProperties" : false
     },
     "ExternalSystemProtocol" : {
@@ -2403,6 +2508,14 @@
         "basicType" : {
           "type" : "boolean"
         },
+        "collection" : {
+          "type" : "boolean"
+        },
+        "entityId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'entity' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "enum" : {
           "type" : "boolean"
         },
@@ -2444,6 +2557,11 @@
           "items" : {
             "$ref" : "#/$defs/ModelFieldValidationEntity"
           }
+        },
+        "valueObjectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'valueObject' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         }
       },
       "additionalProperties" : false
@@ -2587,6 +2705,9 @@
           "description" : "Reference to an existing 'boundedContext' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "description" : {
+          "type" : "string"
+        },
         "elementIds" : {
           "description" : "References to existing 'element' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -2661,6 +2782,9 @@
             "type" : "string"
           }
         },
+        "description" : {
+          "type" : "string"
+        },
         "eventId" : {
           "type" : "string",
           "description" : "Reference to an existing 'event' id (referential integrity is checked by the linter).",
@@ -2708,6 +2832,9 @@
         "defaultPageSize" : {
           "type" : "integer"
         },
+        "description" : {
+          "type" : "string"
+        },
         "emits" : {
           "type" : "string"
         },
@@ -2741,11 +2868,135 @@
         "sets" : {
           "type" : "string"
         },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
         "type" : {
           "type" : "string"
         }
       },
       "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "OperationStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "aggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "applicationEventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'applicationEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "body" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "collection" : {
+          "type" : "string"
+        },
+        "condition" : {
+          "type" : "string"
+        },
+        "customCodeId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'customCode' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "domainEventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "domainServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'domainService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "else" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "externalUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'externalUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "fieldName" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "gatewayOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'gatewayOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "intent" : {
+          "type" : "string"
+        },
+        "itemVar" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "then" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "type" : {
+          "$ref" : "#/$defs/UseCaseStepType"
+        },
+        "useCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "value" : {
+          "type" : "string"
+        }
+      },
       "additionalProperties" : false
     },
     "PageButtonEntity" : {
@@ -2841,6 +3092,9 @@
           "type" : "string",
           "description" : "Reference to an existing 'customCode' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "description" : {
+          "type" : "string"
         },
         "favicon" : {
           "type" : "string"
@@ -3778,6 +4032,21 @@
       "type" : "string",
       "enum" : [ "Document", "Relational", "KeyValue", "InMemory" ]
     },
+    "ReferencedProjectEntity" : {
+      "type" : "object",
+      "properties" : {
+        "branch" : {
+          "type" : "string"
+        },
+        "gitUrl" : {
+          "type" : "string"
+        },
+        "path" : {
+          "type" : "string"
+        }
+      },
+      "additionalProperties" : false
+    },
     "RoleEntity" : {
       "type" : "object",
       "properties" : {
@@ -3804,6 +4073,9 @@
             "type" : "string",
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
+        },
+        "description" : {
+          "type" : "string"
         },
         "externalSystemIds" : {
           "description" : "References to existing 'externalSystem' ids (referential integrity is checked by the linter).",
@@ -3845,6 +4117,12 @@
           "type" : "integer"
         },
         "deadLetterQueue" : {
+          "type" : "string"
+        },
+        "defaultMaxStepExecutions" : {
+          "type" : "integer"
+        },
+        "description" : {
           "type" : "string"
         },
         "id" : {
@@ -3922,6 +4200,9 @@
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "maxSuccessfulExecutions" : {
+          "type" : "integer"
         },
         "modelMappingId" : {
           "type" : "string",
@@ -4040,6 +4321,9 @@
           "$ref" : "#/$defs/DbMigrationTool"
         },
         "deploymentStrategy" : {
+          "type" : "string"
+        },
+        "description" : {
           "type" : "string"
         },
         "dockerImageName" : {
@@ -4256,6 +4540,9 @@
         "deadLetterTopic" : {
           "type" : "string"
         },
+        "description" : {
+          "type" : "string"
+        },
         "eventName" : {
           "type" : "string"
         },
@@ -4379,6 +4666,9 @@
         },
         "appVariant" : {
           "$ref" : "#/$defs/UiAppVariant"
+        },
+        "description" : {
+          "type" : "string"
         },
         "editPageId" : {
           "type" : "string",
@@ -4793,6 +5083,9 @@
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
         },
+        "description" : {
+          "type" : "string"
+        },
         "exposedAsAsync" : {
           "type" : "boolean"
         },
@@ -4967,12 +5260,15 @@
     },
     "UseCaseStepType" : {
       "type" : "string",
-      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "CallExternalUseCase", "PublishDomainEvent", "PublishApplicationEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping" ]
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "CallExternalUseCase", "PublishDomainEvent", "PublishApplicationEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping", "CheckPrecondition", "SetField", "CallDomainService", "If", "ForEach" ]
     },
     "ValueObjectEntity" : {
       "type" : "object",
       "properties" : {
         "dataType" : {
+          "type" : "string"
+        },
+        "description" : {
           "type" : "string"
         },
         "fieldsJson" : {
@@ -4981,6 +5277,17 @@
         "id" : {
           "type" : "string",
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "invariants" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/InvariantEntity"
+          }
+        },
+        "modelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'model' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
         "name" : {
@@ -5050,6 +5357,9 @@
             "type" : "string",
             "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
           }
+        },
+        "defaultMaxStepExecutions" : {
+          "type" : "integer"
         },
         "description" : {
           "type" : "string"
@@ -5194,6 +5504,9 @@
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "maxSuccessfulExecutions" : {
+          "type" : "integer"
+        },
         "name" : {
           "type" : "string"
         },
@@ -5287,6 +5600,12 @@
         "$ref" : "#/$defs/ComponentEntity"
       }
     },
+    "contextMapRelations" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ContextMapRelationEntity"
+      }
+    },
     "customCodes" : {
       "type" : "array",
       "items" : {
@@ -5298,6 +5617,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/DecisionEntity"
+      }
+    },
+    "deployments" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/DeploymentEntity"
       }
     },
     "diagrams" : {
@@ -5343,6 +5668,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/EtlFlowEntity"
+      }
+    },
+    "externalSystems" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ExternalSystemEntity"
       }
     },
     "flows" : {
