@@ -10,6 +10,10 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEnti
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainServiceEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationBodyDesugar;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.BusinessRuleEntity;
 import io.mateu.modux.modeldrivengenerator.application.out.store.ModelStore;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType;
@@ -62,6 +66,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -375,6 +380,14 @@ public class GenerateCodeUseCase {
                 .map(aggregateId -> repository.findById(aggregateId, AggregateEntity.class).orElseThrow())
                 .filter(aggregate -> inScope(aggregate.id()))
                 .forEach(aggregate -> generateAggregate(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, aggregate));
+
+        // Domain services owned by this bounded context (operation-body.md Phase 4): a stateless
+        // coordinator interface + a developer-owned default impl scaffolding each operation body.
+        (boundedContext.domainServiceIds() != null ? boundedContext.domainServiceIds() : List.<String>of()).stream()
+                .map(id -> repository.findById(id, DomainServiceEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .filter(ds -> inScope(ds.id()))
+                .forEach(ds -> generateDomainService(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, ds));
 
         // Per-boundedContext menu: groups this boundedContext's operation pages (exposedAsUi
         // use cases) and CRUDs under a single entry in the app Home
@@ -807,39 +820,49 @@ public class GenerateCodeUseCase {
         }
 
         if (aggregate.operations() != null) {
-            aggregate.operations().stream()
-                    .filter(operation -> operation.type() != null && "CUSTOM".equals(operation.type()))
-                    .map(operationEntity -> new OperationDto(
-                            operationEntity.id(),
-                            operationEntity.name(),
-                            operationEntity.inputModelId(),
-                            operationEntity.outputModelId(),
-                            splitCsv(operationEntity.preconditions()),
-                            listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
-                            splitCsv(operationEntity.emits()),
-                            OperationType.valueOf(operationEntity.type()),
-                            operationEntity.paginated(),
-                            operationEntity.defaultPageSize(),
-                            operationEntity.intent()
-                    ))
-                    .forEach(operation -> {
-                        Map<String, Object> model = new HashMap<>();
-                        model.put("project", projectToMap(project));
-                        model.put("service", serviceToMap(service));
-                        model.put("module", boundedContextToMap(boundedContext));
-                        model.put("aggregate", aggregateToMap(aggregate));
-                        model.put("operation", fromJson(toJson(operation)));
+            for (var operationEntity : aggregate.operations()) {
+                if (operationEntity.type() == null || !"CUSTOM".equals(operationEntity.type())) {
+                    continue;
+                }
+                var operation = new OperationDto(
+                        operationEntity.id(),
+                        operationEntity.name(),
+                        operationEntity.inputModelId(),
+                        operationEntity.outputModelId(),
+                        splitCsv(operationEntity.preconditions()),
+                        listFromJson(operationEntity.sets(), FieldValueSettingDto.class),
+                        splitCsv(operationEntity.emits()),
+                        OperationType.valueOf(operationEntity.type()),
+                        operationEntity.paginated(),
+                        operationEntity.defaultPageSize(),
+                        operationEntity.intent());
 
-                        createFile(boundedContextDir, model, "custom-operation.ftl",
-                                "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
-                                        + "/" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
+                Map<String, Object> model = new HashMap<>();
+                model.put("project", projectToMap(project));
+                model.put("service", serviceToMap(service));
+                model.put("module", boundedContextToMap(boundedContext));
+                model.put("aggregate", aggregateToMap(aggregate));
+                model.put("operation", fromJson(toJson(operation)));
+                // The modeled body (operation-body.md), legacy fields desugared, drives the scaffold.
+                model.put("steps", operationStepsModel(operationEntity));
+                // An explicit modeled body generates executable control-flow structure with typed
+                // two-zone leaf hooks (§5); legacy free-text bodies stay as the guided scaffold.
+                boolean executable = OperationBodyDesugar.hasModeledBody(operationEntity);
+                model.put("executable", executable);
+                if (executable) {
+                    model.put("executableBody", executableBodyModel(operationEntity));
+                }
 
-                        // developer-owned default implementation of the operation (custom boundedContext, write-once)
-                        var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
-                        createCustomFile(customDir, model, "aggregate-operation-default.ftl",
-                                "src/main/java/" + project.packageName().replace(".", "/")
-                                        + "/custom/Default" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
-                    });
+                createFile(boundedContextDir, model, "custom-operation.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName
+                                + "/" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
+
+                // developer-owned default implementation of the operation (custom boundedContext, write-once)
+                var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+                createCustomFile(customDir, model, "aggregate-operation-default.ftl",
+                        "src/main/java/" + project.packageName().replace(".", "/")
+                                + "/custom/Default" + capitalize(operation.name()) + aggregate.name() + "Operation.java");
+            }
         }
 
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "aggregate.ftl",
@@ -3671,6 +3694,164 @@ public class GenerateCodeUseCase {
     private List<String> splitCsv(String value) {
         if (value == null || value.isBlank()) return List.of();
         return Arrays.asList(value.split(","));
+    }
+
+    /**
+     * The modeled body of an operation as a template model: its explicit {@code steps}, or the
+     * desugaring of its legacy {@code preconditions}/{@code sets}/{@code emits} (operation-body.md
+     * §7) — so both flavours drive the same scaffold. Recursive, mirroring control-flow nesting.
+     */
+    private List<Map<String, Object>> operationStepsModel(OperationEntity operation) {
+        return stepsToModel(OperationBodyDesugar.effectiveSteps(operation));
+    }
+
+    /**
+     * Generates a domain service (operation-body.md Phase 4): a stateless coordinator interface in
+     * the owning bounded context, plus a developer-owned {@code Default…} impl in the custom zone
+     * whose operation bodies carry the modeled steps as a guided scaffold. Unlike an aggregate
+     * operation, a domain service has no {@code OperationContext} — leaf logic and dependencies are
+     * the developer's to add. Executable structure-with-hooks for domain services is a follow-up.
+     */
+    private void generateDomainService(ProjectEntity project, ServiceEntity service,
+            BoundedContextEntity boundedContext, String boundedContextDir, String boundedContextPackageDir,
+            DomainServiceEntity domainService) {
+        var typeName = toTypeName(domainService.name());
+        var operations = new ArrayList<Map<String, Object>>();
+        for (var op : (domainService.operations() == null ? List.<OperationEntity>of() : domainService.operations())) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", op.name());
+            if (op.intent() != null) m.put("intent", op.intent());
+            m.put("steps", operationStepsModel(op));
+            operations.add(m);
+        }
+        Map<String, Object> model = new HashMap<>();
+        model.put("project", projectToMap(project));
+        model.put("service", serviceToMap(service));
+        model.put("module", boundedContextToMap(boundedContext));
+        model.put("domainService", Map.of("name", typeName));
+        model.put("operations", operations);
+
+        createFile(boundedContextDir, model, "domain-service.ftl",
+                "src/main/java/" + boundedContextPackageDir + "/domain/services/" + typeName + ".java");
+
+        var customDir = project.outputPath() + "/" + serviceName(service) + "/" + serviceName(service) + "-custom";
+        createCustomFile(customDir, model, "domain-service-operation-default.ftl",
+                "src/main/java/" + project.packageName().replace(".", "/") + "/custom/Default" + typeName + ".java");
+    }
+
+    /**
+     * The executable-body model of an operation with an explicit modeled body (operation-body.md
+     * §5, Phase 3b). Generates real control-flow structure — {@code if}, {@code for},
+     * precondition guards — that delegates every leaf (predicate, collection, effect) to a typed
+     * {@code (context, loopVars…)} hook the developer implements. Always compiles: the structure is
+     * closed and the hooks are stubbed. Returns {@code {body, hooks}} for the template.
+     */
+    private Map<String, Object> executableBodyModel(OperationEntity operation) {
+        var hooks = new java.util.LinkedHashMap<String, Map<String, Object>>();
+        var body = executableSteps(operation.steps(), List.of(), hooks, new HashSet<>());
+        return Map.of("body", body, "hooks", new ArrayList<>(hooks.values()));
+    }
+
+    private List<Map<String, Object>> executableSteps(List<OperationStepEntity> steps,
+            List<String> loopVars, Map<String, Map<String, Object>> hooks, java.util.Set<String> usedNames) {
+        if (steps == null || steps.isEmpty()) return List.of();
+        var out = new ArrayList<Map<String, Object>>();
+        for (var step : steps) {
+            var type = step.type();
+            var name = uniqueHookName(step, usedNames);
+            var call = "context" + loopVars.stream().map(v -> ", " + v).reduce("", String::concat);
+            Map<String, Object> node = new HashMap<>();
+            node.put("name", name);
+            node.put("call", call);
+            node.put("label", (type == null ? "step" : type.name()) + (step.name() != null ? " " + step.name() : ""));
+            if (type == UseCaseStepType.CheckPrecondition) {
+                node.put("render", "precondition");
+                registerHook(hooks, name, "boolean", loopVars);
+            } else if (type == UseCaseStepType.If) {
+                node.put("render", "if");
+                registerHook(hooks, name, "boolean", loopVars);
+                node.put("then", executableSteps(step.then(), loopVars, hooks, usedNames));
+                if (step.elseSteps() != null && !step.elseSteps().isEmpty()) {
+                    node.put("elseBranch", executableSteps(step.elseSteps(), loopVars, hooks, usedNames));
+                }
+            } else if (type == UseCaseStepType.ForEach) {
+                node.put("render", "foreach");
+                registerHook(hooks, name, "Iterable<Object>", loopVars);
+                var itemVar = (step.itemVar() == null || step.itemVar().isBlank())
+                        ? "item" + (loopVars.size() + 1) : sanitizeIdentifier(step.itemVar());
+                node.put("itemVar", itemVar);
+                var inner = new ArrayList<>(loopVars);
+                inner.add(itemVar);
+                node.put("body", executableSteps(step.body(), inner, hooks, usedNames));
+            } else if (type == UseCaseStepType.SetField
+                    && step.value() != null && !step.value().isBlank()
+                    && step.fieldName() != null && !step.fieldName().isBlank()) {
+                // Inline mutation (Phase 3c): the author gave the value expression over `context`.
+                node.put("render", "set");
+                node.put("stmt", "context." + step.fieldName() + "(" + step.value() + ")");
+            } else {
+                node.put("render", "call");
+                registerHook(hooks, name, "void", loopVars);
+            }
+            out.add(node);
+        }
+        return out;
+    }
+
+    private void registerHook(Map<String, Map<String, Object>> hooks, String name, String returnType,
+            List<String> params) {
+        Map<String, Object> hook = new HashMap<>();
+        hook.put("name", name);
+        hook.put("returnType", returnType);
+        hook.put("params", new ArrayList<>(params));
+        hooks.put(name, hook);
+    }
+
+    /** A unique Java identifier for a step's hook, so no two hooks collide on name or arity. */
+    private String uniqueHookName(OperationStepEntity step, java.util.Set<String> used) {
+        var base = sanitizeIdentifier(step.name());
+        if (base.isEmpty()) {
+            base = step.type() == null ? "step" : uncapitalize(step.type().name());
+        }
+        var name = base;
+        var i = 1;
+        while (used.contains(name)) {
+            name = base + "_" + (++i);
+        }
+        used.add(name);
+        return name;
+    }
+
+    private String sanitizeIdentifier(String raw) {
+        if (raw == null) return "";
+        var cleaned = raw.replaceAll("[^A-Za-z0-9]", "");
+        if (cleaned.isEmpty()) return "";
+        var first = Character.toLowerCase(cleaned.charAt(0));
+        return first + cleaned.substring(1);
+    }
+
+    private List<Map<String, Object>> stepsToModel(List<OperationStepEntity> steps) {
+        if (steps == null || steps.isEmpty()) return List.of();
+        var out = new ArrayList<Map<String, Object>>();
+        for (var step : steps) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("type", step.type() == null ? null : step.type().name());
+            m.put("name", step.name());
+            if (step.intent() != null) m.put("intent", step.intent());
+            if (step.fieldName() != null) m.put("fieldName", step.fieldName());
+            if (step.value() != null) m.put("value", step.value());
+            if (step.condition() != null) m.put("condition", step.condition());
+            if (step.collection() != null) m.put("collection", step.collection());
+            if (step.itemVar() != null) m.put("itemVar", step.itemVar());
+            var thenModel = stepsToModel(step.then());
+            if (!thenModel.isEmpty()) m.put("then", thenModel);
+            var elseModel = stepsToModel(step.elseSteps());
+            if (!elseModel.isEmpty()) m.put("elseBranch", elseModel);
+            var bodyModel = stepsToModel(step.body());
+            if (!bodyModel.isEmpty()) m.put("body", bodyModel);
+            out.add(m);
+        }
+        return out;
     }
 
     /**
