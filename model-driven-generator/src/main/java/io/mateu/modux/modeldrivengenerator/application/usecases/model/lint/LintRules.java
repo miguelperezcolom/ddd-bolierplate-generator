@@ -1175,7 +1175,8 @@ public final class LintRules {
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.aggregates().stream()
                     .flatMap(a -> a.operations().stream()
-                            .filter(op -> isBlank(op.sets()) && isBlank(op.emits())
+                            .filter(op -> (op.steps() == null || op.steps().isEmpty())
+                                    && isBlank(op.sets()) && isBlank(op.emits())
                                     && op.outputModelId() == null && isBlank(op.intent()))
                             .map(op -> new LintFinding(id(), LintSeverity.INFO, "Operation", op.id(),
                                     a.name() + "." + op.name(),
@@ -1228,8 +1229,8 @@ public final class LintRules {
                 if (!carrier.allows(step.type())) {
                     out.add(new LintFinding(id(), LintSeverity.ERROR, "OperationStep", step.id(),
                             path + " › " + step.name(),
-                            "Step type " + step.type() + " is not legal in a "
-                                    + carrierLabel(carrier) + " — it stays pure (see operation-body.md §3)."));
+                            "Step type " + step.type() + " is not legal in " + carrierLabel(carrier)
+                                    + " — it stays pure (see operation-body.md §3)."));
                 }
                 if (step.then() != null) checkSteps(step.then(), carrier, path, out);
                 if (step.elseSteps() != null) checkSteps(step.elseSteps(), carrier, path, out);
@@ -1238,7 +1239,7 @@ public final class LintRules {
         }
 
         private static String carrierLabel(OperationCarrier carrier) {
-            return carrier == OperationCarrier.AGGREGATE ? "aggregate method" : "domain service";
+            return carrier == OperationCarrier.AGGREGATE ? "an aggregate method" : "a domain service";
         }
     }
 

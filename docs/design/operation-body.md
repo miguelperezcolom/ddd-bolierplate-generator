@@ -348,12 +348,14 @@ Se llevan a la [comunidad de Discord](../../README.md) según se implementen:
   llama a A), o basta el DAG que ya se exige a workflows/sagas?
 - ¿El desazúcar de `emits` con varios eventos separados por coma es suficiente, o hace falta una
   gramática explícita como la de `when` en flows (§10.1 de `flows-intent-layer.md`)?
-- **Fase 3b (hecha vía hooks) · Fase 3c (parcial).** La estructura ejecutable se genera con hooks de
-  dos zonas tipados, que compilan siempre. **3c — inline:** `SetField` con `value` ya emite
-  `context.campo(valor)` inline (el autor posee la validez de la expresión; caveat de imports). Falta,
-  para inline completo: (a) modelar el **payload del evento** para `PublishDomainEvent` →
-  `new {Evento}Event(…)`; (c) una **gramática de expresiones** para `condition`/`collection` que
-  garantice Java válido con imports, y su uso seguro sobre variables de bucle (hoy `Object`). Los
-  hooks siguen siendo el camino por defecto; el inline es opt-in por paso cuando hay expresión.
+- **Fase 3b/3c — todo son hooks (el inline se revirtió).** La estructura ejecutable se genera con
+  hooks de dos zonas tipados, que compilan siempre; **toda hoja** (guarda, mutación, evento, call,
+  custom) es un hook. Se intentó inline de `SetField` (`context.campo(valor)`, 3c), pero el
+  **dogfooding lo tumbó**: el tipo del setter del contexto no casa con un valor de texto libre (p.
+  ej. un campo `status` se modela como `String`, no acepta `Status.CONFIRMED`) y además faltan
+  imports. El `value` se conserva en el modelo y se muestra en el esquema-guía, pero **no se
+  inlinea**. Inline compilable requeriría resolver el tipo Java del campo y sus imports (un
+  *value-hook* tipado) + modelar el payload del evento + una gramática de expresiones (§12): queda
+  como mejora futura opt-in, con los hooks como camino por defecto.
 - **Cosmético:** la estructura generada no está indentada (Java lo ignora; el IDE reformatea). Un
   pretty-print del cuerpo generado es mejora menor.

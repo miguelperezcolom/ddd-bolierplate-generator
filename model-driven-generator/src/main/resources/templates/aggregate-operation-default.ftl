@@ -52,8 +52,6 @@
         for (var ${s.itemVar} : ${s.name}(${s.call})) {
 <@exec s.body![]/>
         }
-<#elseif s.render == "set">
-        ${s.stmt};
 <#else>
         ${s.name}(${s.call});
 </#if>

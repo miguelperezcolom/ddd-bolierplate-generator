@@ -3783,13 +3783,10 @@ public class GenerateCodeUseCase {
                 var inner = new ArrayList<>(loopVars);
                 inner.add(itemVar);
                 node.put("body", executableSteps(step.body(), inner, hooks, usedNames));
-            } else if (type == UseCaseStepType.SetField
-                    && step.value() != null && !step.value().isBlank()
-                    && step.fieldName() != null && !step.fieldName().isBlank()) {
-                // Inline mutation (Phase 3c): the author gave the value expression over `context`.
-                node.put("render", "set");
-                node.put("stmt", "context." + step.fieldName() + "(" + step.value() + ")");
             } else {
+                // Every leaf (mutation, event, call, custom) is a typed two-zone hook: the developer
+                // writes the body with the right types/imports. Inlining a free-text value/expression
+                // is not compile-safe (type of the context setter, imports) — dogfooding confirmed it.
                 node.put("render", "call");
                 registerHook(hooks, name, "void", loopVars);
             }

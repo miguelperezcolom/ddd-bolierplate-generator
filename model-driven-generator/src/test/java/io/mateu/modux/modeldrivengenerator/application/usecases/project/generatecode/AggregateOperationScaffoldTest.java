@@ -103,21 +103,6 @@ class AggregateOperationScaffoldTest {
         assertFalse(out.contains("Pendiente de implementar"), out);
     }
 
-    @Test
-    void set_field_with_a_value_expression_inlines_the_mutation() throws Exception {
-        var set = new java.util.HashMap<String, Object>();
-        set.put("render", "set");
-        set.put("stmt", "context.estado(Estado.CONFIRMADA)");
-        var model = new java.util.HashMap<String, Object>(baseModel(List.of()));
-        model.put("executable", true);
-        model.put("executableBody", Map.of("body", List.of(set), "hooks", List.of()));
-
-        var out = render(model);
-
-        assertTrue(out.contains("context.estado(Estado.CONFIRMADA);"), out);
-        assertFalse(out.contains("Pendiente de implementar"), out);
-    }
-
     private static java.util.Map<String, Object> node(String render, String name, String call) {
         var m = new java.util.HashMap<String, Object>();
         m.put("render", render);
