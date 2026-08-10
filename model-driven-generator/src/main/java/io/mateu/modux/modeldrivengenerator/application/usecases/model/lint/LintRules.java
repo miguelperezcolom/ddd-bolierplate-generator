@@ -11,7 +11,10 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.model.vo.PiiClassif
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.boundedcontext.vo.KpiMeasure;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.process.vo.ProcessStepType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.saga.vo.SagaStepType;
+import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.OperationCarrier;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.OperationStepEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AiAgentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.InteractionEntity;
@@ -65,6 +68,7 @@ public final class LintRules {
                 new BoundedContextWritePath(),
                 new UseCasePipeline(),
                 new OperationPipeline(),
+                new OperationStepIllegalForCarrier(),
                 new CustomStepIntent(),
                 new WorkflowDag(),
                 new WorkflowTrigger(),
@@ -1171,13 +1175,71 @@ public final class LintRules {
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.aggregates().stream()
                     .flatMap(a -> a.operations().stream()
-                            .filter(op -> isBlank(op.sets()) && isBlank(op.emits())
+                            .filter(op -> (op.steps() == null || op.steps().isEmpty())
+                                    && isBlank(op.sets()) && isBlank(op.emits())
                                     && op.outputModelId() == null && isBlank(op.intent()))
                             .map(op -> new LintFinding(id(), LintSeverity.INFO, "Operation", op.id(),
                                     a.name() + "." + op.name(),
                                     "Neither sets state, emits events nor returns a model — declare its"
                                             + " effect, or state its intent in natural language.")))
                     .toList();
+        }
+    }
+
+    /**
+     * A modeled operation body may only contain step types legal for its carrier — the purity
+     * table of {@code operation-body.md} §3, sourced from {@link OperationCarrier}. An aggregate
+     * method may not {@code CallGateway} (I/O belongs to the use case), a domain service may not
+     * {@code SetField} (it owns no state). Recurses into control-flow branches so a
+     * {@code CallGateway} buried in the {@code else} of an aggregate {@code If} is still caught.
+     * Legacy operations authored with {@code preconditions}/{@code sets}/{@code emits} carry no
+     * modeled {@code steps} and are left alone until migrated.
+     */
+    static class OperationStepIllegalForCarrier implements LintRule {
+        public String id() { return "operation-step-illegal-for-carrier"; }
+        public String description() {
+            return "An operation step's type must be legal for its carrier (aggregate/domain service)";
+        }
+        public List<LintFinding> apply(ModelSnapshot m) {
+            var findings = new ArrayList<LintFinding>();
+            for (var a : m.aggregates()) {
+                for (var op : a.operations()) {
+                    walk(op, OperationCarrier.AGGREGATE, a.name(), findings);
+                }
+            }
+            for (var ds : m.domainServices()) {
+                for (var op : ds.operations()) {
+                    walk(op, OperationCarrier.DOMAIN_SERVICE, ds.name(), findings);
+                }
+            }
+            return findings;
+        }
+
+        private void walk(OperationEntity op, OperationCarrier carrier, String ownerName,
+                          List<LintFinding> out) {
+            if (op.steps() == null) {
+                return;
+            }
+            checkSteps(op.steps(), carrier, ownerName + "." + op.name(), out);
+        }
+
+        private void checkSteps(List<OperationStepEntity> steps, OperationCarrier carrier,
+                                String path, List<LintFinding> out) {
+            for (var step : steps) {
+                if (!carrier.allows(step.type())) {
+                    out.add(new LintFinding(id(), LintSeverity.ERROR, "OperationStep", step.id(),
+                            path + " › " + step.name(),
+                            "Step type " + step.type() + " is not legal in " + carrierLabel(carrier)
+                                    + " — it stays pure (see operation-body.md §3)."));
+                }
+                if (step.then() != null) checkSteps(step.then(), carrier, path, out);
+                if (step.elseSteps() != null) checkSteps(step.elseSteps(), carrier, path, out);
+                if (step.body() != null) checkSteps(step.body(), carrier, path, out);
+            }
+        }
+
+        private static String carrierLabel(OperationCarrier carrier) {
+            return carrier == OperationCarrier.AGGREGATE ? "an aggregate method" : "a domain service";
         }
     }
 

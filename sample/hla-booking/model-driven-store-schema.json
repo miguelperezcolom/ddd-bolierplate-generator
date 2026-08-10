@@ -2868,11 +2868,135 @@
         "sets" : {
           "type" : "string"
         },
+        "steps" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
         "type" : {
           "type" : "string"
         }
       },
       "required" : [ "id" ],
+      "additionalProperties" : false
+    },
+    "OperationStepEntity" : {
+      "type" : "object",
+      "properties" : {
+        "aggregateId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'aggregate' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "applicationEventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'applicationEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "body" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "collection" : {
+          "type" : "string"
+        },
+        "condition" : {
+          "type" : "string"
+        },
+        "customCodeId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'customCode' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "domainEventId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'domainEvent' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "domainServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'domainService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "else" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "externalUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'externalUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "fieldName" : {
+          "type" : "string"
+        },
+        "gatewayId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'gateway' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "gatewayOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'gatewayOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "intent" : {
+          "type" : "string"
+        },
+        "itemVar" : {
+          "type" : "string"
+        },
+        "modelMappingId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'modelMapping' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "operationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'operation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryOperationId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryOperation' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "queryServiceId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'queryService' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "then" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/OperationStepEntity"
+          }
+        },
+        "type" : {
+          "$ref" : "#/$defs/UseCaseStepType"
+        },
+        "useCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'useCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "value" : {
+          "type" : "string"
+        }
+      },
       "additionalProperties" : false
     },
     "PageButtonEntity" : {
@@ -5136,7 +5260,7 @@
     },
     "UseCaseStepType" : {
       "type" : "string",
-      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "CallExternalUseCase", "PublishDomainEvent", "PublishApplicationEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping" ]
+      "enum" : [ "Custom", "ReadAggregate", "CallAggregateOperation", "SaveAggregate", "CallGateway", "CallExternalUseCase", "PublishDomainEvent", "PublishApplicationEvent", "CallUseCase", "CallQueryService", "ApplyModelMapping", "CheckPrecondition", "SetField", "CallDomainService", "If", "ForEach" ]
     },
     "ValueObjectEntity" : {
       "type" : "object",
