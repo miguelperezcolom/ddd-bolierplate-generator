@@ -2253,36 +2253,6 @@ export class ModuxEditor extends LitElement {
     )];
   }
 
-  /**
-   * Activating a vista opens ITS sheet; the first visit seeds it as a copy of
-   * what the user is looking at — from then on each vista lives its own life.
-   */
-  private activateVista(id: string): void {
-    if (id && (this._view === 'context-map' || this._view === 'distribution')) {
-      const key = `${this._view}@view:${id}`;
-      const raw = normalizeViewLayout(this.layout[key]);
-      const blank =
-        !Object.keys(raw.nodes).length &&
-        !Object.keys(raw.sizes ?? {}).length &&
-        !(raw.expanded ?? []).length;
-      if (blank) {
-        const seed = this.viewLayout(this._view);
-        this.layout = {
-          ...this.layout,
-          [key]: {
-            nodes: { ...seed.nodes },
-            edges: { ...seed.edges },
-            sizes: { ...(seed.sizes ?? {}) },
-            expanded: [...(seed.expanded ?? [])],
-            flat: true,
-          },
-        };
-        this.emit('layout-changed', { layout: this.layout });
-      }
-    }
-    this._activeViewId = id;
-  }
-
   /** Model scoped to the active modux View (CURATED members + their context). */
   private filteredModel(): ModuxModel {
     if (!this._activeViewId) return this.model;
@@ -4772,20 +4742,6 @@ export class ModuxEditor extends LitElement {
         >
           ☰
         </button>
-        <select
-          title="Limitar el lienzo a una vista del modelo — cada vista guarda su propia lámina (posiciones y expansión)"
-          @change=${(e: Event) => this.activateVista((e.target as HTMLSelectElement).value)}
-        >
-          <option value="" ?selected=${this._activeViewId === ''}>Vista: todo el modelo</option>
-          ${(this.model.views ?? [])
-            .filter((v) => v.kind === 'CURATED')
-            .map(
-              (v) =>
-                html`<option value=${v.id} ?selected=${v.id === this._activeViewId}>
-                  Vista: ${v.name}
-                </option>`,
-            )}
-        </select>
         ${this._activeViewId
           ? html`
               <input
