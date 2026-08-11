@@ -170,6 +170,47 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
   }
 }
 
+/** Spanish labels for the drawer's element-type header; unknown types fall back to humanizeKey. */
+const ELEMENT_TYPE_LABELS: Record<string, string> = {
+  boundedContext: 'Contexto', aggregate: 'Agregado', entity: 'Entidad',
+  'value-object': 'Value object', 'use-case': 'Caso de uso', field: 'Campo',
+  flow: 'Flow', process: 'Proceso', workflow: 'Workflow', 'domain-event': 'Evento de dominio',
+  subscription: 'Suscripción', projection: 'Proyección', 'read-model': 'Read model',
+  'ui-adapter': 'Adaptador UI', page: 'Página', service: 'Servicio', 'query-service': 'Query service',
+  actor: 'Actor', 'scheduled-trigger': 'Disparador programado', 'workflow-gateway': 'Gateway',
+  model: 'Modelo', mapping: 'Mapping', component: 'Componente', 'external-system': 'Sistema externo',
+  module: 'Módulo', 'custom-code': 'Código a medida', 'ai-agent': 'Agente IA', rag: 'RAG',
+  'mcp-gateway': 'Pasarela MCP', 'identity-provider': 'Proveedor de identidad',
+};
+
+/** «Contexto» for a known elementType, else a spaced-out version of the raw key. */
+function drawerTypeLabel(type: string): string {
+  return ELEMENT_TYPE_LABELS[type] ?? humanizeKey(type);
+}
+
+/**
+ * The element kinds `rename-element` understands (mirrors the store's RENAMEABLE table). `field`
+ * is renamed by its own command and is handled apart. Both the canvas rename and the drawer rename
+ * gate on this — a kind not here has no rename affordance rather than a command that no-ops.
+ */
+const RENAMEABLE_KINDS = new Set([
+  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'aggregate', 'entity',
+  'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
+  'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
+  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'external-system',
+  'actor', 'ai-agent', 'rag', 'api', 'proxy-api', 'api-operation',
+]);
+
+/** camelCase / kebab-case / snake_case → «Palabras legibles» for a field label. */
+function humanizeKey(key: string): string {
+  const spaced = key
+    .replace(/[-_]/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /** A step opens its owning process — steps have no CRUD of their own. */
 function activationForStep(
   processes: { id: string; steps: { id: string }[] }[] | undefined,
@@ -231,8 +272,19 @@ export class ModuxEditor extends LitElement {
     y: number;
   } | null = null;
   @state() private _selectedId: string | null = null;
+  /**
+   * The element whose detail the in-editor drawer shows. Only the IDE host (`hosted`) opens it:
+   * in the web app the drawer is Mateu's (GraphicalEditorPage), so there the editor just emits
+   * `modux-activate` and this stays null. Double-clicking a node fills it; ✕ / Escape clears it.
+   */
+  @state() private _drawer: { elementType: string; id: string; kind: string } | null = null;
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = true;
+  /** A palette item being dragged with the pointer (CEF has no HTML5 DnD): the ghost's payload + position. */
+  @state() private _paletteDrag: {
+    payload: { new?: string; existing?: string };
+    label: string; x: number; y: number; x0: number; y0: number; active: boolean;
+  } | null = null;
   /**
    * The YUGO surface: any view's Scene rendered as the physics organism (Y). Off by default — a
    * view opens on the plain 2D diagram (`modux-canvas`); Yugo and 3D are opt-in lenses (Y / V).
@@ -448,6 +500,117 @@ export class ModuxEditor extends LitElement {
       display: flex;
       align-items: center;
       gap: 7px;
+    }
+    .palette-ghost {
+      position: fixed;
+      z-index: 1000;
+      transform: translate(10px, 8px);
+      pointer-events: none;
+      font-size: 12px;
+      color: var(--modux-text);
+      padding: 4px 8px;
+      border: 1px solid var(--modux-border);
+      border-radius: 6px;
+      background: var(--modux-surface-2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+      user-select: none;
+      white-space: nowrap;
+      opacity: 0.95;
+    }
+    .drawer-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+    }
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 41;
+      width: 320px;
+      max-width: 80%;
+      display: flex;
+      flex-direction: column;
+      background: var(--modux-surface);
+      border-left: 1px solid var(--modux-border);
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+      font-size: 13px;
+      color: var(--modux-text);
+    }
+    .drawer-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--modux-border);
+    }
+    .drawer-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--modux-text-dim);
+    }
+    .drawer-title {
+      font-size: 15px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .drawer-title-input {
+      width: 100%;
+      box-sizing: border-box;
+      font: 600 15px ui-sans-serif, system-ui, sans-serif;
+      color: var(--modux-text);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      margin: -3px -6px;
+      padding: 2px 6px;
+    }
+    .drawer-title-input:hover {
+      border-color: var(--modux-border);
+    }
+    .drawer-title-input:focus {
+      outline: none;
+      border-color: var(--modux-primary, #2563eb);
+      background: var(--modux-surface-2);
+    }
+    .drawer-close {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      color: var(--modux-text-dim);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .drawer-close:hover {
+      background: var(--modux-surface-2);
+      color: var(--modux-text);
+    }
+    .drawer-body {
+      margin: 0;
+      padding: 12px 14px;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+      gap: 6px 12px;
+      align-content: start;
+    }
+    .drawer-body dt {
+      color: var(--modux-text-dim);
+      word-break: break-word;
+    }
+    .drawer-body dd {
+      margin: 0;
+      word-break: break-word;
+    }
+    .drawer-empty {
+      padding: 16px 14px;
+      color: var(--modux-text-dim);
     }
     .pal-ico {
       flex: 0 0 13px;
@@ -832,6 +995,7 @@ export class ModuxEditor extends LitElement {
         if (this._helpOpen) this._helpOpen = false;
         if (this._connectPicker) this._connectPicker = null;
         if (this._invariantCondEditor) this._invariantCondEditor = null;
+        if (this._drawer) this._drawer = null;
         break;
       default:
         break;
@@ -1902,47 +2066,23 @@ export class ModuxEditor extends LitElement {
 
   private onNodeRenamed(e: CustomEvent): void {
     const { id, kind, name } = e.detail;
+    this.renameElement(id, kind, name);
+  }
+
+  /**
+   * Rename one element by its canvas kind — the shared routine behind both the inline (F2) rename
+   * and the drawer's editable title. A `field` is a ModelField renamed in its Model; everything the
+   * store's rename table covers goes through `rename-element`; an unknown kind does nothing.
+   */
+  private renameElement(id: string, kind: string, name: string): void {
     if (kind === 'field') {
-      // A field is a ModelField: rename it in its Model.
       const field = [...(this.model.aggregates ?? []), ...(this.model.entities ?? [])]
         .flatMap((o) => o.fields ?? [])
         .find((f) => f.id === id);
       if (field?.modelId) this.command({ kind: 'set-model-field', modelId: field.modelId, fieldId: id, name });
       return;
     }
-    if (
-      kind === 'note' ||
-      kind === 'area' ||
-      kind === 'ui' ||
-      kind === 'page' ||
-      kind === 'ui-app' ||
-      kind === 'url' ||
-      kind === 'boundedContext' ||
-      kind === 'aggregate' ||
-      kind === 'entity' ||
-      kind === 'value-object' ||
-      kind === 'operation' ||
-      kind === 'process-step' ||
-      kind === 'workflow' ||
-      kind === 'workflow-step' ||
-      kind === 'domain-event' ||
-      kind === 'read-model' ||
-      kind === 'domain-service' ||
-      kind === 'query-service' ||
-      kind === 'use-case' ||
-      kind === 'external-use-case' ||
-      kind === 'external-table' ||
-      kind === 'mcp-server' ||
-      kind === 'mcp-gateway' ||
-      kind === 'application-event' ||
-      kind === 'external-system' ||
-      kind === 'actor' ||
-      kind === 'ai-agent' ||
-      kind === 'rag' ||
-      kind === 'api' ||
-      kind === 'proxy-api' ||
-      kind === 'api-operation'
-    ) {
+    if (RENAMEABLE_KINDS.has(kind)) {
       this.command({ kind: 'rename-element', type: kind, id: id.replace(/^tgt:/, ''), name });
     }
   }
@@ -2340,12 +2480,15 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * Opening an element is the HOST's job: the editor only emits the event and
-   * mateu draws its own drawer with the element's read-only detail inside
-   * (GraphicalEditorPage.handleAction returns the Drawer).
+   * Opening an element's detail. In the web app the drawer is the HOST's job: the editor emits
+   * `modux-activate` and mateu draws its own drawer (GraphicalEditorPage.handleAction returns the
+   * Drawer). The IDE plugin has no such host, so when `hosted` the editor draws the detail itself
+   * — otherwise a double-click there would do nothing. `kind` is the canvas kind of the SHOWN
+   * element, so the drawer's title can rename it through the same path F2 uses.
    */
-  private openInDrawer(ref: { elementType: string; id: string }): void {
+  private openInDrawer(ref: { elementType: string; id: string }, kind: string): void {
     this.emit('modux-activate', ref);
+    if (this.hosted) this._drawer = { ...ref, kind };
   }
 
   private onElementActivated(e: CustomEvent): void {
@@ -2444,7 +2587,14 @@ export class ModuxEditor extends LitElement {
               return owner ? { elementType: 'workflow', id: owner.id } : null;
             })()
           : normalizeActivation(e.detail.id, e.detail.kind);
-    if (mapped) this.openInDrawer(mapped);
+    // A step opens its owner, so the drawer's rename must target the owner's kind, not the step's.
+    const shownKind =
+      e.detail.kind === 'process-step'
+        ? 'process'
+        : e.detail.kind === 'workflow-step'
+          ? 'workflow'
+          : e.detail.kind;
+    if (mapped) this.openInDrawer(mapped, shownKind);
   }
 
   /** A fresh menu-entry id, unique across every app's tree (client-generated, like node ids). */
@@ -2781,8 +2931,6 @@ export class ModuxEditor extends LitElement {
           })),
         ),
       )}
-      @dragover=${(e: DragEvent) => e.preventDefault()}
-      @drop=${this.onPaletteDrop}
       @node-moved=${this.onNodeMoved}
       @element-selected=${this.onElementSelected}
       @element-multi-toggled=${this.onMultiToggled}
@@ -3019,15 +3167,38 @@ export class ModuxEditor extends LitElement {
       .filter((g) => g.items.length > 0);
   }
 
-  private onPaletteDragStart(e: DragEvent, payload: { new?: string; existing?: string }): void {
-    e.dataTransfer?.setData('application/x-modux-palette', JSON.stringify(payload));
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+  /**
+   * Palette → canvas is a POINTER drag, not HTML5 drag-and-drop: CEF (the JCEF webview the plugin
+   * embeds) never delivers `dragover`/`drop`, so a native drag just gets stuck. Pointer events work
+   * everywhere. A press arms the drag; the first move past a small threshold makes it real (so a
+   * plain click still does nothing), a ghost chip follows the cursor, and the release drops.
+   */
+  private startPaletteDrag(
+    e: PointerEvent, payload: { new?: string; existing?: string }, label: string,
+  ): void {
+    e.preventDefault();
+    this._paletteDrag = { payload, label, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, active: false };
+    window.addEventListener('pointermove', this.onPaletteDragMove);
+    window.addEventListener('pointerup', this.onPaletteDragEnd);
   }
 
-  private onPaletteDrop(e: DragEvent): void {
-    const raw = e.dataTransfer?.getData('application/x-modux-palette');
-    if (!raw) return;
-    e.preventDefault();
+  private onPaletteDragMove = (e: PointerEvent): void => {
+    const d = this._paletteDrag;
+    if (!d) return;
+    const active = d.active || Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 3;
+    this._paletteDrag = { ...d, x: e.clientX, y: e.clientY, active };
+  };
+
+  private onPaletteDragEnd = (e: PointerEvent): void => {
+    const d = this._paletteDrag;
+    window.removeEventListener('pointermove', this.onPaletteDragMove);
+    window.removeEventListener('pointerup', this.onPaletteDragEnd);
+    this._paletteDrag = null;
+    if (d && d.active) this.handlePaletteDrop(d.payload, e.clientX, e.clientY);
+  };
+
+  /** Land a palette payload at a client point — the shared drop logic (pointer up, or a browser drop). */
+  private handlePaletteDrop(payload: { new?: string; existing?: string }, clientX: number, clientY: number): void {
     // Whichever surface is showing takes the drop — canvas and tilt share the API.
     const surface =
       this._view === 'design'
@@ -3038,31 +3209,25 @@ export class ModuxEditor extends LitElement {
             ? this.renderRoot.querySelector('modux-tilt')
             : this.renderRoot.querySelector('modux-canvas');
     if (!surface) return;
-    const pos = surface.sceneFromClient(e.clientX, e.clientY);
+    const pos = surface.sceneFromClient(clientX, clientY);
     // Solution/diff overlays and flow lanes prefix node ids; the drop resolvers work
     // on the bare catalog id, like every other handler.
-    let targetId = surface.nodeIdAtClient(e.clientX, e.clientY)?.replace(/^(tgt:|flow:)/, '') ?? null;
+    let targetId = surface.nodeIdAtClient(clientX, clientY)?.replace(/^(tgt:|flow:)/, '') ?? null;
     // Exact hit-testing misses small nodes (SVG fill hit areas vary, boxes shrink when
     // zoomed out): fall back to the nearest node so a drop just SHORT of it still lands.
     if (!targetId && 'nodeIdNearClient' in surface) {
       targetId =
         (surface as import('./modux-canvas.js').ModuxCanvas)
-          .nodeIdNearClient(e.clientX, e.clientY)
+          .nodeIdNearClient(clientX, clientY)
           ?.replace(/^(tgt:|flow:)/, '') ?? null;
     }
     const slot =
       this._view === 'design' && 'dropSlotAtClient' in surface
-        ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(e.clientX, e.clientY)
+        ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(clientX, clientY)
         : null;
-    let payload: { new?: string; existing?: string };
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      return;
-    }
     if (payload.new) this.createFromPalette(payload.new, pos, targetId, slot);
     else if (payload.existing) {
-      this.placeExistingFromPalette(payload.existing, pos, targetId, e.clientX, e.clientY, slot);
+      this.placeExistingFromPalette(payload.existing, pos, targetId, clientX, clientY, slot);
     }
   }
 
@@ -3360,8 +3525,15 @@ export class ModuxEditor extends LitElement {
     const issue = (cmd: ModuxCommand, id: string, container?: string) => {
       const inverse = this.inverseOf(cmd) ?? [];
       this.command(cmd, false);
+      const undo: ModuxCommand[] = [...inverse];
+      // In a scoped view a NEW catalog element must join the view, or the filter hides it (as
+      // placeExisting already does for existing ones). Notes and areas are view-local, not members.
+      if (this._activeViewId && cmd.kind !== 'add-note' && cmd.kind !== 'add-area') {
+        this.command({ kind: 'add-view-member', id: this._activeViewId, targetId: id }, false);
+        undo.unshift({ kind: 'remove-view-member', id: this._activeViewId, targetId: id });
+      }
       const moveOp = place(id, container);
-      this.pushUndoEntry([...inverse, moveOp]);
+      this.pushUndoEntry([...undo, moveOp]);
     };
     if (!def.child) {
       const { id, name } = this.uniquePaletteName(def.label);
@@ -4024,6 +4196,127 @@ export class ModuxEditor extends LitElement {
     this.writeViewLayout(view, { ...current, nodes: { ...current.nodes, [id]: p } });
   }
 
+  /** The chip that follows the cursor while a palette item is dragged with the pointer. */
+  private renderPaletteGhost() {
+    const d = this._paletteDrag;
+    if (!d || !d.active) return '';
+    return html`<div class="palette-ghost" style="left: ${d.x}px; top: ${d.y}px">${d.label}</div>`;
+  }
+
+  /** Depth-first hunt for the raw element object with this id, anywhere in the model tree. */
+  private findElement(id: string): Record<string, unknown> | null {
+    const seen = new Set<unknown>();
+    const walk = (v: unknown): Record<string, unknown> | null => {
+      if (!v || typeof v !== 'object' || seen.has(v)) return null;
+      seen.add(v);
+      if (Array.isArray(v)) {
+        for (const it of v) {
+          const hit = walk(it);
+          if (hit) return hit;
+        }
+        return null;
+      }
+      const o = v as Record<string, unknown>;
+      if (o.id === id) return o;
+      for (const key of Object.keys(o)) {
+        const hit = walk(o[key]);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    return walk(this.model);
+  }
+
+  /**
+   * The element's detail, drawn inside the editor for the IDE plugin — the web app uses mateu's
+   * drawer instead (see openInDrawer). The title renames the element (same path as F2) when its
+   * kind supports it; the rest is read-only, editing stays in the canvas gestures (pickers,
+   * palette). A ✕ or Escape closes it; a click on the backdrop too.
+   */
+  private renderDrawer() {
+    const ref = this._drawer;
+    if (!ref) return '';
+    const el = this.findElement(ref.id);
+    const close = () => (this._drawer = null);
+    const title = (el?.name as string) ?? (el?.label as string) ?? ref.id;
+    const canRename = el != null && (ref.kind === 'field' || RENAMEABLE_KINDS.has(ref.kind));
+    const commit = (value: string): void => {
+      const name = value.trim();
+      if (name && name !== title) this.renameElement(ref.id, ref.kind, name);
+    };
+    return html`
+      <div class="drawer-backdrop" @pointerdown=${close}></div>
+      <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <header class="drawer-head">
+          <div class="drawer-head-text">
+            <div class="drawer-type">${drawerTypeLabel(ref.elementType)}</div>
+            ${canRename
+              ? html`<input
+                  class="drawer-title-input"
+                  .value=${title}
+                  aria-label="Nombre"
+                  @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).blur();
+                    } else if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      close();
+                    }
+                  }}
+                  @change=${(e: Event) => commit((e.target as HTMLInputElement).value)}
+                />`
+              : html`<div class="drawer-title">${title}</div>`}
+          </div>
+          <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+        </header>
+        ${el
+          ? html`<dl class="drawer-body">
+              ${this.drawerRows(el).map(
+                (r) => html`<dt>${r.label}</dt>
+                  <dd>${r.value}</dd>`,
+              )}
+            </dl>`
+          : html`<div class="drawer-empty">Este elemento ya no está en el modelo.</div>`}
+      </aside>
+    `;
+  }
+
+  /** The scalar/summary rows shown for an element, in declaration order, minus id/name/noise. */
+  private drawerRows(el: Record<string, unknown>): { label: string; value: string }[] {
+    const HIDDEN = new Set(['id', 'name', 'label']);
+    const rows: { label: string; value: string }[] = [];
+    for (const key of Object.keys(el)) {
+      if (HIDDEN.has(key)) continue;
+      const v = el[key];
+      if (v === null || v === undefined || v === '') continue;
+      let value: string;
+      if (Array.isArray(v)) {
+        if (v.length === 0) continue;
+        const names = v
+          .map((it) =>
+            it && typeof it === 'object'
+              ? ((it as Record<string, unknown>).name ?? (it as Record<string, unknown>).label)
+              : it,
+          )
+          .filter((n): n is string => typeof n === 'string');
+        value =
+          names.length === v.length
+            ? names.join(', ')
+            : `${v.length} elemento${v.length === 1 ? '' : 's'}`;
+      } else if (typeof v === 'object') {
+        const o = v as Record<string, unknown>;
+        value = (o.name as string) ?? (o.label as string) ?? (o.id as string) ?? '—';
+      } else if (typeof v === 'boolean') {
+        value = v ? 'sí' : 'no';
+      } else {
+        value = String(v);
+      }
+      rows.push({ label: humanizeKey(key), value });
+    }
+    return rows;
+  }
+
   private renderPalette() {
     if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations', 'aggregates'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
@@ -4068,13 +4361,13 @@ export class ModuxEditor extends LitElement {
                           (k) => html`
                             <div
                               class="palette-item ${k.child ? 'palette-child' : ''}"
-                              draggable="true"
                               title=${k.type === 'workflow-step'
                                 ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
                                 : k.child
                                   ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
                                   : 'Suéltalo en el lienzo'}
-                              @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { new: k.type })}
+                              @pointerdown=${(e: PointerEvent) =>
+                                this.startPaletteDrag(e, { new: k.type }, k.label.replace(/^(Layout|Componente) · /, ''))}
                             >
                               <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${k.color}">
                                 ${SYMBOLS[k.symbol]}
@@ -4096,9 +4389,9 @@ export class ModuxEditor extends LitElement {
                       (it) => html`
                         <div
                           class="palette-item"
-                          draggable="true"
                           title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
-                          @dragstart=${(e: DragEvent) => this.onPaletteDragStart(e, { existing: it.id })}
+                          @pointerdown=${(e: PointerEvent) =>
+                            this.startPaletteDrag(e, { existing: it.id }, it.name)}
                         >
                           <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${g.color}">
                             ${SYMBOLS[g.symbol]}
@@ -4726,6 +5019,7 @@ export class ModuxEditor extends LitElement {
   render() {
     const scene = this.sceneFor(this._view);
     return html`
+      ${this.renderPaletteGhost()}
       <div class="toolbar"
            @change=${this.refocusCanvasAfterControl}
            @click=${this.refocusCanvasAfterControl}>
@@ -5290,8 +5584,6 @@ export class ModuxEditor extends LitElement {
             .scene=${this.sceneFor(this._view, { expandAll: true })}
             .sceneKey=${`${this._view}:${this._activeViewId || 'base'}`}
             ?shifted=${this._paletteOpen}
-            @dragover=${(e: DragEvent) => e.preventDefault()}
-            @drop=${this.onPaletteDrop}
             @delete-requested=${this.onDeleteRequested}
             @delete-selection-requested=${this.onDeleteSelectionRequested}
             @node-renamed=${this.onNodeRenamed}
@@ -5333,8 +5625,6 @@ export class ModuxEditor extends LitElement {
         ? html`
       ${this.renderPalette()}
       <modux-tilt
-            @dragover=${(e: DragEvent) => e.preventDefault()}
-            @drop=${this.onPaletteDrop}
             .scene=${scene}
             .selectedId=${this._selectedId}
             .connectable=${['context-map', 'distribution', 'workflows', 'ui'].includes(this._view)}
@@ -5358,8 +5648,6 @@ export class ModuxEditor extends LitElement {
       ${this._treeOpen && this._activeViewId ? this.renderViewTree() : ''}
       ${this.renderPalette()}
       <modux-canvas
-        @dragover=${(e: DragEvent) => e.preventDefault()}
-        @drop=${this.onPaletteDrop}
         .fitInsets=${this.fitInsets()}
         .scene=${scene}
         .edgePoints=${this.routedEdgePoints(scene)}
@@ -5419,7 +5707,7 @@ export class ModuxEditor extends LitElement {
       </div>
       ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderInvariantCondEditor()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
       ${this.renderInteractionPrompt()} ${this.renderInteractionDelete()}
-      ${this.renderHelpPopover()}
+      ${this.renderHelpPopover()} ${this.renderDrawer()}
     `;
   }
 

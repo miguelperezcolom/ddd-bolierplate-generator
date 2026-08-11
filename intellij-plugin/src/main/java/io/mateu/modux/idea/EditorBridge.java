@@ -97,8 +97,21 @@ public final class EditorBridge implements Disposable {
                                     String errorText, String failedUrl) {
                 LOG.warn("modux editor failed to load " + failedUrl + ": " + errorText + " (" + errorCode + ")");
             }
+
+            @Override
+            public void onLoadEnd(CefBrowser cef, CefFrame frame, int httpStatusCode) {
+                // Debugging the webview: with -Dmodux.devtools the JCEF DevTools open once the page
+                // is loaded, so a render freeze can be paused and read (there is no right-click
+                // «Open DevTools» here). Opened after load so the browser is realized.
+                if (frame.isMain() && !devtoolsOpened && System.getProperty("modux.devtools") != null) {
+                    devtoolsOpened = true;
+                    javax.swing.SwingUtilities.invokeLater(browser::openDevtools);
+                }
+            }
         }, browser.getCefBrowser());
     }
+
+    private boolean devtoolsOpened = false;
 
     public JComponent component() {
         return browser.getComponent();
