@@ -29,6 +29,21 @@ public final class ModuxProject {
      */
     public static final String VIEW_SUFFIX = ".modux-view.yaml";
 
+    /**
+     * The view TYPES (lenses). A view is exactly one, chosen when it is created and fixed forever
+     * — it lives in the filename ({@code <slug>.<type>.modux-view.yaml}), the source of truth.
+     * Mirrors {@code VIEW_IDS} in the editor's {@code view-kind.ts}.
+     */
+    public static final String[] VIEW_KINDS = {
+            "context-map", "distribution", "aggregates", "flows", "processes", "workflows",
+            "ui", "design", "mappings", "eventstorming", "integrations", "interactions",
+    };
+
+    /** The filename for a view of a given type: {@code <slug>.<type>.modux-view.yaml}. */
+    public static String viewFileName(String slug, String kind) {
+        return slug + "." + kind + VIEW_SUFFIX;
+    }
+
     private ModuxProject() {}
 
     /**

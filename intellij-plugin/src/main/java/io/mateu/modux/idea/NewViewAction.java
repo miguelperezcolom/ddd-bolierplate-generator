@@ -27,7 +27,13 @@ public final class NewViewAction extends AnAction {
         var name = Messages.showInputDialog(project, "Nombre de la vista:", "Nueva vista Modux", null);
         if (name == null || name.isBlank()) return;
         var slug = ModuxActionSupport.slug(name);
-        var fileName = slug + ModuxProject.VIEW_SUFFIX;
+
+        // A view is exactly one type, chosen now and fixed forever — it lands in the filename.
+        var kindIndex = Messages.showChooseDialog(project, "Tipo de la vista:", "Nueva vista Modux",
+                null, ModuxProject.VIEW_KINDS, ModuxProject.VIEW_KINDS[0]);
+        if (kindIndex < 0) return;
+        var kind = ModuxProject.VIEW_KINDS[kindIndex];
+        var fileName = ModuxProject.viewFileName(slug, kind);
 
         if (dir.findChild(fileName) != null) {
             Messages.showErrorDialog(project, "Ya existe " + fileName + " en " + dir.getPath() + ".", "Modux");
@@ -37,8 +43,8 @@ public final class NewViewAction extends AnAction {
             Messages.showWarningDialog(project, "No hay un catálogo " + ModuxProject.CATALOG_DIR
                     + "/ por encima. La vista se crea, pero no abrirá hasta que exista uno.", "Modux");
         }
-        // A curated view seeded empty: the lens is the context map, geometry fills in as you draw.
-        var content = "viewId: " + slug + "\nkind: context-map\ngeometry:\n  nodes: {}\n  edges: {}\n";
+        // A curated view seeded empty: the type is fixed in the filename, geometry fills in as you draw.
+        var content = "viewId: " + slug + "\nkind: " + kind + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
         try {
             var view = WriteCommandAction.writeCommandAction(project)
                     .withName("New Modux View")

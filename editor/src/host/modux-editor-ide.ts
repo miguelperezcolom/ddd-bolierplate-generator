@@ -17,9 +17,10 @@ import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
 import {
-  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, writeView,
+  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, readViewName, writeView,
   type IdeFileSystem,
 } from './ide-fs.js';
+import { kindFromViewFileName } from '../view-kind.js';
 import '../modux-editor.js';
 
 /** The view document (§12): a lens and geometry over a catalog view, referenced by id. */
@@ -95,15 +96,18 @@ export class ModuxEditorIde extends LitElement {
       // travels with the document, not in the catalog's `diagrams` — so the layout is seeded from
       // it, under the key the editor will look this view up by.
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
-      this.viewKey = layoutKeyFor(this.doc.kind ?? 'context-map', this.doc.viewId);
+      // The view TYPE is the filename (source of truth): `<slug>.<type>.modux-view.yaml`. Fall back
+      // to the document's `kind` field (legacy names), then to the map.
+      const kind = kindFromViewFileName(await readViewName(bridge)) ?? this.doc.kind ?? 'context-map';
+      this.viewKey = layoutKeyFor(kind, this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
       await this.ensureView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
-      this.open = { view: this.doc.kind, activeViewId: this.doc.viewId };
+      this.open = { view: kind, activeViewId: this.doc.viewId };
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
-      console.info(`modux: vista abierta — lente=${this.doc.kind ?? 'context-map'} `
+      console.info(`modux: vista abierta — lente=${kind} `
         + `corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
       this.error = `No se pudo abrir la vista: ${message(e)}`;

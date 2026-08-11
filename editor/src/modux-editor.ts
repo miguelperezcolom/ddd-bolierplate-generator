@@ -57,7 +57,8 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-export type ViewId = 'context-map' | 'distribution' | 'aggregates' | 'flows' | 'processes' | 'workflows' | 'ui' | 'design' | 'mappings' | 'eventstorming' | 'integrations' | 'interactions';
+import { VIEW_IDS, VIEW_LABELS, type ViewId } from './view-kind.js';
+export type { ViewId };
 
 
 /**
@@ -232,8 +233,11 @@ export class ModuxEditor extends LitElement {
   @state() private _selectedId: string | null = null;
   /** The drag-to-create / drag-to-place palette. */
   @state() private _paletteOpen = true;
-  /** The YUGO surface: any view's Scene rendered as the physics organism (Y). */
-  @state() private _yugo = true;
+  /**
+   * The YUGO surface: any view's Scene rendered as the physics organism (Y). Off by default — a
+   * view opens on the plain 2D diagram (`modux-canvas`); Yugo and 3D are opt-in lenses (Y / V).
+   */
+  @state() private _yugo = false;
   /** Whether machine-made stubs (derived elements, ✦) show in the diagram. */
   @state() private _showDerived = true;
 
@@ -288,6 +292,8 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
+  /** The TYPE chosen for a view being created — a view is one type, fixed at birth (§8). */
+  @state() private _newViewKind: ViewId = 'context-map';
 
   // ── Secuencias (interactions) ──────────────────────────────────────────
   /** Authored interaction open in the Secuencias view (null = none chosen). */
@@ -750,10 +756,6 @@ export class ModuxEditor extends LitElement {
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const canvas = this.renderRoot.querySelector('modux-canvas');
-    const scope = (value: string) => {
-      e.preventDefault();
-      this.onDiagramScopeChange(value);
-    };
     switch (e.key) {
       case 'p':
       case 'P':
@@ -822,18 +824,6 @@ export class ModuxEditor extends LitElement {
         }
         break;
       }
-      case 'e':
-      case 'E': scope('view:eventstorming'); break;
-      case 'a':
-      case 'A': scope('view:aggregates'); break;
-      case '1': scope('view:context-map'); break;
-      case '2': scope('view:interactions'); break;
-      case '4': scope('view:distribution'); break;
-      case '5': scope('view:flows'); break;
-      case '6': scope('view:processes'); break;
-      case '7': scope('view:workflows'); break;
-      case '8': scope('view:ui'); break;
-      case '9': scope('view:design'); break;
       case '?':
         e.preventDefault();
         this._helpOpen = !this._helpOpen;
@@ -1441,14 +1431,6 @@ export class ModuxEditor extends LitElement {
     });
   }
 
-  /** One dropdown drives the diagram: the map, the distribution lens, or a specialized view. */
-  private onDiagramScopeChange(value: string): void {
-    if (value.startsWith('view:')) {
-      this._view = value.slice('view:'.length) as ViewId;
-      // Every view is a working surface: arriving opens the palette.
-      this._paletteOpen = true;
-    }
-  }
 
   /** Expansion is a sheet preference (persisted with the vista, not undoable). */
   private onNodeCollapseToggled(e: CustomEvent): void {
@@ -2250,13 +2232,12 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * The entity is in the catalog; now surface the view. In the IDE a view is a document (§12), so
-   * ask the host to write and open it — the document is the artifact you keep, the entity its
-   * backing scope. In the web host, where there are no documents, scope the current sheet in place.
+   * The entity is in the catalog; now surface the view as a document (§12): the host writes and
+   * opens it. The view's TYPE is the one chosen for it and fixed forever — it lands in the filename
+   * (`<slug>.<type>.modux-view.yaml`), the source of truth. There is no lens to rotate afterwards.
    */
   private afterViewCreated(id: string, name: string): void {
-    if (this.hosted) this.emit('create-view', { viewId: id, name, kind: this._view });
-    else this.activateVista(id);
+    this.emit('create-view', { viewId: id, name, kind: this._newViewKind });
   }
 
   /** The catalog members currently on stage as top-level nodes (vista candidates). */
@@ -4792,40 +4773,6 @@ export class ModuxEditor extends LitElement {
           ☰
         </button>
         <select
-          title="Qué pinta el lienzo: el mapa (expande cada elemento a discreción), o una vista especializada"
-          @change=${(e: Event) => this.onDiagramScopeChange((e.target as HTMLSelectElement).value)}
-        >
-          <option value="view:context-map" ?selected=${this._view === 'context-map'}>
-            Mapa del sistema
-          </option>
-          <optgroup label="Vistas especializadas">
-            <option value="view:distribution" ?selected=${this._view === 'distribution'}>
-              Distribución (módulos y servicios)
-            </option>
-            <option value="view:aggregates" ?selected=${this._view === 'aggregates'}>
-              Agregados y referencias
-            </option>
-            <option value="view:flows" ?selected=${this._view === 'flows'}>Flows</option>
-            <option value="view:workflows" ?selected=${this._view === 'workflows'}>
-              Workflows
-            </option>
-            <option value="view:ui" ?selected=${this._view === 'ui'}>UI</option>
-            <option value="view:integrations" ?selected=${this._view === 'integrations'}>
-              Integraciones
-            </option>
-            <option value="view:mappings" ?selected=${this._view === 'mappings'}>Mapeados</option>
-            <option value="view:eventstorming" ?selected=${this._view === 'eventstorming'}>
-              EventStorming
-            </option>
-            <option value="view:interactions" ?selected=${this._view === 'interactions'}>
-              Secuencias
-            </option>
-            <option value="view:design" ?selected=${this._view === 'design'}>
-              Diseño (páginas)
-            </option>
-          </optgroup>
-        </select>
-        <select
           title="Limitar el lienzo a una vista del modelo — cada vista guarda su propia lámina (posiciones y expansión)"
           @change=${(e: Event) => this.activateVista((e.target as HTMLSelectElement).value)}
         >
@@ -4883,6 +4830,18 @@ export class ModuxEditor extends LitElement {
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
               />
+              <select
+                class="new-kind"
+                title="Tipo de la vista — se fija al crearla y queda en el nombre del fichero"
+                @change=${(e: Event) =>
+                  (this._newViewKind = (e.target as HTMLSelectElement).value as ViewId)}
+              >
+                ${VIEW_IDS.map(
+                  (k) => html`<option value=${k} ?selected=${k === this._newViewKind}>
+                    ${VIEW_LABELS[k]}
+                  </option>`,
+                )}
+              </select>
               <button
                 class="tab"
                 title=${this.viewSelection().length
