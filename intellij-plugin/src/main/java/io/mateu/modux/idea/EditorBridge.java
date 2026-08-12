@@ -130,7 +130,6 @@ public final class EditorBridge implements Disposable {
                 case "exists" -> GSON.toJsonTree(files.exists(path(request)));
                 case "flush" -> flush(request);
                 case "readView" -> GSON.toJsonTree(readView());
-                case "viewName" -> GSON.toJsonTree(viewFile.getName());
                 case "writeView" -> writeView(request);
                 case "createView" -> createView(request);
                 case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
@@ -208,16 +207,12 @@ public final class EditorBridge implements Disposable {
     private com.google.gson.JsonElement createView(JsonObject request) throws IOException {
         var viewId = request.get("viewId").getAsString();
         var name = string(request, "name");
-        var kind = string(request, "kind");
-        var safeKind = kind != null && !kind.isBlank() ? kind : "context-map";
         var repoRoot = catalogRoot != null ? catalogRoot.getParent() : viewFile.getParent();
         if (repoRoot == null) throw new IOException("no hay dónde crear el documento de vista");
-        // The view's TYPE lives in the filename — `<slug>.<type>.modux-view.yaml` — its source of
-        // truth. The `kind:` field is kept in sync for legacy readers.
+        // One unified canvas: the document carries no type, just the slug in `<slug>.modux-view.yaml`.
         var fileName = ModuxProject.viewFileName(
-                ModuxActionSupport.slug(name != null && !name.isBlank() ? name : viewId), safeKind);
-        var content = "viewId: " + viewId + "\nkind: " + safeKind
-                + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
+                ModuxActionSupport.slug(name != null && !name.isBlank() ? name : viewId));
+        var content = "viewId: " + viewId + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
         var created = WriteCommandAction.writeCommandAction(project)
                 .withName("New Modux View")
                 .<VirtualFile, IOException>compute(() -> {

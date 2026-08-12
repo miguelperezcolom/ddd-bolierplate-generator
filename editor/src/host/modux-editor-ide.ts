@@ -17,25 +17,23 @@ import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
 import {
-  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, readViewName, writeView,
+  hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, writeView,
   type IdeFileSystem,
 } from './ide-fs.js';
-import { kindFromViewFileName } from '../view-kind.js';
 import '../modux-editor.js';
 
-/** The view document (§12): a lens and geometry over a catalog view, referenced by id. */
+/** The view document (§12): geometry over a catalog view, referenced by id. No type anymore. */
 interface ViewDoc {
   viewId?: string;
-  kind?: string;
   geometry?: ViewLayout | DiagramLayout;
 }
 
-/** Lenses that scope to a curated view; only they key their geometry by the active view id. */
-const CURATED_LENSES = new Set(['context-map', 'distribution']);
-
-/** The layout key the editor stores this view's geometry under — mirrors `ModuxEditor.layoutKey`. */
-function layoutKeyFor(kind: string, viewId?: string): string {
-  return viewId && CURATED_LENSES.has(kind) ? `${kind}@view:${viewId}` : kind;
+/**
+ * The single geometry key for a document — mirrors `ModuxEditor.layoutKey`. One canvas, one key: a
+ * scoped document keys under its view id, the whole model under «base».
+ */
+function layoutKeyFor(viewId?: string): string {
+  return viewId ? `view:${viewId}` : 'base';
 }
 
 /** Paths from here are relative to the model root: the host is already rooted there. */
@@ -61,14 +59,14 @@ export class ModuxEditorIde extends LitElement {
   @state() private error: string | null = null;
   @state() private notice: string | null = null;
   /** The lens + scope to open at, handed to the editor once the catalog is in. */
-  @state() private open: { view?: string; activeViewId?: string } | null = null;
+  @state() private open: { activeViewId?: string } | null = null;
 
   private store = new ModelStore();
   private fs: IdeFileSystem | null = null;
 
-  /** The view document this editor is bound to: its ref, lens, and where its geometry keys. */
+  /** The view document this editor is bound to: its ref and where its geometry keys. */
   private doc: ViewDoc = {};
-  private viewKey = 'context-map';
+  private viewKey = 'base';
 
   /** Serializes edits: a command must land before the next one reads the store. */
   private chain: Promise<void> = Promise.resolve();
@@ -92,23 +90,19 @@ export class ModuxEditorIde extends LitElement {
     }
     this.fs = ideFileSystem(bridge);
     try {
-      // The document names the lens and scope; the catalog (.modux/) holds the elements. Geometry
-      // travels with the document, not in the catalog's `diagrams` — so the layout is seeded from
-      // it, under the key the editor will look this view up by.
+      // The document scopes to a catalog view and carries geometry; the catalog (.modux/) holds the
+      // elements. There is one unified canvas now (no type), so the geometry seeds under one key.
+      // A legacy `<slug>.<type>.modux-view.yaml` still opens — the type in the name is ignored.
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
-      // The view TYPE is the filename (source of truth): `<slug>.<type>.modux-view.yaml`. Fall back
-      // to the document's `kind` field (legacy names), then to the map.
-      const kind = kindFromViewFileName(await readViewName(bridge)) ?? this.doc.kind ?? 'context-map';
-      this.viewKey = layoutKeyFor(kind, this.doc.viewId);
+      this.viewKey = layoutKeyFor(this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
       await this.ensureView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
-      this.open = { view: kind, activeViewId: this.doc.viewId };
+      this.open = { activeViewId: this.doc.viewId };
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
-      console.info(`modux: vista abierta — lente=${kind} `
-        + `corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
+      console.info(`modux: vista abierta — corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
       this.error = `No se pudo abrir la vista: ${message(e)}`;
       console.error(`modux: no se pudo abrir la vista: ${message(e)}`);
@@ -152,8 +146,8 @@ export class ModuxEditorIde extends LitElement {
   private onCreateView(event: CustomEvent): void {
     const bridge = hostBridge();
     if (!bridge) return;
-    const { viewId, name, kind } = event.detail as { viewId: string; name: string; kind: string };
-    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name, kind }) as Promise<unknown>)
+    const { viewId, name } = event.detail as { viewId: string; name: string };
+    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name }) as Promise<unknown>)
       .then(() => undefined);
   }
 
@@ -196,8 +190,8 @@ export class ModuxEditorIde extends LitElement {
     if (!bridge) return;
     this.chain = this.chain.then(async () => {
       try {
-        // Only this view's geometry is the document's; other keys in `layout` (if any) are not.
-        this.doc = { ...this.doc, geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} } };
+        // One canvas, one geometry blob; a legacy `kind:` is dropped by rewriting only these keys.
+        this.doc = { viewId: this.doc.viewId, geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} } };
         await writeView(bridge, stringify(this.doc));
       } catch (e) {
         this.error = `No se pudo guardar la geometría: ${message(e)}`;

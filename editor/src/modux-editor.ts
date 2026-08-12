@@ -964,14 +964,12 @@ export class ModuxEditor extends LitElement {
   }
 
   /**
-   * Each vista is a full sheet of its own: with one active, the diagram (and the
-   * distribution lens) keep geometry AND expansion under the vista's key — coming
-   * back must look exactly as it was left. «Todo el modelo» lives on the base keys.
+   * There is one canvas now, so one geometry per document: the unified canvas and the design
+   * drill-in share it (their node ids are disjoint). A scoped document keys under its view id, the
+   * whole model under «base» — matching the single key the IDE host seeds and writes back.
    */
-  private layoutKey(view: ViewId): string {
-    return (view === 'context-map' || view === 'distribution') && this._activeViewId
-      ? `${view}@view:${this._activeViewId}`
-      : view;
+  private layoutKey(_view: ViewId): string {
+    return this._activeViewId ? `view:${this._activeViewId}` : 'base';
   }
 
   private viewLayout(view: ViewId): ViewLayout {
