@@ -523,6 +523,20 @@ export class ModuxEditor extends LitElement {
       border-color: var(--modux-primary, #2563eb);
       background: var(--modux-surface-2);
     }
+    .drawer-cfg {
+      width: 100%;
+      box-sizing: border-box;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      color: var(--modux-text);
+      background: var(--modux-surface-2);
+      border: 1px solid var(--modux-border);
+      border-radius: 5px;
+      padding: 3px 6px;
+    }
+    .drawer-cfg:focus {
+      outline: none;
+      border-color: var(--modux-primary, #2563eb);
+    }
     .drawer-close {
       flex: 0 0 auto;
       border: none;
@@ -2834,14 +2848,37 @@ export class ModuxEditor extends LitElement {
       const componentKind = type.slice(4);
       const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
       // Mockup host: dropped on the mockup node (bare id) or on one of its component chips (nest
-      // under it). Simpler than the page designer — no tab/slot machinery yet.
+      // under it), honouring the tab rules — a `tab` only lives in a `tabLayout`, and a `tabLayout`
+      // holds only tabs (a drop on it lands in its active tab).
       const mockupHostId = m ? m[1] : targetId;
       if (mockupHostId && (this.model.mockups ?? []).some((mk) => mk.id === mockupHostId)) {
+        const dropOn = m ? m[2] : undefined;
+        if (componentKind === 'tab') {
+          let hostId: string | null = null;
+          let cur = dropOn ? this.mockupComponentIn(mockupHostId, dropOn) : null;
+          while (cur) {
+            if (cur.node.kind === 'tabLayout') { hostId = cur.node.id; break; }
+            cur = cur.parentId ? this.mockupComponentIn(mockupHostId, cur.parentId) : null;
+          }
+          if (!hostId) {
+            this.emit('modux-notice', { message: 'Suelta la pestaña sobre un layout de pestañas' });
+            return;
+          }
+          const componentId = this.newComponentId('tab');
+          const host = this.mockupComponent(mockupHostId, hostId);
+          const title = `Pestaña ${(host?.children ?? []).filter((c) => c.kind === 'tab').length + 1}`;
+          this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind: 'tab', parentComponentId: hostId }, false);
+          this.command({ kind: 'set-page-component', mockupId: mockupHostId, componentId, title }, false);
+          this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
+          return;
+        }
+        let parentComponentId = dropOn;
+        if (dropOn) {
+          const found = this.mockupComponent(mockupHostId, dropOn);
+          if (found?.kind === 'tabLayout') parentComponentId = (found.children ?? [])[0]?.id ?? dropOn;
+        }
         const componentId = this.newComponentId(componentKind);
-        this.command({
-          kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind,
-          parentComponentId: m ? m[2] : undefined,
-        }, false);
+        this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind, parentComponentId }, false);
         this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
         return;
       }
@@ -3505,6 +3542,9 @@ export class ModuxEditor extends LitElement {
   private renderDrawer() {
     const ref = this._drawer;
     if (!ref) return '';
+    // A mockup component chip carries a synthetic id; edit its config, not a catalog element.
+    const cmp = /^cmp:([^:]+):(.+)$/.exec(ref.id);
+    if (cmp) return this.renderComponentDrawer(cmp[1], cmp[2]);
     const el = this.findElement(ref.id);
     const close = () => (this._drawer = null);
     const title = (el?.name as string) ?? (el?.label as string) ?? ref.id;
@@ -3547,6 +3587,84 @@ export class ModuxEditor extends LitElement {
               )}
             </dl>`
           : html`<div class="drawer-empty">Este elemento ya no está en el modelo.</div>`}
+      </aside>
+    `;
+  }
+
+  /** Find a component by id anywhere in a mockup's content tree. */
+  private mockupComponent(mockupId: string, componentId: string): UiComponentNodeRef | null {
+    return this.mockupComponentIn(mockupId, componentId)?.node ?? null;
+  }
+
+  /** A component in a mockup, plus the id of its parent component (null at top level). */
+  private mockupComponentIn(
+    mockupId: string, componentId: string,
+  ): { node: UiComponentNodeRef; parentId: string | null } | null {
+    const mk = (this.model.mockups ?? []).find((m) => m.id === mockupId);
+    let found: { node: UiComponentNodeRef; parentId: string | null } | null = null;
+    const walk = (items: UiComponentNodeRef[] | undefined, up: string | null) => {
+      for (const c of items ?? []) {
+        if (c.id === componentId) found = { node: c, parentId: up };
+        walk(c.children, c.id);
+      }
+    };
+    walk(mk?.content, null);
+    return found;
+  }
+
+  /**
+   * The config of a mockup component, editable in the drawer. `set-page-component` REPLACES every
+   * field, so each edit resends the component's whole current config with the one change applied.
+   */
+  private renderComponentDrawer(mockupId: string, componentId: string) {
+    const close = () => (this._drawer = null);
+    const c = this.mockupComponent(mockupId, componentId);
+    if (!c) {
+      return html`
+        <div class="drawer-backdrop" @pointerdown=${close}></div>
+        <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
+          <header class="drawer-head">
+            <div class="drawer-head-text"><div class="drawer-type">Componente</div></div>
+            <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+          </header>
+          <div class="drawer-empty">Este componente ya no está en el mockup.</div>
+        </aside>`;
+    }
+    const set = (patch: { title?: string | null; label?: string | null; text?: string | null }): void => {
+      this.command({
+        kind: 'set-page-component', mockupId, componentId,
+        title: c.title ?? null, text: c.text ?? null, label: c.label ?? null,
+        useCaseId: c.useCaseId ?? null, mappingId: c.mappingId ?? null, modelId: c.modelId ?? null,
+        queryServiceId: c.queryServiceId ?? null, queryOperationId: c.queryOperationId ?? null,
+        fieldId: c.fieldId ?? null, stereotype: c.stereotype ?? null,
+        colspan: c.colspan ?? null, detailPageId: c.detailPageId ?? null,
+        ...patch,
+      });
+    };
+    const field = (label: string, key: 'title' | 'label' | 'text') => html`
+      <dt>${label}</dt>
+      <dd><input class="drawer-cfg" .value=${(c[key] as string) ?? ''}
+        @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        @change=${(e: Event) => set({ [key]: (e.target as HTMLInputElement).value.trim() || null })}
+      /></dd>`;
+    return html`
+      <div class="drawer-backdrop" @pointerdown=${close}></div>
+      <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
+        <header class="drawer-head">
+          <div class="drawer-head-text">
+            <div class="drawer-type">Componente · ${c.kind}</div>
+            <div class="drawer-title">${c.title || c.label || c.kind}</div>
+          </div>
+          <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+        </header>
+        <dl class="drawer-body">
+          ${field('Título', 'title')}
+          ${field('Etiqueta', 'label')}
+          ${field('Texto', 'text')}
+          ${c.useCaseId ? html`<dt>Caso de uso</dt><dd>${c.useCaseId}</dd>` : ''}
+          ${c.modelId ? html`<dt>Modelo</dt><dd>${c.modelId}</dd>` : ''}
+          ${c.fieldId ? html`<dt>Campo</dt><dd>${c.fieldId}</dd>` : ''}
+        </dl>
       </aside>
     `;
   }

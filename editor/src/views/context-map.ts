@@ -221,9 +221,16 @@ export function ownershipIndex(
   for (const dm of model.models ?? []) {
     for (const f of dm.fields ?? []) owners.set(fieldNodeId(dm.id, f.id), dm.id);
   }
-  // A mockup's component chips roll up into the mockup.
+  // A mockup's component chips roll up into their PARENT chip (top-level ones into the mockup).
   for (const mk of model.mockups ?? []) {
-    for (const c of flattenComponents(mk.content)) owners.set(componentNodeId(mk.id, c.id), mk.id);
+    const walk = (items: UiComponentNodeRef[] | undefined, parentChip: string | null) => {
+      for (const c of items ?? []) {
+        const chip = componentNodeId(mk.id, c.id);
+        owners.set(chip, parentChip ?? mk.id);
+        walk(c.children, chip);
+      }
+    };
+    walk(mk.content, null);
   }
   return owners;
 }
@@ -278,6 +285,9 @@ interface ChildDesc {
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
+  /** Per-node glyph/badge override (mockup components vary by their Mateu kind). */
+  symbol?: string;
+  badge?: string;
 }
 
 const POLICY_STYLE = { symbol: 'flow', fill: '#f3e8ff', stroke: '#7e22ce' };
@@ -363,17 +373,51 @@ function componentNodeId(hostId: string, componentId: string): string {
   return `cmp:${hostId}:${componentId}`;
 }
 
-/** Every component in a content tree, flattened depth-first. */
-function flattenComponents(components: UiComponentNodeRef[] | undefined): UiComponentNodeRef[] {
-  const out: UiComponentNodeRef[] = [];
-  const walk = (items?: UiComponentNodeRef[]) => {
-    for (const c of items ?? []) {
-      out.push(c);
-      walk(c.children);
-    }
+/** `cmp:<mockupId>:<componentId>` → its parts, or null. */
+function parseComponentNodeId(id: string): { mockupId: string; componentId: string } | null {
+  const m = /^cmp:([^:]+):(.+)$/.exec(id);
+  return m ? { mockupId: m[1], componentId: m[2] } : null;
+}
+
+/** Locate a component by id anywhere in a content tree. */
+function findComponentById(
+  components: UiComponentNodeRef[] | undefined, id: string,
+): UiComponentNodeRef | null {
+  for (const c of components ?? []) {
+    if (c.id === id) return c;
+    const hit = findComponentById(c.children, id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** A Mateu component's canvas glyph + badge, by its kind (a button looks like a button…). */
+function componentGlyph(kind: string): { symbol: string; badge: string } {
+  const k = kind.toLowerCase();
+  if (k.includes('button')) return { symbol: 'usecase', badge: 'BOTÓN' };
+  if (k.includes('field')) return { symbol: 'field', badge: 'CAMPO' };
+  if (k === 'tab') return { symbol: 'component', badge: 'PESTAÑA' };
+  if (k.includes('tab')) return { symbol: 'component', badge: 'PESTAÑAS' };
+  if (k.includes('grid') || k.includes('table') || k.includes('list') || k.includes('crud')) {
+    return { symbol: 'readmodel', badge: 'LISTADO' };
+  }
+  if (k.includes('text') || k === 'label' || k.includes('html')) return { symbol: 'note', badge: 'TEXTO' };
+  if (k.includes('layout') || k.includes('section') || k.includes('card') || k.includes('panel')) {
+    return { symbol: 'component', badge: 'LAYOUT' };
+  }
+  return { symbol: 'component', badge: kind.toUpperCase() };
+}
+
+/** One component as a canvas child chip (glyph and badge by its Mateu kind). */
+function componentChild(mockupId: string, c: UiComponentNodeRef): ChildDesc {
+  const g = componentGlyph(c.kind);
+  return {
+    id: componentNodeId(mockupId, c.id),
+    name: c.title || c.label || c.text || c.kind,
+    kind: 'component',
+    symbol: g.symbol,
+    badge: g.badge,
   };
-  walk(components);
-  return out;
 }
 
 /** Default container size that fits `childCount` boxes in a grid. */
@@ -718,13 +762,17 @@ function buildScene(
         }));
       }
       case 'mockup': {
-        // A mockup's Mateu component tree, flattened (synthetic chip ids like the page designer).
+        // The mockup's TOP-LEVEL components; each expands to its own children (nested tree).
         const mk = (model.mockups ?? []).find((x) => x.id === id);
-        return flattenComponents(mk?.content).map((c): ChildDesc => ({
-          id: componentNodeId(id, c.id),
-          name: c.title || c.label || c.text || c.kind,
-          kind: 'component',
-        }));
+        return (mk?.content ?? []).map((c) => componentChild(id, c));
+      }
+      case 'component': {
+        // A component chip (id `cmp:<mockupId>:<componentId>`) reveals its children.
+        const ref = parseComponentNodeId(id);
+        if (!ref) return [];
+        const mk = (model.mockups ?? []).find((x) => x.id === ref.mockupId);
+        const comp = findComponentById(mk?.content, ref.componentId);
+        return (comp?.children ?? []).map((c) => componentChild(ref.mockupId, c));
       }
       default:
         return [];
@@ -767,9 +815,10 @@ function buildScene(
         y: pos.y,
         w: subsystem ? 150 : childBoxWidth(k.name),
         h: subsystem ? 44 : CHILD_H + 4,
-        symbol: style.symbol,
+        symbol: k.symbol ?? style.symbol,
         fill: style.fill,
         stroke: style.stroke,
+        badge: k.badge,
         dashed: subsystem || undefined,
         ownerId,
         collapsible: grand.length > 0,
