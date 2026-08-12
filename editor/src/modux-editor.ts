@@ -2096,6 +2096,8 @@ export class ModuxEditor extends LitElement {
       ),
       aggregates,
       entities,
+      // Owned value objects ride with their aggregate; a free-standing one enters as a view member.
+      valueObjects: (this.model.valueObjects ?? []).filter((v) => aggregateIds.has(v.aggregateId) || members.has(v.id)),
       models: (this.model.models ?? []).filter((dm) => scopedModelIds.has(dm.id)),
       aggregateReferences: (this.model.aggregateReferences ?? []).filter(
         (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
@@ -3295,20 +3297,23 @@ export class ModuxEditor extends LitElement {
     }
     // Free-standing creation: dropped on empty canvas, these are born without an owner and tied to
     // their parent later by drawing a composition edge (they wear a «sin asociar» badge until then).
-    if (!container && ['aggregate', 'entity', 'use-case', 'policy'].includes(type)) {
+    if (!container && ['aggregate', 'entity', 'value-object', 'use-case', 'policy'].includes(type)) {
       const { id, name } = this.uniquePaletteName(def.label);
       const cmd: ModuxCommand =
         type === 'aggregate'
           ? { kind: 'add-aggregate', id, name }
           : type === 'entity'
             ? { kind: 'add-entity', id, name }
-            : { kind: 'add-use-case', id, name, ...(type === 'policy' ? { policy: true } : {}) };
+            : type === 'value-object'
+              ? { kind: 'add-value-object', id, name }
+              : { kind: 'add-use-case', id, name, ...(type === 'policy' ? { policy: true } : {}) };
       issue(cmd, id);
       const noun =
         type === 'aggregate' ? 'Agregado'
           : type === 'entity' ? 'Entidad'
+          : type === 'value-object' ? 'Value object'
           : type === 'policy' ? 'Policy' : 'Caso de uso';
-      const parentNoun = type === 'entity' ? 'un agregado' : 'un contexto';
+      const parentNoun = type === 'entity' || type === 'value-object' ? 'un agregado' : 'un contexto';
       this.emit('modux-notice', {
         message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
       });

@@ -1168,6 +1168,7 @@ function buildScene(
     const looseGroups: { items: { id: string; name: string; policy?: boolean }[]; kind: ChildDesc['kind']; noun: string }[] = [
       { items: (model.aggregates ?? []).filter((a) => !a.boundedContextId), kind: 'aggregate', noun: 'agregado' },
       { items: (model.entities ?? []).filter((e) => !e.aggregateId), kind: 'entity', noun: 'entidad' },
+      { items: (model.valueObjects ?? []).filter((v) => !v.aggregateId), kind: 'value-object', noun: 'value object' },
       { items: model.looseUseCases ?? [], kind: 'use-case', noun: 'caso de uso' },
     ];
     let looseIdx = 0;

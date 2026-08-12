@@ -412,6 +412,7 @@ export function applyConnectionGesture(
       const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
       const aggById = (id: string) => (host.model.aggregates ?? []).find((a) => a.id === id);
       const entById = (id: string) => (host.model.entities ?? []).find((e) => e.id === id);
+      const voById = (id: string) => (host.model.valueObjects ?? []).find((v) => v.id === id);
       const ctx = isCtx(sourceId) ? sourceId : isCtx(targetId) ? targetId : null;
       const looseAgg = aggById(sourceId) ?? aggById(targetId);
       if (ctx && looseAgg && !looseAgg.boundedContextId) {
@@ -427,6 +428,11 @@ export function applyConnectionGesture(
       const looseEnt = entById(sourceId) ?? entById(targetId);
       if (agg && looseEnt && !looseEnt.aggregateId) {
         host.command({ kind: 'set-entity-aggregate', id: looseEnt.id, aggregateId: agg.id });
+        return;
+      }
+      const looseVo = voById(sourceId) ?? voById(targetId);
+      if (agg && looseVo && !looseVo.aggregateId) {
+        host.command({ kind: 'set-value-object-aggregate', id: looseVo.id, aggregateId: agg.id });
         return;
       }
     }

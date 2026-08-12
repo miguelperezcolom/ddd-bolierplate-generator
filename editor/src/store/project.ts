@@ -149,6 +149,8 @@ const isDrawable = (f: FlowRef) => Boolean(f.sourceId && f.targetId);
 interface OwnerIndex {
   /** element id → bounded context id */
   of: Map<string, string>;
+  /** value object id → aggregate id (a VO lives in an aggregate's valueObjectIds, not a context's). */
+  voAgg: Map<string, string>;
 }
 
 function ownerIndex(store: ModelStore): OwnerIndex {
@@ -166,7 +168,13 @@ function ownerIndex(store: ModelStore): OwnerIndex {
       if (declared) of.set(element.id, declared);
     }
   }
-  return { of };
+  // A value object's owner is the AGGREGATE that lists it — not a context. Resolved separately so
+  // vo.aggregateId is real (it was always '' before, which hid VO ownership and free-standing state).
+  const voAgg = new Map<string, string>();
+  for (const agg of store.all('aggregates')) {
+    for (const voId of asList(agg.valueObjectIds)) voAgg.set(voId, agg.id);
+  }
+  return { of, voAgg };
 }
 
 function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): BoundedContextRef {
@@ -240,7 +248,7 @@ const entity = (ent: Element): EntityRef => ({
 const valueObject = (vo: Element, owner: OwnerIndex): ValueObjectRef => ({
   id: vo.id,
   name: name(vo),
-  aggregateId: owner.of.get(vo.id) ?? '',
+  aggregateId: owner.voAgg.get(vo.id) ?? '',
   type: str(vo.type),
   invariants: nestedNamed(vo.invariants),
 });
