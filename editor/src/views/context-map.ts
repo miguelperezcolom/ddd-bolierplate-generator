@@ -1161,6 +1161,40 @@ function buildScene(
     });
     if (expanded) emitChildren(m.id, 'boundedContext', m.name, pos);
   });
+  // Free-standing aggregates: born loose (no context yet), they show at top level with a
+  // «sin asociar» badge until a composition edge ties them to a context. Their contents still
+  // expand like any aggregate.
+  if (!distributionLevel) {
+    let looseIdx = 0;
+    for (const agg of model.aggregates ?? []) {
+      if (agg.boundedContextId) continue; // owned aggregates render under their context
+      const pos = layout[agg.id] ?? { x: 60 + (looseIdx % 5) * 200, y: 60 + Math.floor(looseIdx / 5) * 120 };
+      looseIdx++;
+      const grand = ownedChildren(agg.id, 'aggregate');
+      const expanded = toggledIds.has(agg.id) && grand.length > 0;
+      const style = CHILD_STYLE.aggregate;
+      const aSize = sizes[agg.id];
+      nodes.push({
+        id: agg.id,
+        label: agg.name,
+        kind: 'aggregate',
+        symbol: style.symbol,
+        fill: style.fill,
+        stroke: style.stroke,
+        badge: 'sin asociar',
+        dashed: true,
+        resizable: true,
+        collapsible: grand.length > 0,
+        collapsed: grand.length > 0 && !expanded,
+        tooltip: `${agg.name} — agregado sin asociar; arrastra una composición desde un contexto para tenerlo dentro`,
+        x: pos.x,
+        y: pos.y,
+        w: aSize?.w ?? NODE_W,
+        h: aSize?.h ?? NODE_H,
+      });
+      if (expanded) emitChildren(agg.id, 'aggregate', agg.name, pos);
+    }
+  }
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
   // context — and outside the distribution lens, which is about packaging.
   const actorsAndAgents = distributionLevel

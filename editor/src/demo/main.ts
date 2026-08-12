@@ -46,7 +46,7 @@ function applyCommand(command: ModuxCommand): void {
       model.boundedContexts.push({ id: command.id, name: command.name, subdomainType: command.subdomainType });
       break;
     case 'add-aggregate':
-      (model.aggregates ??= []).push({ id: command.id, name: command.name, boundedContextId: command.boundedContextId });
+      (model.aggregates ??= []).push({ id: command.id, name: command.name, boundedContextId: command.boundedContextId ?? '' });
       break;
     case 'remove-boundedContext':
       model.boundedContexts = model.boundedContexts.filter((m) => m.id !== command.id);

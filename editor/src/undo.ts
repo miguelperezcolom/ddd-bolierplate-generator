@@ -584,6 +584,11 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const e = (host.model.entities ?? []).find((x) => x.id === c.id);
         return e ? [{ kind: 'set-entity-aggregate', id: c.id, aggregateId: e.aggregateId }] : null;
       }
+      case 'set-aggregate-context': {
+        const a = (host.model.aggregates ?? []).find((x) => x.id === c.id);
+        // boundedContextId is '' when free-standing; omit it so the inverse detaches again.
+        return a ? [{ kind: 'set-aggregate-context', id: c.id, boundedContextId: a.boundedContextId || undefined }] : null;
+      }
       case 'remove-model-field': {
         const f = fieldOwners(host).flatMap((o) => o.fields ?? []).find((x) => x.id === c.fieldId);
         return f

@@ -72,6 +72,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'ui-assignment', label: 'Asignación a la UI', hint: 'App o página ⇆ UI declarada: se le asigna (assignment)' },
   { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
   { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
+  { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -235,6 +236,16 @@ export function connectionOptions(
     offer('context-crud', () => host.command({ kind: 'add-context-crud', sourceId, targetId }));
   }
   {
+    // contexto ⇆ agregado SUELTO: composición — el contexto pasa a contenerlo (fija su dueño).
+    // Solo para agregados sin dueño; los que ya pertenecen a un contexto usan context-crud arriba.
+    const ctx = isContext(sourceId) ? sourceId : isContext(targetId) ? targetId : null;
+    const agg = isAggregate(sourceId) ? sourceId : isAggregate(targetId) ? targetId : null;
+    if (ctx && agg && !(m.aggregates ?? []).find((a) => a.id === agg)?.boundedContextId) {
+      offer('aggregate-composition', () =>
+        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx }));
+    }
+  }
+  {
     // API (o el proxy que la fronteña) → contexto: dos sentidos muy distintos que NO
     // se deben asumir. El contexto la IMPLEMENTA (la sirve él mismo, strangler) o la
     // CONSUME (servidumbre: la API le sirve). Se pregunta con el picker.
@@ -393,6 +404,18 @@ export function applyConnectionGesture(
           host.command({ kind: 'set-mockup-page', id: mockupId, pageId: other });
           return;
         }
+      }
+    }
+    // contexto ⇆ agregado SUELTO: componerlo — el contexto pasa a contenerlo. Solo si el agregado
+    // no tiene dueño aún (uno ya asociado usa las relaciones CRUD entre contextos, resueltas abajo).
+    {
+      const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
+      const aggById = (id: string) => (host.model.aggregates ?? []).find((a) => a.id === id);
+      const ctx = isCtx(sourceId) ? sourceId : isCtx(targetId) ? targetId : null;
+      const loose = aggById(sourceId) ?? aggById(targetId);
+      if (ctx && loose && !loose.boundedContextId) {
+        host.command({ kind: 'set-aggregate-context', id: loose.id, boundedContextId: ctx });
+        return;
       }
     }
     // On the unified canvas the caller passes 'context-map'; read the real meaning from the

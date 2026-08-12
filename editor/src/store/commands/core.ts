@@ -96,7 +96,9 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'add-aggregate': add({
     type: 'aggregates',
-    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds' },
+    // Optional owner: an aggregate can be born free-standing (dropped on the canvas) and be tied to
+    // a context later by drawing a composition edge — see set-aggregate-context.
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds', required: false },
     stubs: (c) => [{
       type: 'models',
       element: { id: stateModelId(String(c.id)), name: c.name, fields: [], mappings: [] },
@@ -119,6 +121,18 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     }],
     parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds' },
   }),
+
+  /** Tie a (possibly free-standing) aggregate to a bounded context, or detach it (no target). */
+  'set-aggregate-context': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('aggregates', id)) throw new CommandError(`Agregado desconocido: ${id}`);
+    const target = command.boundedContextId as string | undefined;
+    if (target && !store.has('boundedContexts', target)) {
+      throw new CommandError(`Contexto desconocido: ${target}`);
+    }
+    store.removeFromAllLists('boundedContexts', 'aggregateIds', id);
+    if (target) store.addToList('boundedContexts', target, 'aggregateIds', id);
+  },
 
   'add-entity': add({
     type: 'entities',

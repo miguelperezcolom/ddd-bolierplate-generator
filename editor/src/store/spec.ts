@@ -249,8 +249,10 @@ function resolveParent(
     if (spec.required === false) return undefined;
     throw new CommandError(`${command.kind}: missing ${String(spec.from)}`);
   }
+  // `required: false` lets you OMIT the parent (free-standing creation), but a parent id that IS
+  // given must exist — otherwise a typo'd reference would silently create an orphan.
   const parent = store.get(spec.type, id);
-  if (!parent && spec.required !== false) {
+  if (!parent) {
     throw new CommandError(`${command.kind}: unknown ${spec.type} ${id}`);
   }
   return parent;

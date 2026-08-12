@@ -78,7 +78,14 @@ export type ModuxCommand =
       kind: 'add-aggregate';
       id: string;
       name: string;
-      boundedContextId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-aggregate-context. */
+      boundedContextId?: string;
+    }
+  | {
+      /** Tie a free-standing aggregate to a context, or detach it (omit boundedContextId). */
+      kind: 'set-aggregate-context';
+      id: string;
+      boundedContextId?: string;
     }
   | {
       /** An invariant on its owner — an aggregate, value object OR entity. */

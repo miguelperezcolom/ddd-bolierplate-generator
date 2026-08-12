@@ -3289,6 +3289,16 @@ export class ModuxEditor extends LitElement {
     if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field', 'operation'].includes(type)) {
       container = this.nearestAggregateTo(pos);
     }
+    // Free-standing creation: an aggregate dropped on empty canvas is born without a context and
+    // tied to one later by drawing a composition edge (it wears a «sin asociar» badge until then).
+    if (!container && type === 'aggregate') {
+      const { id, name } = this.uniquePaletteName(def.label);
+      issue({ kind: 'add-aggregate', id, name }, id);
+      this.emit('modux-notice', {
+        message: `Agregado «${name}» creado suelto — arrastra una composición desde un contexto para asociarlo`,
+      });
+      return;
+    }
     if (!container) {
       this.emit('modux-notice', {
         message:
