@@ -21,14 +21,12 @@ import { semanticLayout, semanticPartitions } from './semantic-layout.js';
 import { derivedElementIds, hideDerived, markDerived } from './derived.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
-import './modux-figma.js';
 import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
 import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
 import { coordinateFrom, repoNameOf } from './project-reference.js';
 import { slug } from './ids.js';
-import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
@@ -305,10 +303,6 @@ export class ModuxEditor extends LitElement {
   @state() private _paletteFilter = '';
   /** Palette tab: brand-new elements, or the model's existing catalog. */
   @state() private _paletteTab: 'new' | 'catalog' = 'new';
-  /** The selected content node on the Diseño surface (one across every frame). */
-  @state() private _selectedCmp: { pageId: string; componentId: string } | null = null;
-  /** Ctrl+C on a node: its subtree, deep-copied, pasteable on any frame. */
-  private _cmpClipboard: UiComponentNodeRef | null = null;
   /** Mirrors document.fullscreenElement — the editor host in fullscreen. */
   @state() private _fullscreen = false;
   /** Tilt mode: the diagram as stacked 3D plates (a read-only lens). */
@@ -759,7 +753,6 @@ export class ModuxEditor extends LitElement {
     }
     modux-canvas,
     modux-tilt,
-    modux-figma,
     modux-explorer {
       flex: 1;
       min-height: 0;
@@ -862,18 +855,16 @@ export class ModuxEditor extends LitElement {
     switch (e.key) {
       case 'p':
       case 'P':
-        if (['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations'].includes(this._view)) {
+        if (['context-map', 'distribution', 'workflows', 'ui', 'mappings', 'integrations'].includes(this._view)) {
           e.preventDefault();
           this._paletteOpen = !this._paletteOpen;
         }
         break;
       case 'y':
       case 'Y':
-        if (this._view !== 'design') {
-          e.preventDefault();
-          this._yugo = !this._yugo;
-          if (this._yugo) this._tilt = false;
-        }
+        e.preventDefault();
+        this._yugo = !this._yugo;
+        if (this._yugo) this._tilt = false;
         break;
       case 'f':
       case 'F':
@@ -1957,11 +1948,6 @@ export class ModuxEditor extends LitElement {
   }
 
   private memberIdsFromSelection(): string[] {
-    // On Diseño the scene is not a Scene: frames ARE pages, ids map directly.
-    if (this._view === 'design') {
-      const pages = new Set((this.model.pages ?? []).map((x) => x.id));
-      return this.viewSelection().filter((id) => pages.has(id));
-    }
     const scene = this.sceneFor(this._view);
     const members = new Set<string>();
     for (const id of this.viewSelection()) {
@@ -2158,11 +2144,6 @@ export class ModuxEditor extends LitElement {
         ? (g.semantics === 'EXCLUSIVE' ? 'PARALLEL' : 'EXCLUSIVE')
         : (g.semantics === 'ANY' ? 'ALL' : 'ANY');
       this.command({ kind: 'set-gateway-semantics', id: g.id, type: next });
-      return;
-    }
-    if (this._view === 'ui' && e.detail.elementType === 'node' && e.detail.kind === 'page') {
-      this._view = 'design';
-      this._selectedId = e.detail.id;
       return;
     }
     // Double-clicking an ArchiMate relation retypes it (same eleven, in place).
@@ -2441,206 +2422,6 @@ export class ModuxEditor extends LitElement {
     return found;
   }
 
-  /** Supr borra, Ctrl+C copia el subárbol, Ctrl+V lo pega bajo la selección. */
-  private onDesignKeydown = (e: KeyboardEvent): void => {
-    const t = e.target as HTMLElement;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
-      return;
-    }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this._selectedCmp) {
-      const { pageId, componentId } = this._selectedCmp;
-      this._selectedCmp = null;
-      this.command({ kind: 'remove-page-component', pageId, componentId });
-      e.preventDefault();
-      return;
-    }
-    if (
-      (e.key === 'Delete' || e.key === 'Backspace') &&
-      !this._selectedCmp &&
-      this._selectedId &&
-      (this.model.pages ?? []).some((x) => x.id === this._selectedId)
-    ) {
-      const id = this._selectedId;
-      this._selectedId = null;
-      this.command({ kind: 'delete-ui-page', id });
-      e.preventDefault();
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && this._selectedCmp) {
-      const found = this.componentIn(this._selectedCmp.pageId, this._selectedCmp.componentId);
-      if (found) {
-        this._cmpClipboard = JSON.parse(JSON.stringify(found.node));
-        this.emit('modux-notice', { message: `Copiado: ${found.node.kind} y sus hijos — Ctrl+V lo pega bajo la selección` });
-      }
-      e.preventDefault();
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && this._cmpClipboard) {
-      this.pasteComponent();
-      e.preventDefault();
-    }
-  };
-
-  /** Paste under the selected node (inside a layout, after a leaf) or on the selected frame. */
-  private pasteComponent(): void {
-    const clip = this._cmpClipboard;
-    if (!clip) return;
-    let pageId: string | null = null;
-    let parentComponentId: string | undefined;
-    let beforeComponentId: string | null = null;
-    if (this._selectedCmp) {
-      const found = this.componentIn(this._selectedCmp.pageId, this._selectedCmp.componentId);
-      if (!found) return;
-      pageId = this._selectedCmp.pageId;
-      const leaf = ModuxPageDesigner.LEAF_KINDS.has(found.node.kind);
-      if (leaf) {
-        parentComponentId = found.parentId ?? undefined;
-        beforeComponentId = found.beforeId;
-      } else {
-        parentComponentId =
-          found.node.kind === 'tabLayout' && clip.kind !== 'tab'
-            ? (found.node.children ?? [])[0]?.id
-            : found.node.id;
-      }
-    } else if (this._selectedId && (this.model.pages ?? []).some((x) => x.id === this._selectedId)) {
-      pageId = this._selectedId;
-    }
-    if (!pageId) {
-      this.emit('modux-notice', { message: 'Selecciona el nodo (o el frame) donde pegar' });
-      return;
-    }
-    const { ops, rootId } = this.rebuildComponentOps(pageId, clip, parentComponentId, beforeComponentId, true);
-    for (const op of ops) this.command(op, false);
-    this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId: rootId }]);
-    this._selectedCmp = { pageId, componentId: rootId };
-  }
-
-  /** A node dragged from another frame: recreated there, removed here — one undo. */
-  private onComponentTransferred = (e: CustomEvent): void => {
-    const { fromPageId, toPageId, componentId, toParentId, beforeComponentId } = e.detail as {
-      fromPageId: string; toPageId: string; componentId: string;
-      toParentId: string | null; beforeComponentId: string | null;
-    };
-    const found = this.componentIn(fromPageId, componentId);
-    if (!found || fromPageId === toPageId) return;
-    const node: UiComponentNodeRef = JSON.parse(JSON.stringify(found.node));
-    const { ops } = this.rebuildComponentOps(toPageId, node, toParentId ?? undefined, beforeComponentId);
-    for (const op of ops) this.command(op, false);
-    this.command({ kind: 'remove-page-component', pageId: fromPageId, componentId }, false);
-    this.pushUndoEntry([
-      { kind: 'remove-page-component', pageId: toPageId, componentId },
-      ...this.rebuildComponentOps(fromPageId, node, found.parentId ?? undefined, found.beforeId).ops,
-    ]);
-    this._selectedCmp = { pageId: toPageId, componentId };
-  };
-
-  /** The «Diseño» surface: every page as a frame, edited in place (Figma-style). */
-  private renderFigma() {
-    const vl = this.viewLayout('design');
-    return html`<modux-figma
-      .pages=${this.filteredModel().pages ?? []}
-      .layout=${vl.nodes}
-      .sizes=${vl.sizes ?? {}}
-      @frame-resized=${(e: CustomEvent) => {
-        const { id, w, h } = e.detail as { id: string; w: number; h: number };
-        const current = this.viewLayout('design');
-        this.pushUndoEntry([
-          { kind: 'resize-node', view: 'design', id, size: current.sizes?.[id] ?? null },
-        ]);
-        this.writeViewLayout('design', {
-          ...current,
-          sizes: { ...(current.sizes ?? {}), [id]: { w, h } },
-        });
-      }}
-      .selectedId=${this._selectedId}
-      .selectedIds=${this._multi}
-      .selectedCmp=${this._selectedCmp}
-      @keydown=${this.onDesignKeydown}
-      @page-component-selected=${(e: CustomEvent) => {
-        this._selectedCmp = e.detail.componentId
-          ? { pageId: e.detail.pageId, componentId: e.detail.componentId }
-          : null;
-      }}
-      @page-component-transferred=${this.onComponentTransferred}
-      @page-wizard-step-moved=${(e: CustomEvent) =>
-        this.moveWizardStep(e.detail.pageId, e.detail.stepKey, e.detail.beforeStepKey ?? null)}
-      .models=${this.model.models ?? []}
-      .mappings=${this.model.modelMappings ?? []}
-      .useCases=${this.model.boundedContexts.flatMap((mod) =>
-        (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name })),
-      )}
-      .queryOps=${this.model.boundedContexts.flatMap((mod) =>
-        (mod.queryServices ?? []).flatMap((qs) =>
-          (qs.operations ?? []).map((op) => ({
-            id: op.id,
-            name: `${op.name} (${qs.name})`,
-            queryServiceId: qs.id,
-          })),
-        ),
-      )}
-      @node-moved=${this.onNodeMoved}
-      @element-selected=${this.onElementSelected}
-      @element-multi-toggled=${this.onMultiToggled}
-      @page-renamed=${(e: CustomEvent) =>
-        this.command({ kind: 'rename-ui-page', pageId: e.detail.pageId, name: e.detail.name })}
-      @page-type-changed=${(e: CustomEvent) =>
-        this.command({ kind: 'set-page-type', pageId: e.detail.pageId, pageType: e.detail.pageType })}
-      @page-route-changed=${(e: CustomEvent) =>
-        this.command({ kind: 'set-page-route', pageId: e.detail.pageId, path: e.detail.route })}
-      @page-model-changed=${(e: CustomEvent) =>
-        this.command({ kind: 'set-page-model', pageId: e.detail.pageId, modelId: e.detail.modelId })}
-      @page-button-added=${(e: CustomEvent) =>
-        this.command({
-          kind: 'add-page-button',
-          pageId: e.detail.pageId,
-          useCaseId: e.detail.useCaseId,
-          label: e.detail.label,
-          type: e.detail.bar,
-        })}
-      @page-button-changed=${(e: CustomEvent) =>
-        this.command({
-          kind: 'set-page-button',
-          pageId: e.detail.pageId,
-          useCaseId: e.detail.useCaseId,
-          label: e.detail.label,
-          mappingId: e.detail.mappingId,
-        })}
-      @page-component-config-changed=${(e: CustomEvent) => {
-        const { pageId, componentId, ...config } = e.detail;
-        this.command({ kind: 'set-page-component', pageId, componentId, ...config });
-      }}
-      @page-component-removed=${(e: CustomEvent) =>
-        this.command({
-          kind: 'remove-page-component',
-          pageId: e.detail.pageId,
-          componentId: e.detail.componentId,
-        })}
-      @page-component-moved=${(e: CustomEvent) =>
-        this.command({
-          kind: 'move-page-component',
-          pageId: e.detail.pageId,
-          componentId: e.detail.componentId,
-          parentComponentId: e.detail.toParentId,
-          beforeComponentId: e.detail.beforeComponentId,
-        })}
-      @page-button-removed=${(e: CustomEvent) =>
-        this.command({
-          kind: 'remove-page-button',
-          pageId: e.detail.pageId,
-          useCaseId: e.detail.useCaseId,
-        })}
-      @page-open-crud=${(e: CustomEvent) => {
-        this.emit('modux-activate', { elementType: 'page', id: e.detail.pageId });
-      }}
-      @page-field-config-changed=${(e: CustomEvent) => {
-        const { pageId, fieldId, stereotype, colspan, label } = e.detail;
-        this.command({ kind: 'set-page-field-config', pageId, fieldId, stereotype, colspan, label });
-      }}
-      @page-fields-reordered=${(e: CustomEvent) => {
-        this.command({ kind: 'set-page-field-order', pageId: e.detail.pageId, fieldIds: e.detail.fieldIds });
-      }}
-    ></modux-figma>`;
-  }
 
   // ── palette (drag to create / drag to place) ────────────────────────────
 
@@ -2848,13 +2629,11 @@ export class ModuxEditor extends LitElement {
   private handlePaletteDrop(payload: { new?: string; existing?: string }, clientX: number, clientY: number): void {
     // Whichever surface is showing takes the drop — canvas and tilt share the API.
     const surface =
-      this._view === 'design'
-        ? this.renderRoot.querySelector('modux-figma')
-        : this._yugo
-          ? this.renderRoot.querySelector('modux-explorer')
-          : this._tilt
-            ? this.renderRoot.querySelector('modux-tilt')
-            : this.renderRoot.querySelector('modux-canvas');
+      this._yugo
+        ? this.renderRoot.querySelector('modux-explorer')
+        : this._tilt
+          ? this.renderRoot.querySelector('modux-tilt')
+          : this.renderRoot.querySelector('modux-canvas');
     if (!surface) return;
     const pos = surface.sceneFromClient(clientX, clientY);
     // Solution/diff overlays and flow lanes prefix node ids; the drop resolvers work
@@ -2868,13 +2647,9 @@ export class ModuxEditor extends LitElement {
           .nodeIdNearClient(clientX, clientY)
           ?.replace(/^(tgt:|flow:)/, '') ?? null;
     }
-    const slot =
-      this._view === 'design' && 'dropSlotAtClient' in surface
-        ? (surface as import('./modux-figma.js').ModuxFigma).dropSlotAtClient(clientX, clientY)
-        : null;
-    if (payload.new) this.createFromPalette(payload.new, pos, targetId, slot);
+    if (payload.new) this.createFromPalette(payload.new, pos, targetId, null);
     else if (payload.existing) {
-      this.placeExistingFromPalette(payload.existing, pos, targetId, clientX, clientY, slot);
+      this.placeExistingFromPalette(payload.existing, pos, targetId, clientX, clientY, null);
     }
   }
 
@@ -3053,27 +2828,6 @@ export class ModuxEditor extends LitElement {
     if (!def) return;
     if (type === 'project-reference') {
       this._repoPicker = { pos, coordinate: '' };
-      return;
-    }
-    if (type === 'custom-code' && this._view === 'design') {
-      // dropped ON a component (or a page frame): that piece becomes CUSTOM,
-      // delegating in a freshly created piece of hand-written code.
-      const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
-      const pageId = m ? m[1]
-        : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
-      if (!pageId) {
-        this.emit('modux-notice', { message: 'Suelta el custom code sobre una página o un componente' });
-        return;
-      }
-      const { id, name } = this.uniquePaletteName('Custom code');
-      this.command({ kind: 'add-custom-code', id, name }, false);
-      if (m) {
-        this.command({ kind: 'set-page-component-custom-code', pageId, componentId: m[2], targetId: id });
-        this.emit('modux-notice', { message: 'Componente CUSTOM — su código se declara en el nodo CODE (vista UI/Mapeados)' });
-      } else {
-        this.command({ kind: 'set-page-custom-code', id: pageId, targetId: id });
-        this.emit('modux-notice', { message: 'Página CUSTOM — cablea desde su CODE lo que usa (vista UI)' });
-      }
       return;
     }
     if (type.startsWith('cmp:')) {
@@ -3651,149 +3405,6 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  /** Dropping an EXISTING element: onto a node = the connect gesture; onto empty = place it. */
-  /**
-   * A catalog element dropped on the Diseño surface WIRES the declaration: a use case
-   * on a button (its action), a model on a form or the frame (the viewmodel), a query
-   * operation on a listing or the frame (what it lists). The map's connect gesture,
-   * spelled for pages.
-   */
-  private dropCatalogOnDesign(
-    id: string,
-    targetId: string | null,
-    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null,
-  ): void {
-    // a mapping dropped on a BUTTON transforms its viewmodel; a USE CASE retargets it
-    const btnHit = targetId ? /^btn:([^:]+):(.+)$/.exec(targetId) : null;
-    if (btnHit) {
-      const mapping = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
-      if (mapping) {
-        this.command({
-          kind: 'set-page-button',
-          pageId: btnHit[1],
-          useCaseId: btnHit[2],
-          label: null,
-          mappingId: id,
-        });
-        this.emit('modux-notice', { message: `El botón mapea con ${mapping.name}` });
-        return;
-      }
-      const newUc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
-      if (newUc) {
-        if (id === btnHit[2]) return;
-        const pg = (this.model.pages ?? []).find((x) => x.id === btnHit[1]);
-        const btn = (pg?.buttons ?? []).find((x) => x.useCaseId === btnHit[2]);
-        if (!btn) return;
-        if ((pg?.buttons ?? []).some((x) => x.useCaseId === id)) {
-          this.emit('modux-notice', { message: 'La página ya tiene un botón para ese caso de uso' });
-          return;
-        }
-        // retarget = the same button (label, bar, mapping) pointing at the new use case
-        this.command({ kind: 'remove-page-button', pageId: btnHit[1], useCaseId: btnHit[2] }, false);
-        this.command(
-          { kind: 'add-page-button', pageId: btnHit[1], useCaseId: id, label: btn.label, type: btn.bar },
-          false,
-        );
-        if (btn.mappingId) {
-          this.command(
-            { kind: 'set-page-button', pageId: btnHit[1], useCaseId: id, label: null, mappingId: btn.mappingId },
-            false,
-          );
-        }
-        this.pushUndoEntry([
-          { kind: 'remove-page-button', pageId: btnHit[1], useCaseId: id },
-          { kind: 'add-page-button', pageId: btnHit[1], useCaseId: btnHit[2], label: btn.label, type: btn.bar },
-          ...(btn.mappingId
-            ? [{ kind: 'set-page-button', pageId: btnHit[1], useCaseId: btnHit[2], label: null, mappingId: btn.mappingId } as ModuxCommand]
-            : []),
-        ]);
-        this.emit('modux-notice', { message: `El botón lanza ahora ${newUc.name}` });
-        return;
-      }
-      this.emit('modux-notice', { message: 'Sobre un botón se sueltan mapeados o casos de uso del Catálogo' });
-      return;
-    }
-    // a use case dropped on a BAR creates its button right there
-    const barHit = targetId ? /^bar:([^:]+):(.+)$/.exec(targetId) : null;
-    if (barHit) {
-      const uc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
-      if (!uc) {
-        this.emit('modux-notice', { message: 'En una barra se sueltan CASOS DE USO del Catálogo' });
-        return;
-      }
-      const pg = (this.model.pages ?? []).find((x) => x.id === barHit[1]);
-      if ((pg?.buttons ?? []).some((x) => x.useCaseId === id)) {
-        this.emit('modux-notice', { message: 'La página ya tiene un botón para ese caso de uso' });
-        return;
-      }
-      this.command({ kind: 'add-page-button', pageId: barHit[1], useCaseId: id, type: barHit[2] });
-      this.emit('modux-notice', { message: `Botón de ${uc.name} en la barra ${barHit[2] === 'bottom' ? 'de abajo' : 'superior'}` });
-      return;
-    }
-    const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
-    const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
-    if (!pageId) {
-      this.emit('modux-notice', { message: 'Suelta el elemento sobre una página o uno de sus componentes' });
-      return;
-    }
-    const cmp = m ? this.componentIn(pageId, m[2])?.node ?? null : null;
-    const uc = this.model.boundedContexts.flatMap((mo) => mo.useCases ?? []).find((u) => u.id === id);
-    if (uc) {
-      if (cmp?.kind === 'button') {
-        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), useCaseId: id, label: cmp.label ?? uc.name });
-        this.emit('modux-notice', { message: `El botón lanza ${uc.name}` });
-      } else {
-        this.command({ kind: 'add-page-button', pageId, useCaseId: id });
-        this.emit('modux-notice', { message: `Botón de ${uc.name} añadido a la página` });
-      }
-      return;
-    }
-    const model = (this.model.models ?? []).find((x) => x.id === id);
-    if (model) {
-      if (cmp?.kind === 'form') {
-        this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), modelId: id });
-        this.emit('modux-notice', { message: `El formulario edita ${model.name}` });
-      } else {
-        this.command({ kind: 'set-page-model', pageId, modelId: id });
-        this.emit('modux-notice', { message: `${model.name} es el viewmodel de la página` });
-      }
-      return;
-    }
-    const mappingDrop = (this.model.modelMappings ?? []).find((mm) => mm.id === id);
-    if (mappingDrop && (cmp?.kind === 'button' || cmp?.kind === 'form')) {
-      this.command({ kind: 'set-page-component', pageId, componentId: cmp.id, ...this.cmpPatch(cmp), mappingId: id });
-      this.emit('modux-notice', {
-        message: cmp.kind === 'form'
-          ? `El formulario mapea con ${mappingDrop.name} al guardar`
-          : `El botón mapea con ${mappingDrop.name}`,
-      });
-      return;
-    }
-    const queryOp = this.model.boundedContexts
-      .flatMap((mo) => (mo.queryServices ?? []).flatMap((qs) => (qs.operations ?? []).map((op) => ({ op, qs }))))
-      .find(({ op }) => op.id === id);
-    if (queryOp) {
-      if (cmp?.kind === 'listing' || cmp?.kind === 'crud') {
-        this.command({
-          kind: 'set-page-component',
-          pageId,
-          componentId: cmp.id,
-          ...this.cmpPatch(cmp),
-          queryOperationId: queryOp.op.id,
-          queryServiceId: queryOp.qs.id,
-        });
-      } else {
-        this.command({ kind: 'set-page-listing', pageId, queryServiceId: queryOp.qs.id });
-      }
-      this.emit('modux-notice', { message: `Listado alimentado por ${queryOp.op.name}` });
-      return;
-    }
-    void slot;
-    this.emit('modux-notice', {
-      message: 'En Diseño se sueltan casos de uso (botones), modelos (viewmodel) y consultas (listados)',
-    });
-  }
-
   /** Full config of a content node: set-page-component REPLACES every field, so drops must resend them all. */
   private cmpPatch(cmp: { title?: string; text?: string; label?: string; useCaseId?: string; mappingId?: string;
     modelId?: string; queryServiceId?: string; queryOperationId?: string; fieldId?: string; stereotype?: string;
@@ -3822,10 +3433,7 @@ export class ModuxEditor extends LitElement {
     clientY: number,
     slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null = null,
   ): void {
-    if (this._view === 'design') {
-      this.dropCatalogOnDesign(id, targetId, slot);
-      return;
-    }
+    void slot;
     if (targetId && targetId !== id) {
       this.applyConnection(id, targetId, clientX, clientY);
       return;
@@ -3979,7 +3587,7 @@ export class ModuxEditor extends LitElement {
   }
 
   private renderPalette() {
-    if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations', 'aggregates'].includes(this._view)) return '';
+    if (!this._paletteOpen || !['context-map', 'distribution', 'workflows', 'ui', 'mappings', 'integrations', 'aggregates'].includes(this._view)) return '';
     const needle = this._paletteFilter.trim().toLowerCase();
     // The workflows view only creates workflow things; everything else is context-map.
     const news = PALETTE_NEW.filter(
@@ -3990,9 +3598,7 @@ export class ModuxEditor extends LitElement {
           ? ['workflow', 'workflow-step', 'workflow-join', 'workflow-split'].includes(k.type)
           : this._view === 'ui'
             ? ['ui', 'ui-app', 'ui-app-orchestrator', 'ui-app-masterdetail', 'ui-app-vieweditor', 'page', 'ui-page-crud', 'ui-page-wizard', 'ui-wizard-step', 'menu-item', 'ui-model', 'identity-provider', 'custom-code', 'button-group', 'ui-button'].includes(k.type)
-            : this._view === 'design'
-              ? k.type === 'page' || k.type === 'custom-code' || k.type.startsWith('cmp:')
-              : this._view === 'integrations'
+            : this._view === 'integrations'
                 ? ['etl-flow', 'etl-transform', 'external-system', 'external-table'].includes(k.type)
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
@@ -4106,8 +3712,6 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
               : view === 'ui'
                 ? uiScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
-                : view === 'design'
-                  ? { nodes: [], edges: [] }
               : view === 'integrations'
                 ? integrationsScene(model, vl.nodes)
               : view === 'mappings'
@@ -4122,10 +3726,8 @@ export class ModuxEditor extends LitElement {
                 : view === 'context-map' && this._canvasMode === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
                 : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
-    if (view !== 'design') {
-      this.withAreas(scene, view);
-      this.withNotes(scene, view);
-    }
+    this.withAreas(scene, view);
+    this.withNotes(scene, view);
     this.withDescriptions(scene);
     // On a solution, ring what differs from the system (node ids carry view prefixes).
     if (this.diff) {
@@ -4470,7 +4072,7 @@ export class ModuxEditor extends LitElement {
         >Editor gráfico</span>
         <button
           class="tab hamburger"
-          ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'design', 'mappings', 'integrations', 'aggregates'].includes(this._view)}
+          ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'mappings', 'integrations', 'aggregates'].includes(this._view)}
           ?data-active=${this._paletteOpen}
           title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
@@ -4685,7 +4287,6 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design'}
           ?data-active=${this._yugo}
           title=${this._yugo
             ? 'Volver al lienzo editable (Y)'
@@ -4699,7 +4300,6 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design'}
           ?data-active=${!this._showDerived}
           title=${this._showDerived
             ? 'Ocultar los elementos inferidos (stubs generados por el sistema, marcados ✦)'
@@ -4710,7 +4310,6 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design'}
           ?data-active=${this._canvasMode === 'distribution'}
           title="Distribución: los contextos como empaquetadores de módulos, con servicios y despliegue — el mismo modelo, otra lente"
           @click=${() =>
@@ -4720,7 +4319,6 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design'}
           ?data-active=${this._canvasMode === 'eventstorming'}
           title="EventStorming: la narrativa comando → agregado → evento → policy → read model sobre el mismo modelo"
           @click=${() =>
@@ -4748,9 +4346,7 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._view === 'design'
-        ? html`${this.renderPalette()}${this.renderFigma()}`
-        : this._yugo
+      ${this._yugo
         ? html`${this.renderPalette()}<modux-explorer
             class="yugo"
             .scene=${this.sceneFor(this._view, { expandAll: true })}
