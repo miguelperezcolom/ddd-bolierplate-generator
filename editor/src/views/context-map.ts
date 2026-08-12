@@ -212,6 +212,10 @@ export function ownershipIndex(
   for (const app of model.uiApps ?? []) {
     for (const { entry, path } of flattenMenu(app)) owners.set(menuNodeId(app.id, entry, path), app.id);
   }
+  // An ETL flow's steps roll up into the flow.
+  for (const f of model.etlFlows ?? []) {
+    for (const s of f.steps ?? []) owners.set(s.id, f.id);
+  }
   return owners;
 }
 
@@ -259,6 +263,7 @@ interface ChildDesc {
     | 'process-step'
     | 'menu-group'
     | 'menu-item'
+    | 'etl-step'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -298,6 +303,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'process-step': { symbol: 'gear', fill: '#f5f3ff', stroke: '#7c3aed' },
   'menu-group': { symbol: 'process', fill: '#f0f9ff', stroke: '#7dd3fc' },
   'menu-item': { symbol: 'process', fill: '#ffffff', stroke: '#7dd3fc' },
+  'etl-step': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -333,6 +339,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'process-step': 'Paso de proceso — eslabón de la cadena (HUMAN o AUTOMÁTICO)',
   'menu-group': 'Agrupador de menú — contiene un submenú, no abre nada',
   'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
+  'etl-step': 'Paso ETL — fuente (pull/consumer) → transformación → escritura',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -664,6 +671,12 @@ function buildScene(
           kind: entry.children?.length ? 'menu-group' : 'menu-item',
         }));
       }
+      case 'etl-flow': {
+        // The integrator's pipeline: source/transform/write steps hang inside it; the flow arrows
+        // between phases (etlPipeEdges) roll up with it.
+        const f = (model.etlFlows ?? []).find((x) => x.id === id);
+        return (f?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name ?? s.id, kind: 'etl-step' }));
+      }
       default:
         return [];
     }
@@ -795,6 +808,8 @@ function buildScene(
     }
     if ('etl' in entry && entry.etl) {
       const f = entry.ref as NonNullable<ModuxModel['etlFlows']>[number];
+      const kids = ownedChildren(f.id, 'etl-flow');
+      const expanded = toggledIds.has(f.id) && kids.length > 0;
       nodes.push({
         id: f.id,
         label: f.name,
@@ -805,11 +820,14 @@ function buildScene(
         dashed: true,
         badge: 'ETL',
         tooltip: `${f.name} — integrador: fuentes (pull/consumidor) → transformación → escrituras (API/BD/evento)`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
       });
+      if (expanded) emitChildren(f.id, 'etl-flow', f.name, pos);
       return;
     }
     if ('workflow' in entry && entry.workflow) {
@@ -1986,6 +2004,35 @@ function buildScene(
     }),
   );
 
+  // Inside an ETL flow: the pipeline source → transform → write, paired by phase like the
+  // integrations lens. Rolls up with the flow when folded.
+  const etlPhaseOf = (type: string): 0 | 1 | 2 =>
+    type.startsWith('SOURCE') ? 0 : type === 'TRANSFORM' ? 1 : 2;
+  const etlPipeEdges: SceneEdge[] = (model.etlFlows ?? []).flatMap((f) => {
+    const steps = f.steps ?? [];
+    const byPhase: [typeof steps, typeof steps, typeof steps] = [[], [], []];
+    for (const s of steps) byPhase[etlPhaseOf(s.type)].push(s);
+    const out: SceneEdge[] = [];
+    for (const phase of [1, 2] as const) {
+      byPhase[phase].forEach((s, row) => {
+        const prevCol = byPhase[(phase - 1) as 0 | 1];
+        const prev = prevCol[Math.min(row, prevCol.length - 1)];
+        if (prev) {
+          out.push({
+            id: `etlpipe:${f.id}:${prev.id}->${s.id}`,
+            sourceId: prev.id,
+            targetId: s.id,
+            kind: 'etl-pipe',
+            color: '#0f766e',
+            arrow: true,
+            tooltip: 'el dato fluye por el pipeline',
+          });
+        }
+      });
+    }
+    return out;
+  });
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2408,6 +2455,7 @@ function buildScene(
       ...workflowStepEdges,
       ...processStepEdges,
       ...menuEdges,
+      ...etlPipeEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
