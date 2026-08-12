@@ -26,22 +26,10 @@ import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
 import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
 import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
-import { DerivationError, deriveInteraction, type DerivationKind } from './derive-interaction.js';
 import { coordinateFrom, repoNameOf } from './project-reference.js';
 import { slug } from './ids.js';
 import { ModuxPageDesigner } from './modux-page-designer.js';
 import { SYMBOLS } from './modux-canvas.js';
-import './modux-sequence.js';
-import type { InteractionRef } from './model.js';
-import {
-  derivationCandidates,
-  deriveParticipants,
-  interactionToMermaid,
-  lookupFor,
-  materializeCommands,
-  participantCatalog,
-  saveInteractionCommand,
-} from './interaction-utils.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
 const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string }> = {
@@ -344,25 +332,6 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
-
-  // ── Secuencias (interactions) ──────────────────────────────────────────
-  /** Authored interaction open in the Secuencias view (null = none chosen). */
-  @state() private _interactionId: string | null = null;
-  /** Working copy: gestures land here instantly, the model round-trip resyncs it. */
-  @state() private _editingInteraction: InteractionRef | null = null;
-  /** Derived mode shows the ephemeral server-computed interaction, read-only. */
-  @state() private _interactionMode: 'authored' | 'derived' = 'authored';
-  /** The chain derived from the current entry point (`enterDerived`), read-only. */
-  @state() private derivedInteraction: InteractionRef | null = null;
-  /** Mini prompt for names (nueva secuencia, fijar derivada). */
-  @state() private _interactionPrompt: {
-    title: string;
-    value: string;
-    apply: (name: string) => void;
-  } | null = null;
-  /** Confirmation for deleting the active authored interaction. */
-  @state() private _interactionDelete: { id: string; name: string } | null = null;
-
 
   /** The magic connector's question, at the drop point. */
   @state() private _connectPicker: {
@@ -804,22 +773,9 @@ export class ModuxEditor extends LitElement {
     modux-canvas,
     modux-tilt,
     modux-figma,
-    modux-explorer,
-    modux-sequence {
+    modux-explorer {
       flex: 1;
       min-height: 0;
-    }
-    .seq-status {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 32px;
-      color: var(--modux-text-faint);
-      font-size: 13px;
-      background: var(--modux-surface);
     }
     .canvas-wrap {
       position: relative;
@@ -926,7 +882,7 @@ export class ModuxEditor extends LitElement {
         break;
       case 'y':
       case 'Y':
-        if (this._view !== 'design' && this._view !== 'interactions') {
+        if (this._view !== 'design') {
           e.preventDefault();
           this._yugo = !this._yugo;
           if (this._yugo) this._tilt = false;
@@ -1062,26 +1018,6 @@ export class ModuxEditor extends LitElement {
     }
     if (changed.has('model')) this._pendingNames.clear();
     if (changed.has('model')) this.pruneStaleEdgePoints();
-    // The interaction working copy resyncs with the projection on every round-trip.
-    if (changed.has('model') && this._interactionMode === 'authored' && this._interactionId) {
-      const found = (this.model.interactions ?? []).find((i) => i.id === this._interactionId);
-      if (found) {
-        const clone: InteractionRef = JSON.parse(JSON.stringify(found));
-        // Participants are NOT persisted (the server derives them from the
-        // messages): keep the loose ones added locally, waiting for a message.
-        const derivedNow = deriveParticipants(clone);
-        const loose = (this._editingInteraction?.participants ?? []).filter(
-          (p) =>
-            !derivedNow.some((sp) => sp.ref === p.ref) &&
-            !clone.messages.some((m) => m.fromRef === p.ref || m.toRef === p.ref),
-        );
-        if (loose.length) clone.participants = [...derivedNow, ...loose];
-        this._editingInteraction = clone;
-      } else {
-        this._editingInteraction = null;
-        this._interactionId = null; // borrada fuera (o por undo)
-      }
-    }
     // A blank canvas opens the palette by itself: the first gesture is a drop.
     if (changed.has('model') && !this._paletteOpenedForBlank
         && this.model.boundedContexts.length === 0 && this.model.externalSystems.length === 0) {
@@ -1792,169 +1728,6 @@ export class ModuxEditor extends LitElement {
 
   private inverseOf(c: ModuxCommand): ModuxCommand[] | null {
     return inverseOf(this.gestureHost(), c);
-  }
-
-  // ── Secuencias (interactions) ────────────────────────────────────────────
-
-  /** The interaction on the surface: the authored working copy, or the derived one. */
-  private currentInteraction(): InteractionRef | null {
-    return this._interactionMode === 'derived' ? this.derivedInteraction : this._editingInteraction;
-  }
-
-  private enterAuthored(id: string | null): void {
-    this._interactionMode = 'authored';
-    this._interactionId = id;
-    const found = id ? (this.model.interactions ?? []).find((i) => i.id === id) : null;
-    this._editingInteraction = found ? JSON.parse(JSON.stringify(found)) : null;
-  }
-
-  /**
-   * Derived mode: the chain that follows from an entry point.
-   *
-   * Computed here, from the model already in hand. It used to be a round trip to the server, and
-   * a round trip is what made the answer able to not arrive — hence the timeout and the «pending»
-   * state this no longer needs. The derivation reads nothing the editor is not already holding.
-   */
-  private enterDerived(kind: string, ref: string): void {
-    this._interactionMode = 'derived';
-    try {
-      this.derivedInteraction = deriveInteraction(this.model, kind as DerivationKind, ref);
-    } catch (error) {
-      this.derivedInteraction = null;
-      this.emit('modux-notice', {
-        message: error instanceof DerivationError
-          ? error.message : `No se pudo derivar la secuencia: ${String(error)}`,
-      });
-    }
-  }
-
-  private uniqueInteractionId(name: string): string {
-    const base = `int-${slug(name) || 'secuencia'}`;
-    let id = base;
-    let n = 2;
-    while ((this.model.interactions ?? []).some((i) => i.id === id)) id = `${base}-${n++}`;
-    return id;
-  }
-
-  private onInteractionPick(e: Event): void {
-    const select = e.target as HTMLSelectElement;
-    const value = select.value;
-    select.value = '';
-    if (value === '__new__') {
-      this._interactionPrompt = {
-        title: 'Nombre de la nueva secuencia',
-        value: '',
-        apply: (name) => {
-          const id = this.uniqueInteractionId(name);
-          const interaction: InteractionRef = { id, name, participants: [], messages: [] };
-          this._interactionMode = 'authored';
-          this._interactionId = id;
-          this._editingInteraction = interaction;
-          this.command(saveInteractionCommand(interaction));
-        },
-      };
-      return;
-    }
-    this.enterAuthored(value || null);
-  }
-
-  private onDerivePick(e: Event): void {
-    const select = e.target as HTMLSelectElement;
-    const value = select.value;
-    select.value = '';
-    if (!value) return;
-    const [kind, ref] = value.split('|');
-    this.enterDerived(kind, ref);
-  }
-
-  /** 📌 in derived mode: persist the ephemeral interaction and switch to authored. */
-  private pinDerivedInteraction(): void {
-    const derived = this.derivedInteraction;
-    if (!derived) return;
-    this._interactionPrompt = {
-      title: 'Fijar como secuencia authoreda — nombre',
-      value: derived.name ?? '',
-      apply: (name) => {
-        const id = this.uniqueInteractionId(name);
-        const pinned: InteractionRef = { ...derived, id, name, ephemeral: false };
-        this._interactionMode = 'authored';
-        this._interactionId = id;
-        this._editingInteraction = pinned;
-        this.command(saveInteractionCommand(pinned));
-        this.emit('modux-notice', { message: `Secuencia «${name}» fijada en el modelo` });
-      },
-    };
-  }
-
-  private async copyInteractionMermaid(): Promise<void> {
-    const current = this.currentInteraction();
-    if (!current) return;
-    try {
-      await navigator.clipboard.writeText(interactionToMermaid(current));
-      this.emit('modux-notice', { message: 'Mermaid copiado al portapapeles' });
-    } catch {
-      this.emit('modux-notice', {
-        message: 'No se pudo copiar al portapapeles',
-        kind: 'error',
-      });
-    }
-  }
-
-  private onParticipantPick(e: Event): void {
-    const select = e.target as HTMLSelectElement;
-    const ref = select.value;
-    select.value = '';
-    const current = this._editingInteraction;
-    if (!ref || !current) return;
-    const candidate = participantCatalog(this.model).find((c) => c.ref === ref);
-    if (!candidate) return;
-    const participants = deriveParticipants(current);
-    if (participants.some((p) => p.ref === ref)) {
-      this.emit('modux-notice', { message: `«${candidate.name}» ya es participante` });
-      return;
-    }
-    const next: InteractionRef = {
-      ...current,
-      participants: [...participants, { ref, name: candidate.name, type: candidate.type }],
-    };
-    this._editingInteraction = next;
-    // Participants are client-side until their first message (the server derives
-    // them): the save keeps the server in sync but nothing new persists, so no undo.
-    this.command(saveInteractionCommand(next), false);
-  }
-
-  private onInteractionChanged(e: CustomEvent<InteractionRef>): void {
-    const next = e.detail;
-    this._editingInteraction = next; // instant feedback; the round-trip resyncs
-    this.command(saveInteractionCommand(next));
-  }
-
-  /** ✨ on an unbacked message: the EXISTING commands that build its mechanism (one undo). */
-  private onInteractionMaterialize(e: CustomEvent<{ messageId: string }>): void {
-    const current = this._editingInteraction;
-    const message = current?.messages.find((m) => m.id === e.detail.messageId);
-    if (!current || !message) return;
-    const lookup = lookupFor(this.model, current);
-    const { commands, hint } = materializeCommands(
-      this.model,
-      message,
-      lookup.typeOf,
-      lookup.nameOf,
-    );
-    if (!commands.length) {
-      this.emit('modux-notice', { message: hint ?? 'Este mensaje no se puede materializar' });
-      return;
-    }
-    const inverses = commands.flatMap((c) => this.inverseOf(c) ?? []);
-    for (const cmd of commands) this.command(cmd, false);
-    if (inverses.length) this.pushUndoEntry(inverses);
-    // Immediate feedback — the server recomputes backing on the round-trip anyway.
-    const next: InteractionRef = {
-      ...current,
-      messages: current.messages.map((m) => (m.id === message.id ? { ...m, backed: true } : m)),
-    };
-    this._editingInteraction = next;
-    this.command(saveInteractionCommand(next));
   }
 
   /** Effects seen during the last gesture — the ArchiMate fallback reads them. */
@@ -4451,7 +4224,7 @@ export class ModuxEditor extends LitElement {
               ? workflowsScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
               : view === 'ui'
                 ? uiScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
-                : view === 'design' || view === 'interactions'
+                : view === 'design'
                   ? { nodes: [], edges: [] }
               : view === 'integrations'
                 ? integrationsScene(model, vl.nodes)
@@ -4462,7 +4235,7 @@ export class ModuxEditor extends LitElement {
                 : view === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
                 : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
-    if (view !== 'design' && view !== 'interactions') {
+    if (view !== 'design') {
       this.withAreas(scene, view);
       this.withNotes(scene, view);
     }
@@ -4797,193 +4570,6 @@ export class ModuxEditor extends LitElement {
     (this.renderRoot.querySelector('modux-canvas') as HTMLElement | null)?.focus();
   }
 
-  /** Toolbar of the «Secuencias» view: sequence picker, derive, pin, mermaid, participants. */
-  private renderInteractionToolbar() {
-    const interactions = this.model.interactions ?? [];
-    const derived = this._interactionMode === 'derived';
-    const candidates = derivationCandidates(this.model);
-    const deriveGroups: [string, typeof candidates][] = [
-      ['Casos de uso', candidates.filter((c) => c.kind === 'USE_CASE')],
-      ['Operaciones API', candidates.filter((c) => c.kind === 'API_OPERATION')],
-      ['Eventos', candidates.filter((c) => c.kind === 'EVENT')],
-    ];
-    const catalog = participantCatalog(this.model);
-    const catalogGroups = [...new Set(catalog.map((c) => c.group))];
-    const canEdit = !derived && !!this._editingInteraction;
-    return html`
-      <select
-        title="Secuencia authoreda del modelo — «＋ Nueva…» crea una vacía"
-        @change=${(e: Event) => this.onInteractionPick(e)}
-      >
-        <option value="" ?selected=${!derived && !this._interactionId}>Secuencia: —</option>
-        ${interactions.map(
-          (i) =>
-            html`<option value=${i.id} ?selected=${!derived && this._interactionId === i.id}>
-              ${i.name}
-            </option>`,
-        )}
-        <option value="__new__">＋ Nueva…</option>
-      </select>
-      <select
-        title="Derivar una secuencia efímera de un punto de entrada (solo lectura hasta fijarla)"
-        @change=${(e: Event) => this.onDerivePick(e)}
-      >
-        <option value="" ?selected=${derived}>Derivar de: …</option>
-        ${deriveGroups
-          .filter(([, list]) => list.length)
-          .map(
-            ([label, list]) => html`
-              <optgroup label=${label}>
-                ${list.map((c) => html`<option value="${c.kind}|${c.ref}">${c.label}</option>`)}
-              </optgroup>
-            `,
-          )}
-      </select>
-      ${derived && this.derivedInteraction
-        ? html`<button
-            class="tab"
-            title="Guardar la secuencia derivada como authoreda en el modelo"
-            @click=${() => this.pinDerivedInteraction()}
-          >
-            📌 Fijar como secuencia
-          </button>`
-        : ''}
-      ${this.currentInteraction()
-        ? html`<button
-            class="tab"
-            title="Copiar el sequenceDiagram mermaid de lo visible"
-            @click=${() => void this.copyInteractionMermaid()}
-          >
-            ⧉ Mermaid
-          </button>`
-        : ''}
-      ${!derived && this._interactionId
-        ? html`<button
-            class="tab"
-            title="Borrar la secuencia activa del modelo"
-            @click=${() =>
-              (this._interactionDelete = {
-                id: this._interactionId!,
-                name: this._editingInteraction?.name ?? this._interactionId!,
-              })}
-          >
-            🗑
-          </button>`
-        : ''}
-      <select
-        title="Añadir un participante del catálogo a la secuencia (sin mensajes aún)"
-        ?disabled=${!canEdit}
-        @change=${(e: Event) => this.onParticipantPick(e)}
-      >
-        <option value="">＋ Participante…</option>
-        ${catalogGroups.map(
-          (g) => html`
-            <optgroup label=${g}>
-              ${catalog
-                .filter((c) => c.group === g)
-                .map((c) => html`<option value=${c.ref}>${c.label}</option>`)}
-            </optgroup>
-          `,
-        )}
-      </select>
-    `;
-  }
-
-  /** The «Secuencias» surface: one interaction as lifelines — no canvas Scene. */
-  private renderInteractionsView() {
-    if (this._interactionMode === 'derived') {
-      if (!this.derivedInteraction) {
-        return html`<div class="seq-status">
-          Ese punto de entrada no deriva nada todavía: nada del modelo sale de él. Crea la
-          secuencia a mano con «＋ Nueva…».
-        </div>`;
-      }
-      return html`<modux-sequence
-        .interaction=${this.derivedInteraction}
-        .model=${this.model}
-      ></modux-sequence>`;
-    }
-    if (!this._editingInteraction) {
-      return html`<div class="seq-status">
-        Elige una secuencia del modelo, crea una con «＋ Nueva…» o deriva una de un caso de uso,
-        una operación API o un evento.
-      </div>`;
-    }
-    return html`<modux-sequence
-      .interaction=${this._editingInteraction}
-      .model=${this.model}
-      editable
-      @interaction-changed=${this.onInteractionChanged}
-      @interaction-materialize=${this.onInteractionMaterialize}
-      @undo-requested=${this.undo}
-      @redo-requested=${this.redo}
-    ></modux-sequence>`;
-  }
-
-  /** Name prompt of the Secuencias view (nueva secuencia / fijar derivada). */
-  private renderInteractionPrompt() {
-    const p = this._interactionPrompt;
-    if (!p) return '';
-    const commit = () => {
-      const name = p.value.trim();
-      this._interactionPrompt = null;
-      if (name) p.apply(name);
-    };
-    return html`
-      <div class="picker-backdrop" @pointerdown=${() => (this._interactionPrompt = null)}></div>
-      <div
-        class="relation-picker"
-        style="left: 50%; top: 120px"
-        @pointerdown=${(e: Event) => e.stopPropagation()}
-      >
-        <div class="picker-title">${p.title}</div>
-        <input
-          style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid var(--modux-border-strong, #cbd5e1); border-radius: 6px; font: 12px system-ui;"
-          placeholder="p. ej. Check-in online"
-          .value=${p.value}
-          @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => {
-            if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') this._interactionPrompt = null;
-          }}
-        />
-        <button class="picker-item" @click=${commit}>Guardar</button>
-      </div>
-    `;
-  }
-
-  /** Confirmation before deleting the active authored interaction. */
-  private renderInteractionDelete() {
-    const d = this._interactionDelete;
-    if (!d) return '';
-    return html`
-      <div class="picker-backdrop" @pointerdown=${() => (this._interactionDelete = null)}></div>
-      <div
-        class="relation-picker"
-        style="left: 50%; top: 120px"
-        @pointerdown=${(e: Event) => e.stopPropagation()}
-      >
-        <div class="picker-title">¿Eliminar la secuencia «${d.name}» del modelo?</div>
-        <button
-          class="picker-item danger"
-          @click=${() => {
-            this._interactionDelete = null;
-            this._interactionId = null;
-            this._editingInteraction = null;
-            this.command({ kind: 'remove-interaction', id: d.id });
-          }}
-        >
-          <span class="abbr">🗑</span>
-          <span class="name">Eliminar «${d.name}»</span>
-        </button>
-        <button class="picker-item" @click=${() => (this._interactionDelete = null)}>
-          <span class="abbr">↩</span>
-          <span class="name">Cancelar</span>
-        </button>
-      </div>
-    `;
-  }
-
   render() {
     const scene = this.sceneFor(this._view);
     return html`
@@ -5016,7 +4602,6 @@ export class ModuxEditor extends LitElement {
               </button>
             `
           : ''}
-        ${this._view === 'interactions' ? this.renderInteractionToolbar() : ''}
         <div class="spacer"></div>
         ${this.viewSelection().length ||
         (!this._activeViewId && (this._view === 'context-map' || this._view === 'distribution'))
@@ -5470,7 +5055,7 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design' || this._view === 'interactions'}
+          ?disabled=${this._view === 'design'}
           ?data-active=${this._yugo}
           title=${this._yugo
             ? 'Volver al lienzo editable (Y)'
@@ -5484,7 +5069,7 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?disabled=${this._view === 'design' || this._view === 'interactions'}
+          ?disabled=${this._view === 'design'}
           ?data-active=${!this._showDerived}
           title=${this._showDerived
             ? 'Ocultar los elementos inferidos (stubs generados por el sistema, marcados ✦)'
@@ -5513,9 +5098,7 @@ export class ModuxEditor extends LitElement {
         </button>
       </div>
       <div class="canvas-wrap">
-      ${this._view === 'interactions'
-        ? this.renderInteractionsView()
-        : this._view === 'design'
+      ${this._view === 'design'
         ? html`${this.renderPalette()}${this.renderFigma()}`
         : this._yugo
         ? html`${this.renderPalette()}<modux-explorer
@@ -5621,12 +5204,7 @@ export class ModuxEditor extends LitElement {
       `}
       </div>
       <div class="hint">
-        ${this._view === 'interactions'
-          ? html`Arrastra entre líneas de vida para crear un mensaje · arrastra un mensaje
-            verticalmente para reordenarlo · doble click edita etiqueta, guarda y tipo · Supr
-            borra el mensaje o el participante seleccionado · ✨ materializa un mensaje sin
-            respaldo · una secuencia derivada es de solo lectura hasta fijarla con 📌`
-          : this._view === 'context-map'
+        ${this._view === 'context-map'
           ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema (y un sistema externo dentro/fuera de otro) · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
             en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
             mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
@@ -5645,7 +5223,6 @@ export class ModuxEditor extends LitElement {
         · pulsa <b>?</b> para los atajos
       </div>
       ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderInvariantCondEditor()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
-      ${this.renderInteractionPrompt()} ${this.renderInteractionDelete()}
       ${this.renderHelpPopover()} ${this.renderDrawer()}
     `;
   }

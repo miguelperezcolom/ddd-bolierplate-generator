@@ -832,49 +832,6 @@ export interface UrlRef {
   url?: string;
 }
 
-/** The kind of a message in an interaction (maps 1:1 to the mechanisms modux knows). */
-export type InteractionMessageKind = 'COMMAND' | 'QUERY' | 'EVENT' | 'EXTERNAL';
-
-/** One ordered message between two participants of an interaction. */
-export interface InteractionMessageRef {
-  id: string;
-  fromRef: string;
-  toRef: string;
-  kind: InteractionMessageKind;
-  label?: string;
-  guard?: string;
-  /** false = nothing in the model realizes this message yet (materialize it). */
-  backed?: boolean;
-  /** Nesting level: 0 top-level, >0 inside the caller's activation (1.1, 1.1.1…). */
-  depth?: number;
-}
-
-/** A lifeline of the sequence: a reference to an existing catalog element. */
-export interface InteractionParticipantRef {
-  ref: string;
-  name: string;
-  /** ACTOR | APP | PAGE | USE_CASE | AGGREGATE | DOMAIN_SERVICE | QUERY_SERVICE |
-   *  READ_MODEL | EXTERNAL_SYSTEM | API | API_OPERATION | AI_AGENT | PROCESS | WORKFLOW | UNKNOWN. */
-  type: string;
-}
-
-/**
- * An interaction: ONE concrete scenario as an ordered chain of messages between
- * catalog participants — the sequence diagram. Derived ones are ephemeral
- * (computed server-side, never persisted); authored ones live in the YAML.
- */
-export interface InteractionRef {
-  id: string | null;
-  /** true = derived read-only view (not persisted until pinned). */
-  ephemeral?: boolean;
-  name: string;
-  description?: string;
-  triggerKind?: 'ACTOR' | 'API_OPERATION' | 'EVENT' | 'USE_CASE' | null;
-  triggerRef?: string | null;
-  /** Declared lifelines; absent, they derive from the messages in first-use order. */
-  participants?: InteractionParticipantRef[];
-  messages: InteractionMessageRef[];
-}
 
 export interface ModuxModel {
   /** UI apps (UiAdapter) with their menu tree — the UI view's containers. */
@@ -1010,8 +967,6 @@ export interface ModuxModel {
   useCaseEmissions?: EmissionRef[];
   subscriptions?: SubscriptionRef[];
   projections?: ProjectionRef[];
-  /** Authored sequence scenarios (derived ones are ephemeral, never listed here). */
-  interactions?: InteractionRef[];
   /** Element id → its description, surfaced as a node's hover tooltip. */
   descriptions?: Record<string, string>;
 }

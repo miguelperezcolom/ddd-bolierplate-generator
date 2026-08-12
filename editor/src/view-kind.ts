@@ -9,7 +9,7 @@
 /** The 13 view types. The canonical runtime list; {@link ViewId} is derived from it. */
 export const VIEW_IDS = [
   'context-map', 'distribution', 'aggregates', 'flows', 'processes', 'workflows',
-  'ui', 'design', 'mappings', 'eventstorming', 'integrations', 'interactions',
+  'ui', 'design', 'mappings', 'eventstorming', 'integrations',
 ] as const;
 
 export type ViewId = (typeof VIEW_IDS)[number];
@@ -27,7 +27,6 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   mappings: 'Mapeados',
   eventstorming: 'EventStorming',
   integrations: 'Integraciones',
-  interactions: 'Secuencias',
 };
 
 const SUFFIX = '.modux-view.yaml';

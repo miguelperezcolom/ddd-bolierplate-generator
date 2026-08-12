@@ -1,9 +1,7 @@
 import '../index.js';
 import type { ModuxEditor } from '../modux-editor.js';
 import type { ModuxCommand } from '../commands.js';
-import type { InteractionRef } from '../model.js';
 import type { EditorLayout } from '../scene.js';
-import { computeBacked, lookupFor } from '../interaction-utils.js';
 import { demoModel } from './demo-model.js';
 
 const LAYOUT_KEY = 'modux-editor-demo-layout';
@@ -130,32 +128,6 @@ function applyCommand(command: ModuxCommand): void {
       if (el) el.name = command.name;
       break;
     }
-    case 'save-interaction': {
-      const list = (model.interactions ??= []);
-      const at = list.findIndex((i) => i.id === command.id);
-      const prev = at >= 0 ? list[at] : null;
-      const next: InteractionRef = {
-        id: command.id,
-        name: command.name ?? prev?.name ?? command.id,
-        description: command.description ?? prev?.description,
-        triggerKind: (command.triggerKind ?? prev?.triggerKind ?? null) as InteractionRef['triggerKind'],
-        triggerRef: command.triggerRef ?? prev?.triggerRef ?? null,
-        // participants derive from the messages (server-side): keep the local copy
-        participants: prev?.participants,
-        // flat messages win; client-only fields (depth) ride along from the old copy
-        messages: (command.messages ?? prev?.messages ?? []).map((m) => ({
-          ...prev?.messages.find((x) => x.id === m.id),
-          ...m,
-        })),
-      };
-      if (at >= 0) list[at] = next;
-      else list.push(next);
-      break;
-    }
-    case 'remove-interaction': {
-      model.interactions = (model.interactions ?? []).filter((i) => i.id !== command.id);
-      break;
-    }
     // The wiring the «materialize» button emits (so the demo recomputes backing).
     case 'add-actor-use': {
       if (!(model.actorUses ?? []).some((c) => c.actorId === command.sourceId && c.targetId === command.targetId))
@@ -192,11 +164,6 @@ function applyCommand(command: ModuxCommand): void {
       if (op) op.targetUseCaseId = command.targetUseCaseId;
       break;
     }
-  }
-  // Mirror the server: message backing is recomputed after every mutation.
-  for (const i of model.interactions ?? []) {
-    const { typeOf } = lookupFor(model, i);
-    i.messages = i.messages.map((m) => ({ ...m, backed: computeBacked(model, m, typeOf) }));
   }
   // New object identity so Lit re-renders.
   editor.model = { ...model };

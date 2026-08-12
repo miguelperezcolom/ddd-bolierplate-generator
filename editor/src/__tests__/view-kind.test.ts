@@ -5,7 +5,7 @@ describe('view type in the filename (source of truth)', () => {
   it('reads the type from the last dot-segment before the suffix', () => {
     expect(kindFromViewFileName('reservas.aggregates.modux-view.yaml')).toBe('aggregates');
     expect(kindFromViewFileName('reservas.context-map.modux-view.yaml')).toBe('context-map');
-    expect(kindFromViewFileName('a.b.c.interactions.modux-view.yaml')).toBe('interactions');
+    expect(kindFromViewFileName('a.b.c.eventstorming.modux-view.yaml')).toBe('eventstorming');
   });
 
   it('returns null for a legacy name with no type segment, so callers fall back', () => {

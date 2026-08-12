@@ -1,6 +1,5 @@
 import type { ModuxModel, UiMenuEntryRef, UiComponentNodeRef, FieldRef } from './model.js';
 import type { ModuxCommand } from './commands.js';
-import { saveInteractionCommand } from './interaction-utils.js';
 
 /** The elements that own fields — aggregates and entities (Record VOs join later). */
 function fieldOwners(host: { model: ModuxModel }): { id: string; fields?: FieldRef[] }[] {
@@ -1544,15 +1543,6 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             dependsOnStepId: c.dependsOnStepId,
           },
         ];
-      case 'save-interaction': {
-        // Wholesale replace: undo restores the previous ref (or drops the newcomer).
-        const prev = (host.model.interactions ?? []).find((i) => i.id === c.id);
-        return prev ? [saveInteractionCommand(prev)] : [{ kind: 'remove-interaction', id: c.id }];
-      }
-      case 'remove-interaction': {
-        const prev = (host.model.interactions ?? []).find((i) => i.id === c.id);
-        return prev ? [saveInteractionCommand(prev)] : null;
-      }
     }
     return null;
 }

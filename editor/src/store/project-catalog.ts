@@ -13,7 +13,7 @@ import type { ModuxModel } from '../model.js';
 import { asList, nested, type Element, type ModelStore } from './store.js';
 
 export const CATALOG_PROJECTED_TYPES = [
-  'subscriptions', 'sagas', 'interactions', 'enums', 'businessRules', 'integrationEvents',
+  'subscriptions', 'sagas', 'enums', 'businessRules', 'integrationEvents',
 ];
 
 /** Use-case step types, and which edge list each contributes to. */
@@ -136,15 +136,6 @@ export function projectCatalog(store: ModelStore): Partial<ModuxModel> {
       kind: str(v.kind) ?? 'CURATED',
       memberIds: asList(v.memberIds),
     })),
-
-    interactions: store.all('interactions').map((i) => ({
-      id: i.id,
-      name: name(i),
-      description: str(i.description),
-      triggerKind: str(i.triggerKind),
-      triggerRef: str(i.triggerRef),
-      messages: nested(i.messages) as never,
-    })) as never,
 
     identityProviders: store.all('identityProviders').map((i) => ({
       id: i.id,
