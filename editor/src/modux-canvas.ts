@@ -703,6 +703,26 @@ export class ModuxCanvas extends LitElement {
     return null;
   }
 
+  /**
+   * For a palette drop over a mockup component chip (`cmp:…`): whether it lands BEFORE, AFTER or
+   * INTO it — from the cursor's vertical position within the box (a container's middle band nests;
+   * the top/bottom, or a leaf, slot as a sibling). Null when not over a component chip, so plain
+   * node drops are unaffected.
+   */
+  dropSlotAtClient(
+    clientX: number, clientY: number,
+  ): { nodeId: string; pos: 'before' | 'after' | 'into' } | null {
+    const id = this.nodeIdAtClient(clientX, clientY) ?? this.nodeIdNearClient(clientX, clientY);
+    if (!id || !id.startsWith('cmp:')) return null;
+    const n = this.scene.nodes.find((x) => x.id === id);
+    if (!n) return null;
+    const c = this.nodePos(n);
+    const h = n.h || 1;
+    const relY = (this.sceneFromClient(clientX, clientY).y - (c.y - h / 2)) / h;
+    if (n.collapsible && relY > 0.34 && relY < 0.66) return { nodeId: id, pos: 'into' };
+    return { nodeId: id, pos: relY < 0.5 ? 'before' : 'after' };
+  }
+
   /** Scene coordinates for a client-space point (palette drops). */
   sceneFromClient(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.getBoundingClientRect();
