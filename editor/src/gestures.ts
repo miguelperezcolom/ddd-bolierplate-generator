@@ -327,6 +327,47 @@ export function connectionOptions(
     });
 }
 
+/** Typed drag handles that belong to the UI lens (a page/app/group offers them). */
+const UI_CONNECT_HANDLES = new Set([
+  'toolbar', 'bottom', 'home', 'header', 'crud-detail', 'crud-create', 'viewmodel', 'view', 'edit',
+]);
+
+/**
+ * On the ONE unified canvas every kind of node coexists, so a traced line no longer inherits its
+ * meaning from a lens — it is read from the endpoints (and the typed handle, if any). This maps a
+ * connect gesture to the lens whose rules apply, so the existing per-lens logic runs unchanged.
+ * Ambiguous or purely-strategic connects fall to `context-map`, which offers the relation picker.
+ */
+function resolveConnectLens(
+  host: GestureHost, sourceId: string, targetId: string, connectKind?: string,
+): ViewId {
+  if (connectKind && UI_CONNECT_HANDLES.has(connectKind)) return 'ui';
+  if (connectKind?.startsWith('es-')) return 'eventstorming';
+  const m = host.model;
+  const has = <T extends { id: string }>(coll: T[] | undefined, id: string) =>
+    (coll ?? []).some((x) => x.id === id);
+  // A workflow, its steps or gateways at either end → the workflow rules (which also handle
+  // actor→step and page→step by looking at the OTHER end).
+  const isWorkflowThing = (id: string) =>
+    has(m.workflows, id) ||
+    (m.workflows ?? []).some((w) => (w.steps ?? []).some((s) => s.id === id)) ||
+    has(m.workflowGateways, id);
+  if (isWorkflowThing(sourceId) || isWorkflowThing(targetId)) return 'workflows';
+  // Mapping side: synthetic field chips, models, transformations and custom code.
+  const mapSide = (id: string) =>
+    !!parseFieldNodeId(id) || has(m.models, id) || has(m.transformations, id) || has(m.customCodes, id);
+  if (parseFieldNodeId(sourceId) || parseFieldNodeId(targetId) || (mapSide(sourceId) && mapSide(targetId))) {
+    return 'mappings';
+  }
+  // Aggregate assignment: a value object / entity / model dropped on an aggregate or on one of its
+  // raw fields (setting membership or a field's type).
+  const isAggField = (id: string) =>
+    [...(m.aggregates ?? []), ...(m.entities ?? [])].some((o) => (o.fields ?? []).some((f) => f.id === id));
+  const droppable = has(m.valueObjects, sourceId) || has(m.entities, sourceId) || has(m.models, sourceId);
+  if (droppable && (has(m.aggregates, targetId) || isAggField(targetId))) return 'aggregates';
+  return 'context-map';
+}
+
 export function applyConnectionGesture(
   host: GestureHost,
   view: ViewId,
@@ -349,6 +390,12 @@ export function applyConnectionGesture(
         : other.replace(/^(tgt:|flow:)/, '');
       host.command({ kind: 'note-attach', id: noteId, targetId: ref });
       return;
+    }
+    // On the unified canvas the caller passes 'context-map'; read the real meaning from the
+    // endpoints. Distribution/eventstorming MODES arrive as their own view and keep it; the
+    // '__classic' sentinel (an internal re-entry from connectionOptions) also keeps context-map.
+    if (view === 'context-map' && connectKind !== '__classic') {
+      view = resolveConnectLens(host, sourceId, targetId, connectKind);
     }
     // Distribution level: a line means packaging (elemento → módulo) or deployment
     // (servicio → módulo). Anything else falls through to the usual meanings.
@@ -1859,6 +1906,25 @@ export function applyConnectionGesture(
     void y;
 }
 
+/**
+ * Deleting on the unified canvas: an element's KIND is globally unique, so it alone says which
+ * lens's delete rules apply. The caller passes 'context-map'; this reads the lens from the kind so
+ * the existing per-lens delete logic runs. Anything unmapped stays context-map.
+ */
+function resolveDeleteLens(id: string, kind: string): ViewId {
+  const WF = new Set(['workflow-dependency', 'workflow-start', 'workflow-gateway', 'wf-role', 'wf-form', 'wf-link']);
+  const MAP = new Set([
+    'model-mapping', 'mapping-rule', 'model-field', 'model', 'transformation', 'transform-input',
+    'transform-output', 'custom-of-transformation', 'custom-of-mapping', 'custom-code',
+  ]);
+  if (WF.has(kind)) return 'workflows';
+  if (MAP.has(kind)) return 'mappings';
+  if (kind === 'es-custom') return 'eventstorming';
+  if (kind === 'deploys') return 'distribution';
+  if (id.startsWith('menu:') || kind === 'menu-item' || kind === 'menu-group') return 'ui';
+  return 'context-map';
+}
+
 export function performDeleteGesture(
   host: GestureHost,
   view: ViewId,
@@ -1866,6 +1932,7 @@ export function performDeleteGesture(
   id: string,
   kind: string,
 ): void {
+  if (view === 'context-map') view = resolveDeleteLens(id, kind);
   if (kind === 'ui-serving') {
     const m = /^uisrv:(.+)->(.+)$/.exec(id);
     if (m) {

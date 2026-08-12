@@ -1747,7 +1747,14 @@ export class ModuxEditor extends LitElement {
     const pickers = () =>
       !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker || this._invariantCondEditor);
     const pickersBefore = pickers();
-    applyConnectionGesture(this.gestureHost(), this._view, sourceId, targetId, x, y, connectKind);
+    // The canvas mode is what the gesture resolver keys on: distribution/eventstorming carry their
+    // own meaning; «unified» arrives as context-map and is resolved from the endpoints.
+    const mode: ViewId = this._canvasMode === 'distribution'
+      ? 'distribution'
+      : this._canvasMode === 'eventstorming'
+        ? 'eventstorming'
+        : 'context-map';
+    applyConnectionGesture(this.gestureHost(), mode, sourceId, targetId, x, y, connectKind);
     // Nothing modux meant anything for this pair — no command, no picker, no
     // notice: ArchiMate takes the last word (its eleven types apply to ANY pair).
     if (
@@ -1755,7 +1762,7 @@ export class ModuxEditor extends LitElement {
       pickers() === pickersBefore &&
       connectKind === undefined &&
       sourceId !== targetId &&
-      ['context-map', 'aggregates', 'integrations'].includes(this._view)
+      this._canvasMode === 'unified'
     ) {
       const scene = this.sceneFor(this._view);
       const onStage = (id: string) => scene.nodes.some((n) => n.id === id);
