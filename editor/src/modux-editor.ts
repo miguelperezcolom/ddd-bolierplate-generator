@@ -2848,14 +2848,37 @@ export class ModuxEditor extends LitElement {
       const componentKind = type.slice(4);
       const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
       // Mockup host: dropped on the mockup node (bare id) or on one of its component chips (nest
-      // under it). Simpler than the page designer — no tab/slot machinery yet.
+      // under it), honouring the tab rules — a `tab` only lives in a `tabLayout`, and a `tabLayout`
+      // holds only tabs (a drop on it lands in its active tab).
       const mockupHostId = m ? m[1] : targetId;
       if (mockupHostId && (this.model.mockups ?? []).some((mk) => mk.id === mockupHostId)) {
+        const dropOn = m ? m[2] : undefined;
+        if (componentKind === 'tab') {
+          let hostId: string | null = null;
+          let cur = dropOn ? this.mockupComponentIn(mockupHostId, dropOn) : null;
+          while (cur) {
+            if (cur.node.kind === 'tabLayout') { hostId = cur.node.id; break; }
+            cur = cur.parentId ? this.mockupComponentIn(mockupHostId, cur.parentId) : null;
+          }
+          if (!hostId) {
+            this.emit('modux-notice', { message: 'Suelta la pestaña sobre un layout de pestañas' });
+            return;
+          }
+          const componentId = this.newComponentId('tab');
+          const host = this.mockupComponent(mockupHostId, hostId);
+          const title = `Pestaña ${(host?.children ?? []).filter((c) => c.kind === 'tab').length + 1}`;
+          this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind: 'tab', parentComponentId: hostId }, false);
+          this.command({ kind: 'set-page-component', mockupId: mockupHostId, componentId, title }, false);
+          this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
+          return;
+        }
+        let parentComponentId = dropOn;
+        if (dropOn) {
+          const found = this.mockupComponent(mockupHostId, dropOn);
+          if (found?.kind === 'tabLayout') parentComponentId = (found.children ?? [])[0]?.id ?? dropOn;
+        }
         const componentId = this.newComponentId(componentKind);
-        this.command({
-          kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind,
-          parentComponentId: m ? m[2] : undefined,
-        }, false);
+        this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind, parentComponentId }, false);
         this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
         return;
       }
@@ -3570,16 +3593,23 @@ export class ModuxEditor extends LitElement {
 
   /** Find a component by id anywhere in a mockup's content tree. */
   private mockupComponent(mockupId: string, componentId: string): UiComponentNodeRef | null {
+    return this.mockupComponentIn(mockupId, componentId)?.node ?? null;
+  }
+
+  /** A component in a mockup, plus the id of its parent component (null at top level). */
+  private mockupComponentIn(
+    mockupId: string, componentId: string,
+  ): { node: UiComponentNodeRef; parentId: string | null } | null {
     const mk = (this.model.mockups ?? []).find((m) => m.id === mockupId);
-    const walk = (items?: UiComponentNodeRef[]): UiComponentNodeRef | null => {
+    let found: { node: UiComponentNodeRef; parentId: string | null } | null = null;
+    const walk = (items: UiComponentNodeRef[] | undefined, up: string | null) => {
       for (const c of items ?? []) {
-        if (c.id === componentId) return c;
-        const hit = walk(c.children);
-        if (hit) return hit;
+        if (c.id === componentId) found = { node: c, parentId: up };
+        walk(c.children, c.id);
       }
-      return null;
     };
-    return walk(mk?.content);
+    walk(mk?.content, null);
+    return found;
   }
 
   /**
